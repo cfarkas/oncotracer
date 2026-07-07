@@ -1,0 +1,10 @@
+name: cna_classifier_gistic2
+channels:
+  - hcc
+  - conda-forge
+dependencies:
+  - gistic2=2.0.23
+  - wget
+  - curl
+  - ca-certificates
+  - unzip

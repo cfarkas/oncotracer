@@ -1,0 +1,23 @@
+feature_id	chrom	start	end	preferred_state	genes	label	weight
+1p_loss	1	1	125000000	loss,deep_loss	TNFRSF14/CDKN2C/CD58-region	1p deletion region	1
+1q_gain	1	121000000	248956422	gain,amplification	MCL1/BCL9/MDM4-region	1q gain / broad 1q copy gain	1
+2p16_REL_BCL11A_gain_amp	2	59200000	62900000	gain,amplification	REL/BCL11A	2p16-p15 REL/BCL11A gain or amplification	3
+3q27_BCL6_alteration	3	187000000	189500000	any	BCL6	3q27/BCL6-region CNA	2
+6q21_PRDM1_loss	6	105000000	112500000	loss,deep_loss	PRDM1	6q21 loss / PRDM1-region	2
+6q23_TNFAIP3_loss	6	133000000	139500000	loss,deep_loss	TNFAIP3	6q23 loss / TNFAIP3-region	2
+7_gain	7	1	159345973	gain,amplification	chr7 broad	Chromosome 7 gain pattern	1
+8q24_MYC_gain_amp	8	127000000	129500000	gain,amplification	MYC	8q24/MYC-region gain or amplification	3
+9p24_JAK2_PDL1_PDL2_gain_amp	9	4500000	7000000	gain,amplification	JAK2/CD274/PDCD1LG2	9p24 JAK2/PD-L1/PD-L2 gain/amplification	3
+9p21_CDKN2A_B_loss	9	21000000	25000000	loss,deep_loss	CDKN2A/CDKN2B	9p21 CDKN2A/CDKN2B loss	3
+10q23_PTEN_loss	10	87000000	90000000	loss,deep_loss	PTEN	10q23/PTEN-region loss	2
+11q_loss	11	94000000	135086622	loss,deep_loss	ATM/BIRC3-region	Distal 11q deletion pattern	1
+12p13_ETV6_loss	12	11000000	13000000	loss,deep_loss	ETV6	12p13/ETV6-region loss	1
+12q15_MDM2_CDK4_gain_amp	12	67000000	70500000	gain,amplification	MDM2/CDK4-region	12q15 MDM2/CDK4 gain/amplification region	1
+13q14_loss	13	47000000	52000000	loss,deep_loss	RB1/DLEU/miR15a-miR16-region	13q14/RB1-region loss	2
+15q21_B2M_loss	15	43500000	46500000	loss,deep_loss	B2M	15q21/B2M-region loss	2
+16p13_CIITA_loss	16	10000000	12500000	loss,deep_loss	CIITA	16p13/CIITA-region loss	2
+17p13_TP53_loss	17	1	10000000	loss,deep_loss	TP53	17p loss / TP53-region	3
+18q21_BCL2_MALT1_gain_amp	18	54000000	65000000	gain,amplification	BCL2/MALT1	18q21 BCL2/MALT1-region gain/amplification	3
+19_loss	19	1	58617616	loss,deep_loss	chr19 broad	Chromosome 19 deletion pattern	1
+21q_RUNX1_region_CNA	21	34000000	37000000	any	RUNX1	21q/RUNX1-region CNA	1
+22q_loss	22	16000000	50818468	loss,deep_loss	NF2/SMARCB1-region	22q deletion pattern	1

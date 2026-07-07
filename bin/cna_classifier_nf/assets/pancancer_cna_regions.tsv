@@ -1,0 +1,57 @@
+feature_id	chrom	start	end	preferred_state	genes	label	weight
+1p_loss	1	1	125000000	loss,deep_loss	TNFRSF14/CDKN2C/CD58-region	1p deletion region	1
+1q_gain	1	121000000	248956422	gain,amplification	MCL1/BCL9/MDM4-region	1q gain / broad 1q copy gain	1
+2p16_REL_BCL11A_gain_amp	2	59200000	62900000	gain,amplification	REL/BCL11A	2p16-p15 gain or amplification	2
+2p24_MYCN_gain_amp	2	15000000	17000000	gain,amplification	MYCN	2p24/MYCN-region gain or amplification	3
+3p_loss	3	1	60000000	loss,deep_loss	FHIT/VHL-region	3p loss region	1
+3q26_PIK3CA_SOX2_TERC_gain_amp	3	168000000	183500000	gain,amplification	PIK3CA/SOX2/TERC-region	3q26 oncogene-region gain/amplification	2
+3q27_BCL6_alteration	3	187000000	189500000	any	BCL6	3q27/BCL6-region CNA	1
+4q12_KIT_PDGFRA_KDR_gain_amp	4	54000000	57000000	gain,amplification	KIT/PDGFRA/KDR	4q12 receptor-tyrosine-kinase-region gain/amplification	2
+4q_loss	4	80000000	190214555	loss,deep_loss	4q broad	4q deletion pattern	1
+5p15_TERT_gain_amp	5	1000000	2000000	gain,amplification	TERT/CLPTM1L	5p15/TERT-region gain or amplification	2
+5q_gain_RCC_context	5	50000000	180000000	gain,amplification	5q broad	5q gain pattern / renal-cell carcinoma context	1
+5q22_APC_loss	5	110000000	113500000	loss,deep_loss	APC	5q22/APC-region loss	2
+5q_loss_MDS_AML	5	130000000	171000000	loss,deep_loss	EGR1/APC/NPM1-region	5q loss / myeloid-neoplasm-associated region	2
+6p21_HLA_region_loss	6	28000000	34000000	loss,deep_loss	HLA-region	6p21/HLA-region loss	1
+6q21_PRDM1_loss	6	105000000	112500000	loss,deep_loss	PRDM1	6q21 loss / PRDM1-region	2
+6q23_TNFAIP3_loss	6	133000000	139500000	loss,deep_loss	TNFAIP3	6q23 loss / TNFAIP3-region	2
+7_gain	7	1	159345973	gain,amplification	chr7 broad	Chromosome 7 gain pattern	1
+7q_loss	7	60000000	159345973	loss,deep_loss	chr7q broad	Chromosome 7q deletion pattern	1
+7p11_EGFR_gain_amp	7	54000000	56500000	gain,amplification	EGFR	7p11/EGFR-region gain or amplification	3
+7q31_MET_gain_amp	7	115000000	117500000	gain,amplification	MET	7q31/MET-region gain or amplification	2
+7q34_BRAF_KIAA1549_gain	7	138000000	141000000	gain,amplification	KIAA1549/BRAF	7q34/KIAA1549-BRAF-region gain/duplication context	2
+8p_loss	8	1	45000000	loss,deep_loss	8p broad	8p deletion pattern	1
+8q_gain	8	90000000	145138636	gain,amplification	8q broad	Broad 8q gain pattern	1
+8q24_MYC_gain_amp	8	127000000	129500000	gain,amplification	MYC	8q24/MYC-region gain or amplification	3
+9p24_JAK2_PDL1_PDL2_gain_amp	9	4500000	7000000	gain,amplification	JAK2/CD274/PDCD1LG2	9p24 JAK2/PD-L1/PD-L2 gain/amplification	3
+9p21_CDKN2A_B_loss	9	21000000	25000000	loss,deep_loss	CDKN2A/CDKN2B	9p21 CDKN2A/CDKN2B loss	3
+9q_loss_bladder_context	9	70000000	138394717	loss,deep_loss	9q broad	9q loss pattern / urothelial context	1
+10_loss_GBM_context	10	1	133797422	loss,deep_loss	chr10 broad	Chromosome 10 loss pattern	1
+10q23_PTEN_loss	10	87000000	90000000	loss,deep_loss	PTEN	10q23/PTEN-region loss	2
+10q26_FGFR2_gain_amp	10	121000000	124000000	gain,amplification	FGFR2	10q26/FGFR2-region gain or amplification	2
+11q13_CCND1_FGF_gain_amp	11	68000000	71000000	gain,amplification	CCND1/FGF3/FGF4/FGF19	11q13 CCND1/FGF-region gain/amplification	3
+11q_loss	11	94000000	135086622	loss,deep_loss	ATM/BIRC3-region	Distal 11q deletion pattern	1
+12p_gain_germ_cell_context	12	1	35000000	gain,amplification	KRAS/CCND2/12p broad	12p gain / germ-cell tumor context	2
+12p13_ETV6_loss	12	11000000	13000000	loss,deep_loss	ETV6	12p13/ETV6-region loss	1
+12q15_MDM2_CDK4_gain_amp	12	67000000	70500000	gain,amplification	MDM2/CDK4-region	12q15 MDM2/CDK4 gain/amplification region	3
+13q14_loss	13	47000000	52000000	loss,deep_loss	RB1/DLEU/miR15a-miR16-region	13q14/RB1-region loss	2
+13q_gain_colon_context	13	19000000	114364328	gain,amplification	chr13 broad	Chromosome 13 gain pattern	1
+14q13_NKX2_1_gain_amp	14	36000000	38000000	gain,amplification	NKX2-1	14q13/NKX2-1-region gain or amplification	2
+14q_loss_RCC_context	14	70000000	107043718	loss,deep_loss	14q broad	14q loss / renal-cell carcinoma context	1
+15q21_B2M_loss	15	43500000	46500000	loss,deep_loss	B2M	15q21/B2M-region loss	1
+16q_loss_breast_context	16	50000000	90338345	loss,deep_loss	CDH1/WWOX-region	16q loss pattern	1
+16p13_CIITA_loss	16	10000000	12500000	loss,deep_loss	CIITA	16p13/CIITA-region loss	1
+17p13_TP53_loss	17	1	10000000	loss,deep_loss	TP53	17p loss / TP53-region	3
+17q12_ERBB2_gain_amp	17	37000000	38500000	gain,amplification	ERBB2/GRB7	17q12/ERBB2-HER2-region gain or amplification	3
+17q_gain_neuroblastoma_context	17	25000000	83257441	gain,amplification	17q broad	17q gain / neuroblastoma context	2
+18q21_BCL2_MALT1_gain_amp	18	54000000	65000000	gain,amplification	BCL2/MALT1	18q21 gain/amplification region	2
+18q_loss_SMAD4_DCC	18	45000000	80373285	loss,deep_loss	SMAD4/DCC	18q loss / SMAD4-DCC-region	2
+19p13_STK11_KEAP1_loss	19	1000000	14000000	loss,deep_loss	STK11/KEAP1-region	19p13 STK11/KEAP1-region loss	1
+19q12_CCNE1_gain_amp	19	30000000	31000000	gain,amplification	CCNE1	19q12/CCNE1-region gain or amplification	3
+19q_gain	19	25000000	58617616	gain,amplification	19q broad	19q gain pattern	1
+19_loss	19	1	58617616	loss,deep_loss	chr19 broad	Chromosome 19 deletion pattern	1
+20q_gain_colon_context	20	30000000	64444167	gain,amplification	AURKA/ZNF217/20q broad	20q gain pattern	1
+21q_RUNX1_region_CNA	21	34000000	37000000	any	RUNX1	21q/RUNX1-region CNA	1
+22q_loss	22	16000000	50818468	loss,deep_loss	NF2/SMARCB1-region	22q deletion pattern	1
+Xq12_AR_gain_amp	X	66000000	68000000	gain,amplification	AR	Xq12/AR-region gain or amplification	2
+Xp11_TFE3_region_CNA	X	48000000	50000000	any	TFE3	Xp11/TFE3-region CNA context	1

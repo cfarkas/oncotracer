@@ -1,0 +1,33 @@
+.nextflow*
+work/
+results/
+*.log
+*.trace
+*.timeline.html
+*.report.html
+*.dag.html
+
+# Nextflow runtime artifacts
+.nextflow/
+.nextflow.log*
+**/work/
+**/.nextflow/
+**/.nextflow*
+**/.nextflow.log*
+
+# Local workflow outputs and reports
+output/
+outputs/
+
+# Containers and generated docs output
+*.sif
+*.simg
+site/
+
+# Python/editor/cache files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store

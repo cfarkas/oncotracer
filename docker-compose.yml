@@ -1,0 +1,13 @@
+services:
+  oncotracer:
+    image: carlosfarkas/oncotracer:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # Edit these mounts for your machine. Every absolute path referenced in
+      # your YAML must be visible inside the container.
+      - /media/server/STORAGE/LPWGS_2025:/media/server/STORAGE/LPWGS_2025
+    working_dir: /opt/OncoTracer
+    entrypoint: ["oncoTracer"]
+    command: ["--help"]

@@ -1,0 +1,5 @@
+sample	state	chrom	start	end	size_mb	cytoband	n_bins	mean_log2	median_log2	estimated_total_copy_number	copy_code	molecular_piece	cna_shorthand	source
+S1	gain	2	60000000	63000000	3.0	2p16.1p15	30	0.45	0.44	2.7	x2~3	2p16.1p15(60000000_63000000)x2~3	gain(2)(p16.1p15)	test
+S1	loss	9	21000000	25000000	4.0	9p21.3	40	-0.65	-0.64	1.2	x1~2	9p21.3(21000000_25000000)x1~2	del(9)(p21.3)	test
+S2	loss	17	1	18000000	18.0	17p13.3p11.2	180	-0.55	-0.56	1.3	x1~2	17p13.3p11.2(1_18000000)x1~2	del(17)(p13.3p11.2)	test
+S2	amplification	18	47000000	63000000	16.0	18q21.1q21.33	160	0.92	0.91	3.8	x3~4	18q21.1q21.33(47000000_63000000)x3~4	amp(18)(q21.1q21.33)	test

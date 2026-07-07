@@ -1,0 +1,16 @@
+mode: ont
+lpwgs_root: /media/server/STORAGE/LPWGS_2025
+outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_test
+
+ont_folder: /path/to/ont/run/or/fastq_pass
+ont_barcodes: barcode07,barcode08
+ont_sample_names: sample1,sample2
+ont_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_test/01_samurai_ont
+ont_analysis_type: liquid_biopsy
+ont_caller: ichorcna
+ont_binsize_kb: 500
+ont_min_age_minutes: 0
+
+run_cna_classifier: false
+force: true
+

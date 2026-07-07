@@ -1,0 +1,12 @@
+mode: ont
+lpwgs_root: /media/server/STORAGE/LPWGS_2025
+outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_existing_test
+
+ont_ichor_dir: /media/server/STORAGE/LPWGS_2025/ONT_analyses/ONCO01_06_ONT_liquid_ichorcna_localPoN_18_06_2026/results/ichorcna
+ont_bam_dir: /media/server/STORAGE/LPWGS_2025/ONT_analyses/ONCO01_06_ONT_liquid_ichorcna_localPoN_18_06_2026/bam
+ont_prior_seg: /media/server/STORAGE/LPWGS_2025/ONT_analyses/ONCO01_06_ONT_liquid_ichorcna_localPoN_18_06_2026/results/ichorcna/segments_logR_corrected_gistic.seg
+ont_binsize_kb: 500
+
+run_cna_classifier: false
+force: true
+

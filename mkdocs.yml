@@ -1,0 +1,33 @@
+site_name: OncoTracer
+site_description: Reproducible LP-WGS CNA analysis with Nextflow
+site_author: OncoTracer developers
+repo_name: OncoTracer
+repo_url: https://github.com/<ORG_OR_USER>/OncoTracer
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Docker / Singularity / Conda: containers.md
+  - YAML Configuration: configuration.md
+  - Inputs: inputs.md
+  - Running Workflows: running.md
+  - "Tutorial: Our ONT and Illumina Runs": tutorial_our_runs.md
+  - Outputs: outputs.md
+  - Programs Used: programs.md
+  - Models and Pathology: models_pathology.md
+  - Troubleshooting: troubleshooting.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight

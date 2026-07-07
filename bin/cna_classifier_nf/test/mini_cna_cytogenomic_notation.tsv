@@ -1,0 +1,4 @@
+sample	n_cna_events	molecular_cytogenomic_notation	cna_shorthand
+S1	2	seq[GRCh38] example	example
+S2	2	seq[GRCh38] example	example
+S3	0	seq[GRCh38] no high-confidence CNA by current thresholds	no high-confidence CNA

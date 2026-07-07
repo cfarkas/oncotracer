@@ -1,0 +1,18 @@
+mode: illumina
+lpwgs_root: /media/server/STORAGE/LPWGS_2025
+outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_test
+
+illumina_qdnaseq_dir: /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/qdnaseq
+illumina_bam_dir: /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/alignment
+illumina_prior_seg: /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/qdnaseq/all_segments.seg
+illumina_binsize_kb: 100
+
+run_cna_classifier: false
+pathology_csv: null
+pathology_sample_col: illumina_sample_id
+pathology_case_col: case_code
+pathology_diagnosis_col: final_diagnosis
+pathology_use_biomed_models: true
+pathology_biomed_local_files_only: false
+force: true
+
