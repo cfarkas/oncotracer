@@ -1,8 +1,11 @@
 site_name: OncoTracer
-site_description: Reproducible LP-WGS CNA analysis with Nextflow
+site_description: Reproducible LP-WGS CNA analysis for ONT and Illumina data
 site_author: OncoTracer developers
-repo_name: OncoTracer
-repo_url: https://github.com/<ORG_OR_USER>/OncoTracer
+# TODO: Confirm that the ReadTheDocs project slug is really "oncotracer".
+site_url: https://oncotracer.readthedocs.io/
+repo_name: cfarkas/oncotracer
+repo_url: https://github.com/cfarkas/oncotracer
+edit_uri: edit/main/docs/
 
 theme:
   name: material
@@ -10,18 +13,18 @@ theme:
     - navigation.sections
     - navigation.expand
     - content.code.copy
+    - content.action.edit
 
 nav:
   - Home: index.md
+  - Quick Start: quick_start.md
   - Installation: installation.md
-  - Docker / Singularity / Conda: containers.md
-  - YAML Configuration: configuration.md
+  - Configuration: configuration.md
   - Inputs: inputs.md
-  - Running Workflows: running.md
-  - "Tutorial: Our ONT and Illumina Runs": tutorial_our_runs.md
+  - Running OncoTracer: running.md
+  - Tutorial: tutorial_our_runs.md
   - Outputs: outputs.md
-  - Programs Used: programs.md
-  - Models and Pathology: models_pathology.md
+  - Models & Pathology: models_pathology.md
   - Troubleshooting: troubleshooting.md
 
 markdown_extensions:

@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "Citation metadata is a placeholder until a formal OncoTracer citation or DOI is available."
+title: "OncoTracer: reproducible LP-WGS CNA analysis for ONT and Illumina data"
+authors:
+  - family-names: "Farkas"
+    given-names: "Carlos"
+repository-code: "https://github.com/cfarkas/oncotracer"
+url: "https://github.com/cfarkas/oncotracer"
+date-released: "2026-07-07"
+version: "0.1.0"
+abstract: "OncoTracer is a research workflow for reproducible LP-WGS copy-number alteration analysis from ONT and Illumina data."
+keywords:
+  - "LP-WGS"
+  - "copy-number alteration"
+  - "Nextflow"
+  - "ONT"
+  - "Illumina"

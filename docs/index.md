@@ -1,20 +1,53 @@
-# OncoTracer Documentation
+# OncoTracer
 
-OncoTracer is a Nextflow workflow for reproducible CNA analysis from LP-WGS data. It supports ONT and Illumina inputs, performs BAM-supported CNA boundary refinement, creates standardized CNA event tables, generates custom CNA plots, and optionally produces CNA classification, literature-backed reports, and pathology concordance outputs.
+**Reproducible LP-WGS CNA analysis for ONT and Illumina data.**
 
-## What You Need To Run It
+OncoTracer is a Nextflow workflow that turns existing LP-WGS copy-number analysis scripts into a repeatable, documented pipeline. It produces refined CNA events, cytogenomic notation, plots, optional reports, and optional pathology concordance outputs.
 
-Most users only need to edit one YAML file in `params/` and run `nextflow run main.nf`.
+!!! warning "Research workflow"
+    OncoTracer is intended for research use. It is not a standalone diagnostic system and does not replace expert pathology or clinical interpretation.
 
-Choose one of these entry points:
+## Start Here
 
-- **ONT from FASTQ/barcodes**: use `params/ont.example.yml`.
-- **ONT from existing SAMURAI/ichorCNA output**: use `params/ont.from_existing_samurai.example.yml`.
-- **Illumina from existing qDNAseq/SAMURAI output and BAMs**: use `params/illumina.example.yml`.
+1. Pick the user path that matches your data.
+2. Copy the matching YAML file from `params/`.
+3. Edit only the paths first.
+4. Run the workflow with Docker, Singularity/Apptainer, or Conda.
 
-## Main Outputs
+For command examples, go to [Quick Start](quick_start.md). For all YAML fields, go to [Configuration](configuration.md).
 
-The workflow writes numbered stage folders:
+## Choose Your Path
+
+### I have Illumina LP-WGS CNA outputs
+
+Use this path if you already have SAMURAI/qDNAseq output and aligned BAM files.
+
+- YAML: [`params/illumina.example.yml`](https://github.com/cfarkas/oncotracer/blob/main/params/illumina.example.yml)
+- Configuration help: [Illumina YAML](configuration.md#illumina-yaml)
+- Run commands: [Quick Start](quick_start.md#illumina-example)
+
+### I have ONT SAMURAI/ichorCNA outputs
+
+Use this path if ONT CNA calling already ran and you want OncoTracer to start from BAM-supported boundary refinement.
+
+- YAML: [`params/ont.from_existing_samurai.example.yml`](https://github.com/cfarkas/oncotracer/blob/main/params/ont.from_existing_samurai.example.yml)
+- Configuration help: [ONT from existing SAMURAI/ichorCNA YAML](configuration.md#ont-from-existing-samuraiichorcna-yaml)
+- Run commands: [Quick Start](quick_start.md#ont-existing-samuraiichorcna-example)
+
+### I have ONT FASTQ/barcodes
+
+Use this path if you want the workflow to run the ONT SAMURAI step before boundary refinement and downstream reporting.
+
+- YAML: [`params/ont.example.yml`](https://github.com/cfarkas/oncotracer/blob/main/params/ont.example.yml)
+- Configuration help: [ONT from FASTQ/barcodes YAML](configuration.md#ont-from-fastqbarcodes-yaml)
+- Run commands: [Quick Start](quick_start.md#ont-fastqbarcode-example)
+
+!!! tip "First run"
+    Keep `run_cna_classifier: false` for the first run if you mainly want to validate paths, BAM refinement, CNA codification, and plots. Enable classifier/report stages after the core workflow succeeds.
+
+## What You Get
+
+The workflow writes numbered output folders so it is easy to inspect each stage:
 
 ```text
 01_samurai_ont/
@@ -25,22 +58,30 @@ The workflow writes numbered stage folders:
 06_workflow_summary/
 ```
 
-The most commonly used files are:
+Main outputs include:
 
-- `03_cna_codification/cna_events.tsv`
-- `03_cna_codification/cna_cytogenomic_notation.tsv`
-- `04_cna_custom_plots/cna_per_sample_pages.pdf`
-- `04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf`
-- `05_cna_classifier/03_report/pdf_reports/all_sample_CNA_knowledge_reports.pdf`
-- `05_cna_classifier/07_pathology/pathology_concordance.tsv`
+- CNA event tables: `03_cna_codification/cna_events.tsv`
+- Cytogenomic notation: `03_cna_codification/cna_cytogenomic_notation.tsv`
+- Per-sample and cohort CNA plots: `04_cna_custom_plots/`
+- Optional CNA reports: `05_cna_classifier/03_report/`
+- Optional pathology concordance: `05_cna_classifier/07_pathology/pathology_concordance.tsv`
+- Run summary: `06_workflow_summary/workflow_summary.txt`
 
-## Documentation Sections
+## Example Outputs
 
-- Installation: required software and setup.
-- YAML configuration: how to edit every example YAML field.
-- Inputs: expected ONT, Illumina, and pathology files.
-- Running workflows: commands for common runs.
-- Tutorial with our ONT and Illumina runs: exact commands, output counts, and figures.
-- Outputs: complete output folder explanation.
-- Models and pathology: LLM/transformer layers and pathology inference.
-- Troubleshooting: common failures and fixes.
+The tutorial includes example plots generated during validation runs.
+
+| Illumina genome overview | ONT genome overview |
+|---|---|
+| ![Illumina CNA genome overview](assets/tutorial/illumina_cna_genome_overview.png) | ![ONT CNA genome overview](assets/tutorial/ont_cna_genome_overview.png) |
+
+See the full worked example in [Tutorial](tutorial_our_runs.md).
+
+## More Documentation
+
+- [Installation](installation.md)
+- [Inputs](inputs.md)
+- [Running OncoTracer](running.md)
+- [Outputs](outputs.md)
+- [Models & Pathology](models_pathology.md)
+- [Troubleshooting](troubleshooting.md)
