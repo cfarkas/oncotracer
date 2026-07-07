@@ -130,7 +130,7 @@ nextflow run main.nf -profile conda \
   -resume
 ```
 
-## ReadTheDocs Preview
+## Documentation Preview
 
 The documentation is MkDocs-ready.
 

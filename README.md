@@ -1,14 +1,14 @@
 # OncoTracer: reproducible LP-WGS CNA analysis for ONT and Illumina data
 
-[![Documentation](https://readthedocs.org/projects/oncotracer/badge/?version=latest)](https://oncotracer.readthedocs.io/)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://cfarkas.github.io/oncotracer/)
 [![Docker image](https://img.shields.io/badge/docker-carlosfarkas%2Foncotracer-blue?logo=docker)](https://hub.docker.com/r/carlosfarkas/oncotracer)
 [![Nextflow](https://img.shields.io/badge/nextflow-%E2%89%A524.10-23aa62?logo=nextflow)](https://www.nextflow.io/)
 [![License](https://img.shields.io/badge/license-TODO-lightgrey)](#license)
 [![GitHub release](https://img.shields.io/github/v/release/cfarkas/oncotracer?include_prereleases)](https://github.com/cfarkas/oncotracer/releases)
 
-<!-- TODO: Confirm that the ReadTheDocs project slug is really "oncotracer". If not, update all https://oncotracer.readthedocs.io/ links and badges. -->
+<!-- TODO: If a ReadTheDocs project is created later, update the docs badge/link to the confirmed RTD slug. -->
 
-**📖 Full documentation:** [https://oncotracer.readthedocs.io/](https://oncotracer.readthedocs.io/)
+**📖 Full documentation:** [https://cfarkas.github.io/oncotracer/](https://cfarkas.github.io/oncotracer/)
 
 OncoTracer is a research workflow for reproducible LP-WGS copy-number alteration (CNA) analysis from ONT and Illumina data. It packages the current CNA analysis scripts into a Nextflow workflow with Docker, Singularity/Apptainer, and Conda execution paths.
 
@@ -29,7 +29,7 @@ OncoTracer is intended for research use. It is not a standalone diagnostic syste
 
 ## Documentation
 
-**📖 Full documentation:** [https://oncotracer.readthedocs.io/](https://oncotracer.readthedocs.io/)
+**📖 Full documentation:** [https://cfarkas.github.io/oncotracer/](https://cfarkas.github.io/oncotracer/)
 
 The documentation includes installation notes, YAML configuration, input requirements, running examples, output descriptions, and a worked ONT/Illumina tutorial.
 

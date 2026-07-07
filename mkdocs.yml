@@ -1,8 +1,9 @@
 site_name: OncoTracer
 site_description: Reproducible LP-WGS CNA analysis for ONT and Illumina data
 site_author: OncoTracer developers
-# TODO: Confirm that the ReadTheDocs project slug is really "oncotracer".
-site_url: https://oncotracer.readthedocs.io/
+# GitHub Pages is the active public documentation site.
+# TODO: switch to a ReadTheDocs URL only after the RTD project exists.
+site_url: https://cfarkas.github.io/oncotracer/
 repo_name: cfarkas/oncotracer
 repo_url: https://github.com/cfarkas/oncotracer
 edit_uri: edit/main/docs/
