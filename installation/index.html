@@ -794,13 +794,11 @@ conda<span class="w"> </span>--version
 docker<span class="w"> </span>pull<span class="w"> </span>carlosfarkas/oncotracer:latest
 docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>carlosfarkas/oncotracer:latest<span class="w"> </span>--help
 </code></pre></div>
-<p>Run with the Nextflow Docker profile:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<p>Run with the Nextflow Docker flag:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker_run_options<span class="w"> </span><span class="s2">&quot;-u </span><span class="k">$(</span>id<span class="w"> </span>-u<span class="k">)</span><span class="s2">:</span><span class="k">$(</span>id<span class="w"> </span>-g<span class="k">)</span><span class="s2"> -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Replace <code>/your/data:/your/data</code> with the folder that contains the paths used in your YAML file.</p>
 <p>Maintainers can publish Docker Hub release tags with:</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>login<span class="w"> </span>-u<span class="w"> </span>carlosfarkas
 docker<span class="w"> </span>tag<span class="w"> </span>carlosfarkas/oncotracer:latest<span class="w"> </span>carlosfarkas/oncotracer:2026-07-06
@@ -815,9 +813,8 @@ docker<span class="w"> </span>push<span class="w"> </span>carlosfarkas/oncotrace
 apptainer<span class="w"> </span>pull<span class="w"> </span>oncotracer_latest.sif<span class="w"> </span>docker://carlosfarkas/oncotracer:latest
 </code></pre></div>
 <p>Run with Nextflow:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--singularity_run_options<span class="w"> </span><span class="s1">&#39;--bind /your/data:/your/data&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>You can also let Nextflow pull <code>docker://carlosfarkas/oncotracer:latest</code> through the <code>singularity</code> profile.</p>
@@ -825,7 +822,7 @@ apptainer<span class="w"> </span>pull<span class="w"> </span>oncotracer_latest.s
 <p>Use Conda only when Docker and Singularity/Apptainer are unavailable.</p>
 <div class="highlight"><pre><span></span><code>conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>environment.yml
 conda<span class="w"> </span>activate<span class="w"> </span>oncotracer
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>conda<span class="w"> </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span>-resume
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span>-resume
 </code></pre></div>
 <h2 id="conda-environment-behavior">Conda Environment Behavior<a class="headerlink" href="#conda-environment-behavior" title="Permanent link">&para;</a></h2>
 <p>The top-level workflow calls bundled scripts. The CNA classifier subworkflow uses Conda environments under:</p>
@@ -837,13 +834,13 @@ bin/cna_classifier_nf/envs/gistic2.yml
 <p>The BAM refinement wrapper manages its own environment/check logic. If you only want to check the environment, use the manual script mode or run a small Nextflow test first.</p>
 <h2 id="recommended-first-test">Recommended First Test<a class="headerlink" href="#recommended-first-test" title="Permanent link">&para;</a></h2>
 <p>Run a workflow with the classifier disabled first. This validates input paths, BAM refinement, CNA codification, and custom plots without running literature/model/report stages.</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Then enable reports/classifier:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume

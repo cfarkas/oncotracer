@@ -389,6 +389,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#runtime-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -716,6 +727,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#runtime-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -742,32 +764,30 @@
 
 
 <h1 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h1>
-<p>This page gives copy-paste commands for the most common OncoTracer entry points. For new users, Docker is the recommended execution mode.</p>
+<p>This page gives copy-paste commands for the most common OncoTracer entry points. For new users, Docker is the recommended execution mode: use <code>--docker</code>. Use <code>--singularity</code> on HPC systems with Singularity/Apptainer.</p>
 <div class="admonition important">
 <p class="admonition-title">Edit YAML paths first</p>
-<p>Copy one of the files in <code>params/</code>, edit the input and output paths, then run the command. For Docker and Singularity/Apptainer, every absolute path in the YAML must be visible inside the container through a bind mount.</p>
+<p>Copy one of the files in <code>params/</code>, edit the input and output paths, then run the command. The normal commands only need <code>--docker</code>, <code>--singularity</code>, or <code>--conda</code>.</p>
 </div>
 <h2 id="docker-run">Docker Run<a class="headerlink" href="#docker-run" title="Permanent link">&para;</a></h2>
-<p>Use Docker when available. Replace <code>/your/data:/your/data</code> with the folder containing the files referenced in your YAML.</p>
+<p>Use Docker when available.</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>carlosfarkas/oncotracer:latest
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker_run_options<span class="w"> </span><span class="s2">&quot;-u </span><span class="k">$(</span>id<span class="w"> </span>-u<span class="k">)</span><span class="s2">:</span><span class="k">$(</span>id<span class="w"> </span>-g<span class="k">)</span><span class="s2"> -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h2 id="singularity-apptainer-run">Singularity / Apptainer Run<a class="headerlink" href="#singularity-apptainer-run" title="Permanent link">&para;</a></h2>
 <p>Use this on HPC systems where Docker is not available.</p>
 <div class="highlight"><pre><span></span><code>apptainer<span class="w"> </span>pull<span class="w"> </span>oncotracer_latest.sif<span class="w"> </span>docker://carlosfarkas/oncotracer:latest
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--singularity_run_options<span class="w"> </span><span class="s1">&#39;--bind /your/data:/your/data&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h2 id="conda-fallback">Conda Fallback<a class="headerlink" href="#conda-fallback" title="Permanent link">&para;</a></h2>
 <p>Use this only when neither Docker nor Singularity/Apptainer is available.</p>
 <div class="highlight"><pre><span></span><code>conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>environment.yml
 conda<span class="w"> </span>activate<span class="w"> </span>oncotracer
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
@@ -775,27 +795,24 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <p>Use this when you have existing Illumina SAMURAI/qDNAseq output and aligned BAM files.</p>
 <div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.example.yml<span class="w"> </span>params/my_illumina.yml
 nano<span class="w"> </span>params/my_illumina.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker_run_options<span class="w"> </span><span class="s2">&quot;-u </span><span class="k">$(</span>id<span class="w"> </span>-u<span class="k">)</span><span class="s2">:</span><span class="k">$(</span>id<span class="w"> </span>-g<span class="k">)</span><span class="s2"> -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h2 id="ont-existing-samuraiichorcna-example">ONT Existing SAMURAI/ichorCNA Example<a class="headerlink" href="#ont-existing-samuraiichorcna-example" title="Permanent link">&para;</a></h2>
 <p>Use this when SAMURAI/ichorCNA has already run and you want OncoTracer to begin with boundary refinement.</p>
 <div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/ont.from_existing_samurai.example.yml<span class="w"> </span>params/my_ont_existing.yml
 nano<span class="w"> </span>params/my_ont_existing.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/my_ont_existing.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker_run_options<span class="w"> </span><span class="s2">&quot;-u </span><span class="k">$(</span>id<span class="w"> </span>-u<span class="k">)</span><span class="s2">:</span><span class="k">$(</span>id<span class="w"> </span>-g<span class="k">)</span><span class="s2"> -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h2 id="ont-fastqbarcode-example">ONT FASTQ/Barcode Example<a class="headerlink" href="#ont-fastqbarcode-example" title="Permanent link">&para;</a></h2>
 <p>Use this when you want OncoTracer to run the ONT SAMURAI step from barcode/FASTQ inputs.</p>
 <div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/ont.example.yml<span class="w"> </span>params/my_ont_fastq.yml
 nano<span class="w"> </span>params/my_ont_fastq.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/my_ont_fastq.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker_run_options<span class="w"> </span><span class="s2">&quot;-u </span><span class="k">$(</span>id<span class="w"> </span>-u<span class="k">)</span><span class="s2">:</span><span class="k">$(</span>id<span class="w"> </span>-g<span class="k">)</span><span class="s2"> -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h2 id="after-a-successful-core-run">After A Successful Core Run<a class="headerlink" href="#after-a-successful-core-run" title="Permanent link">&para;</a></h2>
@@ -807,16 +824,17 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf
 </code></pre></div>
 <p>Then enable classifier and pathology concordance if needed:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pathology_csv<span class="w"> </span>/your/data/pathology.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pathology_csv<span class="w"> </span>/path/to/pathology.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--pathology_sample_col<span class="w"> </span>illumina_sample_id<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--pathology_case_col<span class="w"> </span>case_code<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--pathology_diagnosis_col<span class="w"> </span>final_diagnosis<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker_run_options<span class="w"> </span><span class="s2">&quot;-u </span><span class="k">$(</span>id<span class="w"> </span>-u<span class="k">)</span><span class="s2">:</span><span class="k">$(</span>id<span class="w"> </span>-g<span class="k">)</span><span class="s2"> -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
+<h2 id="runtime-validation">Runtime Validation<a class="headerlink" href="#runtime-validation" title="Permanent link">&para;</a></h2>
+<p>The <code>--docker</code> and <code>--singularity</code> flags were full-run tested with the included Illumina example YAML and the ONT existing SAMURAI/ichorCNA example YAML.</p>
 
 
 

@@ -788,23 +788,22 @@
 <h1 id="running-oncotracer">Running OncoTracer<a class="headerlink" href="#running-oncotracer" title="Permanent link">&para;</a></h1>
 <h2 id="basic-command-pattern">Basic Command Pattern<a class="headerlink" href="#basic-command-pattern" title="Permanent link">&para;</a></h2>
 <p>Native/Conda fallback:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/&lt;your_config&gt;.yml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Nextflow Docker executor:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/&lt;your_config&gt;.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker_run_options<span class="w"> </span><span class="s2">&quot;-u </span><span class="k">$(</span>id<span class="w"> </span>-u<span class="k">)</span><span class="s2">:</span><span class="k">$(</span>id<span class="w"> </span>-g<span class="k">)</span><span class="s2"> -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /host/data:/host/data&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Nextflow Singularity/Apptainer executor:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/&lt;your_config&gt;.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--singularity_run_options<span class="w"> </span><span class="s1">&#39;--bind /host/data:/host/data&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Use <code>-resume</code> whenever possible. It lets Nextflow reuse completed processes after an interrupted run.</p>
+<p>Use <code>--docker</code> for Docker, <code>--singularity</code> for Singularity/Apptainer, or <code>--conda</code> for the native Conda fallback. Use <code>-resume</code> whenever possible. It lets Nextflow reuse completed processes after an interrupted run.</p>
+<p>The <code>--docker</code> and <code>--singularity</code> flags include the needed default container settings internally. New users should not need to add <code>--docker_run_options</code> or <code>--singularity_run_options</code>.</p>
 <h2 id="ont-from-fastqbarcodes">ONT From FASTQ/Barcodes<a class="headerlink" href="#ont-from-fastqbarcodes" title="Permanent link">&para;</a></h2>
 <p>Edit <code>params/ont.example.yml</code>, then run:</p>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>

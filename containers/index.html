@@ -782,7 +782,7 @@
 </tr>
 <tr>
 <td>You already run Nextflow on the host and want each process isolated</td>
-<td>Nextflow Docker profile</td>
+<td>Nextflow Docker flag</td>
 <td>Host Nextflow controls the workflow, Docker runs each task.</td>
 </tr>
 <tr>
@@ -804,7 +804,7 @@ carlosfarkas/oncotracer:v0.1.0
 </code></pre></div>
 <h2 id="before-you-run">Before You Run<a class="headerlink" href="#before-you-run" title="Permanent link">&para;</a></h2>
 <p>Edit one YAML file in <code>params/</code> first. Every absolute input, output, BAM, FASTQ, segment, or pathology path in that YAML must be visible inside the execution environment.</p>
-<p>For Docker and Singularity/Apptainer, this usually means binding the parent data folder into the container. If your YAML contains paths like <code>/your/data/project1/...</code>, bind <code>/your/data:/your/data</code>.</p>
+<p>For most users, the Docker or Singularity flag is enough. Advanced bind options are only needed when your cluster or workstation hides input paths from containers.</p>
 <h2 id="docker-recommended-for-most-users">Docker: Recommended For Most Users<a class="headerlink" href="#docker-recommended-for-most-users" title="Permanent link">&para;</a></h2>
 <h3 id="1-check-docker">1. Check Docker<a class="headerlink" href="#1-check-docker" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>--version
@@ -815,13 +815,11 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 </code></pre></div>
 <h3 id="3-run-with-host-nextflow-and-docker">3. Run with host Nextflow and Docker<a class="headerlink" href="#3-run-with-host-nextflow-and-docker" title="Permanent link">&para;</a></h3>
 <p>Use this when you run <code>nextflow</code> on the host and want workflow tasks to run inside Docker:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker_run_options<span class="w"> </span><span class="s2">&quot;-u </span><span class="k">$(</span>id<span class="w"> </span>-u<span class="k">)</span><span class="s2">:</span><span class="k">$(</span>id<span class="w"> </span>-g<span class="k">)</span><span class="s2"> -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Replace <code>/your/data:/your/data</code> with the host folder that contains the paths referenced in your YAML. The left side is the host path. The right side is the path seen inside the container. Keeping them identical is easiest for new users.</p>
-<p>The <code>-u $(id -u):$(id -g)</code> option prevents root-owned output files. The <code>HOME</code>, <code>MPLCONFIGDIR</code>, and <code>XDG_CACHE_HOME</code> settings give plotting and cache tools writable locations inside the container.</p>
+<p>For most users this is all that is needed: use <code>--docker</code> and provide your YAML file. OncoTracer sets the needed Docker user, cache, and project-root mount options internally. Advanced users can override <code>docker_user</code> or <code>docker_run_options</code> if their site requires different settings.</p>
 <h3 id="4-optional-run-nextflow-from-inside-the-container">4. Optional: run Nextflow from inside the container<a class="headerlink" href="#4-optional-run-nextflow-from-inside-the-container" title="Permanent link">&para;</a></h3>
 <p>This is useful if you do not want to install Nextflow on the host:</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
@@ -851,20 +849,18 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 </code></pre></div>
 <h3 id="3-run-with-the-docker-hub-image-directly">3. Run with the Docker Hub image directly<a class="headerlink" href="#3-run-with-the-docker-hub-image-directly" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-profile<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--singularity_run_options<span class="w"> </span><span class="s1">&#39;--bind /your/data:/your/data&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h3 id="4-or-run-with-the-pre-pulled-sif-file">4. Or run with the pre-pulled SIF file<a class="headerlink" href="#4-or-run-with-the-pre-pulled-sif-file" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-profile<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--singularity_image<span class="w"> </span>/path/to/oncotracer_latest.sif<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--singularity_run_options<span class="w"> </span><span class="s1">&#39;--bind /your/data:/your/data&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>As with Docker, bind every host folder referenced by absolute paths in your YAML.</p>
+<p>For most users this is all that is needed: use <code>--singularity</code> and provide your YAML file. OncoTracer sets a default bind for <code>lpwgs_root</code> internally. Advanced users can override <code>singularity_run_options</code> if their HPC site requires different settings.</p>
 <h2 id="native-conda-fallback-mode">Native Conda: Fallback Mode<a class="headerlink" href="#native-conda-fallback-mode" title="Permanent link">&para;</a></h2>
 <p>Use this only when Docker and Singularity/Apptainer are unavailable.</p>
 <h3 id="1-install-base-tools">1. Install base tools<a class="headerlink" href="#1-install-base-tools" title="Permanent link">&para;</a></h3>
@@ -879,7 +875,7 @@ conda<span class="w"> </span>activate<span class="w"> </span>oncotracer
 </code></pre></div>
 <h3 id="3-run-with-the-conda-profile">3. Run with the Conda profile<a class="headerlink" href="#3-run-with-the-conda-profile" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-profile<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
