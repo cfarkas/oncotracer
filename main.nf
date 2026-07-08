@@ -52,6 +52,11 @@ workflow {
     error "Unsupported --mode '${mode}'. Use --mode ont or --mode illumina."
   }
 
+  def runtimeFlags = [asBool(params.docker), asBool(params.singularity), asBool(params.conda)].count { it }
+  if( runtimeFlags > 1 ) {
+    error "Use only one runtime flag: --docker, --singularity, or --conda."
+  }
+
   def outRoot = workflowOutdir()
   def ds = datasetName()
 

@@ -1,12 +1,31 @@
+# ONT existing-output example configuration for OncoTracer.
+#
+# Use this when SAMURAI/ichorCNA has already run and you want OncoTracer
+# to start from BAM-supported CNA boundary refinement.
+
+# Workflow branch. Use "ont" for Oxford Nanopore LP-WGS inputs.
 mode: ont
+
+# Root folder for this project/data area. Keep this as a real absolute path.
 lpwgs_root: /media/server/STORAGE/LPWGS_2025
+
+# Main output folder. OncoTracer writes numbered result folders inside this path.
 outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_existing_test
 
+# Existing ONT ichorCNA result directory from the upstream SAMURAI run.
 ont_ichor_dir: /media/server/STORAGE/LPWGS_2025/ONT_analyses/ONCO01_06_ONT_liquid_ichorcna_localPoN_18_06_2026/results/ichorcna
+
+# Folder containing ONT BAM files for the same samples.
 ont_bam_dir: /media/server/STORAGE/LPWGS_2025/ONT_analyses/ONCO01_06_ONT_liquid_ichorcna_localPoN_18_06_2026/bam
+
+# Prior segmentation table from the upstream ONT ichorCNA analysis.
 ont_prior_seg: /media/server/STORAGE/LPWGS_2025/ONT_analyses/ONCO01_06_ONT_liquid_ichorcna_localPoN_18_06_2026/results/ichorcna/segments_logR_corrected_gistic.seg
+
+# Coarse bin size, in kb, used by the upstream ONT CNA analysis.
 ont_binsize_kb: 500
 
+# Set true to run CNA classifier, reports, and optional pathology concordance.
 run_cna_classifier: false
-force: true
 
+# Allow underlying steps to overwrite/recompute outputs in the selected outdir.
+force: true

@@ -5,7 +5,7 @@
 Native/Conda fallback:
 
 ```bash
-nextflow run main.nf -profile conda \
+nextflow run main.nf --conda \
   -params-file params/<your_config>.yml \
   -resume
 ```
@@ -13,22 +13,22 @@ nextflow run main.nf -profile conda \
 Nextflow Docker executor:
 
 ```bash
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/<your_config>.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /host/data:/host/data" \
   -resume
 ```
 
 Nextflow Singularity/Apptainer executor:
 
 ```bash
-nextflow run main.nf -profile singularity \
+nextflow run main.nf --singularity \
   -params-file params/<your_config>.yml \
-  --singularity_run_options '--bind /host/data:/host/data' \
   -resume
 ```
 
-Use `-resume` whenever possible. It lets Nextflow reuse completed processes after an interrupted run.
+Use `--docker` for Docker, `--singularity` for Singularity/Apptainer, or `--conda` for the native Conda fallback. Use `-resume` whenever possible. It lets Nextflow reuse completed processes after an interrupted run.
+
+The `--docker` and `--singularity` flags include the needed default container settings internally. New users should not need to add `--docker_run_options` or `--singularity_run_options`.
 
 ## ONT From FASTQ/Barcodes
 

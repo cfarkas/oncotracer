@@ -1,18 +1,47 @@
+# Illumina LP-WGS example configuration for OncoTracer.
+#
+# YAML is a plain-text settings file. Each line is usually:
+#   setting_name: value
+# Keep the colon, edit the value after it, and do not use tabs.
+
+# Workflow branch. Use "illumina" for Illumina SAMURAI/qDNAseq + BAM inputs.
 mode: illumina
+
+# Root folder for this project/data area. Keep this as a real absolute path.
+# OncoTracer also uses this as the default folder to expose to Docker containers.
 lpwgs_root: /media/server/STORAGE/LPWGS_2025
+
+# Main output folder. OncoTracer writes numbered result folders inside this path.
 outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_test
 
+# Folder containing existing qDNAseq/SAMURAI CNA output files.
 illumina_qdnaseq_dir: /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/qdnaseq
+
+# Folder containing aligned Illumina BAM files for the same samples.
 illumina_bam_dir: /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/alignment
+
+# Prior segmentation table from the upstream Illumina CNA caller.
 illumina_prior_seg: /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/qdnaseq/all_segments.seg
+
+# Coarse bin size, in kb, used by the upstream Illumina CNA analysis.
 illumina_binsize_kb: 100
 
+# Set true to run CNA classifier, reports, and optional pathology concordance.
+# Set false for a faster first run that stops after core CNA plots.
 run_cna_classifier: false
+
+# Optional pathology table. Use null when you do not want pathology concordance.
 pathology_csv: null
+
+# Column names used if pathology_csv is provided.
 pathology_sample_col: illumina_sample_id
 pathology_case_col: case_code
 pathology_diagnosis_col: final_diagnosis
+
+# Optional biomedical model agreement scoring for pathology concordance.
+# These settings only matter when pathology_csv is not null.
 pathology_use_biomed_models: true
 pathology_biomed_local_files_only: false
-force: true
 
+# Allow underlying steps to overwrite/recompute outputs in the selected outdir.
+force: true

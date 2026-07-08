@@ -1,16 +1,51 @@
+# ONT FASTQ/barcode example configuration for OncoTracer.
+#
+# Use this when you want OncoTracer to run the ONT SAMURAI step first,
+# starting from a sequencing run folder or FASTQ/barcode folder.
+
+# Workflow branch. Use "ont" for Oxford Nanopore LP-WGS inputs.
 mode: ont
+
+# Root folder for this project/data area. Keep this as a real absolute path.
 lpwgs_root: /media/server/STORAGE/LPWGS_2025
+
+# Main output folder. OncoTracer writes numbered result folders inside this path.
 outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_test
 
+# Folder containing ONT FASTQ files, barcode folders, or a completed run folder.
 ont_folder: /path/to/ont/run/or/fastq_pass
+
+# Comma-separated barcode IDs to process. Order must match ont_sample_names.
 ont_barcodes: barcode07,barcode08
+
+# Comma-separated sample names assigned to the barcodes above.
 ont_sample_names: sample1,sample2
+
+# Output folder for the upstream ONT SAMURAI step.
 ont_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_test/01_samurai_ont
+
+# SAMURAI analysis label, commonly liquid_biopsy or solid_biopsy.
 ont_analysis_type: liquid_biopsy
+
+# CNA caller used by the ONT SAMURAI wrapper. Usually ichorcna.
 ont_caller: ichorcna
+
+# Coarse ONT CNA bin size, in kb.
 ont_binsize_kb: 500
+
+# Wait time for active sequencing folders. Use 0 for completed data.
 ont_min_age_minutes: 0
 
-run_cna_classifier: false
-force: true
+# Optional fields you can add when needed:
+# ont_ref: /path/to/reference.fa
+# ont_normal_folder: /path/to/normal_fastq_or_run
+# ont_normal_barcodes: barcode01,barcode02
+# ont_normal_sample_names: normal1,normal2
+# ont_build_pon: false
+# ont_force_realign: false
 
+# Set true to run CNA classifier, reports, and optional pathology concordance.
+run_cna_classifier: false
+
+# Allow underlying steps to overwrite/recompute outputs in the selected outdir.
+force: true

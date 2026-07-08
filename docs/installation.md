@@ -43,16 +43,13 @@ docker pull carlosfarkas/oncotracer:latest
 docker run --rm carlosfarkas/oncotracer:latest --help
 ```
 
-Run with the Nextflow Docker profile:
+Run with the Nextflow Docker flag:
 
 ```bash
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/illumina.example.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
-
-Replace `/your/data:/your/data` with the folder that contains the paths used in your YAML file.
 
 Maintainers can publish Docker Hub release tags with:
 
@@ -77,9 +74,8 @@ apptainer pull oncotracer_latest.sif docker://carlosfarkas/oncotracer:latest
 Run with Nextflow:
 
 ```bash
-nextflow run main.nf -profile singularity \
+nextflow run main.nf --singularity \
   -params-file params/illumina.example.yml \
-  --singularity_run_options '--bind /your/data:/your/data' \
   -resume
 ```
 
@@ -92,7 +88,7 @@ Use Conda only when Docker and Singularity/Apptainer are unavailable.
 ```bash
 conda env create -f environment.yml
 conda activate oncotracer
-nextflow run main.nf -profile conda -params-file params/illumina.example.yml -resume
+nextflow run main.nf --conda -params-file params/illumina.example.yml -resume
 ```
 
 ## Conda Environment Behavior
@@ -115,7 +111,7 @@ The BAM refinement wrapper manages its own environment/check logic. If you only 
 Run a workflow with the classifier disabled first. This validates input paths, BAM refinement, CNA codification, and custom plots without running literature/model/report stages.
 
 ```bash
-nextflow run main.nf -profile conda \
+nextflow run main.nf --conda \
   -params-file params/illumina.example.yml \
   --run_cna_classifier false \
   -resume
@@ -124,7 +120,7 @@ nextflow run main.nf -profile conda \
 Then enable reports/classifier:
 
 ```bash
-nextflow run main.nf -profile conda \
+nextflow run main.nf --conda \
   -params-file params/illumina.example.yml \
   --run_cna_classifier true \
   -resume

@@ -7,7 +7,7 @@ FROM condaforge/miniforge3:24.11.3-0
 
 LABEL org.opencontainers.image.title="OncoTracer" \
       org.opencontainers.image.description="Reproducible LP-WGS CNA analysis workflow with Nextflow, Docker, and Conda fallback" \
-      org.opencontainers.image.source="https://github.com/<ORG_OR_USER>/OncoTracer" \
+      org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
       org.opencontainers.image.licenses="Research-use"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]

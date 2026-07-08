@@ -77,24 +77,20 @@ docker pull carlosfarkas/oncotracer:latest
 docker run --rm carlosfarkas/oncotracer:latest --help
 ```
 
-Run with the Nextflow Docker profile:
+Run with the Nextflow Docker flag:
 
 ```bash
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/illumina.example.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
-
-Replace `/your/data:/your/data` with the host folder that contains the files referenced in your YAML.
 
 ### Singularity / Apptainer, for HPC
 
 ```bash
 apptainer pull oncotracer_latest.sif docker://carlosfarkas/oncotracer:latest
-nextflow run main.nf -profile singularity \
+nextflow run main.nf --singularity \
   -params-file params/illumina.example.yml \
-  --singularity_run_options '--bind /your/data:/your/data' \
   -resume
 ```
 
@@ -105,7 +101,7 @@ Use Conda when containers are unavailable:
 ```bash
 conda env create -f environment.yml
 conda activate oncotracer
-nextflow run main.nf -profile conda \
+nextflow run main.nf --conda \
   -params-file params/illumina.example.yml \
   -resume
 ```
@@ -122,7 +118,8 @@ Check Nextflow:
 
 ```bash
 nextflow -version
-nextflow config -profile docker
+nextflow run main.nf -stub-run --docker -params-file params/illumina.example.yml --outdir /tmp/oncotracer_stub_docker
+nextflow run main.nf -stub-run --singularity -params-file params/illumina.example.yml --outdir /tmp/oncotracer_stub_singularity
 ```
 
 Check the documentation build:
@@ -134,7 +131,7 @@ mkdocs build
 
 ## Running OncoTracer
 
-Copy an example YAML, edit the paths, then run the matching command.
+Copy an example YAML, edit the paths, then run the matching command. Use `--docker` for Docker, `--singularity` for Singularity/Apptainer, or `--conda` when containers are unavailable.
 
 ### Beginner: Illumina example YAML
 
@@ -143,9 +140,8 @@ Use this when you already have Illumina SAMURAI/qDNAseq CNA outputs and BAM file
 ```bash
 cp params/illumina.example.yml params/my_illumina.yml
 nano params/my_illumina.yml
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/my_illumina.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
 
@@ -154,9 +150,8 @@ nextflow run main.nf -profile docker \
 ```bash
 cp params/ont.from_existing_samurai.example.yml params/my_ont_existing.yml
 nano params/my_ont_existing.yml
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/my_ont_existing.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
 
@@ -165,25 +160,32 @@ nextflow run main.nf -profile docker \
 ```bash
 cp params/ont.example.yml params/my_ont_fastq.yml
 nano params/my_ont_fastq.yml
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/my_ont_fastq.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
 
 ### Expert: classifier and pathology concordance
 
 ```bash
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/my_illumina.yml \
   --run_cna_classifier true \
-  --pathology_csv /your/data/pathology.csv \
+  --pathology_csv /path/to/pathology.csv \
   --pathology_sample_col illumina_sample_id \
   --pathology_case_col case_code \
   --pathology_diagnosis_col final_diagnosis \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
+
+## Validation
+
+The simplified runtime flags were tested with full Illumina and ONT existing-output runs:
+
+- Illumina with `--docker`: passed.
+- ONT existing SAMURAI/ichorCNA with `--docker`: passed.
+- Illumina with `--singularity`: passed.
+- ONT existing SAMURAI/ichorCNA with `--singularity`: passed.
 
 ## Outputs
 

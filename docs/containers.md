@@ -7,7 +7,7 @@ OncoTracer supports Docker, Singularity/Apptainer, and native Conda. For new use
 | Situation | Use this mode | Why |
 |---|---|---|
 | You have Docker on a laptop, workstation, or server | Docker | Simplest and most reproducible option. |
-| You already run Nextflow on the host and want each process isolated | Nextflow Docker profile | Host Nextflow controls the workflow, Docker runs each task. |
+| You already run Nextflow on the host and want each process isolated | Nextflow Docker flag | Host Nextflow controls the workflow, Docker runs each task. |
 | You are on an HPC cluster where Docker is not allowed | Singularity/Apptainer | HPC-friendly way to run the same Docker Hub image. |
 | You cannot use containers | Conda | Works, but requires more local dependency management. |
 
@@ -23,7 +23,7 @@ carlosfarkas/oncotracer:v0.1.0
 
 Edit one YAML file in `params/` first. Every absolute input, output, BAM, FASTQ, segment, or pathology path in that YAML must be visible inside the execution environment.
 
-For Docker and Singularity/Apptainer, this usually means binding the parent data folder into the container. If your YAML contains paths like `/your/data/project1/...`, bind `/your/data:/your/data`.
+For most users, the Docker or Singularity flag is enough. Advanced bind options are only needed when your cluster or workstation hides input paths from containers.
 
 ## Docker: Recommended For Most Users
 
@@ -45,15 +45,12 @@ docker run --rm carlosfarkas/oncotracer:latest --help
 Use this when you run `nextflow` on the host and want workflow tasks to run inside Docker:
 
 ```bash
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/illumina.example.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
 
-Replace `/your/data:/your/data` with the host folder that contains the paths referenced in your YAML. The left side is the host path. The right side is the path seen inside the container. Keeping them identical is easiest for new users.
-
-The `-u $(id -u):$(id -g)` option prevents root-owned output files. The `HOME`, `MPLCONFIGDIR`, and `XDG_CACHE_HOME` settings give plotting and cache tools writable locations inside the container.
+For most users this is all that is needed: use `--docker` and provide your YAML file. OncoTracer sets the needed Docker user, cache, and project-root mount options internally. Advanced users can override `docker_user` or `docker_run_options` if their site requires different settings.
 
 ### 4. Optional: run Nextflow from inside the container
 
@@ -105,9 +102,8 @@ apptainer pull oncotracer_latest.sif docker://carlosfarkas/oncotracer:latest
 
 ```bash
 nextflow run main.nf \
-  -profile singularity \
+  --singularity \
   -params-file params/illumina.example.yml \
-  --singularity_run_options '--bind /your/data:/your/data' \
   -resume
 ```
 
@@ -115,14 +111,13 @@ nextflow run main.nf \
 
 ```bash
 nextflow run main.nf \
-  -profile singularity \
+  --singularity \
   --singularity_image /path/to/oncotracer_latest.sif \
   -params-file params/illumina.example.yml \
-  --singularity_run_options '--bind /your/data:/your/data' \
   -resume
 ```
 
-As with Docker, bind every host folder referenced by absolute paths in your YAML.
+For most users this is all that is needed: use `--singularity` and provide your YAML file. OncoTracer sets a default bind for `lpwgs_root` internally. Advanced users can override `singularity_run_options` if their HPC site requires different settings.
 
 ## Native Conda: Fallback Mode
 
@@ -149,7 +144,7 @@ conda activate oncotracer
 
 ```bash
 nextflow run main.nf \
-  -profile conda \
+  --conda \
   -params-file params/illumina.example.yml \
   -resume
 ```

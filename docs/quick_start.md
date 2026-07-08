@@ -1,19 +1,18 @@
 # Quick Start
 
-This page gives copy-paste commands for the most common OncoTracer entry points. For new users, Docker is the recommended execution mode.
+This page gives copy-paste commands for the most common OncoTracer entry points. For new users, Docker is the recommended execution mode: use `--docker`. Use `--singularity` on HPC systems with Singularity/Apptainer.
 
 !!! important "Edit YAML paths first"
-    Copy one of the files in `params/`, edit the input and output paths, then run the command. For Docker and Singularity/Apptainer, every absolute path in the YAML must be visible inside the container through a bind mount.
+    Copy one of the files in `params/`, edit the input and output paths, then run the command. The normal commands only need `--docker`, `--singularity`, or `--conda`.
 
 ## Docker Run
 
-Use Docker when available. Replace `/your/data:/your/data` with the folder containing the files referenced in your YAML.
+Use Docker when available.
 
 ```bash
 docker pull carlosfarkas/oncotracer:latest
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/illumina.example.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
 
@@ -23,9 +22,8 @@ Use this on HPC systems where Docker is not available.
 
 ```bash
 apptainer pull oncotracer_latest.sif docker://carlosfarkas/oncotracer:latest
-nextflow run main.nf -profile singularity \
+nextflow run main.nf --singularity \
   -params-file params/illumina.example.yml \
-  --singularity_run_options '--bind /your/data:/your/data' \
   -resume
 ```
 
@@ -36,7 +34,7 @@ Use this only when neither Docker nor Singularity/Apptainer is available.
 ```bash
 conda env create -f environment.yml
 conda activate oncotracer
-nextflow run main.nf -profile conda \
+nextflow run main.nf --conda \
   -params-file params/illumina.example.yml \
   -resume
 ```
@@ -48,9 +46,8 @@ Use this when you have existing Illumina SAMURAI/qDNAseq output and aligned BAM 
 ```bash
 cp params/illumina.example.yml params/my_illumina.yml
 nano params/my_illumina.yml
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/my_illumina.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
 
@@ -61,9 +58,8 @@ Use this when SAMURAI/ichorCNA has already run and you want OncoTracer to begin 
 ```bash
 cp params/ont.from_existing_samurai.example.yml params/my_ont_existing.yml
 nano params/my_ont_existing.yml
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/my_ont_existing.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
 
@@ -74,9 +70,8 @@ Use this when you want OncoTracer to run the ONT SAMURAI step from barcode/FASTQ
 ```bash
 cp params/ont.example.yml params/my_ont_fastq.yml
 nano params/my_ont_fastq.yml
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/my_ont_fastq.yml \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
 
@@ -95,13 +90,16 @@ Check these files first:
 Then enable classifier and pathology concordance if needed:
 
 ```bash
-nextflow run main.nf -profile docker \
+nextflow run main.nf --docker \
   -params-file params/my_illumina.yml \
   --run_cna_classifier true \
-  --pathology_csv /your/data/pathology.csv \
+  --pathology_csv /path/to/pathology.csv \
   --pathology_sample_col illumina_sample_id \
   --pathology_case_col case_code \
   --pathology_diagnosis_col final_diagnosis \
-  --docker_run_options "-u $(id -u):$(id -g) -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache -v /your/data:/your/data" \
   -resume
 ```
+
+## Runtime Validation
+
+The `--docker` and `--singularity` flags were full-run tested with the included Illumina example YAML and the ONT existing SAMURAI/ichorCNA example YAML.
