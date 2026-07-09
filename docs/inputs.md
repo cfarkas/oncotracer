@@ -1,109 +1,51 @@
 # Inputs
 
-## ONT FASTQ/Barcode Inputs
+OncoTracer is FASTQ-first. The public entry points start from Illumina paired-end FASTQ files or ONT `fastq_pass` barcode FASTQ files.
 
-Use `params/ont.example.yml` when starting from ONT FASTQ/barcodes.
+## Illumina FASTQ
 
-Expected input:
+Create a CSV samplesheet with this header:
+
+```csv
+sample,fastq_1,fastq_2,bam,gender,status
+```
+
+Required columns:
+
+| Column | Meaning |
+| --- | --- |
+| `sample` | Unique sample name. Use letters, numbers, `_`, or `-`. |
+| `fastq_1` | Absolute path to R1 FASTQ.gz. |
+| `fastq_2` | Absolute path to R2 FASTQ.gz. |
+| `bam` | Leave empty for FASTQ runs. |
+| `gender` | Optional; leave empty if unknown. |
+| `status` | Use `tumor` for tumor-only LP-WGS runs. |
+
+## ONT FASTQ
+
+Point `ont_folder` to a run folder, `fastq_pass`, or a directory containing barcode folders.
 
 ```text
-ont_folder/
-  barcode07/
-    *.fastq or *.fastq.gz
-  barcode08/
-    *.fastq or *.fastq.gz
+fastq_pass/
+  barcode01/
+    *.fastq.gz
+  barcode02/
+    *.fastq.gz
 ```
 
-The barcode names are supplied as:
+Set matching barcode and sample-name lists:
 
 ```yaml
-ont_barcodes: barcode07,barcode08
-ont_sample_names: sample1,sample2
+ont_barcodes: barcode01,barcode02
+ont_sample_names: caseA,caseB
 ```
 
-The order matters. `barcode07` becomes `sample1`; `barcode08` becomes `sample2`.
+## Pathology CSV
 
-## Existing ONT SAMURAI/ichorCNA Inputs
+For pathology concordance, provide a CSV with at least:
 
-Use `params/ont.from_existing_samurai.example.yml` when these already exist:
+- one sample identifier column matching OncoTracer sample names;
+- one case identifier column;
+- one diagnosis text column.
 
-```text
-ONT_run/
-  results/ichorcna/
-    segments_logR_corrected_gistic.seg
-    ... other ichorCNA outputs ...
-  bam/
-    sample1.bam
-    sample2.bam
-```
-
-Required paths:
-
-```yaml
-ont_ichor_dir: /path/to/results/ichorcna
-ont_bam_dir: /path/to/bam
-ont_prior_seg: /path/to/results/ichorcna/segments_logR_corrected_gistic.seg
-```
-
-## Illumina Inputs
-
-Use `params/illumina.example.yml` when these already exist:
-
-```text
-samurai_results_100kb/
-  qdnaseq/
-    all_segments.seg
-    ... qDNAseq bin/segment outputs ...
-  alignment/
-    sample1.bam
-    sample2.bam
-```
-
-Required paths:
-
-```yaml
-illumina_qdnaseq_dir: /path/to/qdnaseq
-illumina_bam_dir: /path/to/alignment
-illumina_prior_seg: /path/to/qdnaseq/all_segments.seg
-```
-
-## Pathology Table Input
-
-The pathology table is optional and used only when classifier/reporting is enabled.
-
-Supported formats:
-
-- `.csv`
-- `.tsv`
-- `.xls`
-- `.xlsx`
-
-Minimum useful columns:
-
-| Column type | Example |
-|---|---|
-| sample ID | `illumina_sample_id` |
-| case/accession ID | `case_code` |
-| diagnosis | `final_diagnosis` |
-
-Additional columns improve pathology inference:
-
-| Information | Example column names |
-|---|---|
-| diagnosis categories | `diagnosis_category_1`, `diagnosis_category_2` |
-| clinical diagnosis | `clinical_diagnosis_1`, `clinical_diagnosis_2` |
-| organ/site | `specimen_organ`, `anatomical_site_1`, `anatomical_site_2` |
-| microscopic text | `microscopic_summary_en` |
-| macroscopic text | `macroscopic_summary_en` |
-| IHC/marker summary | `marker_results_standardized` |
-| age/report metadata | `age_years`, `report_datetime` |
-
-Example YAML:
-
-```yaml
-pathology_csv: /path/to/complete_biopsy_database_sanitized.csv
-pathology_sample_col: illumina_sample_id
-pathology_case_col: case_code
-pathology_diagnosis_col: final_diagnosis
-pathology_use_biomed_models: true
-```
+Configure the exact column names in `params/illumina.pathology.example.yml`.

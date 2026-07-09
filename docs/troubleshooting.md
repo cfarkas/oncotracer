@@ -1,82 +1,31 @@
 # Troubleshooting
 
-## Nextflow Cannot Resume
+## The YAML File Does Not Work
 
-Use `-resume` with the same working directory and similar parameters:
+Check that every path is absolute and exists. YAML uses `setting_name: value`; do not remove the colon and do not use tabs.
 
-```bash
-nextflow run main.nf -profile local -params-file params/illumina.example.yml -resume
+## Docker Cannot See My Files
+
+Place input data under `lpwgs_root`, or set `lpwgs_root` to the parent folder that contains your FASTQ files. OncoTracer binds this folder into Docker and Singularity by default.
+
+## ONT Barcode Not Found
+
+Make sure `ont_folder` points to the folder containing barcode directories, or to a run folder with `fastq_pass` inside it.
+
+## Illumina Samplesheet Error
+
+The header must be exactly:
+
+```csv
+sample,fastq_1,fastq_2,bam,gender,status
 ```
 
-If you change output folder names or important parameters, Nextflow may rerun processes.
+For FASTQ runs, leave `bam` and `gender` empty.
 
-## A Required Input Is Missing
+## Resume A Failed Run
 
-Check the YAML paths first:
+Fix the problem, then rerun the same command with `-resume`.
 
-```bash
-sed -n '1,120p' params/illumina.example.yml
-```
+## Documentation Website
 
-Common issues:
-
-- wrong BAM directory;
-- wrong prior segment file;
-- ONT barcode names not matching folder names;
-- `ont_sample_names` count not matching `ont_barcodes` count;
-- output folder exists but was produced by an older unnumbered workflow version.
-
-## Pathology Rows Do Not Match Samples
-
-Check:
-
-- `pathology_sample_col` points to the correct column;
-- sample IDs in `cna_events.tsv` match values in the pathology table;
-- no hidden spaces or inconsistent capitalization;
-- the pathology file is readable as CSV/TSV/XLS/XLSX.
-
-Review:
-
-```text
-05_cna_classifier/07_pathology/pathology_status.txt
-05_cna_classifier/07_pathology/pathology_records_matched.tsv
-```
-
-## Hugging Face Models Fail
-
-This is non-fatal by design. Review:
-
-```text
-05_cna_classifier/06_knowledge/knowledge_llm_trials.tsv
-05_cna_classifier/06_knowledge/knowledge_literature_ranker_trials.tsv
-05_cna_classifier/07_pathology/pathology_model_trials.tsv
-```
-
-For deterministic/offline behavior, disable optional model layers.
-
-## GISTIC2 Fails Or Is Skipped
-
-The classifier default is tolerant: GISTIC2 failures do not necessarily stop the run unless strict mode is enabled. Check classifier logs and `04_gistic/` outputs.
-
-## Old Unnumbered Folders Exist
-
-Older test runs may contain folders such as:
-
-```text
-bam_refinement/
-cna_codification/
-cna_classifier/
-workflow_summary/
-```
-
-Current OncoTracer runs write numbered folders:
-
-```text
-02_bam_refinement/
-03_cna_codification/
-04_cna_custom_plots/
-05_cna_classifier/
-06_workflow_summary/
-```
-
-Use the numbered folders for new analyses.
+The online documentation is https://cfarkas.github.io/oncotracer/. You do not need to build docs locally to run the workflow.

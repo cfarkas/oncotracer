@@ -1,45 +1,40 @@
-# Illumina LP-WGS example configuration for OncoTracer.
+# Illumina FASTQ example configuration for OncoTracer.
 #
-# YAML is a plain-text settings file. Each line is usually:
+# What is YAML?
+# YAML is a plain-text settings file. Each setting is written as:
 #   setting_name: value
-# Keep the colon, edit the value after it, and do not use tabs.
+# Edit the value after the colon. Use real absolute paths. Do not use tabs.
 
-# Workflow branch. Use "illumina" for Illumina SAMURAI/qDNAseq + BAM inputs.
+# Workflow branch. Use "illumina" for Illumina paired-end LP-WGS FASTQ files.
 mode: illumina
 
-# Root folder for this project/data area. Keep this as a real absolute path.
-# OncoTracer also uses this as the default folder to expose to Docker containers.
+# Root folder for this project/data area. Docker/Singularity bind this folder by default.
 lpwgs_root: /media/server/STORAGE/LPWGS_2025
 
 # Main output folder. OncoTracer writes numbered result folders inside this path.
-outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_test
+outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_fastq_test
 
-# Folder containing existing qDNAseq/SAMURAI CNA output files.
-illumina_qdnaseq_dir: /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/qdnaseq
+# CSV samplesheet describing your Illumina FASTQ files.
+# Required columns: sample,fastq_1,fastq_2,bam,gender,status
+# Leave bam and gender empty for FASTQ runs. Use status=tumor for tumor-only LP-WGS.
+illumina_samplesheet: /media/server/STORAGE/LPWGS_2025/samurai_input/samplesheet.csv
 
-# Folder containing aligned Illumina BAM files for the same samples.
-illumina_bam_dir: /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/alignment
+# Folder where the upstream SAMURAI/qDNAseq Illumina step will write results.
+illumina_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_fastq_test/01_samurai_illumina
 
-# Prior segmentation table from the upstream Illumina CNA caller.
-illumina_prior_seg: /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/qdnaseq/all_segments.seg
-
-# Coarse bin size, in kb, used by the upstream Illumina CNA analysis.
+# SAMURAI settings for Illumina LP-WGS CNA calling.
+illumina_analysis_type: solid_biopsy
+illumina_caller: qdnaseq
 illumina_binsize_kb: 100
 
 # Set true to run CNA classifier, reports, and optional pathology concordance.
-# Set false for a faster first run that stops after core CNA plots.
 run_cna_classifier: false
 
-# Optional pathology table. Use null when you do not want pathology concordance.
+# Optional pathology table. Keep null for standard CNA-only runs.
 pathology_csv: null
-
-# Column names used if pathology_csv is provided.
 pathology_sample_col: illumina_sample_id
 pathology_case_col: case_code
 pathology_diagnosis_col: final_diagnosis
-
-# Optional biomedical model agreement scoring for pathology concordance.
-# These settings only matter when pathology_csv is not null.
 pathology_use_biomed_models: true
 pathology_biomed_local_files_only: false
 

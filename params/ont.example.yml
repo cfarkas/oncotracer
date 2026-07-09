@@ -1,18 +1,21 @@
 # ONT FASTQ/barcode example configuration for OncoTracer.
 #
-# Use this when you want OncoTracer to run the ONT SAMURAI step first,
-# starting from a sequencing run folder or FASTQ/barcode folder.
+# What is YAML?
+# YAML is a plain-text settings file. Each setting is written as:
+#   setting_name: value
+# Edit the value after the colon. Use real absolute paths. Do not use tabs.
 
-# Workflow branch. Use "ont" for Oxford Nanopore LP-WGS inputs.
+# Workflow branch. Use "ont" for Oxford Nanopore LP-WGS FASTQ inputs.
 mode: ont
 
-# Root folder for this project/data area. Keep this as a real absolute path.
+# Root folder for this project/data area. Docker/Singularity bind this folder by default.
 lpwgs_root: /media/server/STORAGE/LPWGS_2025
 
 # Main output folder. OncoTracer writes numbered result folders inside this path.
-outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_test
+outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_fastq_test
 
-# Folder containing ONT FASTQ files, barcode folders, or a completed run folder.
+# Folder containing ONT FASTQ files. This can be the run folder, fastq_pass, or a folder
+# containing barcode folders such as barcode07/ and barcode08/.
 ont_folder: /path/to/ont/run/or/fastq_pass
 
 # Comma-separated barcode IDs to process. Order must match ont_sample_names.
@@ -21,19 +24,15 @@ ont_barcodes: barcode07,barcode08
 # Comma-separated sample names assigned to the barcodes above.
 ont_sample_names: sample1,sample2
 
-# Output folder for the upstream ONT SAMURAI step.
-ont_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_test/01_samurai_ont
+# Folder where the upstream ONT SAMURAI step will write results.
+ont_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_fastq_test/01_samurai_ont
 
-# SAMURAI analysis label, commonly liquid_biopsy or solid_biopsy.
+# SAMURAI settings for ONT LP-WGS CNA calling.
 ont_analysis_type: liquid_biopsy
-
-# CNA caller used by the ONT SAMURAI wrapper. Usually ichorcna.
 ont_caller: ichorcna
-
-# Coarse ONT CNA bin size, in kb.
 ont_binsize_kb: 500
 
-# Wait time for active sequencing folders. Use 0 for completed data.
+# Wait time for active sequencing folders. Use 0 for completed FASTQ files.
 ont_min_age_minutes: 0
 
 # Optional fields you can add when needed:
@@ -44,8 +43,6 @@ ont_min_age_minutes: 0
 # ont_build_pon: false
 # ont_force_realign: false
 
-# Set true to run CNA classifier, reports, and optional pathology concordance.
+# Set true to run CNA classifier and reports after core CNA outputs.
 run_cna_classifier: false
-
-# Allow underlying steps to overwrite/recompute outputs in the selected outdir.
 force: true

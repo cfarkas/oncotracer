@@ -22,6 +22,7 @@ nav:
   - Installation: installation.md
   - Configuration: configuration.md
   - Inputs: inputs.md
+  - Example Data: example_data.md
   - Running OncoTracer: running.md
   - Tutorial: tutorial_our_runs.md
   - Outputs: outputs.md

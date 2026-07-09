@@ -62,11 +62,12 @@ workflow {
 
   Channel.value([mode, outRoot, ds]).set { run_meta_ch }
 
-  if( mode == 'ont' && blank(params.ont_ichor_dir) ) {
+  if( mode == 'illumina' ) {
+    RUN_ILLUMINA_SAMURAI(run_meta_ch)
+    RUN_BAM_REFINE(RUN_ILLUMINA_SAMURAI.out.run_meta)
+  } else {
     RUN_ONT_SAMURAI(run_meta_ch)
     RUN_BAM_REFINE(RUN_ONT_SAMURAI.out.run_meta)
-  } else {
-    RUN_BAM_REFINE(run_meta_ch)
   }
 
   RUN_CNA_CODIFICATION(RUN_BAM_REFINE.out.run_meta)
@@ -79,8 +80,50 @@ workflow {
   WRITE_SUMMARY(RUN_CNA_CUSTOM_PLOTS.out.run_meta)
 }
 
+process RUN_ILLUMINA_SAMURAI {
+  tag 'illumina_samurai'
+  container null
+  publishDir { "${params.outdir}/01_samurai_illumina" }, mode: 'copy', overwrite: true
+
+  input:
+  val run_meta
+
+  output:
+  val run_meta, emit: run_meta
+  path 'samurai_illumina_done.txt', emit: marker
+
+  script:
+  requireParam('illumina_samplesheet', params.illumina_samplesheet)
+  requireParam('illumina_samurai_outdir', params.illumina_samurai_outdir)
+
+  def samuraiScript = scriptPath('scripts/run_illumina_samurai_fastq.sh')
+  def forceOpt = asBool(params.force) ? '--force' : ''
+
+  """
+  set -Eeuo pipefail
+  bash '${samuraiScript}' \\
+    --samplesheet '${params.illumina_samplesheet}' \\
+    --outdir '${params.illumina_samurai_outdir}' \\
+    --analysis_type '${params.illumina_analysis_type}' \\
+    --caller '${params.illumina_caller}' \\
+    --binsize '${params.illumina_binsize_kb}' \\
+    --lpwgs-root '${params.lpwgs_root}' \\
+    ${forceOpt}
+
+  test -d '${params.illumina_samurai_outdir}/qdnaseq'
+  test -d '${params.illumina_samurai_outdir}/alignment'
+  echo "Illumina SAMURAI completed: ${params.illumina_samurai_outdir}" > samurai_illumina_done.txt
+  """
+
+  stub:
+  """
+  echo "STUB: Illumina SAMURAI" > samurai_illumina_done.txt
+  """
+}
+
 process RUN_ONT_SAMURAI {
   tag 'ont_samurai'
+  container null
   publishDir { "${params.outdir}/01_samurai_ont" }, mode: 'copy', overwrite: true
 
   input:
@@ -158,9 +201,9 @@ process RUN_BAM_REFINE {
 
   def modeArgs
   if( mode == 'ont' ) {
-    def ichorDir = blank(params.ont_ichor_dir) ? "${params.ont_samurai_outdir}/results/ichorcna" : params.ont_ichor_dir.toString()
-    def bamDir = blank(params.ont_bam_dir) ? "${params.ont_samurai_outdir}/bam" : params.ont_bam_dir.toString()
-    def priorSeg = blank(params.ont_prior_seg) ? "${ichorDir}/segments_logR_corrected_gistic.seg" : params.ont_prior_seg.toString()
+    def ichorDir = "${params.ont_samurai_outdir}/results/ichorcna"
+    def bamDir = "${params.ont_samurai_outdir}/bam"
+    def priorSeg = "${ichorDir}/segments_logR_corrected_gistic.seg"
     modeArgs = """--mode ont \\
       --ont-ichor-dir '${ichorDir}' \\
       --ont-bam-dir '${bamDir}' \\
@@ -173,13 +216,13 @@ process RUN_BAM_REFINE {
       --min-local-log2-diff '${params.min_local_log2_diff_ont}' \
     """
   } else {
-    requireParam('illumina_qdnaseq_dir', params.illumina_qdnaseq_dir)
-    requireParam('illumina_bam_dir', params.illumina_bam_dir)
-    requireParam('illumina_prior_seg', params.illumina_prior_seg)
+    def qdnaseqDir = "${params.illumina_samurai_outdir}/qdnaseq"
+    def bamDir = "${params.illumina_samurai_outdir}/alignment"
+    def priorSeg = "${qdnaseqDir}/all_segments.seg"
     modeArgs = """--mode illumina \\
-      --illumina-qdnaseq-dir '${params.illumina_qdnaseq_dir}' \\
-      --illumina-bam-dir '${params.illumina_bam_dir}' \\
-      --illumina-prior-seg '${params.illumina_prior_seg}' \\
+      --illumina-qdnaseq-dir '${qdnaseqDir}' \\
+      --illumina-bam-dir '${bamDir}' \\
+      --illumina-prior-seg '${priorSeg}' \\
       --illumina-binsize-kb '${params.illumina_binsize_kb}' \\
       --fine-bin-kb-illumina '${params.fine_bin_kb_illumina}' \\
       --coverage-mode-illumina starts \\
