@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#yaml-configuration" class="md-skip">
+        <a href="#configuration" class="md-skip">
           Skip to content
         </a>
       
@@ -367,10 +367,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#where-are-the-yaml-files" class="md-nav__link">
+  <a href="#which-yaml-should-i-copy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where Are The YAML Files?
+        Which YAML Should I Copy?
       
     </span>
   </a>
@@ -389,10 +389,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-yaml" class="md-nav__link">
+  <a href="#illumina-fastq-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina YAML
+        Illumina FASTQ YAML
       
     </span>
   </a>
@@ -400,10 +400,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-from-existing-samuraiichorcna-yaml" class="md-nav__link">
+  <a href="#ont-fastq-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT From Existing SAMURAI/ichorCNA YAML
+        ONT FASTQ YAML
       
     </span>
   </a>
@@ -411,10 +411,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-from-fastqbarcodes-yaml" class="md-nav__link">
+  <a href="#pathology-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT From FASTQ/Barcodes YAML
+        Pathology Fields
       
     </span>
   </a>
@@ -422,21 +422,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#refinement-parameters" class="md-nav__link">
+  <a href="#samplesheet-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Refinement Parameters
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#command-line-overrides" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Command-Line Overrides
+        Samplesheet Examples
       
     </span>
   </a>
@@ -466,6 +455,33 @@
     
   
     Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../example_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Data
   
 
     
@@ -640,10 +656,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#where-are-the-yaml-files" class="md-nav__link">
+  <a href="#which-yaml-should-i-copy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where Are The YAML Files?
+        Which YAML Should I Copy?
       
     </span>
   </a>
@@ -662,10 +678,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-yaml" class="md-nav__link">
+  <a href="#illumina-fastq-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina YAML
+        Illumina FASTQ YAML
       
     </span>
   </a>
@@ -673,10 +689,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-from-existing-samuraiichorcna-yaml" class="md-nav__link">
+  <a href="#ont-fastq-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT From Existing SAMURAI/ichorCNA YAML
+        ONT FASTQ YAML
       
     </span>
   </a>
@@ -684,10 +700,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-from-fastqbarcodes-yaml" class="md-nav__link">
+  <a href="#pathology-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT From FASTQ/Barcodes YAML
+        Pathology Fields
       
     </span>
   </a>
@@ -695,21 +711,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#refinement-parameters" class="md-nav__link">
+  <a href="#samplesheet-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Refinement Parameters
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#command-line-overrides" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Command-Line Overrides
+        Samplesheet Examples
       
     </span>
   </a>
@@ -741,127 +746,83 @@
   
 
 
-<h1 id="yaml-configuration">YAML Configuration<a class="headerlink" href="#yaml-configuration" title="Permanent link">&para;</a></h1>
-<p>A YAML file is a small plain-text settings file. In OncoTracer, YAML files tell the workflow where your input files are, where results should be written, and which optional steps to run.</p>
-<p>Each setting is written as:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">field_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">value</span>
+<h1 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h1>
+<p>OncoTracer uses YAML files for run settings. A YAML file is a plain-text file where each line usually looks like this:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">setting_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">value</span>
 </code></pre></div>
-<p>Keep the field name and colon, then edit the value after the colon. Use spaces, not tabs. Lines beginning with <code>#</code> are comments for humans and are ignored by the workflow.</p>
-<h2 id="where-are-the-yaml-files">Where Are The YAML Files?<a class="headerlink" href="#where-are-the-yaml-files" title="Permanent link">&para;</a></h2>
-<p>Example YAML files live in the repository folder:</p>
-<div class="highlight"><pre><span></span><code>params/illumina.example.yml
-params/ont.from_existing_samurai.example.yml
-params/ont.example.yml
-</code></pre></div>
-<p>Do not edit the original examples directly. Copy the closest one and edit your copy:</p>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.example.yml<span class="w"> </span>params/my_illumina.yml
-nano<span class="w"> </span>params/my_illumina.yml
-</code></pre></div>
-<p>Run your edited YAML with Docker:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Absolute paths are easiest</p>
-<p>Use full paths such as <code>/data/project/sample.bam</code> instead of relative paths. This makes Docker, Singularity/Apptainer, and HPC runs easier to reproduce.</p>
-</div>
-<h2 id="common-fields">Common Fields<a class="headerlink" href="#common-fields" title="Permanent link">&para;</a></h2>
-<p>These fields appear in most YAML files.</p>
+<p>Edit the value after the colon. Use absolute paths for files and folders. Do not use tabs.</p>
+<h2 id="which-yaml-should-i-copy">Which YAML Should I Copy?<a class="headerlink" href="#which-yaml-should-i-copy" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Field</th>
-<th style="text-align: right;">Required</th>
-<th>Meaning</th>
+<th>Use case</th>
+<th>File</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mode</code></td>
-<td style="text-align: right;">yes</td>
-<td>Workflow branch. Use <code>illumina</code> for Illumina qDNAseq/SAMURAI inputs or <code>ont</code> for Oxford Nanopore inputs.</td>
+<td>Illumina paired-end FASTQ</td>
+<td><code>params/illumina.example.yml</code></td>
 </tr>
 <tr>
-<td><code>lpwgs_root</code></td>
-<td style="text-align: right;">recommended</td>
-<td>Root folder for this project/data area. OncoTracer also uses this as the default folder to expose to Docker containers.</td>
+<td>ONT <code>fastq_pass</code> barcode FASTQ</td>
+<td><code>params/ont.example.yml</code></td>
 </tr>
 <tr>
-<td><code>outdir</code></td>
-<td style="text-align: right;">yes</td>
-<td>Main output folder. Numbered result folders are written inside this path.</td>
-</tr>
-<tr>
-<td><code>run_cna_classifier</code></td>
-<td style="text-align: right;">no</td>
-<td><code>true</code> runs classifier, reports, and optional pathology concordance. <code>false</code> stops after core CNA plots.</td>
-</tr>
-<tr>
-<td><code>force</code></td>
-<td style="text-align: right;">no</td>
-<td>Allows underlying steps to overwrite/recompute outputs. Useful for testing; use carefully with important result folders.</td>
-</tr>
-<tr>
-<td><code>docker_user</code></td>
-<td style="text-align: right;">advanced</td>
-<td>Docker UID:GID used internally when <code>--docker</code> is set. Default is <code>1000:1000</code>.</td>
-</tr>
-<tr>
-<td><code>docker_run_options</code></td>
-<td style="text-align: right;">advanced</td>
-<td>Extra Docker options if your site needs them. Most users leave this blank.</td>
-</tr>
-<tr>
-<td><code>singularity_run_options</code></td>
-<td style="text-align: right;">advanced</td>
-<td>Extra Singularity/Apptainer options if your HPC site needs them. Most users leave this blank.</td>
+<td>Illumina FASTQ plus pathology CSV</td>
+<td><code>params/illumina.pathology.example.yml</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="illumina-yaml">Illumina YAML<a class="headerlink" href="#illumina-yaml" title="Permanent link">&para;</a></h2>
-<p>Use this when you already have Illumina SAMURAI/qDNAseq outputs and aligned BAM files.</p>
-<p>Example file: <code>params/illumina.example.yml</code></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Workflow branch. Use &quot;illumina&quot; for Illumina SAMURAI/qDNAseq + BAM inputs.</span>
-<span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
-
-<span class="c1"># Root folder for this project/data area.</span>
+<h2 id="common-fields">Common Fields<a class="headerlink" href="#common-fields" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mode</code></td>
+<td>yes</td>
+<td><code>illumina</code> or <code>ont</code>.</td>
+</tr>
+<tr>
+<td><code>lpwgs_root</code></td>
+<td>yes</td>
+<td>Main project/data root. Docker and Singularity bind this folder by default.</td>
+</tr>
+<tr>
+<td><code>outdir</code></td>
+<td>yes</td>
+<td>Main OncoTracer output folder.</td>
+</tr>
+<tr>
+<td><code>run_cna_classifier</code></td>
+<td>no</td>
+<td><code>true</code> to run classifier/report/pathology steps after core CNA outputs.</td>
+</tr>
+<tr>
+<td><code>force</code></td>
+<td>no</td>
+<td><code>true</code> lets underlying scripts recompute outputs in the selected output folder.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="illumina-fastq-yaml">Illumina FASTQ YAML<a class="headerlink" href="#illumina-fastq-yaml" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
 <span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025</span>
-
-<span class="c1"># Main output folder.</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_test</span>
-
-<span class="c1"># Folder containing existing qDNAseq/SAMURAI CNA output files.</span>
-<span class="nt">illumina_qdnaseq_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/samurai_results_100kb/qdnaseq</span>
-
-<span class="c1"># Folder containing aligned Illumina BAM files for the same samples.</span>
-<span class="nt">illumina_bam_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/samurai_results_100kb/alignment</span>
-
-<span class="c1"># Prior segmentation table from the upstream Illumina CNA caller.</span>
-<span class="nt">illumina_prior_seg</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/samurai_results_100kb/qdnaseq/all_segments.seg</span>
-
-<span class="c1"># Coarse bin size, in kb, used by the upstream Illumina CNA analysis.</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_fastq_test</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/samurai_input/samplesheet.csv</span>
+<span class="nt">illumina_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_fastq_test/01_samurai_illumina</span>
+<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
+<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
 <span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
-
-<span class="c1"># Run optional classifier/report stages after the core CNA workflow.</span>
 <span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-
-<span class="c1"># Optional pathology table. Use null when unavailable.</span>
-<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
-
-<span class="c1"># Column names used if pathology_csv is provided.</span>
-<span class="nt">pathology_sample_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina_sample_id</span>
-<span class="nt">pathology_case_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case_code</span>
-<span class="nt">pathology_diagnosis_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_diagnosis</span>
-
-<span class="c1"># Optional biomedical model agreement scoring for pathology concordance.</span>
-<span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">pathology_biomed_local_files_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-
-<span class="c1"># Allow overwrite/recompute behavior.</span>
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
-<p>Field-by-field:</p>
 <table>
 <thead>
 <tr>
@@ -871,196 +832,42 @@ nano<span class="w"> </span>params/my_illumina.yml
 </thead>
 <tbody>
 <tr>
-<td><code>mode</code></td>
-<td>Must be <code>illumina</code> for this input type.</td>
+<td><code>illumina_samplesheet</code></td>
+<td>CSV table listing paired FASTQ files. Columns: <code>sample,fastq_1,fastq_2,bam,gender,status</code>.</td>
 </tr>
 <tr>
-<td><code>lpwgs_root</code></td>
-<td>Root folder containing your project data. Keep it as an absolute path.</td>
+<td><code>illumina_samurai_outdir</code></td>
+<td>Where the upstream SAMURAI/qDNAseq step writes Illumina results.</td>
 </tr>
 <tr>
-<td><code>outdir</code></td>
-<td>Folder where OncoTracer writes all outputs for this run.</td>
+<td><code>illumina_analysis_type</code></td>
+<td>SAMURAI analysis label, usually <code>solid_biopsy</code>.</td>
 </tr>
 <tr>
-<td><code>illumina_qdnaseq_dir</code></td>
-<td>Existing qDNAseq/SAMURAI CNA output directory.</td>
-</tr>
-<tr>
-<td><code>illumina_bam_dir</code></td>
-<td>Directory containing aligned Illumina BAM files.</td>
-</tr>
-<tr>
-<td><code>illumina_prior_seg</code></td>
-<td>Prior segment table from qDNAseq/SAMURAI, usually <code>all_segments.seg</code>.</td>
+<td><code>illumina_caller</code></td>
+<td>CNA caller for Illumina. Use <code>qdnaseq</code>.</td>
 </tr>
 <tr>
 <td><code>illumina_binsize_kb</code></td>
-<td>Coarse bin size used upstream. Use the same bin size as the original qDNAseq/SAMURAI run.</td>
-</tr>
-<tr>
-<td><code>run_cna_classifier</code></td>
-<td>Set <code>true</code> to run classifier/reports after plots. Start with <code>false</code> for a fast first test.</td>
-</tr>
-<tr>
-<td><code>pathology_csv</code></td>
-<td>Optional CSV/TSV/XLS/XLSX pathology table. Use <code>null</code> to disable pathology matching.</td>
-</tr>
-<tr>
-<td><code>pathology_sample_col</code></td>
-<td>Column in the pathology table that matches CNA sample names.</td>
-</tr>
-<tr>
-<td><code>pathology_case_col</code></td>
-<td>Column containing pathology case/accession IDs.</td>
-</tr>
-<tr>
-<td><code>pathology_diagnosis_col</code></td>
-<td>Column containing final diagnosis text.</td>
-</tr>
-<tr>
-<td><code>pathology_use_biomed_models</code></td>
-<td>Attempts optional biomedical transformer agreement scoring when pathology is provided.</td>
-</tr>
-<tr>
-<td><code>pathology_biomed_local_files_only</code></td>
-<td>If <code>true</code>, only locally cached Hugging Face models are used.</td>
-</tr>
-<tr>
-<td><code>force</code></td>
-<td>Allows overwrite/recompute behavior in underlying scripts.</td>
+<td>Coarse CNA bin size in kilobases, usually <code>100</code> for LP-WGS.</td>
 </tr>
 </tbody>
 </table>
-<h2 id="ont-from-existing-samuraiichorcna-yaml">ONT From Existing SAMURAI/ichorCNA YAML<a class="headerlink" href="#ont-from-existing-samuraiichorcna-yaml" title="Permanent link">&para;</a></h2>
-<p>Use this when SAMURAI/ichorCNA has already run and you want OncoTracer to start from BAM boundary refinement.</p>
-<p>Example file: <code>params/ont.from_existing_samurai.example.yml</code></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Workflow branch. Use &quot;ont&quot; for Oxford Nanopore LP-WGS inputs.</span>
-<span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span>
-
-<span class="c1"># Root folder for this project/data area.</span>
+<h2 id="ont-fastq-yaml">ONT FASTQ YAML<a class="headerlink" href="#ont-fastq-yaml" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span>
 <span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025</span>
-
-<span class="c1"># Main output folder.</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_existing_test</span>
-
-<span class="c1"># Existing ONT ichorCNA result directory.</span>
-<span class="nt">ont_ichor_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/ONT_analyses/.../results/ichorcna</span>
-
-<span class="c1"># Folder containing ONT BAM files for the same samples.</span>
-<span class="nt">ont_bam_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/ONT_analyses/.../bam</span>
-
-<span class="c1"># Prior segmentation table from the upstream ONT ichorCNA analysis.</span>
-<span class="nt">ont_prior_seg</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/ONT_analyses/.../segments_logR_corrected_gistic.seg</span>
-
-<span class="c1"># Coarse bin size, in kb, used by the upstream ONT CNA analysis.</span>
-<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
-
-<span class="c1"># Run optional classifier/report stages after the core CNA workflow.</span>
-<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-
-<span class="c1"># Allow overwrite/recompute behavior.</span>
-<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
-<p>Field-by-field:</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mode</code></td>
-<td>Must be <code>ont</code> for ONT input.</td>
-</tr>
-<tr>
-<td><code>lpwgs_root</code></td>
-<td>Root folder containing your project data.</td>
-</tr>
-<tr>
-<td><code>outdir</code></td>
-<td>Folder where OncoTracer writes all outputs for this run.</td>
-</tr>
-<tr>
-<td><code>ont_ichor_dir</code></td>
-<td>Existing ONT ichorCNA result directory.</td>
-</tr>
-<tr>
-<td><code>ont_bam_dir</code></td>
-<td>Directory containing ONT BAM files.</td>
-</tr>
-<tr>
-<td><code>ont_prior_seg</code></td>
-<td>Prior segment table used for boundary refinement. Usually <code>segments_logR_corrected_gistic.seg</code>.</td>
-</tr>
-<tr>
-<td><code>ont_binsize_kb</code></td>
-<td>Coarse bin size used by the upstream ONT analysis.</td>
-</tr>
-<tr>
-<td><code>run_cna_classifier</code></td>
-<td>Set <code>true</code> to run classifier/reports after plots.</td>
-</tr>
-<tr>
-<td><code>force</code></td>
-<td>Allows overwrite/recompute behavior in underlying scripts.</td>
-</tr>
-</tbody>
-</table>
-<p>When <code>ont_ichor_dir</code> is provided, OncoTracer skips <code>01_samurai_ont</code> and begins at <code>02_bam_refinement</code>.</p>
-<h2 id="ont-from-fastqbarcodes-yaml">ONT From FASTQ/Barcodes YAML<a class="headerlink" href="#ont-from-fastqbarcodes-yaml" title="Permanent link">&para;</a></h2>
-<p>Use this when you want OncoTracer to run the ONT SAMURAI step first.</p>
-<p>Example file: <code>params/ont.example.yml</code></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Workflow branch. Use &quot;ont&quot; for Oxford Nanopore LP-WGS inputs.</span>
-<span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span>
-
-<span class="c1"># Root folder for this project/data area.</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025</span>
-
-<span class="c1"># Main output folder.</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_test</span>
-
-<span class="c1"># Folder containing ONT FASTQ files, barcode folders, or a completed run folder.</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_fastq_test</span>
 <span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/ont/run/or/fastq_pass</span>
-
-<span class="c1"># Comma-separated barcode IDs to process. Order must match ont_sample_names.</span>
 <span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode07,barcode08</span>
-
-<span class="c1"># Comma-separated sample names assigned to the barcodes above.</span>
 <span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sample1,sample2</span>
-
-<span class="c1"># Output folder for the upstream ONT SAMURAI step.</span>
-<span class="nt">ont_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_test/01_samurai_ont</span>
-
-<span class="c1"># SAMURAI analysis label, commonly liquid_biopsy or solid_biopsy.</span>
+<span class="nt">ont_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_fastq_test/01_samurai_ont</span>
 <span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_biopsy</span>
-
-<span class="c1"># CNA caller used by the ONT SAMURAI wrapper. Usually ichorcna.</span>
 <span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ichorcna</span>
-
-<span class="c1"># Coarse ONT CNA bin size, in kb.</span>
 <span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
-
-<span class="c1"># Wait time for active sequencing folders. Use 0 for completed data.</span>
 <span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-
-<span class="c1"># Optional fields you can add when needed:</span>
-<span class="c1"># ont_ref: /path/to/reference.fa</span>
-<span class="c1"># ont_normal_folder: /path/to/normal_fastq_or_run</span>
-<span class="c1"># ont_normal_barcodes: barcode01,barcode02</span>
-<span class="c1"># ont_normal_sample_names: normal1,normal2</span>
-<span class="c1"># ont_build_pon: false</span>
-<span class="c1"># ont_force_realign: false</span>
-
-<span class="c1"># Run optional classifier/report stages after the core CNA workflow.</span>
 <span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-
-<span class="c1"># Allow overwrite/recompute behavior.</span>
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
-<p>Field-by-field:</p>
 <table>
 <thead>
 <tr>
@@ -1069,160 +876,88 @@ nano<span class="w"> </span>params/my_illumina.yml
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>mode</code></td>
-<td>Must be <code>ont</code> for ONT input.</td>
-</tr>
-<tr>
-<td><code>lpwgs_root</code></td>
-<td>Root folder containing your project data.</td>
-</tr>
-<tr>
-<td><code>outdir</code></td>
-<td>Folder where OncoTracer writes all outputs for this run.</td>
-</tr>
 <tr>
 <td><code>ont_folder</code></td>
-<td>Folder with ONT FASTQ files, barcode folders, or a completed run folder.</td>
+<td>ONT run folder, <code>fastq_pass</code>, or folder containing barcode subfolders.</td>
 </tr>
 <tr>
 <td><code>ont_barcodes</code></td>
-<td>Comma-separated barcode names to process. Order must match <code>ont_sample_names</code>.</td>
+<td>Comma-separated barcode folder names to process.</td>
 </tr>
 <tr>
 <td><code>ont_sample_names</code></td>
-<td>Comma-separated sample names assigned to the barcode list.</td>
+<td>Comma-separated sample names in the same order as <code>ont_barcodes</code>.</td>
 </tr>
 <tr>
 <td><code>ont_samurai_outdir</code></td>
-<td>Folder where the ONT SAMURAI step writes its outputs.</td>
+<td>Where the upstream ONT SAMURAI step writes BAM and ichorCNA results.</td>
 </tr>
 <tr>
 <td><code>ont_analysis_type</code></td>
-<td>Analysis label passed to SAMURAI, commonly <code>liquid_biopsy</code> or <code>solid_biopsy</code>.</td>
+<td>SAMURAI analysis label, often <code>liquid_biopsy</code> or <code>solid_biopsy</code>.</td>
 </tr>
 <tr>
 <td><code>ont_caller</code></td>
-<td>CNA caller used by SAMURAI; usually <code>ichorcna</code>.</td>
+<td>CNA caller for ONT. Use <code>ichorcna</code>.</td>
 </tr>
 <tr>
 <td><code>ont_binsize_kb</code></td>
-<td>Coarse ONT CNA bin size in kb.</td>
+<td>Coarse CNA bin size in kilobases, usually <code>500</code>.</td>
 </tr>
 <tr>
 <td><code>ont_min_age_minutes</code></td>
-<td>Optional wait time for files in active sequencing folders. Use <code>0</code> for completed data.</td>
-</tr>
-<tr>
-<td><code>ont_ref</code></td>
-<td>Optional reference FASTA if required by your ONT wrapper setup.</td>
-</tr>
-<tr>
-<td><code>ont_normal_folder</code></td>
-<td>Optional folder containing normal/PoN FASTQ data.</td>
-</tr>
-<tr>
-<td><code>ont_normal_barcodes</code></td>
-<td>Optional comma-separated normal barcode list.</td>
-</tr>
-<tr>
-<td><code>ont_normal_sample_names</code></td>
-<td>Optional comma-separated names for normal barcode samples.</td>
-</tr>
-<tr>
-<td><code>ont_build_pon</code></td>
-<td>Optional <code>true</code>/<code>false</code> setting to build/use a panel of normals when supported.</td>
-</tr>
-<tr>
-<td><code>ont_force_realign</code></td>
-<td>Optional <code>true</code>/<code>false</code> setting to force realignment in the SAMURAI step.</td>
-</tr>
-<tr>
-<td><code>run_cna_classifier</code></td>
-<td>Set <code>true</code> to run classifier/reports after plots.</td>
-</tr>
-<tr>
-<td><code>force</code></td>
-<td>Allows overwrite/recompute behavior in underlying scripts.</td>
+<td>Wait threshold for active sequencing folders. Use <code>0</code> for completed FASTQ data.</td>
 </tr>
 </tbody>
 </table>
-<h2 id="refinement-parameters">Refinement Parameters<a class="headerlink" href="#refinement-parameters" title="Permanent link">&para;</a></h2>
-<p>Most users should leave these defaults alone. They can be overridden in YAML or on the command line when you need advanced tuning.</p>
+<h2 id="pathology-fields">Pathology Fields<a class="headerlink" href="#pathology-fields" title="Permanent link">&para;</a></h2>
+<p>These fields are used when <code>run_cna_classifier: true</code> and a pathology CSV is available.</p>
 <table>
 <thead>
 <tr>
 <th>Field</th>
-<th style="text-align: right;">Default</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>fine_bin_kb_ont</code></td>
-<td style="text-align: right;">25</td>
-<td>Fine bin size used during ONT boundary refinement.</td>
+<td><code>pathology_csv</code></td>
+<td>CSV file containing pathology annotations. Use <code>null</code> to skip pathology concordance.</td>
 </tr>
 <tr>
-<td><code>fine_bin_kb_illumina</code></td>
-<td style="text-align: right;">10</td>
-<td>Fine bin size used during Illumina boundary refinement.</td>
+<td><code>pathology_sample_col</code></td>
+<td>Column matching OncoTracer sample names.</td>
 </tr>
 <tr>
-<td><code>search_radius_bins</code></td>
-<td style="text-align: right;">2</td>
-<td>Number of coarse bins around each boundary to search.</td>
+<td><code>pathology_case_col</code></td>
+<td>Case or patient identifier column.</td>
 </tr>
 <tr>
-<td><code>min_mapq</code></td>
-<td style="text-align: right;">20</td>
-<td>Minimum read mapping quality.</td>
+<td><code>pathology_diagnosis_col</code></td>
+<td>Diagnosis text column.</td>
 </tr>
 <tr>
-<td><code>min_local_log2_diff_ont</code></td>
-<td style="text-align: right;">0.12</td>
-<td>Minimum local log2 difference for ONT acceptance.</td>
+<td><code>pathology_use_biomed_models</code></td>
+<td><code>true</code> to enable biomedical model agreement scoring.</td>
 </tr>
 <tr>
-<td><code>min_local_log2_diff_illumina</code></td>
-<td style="text-align: right;">0.10</td>
-<td>Minimum local log2 difference for Illumina acceptance.</td>
-</tr>
-<tr>
-<td><code>min_adjacent_seg_delta</code></td>
-<td style="text-align: right;">0.10</td>
-<td>Minimum adjacent segment delta.</td>
-</tr>
-<tr>
-<td><code>min_bic_gain</code></td>
-<td style="text-align: right;">6</td>
-<td>Minimum BIC gain required by the acceptance rule.</td>
-</tr>
-<tr>
-<td><code>permutations</code></td>
-<td style="text-align: right;">300</td>
-<td>Permutations for statistical boundary support.</td>
-</tr>
-<tr>
-<td><code>permutation_p</code></td>
-<td style="text-align: right;">0.05</td>
-<td>Permutation p-value threshold.</td>
-</tr>
-<tr>
-<td><code>accept_rule</code></td>
-<td style="text-align: right;"><code>p_and_bic</code></td>
-<td>Rule for accepting refined boundaries.</td>
+<td><code>pathology_biomed_local_files_only</code></td>
+<td><code>true</code> for offline runs that must not download model files.</td>
 </tr>
 </tbody>
 </table>
-<h2 id="command-line-overrides">Command-Line Overrides<a class="headerlink" href="#command-line-overrides" title="Permanent link">&para;</a></h2>
-<p>Any YAML value can be overridden at run time. Command-line values win over the YAML file:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--illumina_binsize_kb<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--force<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+<h2 id="samplesheet-examples">Samplesheet Examples<a class="headerlink" href="#samplesheet-examples" title="Permanent link">&para;</a></h2>
+<p>Illumina FASTQ samplesheet:</p>
+<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,bam,gender,status
+sample1,/data/sample1_R1.fastq.gz,/data/sample1_R2.fastq.gz,,,tumor
+sample2,/data/sample2_R1.fastq.gz,/data/sample2_R2.fastq.gz,,,tumor
+</code></pre></div>
+<p>ONT FASTQ inputs are configured by folder and barcode names in YAML. A typical folder looks like:</p>
+<div class="highlight"><pre><span></span><code>fastq_pass/
+  barcode07/
+    reads_001.fastq.gz
+  barcode08/
+    reads_001.fastq.gz
 </code></pre></div>
 
 

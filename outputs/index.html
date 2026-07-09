@@ -361,6 +361,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../example_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../running/" class="md-nav__link">
         
   
@@ -475,10 +502,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#01_samurai_ont" class="md-nav__link">
+  <a href="#key-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        01_samurai_ont
+        Key Files
       
     </span>
   </a>
@@ -486,54 +513,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#02_bam_refinement" class="md-nav__link">
+  <a href="#example-plots" class="md-nav__link">
     <span class="md-ellipsis">
       
-        02_bam_refinement
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#03_cna_codification" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        03_cna_codification
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#04_cna_custom_plots" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        04_cna_custom_plots
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#05_cna_classifier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        05_cna_classifier
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#06_workflow_summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        06_workflow_summary
+        Example Plots
       
     </span>
   </a>
@@ -629,10 +612,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#01_samurai_ont" class="md-nav__link">
+  <a href="#key-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        01_samurai_ont
+        Key Files
       
     </span>
   </a>
@@ -640,54 +623,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#02_bam_refinement" class="md-nav__link">
+  <a href="#example-plots" class="md-nav__link">
     <span class="md-ellipsis">
       
-        02_bam_refinement
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#03_cna_codification" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        03_cna_codification
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#04_cna_custom_plots" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        04_cna_custom_plots
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#05_cna_classifier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        05_cna_classifier
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#06_workflow_summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        06_workflow_summary
+        Example Plots
       
     </span>
   </a>
@@ -720,75 +659,49 @@
 
 
 <h1 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h1>
-<p>All workflow outputs are written under <code>outdir</code>.</p>
-<div class="highlight"><pre><span></span><code>&lt;outdir&gt;/
-  01_samurai_ont/
+<p>OncoTracer writes a numbered output structure inside <code>outdir</code>.</p>
+<div class="highlight"><pre><span></span><code>outdir/
+  01_samurai_illumina/ or 01_samurai_ont/
   02_bam_refinement/
   03_cna_codification/
   04_cna_custom_plots/
-  05_cna_classifier/
+  05_cna_classifier/          # when enabled
   06_workflow_summary/
 </code></pre></div>
-<h2 id="01_samurai_ont">01_samurai_ont<a class="headerlink" href="#01_samurai_ont" title="Permanent link">&para;</a></h2>
-<p>Present only when starting ONT from FASTQ/barcodes.</p>
-<p>Contains SAMURAI/ONT caller outputs generated before refinement.</p>
-<p>If you start from existing ONT <code>ont_ichor_dir</code>, this folder is skipped.</p>
-<h2 id="02_bam_refinement">02_bam_refinement<a class="headerlink" href="#02_bam_refinement" title="Permanent link">&para;</a></h2>
-<p>Contains BAM-supported boundary refinement outputs.</p>
-<p>Dataset-specific folders look like:</p>
-<div class="highlight"><pre><span></span><code>02_bam_refinement/ONT_ichorcna_500kb/
-02_bam_refinement/illumina_qdnaseq_100kb/
-</code></pre></div>
-<p>Important files:</p>
-<div class="highlight"><pre><span></span><code>04_final_results/final_segments.tsv
-04_final_results/cna_cytogenomic_input/qdnaseq_bins/
-01_tables/refined_bins.tsv.gz
-</code></pre></div>
-<p><code>final_segments.tsv</code> is the refined segment table. <code>qdnaseq_bins/</code> is the converter-ready bin directory used by the codification stage. <code>refined_bins.tsv.gz</code> is used by custom plotting for log2 profile figures.</p>
-<h2 id="03_cna_codification">03_cna_codification<a class="headerlink" href="#03_cna_codification" title="Permanent link">&para;</a></h2>
-<p>Contains standardized CNA event tables.</p>
-<div class="highlight"><pre><span></span><code>03_cna_codification/cna_events.tsv
-03_cna_codification/cna_cytogenomic_notation.tsv
-</code></pre></div>
-<p><code>cna_events.tsv</code> is the main machine-readable CNA event table. <code>cna_cytogenomic_notation.tsv</code> contains cytogenomic-style descriptions.</p>
-<h2 id="04_cna_custom_plots">04_cna_custom_plots<a class="headerlink" href="#04_cna_custom_plots" title="Permanent link">&para;</a></h2>
-<p>Contains plots generated by <code>cna_codification/scripts/plot_cna_events.py</code>.</p>
-<p>Common files:</p>
-<div class="highlight"><pre><span></span><code>04_cna_custom_plots/cna_genome_overview.pdf
-04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf
-04_cna_custom_plots/cna_per_sample_pages.pdf
-04_cna_custom_plots/cna_event_burden_by_sample.pdf
-04_cna_custom_plots/cna_event_counts_by_sample.pdf
-04_cna_custom_plots/cna_recurrent_cytobands.pdf
-04_cna_custom_plots/cna_frequency_gene_panels.pdf
-04_cna_custom_plots/per_sample_log2_cna/*.pdf
-</code></pre></div>
-<p>These are intended for visual inspection of event burden, recurrent bands, genome-wide profiles, and per-sample log2 CNA profiles.</p>
-<h2 id="05_cna_classifier">05_cna_classifier<a class="headerlink" href="#05_cna_classifier" title="Permanent link">&para;</a></h2>
-<p>Present only when <code>run_cna_classifier: true</code>.</p>
-<p>Important subfolders:</p>
-<div class="highlight"><pre><span></span><code>01_prepared/
-02_classification/
-03_report/
-04_gistic/
-06_knowledge/
-07_pathology/
-</code></pre></div>
-<p>Common files:</p>
-<div class="highlight"><pre><span></span><code>05_cna_classifier/02_classification/cna_patient_classification.tsv
-05_cna_classifier/03_report/pdf_reports/all_sample_CNA_knowledge_reports.pdf
-05_cna_classifier/03_report/clinician_reports/all_sample_clinician_driver_summaries.pdf
-05_cna_classifier/06_knowledge/sample_knowledge_summary.tsv
-05_cna_classifier/06_knowledge/sample_literature.tsv
-05_cna_classifier/06_knowledge/knowledge_references.tsv
-05_cna_classifier/07_pathology/pathology_concordance.tsv
-05_cna_classifier/07_pathology/pathology_concordance_metrics.json
-</code></pre></div>
-<h2 id="06_workflow_summary">06_workflow_summary<a class="headerlink" href="#06_workflow_summary" title="Permanent link">&para;</a></h2>
-<p>Contains a compact path summary:</p>
-<div class="highlight"><pre><span></span><code>06_workflow_summary/workflow_summary.txt
-</code></pre></div>
-<p>This file is useful for downstream scripts because it records the actual paths for the run.</p>
+<h2 id="key-files">Key Files<a class="headerlink" href="#key-files" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>06_workflow_summary/workflow_summary.txt</code></td>
+<td>Short run summary and important output paths.</td>
+</tr>
+<tr>
+<td><code>03_cna_codification/cna_events.tsv</code></td>
+<td>CNA event table.</td>
+</tr>
+<tr>
+<td><code>03_cna_codification/cna_cytogenomic_notation.tsv</code></td>
+<td>Cytogenomic notation table.</td>
+</tr>
+<tr>
+<td><code>04_cna_custom_plots/cna_per_sample_pages.pdf</code></td>
+<td>Per-sample CNA plot pages.</td>
+</tr>
+<tr>
+<td><code>04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf</code></td>
+<td>Cohort-level genome profile plot.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="example-plots">Example Plots<a class="headerlink" href="#example-plots" title="Permanent link">&para;</a></h2>
+<p><img alt="Illumina CNA overview" src="../assets/tutorial/illumina_cna_genome_overview.png" /></p>
+<p><img alt="ONT CNA overview" src="../assets/tutorial/ont_cna_genome_overview.png" /></p>
 
 
 

@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/running/">
       
       
-        <link rel="prev" href="../inputs/">
+        <link rel="prev" href="../example_data/">
       
       
         <link rel="next" href="../tutorial_our_runs/">
@@ -358,6 +358,33 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../example_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -421,10 +448,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#basic-command-pattern" class="md-nav__link">
+  <a href="#illumina-fastq" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Command Pattern
+        Illumina FASTQ
       
     </span>
   </a>
@@ -432,10 +459,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-from-fastqbarcodes" class="md-nav__link">
+  <a href="#ont-fastq" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT From FASTQ/Barcodes
+        ONT FASTQ
       
     </span>
   </a>
@@ -443,10 +470,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-from-existing-ichorcnasamurai-outputs" class="md-nav__link">
+  <a href="#illumina-fastq-pathology" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT From Existing ichorCNA/SAMURAI Outputs
+        Illumina FASTQ + Pathology
       
     </span>
   </a>
@@ -454,10 +481,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-from-qdnaseqsamurai-outputs" class="md-nav__link">
+  <a href="#resume-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina From qDNAseq/SAMURAI Outputs
+        Resume Behavior
       
     </span>
   </a>
@@ -465,54 +492,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-with-classifier-and-reports" class="md-nav__link">
+  <a href="#runtime-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run With Classifier and Reports
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#run-with-pathology-concordance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run With Pathology Concordance
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fast-cna-only-run" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fast CNA-Only Run
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#strict-offlinedeterministic-classifier-runs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Strict Offline/Deterministic Classifier Runs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#standalone-docker-entrypoint" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Standalone Docker Entrypoint
+        Runtime Notes
       
     </span>
   </a>
@@ -662,10 +645,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#basic-command-pattern" class="md-nav__link">
+  <a href="#illumina-fastq" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Command Pattern
+        Illumina FASTQ
       
     </span>
   </a>
@@ -673,10 +656,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-from-fastqbarcodes" class="md-nav__link">
+  <a href="#ont-fastq" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT From FASTQ/Barcodes
+        ONT FASTQ
       
     </span>
   </a>
@@ -684,10 +667,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-from-existing-ichorcnasamurai-outputs" class="md-nav__link">
+  <a href="#illumina-fastq-pathology" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT From Existing ichorCNA/SAMURAI Outputs
+        Illumina FASTQ + Pathology
       
     </span>
   </a>
@@ -695,10 +678,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-from-qdnaseqsamurai-outputs" class="md-nav__link">
+  <a href="#resume-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina From qDNAseq/SAMURAI Outputs
+        Resume Behavior
       
     </span>
   </a>
@@ -706,54 +689,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-with-classifier-and-reports" class="md-nav__link">
+  <a href="#runtime-notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run With Classifier and Reports
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#run-with-pathology-concordance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run With Pathology Concordance
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fast-cna-only-run" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fast CNA-Only Run
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#strict-offlinedeterministic-classifier-runs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Strict Offline/Deterministic Classifier Runs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#standalone-docker-entrypoint" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Standalone Docker Entrypoint
+        Runtime Notes
       
     </span>
   </a>
@@ -786,91 +725,51 @@
 
 
 <h1 id="running-oncotracer">Running OncoTracer<a class="headerlink" href="#running-oncotracer" title="Permanent link">&para;</a></h1>
-<h2 id="basic-command-pattern">Basic Command Pattern<a class="headerlink" href="#basic-command-pattern" title="Permanent link">&para;</a></h2>
-<p>Native/Conda fallback:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/&lt;your_config&gt;.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+<p>Run from the repository root:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_config.yml<span class="w"> </span>-resume
 </code></pre></div>
-<p>Nextflow Docker executor:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/&lt;your_config&gt;.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+<p>Use exactly one runtime flag:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--docker</code></td>
+<td>Docker is available. Recommended for workstations.</td>
+</tr>
+<tr>
+<td><code>--singularity</code></td>
+<td>Singularity/Apptainer is available. Recommended for HPC.</td>
+</tr>
+<tr>
+<td><code>--conda</code></td>
+<td>Containers are unavailable.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="illumina-fastq">Illumina FASTQ<a class="headerlink" href="#illumina-fastq" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.example.yml<span class="w"> </span>params/my_illumina.yml
+nano<span class="w"> </span>params/my_illumina.yml
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span>-resume
 </code></pre></div>
-<p>Nextflow Singularity/Apptainer executor:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/&lt;your_config&gt;.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+<h2 id="ont-fastq">ONT FASTQ<a class="headerlink" href="#ont-fastq" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/ont.example.yml<span class="w"> </span>params/my_ont.yml
+nano<span class="w"> </span>params/my_ont.yml
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span>-resume
 </code></pre></div>
-<p>Use <code>--docker</code> for Docker, <code>--singularity</code> for Singularity/Apptainer, or <code>--conda</code> for the native Conda fallback. Use <code>-resume</code> whenever possible. It lets Nextflow reuse completed processes after an interrupted run.</p>
-<p>The <code>--docker</code> and <code>--singularity</code> flags include the needed default container settings internally. New users should not need to add <code>--docker_run_options</code> or <code>--singularity_run_options</code>.</p>
-<h2 id="ont-from-fastqbarcodes">ONT From FASTQ/Barcodes<a class="headerlink" href="#ont-from-fastqbarcodes" title="Permanent link">&para;</a></h2>
-<p>Edit <code>params/ont.example.yml</code>, then run:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/ont.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+<h2 id="illumina-fastq-pathology">Illumina FASTQ + Pathology<a class="headerlink" href="#illumina-fastq-pathology" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.pathology.example.yml<span class="w"> </span>params/my_illumina_pathology.yml
+nano<span class="w"> </span>params/my_illumina_pathology.yml
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina_pathology.yml<span class="w"> </span>-resume
 </code></pre></div>
-<p>This can run:</p>
-<div class="highlight"><pre><span></span><code>01_samurai_ont -&gt; 02_bam_refinement -&gt; 03_cna_codification -&gt; 04_cna_custom_plots
-</code></pre></div>
-<p>If <code>run_cna_classifier: true</code>, it also runs:</p>
-<div class="highlight"><pre><span></span><code>05_cna_classifier
-</code></pre></div>
-<h2 id="ont-from-existing-ichorcnasamurai-outputs">ONT From Existing ichorCNA/SAMURAI Outputs<a class="headerlink" href="#ont-from-existing-ichorcnasamurai-outputs" title="Permanent link">&para;</a></h2>
-<p>Edit <code>params/ont.from_existing_samurai.example.yml</code>, then run:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/ont.from_existing_samurai.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<p>This skips <code>01_samurai_ont</code> and starts from BAM refinement.</p>
-<h2 id="illumina-from-qdnaseqsamurai-outputs">Illumina From qDNAseq/SAMURAI Outputs<a class="headerlink" href="#illumina-from-qdnaseqsamurai-outputs" title="Permanent link">&para;</a></h2>
-<p>Edit <code>params/illumina.example.yml</code>, then run:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<h2 id="run-with-classifier-and-reports">Run With Classifier and Reports<a class="headerlink" href="#run-with-classifier-and-reports" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<h2 id="run-with-pathology-concordance">Run With Pathology Concordance<a class="headerlink" href="#run-with-pathology-concordance" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pathology_csv<span class="w"> </span>/path/to/pathology.csv<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pathology_sample_col<span class="w"> </span>illumina_sample_id<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pathology_case_col<span class="w"> </span>case_code<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pathology_diagnosis_col<span class="w"> </span>final_diagnosis<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<h2 id="fast-cna-only-run">Fast CNA-Only Run<a class="headerlink" href="#fast-cna-only-run" title="Permanent link">&para;</a></h2>
-<p>Disable classifier/reporting:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<p>This still produces refined segments, CNA event tables, and custom plots.</p>
-<h2 id="strict-offlinedeterministic-classifier-runs">Strict Offline/Deterministic Classifier Runs<a class="headerlink" href="#strict-offlinedeterministic-classifier-runs" title="Permanent link">&para;</a></h2>
-<p>The top-level wrapper exposes pathology model toggles. Additional classifier settings can be edited in <code>bin/cna_classifier_nf/nextflow.config</code> or surfaced as needed.</p>
-<p>Useful model-disabling options inside the classifier are:</p>
-<div class="highlight"><pre><span></span><code>knowledge_literature_llm = false
-knowledge_deep_enable_llm_ranker = false
-pathology_use_biomed_models = false
-</code></pre></div>
-<p>These reduce dependence on Hugging Face model loading and network state.</p>
-<h2 id="standalone-docker-entrypoint">Standalone Docker Entrypoint<a class="headerlink" href="#standalone-docker-entrypoint" title="Permanent link">&para;</a></h2>
-<p>The Docker image can run the workflow without installing Nextflow on the host:</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-v<span class="w"> </span>/media/server/STORAGE/LPWGS_2025:/media/server/STORAGE/LPWGS_2025<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>carlosfarkas/oncotracer:latest<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>/media/server/STORAGE/LPWGS_2025/OncoTracer/params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<p>All paths in your YAML must be visible inside the container through <code>-v</code> mounts.</p>
+<h2 id="resume-behavior">Resume Behavior<a class="headerlink" href="#resume-behavior" title="Permanent link">&para;</a></h2>
+<p>Use <code>-resume</code> after an interrupted run. Nextflow reuses completed tasks when the command and inputs are unchanged.</p>
+<h2 id="runtime-notes">Runtime Notes<a class="headerlink" href="#runtime-notes" title="Permanent link">&para;</a></h2>
+<p>The upstream SAMURAI steps launch their own Nextflow/SAMURAI run from FASTQ. The downstream OncoTracer steps use the selected Docker, Singularity, or Conda runtime.</p>
 
 
 

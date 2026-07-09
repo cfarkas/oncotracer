@@ -25,7 +25,7 @@
     
     
       
-        <title>Docker, Singularity, and Conda Execution - OncoTracer</title>
+        <title>Containers - OncoTracer</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#docker-singularity-and-conda-execution" class="md-skip">
+        <a href="#containers" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Docker, Singularity, and Conda Execution
+              Containers
             
           </span>
         </div>
@@ -357,6 +357,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../example_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../running/" class="md-nav__link">
         
   
@@ -512,10 +539,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#which-mode-should-i-use" class="md-nav__link">
+  <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Which Mode Should I Use?
+        Docker
       
     </span>
   </a>
@@ -523,10 +550,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#before-you-run" class="md-nav__link">
+  <a href="#singularity-apptainer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Before You Run
+        Singularity / Apptainer
       
     </span>
   </a>
@@ -534,204 +561,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#docker-recommended-for-most-users" class="md-nav__link">
+  <a href="#conda-fallback" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Docker: Recommended For Most Users
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Docker: Recommended For Most Users">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-check-docker" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Check Docker
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-pull-and-test-the-image" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Pull and test the image
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-run-with-host-nextflow-and-docker" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Run with host Nextflow and Docker
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-optional-run-nextflow-from-inside-the-container" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Optional: run Nextflow from inside the container
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-optional-open-a-shell-inside-the-image" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Optional: open a shell inside the image
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#singularity-apptainer-recommended-for-hpc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Singularity / Apptainer: Recommended For HPC
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Singularity / Apptainer: Recommended For HPC">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-check-the-runtime" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Check the runtime
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-pull-the-docker-hub-image-as-a-sif-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Pull the Docker Hub image as a SIF file
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-run-with-the-docker-hub-image-directly" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Run with the Docker Hub image directly
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-or-run-with-the-pre-pulled-sif-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Or run with the pre-pulled SIF file
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#native-conda-fallback-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Native Conda: Fallback Mode
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Native Conda: Fallback Mode">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-install-base-tools" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Install base tools
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-create-and-activate-the-broad-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Create and activate the broad environment
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-run-with-the-conda-profile" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Run with the Conda profile
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#maintainer-build-tag-and-push-docker-images" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Maintainer: Build, Tag, and Push Docker Images
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker-image-contents" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker Image Contents
+        Conda Fallback
       
     </span>
   </a>
@@ -763,155 +596,24 @@
   
 
 
-<h1 id="docker-singularity-and-conda-execution">Docker, Singularity, and Conda Execution<a class="headerlink" href="#docker-singularity-and-conda-execution" title="Permanent link">&para;</a></h1>
-<p>OncoTracer supports Docker, Singularity/Apptainer, and native Conda. For new users, choose one mode and use the matching commands below.</p>
-<h2 id="which-mode-should-i-use">Which Mode Should I Use?<a class="headerlink" href="#which-mode-should-i-use" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Situation</th>
-<th>Use this mode</th>
-<th>Why</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>You have Docker on a laptop, workstation, or server</td>
-<td>Docker</td>
-<td>Simplest and most reproducible option.</td>
-</tr>
-<tr>
-<td>You already run Nextflow on the host and want each process isolated</td>
-<td>Nextflow Docker flag</td>
-<td>Host Nextflow controls the workflow, Docker runs each task.</td>
-</tr>
-<tr>
-<td>You are on an HPC cluster where Docker is not allowed</td>
-<td>Singularity/Apptainer</td>
-<td>HPC-friendly way to run the same Docker Hub image.</td>
-</tr>
-<tr>
-<td>You cannot use containers</td>
-<td>Conda</td>
-<td>Works, but requires more local dependency management.</td>
-</tr>
-</tbody>
-</table>
-<p>Docker is the preferred portable route. Docker Hub is the primary image source:</p>
-<div class="highlight"><pre><span></span><code>carlosfarkas/oncotracer:latest
-carlosfarkas/oncotracer:2026-07-06
-carlosfarkas/oncotracer:v0.1.0
-</code></pre></div>
-<h2 id="before-you-run">Before You Run<a class="headerlink" href="#before-you-run" title="Permanent link">&para;</a></h2>
-<p>Edit one YAML file in <code>params/</code> first. Every absolute input, output, BAM, FASTQ, segment, or pathology path in that YAML must be visible inside the execution environment.</p>
-<p>For most users, the Docker or Singularity flag is enough. Advanced bind options are only needed when your cluster or workstation hides input paths from containers.</p>
-<h2 id="docker-recommended-for-most-users">Docker: Recommended For Most Users<a class="headerlink" href="#docker-recommended-for-most-users" title="Permanent link">&para;</a></h2>
-<h3 id="1-check-docker">1. Check Docker<a class="headerlink" href="#1-check-docker" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>--version
-</code></pre></div>
-<h3 id="2-pull-and-test-the-image">2. Pull and test the image<a class="headerlink" href="#2-pull-and-test-the-image" title="Permanent link">&para;</a></h3>
+<h1 id="containers">Containers<a class="headerlink" href="#containers" title="Permanent link">&para;</a></h1>
+<p>Most users only need one flag.</p>
+<h2 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>carlosfarkas/oncotracer:latest
-docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>carlosfarkas/oncotracer:latest<span class="w"> </span>--help
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_config.yml<span class="w"> </span>-resume
 </code></pre></div>
-<h3 id="3-run-with-host-nextflow-and-docker">3. Run with host Nextflow and Docker<a class="headerlink" href="#3-run-with-host-nextflow-and-docker" title="Permanent link">&para;</a></h3>
-<p>Use this when you run <code>nextflow</code> on the host and want workflow tasks to run inside Docker:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<p>For most users this is all that is needed: use <code>--docker</code> and provide your YAML file. OncoTracer sets the needed Docker user, cache, and project-root mount options internally. Advanced users can override <code>docker_user</code> or <code>docker_run_options</code> if their site requires different settings.</p>
-<h3 id="4-optional-run-nextflow-from-inside-the-container">4. Optional: run Nextflow from inside the container<a class="headerlink" href="#4-optional-run-nextflow-from-inside-the-container" title="Permanent link">&para;</a></h3>
-<p>This is useful if you do not want to install Nextflow on the host:</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-v<span class="w"> </span>/your/data:/your/data<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>carlosfarkas/oncotracer:latest<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>/your/data/params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<p>The <code>-params-file</code> path must be the path as seen inside the container.</p>
-<h3 id="5-optional-open-a-shell-inside-the-image">5. Optional: open a shell inside the image<a class="headerlink" href="#5-optional-open-a-shell-inside-the-image" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-v<span class="w"> </span>/your/data:/your/data<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--entrypoint<span class="w"> </span>oncoTracer-shell<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>carlosfarkas/oncotracer:latest
-</code></pre></div>
-<h2 id="singularity-apptainer-recommended-for-hpc">Singularity / Apptainer: Recommended For HPC<a class="headerlink" href="#singularity-apptainer-recommended-for-hpc" title="Permanent link">&para;</a></h2>
-<p>Use this mode when your cluster does not allow Docker.</p>
-<h3 id="1-check-the-runtime">1. Check the runtime<a class="headerlink" href="#1-check-the-runtime" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>apptainer<span class="w"> </span>--version
-</code></pre></div>
-<p>If your system uses Singularity instead:</p>
-<div class="highlight"><pre><span></span><code>singularity<span class="w"> </span>--version
-</code></pre></div>
-<h3 id="2-pull-the-docker-hub-image-as-a-sif-file">2. Pull the Docker Hub image as a SIF file<a class="headerlink" href="#2-pull-the-docker-hub-image-as-a-sif-file" title="Permanent link">&para;</a></h3>
+<p>OncoTracer sets the routine Docker user, cache, and project-root mount options internally from <code>lpwgs_root</code>.</p>
+<h2 id="singularity-apptainer">Singularity / Apptainer<a class="headerlink" href="#singularity-apptainer" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>apptainer<span class="w"> </span>pull<span class="w"> </span>oncotracer_latest.sif<span class="w"> </span>docker://carlosfarkas/oncotracer:latest
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--singularity<span class="w"> </span>-params-file<span class="w"> </span>params/my_config.yml<span class="w"> </span>-resume
 </code></pre></div>
-<h3 id="3-run-with-the-docker-hub-image-directly">3. Run with the Docker Hub image directly<a class="headerlink" href="#3-run-with-the-docker-hub-image-directly" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<h3 id="4-or-run-with-the-pre-pulled-sif-file">4. Or run with the pre-pulled SIF file<a class="headerlink" href="#4-or-run-with-the-pre-pulled-sif-file" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--singularity_image<span class="w"> </span>/path/to/oncotracer_latest.sif<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<p>For most users this is all that is needed: use <code>--singularity</code> and provide your YAML file. OncoTracer sets a default bind for <code>lpwgs_root</code> internally. Advanced users can override <code>singularity_run_options</code> if their HPC site requires different settings.</p>
-<h2 id="native-conda-fallback-mode">Native Conda: Fallback Mode<a class="headerlink" href="#native-conda-fallback-mode" title="Permanent link">&para;</a></h2>
-<p>Use this only when Docker and Singularity/Apptainer are unavailable.</p>
-<h3 id="1-install-base-tools">1. Install base tools<a class="headerlink" href="#1-install-base-tools" title="Permanent link">&para;</a></h3>
-<p>You need Java, Nextflow, Conda or Mamba, Bash, and standard Unix tools. For ONT-from-FASTQ runs without containers, also install <code>samtools</code> and <code>minimap2</code>.</p>
-<div class="highlight"><pre><span></span><code>java<span class="w"> </span>-version
-nextflow<span class="w"> </span>-version
-conda<span class="w"> </span>--version
-</code></pre></div>
-<h3 id="2-create-and-activate-the-broad-environment">2. Create and activate the broad environment<a class="headerlink" href="#2-create-and-activate-the-broad-environment" title="Permanent link">&para;</a></h3>
+<p>OncoTracer binds <code>lpwgs_root</code> internally for Singularity/Apptainer.</p>
+<h2 id="conda-fallback">Conda Fallback<a class="headerlink" href="#conda-fallback" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>environment.yml
 conda<span class="w"> </span>activate<span class="w"> </span>oncotracer
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span>-params-file<span class="w"> </span>params/my_config.yml<span class="w"> </span>-resume
 </code></pre></div>
-<h3 id="3-run-with-the-conda-profile">3. Run with the Conda profile<a class="headerlink" href="#3-run-with-the-conda-profile" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<p>The BAM refinement wrapper can create or repair its own environment named <code>bam_cnv_boundary_refine_env</code>. The classifier subworkflow uses environment YAML files under <code>bin/cna_classifier_nf/envs/</code>.</p>
-<h2 id="maintainer-build-tag-and-push-docker-images">Maintainer: Build, Tag, and Push Docker Images<a class="headerlink" href="#maintainer-build-tag-and-push-docker-images" title="Permanent link">&para;</a></h2>
-<p>Most users do not need this section. Use it only when publishing the Docker image.</p>
-<p>Create the Docker Hub repository first at <code>https://hub.docker.com/repositories/carlosfarkas</code>. The repository name should be <code>oncotracer</code>.</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>login<span class="w"> </span>-u<span class="w"> </span>carlosfarkas
-docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>carlosfarkas/oncotracer:latest<span class="w"> </span>.
-docker<span class="w"> </span>tag<span class="w"> </span>carlosfarkas/oncotracer:latest<span class="w"> </span>carlosfarkas/oncotracer:2026-07-06
-docker<span class="w"> </span>tag<span class="w"> </span>carlosfarkas/oncotracer:latest<span class="w"> </span>carlosfarkas/oncotracer:v0.1.0
-docker<span class="w"> </span>push<span class="w"> </span>carlosfarkas/oncotracer:latest
-docker<span class="w"> </span>push<span class="w"> </span>carlosfarkas/oncotracer:2026-07-06
-docker<span class="w"> </span>push<span class="w"> </span>carlosfarkas/oncotracer:v0.1.0
-</code></pre></div>
-<p>Verify the published image:</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>carlosfarkas/oncotracer:latest
-docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>carlosfarkas/oncotracer:latest<span class="w"> </span>--help
-apptainer<span class="w"> </span>pull<span class="w"> </span>oncotracer_latest.sif<span class="w"> </span>docker://carlosfarkas/oncotracer:latest
-</code></pre></div>
-<h2 id="docker-image-contents">Docker Image Contents<a class="headerlink" href="#docker-image-contents" title="Permanent link">&para;</a></h2>
-<p>The Docker image includes:</p>
-<ul>
-<li>OncoTracer repository under <code>/opt/OncoTracer</code></li>
-<li>Nextflow</li>
-<li>Java 17</li>
-<li>Conda/Miniforge</li>
-<li>Python 3.11</li>
-<li>samtools</li>
-<li>minimap2</li>
-<li>pandas, numpy, scipy, pysam, openpyxl</li>
-<li>matplotlib, scikit-learn, jinja2, requests</li>
-<li>reportlab, pypdf</li>
-<li>bundled OncoTracer scripts and classifier environments</li>
-<li>optional transformer/torch dependencies through <code>bin/cna_classifier_nf/envs/cna_classifier.yml</code> when classifier stages run</li>
-</ul>
+<p>Use Conda only when containers are unavailable.</p>
 
 
 

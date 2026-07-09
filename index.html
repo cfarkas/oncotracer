@@ -295,52 +295,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choose-your-path" class="md-nav__link">
+  <a href="#three-supported-entry-points" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choose Your Path
+        Three Supported Entry Points
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Choose Your Path">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#i-have-illumina-lp-wgs-cna-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        I have Illumina LP-WGS CNA outputs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#i-have-ont-samuraiichorcna-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        I have ONT SAMURAI/ichorCNA outputs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#i-have-ont-fastqbarcodes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        I have ONT FASTQ/barcodes
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -356,10 +317,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-outputs" class="md-nav__link">
+  <a href="#public-example-data" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example Outputs
+        Public Example Data
       
     </span>
   </a>
@@ -367,10 +328,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#more-documentation" class="md-nav__link">
+  <a href="#documentation-map" class="md-nav__link">
     <span class="md-ellipsis">
       
-        More Documentation
+        Documentation Map
       
     </span>
   </a>
@@ -481,6 +442,33 @@
     
   
     Inputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="example_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Data
   
 
     
@@ -666,52 +654,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choose-your-path" class="md-nav__link">
+  <a href="#three-supported-entry-points" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choose Your Path
+        Three Supported Entry Points
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Choose Your Path">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#i-have-illumina-lp-wgs-cna-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        I have Illumina LP-WGS CNA outputs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#i-have-ont-samuraiichorcna-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        I have ONT SAMURAI/ichorCNA outputs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#i-have-ont-fastqbarcodes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        I have ONT FASTQ/barcodes
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -727,10 +676,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-outputs" class="md-nav__link">
+  <a href="#public-example-data" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example Outputs
+        Public Example Data
       
     </span>
   </a>
@@ -738,10 +687,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#more-documentation" class="md-nav__link">
+  <a href="#documentation-map" class="md-nav__link">
     <span class="md-ellipsis">
       
-        More Documentation
+        Documentation Map
       
     </span>
   </a>
@@ -774,89 +723,64 @@
 
 
 <h1 id="oncotracer">OncoTracer<a class="headerlink" href="#oncotracer" title="Permanent link">&para;</a></h1>
-<p><strong>Reproducible LP-WGS CNA analysis for ONT and Illumina data.</strong></p>
-<p>OncoTracer is a Nextflow workflow that turns existing LP-WGS copy-number analysis scripts into a repeatable, documented pipeline. It produces refined CNA events, cytogenomic notation, plots, optional reports, and optional pathology concordance outputs.</p>
+<p><strong>Reproducible LP-WGS CNA analysis for ONT and Illumina FASTQ data.</strong></p>
+<p>OncoTracer is a Nextflow research workflow for copy-number alteration analysis. It starts from FASTQ files, runs the appropriate upstream CNA route, refines CNA boundaries, and writes tables, plots, reports, and optional pathology concordance outputs.</p>
 <div class="admonition warning">
 <p class="admonition-title">Research workflow</p>
-<p>OncoTracer is intended for research use. It is not a standalone diagnostic system and does not replace expert pathology or clinical interpretation.</p>
+<p>OncoTracer is not a standalone diagnostic system. Use outputs as research evidence that requires expert review and validation.</p>
 </div>
 <h2 id="start-here">Start Here<a class="headerlink" href="#start-here" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Pick the user path that matches your data.</li>
-<li>Copy the matching YAML file from <code>params/</code>.</li>
-<li>Edit only the paths first.</li>
-<li>Run the workflow with Docker, Singularity/Apptainer, or Conda.</li>
+<li>Install Nextflow and choose Docker, Singularity/Apptainer, or Conda.</li>
+<li>Copy one YAML file from <code>params/</code>.</li>
+<li>Edit input FASTQ paths and the output folder.</li>
+<li>Run <code>nextflow run main.nf --docker -params-file params/my_config.yml -resume</code>.</li>
 </ol>
-<p>For command examples, go to <a href="quick_start/">Quick Start</a>. For all YAML fields, go to <a href="configuration/">Configuration</a>.</p>
-<h2 id="choose-your-path">Choose Your Path<a class="headerlink" href="#choose-your-path" title="Permanent link">&para;</a></h2>
-<h3 id="i-have-illumina-lp-wgs-cna-outputs">I have Illumina LP-WGS CNA outputs<a class="headerlink" href="#i-have-illumina-lp-wgs-cna-outputs" title="Permanent link">&para;</a></h3>
-<p>Use this path if you already have SAMURAI/qDNAseq output and aligned BAM files.</p>
-<ul>
-<li>YAML: <a href="https://github.com/cfarkas/oncotracer/blob/main/params/illumina.example.yml"><code>params/illumina.example.yml</code></a></li>
-<li>Configuration help: <a href="configuration/#illumina-yaml">Illumina YAML</a></li>
-<li>Run commands: <a href="quick_start/#illumina-example">Quick Start</a></li>
-</ul>
-<h3 id="i-have-ont-samuraiichorcna-outputs">I have ONT SAMURAI/ichorCNA outputs<a class="headerlink" href="#i-have-ont-samuraiichorcna-outputs" title="Permanent link">&para;</a></h3>
-<p>Use this path if ONT CNA calling already ran and you want OncoTracer to start from BAM-supported boundary refinement.</p>
-<ul>
-<li>YAML: <a href="https://github.com/cfarkas/oncotracer/blob/main/params/ont.from_existing_samurai.example.yml"><code>params/ont.from_existing_samurai.example.yml</code></a></li>
-<li>Configuration help: <a href="configuration/#ont-from-existing-samuraiichorcna-yaml">ONT from existing SAMURAI/ichorCNA YAML</a></li>
-<li>Run commands: <a href="quick_start/#ont-existing-samuraiichorcna-example">Quick Start</a></li>
-</ul>
-<h3 id="i-have-ont-fastqbarcodes">I have ONT FASTQ/barcodes<a class="headerlink" href="#i-have-ont-fastqbarcodes" title="Permanent link">&para;</a></h3>
-<p>Use this path if you want the workflow to run the ONT SAMURAI step before boundary refinement and downstream reporting.</p>
-<ul>
-<li>YAML: <a href="https://github.com/cfarkas/oncotracer/blob/main/params/ont.example.yml"><code>params/ont.example.yml</code></a></li>
-<li>Configuration help: <a href="configuration/#ont-from-fastqbarcodes-yaml">ONT from FASTQ/barcodes YAML</a></li>
-<li>Run commands: <a href="quick_start/#ont-fastqbarcode-example">Quick Start</a></li>
-</ul>
-<div class="admonition tip">
-<p class="admonition-title">First run</p>
-<p>Keep <code>run_cna_classifier: false</code> for the first run if you mainly want to validate paths, BAM refinement, CNA codification, and plots. Enable classifier/report stages after the core workflow succeeds.</p>
-</div>
-<h2 id="what-you-get">What You Get<a class="headerlink" href="#what-you-get" title="Permanent link">&para;</a></h2>
-<p>The workflow writes numbered output folders so it is easy to inspect each stage:</p>
-<div class="highlight"><pre><span></span><code>01_samurai_ont/
-02_bam_refinement/
-03_cna_codification/
-04_cna_custom_plots/
-05_cna_classifier/
-06_workflow_summary/
-</code></pre></div>
-<p>Main outputs include:</p>
-<ul>
-<li>CNA event tables: <code>03_cna_codification/cna_events.tsv</code></li>
-<li>Cytogenomic notation: <code>03_cna_codification/cna_cytogenomic_notation.tsv</code></li>
-<li>Per-sample and cohort CNA plots: <code>04_cna_custom_plots/</code></li>
-<li>Optional CNA reports: <code>05_cna_classifier/03_report/</code></li>
-<li>Optional pathology concordance: <code>05_cna_classifier/07_pathology/pathology_concordance.tsv</code></li>
-<li>Run summary: <code>06_workflow_summary/workflow_summary.txt</code></li>
-</ul>
-<h2 id="example-outputs">Example Outputs<a class="headerlink" href="#example-outputs" title="Permanent link">&para;</a></h2>
-<p>The tutorial includes example plots generated during validation runs.</p>
+<h2 id="three-supported-entry-points">Three Supported Entry Points<a class="headerlink" href="#three-supported-entry-points" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Illumina genome overview</th>
-<th>ONT genome overview</th>
+<th>I have...</th>
+<th>Start with</th>
+<th>Run example</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><img alt="Illumina CNA genome overview" src="assets/tutorial/illumina_cna_genome_overview.png" /></td>
-<td><img alt="ONT CNA genome overview" src="assets/tutorial/ont_cna_genome_overview.png" /></td>
+<td>Illumina paired-end LP-WGS FASTQ files</td>
+<td><a href="https://github.com/cfarkas/oncotracer/blob/main/params/illumina.example.yml"><code>params/illumina.example.yml</code></a></td>
+<td><a href="quick_start/#1-illumina-fastq-files">Quick Start: Illumina</a></td>
+</tr>
+<tr>
+<td>ONT <code>fastq_pass</code> barcode FASTQ files</td>
+<td><a href="https://github.com/cfarkas/oncotracer/blob/main/params/ont.example.yml"><code>params/ont.example.yml</code></a></td>
+<td><a href="quick_start/">Quick Start: ONT</a></td>
+</tr>
+<tr>
+<td>Illumina FASTQ files plus pathology CSV</td>
+<td><a href="https://github.com/cfarkas/oncotracer/blob/main/params/illumina.pathology.example.yml"><code>params/illumina.pathology.example.yml</code></a></td>
+<td><a href="quick_start/">Quick Start: Pathology</a></td>
 </tr>
 </tbody>
 </table>
-<p>See the full worked example in <a href="tutorial_our_runs/">Tutorial</a>.</p>
-<h2 id="more-documentation">More Documentation<a class="headerlink" href="#more-documentation" title="Permanent link">&para;</a></h2>
+<h2 id="what-you-get">What You Get<a class="headerlink" href="#what-you-get" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="installation/">Installation</a></li>
-<li><a href="inputs/">Inputs</a></li>
-<li><a href="running/">Running OncoTracer</a></li>
-<li><a href="outputs/">Outputs</a></li>
-<li><a href="models_pathology/">Models &amp; Pathology</a></li>
-<li><a href="troubleshooting/">Troubleshooting</a></li>
+<li>Refined CNA event tables.</li>
+<li>Cytogenomic notation tables.</li>
+<li>Per-sample CNA plots and cohort overview plots.</li>
+<li>Workflow summary files for reproducibility.</li>
+<li>Optional classifier reports and pathology concordance summaries.</li>
+</ul>
+<h2 id="public-example-data">Public Example Data<a class="headerlink" href="#public-example-data" title="Permanent link">&para;</a></h2>
+<p>Use <a href="example_data/">Example Data</a> for verified ENA FASTQ accessions and copy-paste download commands.</p>
+<h2 id="documentation-map">Documentation Map<a class="headerlink" href="#documentation-map" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="installation/">Installation</a>: Docker, Singularity/Apptainer, and Conda.</li>
+<li><a href="configuration/">Configuration</a>: every YAML field explained.</li>
+<li><a href="inputs/">Inputs</a>: FASTQ and pathology input formats.</li>
+<li><a href="running/">Running OncoTracer</a>: runtime flags and resume behavior.</li>
+<li><a href="outputs/">Outputs</a>: important result files.</li>
+<li><a href="troubleshooting/">Troubleshooting</a>: common setup and runtime issues.</li>
 </ul>
 
 

@@ -359,6 +359,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../example_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../running/" class="md-nav__link">
         
   
@@ -527,10 +554,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#nextflow-cannot-resume" class="md-nav__link">
+  <a href="#the-yaml-file-does-not-work" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Nextflow Cannot Resume
+        The YAML File Does Not Work
       
     </span>
   </a>
@@ -538,10 +565,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#a-required-input-is-missing" class="md-nav__link">
+  <a href="#docker-cannot-see-my-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        A Required Input Is Missing
+        Docker Cannot See My Files
       
     </span>
   </a>
@@ -549,10 +576,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pathology-rows-do-not-match-samples" class="md-nav__link">
+  <a href="#ont-barcode-not-found" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pathology Rows Do Not Match Samples
+        ONT Barcode Not Found
       
     </span>
   </a>
@@ -560,10 +587,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hugging-face-models-fail" class="md-nav__link">
+  <a href="#illumina-samplesheet-error" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hugging Face Models Fail
+        Illumina Samplesheet Error
       
     </span>
   </a>
@@ -571,10 +598,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#gistic2-fails-or-is-skipped" class="md-nav__link">
+  <a href="#resume-a-failed-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GISTIC2 Fails Or Is Skipped
+        Resume A Failed Run
       
     </span>
   </a>
@@ -582,10 +609,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#old-unnumbered-folders-exist" class="md-nav__link">
+  <a href="#documentation-website" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Old Unnumbered Folders Exist
+        Documentation Website
       
     </span>
   </a>
@@ -627,10 +654,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#nextflow-cannot-resume" class="md-nav__link">
+  <a href="#the-yaml-file-does-not-work" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Nextflow Cannot Resume
+        The YAML File Does Not Work
       
     </span>
   </a>
@@ -638,10 +665,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#a-required-input-is-missing" class="md-nav__link">
+  <a href="#docker-cannot-see-my-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        A Required Input Is Missing
+        Docker Cannot See My Files
       
     </span>
   </a>
@@ -649,10 +676,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pathology-rows-do-not-match-samples" class="md-nav__link">
+  <a href="#ont-barcode-not-found" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pathology Rows Do Not Match Samples
+        ONT Barcode Not Found
       
     </span>
   </a>
@@ -660,10 +687,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hugging-face-models-fail" class="md-nav__link">
+  <a href="#illumina-samplesheet-error" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hugging Face Models Fail
+        Illumina Samplesheet Error
       
     </span>
   </a>
@@ -671,10 +698,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#gistic2-fails-or-is-skipped" class="md-nav__link">
+  <a href="#resume-a-failed-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GISTIC2 Fails Or Is Skipped
+        Resume A Failed Run
       
     </span>
   </a>
@@ -682,10 +709,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#old-unnumbered-folders-exist" class="md-nav__link">
+  <a href="#documentation-website" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Old Unnumbered Folders Exist
+        Documentation Website
       
     </span>
   </a>
@@ -718,59 +745,21 @@
 
 
 <h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
-<h2 id="nextflow-cannot-resume">Nextflow Cannot Resume<a class="headerlink" href="#nextflow-cannot-resume" title="Permanent link">&para;</a></h2>
-<p>Use <code>-resume</code> with the same working directory and similar parameters:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-profile<span class="w"> </span><span class="nb">local</span><span class="w"> </span>-params-file<span class="w"> </span>params/illumina.example.yml<span class="w"> </span>-resume
+<h2 id="the-yaml-file-does-not-work">The YAML File Does Not Work<a class="headerlink" href="#the-yaml-file-does-not-work" title="Permanent link">&para;</a></h2>
+<p>Check that every path is absolute and exists. YAML uses <code>setting_name: value</code>; do not remove the colon and do not use tabs.</p>
+<h2 id="docker-cannot-see-my-files">Docker Cannot See My Files<a class="headerlink" href="#docker-cannot-see-my-files" title="Permanent link">&para;</a></h2>
+<p>Place input data under <code>lpwgs_root</code>, or set <code>lpwgs_root</code> to the parent folder that contains your FASTQ files. OncoTracer binds this folder into Docker and Singularity by default.</p>
+<h2 id="ont-barcode-not-found">ONT Barcode Not Found<a class="headerlink" href="#ont-barcode-not-found" title="Permanent link">&para;</a></h2>
+<p>Make sure <code>ont_folder</code> points to the folder containing barcode directories, or to a run folder with <code>fastq_pass</code> inside it.</p>
+<h2 id="illumina-samplesheet-error">Illumina Samplesheet Error<a class="headerlink" href="#illumina-samplesheet-error" title="Permanent link">&para;</a></h2>
+<p>The header must be exactly:</p>
+<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,bam,gender,status
 </code></pre></div>
-<p>If you change output folder names or important parameters, Nextflow may rerun processes.</p>
-<h2 id="a-required-input-is-missing">A Required Input Is Missing<a class="headerlink" href="#a-required-input-is-missing" title="Permanent link">&para;</a></h2>
-<p>Check the YAML paths first:</p>
-<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>params/illumina.example.yml
-</code></pre></div>
-<p>Common issues:</p>
-<ul>
-<li>wrong BAM directory;</li>
-<li>wrong prior segment file;</li>
-<li>ONT barcode names not matching folder names;</li>
-<li><code>ont_sample_names</code> count not matching <code>ont_barcodes</code> count;</li>
-<li>output folder exists but was produced by an older unnumbered workflow version.</li>
-</ul>
-<h2 id="pathology-rows-do-not-match-samples">Pathology Rows Do Not Match Samples<a class="headerlink" href="#pathology-rows-do-not-match-samples" title="Permanent link">&para;</a></h2>
-<p>Check:</p>
-<ul>
-<li><code>pathology_sample_col</code> points to the correct column;</li>
-<li>sample IDs in <code>cna_events.tsv</code> match values in the pathology table;</li>
-<li>no hidden spaces or inconsistent capitalization;</li>
-<li>the pathology file is readable as CSV/TSV/XLS/XLSX.</li>
-</ul>
-<p>Review:</p>
-<div class="highlight"><pre><span></span><code>05_cna_classifier/07_pathology/pathology_status.txt
-05_cna_classifier/07_pathology/pathology_records_matched.tsv
-</code></pre></div>
-<h2 id="hugging-face-models-fail">Hugging Face Models Fail<a class="headerlink" href="#hugging-face-models-fail" title="Permanent link">&para;</a></h2>
-<p>This is non-fatal by design. Review:</p>
-<div class="highlight"><pre><span></span><code>05_cna_classifier/06_knowledge/knowledge_llm_trials.tsv
-05_cna_classifier/06_knowledge/knowledge_literature_ranker_trials.tsv
-05_cna_classifier/07_pathology/pathology_model_trials.tsv
-</code></pre></div>
-<p>For deterministic/offline behavior, disable optional model layers.</p>
-<h2 id="gistic2-fails-or-is-skipped">GISTIC2 Fails Or Is Skipped<a class="headerlink" href="#gistic2-fails-or-is-skipped" title="Permanent link">&para;</a></h2>
-<p>The classifier default is tolerant: GISTIC2 failures do not necessarily stop the run unless strict mode is enabled. Check classifier logs and <code>04_gistic/</code> outputs.</p>
-<h2 id="old-unnumbered-folders-exist">Old Unnumbered Folders Exist<a class="headerlink" href="#old-unnumbered-folders-exist" title="Permanent link">&para;</a></h2>
-<p>Older test runs may contain folders such as:</p>
-<div class="highlight"><pre><span></span><code>bam_refinement/
-cna_codification/
-cna_classifier/
-workflow_summary/
-</code></pre></div>
-<p>Current OncoTracer runs write numbered folders:</p>
-<div class="highlight"><pre><span></span><code>02_bam_refinement/
-03_cna_codification/
-04_cna_custom_plots/
-05_cna_classifier/
-06_workflow_summary/
-</code></pre></div>
-<p>Use the numbered folders for new analyses.</p>
+<p>For FASTQ runs, leave <code>bam</code> and <code>gender</code> empty.</p>
+<h2 id="resume-a-failed-run">Resume A Failed Run<a class="headerlink" href="#resume-a-failed-run" title="Permanent link">&para;</a></h2>
+<p>Fix the problem, then rerun the same command with <code>-resume</code>.</p>
+<h2 id="documentation-website">Documentation Website<a class="headerlink" href="#documentation-website" title="Permanent link">&para;</a></h2>
+<p>The online documentation is https://cfarkas.github.io/oncotracer/. You do not need to build docs locally to run the workflow.</p>
 
 
 

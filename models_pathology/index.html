@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#models-literature-and-pathology-inference" class="md-skip">
+        <a href="#models-pathology" class="md-skip">
           Skip to content
         </a>
       
@@ -361,6 +361,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../example_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../running/" class="md-nav__link">
         
   
@@ -502,10 +529,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#cna-classifier" class="md-nav__link">
+  <a href="#pathology-csv" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CNA Classifier
+        Pathology CSV
       
     </span>
   </a>
@@ -513,54 +540,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#literature-models" class="md-nav__link">
+  <a href="#research-use" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Literature Models
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-biomedical-ner" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional Biomedical NER
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pathology-concordanceinferences" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pathology Concordance/Inferences
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pathology-biomedical-transformer-models" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pathology Biomedical Transformer Models
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#interpretation-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Interpretation Limits
+        Research Use
       
     </span>
   </a>
@@ -629,10 +612,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#cna-classifier" class="md-nav__link">
+  <a href="#pathology-csv" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CNA Classifier
+        Pathology CSV
       
     </span>
   </a>
@@ -640,54 +623,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#literature-models" class="md-nav__link">
+  <a href="#research-use" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Literature Models
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-biomedical-ner" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional Biomedical NER
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pathology-concordanceinferences" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pathology Concordance/Inferences
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pathology-biomedical-transformer-models" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pathology Biomedical Transformer Models
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#interpretation-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Interpretation Limits
+        Research Use
       
     </span>
   </a>
@@ -719,82 +658,24 @@
   
 
 
-<h1 id="models-literature-and-pathology-inference">Models, Literature, and Pathology Inference<a class="headerlink" href="#models-literature-and-pathology-inference" title="Permanent link">&para;</a></h1>
-<p>OncoTracer uses deterministic CNA rules first. Optional machine-learning and language-model layers are used only as add-ons. If an optional model fails, the pipeline records the failure and continues whenever possible.</p>
-<h2 id="cna-classifier">CNA Classifier<a class="headerlink" href="#cna-classifier" title="Permanent link">&para;</a></h2>
-<p>The CNA classifier uses:</p>
+<h1 id="models-pathology">Models &amp; Pathology<a class="headerlink" href="#models-pathology" title="Permanent link">&para;</a></h1>
+<p>OncoTracer can optionally run CNA classifier/report steps and pathology concordance summaries after the core CNA workflow.</p>
+<p>Enable this in an Illumina pathology YAML:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/pathology.csv</span>
+<span class="nt">pathology_sample_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina_sample_id</span>
+<span class="nt">pathology_case_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case_code</span>
+<span class="nt">pathology_diagnosis_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_diagnosis</span>
+</code></pre></div>
+<h2 id="pathology-csv">Pathology CSV<a class="headerlink" href="#pathology-csv" title="Permanent link">&para;</a></h2>
+<p>The pathology CSV should contain one row per sample or case, with columns for:</p>
 <ul>
-<li>a pan-cancer CNA region catalog;</li>
-<li>CNA burden metrics;</li>
-<li>focal/broad event summaries;</li>
-<li>driver-region flags;</li>
-<li>optional GISTIC2 processing;</li>
-<li>a built-in CNA knowledge dictionary;</li>
-<li>optional literature retrieval from public PubMed/Europe-PMC-style metadata;</li>
-<li>optional Hugging Face literature synthesis and reference-ranking models.</li>
+<li>sample identifier matching the OncoTracer sample name;</li>
+<li>case identifier;</li>
+<li>diagnosis text.</li>
 </ul>
-<p>The classifier produces a probable CNA classification, not a definitive diagnosis.</p>
-<h2 id="literature-models">Literature Models<a class="headerlink" href="#literature-models" title="Permanent link">&para;</a></h2>
-<p>Default literature models attempted:</p>
-<div class="highlight"><pre><span></span><code>google/flan-t5-small
-google/flan-t5-base
-Falconsai/medical_summarization
-</code></pre></div>
-<p>They are used for:</p>
-<ul>
-<li>short literature synthesis for detected CNA features;</li>
-<li>selecting/ranking influential references from candidate papers.</li>
-</ul>
-<p>Trial logs:</p>
-<div class="highlight"><pre><span></span><code>05_cna_classifier/06_knowledge/knowledge_llm_trials.tsv
-05_cna_classifier/06_knowledge/knowledge_literature_ranker_trials.tsv
-</code></pre></div>
-<p>If these models are unavailable or fail in the local Transformers environment, OncoTracer falls back to deterministic citation/relevance ranking and built-in CNA interpretation text.</p>
-<h2 id="optional-biomedical-ner">Optional Biomedical NER<a class="headerlink" href="#optional-biomedical-ner" title="Permanent link">&para;</a></h2>
-<p>Default optional NER model:</p>
-<div class="highlight"><pre><span></span><code>d4data/biomedical-ner-all
-</code></pre></div>
-<p>This is disabled by default to keep runs lighter.</p>
-<h2 id="pathology-concordanceinferences">Pathology Concordance/Inferences<a class="headerlink" href="#pathology-concordanceinferences" title="Permanent link">&para;</a></h2>
-<p>When <code>pathology_csv</code> is supplied, OncoTracer performs pathology-vs-CNA concordance.</p>
-<p>It does the following:</p>
-<ol>
-<li>Matches CNA samples to pathology rows using the configured sample column.</li>
-<li>Reads diagnosis, site, microscopic text, macroscopic text, and IHC/marker fields when available.</li>
-<li>Infers broad pathology context using deterministic text and marker rules.</li>
-<li>Compares inferred pathology features with CNA classifier features.</li>
-<li>Computes an agreement call and score.</li>
-<li>Optionally attempts biomedical transformer semantic scoring.</li>
-<li>Writes complete audit tables.</li>
-</ol>
-<p>Agreement calls can include:</p>
-<div class="highlight"><pre><span></span><code>AGREEMENT
-PARTIAL_AGREEMENT
-PARTIAL_AGREEMENT_NON_LYMPHOMA
-NOT_ASSESSABLE
-NO_MATCH
-PATHOLOGY_NOT_PROVIDED
-</code></pre></div>
-<p>The deterministic pathology agreement model is recorded as:</p>
-<div class="highlight"><pre><span></span><code>OncoTracer local token agreement model v3.0-context-aware
-</code></pre></div>
-<h2 id="pathology-biomedical-transformer-models">Pathology Biomedical Transformer Models<a class="headerlink" href="#pathology-biomedical-transformer-models" title="Permanent link">&para;</a></h2>
-<p>Default models attempted when <code>pathology_use_biomed_models: true</code>:</p>
-<div class="highlight"><pre><span></span><code>microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract
-dmis-lab/biobert-base-cased-v1.1
-emilyalsentzer/Bio_ClinicalBERT
-</code></pre></div>
-<p>The model layer is recorded as:</p>
-<div class="highlight"><pre><span></span><code>OncoTracer optional biomedical transformer agreement layer v1.0
-</code></pre></div>
-<p>Trial log:</p>
-<div class="highlight"><pre><span></span><code>05_cna_classifier/07_pathology/pathology_model_trials.tsv
-</code></pre></div>
-<p>Metrics:</p>
-<div class="highlight"><pre><span></span><code>05_cna_classifier/07_pathology/pathology_concordance_metrics.json
-</code></pre></div>
-<h2 id="interpretation-limits">Interpretation Limits<a class="headerlink" href="#interpretation-limits" title="Permanent link">&para;</a></h2>
-<p>Pathology concordance does not replace pathology review. It reports whether CNA evidence is compatible with the text/IHC record available in the table. It cannot determine histologic diagnosis, mutation status, fusion status, methylation class, or clinically validated HER2/EGFR/MYC/etc. status by itself.</p>
+<h2 id="research-use">Research Use<a class="headerlink" href="#research-use" title="Permanent link">&para;</a></h2>
+<p>Classifier and pathology concordance outputs organize evidence for review. They do not replace expert interpretation or diagnostic validation.</p>
 
 
 

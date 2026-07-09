@@ -25,7 +25,7 @@
     
     
       
-        <title>Programs Used - OncoTracer</title>
+        <title>Programs - OncoTracer</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#programs-used" class="md-skip">
+        <a href="#programs" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Programs Used
+              Programs
             
           </span>
         </div>
@@ -357,6 +357,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../example_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../running/" class="md-nav__link">
         
   
@@ -505,69 +532,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#workflow-engine" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workflow Engine
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cna-generation-and-refinement" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CNA Generation and Refinement
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cna-codification-and-plotting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CNA Codification and Plotting
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#classifier-and-reports" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Classifier and Reports
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#network-dependent-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Network-Dependent Features
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -591,46 +555,17 @@
   
 
 
-<h1 id="programs-used">Programs Used<a class="headerlink" href="#programs-used" title="Permanent link">&para;</a></h1>
-<p>OncoTracer coordinates several tools and bundled scripts.</p>
-<h2 id="workflow-engine">Workflow Engine<a class="headerlink" href="#workflow-engine" title="Permanent link">&para;</a></h2>
+<h1 id="programs">Programs<a class="headerlink" href="#programs" title="Permanent link">&para;</a></h1>
+<p>OncoTracer coordinates external bioinformatics tools through Nextflow, Docker/Singularity/Conda environments, and bundled helper scripts.</p>
+<p>Main components include:</p>
 <ul>
-<li>Nextflow: workflow execution, process isolation, resume support.</li>
-<li>Java: required by Nextflow.</li>
-<li>Conda/Mamba: environment management for classifier and GISTIC2 stages.</li>
+<li>Nextflow for workflow orchestration.</li>
+<li>SAMURAI for upstream LP-WGS CNA processing from FASTQ.</li>
+<li>qDNAseq-style Illumina CNA outputs.</li>
+<li>ichorCNA-style ONT CNA outputs.</li>
+<li>Python/R helper scripts for boundary refinement, cytogenomic notation, plots, reports, and optional pathology concordance.</li>
 </ul>
-<h2 id="cna-generation-and-refinement">CNA Generation and Refinement<a class="headerlink" href="#cna-generation-and-refinement" title="Permanent link">&para;</a></h2>
-<p>Depending on mode and starting point:</p>
-<ul>
-<li>SAMURAI ONT wrapper for ONT barcode processing.</li>
-<li>ichorCNA-style ONT CNA outputs when starting from existing ONT results.</li>
-<li>qDNAseq/SAMURAI Illumina outputs when running Illumina mode.</li>
-<li>BAM-level local coverage refinement through <code>bam_cnv_boundary_refine.sh</code> and its bundled Python code.</li>
-</ul>
-<h2 id="cna-codification-and-plotting">CNA Codification and Plotting<a class="headerlink" href="#cna-codification-and-plotting" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>cna_to_cytogenomic_notation.py</code>: converts converter-ready CNA bins into event and notation tables.</li>
-<li><code>plot_cna_events.py</code>: creates custom cohort and per-sample CNA plots.</li>
-<li>Python libraries used by plotting/codification include pandas, numpy, and matplotlib.</li>
-</ul>
-<h2 id="classifier-and-reports">Classifier and Reports<a class="headerlink" href="#classifier-and-reports" title="Permanent link">&para;</a></h2>
-<p>The classifier subworkflow uses:</p>
-<ul>
-<li>pandas/numpy/scipy/scikit-learn for table processing and classification support;</li>
-<li>matplotlib for plots;</li>
-<li>GISTIC2 for cohort-level recurrent CNA analysis when available/applicable;</li>
-<li>requests for literature metadata retrieval;</li>
-<li>reportlab and pypdf for PDF report generation;</li>
-<li>transformers/torch/safetensors/huggingface_hub for optional model layers.</li>
-</ul>
-<h2 id="network-dependent-features">Network-Dependent Features<a class="headerlink" href="#network-dependent-features" title="Permanent link">&para;</a></h2>
-<p>These can depend on internet access:</p>
-<ul>
-<li>public literature metadata/abstract retrieval;</li>
-<li>Hugging Face model downloads;</li>
-<li>automatic GISTIC2 hg38 refgene download if configured as <code>auto</code>.</li>
-</ul>
-<p>The workflow is designed to keep deterministic outputs where possible if optional network/model steps fail.</p>
+<p>Use the containerized execution modes whenever possible so tool versions stay reproducible.</p>
 
 
 
