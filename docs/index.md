@@ -10,8 +10,8 @@ OncoTracer is a Nextflow research workflow for copy-number alteration analysis. 
 ## Start Here
 
 1. Install Nextflow and choose Docker, Singularity/Apptainer, or Conda.
-2. Copy one YAML file from `params/`.
-3. Edit input FASTQ paths and the output folder.
+2. For the public examples, follow the [Beginner Tutorial](tutorial_new_users.md).
+3. For your own data, create a YAML with the built-in config agent or copy one file from `params/`.
 4. Run `nextflow run main.nf --docker -params-file params/my_config.yml -resume`.
 
 ## Three Supported Entry Points
@@ -37,7 +37,8 @@ Use [Example Data](example_data.md) for verified ENA FASTQ accessions and copy-p
 ## Documentation Map
 
 - [Installation](installation.md): Docker, Singularity/Apptainer, and Conda.
-- [Configuration](configuration.md): every YAML field explained.
+- [Beginner Tutorial](tutorial_new_users.md): clone the repository, download data, generate YAMLs, and run Illumina plus ONT examples.
+- [Configuration](configuration.md): every YAML field explained, including the YAML agent.
 - [Inputs](inputs.md): FASTQ and pathology input formats.
 - [Running OncoTracer](running.md): runtime flags and resume behavior.
 - [Outputs](outputs.md): important result files.

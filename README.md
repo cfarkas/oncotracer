@@ -17,6 +17,40 @@ FASTQ files -> SAMURAI/qDNAseq or SAMURAI/ichorCNA -> boundary refinement
             -> CNA event tables -> cytogenomic notation -> plots/reports
 ```
 
+## Quickstart From A Fresh Clone
+
+These commands clone the repository, create a `test/` folder, download public Illumina and ONT FASTQ examples, write ready-to-run YAML files, and run both workflows head to toe.
+
+### Docker Quickstart
+
+```bash
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+mkdir -p test
+cd test
+bash ../bin/scripts/download_quickstart_data.sh .
+cd ..
+bash bin/scripts/make_quickstart_configs.sh test
+nextflow run main.nf --docker -params-file test/configs/illumina.quickstart.yml -resume
+nextflow run main.nf --docker -params-file test/configs/ont.quickstart.yml -resume
+```
+
+### Singularity / Apptainer Quickstart
+
+```bash
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+mkdir -p test
+cd test
+bash ../bin/scripts/download_quickstart_data.sh .
+cd ..
+bash bin/scripts/make_quickstart_configs.sh test
+nextflow run main.nf --singularity -params-file test/configs/illumina.quickstart.yml -resume
+nextflow run main.nf --singularity -params-file test/configs/ont.quickstart.yml -resume
+```
+
+The first full run downloads public FASTQ files and the hg38 reference, so it can take a while and needs enough disk space.
+
 ## Getting Started
 
 Install Nextflow, choose a container runtime, copy one YAML file from `params/`, edit the paths, and run one command.
@@ -51,7 +85,7 @@ nano params/my_illumina_pathology.yml
 nextflow run main.nf --docker -params-file params/my_illumina_pathology.yml -resume
 ```
 
-New to YAML? It is just a text settings file: `setting_name: value`. Start with [Configuration](docs/configuration.md) and edit the paths to your FASTQ files and output folder.
+New to YAML? It is just a text settings file: `setting_name: value`. Start with [Configuration](docs/configuration.md) and edit the paths to your FASTQ files and output folder. You can also generate a starter YAML with the built-in config agent: `nextflow run main.nf --make_config true --config_mode illumina --config_out params/my_illumina.yml`.
 
 ## Introduction
 

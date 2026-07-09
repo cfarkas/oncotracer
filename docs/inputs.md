@@ -7,7 +7,7 @@ OncoTracer is FASTQ-first. The public entry points start from Illumina paired-en
 Create a CSV samplesheet with this header:
 
 ```csv
-sample,fastq_1,fastq_2,bam,gender,status
+sample,fastq_1,fastq_2,status
 ```
 
 Required columns:
@@ -17,8 +17,6 @@ Required columns:
 | `sample` | Unique sample name. Use letters, numbers, `_`, or `-`. |
 | `fastq_1` | Absolute path to R1 FASTQ.gz. |
 | `fastq_2` | Absolute path to R2 FASTQ.gz. |
-| `bam` | Leave empty for FASTQ runs. |
-| `gender` | Optional; leave empty if unknown. |
 | `status` | Use `tumor` for tumor-only LP-WGS runs. |
 
 ## ONT FASTQ

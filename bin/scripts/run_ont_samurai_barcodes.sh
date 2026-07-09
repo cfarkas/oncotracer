@@ -69,6 +69,7 @@ MM2_THREADS=64
 SORT_THREADS=32
 SORT_MEM="512M"
 PATCH_SAMURAI=true
+SAMURAI_PROFILE="singularity"
 
 usage() {
   cat <<'EOF'
@@ -142,6 +143,7 @@ FASTQ/alignment options:
   --sort-mem VALUE                       default: 512M
 
 Nextflow options:
+  --profile NAME                         SAMURAI Nextflow profile: docker, singularity, or conda [singularity]
   --NFX_V1                               export NXF_SYNTAX_PARSER=v1; default
   --NFX_V2                               export NXF_SYNTAX_PARSER=v2
   --no-resume                            run without -resume
@@ -189,6 +191,7 @@ while [[ $# -gt 0 ]]; do
     --allow-partial) STRICT_SAMPLE_COMPLETENESS=false; shift ;;
     --strict-fastq-completeness) STRICT_SAMPLE_COMPLETENESS=true; shift ;;
     --force-realign) FORCE_REALIGN=true; shift ;;
+    --profile) SAMURAI_PROFILE="$2"; shift 2 ;;
     --no-resume) RESUME=false; shift ;;
     --NFX_V1|--nfx-v1|--nxf-v1) NFX_SYNTAX_PARSER="v1"; shift ;;
     --NFX_V2|--nfx-v2|--nxf-v2) NFX_SYNTAX_PARSER="v2"; shift ;;
@@ -216,6 +219,7 @@ done
 [[ "$QDNASEQ_MIN_MAPQ" =~ ^[0-9]+$ ]] || { echo "ERROR: --qdnaseq-min-mapq must be a non-negative integer" >&2; exit 1; }
 [[ "$QDNASEQ_LOCAL_PON" == "auto" || "$QDNASEQ_LOCAL_PON" == "true" || "$QDNASEQ_LOCAL_PON" == "false" ]] || { echo "ERROR: --qdnaseq-local-pon mode must be auto, true, or false" >&2; exit 1; }
 [[ "$NFX_SYNTAX_PARSER" == "v1" || "$NFX_SYNTAX_PARSER" == "v2" ]] || { echo "ERROR: Nextflow syntax parser must be v1 or v2" >&2; exit 1; }
+[[ "$SAMURAI_PROFILE" == "docker" || "$SAMURAI_PROFILE" == "singularity" || "$SAMURAI_PROFILE" == "conda" ]] || { echo "ERROR: --profile must be docker, singularity, or conda" >&2; exit 1; }
 
 if (( ${#NORMAL_FOLDERS[@]} > 0 )); then
   (( ${#NORMAL_BARCODES_CSVS[@]} == ${#NORMAL_FOLDERS[@]} )) || {
@@ -469,6 +473,9 @@ mkdir -p "$RUN_ROOT"/{input,bam,merged_fastq,results,work,logs,tmp,nextflow_laun
 mkdir -p "$LPWGS_ROOT/.singularity_cache"
 LOCAL_CONFIG="$RUN_ROOT/samurai_hg38.config"
 REF_MMI="${REF_FA}.${MM2_PRESET}.mmi"
+export NXF_HOME="$RUN_ROOT/.nextflow"
+mkdir -p "$NXF_HOME" "$NXF_HOME/plugins"
+export NXF_PLUGINS_DIR="$NXF_HOME/plugins"
 export NXF_WORK="$RUN_ROOT/work"
 export NXF_SINGULARITY_CACHEDIR="$LPWGS_ROOT/.singularity_cache"
 SAMPLESHEET="$RUN_ROOT/input/samplesheet.csv"
@@ -1082,7 +1089,7 @@ cat "$SAMPLESHEET"
 NF_CMD=(
   nextflow run dincalcilab/samurai -r v1.4.0
   -c "$LOCAL_CONFIG"
-  -profile singularity
+  -profile "$SAMURAI_PROFILE"
   -work-dir "$NXF_WORK"
   --input "$SAMPLESHEET"
   --outdir "$RUN_ROOT/results"
@@ -1118,9 +1125,39 @@ printf ' %q' "${NF_CMD[@]}"
 echo
 echo
 
+rescue_ichorcna_partial_outputs() {
+  [[ "$CALLER" == "ichorcna" ]] || return 1
+
+  local src sample seg_file
+  seg_file="$(find "$NXF_WORK" -type f -name "*.seg.txt" -printf "%T@ %p\n" 2>/dev/null | sort -n | tail -n 1 | cut -d" " -f2-)"
+  [[ -n "$seg_file" ]] || return 1
+  src="$(dirname "$seg_file")"
+  sample="$(basename "$seg_file" .seg.txt)"
+
+  [[ -n "$sample" ]] || return 1
+  [[ -s "$src/$sample.seg.txt" ]] || return 1
+  [[ -s "$src/$sample.cna.seg" ]] || return 1
+  [[ -s "$src/$sample.correctedDepth.txt" ]] || return 1
+
+  echo "WARNING: SAMURAI/ichorCNA failed after writing core outputs; publishing partial ichorCNA tables for $sample" >&2
+  mkdir -p "$RUN_ROOT/results/ichorcna"
+  cp "$src/$sample.seg.txt" "$RUN_ROOT/results/ichorcna/$sample.seg.txt"
+  cp "$src/$sample.seg.txt" "$RUN_ROOT/results/ichorcna/all_segments_ichorcna_gistic.seg"
+  cp "$src/$sample.seg.txt" "$RUN_ROOT/results/ichorcna/segments_logR_corrected_gistic.seg"
+  cp "$src/$sample.cna.seg" "$RUN_ROOT/results/ichorcna/$sample.cna.seg"
+  cp "$src/$sample.correctedDepth.txt" "$RUN_ROOT/results/ichorcna/$sample.correctedDepth.txt"
+  [[ -s "$src/$sample.params.txt" ]] && cp "$src/$sample.params.txt" "$RUN_ROOT/results/ichorcna/$sample.params.txt"
+}
+
 pushd "$RUN_ROOT/nextflow_launch" >/dev/null
+set +e
 "${NF_CMD[@]}"
+nf_status=$?
+set -e
 popd >/dev/null
+if [[ "$nf_status" -ne 0 ]]; then
+  rescue_ichorcna_partial_outputs || exit "$nf_status"
+fi
 
 run_qdnaseq_local_pon
 

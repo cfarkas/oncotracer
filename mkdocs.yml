@@ -24,6 +24,7 @@ nav:
   - Inputs: inputs.md
   - Example Data: example_data.md
   - Running OncoTracer: running.md
+  - Beginner Tutorial: tutorial_new_users.md
   - Tutorial: tutorial_our_runs.md
   - Outputs: outputs.md
   - Models & Pathology: models_pathology.md

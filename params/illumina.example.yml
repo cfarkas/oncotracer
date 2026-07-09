@@ -15,8 +15,8 @@ lpwgs_root: /media/server/STORAGE/LPWGS_2025
 outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_fastq_test
 
 # CSV samplesheet describing your Illumina FASTQ files.
-# Required columns: sample,fastq_1,fastq_2,bam,gender,status
-# Leave bam and gender empty for FASTQ runs. Use status=tumor for tumor-only LP-WGS.
+# Required columns: sample,fastq_1,fastq_2,status
+# Use status=tumor for tumor-only LP-WGS.
 illumina_samplesheet: /media/server/STORAGE/LPWGS_2025/samurai_input/samplesheet.csv
 
 # Folder where the upstream SAMURAI/qDNAseq Illumina step will write results.

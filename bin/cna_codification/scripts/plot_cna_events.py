@@ -2664,7 +2664,21 @@ def main():
     _, chrom_sizes, offsets, ordered_chroms, genome_size = read_cytoband(args.cytoband)
 
     if events.empty:
-        raise SystemExit("No CNA events found after filtering input file.")
+        bins = read_bins(args.bins, sample_name=args.profile_sample, log2_col=args.bins_log2_col) if args.bins else pd.DataFrame()
+        sample_names = sorted(bins["sample"].dropna().astype(str).unique()) if not bins.empty and "sample" in bins.columns else ["all"]
+        message = "No CNA events detected after filtering."
+        for pdf_name in ["cna_per_sample_pages.pdf", "cna_log2_ratio_profiles_all_samples.pdf"]:
+            with PdfPages(args.outdir / pdf_name) as pdf:
+                fig, ax = plt.subplots(figsize=(8.5, 4.8))
+                ax.axis("off")
+                ax.text(0.5, 0.58, message, ha="center", va="center", fontsize=14, weight="bold")
+                ax.text(0.5, 0.43, "Samples: " + ", ".join(sample_names[:12]), ha="center", va="center", fontsize=9)
+                pdf.savefig(fig, bbox_inches="tight")
+                plt.close(fig)
+        pd.DataFrame({"note": [message], "samples": [",".join(sample_names)]}).to_csv(args.outdir / "cna_plot_no_events_summary.tsv", sep="\t", index=False)
+        print(message)
+        print(f"Wrote placeholder CNA plot PDFs to: {args.outdir}")
+        return
 
     sample_order = make_sample_order(events, summary, args.sort)
 

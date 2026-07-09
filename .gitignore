@@ -32,3 +32,6 @@ __pycache__/
 .ruff_cache/
 .DS_Store
 work_*/
+
+# Quickstart data and outputs
+test/

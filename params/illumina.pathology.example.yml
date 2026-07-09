@@ -8,7 +8,7 @@ lpwgs_root: /media/server/STORAGE/LPWGS_2025
 outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_pathology_test
 
 # Illumina paired-end FASTQ samplesheet.
-# Columns: sample,fastq_1,fastq_2,bam,gender,status
+# Columns: sample,fastq_1,fastq_2,status
 illumina_samplesheet: /media/server/STORAGE/LPWGS_2025/samurai_input/samplesheet.csv
 illumina_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_pathology_test/01_samurai_illumina
 illumina_analysis_type: solid_biopsy

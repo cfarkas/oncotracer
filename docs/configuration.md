@@ -43,7 +43,7 @@ force: true
 
 | Field | Meaning |
 | --- | --- |
-| `illumina_samplesheet` | CSV table listing paired FASTQ files. Columns: `sample,fastq_1,fastq_2,bam,gender,status`. |
+| `illumina_samplesheet` | CSV table listing paired FASTQ files. Columns: `sample,fastq_1,fastq_2,status`. |
 | `illumina_samurai_outdir` | Where the upstream SAMURAI/qDNAseq step writes Illumina results. |
 | `illumina_analysis_type` | SAMURAI analysis label, usually `solid_biopsy`. |
 | `illumina_caller` | CNA caller for Illumina. Use `qdnaseq`. |
@@ -78,6 +78,52 @@ force: true
 | `ont_binsize_kb` | Coarse CNA bin size in kilobases, usually `500`. |
 | `ont_min_age_minutes` | Wait threshold for active sequencing folders. Use `0` for completed FASTQ data. |
 
+
+## Generate A YAML With The Built-In Agent
+
+You can ask `main.nf` to create a starter YAML before running the analysis. This mode only writes a config file; it does not run SAMURAI or OncoTracer.
+
+Illumina:
+
+```bash
+nextflow run main.nf \
+  --make_config true \
+  --config_mode illumina \
+  --config_root /data/my_oncotracer_run \
+  --config_out /data/my_oncotracer_run/configs/my_illumina.yml \
+  --config_samplesheet /data/my_oncotracer_run/input/samplesheet.csv \
+  -resume
+```
+
+ONT:
+
+```bash
+nextflow run main.nf \
+  --make_config true \
+  --config_mode ont \
+  --config_root /data/my_oncotracer_run \
+  --config_out /data/my_oncotracer_run/configs/my_ont.yml \
+  --config_ont_folder /data/ont_run/fastq_pass \
+  --config_ont_barcodes barcode01,barcode02 \
+  --config_ont_sample_names caseA,caseB \
+  -resume
+```
+
+Agent fields:
+
+| Field | Meaning |
+| --- | --- |
+| `make_config` | Set to `true` to write a YAML and exit. |
+| `config_mode` | `illumina` or `ont`. |
+| `config_root` | Project/data root used in the YAML. |
+| `config_out` | YAML file to write. |
+| `config_outdir` | Optional output folder for the analysis run. Defaults to `<config_root>/runs/<mode>`. |
+| `config_samplesheet` | Illumina samplesheet path. |
+| `config_illumina_fastq1`, `config_illumina_fastq2`, `config_sample` | Optional Illumina FASTQ inputs; if no samplesheet exists, the agent can create one row. |
+| `config_ont_folder` | ONT `fastq_pass` or barcode parent folder. |
+| `config_ont_barcodes` | Comma-separated barcode folders. |
+| `config_ont_sample_names` | Comma-separated sample names matching the barcode order. |
+
 ## Pathology Fields
 
 These fields are used when `run_cna_classifier: true` and a pathology CSV is available.
@@ -96,9 +142,9 @@ These fields are used when `run_cna_classifier: true` and a pathology CSV is ava
 Illumina FASTQ samplesheet:
 
 ```csv
-sample,fastq_1,fastq_2,bam,gender,status
-sample1,/data/sample1_R1.fastq.gz,/data/sample1_R2.fastq.gz,,,tumor
-sample2,/data/sample2_R1.fastq.gz,/data/sample2_R2.fastq.gz,,,tumor
+sample,fastq_1,fastq_2,status
+sample1,/data/sample1_R1.fastq.gz,/data/sample1_R2.fastq.gz,tumor
+sample2,/data/sample2_R1.fastq.gz,/data/sample2_R2.fastq.gz,tumor
 ```
 
 ONT FASTQ inputs are configured by folder and barcode names in YAML. A typical folder looks like:

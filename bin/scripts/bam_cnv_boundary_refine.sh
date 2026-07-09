@@ -1022,7 +1022,7 @@ def numeric_series(s: pd.Series) -> pd.Series:
 def choose_value_col(df: pd.DataFrame, exclude: List[str]) -> str:
     aliases = [
         "final_log2", "value", "adj.seg", "adj_seg", "adjSeg", "seg.mean", "seg_mean", "Segment_Mean", "segment_mean",
-        "corrected.seg", "corrected_seg", "log2", "log2ratio", "log2_ratio", "logR", "log.r", "copy.ratio", "copy_ratio",
+        "corrected.seg", "corrected_seg", "log2", "log2ratio", "log2_ratio", "log2_TNratio_corrected", "log2_TNratio", "logR", "log.r", "copy.ratio", "copy_ratio",
         "copynumber", "copy.number", "cn", "CN", "ratio", "median", "mean"
     ]
     c = find_col(df, aliases)
@@ -1089,16 +1089,20 @@ def read_qdnaseq_bins(input_dir: Path) -> pd.DataFrame:
     if bin_dir.exists():
         files.extend(sorted(bin_dir.glob("*_markdup_bins.bed")))
         files.extend(sorted(bin_dir.glob("*_markdup_bins.bed.gz")))
+        files.extend(sorted(bin_dir.glob("*_bins.bed")))
+        files.extend(sorted(bin_dir.glob("*_bins.bed.gz")))
     if not files:
         files.extend(sorted(input_dir.glob("*_markdup_bins.bed")))
         files.extend(sorted(input_dir.glob("*_markdup_bins.bed.gz")))
+        files.extend(sorted(input_dir.glob("*_bins.bed")))
+        files.extend(sorted(input_dir.glob("*_bins.bed.gz")))
     if not files:
         raise FileNotFoundError(
-            f"No qDNAseq bin BED files found in {input_dir}/bins. Expected files like *_markdup_bins.bed."
+            f"No qDNAseq bin BED files found in {input_dir}/bins. Expected files like *_markdup_bins.bed or *_bins.bed."
         )
     frames = []
     for f in files:
-        sample = re.sub(r"_markdup_bins\.bed(\.gz)?$", "", f.name)
+        sample = re.sub(r"_(?:markdup_)?bins\.bed(\.gz)?$", "", f.name)
         log(f"Reading qDNAseq bins: {sample} <- {f}")
         frames.append(standardize_bin_df(read_table(f), sample, f))
     return pd.concat(frames, ignore_index=True)

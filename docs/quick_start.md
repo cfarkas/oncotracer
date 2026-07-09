@@ -1,51 +1,73 @@
 # Quick Start
 
-This page gives copy-paste commands for the three supported OncoTracer entry points. Docker is recommended for new users: use `--docker`. Use `--singularity` on HPC systems with Singularity/Apptainer.
+This page gives copy-paste commands for a fresh OncoTracer clone. Docker is recommended for new users: use `--docker`. Use `--singularity` on HPC systems with Singularity/Apptainer.
 
-!!! tip "Edit YAML paths first"
-    Copy one file from `params/`, edit the FASTQ paths and output path, then run. YAML is a plain-text settings file with lines like `setting_name: value`.
+The commands below clone the repository, create a `test/` working folder, download public Illumina and ONT FASTQ examples, ask the built-in YAML agent to write ready-to-run configs, and run both workflows head to toe.
 
-## 1. Illumina FASTQ Files
-
-```bash
-cp params/illumina.example.yml params/my_illumina.yml
-nano params/my_illumina.yml
-nextflow run main.nf --docker   -params-file params/my_illumina.yml   -resume
-```
-
-## 2. ONT fastq_pass / Barcode FASTQ Files
+## Docker
 
 ```bash
-cp params/ont.example.yml params/my_ont.yml
-nano params/my_ont.yml
-nextflow run main.nf --docker   -params-file params/my_ont.yml   -resume
-```
-
-## 3. Illumina FASTQ Files + Pathology Reports
-
-```bash
-cp params/illumina.pathology.example.yml params/my_illumina_pathology.yml
-nano params/my_illumina_pathology.yml
-nextflow run main.nf --docker   -params-file params/my_illumina_pathology.yml   -resume
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+mkdir -p test
+cd test
+bash ../bin/scripts/download_quickstart_data.sh .
+cd ..
+bash bin/scripts/make_quickstart_configs.sh test
+nextflow run main.nf --docker -params-file test/configs/illumina.quickstart.yml -resume
+nextflow run main.nf --docker -params-file test/configs/ont.quickstart.yml -resume
 ```
 
 ## Singularity / Apptainer
 
-Use this on HPC systems where Docker is not available.
-
 ```bash
-apptainer pull oncotracer_latest.sif docker://carlosfarkas/oncotracer:latest
-nextflow run main.nf --singularity   -params-file params/my_illumina.yml   -resume
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+mkdir -p test
+cd test
+bash ../bin/scripts/download_quickstart_data.sh .
+cd ..
+bash bin/scripts/make_quickstart_configs.sh test
+nextflow run main.nf --singularity -params-file test/configs/illumina.quickstart.yml -resume
+nextflow run main.nf --singularity -params-file test/configs/ont.quickstart.yml -resume
 ```
 
-## Conda Fallback
+The first full run downloads public FASTQ files, containers, and the hg38 reference, so it can take a while and needs enough disk space.
 
-Use Conda only when containers are unavailable.
+## Use The YAML Agent Directly
+
+You can also ask `main.nf` to write your own YAML file. This does not run the analysis.
+
+Illumina example:
 
 ```bash
-conda env create -f environment.yml
-conda activate oncotracer
-nextflow run main.nf --conda   -params-file params/my_illumina.yml   -resume
+nextflow run main.nf \
+  --make_config true \
+  --config_mode illumina \
+  --config_root /data/oncotracer_project \
+  --config_out /data/oncotracer_project/configs/my_illumina.yml \
+  --config_samplesheet /data/oncotracer_project/input/samplesheet.csv \
+  -resume
+```
+
+ONT example:
+
+```bash
+nextflow run main.nf \
+  --make_config true \
+  --config_mode ont \
+  --config_root /data/oncotracer_project \
+  --config_out /data/oncotracer_project/configs/my_ont.yml \
+  --config_ont_folder /data/ont_run/fastq_pass \
+  --config_ont_barcodes barcode01,barcode02 \
+  --config_ont_sample_names caseA,caseB \
+  -resume
+```
+
+Then run with the generated file:
+
+```bash
+nextflow run main.nf --docker -params-file /data/oncotracer_project/configs/my_illumina.yml -resume
 ```
 
 ## After A Successful Run
