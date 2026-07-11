@@ -54,9 +54,6 @@ def datasetName() {
 
 workflow {
   main:
-  if( asBool(params.make_config) ) {
-    MAKE_CONFIG_AGENT(Channel.value('make_config'))
-  } else {
   requireParam('mode', params.mode)
   def mode = params.mode.toString()
   if( !['ont', 'illumina'].contains(mode) ) {
@@ -89,85 +86,8 @@ workflow {
   }
 
   WRITE_SUMMARY(RUN_CNA_CUSTOM_PLOTS.out.run_meta)
-  }
 }
 
-
-process MAKE_CONFIG_AGENT {
-  tag { params.config_mode ?: 'config' }
-  container null
-
-  input:
-  val trigger
-
-  output:
-  path 'generated_config.yml', emit: config
-  path 'make_config_done.txt', emit: marker
-
-  script:
-  def mode = blank(params.config_mode) ? '' : params.config_mode.toString()
-  def root = blank(params.config_root) ? 'test' : params.config_root.toString()
-  def target = blank(params.config_out) ? "${root}/configs/${mode}.quickstart.yml" : params.config_out.toString()
-  def outdir = blank(params.config_outdir) ? "${root}/runs/${mode}" : params.config_outdir.toString()
-  def sample = blank(params.config_sample) ? 'sample1' : params.config_sample.toString()
-  def samplesheet = blank(params.config_samplesheet) ? "${root}/input/${sample}.illumina.samplesheet.csv" : params.config_samplesheet.toString()
-  def fq1 = blank(params.config_illumina_fastq1) ? '' : params.config_illumina_fastq1.toString()
-  def fq2 = blank(params.config_illumina_fastq2) ? '' : params.config_illumina_fastq2.toString()
-  def ontFolder = blank(params.config_ont_folder) ? "${root}/fastq_pass" : params.config_ont_folder.toString()
-  def ontBarcodes = blank(params.config_ont_barcodes) ? 'barcode01' : params.config_ont_barcodes.toString()
-  def ontSampleNames = blank(params.config_ont_sample_names) ? ontBarcodes.tokenize(',').collect{ it.trim() }.findAll{ it }.join(',') : params.config_ont_sample_names.toString()
-
-  if( !['illumina', 'ont'].contains(mode) ) {
-    error "Config agent requires --config_mode illumina or --config_mode ont."
-  }
-
-  """
-  set -Eeuo pipefail
-  target='${target}'
-  target_dir=\$(dirname "\$target")
-  mkdir -p "\$target_dir"
-
-  if [[ '${mode}' == 'illumina' ]]; then
-    samplesheet='${samplesheet}'
-    if [[ ! -s "\$samplesheet" && -n '${fq1}' && -n '${fq2}' ]]; then
-      mkdir -p "\$(dirname "\$samplesheet")"
-      printf 'sample,fastq_1,fastq_2,status\n%s,%s,%s,tumor\n' '${sample}' '${fq1}' '${fq2}' > "\$samplesheet"
-    fi
-    cat > generated_config.yml <<'EOF_CONFIG'
-mode: illumina
-lpwgs_root: ${root}
-outdir: ${outdir}
-illumina_samplesheet: ${samplesheet}
-illumina_samurai_outdir: ${outdir}/01_samurai_illumina
-illumina_analysis_type: solid_biopsy
-illumina_caller: qdnaseq
-illumina_binsize_kb: 100
-run_cna_classifier: false
-force: true
-EOF_CONFIG
-  else
-    cat > generated_config.yml <<'EOF_CONFIG'
-mode: ont
-lpwgs_root: ${root}
-outdir: ${outdir}
-ont_folder: ${ontFolder}
-ont_barcodes: ${ontBarcodes}
-ont_sample_names: ${ontSampleNames}
-ont_samurai_outdir: ${outdir}/01_samurai_ont
-ont_analysis_type: liquid_biopsy
-ont_caller: ichorcna
-ont_binsize_kb: 500
-ont_min_age_minutes: 0
-run_cna_classifier: false
-force: true
-EOF_CONFIG
-  fi
-
-  cp generated_config.yml "\$target"
-  echo "Config written: \$target" > make_config_done.txt
-  cat make_config_done.txt
-  """
-}
 
 process RUN_ILLUMINA_SAMURAI {
   tag 'illumina_samurai'

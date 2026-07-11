@@ -1,48 +1,36 @@
-# ONT FASTQ/barcode example configuration for OncoTracer.
-#
-# What is YAML?
-# YAML is a plain-text settings file. Each setting is written as:
-#   setting_name: value
-# Edit the value after the colon. Use real absolute paths. Do not use tabs.
+# OncoTracer ONT example configuration.
+# Copy before editing: cp params/ont.example.yml params/my_ont.yml
+# Use Linux absolute paths. Windows paths such as C:\Users\Name\data are not
+# Linux paths; in WSL use /mnt/c/Users/Name/data or /home/name/data.
 
-# Workflow branch. Use "ont" for Oxford Nanopore LP-WGS FASTQ inputs.
 mode: ont
+lpwgs_root: /home/student/oncotracer_project
+outdir: /home/student/oncotracer_project/runs/ont_example
 
-# Root folder for this project/data area. Docker/Singularity bind this folder by default.
-lpwgs_root: /media/server/STORAGE/LPWGS_2025
+# Folder containing ONT FASTQ files or barcode folders.
+# Check with: find /home/student/data/ont_run/fastq_pass -maxdepth 2 -type f | head
+ont_folder: /home/student/data/ont_run/fastq_pass
 
-# Main output folder. OncoTracer writes numbered result folders inside this path.
-outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_fastq_test
-
-# Folder containing ONT FASTQ files. This can be the run folder, fastq_pass, or a folder
-# containing barcode folders such as barcode07/ and barcode08/.
-ont_folder: /path/to/ont/run/or/fastq_pass
-
-# Comma-separated barcode IDs to process. Order must match ont_sample_names.
+# Comma-separated barcode IDs; order must match ont_sample_names.
 ont_barcodes: barcode07,barcode08
+ont_sample_names: Sample_ONT_1,Sample_ONT_2
 
-# Comma-separated sample names assigned to the barcodes above.
-ont_sample_names: sample1,sample2
+# Output folder for the upstream ONT SAMURAI/ichorCNA step.
+ont_samurai_outdir: /home/student/oncotracer_project/runs/ont_example/01_samurai_ont
 
-# Folder where the upstream ONT SAMURAI step will write results.
-ont_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_fastq_test/01_samurai_ont
-
-# SAMURAI settings for ONT LP-WGS CNA calling.
+# Scientific defaults for the standard ONT route.
 ont_analysis_type: liquid_biopsy
 ont_caller: ichorcna
 ont_binsize_kb: 500
-
-# Wait time for active sequencing folders. Use 0 for completed FASTQ files.
 ont_min_age_minutes: 0
 
-# Optional fields you can add when needed:
-# ont_ref: /path/to/reference.fa
-# ont_normal_folder: /path/to/normal_fastq_or_run
-# ont_normal_barcodes: barcode01,barcode02
-# ont_normal_sample_names: normal1,normal2
-# ont_build_pon: false
-# ont_force_realign: false
+# Optional advanced ONT inputs.
+ont_ref: null
+ont_normal_folder: null
+ont_normal_barcodes: null
+ont_normal_sample_names: null
+ont_build_pon: false
+ont_force_realign: false
 
-# Set true to run CNA classifier and reports after core CNA outputs.
 run_cna_classifier: false
 force: true

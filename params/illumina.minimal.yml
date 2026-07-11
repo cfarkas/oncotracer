@@ -1,0 +1,6 @@
+# Minimal Illumina template. Copy this file and replace the example paths.
+mode: illumina
+lpwgs_root: /home/student/oncotracer_project
+outdir: /home/student/oncotracer_project/runs/my_first_illumina_run
+illumina_samplesheet: /home/student/oncotracer_project/input/illumina_samplesheet.csv
+illumina_samurai_outdir: /home/student/oncotracer_project/runs/my_first_illumina_run/01_samurai_illumina

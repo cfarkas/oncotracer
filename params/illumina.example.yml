@@ -1,36 +1,36 @@
-# Illumina FASTQ example configuration for OncoTracer.
-#
-# What is YAML?
-# YAML is a plain-text settings file. Each setting is written as:
-#   setting_name: value
-# Edit the value after the colon. Use real absolute paths. Do not use tabs.
+# OncoTracer Illumina example configuration.
+# Copy before editing: cp params/illumina.example.yml params/my_illumina.yml
+# YAML is plain text: setting_name: value. Use spaces, not tabs.
+# Use real Linux absolute paths from commands such as:
+#   pwd
+#   realpath .
+#   realpath data/sample_R1.fastq.gz
+#   ls -lh /home/student/data/sample_R1.fastq.gz
 
-# Workflow branch. Use "illumina" for Illumina paired-end LP-WGS FASTQ files.
 mode: illumina
 
-# Root folder for this project/data area. Docker/Singularity bind this folder by default.
-lpwgs_root: /media/server/STORAGE/LPWGS_2025
+# Absolute project/data root visible to Docker or Singularity.
+lpwgs_root: /home/student/oncotracer_project
 
-# Main output folder. OncoTracer writes numbered result folders inside this path.
-outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_fastq_test
+# Main output folder for numbered OncoTracer directories.
+outdir: /home/student/oncotracer_project/runs/illumina_example
 
-# CSV samplesheet describing your Illumina FASTQ files.
-# Required columns: sample,fastq_1,fastq_2,status
-# Use status=tumor for tumor-only LP-WGS.
-illumina_samplesheet: /media/server/STORAGE/LPWGS_2025/samurai_input/samplesheet.csv
+# CSV with columns: sample,fastq_1,fastq_2,status
+# Example row:
+# Sample_A,/home/student/data/Sample_A_R1.fastq.gz,/home/student/data/Sample_A_R2.fastq.gz,tumor
+illumina_samplesheet: /home/student/oncotracer_project/input/illumina_samplesheet.csv
 
-# Folder where the upstream SAMURAI/qDNAseq Illumina step will write results.
-illumina_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_fastq_test/01_samurai_illumina
+# Output folder for the upstream Illumina SAMURAI/qDNAseq step.
+illumina_samurai_outdir: /home/student/oncotracer_project/runs/illumina_example/01_samurai_illumina
 
-# SAMURAI settings for Illumina LP-WGS CNA calling.
+# Scientific defaults for the standard Illumina route.
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
 
-# Set true to run CNA classifier, reports, and optional pathology concordance.
+# Optional classifier/pathology route.
 run_cna_classifier: false
-
-# Optional pathology table. Keep null for standard CNA-only runs.
+cna_classifier_sample_set: broad_cancer
 pathology_csv: null
 pathology_sample_col: illumina_sample_id
 pathology_case_col: case_code
@@ -38,5 +38,4 @@ pathology_diagnosis_col: final_diagnosis
 pathology_use_biomed_models: true
 pathology_biomed_local_files_only: false
 
-# Allow underlying steps to overwrite/recompute outputs in the selected outdir.
 force: true

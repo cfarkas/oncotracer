@@ -1,31 +1,26 @@
-# Illumina FASTQ + pathology example configuration for OncoTracer.
-#
-# Copy this file, edit the paths, then run with --docker, --singularity, or --conda.
-# YAML uses setting_name: value. Edit only the values unless you know what you are changing.
+# OncoTracer Illumina + pathology example configuration.
+# Copy before editing: cp params/illumina.pathology.example.yml params/my_illumina_pathology.yml
 
 mode: illumina
-lpwgs_root: /media/server/STORAGE/LPWGS_2025
-outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_pathology_test
+lpwgs_root: /home/student/oncotracer_project
+outdir: /home/student/oncotracer_project/runs/illumina_pathology_example
 
-# Illumina paired-end FASTQ samplesheet.
-# Columns: sample,fastq_1,fastq_2,status
-illumina_samplesheet: /media/server/STORAGE/LPWGS_2025/samurai_input/samplesheet.csv
-illumina_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_pathology_test/01_samurai_illumina
+illumina_samplesheet: /home/student/oncotracer_project/input/illumina_samplesheet.csv
+illumina_samurai_outdir: /home/student/oncotracer_project/runs/illumina_pathology_example/01_samurai_illumina
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
 
-# Enable classifier/report/pathology outputs.
 run_cna_classifier: true
+cna_classifier_sample_set: broad_cancer
+cna_classifier_profile: conda
 
-# Pathology CSV file and column names.
-# The sample column must match the OncoTracer/Illumina sample names.
-pathology_csv: /path/to/pathology.csv
+# Pathology CSV and column names. Sample IDs must match OncoTracer sample names.
+pathology_csv: /home/student/oncotracer_project/input/pathology.csv
 pathology_sample_col: illumina_sample_id
 pathology_case_col: case_code
 pathology_diagnosis_col: final_diagnosis
-
-# Biomedical-model concordance options. Set local_files_only true on offline machines.
 pathology_use_biomed_models: true
 pathology_biomed_local_files_only: false
+
 force: true

@@ -27,8 +27,8 @@ mkdir -p data/public/illumina_DRR000542
 cd data/public/illumina_DRR000542
 curl -L -o DRR000542_1.fastq.gz   ftp://ftp.sra.ebi.ac.uk/vol1/fastq/DRR000/DRR000542/DRR000542_1.fastq.gz
 curl -L -o DRR000542_2.fastq.gz   ftp://ftp.sra.ebi.ac.uk/vol1/fastq/DRR000/DRR000542/DRR000542_2.fastq.gz
-printf 'sample,fastq_1,fastq_2,bam,gender,status
-DRR000542,%s,%s,,,tumor
+printf 'sample,fastq_1,fastq_2,status
+DRR000542,%s,%s,tumor
 '   "$PWD/DRR000542_1.fastq.gz"   "$PWD/DRR000542_2.fastq.gz" > illumina.samplesheet.csv
 ```
 

@@ -1,8 +1,6 @@
 site_name: OncoTracer
 site_description: Reproducible LP-WGS CNA analysis for ONT and Illumina data
 site_author: OncoTracer developers
-# GitHub Pages is the active public documentation site.
-# TODO: switch to a ReadTheDocs URL only after the RTD project exists.
 site_url: https://cfarkas.github.io/oncotracer/
 repo_name: cfarkas/oncotracer
 repo_url: https://github.com/cfarkas/oncotracer
@@ -18,17 +16,27 @@ theme:
 
 nav:
   - Home: index.md
-  - Quick Start: quick_start.md
-  - Installation: installation.md
-  - Configuration: configuration.md
-  - Inputs: inputs.md
-  - Example Data: example_data.md
-  - Running OncoTracer: running.md
-  - Beginner Tutorial: tutorial_new_users.md
-  - Tutorial: tutorial_our_runs.md
-  - Outputs: outputs.md
-  - Models & Pathology: models_pathology.md
+  - Start Here:
+      - Before You Begin: getting_started/before_you_begin.md
+      - What Is a Path?: getting_started/paths.md
+      - Install OncoTracer: installation.md
+      - First Illumina Run: getting_started/first_illumina_run.md
+      - First ONT Run: getting_started/first_ont_run.md
+      - Public Example Data: example_data.md
+  - Configuration:
+      - YAML Basics: configuration/yaml_basics.md
+      - Illumina YAML: configuration/illumina.md
+      - ONT YAML: configuration/ont.md
+      - Pathology and Classifier: configuration/pathology.md
+      - Advanced Refinement Settings: configuration/refinement.md
+      - Complete Parameter Reference: configuration/parameter_reference.md
+  - Input Files: inputs.md
+  - Workflow Overview: running.md
+  - Output Files: outputs.md
   - Troubleshooting: troubleshooting.md
+  - Citation and Research-Use Limitations: citation_research_use.md
+  - Developer Guide: developer_guide.md
+  - Gallery: gallery.md
 
 markdown_extensions:
   - admonition

@@ -9,37 +9,26 @@ OncoTracer is a Nextflow research workflow for copy-number alteration analysis. 
 
 ## Start Here
 
-1. Install Nextflow and choose Docker, Singularity/Apptainer, or Conda.
-2. For the public examples, follow the [Beginner Tutorial](tutorial_new_users.md).
-3. For your own data, create a YAML with the built-in config agent or copy one file from `params/`.
-4. Run `nextflow run main.nf --docker -params-file params/my_config.yml -resume`.
+1. Read [Before You Begin](getting_started/before_you_begin.md).
+2. Learn path basics in [What Is a Path?](getting_started/paths.md).
+3. Install Nextflow plus Docker, Singularity/Apptainer, or Conda in [Install OncoTracer](installation.md).
+4. Copy a versioned YAML template from `params/` and edit your real absolute paths.
+5. Run with `nextflow run main.nf --docker -params-file params/my_config.yml -resume`.
 
-## Three Supported Entry Points
+## Supported Entry Points
 
-| I have... | Start with | Run example |
+| I have... | Copy this template | Read this page |
 | --- | --- | --- |
-| Illumina paired-end LP-WGS FASTQ files | [`params/illumina.example.yml`](https://github.com/cfarkas/oncotracer/blob/main/params/illumina.example.yml) | [Quick Start: Illumina](quick_start.md#1-illumina-fastq-files) |
-| ONT `fastq_pass` barcode FASTQ files | [`params/ont.example.yml`](https://github.com/cfarkas/oncotracer/blob/main/params/ont.example.yml) | [Quick Start: ONT](quick_start.md) |
-| Illumina FASTQ files plus pathology CSV | [`params/illumina.pathology.example.yml`](https://github.com/cfarkas/oncotracer/blob/main/params/illumina.pathology.example.yml) | [Quick Start: Pathology](quick_start.md) |
-
-## What You Get
-
-- Refined CNA event tables.
-- Cytogenomic notation tables.
-- Per-sample CNA plots and cohort overview plots.
-- Workflow summary files for reproducibility.
-- Optional classifier reports and pathology concordance summaries.
-
-## Public Example Data
-
-Use [Example Data](example_data.md) for verified ENA FASTQ accessions and copy-paste download commands.
+| Illumina paired-end LP-WGS FASTQ files | `params/illumina.minimal.yml` or `params/illumina.example.yml` | [First Illumina Run](getting_started/first_illumina_run.md) |
+| ONT `fastq_pass` or barcode FASTQ files | `params/ont.minimal.yml` or `params/ont.example.yml` | [First ONT Run](getting_started/first_ont_run.md) |
+| Illumina FASTQ files plus pathology CSV | `params/illumina.pathology.example.yml` | [Pathology and Classifier](configuration/pathology.md) |
 
 ## Documentation Map
 
-- [Installation](installation.md): Docker, Singularity/Apptainer, and Conda.
-- [Beginner Tutorial](tutorial_new_users.md): clone the repository, download data, generate YAMLs, and run Illumina plus ONT examples.
-- [Configuration](configuration.md): every YAML field explained, including the YAML agent.
-- [Inputs](inputs.md): FASTQ and pathology input formats.
-- [Running OncoTracer](running.md): runtime flags and resume behavior.
-- [Outputs](outputs.md): important result files.
-- [Troubleshooting](troubleshooting.md): common setup and runtime issues.
+- [YAML Basics](configuration/yaml_basics.md)
+- [Illumina YAML](configuration/illumina.md)
+- [ONT YAML](configuration/ont.md)
+- [Complete Parameter Reference](configuration/parameter_reference.md)
+- [Input Files](inputs.md)
+- [Output Files](outputs.md)
+- [Troubleshooting](troubleshooting.md)

@@ -1,158 +1,19 @@
 # Configuration
 
-OncoTracer uses YAML files for run settings. A YAML file is a plain-text file where each line usually looks like this:
+OncoTracer uses manually editable, versioned YAML templates in `params/`.
 
-```yaml
-setting_name: value
-```
+Start here:
 
-Edit the value after the colon. Use absolute paths for files and folders. Do not use tabs.
+- [YAML Basics](configuration/yaml_basics.md)
+- [Illumina YAML](configuration/illumina.md)
+- [ONT YAML](configuration/ont.md)
+- [Pathology and Classifier](configuration/pathology.md)
+- [Advanced Refinement Settings](configuration/refinement.md)
+- [Complete Parameter Reference](configuration/parameter_reference.md)
 
-## Which YAML Should I Copy?
-
-| Use case | File |
-| --- | --- |
-| Illumina paired-end FASTQ | `params/illumina.example.yml` |
-| ONT `fastq_pass` barcode FASTQ | `params/ont.example.yml` |
-| Illumina FASTQ plus pathology CSV | `params/illumina.pathology.example.yml` |
-
-## Common Fields
-
-| Field | Required | Meaning |
-| --- | --- | --- |
-| `mode` | yes | `illumina` or `ont`. |
-| `lpwgs_root` | yes | Main project/data root. Docker and Singularity bind this folder by default. |
-| `outdir` | yes | Main OncoTracer output folder. |
-| `run_cna_classifier` | no | `true` to run classifier/report/pathology steps after core CNA outputs. |
-| `force` | no | `true` lets underlying scripts recompute outputs in the selected output folder. |
-
-## Illumina FASTQ YAML
-
-```yaml
-mode: illumina
-lpwgs_root: /media/server/STORAGE/LPWGS_2025
-outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_fastq_test
-illumina_samplesheet: /media/server/STORAGE/LPWGS_2025/samurai_input/samplesheet.csv
-illumina_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_illumina_fastq_test/01_samurai_illumina
-illumina_analysis_type: solid_biopsy
-illumina_caller: qdnaseq
-illumina_binsize_kb: 100
-run_cna_classifier: false
-force: true
-```
-
-| Field | Meaning |
-| --- | --- |
-| `illumina_samplesheet` | CSV table listing paired FASTQ files. Columns: `sample,fastq_1,fastq_2,status`. |
-| `illumina_samurai_outdir` | Where the upstream SAMURAI/qDNAseq step writes Illumina results. |
-| `illumina_analysis_type` | SAMURAI analysis label, usually `solid_biopsy`. |
-| `illumina_caller` | CNA caller for Illumina. Use `qdnaseq`. |
-| `illumina_binsize_kb` | Coarse CNA bin size in kilobases, usually `100` for LP-WGS. |
-
-## ONT FASTQ YAML
-
-```yaml
-mode: ont
-lpwgs_root: /media/server/STORAGE/LPWGS_2025
-outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_fastq_test
-ont_folder: /path/to/ont/run/or/fastq_pass
-ont_barcodes: barcode07,barcode08
-ont_sample_names: sample1,sample2
-ont_samurai_outdir: /media/server/STORAGE/LPWGS_2025/CNA_analyses/OncoTracer_ONT_fastq_test/01_samurai_ont
-ont_analysis_type: liquid_biopsy
-ont_caller: ichorcna
-ont_binsize_kb: 500
-ont_min_age_minutes: 0
-run_cna_classifier: false
-force: true
-```
-
-| Field | Meaning |
-| --- | --- |
-| `ont_folder` | ONT run folder, `fastq_pass`, or folder containing barcode subfolders. |
-| `ont_barcodes` | Comma-separated barcode folder names to process. |
-| `ont_sample_names` | Comma-separated sample names in the same order as `ont_barcodes`. |
-| `ont_samurai_outdir` | Where the upstream ONT SAMURAI step writes BAM and ichorCNA results. |
-| `ont_analysis_type` | SAMURAI analysis label, often `liquid_biopsy` or `solid_biopsy`. |
-| `ont_caller` | CNA caller for ONT. Use `ichorcna`. |
-| `ont_binsize_kb` | Coarse CNA bin size in kilobases, usually `500`. |
-| `ont_min_age_minutes` | Wait threshold for active sequencing folders. Use `0` for completed FASTQ data. |
-
-
-## Generate A YAML With The Built-In Agent
-
-You can ask `main.nf` to create a starter YAML before running the analysis. This mode only writes a config file; it does not run SAMURAI or OncoTracer.
-
-Illumina:
+Copy and validate:
 
 ```bash
-nextflow run main.nf \
-  --make_config true \
-  --config_mode illumina \
-  --config_root /data/my_oncotracer_run \
-  --config_out /data/my_oncotracer_run/configs/my_illumina.yml \
-  --config_samplesheet /data/my_oncotracer_run/input/samplesheet.csv \
-  -resume
-```
-
-ONT:
-
-```bash
-nextflow run main.nf \
-  --make_config true \
-  --config_mode ont \
-  --config_root /data/my_oncotracer_run \
-  --config_out /data/my_oncotracer_run/configs/my_ont.yml \
-  --config_ont_folder /data/ont_run/fastq_pass \
-  --config_ont_barcodes barcode01,barcode02 \
-  --config_ont_sample_names caseA,caseB \
-  -resume
-```
-
-Agent fields:
-
-| Field | Meaning |
-| --- | --- |
-| `make_config` | Set to `true` to write a YAML and exit. |
-| `config_mode` | `illumina` or `ont`. |
-| `config_root` | Project/data root used in the YAML. |
-| `config_out` | YAML file to write. |
-| `config_outdir` | Optional output folder for the analysis run. Defaults to `<config_root>/runs/<mode>`. |
-| `config_samplesheet` | Illumina samplesheet path. |
-| `config_illumina_fastq1`, `config_illumina_fastq2`, `config_sample` | Optional Illumina FASTQ inputs; if no samplesheet exists, the agent can create one row. |
-| `config_ont_folder` | ONT `fastq_pass` or barcode parent folder. |
-| `config_ont_barcodes` | Comma-separated barcode folders. |
-| `config_ont_sample_names` | Comma-separated sample names matching the barcode order. |
-
-## Pathology Fields
-
-These fields are used when `run_cna_classifier: true` and a pathology CSV is available.
-
-| Field | Meaning |
-| --- | --- |
-| `pathology_csv` | CSV file containing pathology annotations. Use `null` to skip pathology concordance. |
-| `pathology_sample_col` | Column matching OncoTracer sample names. |
-| `pathology_case_col` | Case or patient identifier column. |
-| `pathology_diagnosis_col` | Diagnosis text column. |
-| `pathology_use_biomed_models` | `true` to enable biomedical model agreement scoring. |
-| `pathology_biomed_local_files_only` | `true` for offline runs that must not download model files. |
-
-## Samplesheet Examples
-
-Illumina FASTQ samplesheet:
-
-```csv
-sample,fastq_1,fastq_2,status
-sample1,/data/sample1_R1.fastq.gz,/data/sample1_R2.fastq.gz,tumor
-sample2,/data/sample2_R1.fastq.gz,/data/sample2_R2.fastq.gz,tumor
-```
-
-ONT FASTQ inputs are configured by folder and barcode names in YAML. A typical folder looks like:
-
-```text
-fastq_pass/
-  barcode07/
-    reads_001.fastq.gz
-  barcode08/
-    reads_001.fastq.gz
+cp params/illumina.minimal.yml params/my_illumina.yml
+nextflow run main.nf -stub-run --docker -params-file params/my_illumina.yml
 ```

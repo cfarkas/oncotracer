@@ -24,6 +24,6 @@ outdir/
 
 ## Example Plots
 
-![Illumina CNA overview](assets/tutorial/illumina_cna_genome_overview.png)
+![Illumina CNA overview](assets/gallery/illumina_cna_genome_overview.png)
 
-![ONT CNA overview](assets/tutorial/ont_cna_genome_overview.png)
+![ONT CNA overview](assets/gallery/ont_cna_genome_overview.png)

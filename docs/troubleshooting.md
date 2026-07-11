@@ -17,7 +17,7 @@ Make sure `ont_folder` points to the folder containing barcode directories, or t
 The header must be exactly:
 
 ```csv
-sample,fastq_1,fastq_2,bam,gender,status
+sample,fastq_1,fastq_2,status
 ```
 
 For FASTQ runs, leave `bam` and `gender` empty.
