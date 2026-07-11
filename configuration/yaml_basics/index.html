@@ -12,28 +12,28 @@
         <meta name="author" content="OncoTracer developers">
       
       
-        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/running/">
+        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/configuration/yaml_basics/">
       
       
-        <link rel="prev" href="../inputs/">
+        <link rel="prev" href="../../quick_start/">
       
       
-        <link rel="next" href="../outputs/">
+        <link rel="next" href="../illumina/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Workflow Overview - OncoTracer</title>
+        <title>YAML and Paths - OncoTracer</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -52,7 +52,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#running-oncotracer" class="md-skip">
+        <a href="#yaml-and-paths" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="OncoTracer" class="md-header__button md-logo" aria-label="OncoTracer" data-md-component="logo">
+    <a href="../.." title="OncoTracer" class="md-header__button md-logo" aria-label="OncoTracer" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Workflow Overview
+              YAML and Paths
             
           </span>
         </div>
@@ -196,7 +196,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="OncoTracer" class="md-nav__button md-logo" aria-label="OncoTracer" data-md-component="logo">
+    <a href="../.." title="OncoTracer" class="md-nav__button md-logo" aria-label="OncoTracer" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -226,7 +226,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -253,7 +253,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../installation/" class="md-nav__link">
         
   
   
@@ -280,7 +280,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quick_start/" class="md-nav__link">
+      <a href="../../quick_start/" class="md-nav__link">
         
   
   
@@ -304,10 +304,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../configuration/yaml_basics/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YAML and Paths
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -323,6 +350,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#path-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#illumina-yaml-line-by-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Illumina YAML, line by line
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ont-yaml-line-by-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ONT YAML, line by line
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -388,7 +468,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/illumina/" class="md-nav__link">
+      <a href="../illumina/" class="md-nav__link">
         
   
   
@@ -416,7 +496,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/ont/" class="md-nav__link">
+      <a href="../ont/" class="md-nav__link">
         
   
   
@@ -444,7 +524,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/pathology/" class="md-nav__link">
+      <a href="../pathology/" class="md-nav__link">
         
   
   
@@ -472,7 +552,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/refinement/" class="md-nav__link">
+      <a href="../refinement/" class="md-nav__link">
         
   
   
@@ -500,7 +580,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/parameter_reference/" class="md-nav__link">
+      <a href="../parameter_reference/" class="md-nav__link">
         
   
   
@@ -535,7 +615,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../inputs/" class="md-nav__link">
+      <a href="../../inputs/" class="md-nav__link">
         
   
   
@@ -559,37 +639,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflow Overview
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../running/" class="md-nav__link">
         
   
   
@@ -605,81 +658,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#illumina-fastq" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Illumina FASTQ
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ont-fastq" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ONT FASTQ
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#illumina-fastq-pathology" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Illumina FASTQ + Pathology
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#resume-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Resume Behavior
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#runtime-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Runtime Notes
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -691,7 +669,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../outputs/" class="md-nav__link">
+      <a href="../../outputs/" class="md-nav__link">
         
   
   
@@ -718,7 +696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models_pathology/" class="md-nav__link">
+      <a href="../../models_pathology/" class="md-nav__link">
         
   
   
@@ -745,7 +723,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gallery/" class="md-nav__link">
+      <a href="../../gallery/" class="md-nav__link">
         
   
   
@@ -772,7 +750,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../../troubleshooting/" class="md-nav__link">
         
   
   
@@ -799,7 +777,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../citation_research_use/" class="md-nav__link">
+      <a href="../../citation_research_use/" class="md-nav__link">
         
   
   
@@ -826,7 +804,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guide/" class="md-nav__link">
+      <a href="../../developer_guide/" class="md-nav__link">
         
   
   
@@ -873,10 +851,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#illumina-fastq" class="md-nav__link">
+  <a href="#path-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina FASTQ
+        Path rules
       
     </span>
   </a>
@@ -884,10 +862,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-fastq" class="md-nav__link">
+  <a href="#illumina-yaml-line-by-line" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT FASTQ
+        Illumina YAML, line by line
       
     </span>
   </a>
@@ -895,32 +873,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-fastq-pathology" class="md-nav__link">
+  <a href="#ont-yaml-line-by-line" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina FASTQ + Pathology
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#resume-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Resume Behavior
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#runtime-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Runtime Notes
+        ONT YAML, line by line
       
     </span>
   </a>
@@ -944,7 +900,7 @@
 
 
   
-    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/running.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/configuration/yaml_basics.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -952,52 +908,56 @@
   
 
 
-<h1 id="running-oncotracer">Running OncoTracer<a class="headerlink" href="#running-oncotracer" title="Permanent link">&para;</a></h1>
-<p>Run from the repository root:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_config.yml<span class="w"> </span>-resume
+<h1 id="yaml-and-paths">YAML and Paths<a class="headerlink" href="#yaml-and-paths" title="Permanent link">&para;</a></h1>
+<p>A YAML file is the run contract: it tells OncoTracer which branch to use, where inputs live, and where every output should be written. Copy a template before editing it.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                              </span><span class="c1"># enter the cloned repository</span>
+cp<span class="w"> </span>params/illumina.minimal.yml<span class="w"> </span>params/my_illumina.yml<span class="w">      </span><span class="c1"># copy the Illumina template</span>
+realpath<span class="w"> </span>.<span class="w">                                                 </span><span class="c1"># obtain the absolute repository path</span>
+realpath<span class="w"> </span>/path/to/input.fastq.gz<span class="w">                           </span><span class="c1"># obtain an absolute input-file path</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>/home/user/oncotracer_project/input<span class="w">               </span><span class="c1"># create an input area</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>/home/user/oncotracer_project/runs<span class="w">                </span><span class="c1"># create an output area</span>
+nano<span class="w"> </span>params/my_illumina.yml<span class="w">                                </span><span class="c1"># edit the copied YAML</span>
 </code></pre></div>
-<p>Use exactly one runtime flag:</p>
-<table>
-<thead>
-<tr>
-<th>Flag</th>
-<th>Use when</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--docker</code></td>
-<td>Docker is available. Recommended for workstations.</td>
-</tr>
-<tr>
-<td><code>--singularity</code></td>
-<td>Singularity/Apptainer is available. Recommended for HPC.</td>
-</tr>
-<tr>
-<td><code>--conda</code></td>
-<td>Containers are unavailable.</td>
-</tr>
-</tbody>
-</table>
-<h2 id="illumina-fastq">Illumina FASTQ<a class="headerlink" href="#illumina-fastq" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.example.yml<span class="w"> </span>params/my_illumina.yml
-nano<span class="w"> </span>params/my_illumina.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span>-resume
+<h2 id="path-rules">Path rules<a class="headerlink" href="#path-rules" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Use absolute Linux paths beginning with <code>/</code>.</li>
+<li>Do not put <code>$HOME</code>, <code>~</code>, or shell commands in YAML; YAML does not expand them.</li>
+<li><code>lpwgs_root</code> must be a common parent of inputs and outputs because it is mounted into Docker or Singularity.</li>
+<li>Keep <code>outdir</code> and the matching <code>*_samurai_outdir</code> below <code>lpwgs_root</code>.</li>
+<li>WSL paths use <code>/mnt/c/...</code>, not <code>C:\...</code>.</li>
+<li>Paths are case-sensitive and spaces are best avoided.</li>
+<li>Confirm each input with <code>realpath</code> and <code>ls -lh</code> before a full run.</li>
+</ul>
+<h2 id="illumina-yaml-line-by-line">Illumina YAML, line by line<a class="headerlink" href="#illumina-yaml-line-by-line" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span><span class="w">                                      </span><span class="c1"># select paired-end Illumina processing</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project</span><span class="w">           </span><span class="c1"># common parent mounted into the container</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/runs/sample_a</span><span class="w"> </span><span class="c1"># final OncoTracer run directory</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/input/illumina_samplesheet.csv</span><span class="w"> </span><span class="c1"># CSV with paired FASTQ paths</span>
+<span class="nt">illumina_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/runs/sample_a/01_samurai_illumina</span><span class="w"> </span><span class="c1"># qDNAseq output directory</span>
+<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span><span class="w">                </span><span class="c1"># SAMURAI analysis preset</span>
+<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span><span class="w">                            </span><span class="c1"># CNA caller used for Illumina</span>
+<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">                            </span><span class="c1"># copy-number bin size in kilobases</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># optional classifier/pathology stage</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                                        </span><span class="c1"># preserve existing outputs unless intentionally refreshing</span>
 </code></pre></div>
-<h2 id="ont-fastq">ONT FASTQ<a class="headerlink" href="#ont-fastq" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/ont.example.yml<span class="w"> </span>params/my_ont.yml
-nano<span class="w"> </span>params/my_ont.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span>-resume
+<h2 id="ont-yaml-line-by-line">ONT YAML, line by line<a class="headerlink" href="#ont-yaml-line-by-line" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span><span class="w">                                           </span><span class="c1"># select Oxford Nanopore processing</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project</span><span class="w">           </span><span class="c1"># common parent mounted into the container</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/runs/ont_a</span><span class="w">    </span><span class="c1"># final OncoTracer run directory</span>
+<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/input/fastq_pass</span><span class="w"> </span><span class="c1"># folder containing barcode FASTQ directories</span>
+<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span><span class="w">                   </span><span class="c1"># comma-separated barcode directories</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A,Patient_B</span><span class="w">               </span><span class="c1"># names matching barcode order one-to-one</span>
+<span class="nt">ont_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/runs/ont_a/01_samurai_ont</span><span class="w"> </span><span class="c1"># ichorCNA output directory</span>
+<span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_biopsy</span><span class="w">                    </span><span class="c1"># SAMURAI analysis preset</span>
+<span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ichorcna</span><span class="w">                                </span><span class="c1"># CNA caller used for ONT</span>
+<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w">                                 </span><span class="c1"># copy-number bin size in kilobases</span>
+<span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w">                              </span><span class="c1"># process completed FASTQ immediately</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># optional classifier/pathology stage</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                                        </span><span class="c1"># preserve existing outputs unless intentionally refreshing</span>
 </code></pre></div>
-<h2 id="illumina-fastq-pathology">Illumina FASTQ + Pathology<a class="headerlink" href="#illumina-fastq-pathology" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.pathology.example.yml<span class="w"> </span>params/my_illumina_pathology.yml
-nano<span class="w"> </span>params/my_illumina_pathology.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina_pathology.yml<span class="w"> </span>-resume
+<p>Validate the edited YAML before computation:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span><span class="c1"># parse YAML and test workflow connections</span>
 </code></pre></div>
-<h2 id="resume-behavior">Resume Behavior<a class="headerlink" href="#resume-behavior" title="Permanent link">&para;</a></h2>
-<p>Use <code>-resume</code> after an interrupted run. Nextflow reuses completed tasks when the command and inputs are unchanged.</p>
-<h2 id="runtime-notes">Runtime Notes<a class="headerlink" href="#runtime-notes" title="Permanent link">&para;</a></h2>
-<p>The upstream SAMURAI steps launch their own Nextflow/SAMURAI run from FASTQ. The downstream OncoTracer steps use the selected Docker, Singularity, or Conda runtime.</p>
 
 
 
@@ -1047,10 +1007,10 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

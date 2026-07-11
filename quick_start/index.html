@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/quick_start/">
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../installation/">
       
       
-        <link rel="next" href="../installation/">
+        <link rel="next" href="../configuration/yaml_basics/">
       
       
         
@@ -250,6 +250,33 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -313,10 +340,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-illumina-fastq-files" class="md-nav__link">
+  <a href="#requirements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Illumina FASTQ Files
+        Requirements
       
     </span>
   </a>
@@ -324,10 +351,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-ont-fastq_pass-barcode-fastq-files" class="md-nav__link">
+  <a href="#complete-illumina-public-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. ONT fastq_pass / Barcode FASTQ Files
+        Complete Illumina public test
       
     </span>
   </a>
@@ -335,10 +362,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-illumina-fastq-files-pathology-reports" class="md-nav__link">
+  <a href="#complete-ont-public-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Illumina FASTQ Files + Pathology Reports
+        Complete ONT public test
       
     </span>
   </a>
@@ -346,10 +373,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#singularity-apptainer" class="md-nav__link">
+  <a href="#use-your-own-illumina-fastq-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Singularity / Apptainer
+        Use your own Illumina FASTQ files
       
     </span>
   </a>
@@ -357,32 +384,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#conda-fallback" class="md-nav__link">
+  <a href="#use-your-own-ont-fastq-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Conda Fallback
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#after-a-successful-run" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        After A Successful Run
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#public-fastq-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Public FASTQ Examples
+        Use your own ONT FASTQ files
       
     </span>
   </a>
@@ -404,14 +409,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../configuration/yaml_basics/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Installation
+    YAML and Paths
   
 
     
@@ -430,9 +435,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+    
+    
+    
+    
+      
         
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
   
   
   <span class="md-ellipsis">
@@ -446,7 +469,163 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/illumina/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Illumina
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/ont/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ONT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/pathology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pathology and Classifier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/refinement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Refinement
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/parameter_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parameter Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -465,34 +644,7 @@
   <span class="md-ellipsis">
     
   
-    Inputs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../example_data/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Example Data
+    Input Files
   
 
     
@@ -519,34 +671,7 @@
   <span class="md-ellipsis">
     
   
-    Running OncoTracer
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../tutorial_our_runs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tutorial
+    Workflow Overview
   
 
     
@@ -573,7 +698,7 @@
   <span class="md-ellipsis">
     
   
-    Outputs
+    Output Files
   
 
     
@@ -620,6 +745,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../gallery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gallery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../troubleshooting/" class="md-nav__link">
         
   
@@ -628,6 +780,60 @@
     
   
     Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../citation_research_use/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Citation and Research Use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
   
 
     
@@ -667,10 +873,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-illumina-fastq-files" class="md-nav__link">
+  <a href="#requirements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Illumina FASTQ Files
+        Requirements
       
     </span>
   </a>
@@ -678,10 +884,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-ont-fastq_pass-barcode-fastq-files" class="md-nav__link">
+  <a href="#complete-illumina-public-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. ONT fastq_pass / Barcode FASTQ Files
+        Complete Illumina public test
       
     </span>
   </a>
@@ -689,10 +895,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-illumina-fastq-files-pathology-reports" class="md-nav__link">
+  <a href="#complete-ont-public-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Illumina FASTQ Files + Pathology Reports
+        Complete ONT public test
       
     </span>
   </a>
@@ -700,10 +906,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#singularity-apptainer" class="md-nav__link">
+  <a href="#use-your-own-illumina-fastq-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Singularity / Apptainer
+        Use your own Illumina FASTQ files
       
     </span>
   </a>
@@ -711,32 +917,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#conda-fallback" class="md-nav__link">
+  <a href="#use-your-own-ont-fastq-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Conda Fallback
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#after-a-successful-run" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        After A Successful Run
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#public-fastq-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Public FASTQ Examples
+        Use your own ONT FASTQ files
       
     </span>
   </a>
@@ -769,47 +953,107 @@
 
 
 <h1 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h1>
-<p>This page gives copy-paste commands for the three supported OncoTracer entry points. Docker is recommended for new users: use <code>--docker</code>. Use <code>--singularity</code> on HPC systems with Singularity/Apptainer.</p>
-<div class="admonition tip">
-<p class="admonition-title">Edit YAML paths first</p>
-<p>Copy one file from <code>params/</code>, edit the FASTQ paths and output path, then run. YAML is a plain-text settings file with lines like <code>setting_name: value</code>.</p>
-</div>
-<h2 id="1-illumina-fastq-files">1. Illumina FASTQ Files<a class="headerlink" href="#1-illumina-fastq-files" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.example.yml<span class="w"> </span>params/my_illumina.yml
-nano<span class="w"> </span>params/my_illumina.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w">   </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w">   </span>-resume
+<p>This page contains complete, copy-pasteable public-data runs. Run every <code>main.nf</code> command from the cloned repository directory.</p>
+<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
+<p>Install Nextflow and Docker first. See <a href="../installation/">Installation</a>.</p>
+<h2 id="complete-illumina-public-test">Complete Illumina public test<a class="headerlink" href="#complete-illumina-public-test" title="Permanent link">&para;</a></h2>
+<p>Copy this entire code box into a terminal:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w"> </span>oncotracer-illumina<span class="w">                 </span><span class="c1"># clone a fresh repository for the Illumina tutorial</span>
+<span class="nb">cd</span><span class="w"> </span>oncotracer-illumina<span class="w">                                                               </span><span class="c1"># enter the repository; main.nf is in this directory</span>
+<span class="nv">current_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                                   </span><span class="c1"># save the absolute repository path</span>
+<span class="nb">echo</span><span class="w"> </span><span class="nv">$current_dir</span><span class="w">                                                                    </span><span class="c1"># verify where inputs, work files, and results will be created</span>
+nextflow<span class="w"> </span>-version<span class="w">                                                                    </span><span class="c1"># verify that Nextflow is installed</span>
+docker<span class="w"> </span>--version<span class="w">                                                                     </span><span class="c1"># verify that Docker is installed and visible</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--make_test<span class="w">                                                     </span><span class="c1"># download both public FASTQ examples and generate absolute-path YAML files</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>,120p<span class="w"> </span>test/configs/illumina.quickstart.yml<span class="w">                                   </span><span class="c1"># inspect the generated Illumina YAML</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>test/configs/illumina.quickstart.yml<span class="w">  </span><span class="c1"># validate parameters and workflow connections</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>test/configs/illumina.quickstart.yml<span class="w"> </span>-resume<span class="w">    </span><span class="c1"># run SAMURAI/qDNAseq and all OncoTracer steps</span>
+cat<span class="w"> </span>test/runs/illumina/06_workflow_summary/workflow_summary.txt<span class="w">                      </span><span class="c1"># confirm the final output locations</span>
 </code></pre></div>
-<h2 id="2-ont-fastq_pass-barcode-fastq-files">2. ONT fastq_pass / Barcode FASTQ Files<a class="headerlink" href="#2-ont-fastq_pass-barcode-fastq-files" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/ont.example.yml<span class="w"> </span>params/my_ont.yml
-nano<span class="w"> </span>params/my_ont.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w">   </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w">   </span>-resume
+<p><code>--make_test</code> creates this YAML using the real absolute path of your clone:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span><span class="w">                                      </span><span class="c1"># select the Illumina branch</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-illumina/test</span><span class="w"> </span><span class="c1"># folder mounted into Docker; all test inputs and outputs are below it</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-illumina/test/runs/illumina</span><span class="w"> </span><span class="c1"># main results directory</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-illumina/test/public/illumina_DRR000542/illumina.samplesheet.csv</span><span class="w"> </span><span class="c1"># paired FASTQ table</span>
+<span class="nt">illumina_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-illumina/test/runs/illumina/01_samurai_illumina</span><span class="w"> </span><span class="c1"># qDNAseq/SAMURAI output</span>
+<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span><span class="w">                </span><span class="c1"># SAMURAI analysis preset</span>
+<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span><span class="w">                            </span><span class="c1"># Illumina CNA caller</span>
+<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">                            </span><span class="c1"># qDNAseq bin size in kilobases</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># keep optional classifier/pathology reporting off for this tutorial</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                                         </span><span class="c1"># allow the tutorial outputs to be refreshed</span>
 </code></pre></div>
-<h2 id="3-illumina-fastq-files-pathology-reports">3. Illumina FASTQ Files + Pathology Reports<a class="headerlink" href="#3-illumina-fastq-files-pathology-reports" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.pathology.example.yml<span class="w"> </span>params/my_illumina_pathology.yml
-nano<span class="w"> </span>params/my_illumina_pathology.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w">   </span>-params-file<span class="w"> </span>params/my_illumina_pathology.yml<span class="w">   </span>-resume
+<p>The generated samplesheet is:</p>
+<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
+DRR000542,/absolute/path/oncotracer-illumina/test/public/illumina_DRR000542/DRR000542_1.fastq.gz,/absolute/path/oncotracer-illumina/test/public/illumina_DRR000542/DRR000542_2.fastq.gz,tumor
 </code></pre></div>
-<h2 id="singularity-apptainer">Singularity / Apptainer<a class="headerlink" href="#singularity-apptainer" title="Permanent link">&para;</a></h2>
-<p>Use this on HPC systems where Docker is not available.</p>
-<div class="highlight"><pre><span></span><code>apptainer<span class="w"> </span>pull<span class="w"> </span>oncotracer_latest.sif<span class="w"> </span>docker://carlosfarkas/oncotracer:latest
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--singularity<span class="w">   </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w">   </span>-resume
+<p>Expected plots include the SAMURAI/qDNAseq genome, bin, and segment PDFs under <code>test/runs/illumina/01_samurai_illumina/</code>, plus OncoTracer plots under <code>test/runs/illumina/04_cna_custom_plots/</code>.</p>
+<h2 id="complete-ont-public-test">Complete ONT public test<a class="headerlink" href="#complete-ont-public-test" title="Permanent link">&para;</a></h2>
+<p>Copy this entire code box into a terminal:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w"> </span>oncotracer-ont<span class="w">                      </span><span class="c1"># clone a fresh repository for the ONT tutorial</span>
+<span class="nb">cd</span><span class="w"> </span>oncotracer-ont<span class="w">                                                                    </span><span class="c1"># enter the repository; main.nf is in this directory</span>
+<span class="nv">current_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                                   </span><span class="c1"># save the absolute repository path</span>
+<span class="nb">echo</span><span class="w"> </span><span class="nv">$current_dir</span><span class="w">                                                                    </span><span class="c1"># verify where inputs, work files, and results will be created</span>
+nextflow<span class="w"> </span>-version<span class="w">                                                                    </span><span class="c1"># verify that Nextflow is installed</span>
+docker<span class="w"> </span>--version<span class="w">                                                                     </span><span class="c1"># verify that Docker is installed and visible</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--make_test<span class="w">                                                     </span><span class="c1"># download both public FASTQ examples and generate absolute-path YAML files</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span>,120p<span class="w"> </span>test/configs/ont.quickstart.yml<span class="w">                                        </span><span class="c1"># inspect the generated ONT YAML</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>test/configs/ont.quickstart.yml<span class="w"> </span><span class="c1"># validate parameters and workflow connections</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>test/configs/ont.quickstart.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># run SAMURAI/ichorCNA and all OncoTracer steps</span>
+cat<span class="w"> </span>test/runs/ont/06_workflow_summary/workflow_summary.txt<span class="w">                           </span><span class="c1"># confirm the final output locations</span>
 </code></pre></div>
-<h2 id="conda-fallback">Conda Fallback<a class="headerlink" href="#conda-fallback" title="Permanent link">&para;</a></h2>
-<p>Use Conda only when containers are unavailable.</p>
-<div class="highlight"><pre><span></span><code>conda<span class="w"> </span>env<span class="w"> </span>create<span class="w"> </span>-f<span class="w"> </span>environment.yml
-conda<span class="w"> </span>activate<span class="w"> </span>oncotracer
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w">   </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w">   </span>-resume
+<p><code>--make_test</code> creates this YAML using the real absolute path of your clone:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span><span class="w">                                           </span><span class="c1"># select the Oxford Nanopore branch</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-ont/test</span><span class="w">      </span><span class="c1"># folder mounted into Docker; all test inputs and outputs are below it</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-ont/test/runs/ont</span><span class="w"> </span><span class="c1"># main results directory</span>
+<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-ont/test/public/ont_DRR165691/fastq_pass</span><span class="w"> </span><span class="c1"># folder containing barcode FASTQ directories</span>
+<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01</span><span class="w">                             </span><span class="c1"># barcode directory to analyze</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DRR165691</span><span class="w">                         </span><span class="c1"># biological sample name assigned to barcode01</span>
+<span class="nt">ont_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-ont/test/runs/ont/01_samurai_ont</span><span class="w"> </span><span class="c1"># ichorCNA/SAMURAI output</span>
+<span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_biopsy</span><span class="w">                    </span><span class="c1"># SAMURAI analysis preset</span>
+<span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ichorcna</span><span class="w">                                </span><span class="c1"># ONT CNA caller</span>
+<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w">                                 </span><span class="c1"># ichorCNA bin size in kilobases</span>
+<span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w">                              </span><span class="c1"># analyze completed FASTQ immediately</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># keep optional classifier/pathology reporting off for this tutorial</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                                         </span><span class="c1"># refresh supported tutorial outputs</span>
 </code></pre></div>
-<h2 id="after-a-successful-run">After A Successful Run<a class="headerlink" href="#after-a-successful-run" title="Permanent link">&para;</a></h2>
-<p>Check these files first:</p>
-<div class="highlight"><pre><span></span><code>06_workflow_summary/workflow_summary.txt
-03_cna_codification/cna_events.tsv
-03_cna_codification/cna_cytogenomic_notation.tsv
-04_cna_custom_plots/cna_per_sample_pages.pdf
-04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf
+<p>Expected outputs include ichorCNA segment/depth tables under <code>test/runs/ont/01_samurai_ont/results/ichorcna/</code> and the ichorCNA-derived copy-number profile at <code>test/runs/ont/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf</code>.</p>
+<h2 id="use-your-own-illumina-fastq-files">Use your own Illumina FASTQ files<a class="headerlink" href="#use-your-own-illumina-fastq-files" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">              </span><span class="c1"># clone the repository</span>
+<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                    </span><span class="c1"># enter the repository</span>
+cp<span class="w"> </span>params/illumina.minimal.yml<span class="w"> </span>params/my_illumina.yml<span class="w">            </span><span class="c1"># create an editable YAML without changing the versioned template</span>
+realpath<span class="w"> </span>.<span class="w">                                                       </span><span class="c1"># print the absolute repository path</span>
+realpath<span class="w"> </span>/path/to/Sample_A_R1.fastq.gz<span class="w">                            </span><span class="c1"># print the absolute read-1 FASTQ path</span>
+realpath<span class="w"> </span>/path/to/Sample_A_R2.fastq.gz<span class="w">                            </span><span class="c1"># print the absolute read-2 FASTQ path</span>
+nano<span class="w"> </span>params/my_illumina.yml<span class="w">                                      </span><span class="c1"># replace every example path with your absolute paths</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span><span class="c1"># validate before computation</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># run from FASTQ to final reports</span>
 </code></pre></div>
-<h2 id="public-fastq-examples">Public FASTQ Examples<a class="headerlink" href="#public-fastq-examples" title="Permanent link">&para;</a></h2>
-<p>See <a href="../example_data/">Example Data</a> for real ENA download commands for Illumina and ONT FASTQ smoke tests.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span><span class="w">                                      </span><span class="c1"># select the Illumina branch</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project</span><span class="w">           </span><span class="c1"># common parent visible to Docker for input and output paths</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/runs/sample_a</span><span class="w"> </span><span class="c1"># main output directory</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/input/illumina_samplesheet.csv</span><span class="w"> </span><span class="c1"># CSV pointing to paired FASTQ files</span>
+<span class="nt">illumina_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/runs/sample_a/01_samurai_illumina</span><span class="w"> </span><span class="c1"># upstream output directory</span>
+</code></pre></div>
+<h2 id="use-your-own-ont-fastq-files">Use your own ONT FASTQ files<a class="headerlink" href="#use-your-own-ont-fastq-files" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">              </span><span class="c1"># clone the repository</span>
+<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                    </span><span class="c1"># enter the repository</span>
+cp<span class="w"> </span>params/ont.minimal.yml<span class="w"> </span>params/my_ont.yml<span class="w">                      </span><span class="c1"># create an editable YAML without changing the versioned template</span>
+realpath<span class="w"> </span>.<span class="w">                                                       </span><span class="c1"># print the absolute repository path</span>
+realpath<span class="w"> </span>/path/to/fastq_pass<span class="w">                                     </span><span class="c1"># print the absolute ONT FASTQ folder path</span>
+find<span class="w"> </span>/path/to/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w">              </span><span class="c1"># confirm the barcode FASTQ layout</span>
+nano<span class="w"> </span>params/my_ont.yml<span class="w">                                           </span><span class="c1"># replace every example path, barcode, and sample name</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span><span class="c1"># validate before computation</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># run from FASTQ to final reports</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span><span class="w">                                           </span><span class="c1"># select the Oxford Nanopore branch</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project</span><span class="w">           </span><span class="c1"># common parent visible to Docker for input and output paths</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/runs/ont_a</span><span class="w">    </span><span class="c1"># main output directory</span>
+<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/input/fastq_pass</span><span class="w"> </span><span class="c1"># folder containing barcode FASTQ directories</span>
+<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span><span class="w">                   </span><span class="c1"># barcode directories in input order</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A,Patient_B</span><span class="w">               </span><span class="c1"># sample names in exactly the same order</span>
+<span class="nt">ont_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer_project/runs/ont_a/01_samurai_ont</span><span class="w"> </span><span class="c1"># upstream output directory</span>
+</code></pre></div>
+<p>Use <code>--singularity</code> instead of <code>--docker</code> on supported HPC systems.</p>
 
 
 

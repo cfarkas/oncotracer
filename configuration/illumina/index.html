@@ -12,28 +12,28 @@
         <meta name="author" content="OncoTracer developers">
       
       
-        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/tutorial_our_runs/">
+        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/configuration/illumina/">
       
       
-        <link rel="prev" href="../running/">
+        <link rel="prev" href="../yaml_basics/">
       
       
-        <link rel="next" href="../outputs/">
+        <link rel="next" href="../ont/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Tutorial - OncoTracer</title>
+        <title>Illumina - OncoTracer</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -52,7 +52,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tutorial" class="md-skip">
+        <a href="#illumina-yaml" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="OncoTracer" class="md-header__button md-logo" aria-label="OncoTracer" data-md-component="logo">
+    <a href="../.." title="OncoTracer" class="md-header__button md-logo" aria-label="OncoTracer" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Tutorial
+              Illumina
             
           </span>
         </div>
@@ -196,7 +196,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="OncoTracer" class="md-nav__button md-logo" aria-label="OncoTracer" data-md-component="logo">
+    <a href="../.." title="OncoTracer" class="md-nav__button md-logo" aria-label="OncoTracer" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -226,7 +226,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -253,34 +253,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quick_start/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quick Start
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../installation/" class="md-nav__link">
         
   
   
@@ -307,8 +280,80 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../quick_start/" class="md-nav__link">
         
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../yaml_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YAML and Paths
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
   
   
   <span class="md-ellipsis">
@@ -322,94 +367,22 @@
   
   
 
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../inputs/" class="md-nav__link">
+            <span class="md-nav__icon md-icon"></span>
+          </label>
         
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
   
-  
-  <span class="md-ellipsis">
-    
-  
-    Inputs
-  
-
-    
-  </span>
-  
+    Configuration
   
 
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../example_data/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Example Data
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../running/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Running OncoTracer
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
     
@@ -424,24 +397,6 @@
         
       
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tutorial
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -449,7 +404,7 @@
   <span class="md-ellipsis">
     
   
-    Tutorial
+    Illumina
   
 
     
@@ -459,88 +414,145 @@
 
       </a>
       
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-illumina-fastq" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Illumina FASTQ
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-ont-fastq_pass-barcodes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. ONT fastq_pass / Barcodes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-illumina-fastq-pathology" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Illumina FASTQ + Pathology
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-output-images" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example Output Images
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
   
     <li class="md-nav__item">
-      <a href="../outputs/" class="md-nav__link">
+      <a href="../ont/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Outputs
+    ONT
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pathology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pathology and Classifier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../refinement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Refinement
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../parameter_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parameter Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Input Files
   
 
     
@@ -560,7 +572,61 @@
   
   
     <li class="md-nav__item">
-      <a href="../models_pathology/" class="md-nav__link">
+      <a href="../../running/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models_pathology/" class="md-nav__link">
         
   
   
@@ -587,7 +653,34 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../../gallery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gallery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/" class="md-nav__link">
         
   
   
@@ -595,6 +688,60 @@
     
   
     Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../citation_research_use/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Citation and Research Use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
   
 
     
@@ -627,58 +774,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-illumina-fastq" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Illumina FASTQ
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-ont-fastq_pass-barcodes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. ONT fastq_pass / Barcodes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-illumina-fastq-pathology" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Illumina FASTQ + Pathology
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-output-images" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example Output Images
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -694,7 +789,7 @@
 
 
   
-    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/tutorial_our_runs.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/configuration/illumina.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -702,48 +797,77 @@
   
 
 
-<h1 id="tutorial">Tutorial<a class="headerlink" href="#tutorial" title="Permanent link">&para;</a></h1>
-<p>This tutorial follows the same three FASTQ-first entry points used in the README.</p>
-<h2 id="1-illumina-fastq">1. Illumina FASTQ<a class="headerlink" href="#1-illumina-fastq" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.example.yml<span class="w"> </span>params/my_illumina.yml
-nano<span class="w"> </span>params/my_illumina.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span>-resume
+<h1 id="illumina-yaml">Illumina YAML<a class="headerlink" href="#illumina-yaml" title="Permanent link">&para;</a></h1>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer_project</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer_project/runs/illumina_example</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer_project/input/illumina_samplesheet.csv</span>
+<span class="nt">illumina_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer_project/runs/illumina_example/01_samurai_illumina</span>
 </code></pre></div>
-<p>Edit these YAML fields first:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/OncoTracer_illumina</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/illumina.samplesheet.csv</span>
-<span class="nt">illumina_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/OncoTracer_illumina/01_samurai_illumina</span>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required?</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mode</code></td>
+<td>Yes</td>
+<td>Must be <code>illumina</code>.</td>
+</tr>
+<tr>
+<td><code>lpwgs_root</code></td>
+<td>Yes</td>
+<td>Absolute folder path bound into Docker/Singularity.</td>
+</tr>
+<tr>
+<td><code>outdir</code></td>
+<td>Yes</td>
+<td>Main output folder.</td>
+</tr>
+<tr>
+<td><code>illumina_samplesheet</code></td>
+<td>Yes</td>
+<td>CSV with <code>sample,fastq_1,fastq_2,status</code>.</td>
+</tr>
+<tr>
+<td><code>illumina_samurai_outdir</code></td>
+<td>Yes</td>
+<td>Upstream Illumina SAMURAI/qDNAseq output folder.</td>
+</tr>
+<tr>
+<td><code>illumina_analysis_type</code></td>
+<td>Default</td>
+<td><code>solid_biopsy</code>.</td>
+</tr>
+<tr>
+<td><code>illumina_caller</code></td>
+<td>Default</td>
+<td><code>qdnaseq</code>.</td>
+</tr>
+<tr>
+<td><code>illumina_binsize_kb</code></td>
+<td>Default</td>
+<td><code>100</code>.</td>
+</tr>
+<tr>
+<td><code>run_cna_classifier</code></td>
+<td>Optional</td>
+<td>Runs optional classifier/report steps.</td>
+</tr>
+<tr>
+<td><code>force</code></td>
+<td>Optional</td>
+<td>Allows supported overwrite/recompute behavior.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
+Sample_A,/home/student/data/Sample_A_R1.fastq.gz,/home/student/data/Sample_A_R2.fastq.gz,tumor
 </code></pre></div>
-<h2 id="2-ont-fastq_pass-barcodes">2. ONT fastq_pass / Barcodes<a class="headerlink" href="#2-ont-fastq_pass-barcodes" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/ont.example.yml<span class="w"> </span>params/my_ont.yml
-nano<span class="w"> </span>params/my_ont.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span>-resume
-</code></pre></div>
-<p>Edit these YAML fields first:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/OncoTracer_ONT</span>
-<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/fastq_pass</span>
-<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
-<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sample1,sample2</span>
-<span class="nt">ont_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/OncoTracer_ONT/01_samurai_ont</span>
-</code></pre></div>
-<h2 id="3-illumina-fastq-pathology">3. Illumina FASTQ + Pathology<a class="headerlink" href="#3-illumina-fastq-pathology" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.pathology.example.yml<span class="w"> </span>params/my_illumina_pathology.yml
-nano<span class="w"> </span>params/my_illumina_pathology.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina_pathology.yml<span class="w"> </span>-resume
-</code></pre></div>
-<p>Edit the pathology fields:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/pathology.csv</span>
-<span class="nt">pathology_sample_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina_sample_id</span>
-<span class="nt">pathology_case_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case_code</span>
-<span class="nt">pathology_diagnosis_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_diagnosis</span>
-</code></pre></div>
-<h2 id="example-output-images">Example Output Images<a class="headerlink" href="#example-output-images" title="Permanent link">&para;</a></h2>
-<p>These images were generated from previous OncoTracer tutorial runs and show the expected style of CNA summaries.</p>
-<p><img alt="Illumina event counts" src="../assets/tutorial/illumina_cna_event_counts_by_sample.png" /></p>
-<p><img alt="Illumina genome overview" src="../assets/tutorial/illumina_cna_genome_overview.png" /></p>
-<p><img alt="ONT event counts" src="../assets/tutorial/ont_cna_event_counts_by_sample.png" /></p>
-<p><img alt="ONT genome overview" src="../assets/tutorial/ont_cna_genome_overview.png" /></p>
 
 
 
@@ -793,10 +917,10 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
