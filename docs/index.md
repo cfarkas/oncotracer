@@ -1,34 +1,18 @@
 # OncoTracer
 
-**Reproducible LP-WGS CNA analysis for ONT and Illumina FASTQ data.**
+![OncoTracer sequencing-to-CNA workflow](assets/oncotracer-hero.png)
 
-OncoTracer is a Nextflow research workflow for copy-number alteration analysis. It starts from FASTQ files, runs the appropriate upstream CNA route, refines CNA boundaries, and writes tables, plots, reports, and optional pathology concordance outputs.
+**Reproducible LP-WGS copy-number analysis from Illumina and Oxford Nanopore FASTQ data.**
 
-!!! warning "Research workflow"
-    OncoTracer is not a standalone diagnostic system. Use outputs as research evidence that requires expert review and validation.
+OncoTracer runs SAMURAI/qDNAseq or SAMURAI/ichorCNA, refines CNA boundaries, and creates event tables, cytogenomic notation, plots, reports, and optional pathology concordance outputs.
 
-## Start Here
+Start with the [Quick Start](quick_start.md). It includes complete public Illumina and ONT runs, the generated YAML files, and a comment explaining every command and YAML setting.
 
-1. Read [Before You Begin](getting_started/before_you_begin.md).
-2. Learn path basics in [What Is a Path?](getting_started/paths.md).
-3. Install Nextflow plus Docker, Singularity/Apptainer, or Conda in [Install OncoTracer](installation.md).
-4. Copy a versioned YAML template from `params/` and edit your real absolute paths.
-5. Run with `nextflow run main.nf --docker -params-file params/my_config.yml -resume`.
-
-## Supported Entry Points
-
-| I have... | Copy this template | Read this page |
+| Input | CNA route | Tutorial |
 | --- | --- | --- |
-| Illumina paired-end LP-WGS FASTQ files | `params/illumina.minimal.yml` or `params/illumina.example.yml` | [First Illumina Run](getting_started/first_illumina_run.md) |
-| ONT `fastq_pass` or barcode FASTQ files | `params/ont.minimal.yml` or `params/ont.example.yml` | [First ONT Run](getting_started/first_ont_run.md) |
-| Illumina FASTQ files plus pathology CSV | `params/illumina.pathology.example.yml` | [Pathology and Classifier](configuration/pathology.md) |
+| Illumina paired-end FASTQ | SAMURAI + qDNAseq | [Complete Illumina test](quick_start.md#complete-illumina-public-test) |
+| ONT barcode FASTQ | SAMURAI + ichorCNA | [Complete ONT test](quick_start.md#complete-ont-public-test) |
+| Illumina plus pathology CSV | CNA classifier and concordance reports | [Models & Pathology](models_pathology.md) |
 
-## Documentation Map
-
-- [YAML Basics](configuration/yaml_basics.md)
-- [Illumina YAML](configuration/illumina.md)
-- [ONT YAML](configuration/ont.md)
-- [Complete Parameter Reference](configuration/parameter_reference.md)
-- [Input Files](inputs.md)
-- [Output Files](outputs.md)
-- [Troubleshooting](troubleshooting.md)
+!!! warning "Research use"
+    OncoTracer is not a standalone diagnostic system. Results require expert interpretation, laboratory validation, and integration with pathology and orthogonal molecular tests.

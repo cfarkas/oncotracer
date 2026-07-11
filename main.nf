@@ -54,6 +54,9 @@ def datasetName() {
 
 workflow {
   main:
+  if( asBool(params.make_test) ) {
+    MAKE_TEST_DATA()
+  } else {
   requireParam('mode', params.mode)
   def mode = params.mode.toString()
   if( !['ont', 'illumina'].contains(mode) ) {
@@ -86,6 +89,27 @@ workflow {
   }
 
   WRITE_SUMMARY(RUN_CNA_CUSTOM_PLOTS.out.run_meta)
+  }
+}
+
+
+process MAKE_TEST_DATA {
+  tag 'public_quickstart_data'
+  container null
+
+  output:
+  path 'make_test_done.txt', emit: marker
+
+  script:
+  def downloader = scriptPath('scripts/download_quickstart_data.sh')
+  def testRoot = blank(params.test_root) ? "${projectDir}/test" : file(params.test_root).toString()
+
+  """
+  set -Eeuo pipefail
+  bash '${downloader}' '${testRoot}'
+  echo "Public FASTQ test data and YAML files are ready under: ${testRoot}" > make_test_done.txt
+  cat make_test_done.txt
+  """
 }
 
 

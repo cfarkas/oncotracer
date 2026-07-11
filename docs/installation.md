@@ -1,51 +1,22 @@
 # Installation
 
-OncoTracer needs Nextflow and one execution runtime.
-
-## 1. Install Nextflow
+OncoTracer requires Linux, Java/Nextflow, Git, and one container runtime. Docker is the simplest route for a workstation.
 
 ```bash
-curl -s https://get.nextflow.io | bash
-mkdir -p "$HOME/bin"
-mv nextflow "$HOME/bin/"
-export PATH="$HOME/bin:$PATH"
-nextflow -version
+git --version                                                     # confirm that Git is installed
+java -version                                                     # confirm Java 17 or newer is available
+curl -s https://get.nextflow.io | bash                            # download the Nextflow launcher
+mkdir -p $HOME/bin                                                # create a personal executable directory
+mv nextflow $HOME/bin/                                            # install the launcher without administrator privileges
+export PATH=$HOME/bin:$PATH                                       # make Nextflow available in this shell
+nextflow -version                                                 # verify the Nextflow installation
+docker --version                                                   # verify Docker; use Apptainer/Singularity on HPC
+git clone https://github.com/cfarkas/oncotracer.git               # clone OncoTracer
+cd oncotracer                                                     # enter the repository; always run main.nf from here
+current_dir=$(pwd)                                                # save the absolute repository path
+echo $current_dir                                                 # confirm the working directory
+docker pull carlosfarkas/oncotracer:latest                        # download the maintained workflow container
+nextflow run main.nf --make_test                                  # download public FASTQ tests and create ready-to-run YAML files
 ```
 
-## 2. Choose Runtime
-
-### Docker, Recommended
-
-```bash
-docker pull carlosfarkas/oncotracer:latest
-docker run --rm carlosfarkas/oncotracer:latest --help
-```
-
-Run OncoTracer with:
-
-```bash
-nextflow run main.nf --docker -params-file params/illumina.example.yml -resume
-```
-
-### Singularity / Apptainer, HPC
-
-```bash
-apptainer pull oncotracer_latest.sif docker://carlosfarkas/oncotracer:latest
-nextflow run main.nf --singularity -params-file params/illumina.example.yml -resume
-```
-
-`singularity` can be used instead of `apptainer` on systems that still use the old command name.
-
-### Conda, Fallback
-
-```bash
-conda env create -f environment.yml
-conda activate oncotracer
-nextflow run main.nf --conda -params-file params/illumina.example.yml -resume
-```
-
-## Documentation
-
-The public documentation is online: https://cfarkas.github.io/oncotracer/
-
-You do not need to build the documentation to run OncoTracer. The MkDocs files are included only for maintainers who update the website.
+For HPC, install Apptainer and replace `--docker` with `--singularity` in workflow commands. A Conda fallback remains available with `conda env create -f environment.yml`, `conda activate oncotracer`, and the `--conda` runtime flag.
