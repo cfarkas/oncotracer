@@ -997,6 +997,7 @@
 
 
 <h1 id="models-pathology">Models &amp; Pathology<a class="headerlink" href="#models-pathology" title="Permanent link">&para;</a></h1>
+<p>The repository provides a minimized tutorial table at <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/pathology/anonymized_pathology_example.csv"><code>examples/pathology/anonymized_pathology_example.csv</code></a>. It contains only <code>illumina_sample_id</code>, <code>case_code</code>, and <code>final_diagnosis</code> from the authorized sanitized source.</p>
 <p>OncoTracer can add a cancer-context-aware CNA classifier, sample reports, literature-linked driver summaries, cohort plots, and pathology concordance after the core CNA workflow. This stage is optional and intended for research interpretation.</p>
 <h2 id="enable-the-optional-stage">Enable the optional stage<a class="headerlink" href="#enable-the-optional-stage" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                          </span><span class="c1"># enable classifier, knowledge, and report processes</span>

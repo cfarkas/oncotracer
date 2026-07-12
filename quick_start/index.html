@@ -340,6 +340,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#for-the-impatient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For the Impatient
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#requirements" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -366,6 +377,17 @@
     <span class="md-ellipsis">
       
         Complete ONT public test
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pathology-csv-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pathology CSV example
       
     </span>
   </a>
@@ -873,6 +895,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#for-the-impatient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For the Impatient
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#requirements" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -899,6 +932,17 @@
     <span class="md-ellipsis">
       
         Complete ONT public test
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pathology-csv-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pathology CSV example
       
     </span>
   </a>
@@ -954,6 +998,13 @@
 
 <h1 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h1>
 <p>This page contains complete, copy-pasteable public-data runs. Run every <code>main.nf</code> command from the cloned repository directory.</p>
+<h2 id="for-the-impatient">For the Impatient<a class="headerlink" href="#for-the-impatient" title="Permanent link">&para;</a></h2>
+<p>If you want to verify the complete workflow before learning each command, use the repository test runner:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">  </span><span class="c1"># clone a fresh copy of OncoTracer</span>
+<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                        </span><span class="c1"># enter the repository; the helper runs main.nf from here</span>
+bash<span class="w"> </span>run_test.sh<span class="w"> </span>--docker<span class="w">                            </span><span class="c1"># prepare data, validate, run Illumina and ONT, and check final outputs</span>
+</code></pre></div>
+<p>The script stops at the first error. A successful run ends with <code>SUCCESS</code> and prints both workflow-summary paths. It performs the same preparation and analysis commands explained below. Use <code>--singularity</code> or <code>--conda</code> instead of <code>--docker</code> when needed.</p>
 <h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
 <p>Install Nextflow and Docker first. See <a href="../installation/">Installation</a>.</p>
 <h2 id="complete-illumina-public-test">Complete Illumina public test<a class="headerlink" href="#complete-illumina-public-test" title="Permanent link">&para;</a></h2>
@@ -970,7 +1021,8 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>test/configs/illumina.quickstart.yml<span class="w"> </span>-resume<span class="w">    </span><span class="c1"># run SAMURAI/qDNAseq and all OncoTracer steps</span>
 cat<span class="w"> </span>test/runs/illumina/06_workflow_summary/workflow_summary.txt<span class="w">                      </span><span class="c1"># confirm the final output locations</span>
 </code></pre></div>
-<p><code>--make_test</code> creates this YAML using the real absolute path of your clone:</p>
+<p>The <code>--make_test</code> command is a <strong>preparation step only</strong>. It does not run CNA analysis. It downloads the public FASTQ files, validates their gzip integrity, creates the Illumina samplesheet, and writes <code>test/configs/illumina.quickstart.yml</code> plus <code>test/configs/ont.quickstart.yml</code>. The next two <code>nextflow</code> commands consume those generated YAML files.</p>
+<p>The box below is <strong>not another command to paste into the terminal</strong>. It is an annotated preview of the generated Illumina YAML so you can understand what the workflow will read. Your real file contains your clone path instead of <code>/absolute/path/...</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span><span class="w">                                      </span><span class="c1"># select the Illumina branch</span>
 <span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-illumina/test</span><span class="w"> </span><span class="c1"># folder mounted into Docker; all test inputs and outputs are below it</span>
 <span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-illumina/test/runs/illumina</span><span class="w"> </span><span class="c1"># main results directory</span>
@@ -1001,7 +1053,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>test/configs/ont.quickstart.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># run SAMURAI/ichorCNA and all OncoTracer steps</span>
 cat<span class="w"> </span>test/runs/ont/06_workflow_summary/workflow_summary.txt<span class="w">                           </span><span class="c1"># confirm the final output locations</span>
 </code></pre></div>
-<p><code>--make_test</code> creates this YAML using the real absolute path of your clone:</p>
+<p>The <code>--make_test</code> command has already prepared both datasets and YAML files. The box below is <strong>not a terminal command</strong>. It is an annotated preview of <code>test/configs/ont.quickstart.yml</code>; the ONT run command above reads this file with <code>-params-file</code>. Your generated file contains the real absolute path of your clone:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span><span class="w">                                           </span><span class="c1"># select the Oxford Nanopore branch</span>
 <span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-ont/test</span><span class="w">      </span><span class="c1"># folder mounted into Docker; all test inputs and outputs are below it</span>
 <span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer-ont/test/runs/ont</span><span class="w"> </span><span class="c1"># main results directory</span>
@@ -1017,6 +1069,27 @@ cat<span class="w"> </span>test/runs/ont/06_workflow_summary/workflow_summary.tx
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                                         </span><span class="c1"># refresh supported tutorial outputs</span>
 </code></pre></div>
 <p>Expected outputs include ichorCNA segment/depth tables under <code>test/runs/ont/01_samurai_ont/results/ichorcna/</code> and the ichorCNA-derived copy-number profile at <code>test/runs/ont/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf</code>.</p>
+<h2 id="pathology-csv-example">Pathology CSV example<a class="headerlink" href="#pathology-csv-example" title="Permanent link">&para;</a></h2>
+<p>The repository includes <code>examples/pathology/anonymized_pathology_example.csv</code>, a minimized UTF-8 extract of the sanitized project table. Only sequenced rows and the three fields used by OncoTracer are included; unrelated clinical and demographic columns were intentionally excluded.</p>
+<div class="highlight"><pre><span></span><code>illumina_sample_id,case_code,final_diagnosis
+I7738,2023-07738,&quot;Glioblastoma, IDH-wildtype.&quot;
+H10058,2023-10058,Findings concordant with arachnoid cyst.
+</code></pre></div>
+<p>The columns mean:</p>
+<ul>
+<li><code>illumina_sample_id</code>: must exactly match the sample identifier in the Illumina samplesheet and CNA results;</li>
+<li><code>case_code</code>: anonymized case identifier used to group or trace research records;</li>
+<li><code>final_diagnosis</code>: pathology diagnosis text used for compatibility/concordance reporting.</li>
+</ul>
+<p>The public DRR000542 test is not one of these pathology cases, so do not attach this CSV to that public run. Use it as a format example for your own matched samples. To enable pathology reporting for matched data, add the following to your Illumina YAML:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                          </span><span class="c1"># enable optional CNA classification and reports</span>
+<span class="nt">cna_classifier_sample_set</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">broad_cancer</span><span class="w">          </span><span class="c1"># select the appropriate disease context; use a narrower context when justified</span>
+<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/to/my_pathology.csv</span><span class="w"> </span><span class="c1"># CSV with identifiers matching the Illumina samplesheet</span>
+<span class="nt">pathology_sample_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina_sample_id</span><span class="w">          </span><span class="c1"># sample-matching column</span>
+<span class="nt">pathology_case_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case_code</span><span class="w">                     </span><span class="c1"># case identifier column</span>
+<span class="nt">pathology_diagnosis_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_diagnosis</span><span class="w">          </span><span class="c1"># diagnosis text column</span>
+</code></pre></div>
+<p>See <a href="../models_pathology/">Models &amp; Pathology</a> for interpretation limits and outputs.</p>
 <h2 id="use-your-own-illumina-fastq-files">Use your own Illumina FASTQ files<a class="headerlink" href="#use-your-own-illumina-fastq-files" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">              </span><span class="c1"># clone the repository</span>
 <span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                    </span><span class="c1"># enter the repository</span>
