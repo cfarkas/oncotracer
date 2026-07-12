@@ -481,6 +481,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Refinement
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -497,6 +515,58 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-settings-go" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the settings go
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-parameters-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the parameters control
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-illumina-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real Illumina example
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -774,6 +844,47 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-settings-go" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the settings go
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-parameters-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the parameters control
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-illumina-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real Illumina example
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -798,27 +909,163 @@
 
 
 <h1 id="advanced-refinement-settings">Advanced Refinement Settings<a class="headerlink" href="#advanced-refinement-settings" title="Permanent link">&para;</a></h1>
-<p>These settings control BAM-supported CNA boundary refinement. Leave defaults unchanged for standard runs.</p>
-<div class="highlight"><pre><span></span><code><span class="nt">fine_bin_kb_ont</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">25</span>
-<span class="nt">fine_bin_kb_illumina</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-<span class="nt">search_radius_bins</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="nt">min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
-<span class="nt">min_local_log2_diff_ont</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.12</span>
-<span class="nt">min_local_log2_diff_illumina</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.10</span>
-<span class="nt">min_adjacent_seg_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.10</span>
-<span class="nt">min_bic_gain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6</span>
-<span class="nt">permutations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">300</span>
-<span class="nt">permutation_p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
-<span class="nt">accept_rule</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p_and_bic</span>
-<span class="nt">max_ci_fraction_of_coarse</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
-<span class="nt">zipcnv_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adapted</span>
-<span class="nt">zipcnv_window_bins</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
-<span class="nt">zipcnv_k</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
-<span class="nt">zipcnv_min_segment_bins</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
-<span class="nt">zipcnv_min_abs_log2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.25</span>
-<span class="nt">zipcnv_compare_min_overlap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.50</span>
+<p>Boundary refinement is an optional evidence-driven step inside every standard OncoTracer run. It starts from the broad qDNAseq or ichorCNA segments, returns to the aligned BAM, and asks whether read-depth evidence supports moving each CNA boundary to a nearby finer bin.</p>
+<p>For routine analysis, keep the defaults. Change them only for a planned methods experiment, and write results to a new <code>outdir</code> so the default run remains available for comparison.</p>
+<h2 id="where-the-settings-go">Where the settings go<a class="headerlink" href="#where-the-settings-go" title="Permanent link">&para;</a></h2>
+<p>Refinement settings are not a separate configuration file. Add them near the bottom of the same Illumina or ONT YAML passed to <code>main.nf</code>.</p>
+<div class="highlight"><pre><span></span><code>oncotracer/
+├── main.nf
+├── params/
+│   ├── illumina.minimal.yml
+│   └── my_illumina_refinement.yml   # your copied and edited run YAML
+└── test/
+    └── runs/                         # public-test results
 </code></pre></div>
-<p>Change these only for a documented methods experiment.</p>
+<h2 id="what-the-parameters-control">What the parameters control<a class="headerlink" href="#what-the-parameters-control" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th style="text-align: right;">Default</th>
+<th>Practical meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fine_bin_kb_illumina</code></td>
+<td style="text-align: right;"><code>10</code></td>
+<td>BAM read-depth bin size around an Illumina boundary. Smaller bins give finer coordinates but are noisier and slower.</td>
+</tr>
+<tr>
+<td><code>fine_bin_kb_ont</code></td>
+<td style="text-align: right;"><code>25</code></td>
+<td>BAM read-depth bin size around an ONT boundary.</td>
+</tr>
+<tr>
+<td><code>search_radius_bins</code></td>
+<td style="text-align: right;"><code>2</code></td>
+<td>Number of coarse caller bins searched on each side of the original boundary. Larger values allow larger moves.</td>
+</tr>
+<tr>
+<td><code>min_mapq</code></td>
+<td style="text-align: right;"><code>20</code></td>
+<td>Minimum mapping quality for reads contributing to local depth. Raising it removes more ambiguous reads.</td>
+</tr>
+<tr>
+<td><code>min_local_log2_diff_illumina</code></td>
+<td style="text-align: right;"><code>0.10</code></td>
+<td>Minimum local Illumina depth contrast needed to consider a boundary.</td>
+</tr>
+<tr>
+<td><code>min_local_log2_diff_ont</code></td>
+<td style="text-align: right;"><code>0.12</code></td>
+<td>Minimum local ONT depth contrast needed to consider a boundary.</td>
+</tr>
+<tr>
+<td><code>min_adjacent_seg_delta</code></td>
+<td style="text-align: right;"><code>0.10</code></td>
+<td>Minimum difference between neighboring segment levels.</td>
+</tr>
+<tr>
+<td><code>min_bic_gain</code></td>
+<td style="text-align: right;"><code>6</code></td>
+<td>Minimum improvement in model fit required to accept the proposed split. Higher is more conservative.</td>
+</tr>
+<tr>
+<td><code>permutations</code></td>
+<td style="text-align: right;"><code>300</code></td>
+<td>Number of permutation tests. More permutations improve p-value resolution but take longer.</td>
+</tr>
+<tr>
+<td><code>permutation_p</code></td>
+<td style="text-align: right;"><code>0.05</code></td>
+<td>Maximum permutation p-value accepted by rules that use p-values.</td>
+</tr>
+<tr>
+<td><code>accept_rule</code></td>
+<td style="text-align: right;"><code>p_and_bic</code></td>
+<td>Requires both permutation and BIC evidence. This is the conservative default.</td>
+</tr>
+<tr>
+<td><code>max_ci_fraction_of_coarse</code></td>
+<td style="text-align: right;"><code>1.0</code></td>
+<td>Limits boundary uncertainty relative to the original coarse bin.</td>
+</tr>
+<tr>
+<td><code>zipcnv_mode</code></td>
+<td style="text-align: right;"><code>adapted</code></td>
+<td>Enables the bundled adapted ZIPcnv comparison.</td>
+</tr>
+<tr>
+<td><code>zipcnv_window_bins</code></td>
+<td style="text-align: right;"><code>5</code></td>
+<td>Local ZIPcnv smoothing window.</td>
+</tr>
+<tr>
+<td><code>zipcnv_k</code></td>
+<td style="text-align: right;"><code>0.05</code></td>
+<td>ZIPcnv tuning constant.</td>
+</tr>
+<tr>
+<td><code>zipcnv_min_segment_bins</code></td>
+<td style="text-align: right;"><code>3</code></td>
+<td>Minimum supported ZIPcnv segment length in bins.</td>
+</tr>
+<tr>
+<td><code>zipcnv_min_abs_log2</code></td>
+<td style="text-align: right;"><code>0.25</code></td>
+<td>Minimum absolute ZIPcnv log2 signal.</td>
+</tr>
+<tr>
+<td><code>zipcnv_compare_min_overlap</code></td>
+<td style="text-align: right;"><code>0.50</code></td>
+<td>Minimum overlap used when comparing refined and ZIPcnv segments.</td>
+</tr>
+</tbody>
+</table>
+<p>These parameters interact. For example, smaller fine bins can increase noise; lowering <code>min_local_log2_diff</code> at the same time can admit unstable boundaries. Change one small group at a time.</p>
+<h2 id="real-illumina-example">Real Illumina example<a class="headerlink" href="#real-illumina-example" title="Permanent link">&para;</a></h2>
+<p>This example reruns the public Illumina data with a deliberately more conservative refinement experiment and a separate output directory.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">                    </span><span class="c1"># clone the repository</span>
+<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                          </span><span class="c1"># enter the repository</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--make_test<span class="w">                                       </span><span class="c1"># download public FASTQ files and create test YAML files</span>
+cp<span class="w"> </span>test/configs/illumina.quickstart.yml<span class="w"> </span>params/illumina.conservative.yml<span class="w"> </span><span class="c1"># copy the generated YAML before editing</span>
+nano<span class="w"> </span>params/illumina.conservative.yml<span class="w">                                  </span><span class="c1"># edit the copied YAML</span>
+</code></pre></div>
+<p>Inside <code>nano</code>, change <code>outdir</code> and add the refinement block shown below. Keep <code>illumina_samurai_outdir</code> pointing to the already generated public SAMURAI result so both runs start from the same upstream data.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer/test</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer/test/runs/illumina_conservative</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer/test/public/illumina_DRR000542/illumina.samplesheet.csv</span>
+<span class="nt">illumina_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer/test/runs/illumina/01_samurai_illumina</span>
+<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
+<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
+<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+
+<span class="nt">fine_bin_kb_illumina</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span><span class="w">        </span><span class="c1"># use coarser local bins to reduce small-bin noise</span>
+<span class="nt">search_radius_bins</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">           </span><span class="c1"># keep the default search range</span>
+<span class="nt">min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span><span class="w">                    </span><span class="c1"># require more confidently mapped reads</span>
+<span class="nt">min_local_log2_diff_illumina</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.15</span><span class="w"> </span><span class="c1"># require stronger local depth contrast</span>
+<span class="nt">min_bic_gain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span><span class="w">                 </span><span class="c1"># demand stronger model improvement</span>
+<span class="nt">permutations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w">               </span><span class="c1"># improve permutation p-value resolution</span>
+<span class="nt">permutation_p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
+<span class="nt">accept_rule</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p_and_bic</span><span class="w">          </span><span class="c1"># require both statistical tests</span>
+</code></pre></div>
+<p>Save with <code>Ctrl+O</code>, press Enter, then exit with <code>Ctrl+X</code>. Validate and run:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/illumina.conservative.yml<span class="w"> </span><span class="c1"># validate YAML and process wiring</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/illumina.conservative.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># run the conservative experiment</span>
+</code></pre></div>
+<p>Compare the default and experimental boundary tables rather than judging only the plots:</p>
+<div class="highlight"><pre><span></span><code>ls<span class="w"> </span>-lh<span class="w"> </span>test/runs/illumina/02_bam_refinement<span class="w">                         </span><span class="c1"># default refinement output</span>
+ls<span class="w"> </span>-lh<span class="w"> </span>test/runs/illumina_conservative/02_bam_refinement<span class="w">            </span><span class="c1"># experimental refinement output</span>
+diff<span class="w"> </span>-u<span class="w"> </span>test/runs/illumina/06_workflow_summary/workflow_summary.txt<span class="w"> </span>test/runs/illumina_conservative/06_workflow_summary/workflow_summary.txt<span class="w"> </span><span class="c1"># compare run locations/settings</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Method changes need review</p>
+<p>Do not tune parameters until a desired biological result appears. Predefine the experiment, retain the default run, evaluate known controls, and report every non-default value.</p>
+</div>
 
 
 

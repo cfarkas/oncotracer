@@ -595,10 +595,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#illumina-fastq" class="md-nav__link">
+  <a href="#suggested-project-tree" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina FASTQ
+        Suggested project tree
       
     </span>
   </a>
@@ -606,10 +606,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-fastq" class="md-nav__link">
+  <a href="#editing-text-files-with-nano" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT FASTQ
+        Editing text files with nano
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#illumina-fastq-samplesheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Illumina FASTQ samplesheet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ont-barcode-fastq-folders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ONT barcode FASTQ folders
       
     </span>
   </a>
@@ -624,6 +646,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Pathology CSV">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-start-from-the-minimized-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: start from the minimized example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-use-matching-sample-ids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: use matching sample IDs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-point-the-pathology-yaml-at-those-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: point the pathology YAML at those columns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-validate-before-computation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: validate before computation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -851,10 +923,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#illumina-fastq" class="md-nav__link">
+  <a href="#suggested-project-tree" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina FASTQ
+        Suggested project tree
       
     </span>
   </a>
@@ -862,10 +934,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-fastq" class="md-nav__link">
+  <a href="#editing-text-files-with-nano" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT FASTQ
+        Editing text files with nano
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#illumina-fastq-samplesheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Illumina FASTQ samplesheet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ont-barcode-fastq-folders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ONT barcode FASTQ folders
       
     </span>
   </a>
@@ -880,6 +974,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Pathology CSV">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-start-from-the-minimized-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: start from the minimized example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-use-matching-sample-ids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: use matching sample IDs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-point-the-pathology-yaml-at-those-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: point the pathology YAML at those columns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-validate-before-computation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: validate before computation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -909,12 +1053,42 @@
 
 
 <h1 id="inputs">Inputs<a class="headerlink" href="#inputs" title="Permanent link">&para;</a></h1>
-<p>OncoTracer is FASTQ-first. The public entry points start from Illumina paired-end FASTQ files or ONT <code>fastq_pass</code> barcode FASTQ files.</p>
-<h2 id="illumina-fastq">Illumina FASTQ<a class="headerlink" href="#illumina-fastq" title="Permanent link">&para;</a></h2>
-<p>Create a CSV samplesheet with this header:</p>
-<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
+<p>OncoTracer is FASTQ-first. Keep small editable files such as YAML, samplesheets, and pathology CSVs in predictable folders. Large FASTQ files may be stored elsewhere, but they must share a container-visible parent with the output directory or be reachable through the configured <code>lpwgs_root</code> mount.</p>
+<h2 id="suggested-project-tree">Suggested project tree<a class="headerlink" href="#suggested-project-tree" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>oncotracer/
+├── main.nf
+├── params/
+│   ├── my_illumina.yml
+│   ├── my_ont.yml
+│   └── my_illumina_pathology.yml
+└── project/
+    ├── input/
+    │   ├── illumina.samplesheet.csv
+    │   ├── pathology.csv
+    │   └── fastq_pass/
+    │       ├── barcode01/
+    │       └── barcode02/
+    └── runs/
 </code></pre></div>
-<p>Required columns:</p>
+<p>Create it with:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                              </span><span class="c1"># enter the cloned repository</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>project/input<span class="w"> </span>project/runs<span class="w">        </span><span class="c1"># create table/input and result folders</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/fastq_pass<span class="w">          </span><span class="c1"># create the ONT folder only when needed</span>
+</code></pre></div>
+<h2 id="editing-text-files-with-nano">Editing text files with nano<a class="headerlink" href="#editing-text-files-with-nano" title="Permanent link">&para;</a></h2>
+<p>Open a file with <code>nano path/to/file</code>. Move with arrow keys, type normally, use Backspace/Delete to correct text, search with <code>Ctrl+W</code>, save with <code>Ctrl+O</code> followed by Enter, and exit with <code>Ctrl+X</code>.</p>
+<video controls preload="metadata" poster="../assets/tutorial/edit_yaml_with_nano_poster.png" style="width:100%;max-width:960px">
+  <source src="../assets/tutorial/edit_yaml_with_nano.mp4" type="video/mp4">
+  Your browser cannot play the embedded video. <a href="../assets/tutorial/edit_yaml_with_nano.mp4">Download the MP4</a>.
+</video>
+
+<h2 id="illumina-fastq-samplesheet">Illumina FASTQ samplesheet<a class="headerlink" href="#illumina-fastq-samplesheet" title="Permanent link">&para;</a></h2>
+<p>Create <code>project/input/illumina.samplesheet.csv</code>:</p>
+<div class="highlight"><pre><span></span><code>nano<span class="w"> </span>project/input/illumina.samplesheet.csv<span class="w"> </span><span class="c1"># open a new samplesheet in nano</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
+Sample_A,/absolute/path/oncotracer/project/input/Sample_A_R1.fastq.gz,/absolute/path/oncotracer/project/input/Sample_A_R2.fastq.gz,tumor
+</code></pre></div>
 <table>
 <thead>
 <tr>
@@ -925,15 +1099,15 @@
 <tbody>
 <tr>
 <td><code>sample</code></td>
-<td>Unique sample name. Use letters, numbers, <code>_</code>, or <code>-</code>.</td>
+<td>Unique sample name. Use letters, numbers, <code>_</code>, or <code>-</code>. This identifier must also match pathology when concordance is enabled.</td>
 </tr>
 <tr>
 <td><code>fastq_1</code></td>
-<td>Absolute path to R1 FASTQ.gz.</td>
+<td>Absolute path to the paired R1 FASTQ.gz.</td>
 </tr>
 <tr>
 <td><code>fastq_2</code></td>
-<td>Absolute path to R2 FASTQ.gz.</td>
+<td>Absolute path to the paired R2 FASTQ.gz.</td>
 </tr>
 <tr>
 <td><code>status</code></td>
@@ -941,26 +1115,63 @@
 </tr>
 </tbody>
 </table>
-<h2 id="ont-fastq">ONT FASTQ<a class="headerlink" href="#ont-fastq" title="Permanent link">&para;</a></h2>
-<p>Point <code>ont_folder</code> to a run folder, <code>fastq_pass</code>, or a directory containing barcode folders.</p>
-<div class="highlight"><pre><span></span><code>fastq_pass/
-  barcode01/
-    *.fastq.gz
-  barcode02/
-    *.fastq.gz
+<p>Verify both FASTQs:</p>
+<div class="highlight"><pre><span></span><code>ls<span class="w"> </span>-lh<span class="w"> </span>/absolute/path/oncotracer/project/input/Sample_A_R1.fastq.gz<span class="w"> </span><span class="c1"># confirm R1 exists and is non-empty</span>
+ls<span class="w"> </span>-lh<span class="w"> </span>/absolute/path/oncotracer/project/input/Sample_A_R2.fastq.gz<span class="w"> </span><span class="c1"># confirm R2 exists and is non-empty</span>
+gzip<span class="w"> </span>-t<span class="w"> </span>/absolute/path/oncotracer/project/input/Sample_A_R1.fastq.gz<span class="w"> </span><span class="c1"># test R1 gzip integrity</span>
+gzip<span class="w"> </span>-t<span class="w"> </span>/absolute/path/oncotracer/project/input/Sample_A_R2.fastq.gz<span class="w"> </span><span class="c1"># test R2 gzip integrity</span>
 </code></pre></div>
-<p>Set matching barcode and sample-name lists:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
-<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">caseA,caseB</span>
+<h2 id="ont-barcode-fastq-folders">ONT barcode FASTQ folders<a class="headerlink" href="#ont-barcode-fastq-folders" title="Permanent link">&para;</a></h2>
+<p>Point <code>ont_folder</code> to the <code>fastq_pass</code> directory containing barcode folders:</p>
+<div class="highlight"><pre><span></span><code>fastq_pass/
+├── barcode01/
+│   └── reads_001.fastq.gz
+└── barcode02/
+    └── reads_001.fastq.gz
+</code></pre></div>
+<p>The YAML lists must match by position:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span><span class="w">     </span><span class="c1"># folder names</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A,Patient_B</span><span class="w"> </span><span class="c1"># Patient_A maps to barcode01; Patient_B maps to barcode02</span>
+</code></pre></div>
+<p>Inspect the tree before running:</p>
+<div class="highlight"><pre><span></span><code>find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="c1"># list barcode folders</span>
+find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span><span class="c1"># show FASTQ files</span>
 </code></pre></div>
 <h2 id="pathology-csv">Pathology CSV<a class="headerlink" href="#pathology-csv" title="Permanent link">&para;</a></h2>
-<p>For pathology concordance, provide a CSV with at least:</p>
-<ul>
-<li>one sample identifier column matching OncoTracer sample names;</li>
-<li>one case identifier column;</li>
-<li>one diagnosis text column.</li>
-</ul>
-<p>Configure the exact column names in <code>params/illumina.pathology.example.yml</code>.</p>
+<p>Pathology concordance needs at least three concepts: a sample identifier matching OncoTracer, a case identifier, and diagnosis text. The header names can differ because the YAML tells OncoTracer which columns to use.</p>
+<h3 id="step-1-start-from-the-minimized-example">Step 1: start from the minimized example<a class="headerlink" href="#step-1-start-from-the-minimized-example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>examples/pathology/anonymized_pathology_example.csv<span class="w"> </span>project/input/pathology.csv<span class="w"> </span><span class="c1"># copy the repository format example</span>
+nano<span class="w"> </span>project/input/pathology.csv<span class="w">                                                   </span><span class="c1"># inspect or replace rows in nano</span>
+</code></pre></div>
+<p>For real work, export only the minimum fields required from the pathology system. Do not add names, national identifiers, addresses, dates of birth, insurance data, or unnecessary narrative text.</p>
+<h3 id="step-2-use-matching-sample-ids">Step 2: use matching sample IDs<a class="headerlink" href="#step-2-use-matching-sample-ids" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>illumina_sample_id,case_code,final_diagnosis
+Sample_A,Case_001,Diffuse large B-cell lymphoma
+Sample_B,Case_002,Reactive lymphoid tissue
+</code></pre></div>
+<p>The samplesheet must contain the same IDs:</p>
+<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
+Sample_A,/absolute/path/oncotracer/project/input/Sample_A_R1.fastq.gz,/absolute/path/oncotracer/project/input/Sample_A_R2.fastq.gz,tumor
+Sample_B,/absolute/path/Sample_B_R1.fastq.gz,/absolute/path/Sample_B_R2.fastq.gz,tumor
+</code></pre></div>
+<p><code>Sample_A</code> is not the same as <code>sample_a</code>; matching is exact.</p>
+<h3 id="step-3-point-the-pathology-yaml-at-those-columns">Step 3: point the pathology YAML at those columns<a class="headerlink" href="#step-3-point-the-pathology-yaml-at-those-columns" title="Permanent link">&para;</a></h3>
+<p>Copy the pathology-enabled template:</p>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.pathology.example.yml<span class="w"> </span>params/my_illumina_pathology.yml<span class="w"> </span><span class="c1"># make an editable run YAML</span>
+nano<span class="w"> </span>params/my_illumina_pathology.yml<span class="w">                                    </span><span class="c1"># replace example paths and column names</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/oncotracer/project/input/pathology.csv</span>
+<span class="nt">pathology_sample_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina_sample_id</span>
+<span class="nt">pathology_case_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case_code</span>
+<span class="nt">pathology_diagnosis_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_diagnosis</span>
+</code></pre></div>
+<h3 id="step-4-validate-before-computation">Step 4: validate before computation<a class="headerlink" href="#step-4-validate-before-computation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>head<span class="w"> </span>-5<span class="w"> </span>project/input/illumina.samplesheet.csv<span class="w"> </span><span class="c1"># inspect sample IDs</span>
+head<span class="w"> </span>-5<span class="w"> </span>project/input/pathology.csv<span class="w">            </span><span class="c1"># inspect matching pathology IDs</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina_pathology.yml<span class="w"> </span><span class="c1"># validate the complete configuration</span>
+</code></pre></div>
+<p>Continue with the <a href="../configuration/pathology/">complete Pathology and Classifier tutorial</a>.</p>
 
 
 

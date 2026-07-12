@@ -425,6 +425,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ONT
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -441,6 +459,80 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-folder-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended folder layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-and-edit-the-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create and edit the YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-yaml-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the YAML means
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check-the-input-before-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check the input before running
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-and-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate and run
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -774,6 +866,69 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-folder-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended folder layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-and-edit-the-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create and edit the YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-yaml-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the YAML means
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check-the-input-before-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check the input before running
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-and-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate and run
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -798,13 +953,59 @@
 
 
 <h1 id="ont-yaml">ONT YAML<a class="headerlink" href="#ont-yaml" title="Permanent link">&para;</a></h1>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer_project</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer_project/runs/ont_example</span>
-<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/data/ont_run/fastq_pass</span>
-<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
-<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sample_ONT_1,Sample_ONT_2</span>
-<span class="nt">ont_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer_project/runs/ont_example/01_samurai_ont</span>
+<p>This YAML tells OncoTracer where an Oxford Nanopore <code>fastq_pass</code> tree is, which barcode directories belong to which sample names, where SAMURAI/ichorCNA should write, and where final OncoTracer outputs belong.</p>
+<h2 id="recommended-folder-layout">Recommended folder layout<a class="headerlink" href="#recommended-folder-layout" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>oncotracer/
+├── main.nf
+├── params/
+│   ├── ont.minimal.yml        # versioned template
+│   └── my_ont.yml             # your copied and edited YAML
+└── project/
+    ├── input/
+    │   └── fastq_pass/
+    │       ├── barcode01/
+    │       │   └── reads.fastq.gz
+    │       └── barcode02/
+    │           └── reads.fastq.gz
+    └── runs/
+        └── ont_run/            # created by the workflow
+</code></pre></div>
+<h2 id="create-and-edit-the-yaml">Create and edit the YAML<a class="headerlink" href="#create-and-edit-the-yaml" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w"> </span><span class="c1"># clone the repository</span>
+<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                       </span><span class="c1"># enter the repository</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>project/runs<span class="w">      </span><span class="c1"># create a simple project tree</span>
+cp<span class="w"> </span>params/ont.minimal.yml<span class="w"> </span>params/my_ont.yml<span class="w">         </span><span class="c1"># copy the template; preserve the original</span>
+find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span><span class="c1"># inspect barcode FASTQ placement</span>
+realpath<span class="w"> </span>project/input/fastq_pass<span class="w">                   </span><span class="c1"># obtain the absolute ONT folder path</span>
+nano<span class="w"> </span>params/my_ont.yml<span class="w">                              </span><span class="c1"># edit the copied YAML</span>
+</code></pre></div>
+<p>In <code>nano</code>, use arrow keys to move. Replace the example paths and barcode/sample lists. Save with <code>Ctrl+O</code>, Enter, and exit with <code>Ctrl+X</code>. The <a href="../illumina/#video-a-human-style-nano-editing-session">Illumina YAML page</a> contains a video of the same nano workflow.</p>
+<h2 id="what-the-yaml-means">What the YAML means<a class="headerlink" href="#what-the-yaml-means" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span><span class="w">                                           </span><span class="c1"># choose the Oxford Nanopore branch</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer</span><span class="w">                   </span><span class="c1"># common parent mounted into Docker/Singularity</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer/project/runs/ont_run</span><span class="w">  </span><span class="c1"># final numbered OncoTracer outputs</span>
+<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer/project/input/fastq_pass</span><span class="w"> </span><span class="c1"># folder containing barcode directories</span>
+<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span><span class="w">                   </span><span class="c1"># barcode directory names, in order</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A,Patient_B</span><span class="w">               </span><span class="c1"># biological names in the same order</span>
+<span class="nt">ont_samurai_outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer/project/runs/ont_run/01_samurai_ont</span><span class="w"> </span><span class="c1"># ichorCNA/SAMURAI output</span>
+<span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_biopsy</span><span class="w">                    </span><span class="c1"># SAMURAI analysis preset</span>
+<span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ichorcna</span><span class="w">                                </span><span class="c1"># ONT CNA caller</span>
+<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w">                                 </span><span class="c1"># coarse ichorCNA bin size</span>
+<span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w">                              </span><span class="c1"># process completed FASTQ immediately</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># optional classifier/report stage</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                                        </span><span class="c1"># preserve existing outputs unless intentionally refreshing</span>
+</code></pre></div>
+<p>The lists are positional: <code>barcode01</code> becomes <code>Patient_A</code>, and <code>barcode02</code> becomes <code>Patient_B</code>. The list lengths must match.</p>
+<h2 id="check-the-input-before-running">Check the input before running<a class="headerlink" href="#check-the-input-before-running" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="c1"># list barcode directories</span>
+find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span><span class="c1"># show example FASTQ files</span>
+ls<span class="w"> </span>-lh<span class="w"> </span>project/input/fastq_pass/barcode01<span class="w">                </span><span class="c1"># confirm barcode01 is not empty</span>
+</code></pre></div>
+<p>For a single unbarcoded folder, the wrapper still needs a barcode/sample selection consistent with the documented layout. The public tutorial shows a complete single-barcode example.</p>
+<h2 id="validate-and-run">Validate and run<a class="headerlink" href="#validate-and-run" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span><span class="c1"># validate settings without analysis</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># run the complete ONT analysis</span>
+cat<span class="w"> </span>project/runs/ont_run/06_workflow_summary/workflow_summary.txt<span class="w">      </span><span class="c1"># inspect final output locations</span>
 </code></pre></div>
 <table>
 <thead>
@@ -823,17 +1024,17 @@
 <tr>
 <td><code>lpwgs_root</code></td>
 <td>Yes</td>
-<td>Absolute folder path bound into Docker/Singularity.</td>
+<td>Absolute common parent mounted into the runtime.</td>
 </tr>
 <tr>
 <td><code>outdir</code></td>
 <td>Yes</td>
-<td>Main output folder.</td>
+<td>Main numbered-output directory.</td>
 </tr>
 <tr>
 <td><code>ont_folder</code></td>
 <td>Yes</td>
-<td>Folder containing FASTQ files or barcode folders.</td>
+<td>Folder containing barcode FASTQ directories.</td>
 </tr>
 <tr>
 <td><code>ont_barcodes</code></td>
@@ -843,17 +1044,17 @@
 <tr>
 <td><code>ont_sample_names</code></td>
 <td>Recommended</td>
-<td>Comma-separated sample names in barcode order.</td>
+<td>Comma-separated names matching barcode order.</td>
 </tr>
 <tr>
 <td><code>ont_samurai_outdir</code></td>
 <td>Yes</td>
-<td>Upstream ONT SAMURAI/ichorCNA output folder.</td>
+<td>SAMURAI/ichorCNA output directory.</td>
 </tr>
 <tr>
 <td><code>ont_analysis_type</code></td>
 <td>Default</td>
-<td><code>liquid_biopsy</code>.</td>
+<td>Usually <code>liquid_biopsy</code>.</td>
 </tr>
 <tr>
 <td><code>ont_caller</code></td>
@@ -868,7 +1069,7 @@
 <tr>
 <td><code>ont_min_age_minutes</code></td>
 <td>Optional</td>
-<td>Wait time for active sequencing folders; use <code>0</code> for completed FASTQ files.</td>
+<td>Use <code>0</code> for completed FASTQ; positive values avoid files still being written.</td>
 </tr>
 <tr>
 <td><code>ont_ref</code></td>
@@ -888,12 +1089,12 @@
 <tr>
 <td><code>ont_normal_sample_names</code></td>
 <td>Optional</td>
-<td>Normal/control sample names.</td>
+<td>Matching normal/control names.</td>
 </tr>
 <tr>
 <td><code>ont_build_pon</code></td>
 <td>Optional</td>
-<td>Build panel of normals when supported.</td>
+<td>Build a panel of normals when supported.</td>
 </tr>
 <tr>
 <td><code>ont_force_realign</code></td>
@@ -901,14 +1102,9 @@
 <td>Force ONT realignment.</td>
 </tr>
 <tr>
-<td><code>run_cna_classifier</code></td>
-<td>Optional</td>
-<td>Runs optional classifier/report steps.</td>
-</tr>
-<tr>
 <td><code>force</code></td>
 <td>Optional</td>
-<td>Allows supported overwrite/recompute behavior.</td>
+<td>Allows supported refresh behavior. Prefer <code>false</code> for real projects.</td>
 </tr>
 </tbody>
 </table>
