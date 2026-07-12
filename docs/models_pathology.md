@@ -1,5 +1,7 @@
 # Models & Pathology
 
+The repository provides a minimized tutorial table at [`examples/pathology/anonymized_pathology_example.csv`](https://github.com/cfarkas/oncotracer/blob/main/examples/pathology/anonymized_pathology_example.csv). It contains only `illumina_sample_id`, `case_code`, and `final_diagnosis` from the authorized sanitized source.
+
 OncoTracer can add a cancer-context-aware CNA classifier, sample reports, literature-linked driver summaries, cohort plots, and pathology concordance after the core CNA workflow. This stage is optional and intended for research interpretation.
 
 ## Enable the optional stage

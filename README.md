@@ -8,9 +8,23 @@
 
 OncoTracer is a reproducible Nextflow research workflow for LP-WGS copy-number alteration analysis from Illumina and Oxford Nanopore FASTQ files.
 
+**Documentation:** <https://cfarkas.github.io/oncotracer/>
+
 ```text
 FASTQ -> SAMURAI qDNAseq/ichorCNA -> boundary refinement -> CNA tables -> plots/reports
 ```
+
+## For the Impatient
+
+Clone the repository and let the tested helper prepare data, validate both branches, run both complete workflows, and verify their outputs:
+
+```bash
+git clone https://github.com/cfarkas/oncotracer.git  # clone OncoTracer
+cd oncotracer                                        # enter the repository
+bash run_test.sh --docker                            # download public FASTQ files, run Illumina and ONT, and verify outputs
+```
+
+Use `--singularity` or `--conda` instead of `--docker` when appropriate. See the [complete documentation](https://cfarkas.github.io/oncotracer/) for requirements and explanations.
 
 ## Install and prepare public tests
 

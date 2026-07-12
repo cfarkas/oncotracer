@@ -2,6 +2,18 @@
 
 This page contains complete, copy-pasteable public-data runs. Run every `main.nf` command from the cloned repository directory.
 
+## For the Impatient
+
+If you want to verify the complete workflow before learning each command, use the repository test runner:
+
+```bash
+git clone https://github.com/cfarkas/oncotracer.git  # clone a fresh copy of OncoTracer
+cd oncotracer                                        # enter the repository; the helper runs main.nf from here
+bash run_test.sh --docker                            # prepare data, validate, run Illumina and ONT, and check final outputs
+```
+
+The script stops at the first error. A successful run ends with `SUCCESS` and prints both workflow-summary paths. It performs the same preparation and analysis commands explained below. Use `--singularity` or `--conda` instead of `--docker` when needed.
+
 ## Requirements
 
 Install Nextflow and Docker first. See [Installation](installation.md).
@@ -24,7 +36,9 @@ nextflow run main.nf --docker -params-file test/configs/illumina.quickstart.yml 
 cat test/runs/illumina/06_workflow_summary/workflow_summary.txt                      # confirm the final output locations
 ```
 
-`--make_test` creates this YAML using the real absolute path of your clone:
+The `--make_test` command is a **preparation step only**. It does not run CNA analysis. It downloads the public FASTQ files, validates their gzip integrity, creates the Illumina samplesheet, and writes `test/configs/illumina.quickstart.yml` plus `test/configs/ont.quickstart.yml`. The next two `nextflow` commands consume those generated YAML files.
+
+The box below is **not another command to paste into the terminal**. It is an annotated preview of the generated Illumina YAML so you can understand what the workflow will read. Your real file contains your clone path instead of `/absolute/path/...`:
 
 ```yaml
 mode: illumina                                      # select the Illumina branch
@@ -66,7 +80,7 @@ nextflow run main.nf --docker -params-file test/configs/ont.quickstart.yml -resu
 cat test/runs/ont/06_workflow_summary/workflow_summary.txt                           # confirm the final output locations
 ```
 
-`--make_test` creates this YAML using the real absolute path of your clone:
+The `--make_test` command has already prepared both datasets and YAML files. The box below is **not a terminal command**. It is an annotated preview of `test/configs/ont.quickstart.yml`; the ONT run command above reads this file with `-params-file`. Your generated file contains the real absolute path of your clone:
 
 ```yaml
 mode: ont                                           # select the Oxford Nanopore branch
@@ -85,6 +99,35 @@ force: true                                         # refresh supported tutorial
 ```
 
 Expected outputs include ichorCNA segment/depth tables under `test/runs/ont/01_samurai_ont/results/ichorcna/` and the ichorCNA-derived copy-number profile at `test/runs/ont/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf`.
+
+## Pathology CSV example
+
+The repository includes `examples/pathology/anonymized_pathology_example.csv`, a minimized UTF-8 extract of the sanitized project table. Only sequenced rows and the three fields used by OncoTracer are included; unrelated clinical and demographic columns were intentionally excluded.
+
+```csv
+illumina_sample_id,case_code,final_diagnosis
+I7738,2023-07738,"Glioblastoma, IDH-wildtype."
+H10058,2023-10058,Findings concordant with arachnoid cyst.
+```
+
+The columns mean:
+
+- `illumina_sample_id`: must exactly match the sample identifier in the Illumina samplesheet and CNA results;
+- `case_code`: anonymized case identifier used to group or trace research records;
+- `final_diagnosis`: pathology diagnosis text used for compatibility/concordance reporting.
+
+The public DRR000542 test is not one of these pathology cases, so do not attach this CSV to that public run. Use it as a format example for your own matched samples. To enable pathology reporting for matched data, add the following to your Illumina YAML:
+
+```yaml
+run_cna_classifier: true                          # enable optional CNA classification and reports
+cna_classifier_sample_set: broad_cancer          # select the appropriate disease context; use a narrower context when justified
+pathology_csv: /absolute/path/to/my_pathology.csv # CSV with identifiers matching the Illumina samplesheet
+pathology_sample_col: illumina_sample_id          # sample-matching column
+pathology_case_col: case_code                     # case identifier column
+pathology_diagnosis_col: final_diagnosis          # diagnosis text column
+```
+
+See [Models & Pathology](models_pathology.md) for interpretation limits and outputs.
 
 ## Use your own Illumina FASTQ files
 
