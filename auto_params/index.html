@@ -12,13 +12,13 @@
         <meta name="author" content="OncoTracer developers">
       
       
-        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/gallery/">
+        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/auto_params/">
       
       
-        <link rel="prev" href="../models_pathology/">
+        <link rel="prev" href="../quick_start/">
       
       
-        <link rel="next" href="../troubleshooting/">
+        <link rel="next" href="../configuration/yaml_basics/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Gallery - OncoTracer</title>
+        <title>Automatic Setup - OncoTracer</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gallery" class="md-skip">
+        <a href="#automatic-setup-from-a-reads-folder" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Gallery
+              Automatic Setup
             
           </span>
         </div>
@@ -210,10 +210,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../installation/" class="md-tabs__link">
           
   
@@ -250,12 +252,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../outputs/" class="md-tabs__link">
           
   
@@ -364,28 +364,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
             
   
   
@@ -403,7 +406,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -474,10 +477,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../auto_params/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Automatic Setup
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -493,6 +523,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#illumina" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Illumina
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ont" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ONT
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-output-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional output locations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -794,31 +877,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -836,7 +916,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -907,37 +987,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Gallery
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../gallery/" class="md-nav__link">
         
   
   
@@ -953,70 +1006,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#illumina-samuraiqdnaseq-test-result" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Illumina SAMURAI/qDNAseq test result
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ont-ichorcna-derived-test-result" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ONT ichorCNA-derived test result
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#final-oncotracer-illumina-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Final OncoTracer Illumina outputs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#final-oncotracer-ont-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Final OncoTracer ONT outputs
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1201,10 +1190,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#illumina-samuraiqdnaseq-test-result" class="md-nav__link">
+  <a href="#illumina" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina SAMURAI/qDNAseq test result
+        Illumina
       
     </span>
   </a>
@@ -1212,10 +1201,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-ichorcna-derived-test-result" class="md-nav__link">
+  <a href="#ont" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT ichorCNA-derived test result
+        ONT
       
     </span>
   </a>
@@ -1223,21 +1212,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#final-oncotracer-illumina-outputs" class="md-nav__link">
+  <a href="#optional-output-locations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Final OncoTracer Illumina outputs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#final-oncotracer-ont-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Final OncoTracer ONT outputs
+        Optional output locations
       
     </span>
   </a>
@@ -1261,7 +1239,7 @@
 
 
   
-    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/gallery.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/auto_params.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1269,23 +1247,66 @@
   
 
 
-<h1 id="gallery">Gallery<a class="headerlink" href="#gallery" title="Permanent link">&para;</a></h1>
-<p>These are real outputs from the public FASTQ tests documented in the <a href="../quick_start/">Quick Start</a>.</p>
-<h2 id="illumina-samuraiqdnaseq-test-result">Illumina SAMURAI/qDNAseq test result<a class="headerlink" href="#illumina-samuraiqdnaseq-test-result" title="Permanent link">&para;</a></h2>
-<p><a href="../assets/gallery/illumina_samurai_qdnaseq_bin_plot.pdf">Download the original qDNAseq bin plot PDF</a>.</p>
-<p><img alt="Public Illumina ERR12341627 SAMURAI qDNAseq bin plot" src="../assets/gallery/illumina_samurai_qdnaseq_bin_plot.png" /></p>
-<h2 id="ont-ichorcna-derived-test-result">ONT ichorCNA-derived test result<a class="headerlink" href="#ont-ichorcna-derived-test-result" title="Permanent link">&para;</a></h2>
-<p>The public ONT sample produces ichorCNA depth and segment tables. OncoTracer successfully renders the copy-number profile from those tables even when the upstream ichorCNA plotting helper encounters missing depth values.</p>
-<p><a href="../assets/gallery/ont_ichorcna_derived_profile.pdf">Download the original ichorCNA-derived profile PDF</a>.</p>
-<p><img alt="Public ONT DRR165691 ichorCNA-derived copy-number profile" src="../assets/gallery/ont_ichorcna_derived_profile.png" /></p>
-<h2 id="final-oncotracer-illumina-outputs">Final OncoTracer Illumina outputs<a class="headerlink" href="#final-oncotracer-illumina-outputs" title="Permanent link">&para;</a></h2>
-<p><img alt="Illumina CNA genome overview" src="../assets/gallery/illumina_cna_genome_overview.png" /></p>
-<p><img alt="Illumina CNA event counts" src="../assets/gallery/illumina_cna_event_counts_by_sample.png" /></p>
-<p><img alt="Illumina recurrent cytobands" src="../assets/gallery/illumina_cna_recurrent_cytobands.png" /></p>
-<h2 id="final-oncotracer-ont-outputs">Final OncoTracer ONT outputs<a class="headerlink" href="#final-oncotracer-ont-outputs" title="Permanent link">&para;</a></h2>
-<p><img alt="ONT CNA genome overview" src="../assets/gallery/ont_cna_genome_overview.png" /></p>
-<p><img alt="ONT CNA event counts" src="../assets/gallery/ont_cna_event_counts_by_sample.png" /></p>
-<p><img alt="ONT recurrent cytobands" src="../assets/gallery/ont_cna_recurrent_cytobands.png" /></p>
+<h1 id="automatic-setup-from-a-reads-folder">Automatic setup from a reads folder<a class="headerlink" href="#automatic-setup-from-a-reads-folder" title="Permanent link">&para;</a></h1>
+<p><code>--auto_params</code> is the shortest path from your FASTQ folder to a reproducible run. It detects the files, validates tumor/normal labels, and writes the YAML automatically. For Illumina it also writes the full paired-FASTQ samplesheet.</p>
+<p><img alt="Example OncoTracer input layouts: paired Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv." src="../assets/tutorial/auto_params_folder_layout.svg" /></p>
+<p><em>Organize Illumina reads by matching R1/R2 prefixes or ONT reads by barcode, then map each sample in <code>samples.csv</code>; <code>--auto_params</code> detects the inputs and writes the run configuration.</em></p>
+<div class="admonition note">
+<p class="admonition-title">Preparation only</p>
+<p><code>--auto_params</code> writes and validates configuration files. It does not start the analysis. Inspect the files, then run the two commands printed at the end.</p>
+</div>
+<h2 id="illumina">Illumina<a class="headerlink" href="#illumina" title="Permanent link">&para;</a></h2>
+<p>Put exactly one pair per sample in one folder. Supported names include <code>A5645_R1.fastq.gz</code>/<code>A5645_R2.fastq.gz</code> and <code>A5645_1.fastq.gz</code>/<code>A5645_2.fastq.gz</code>.</p>
+<p>Create <code>samples.csv</code>:</p>
+<div class="highlight"><pre><span></span><code>sample_name,status
+A5645,TUMOR
+A5544,NORMAL
+B5437,TUMOR
+</code></pre></div>
+<p>Generate the files:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/real/path/to/illumina_fastq<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/real/path/to/illumina_fastq/samples.csv
+</code></pre></div>
+<p>Generated beside the reads:</p>
+<div class="highlight"><pre><span></span><code>illumina_fastq/
+├── oncotracer_config/
+│   ├── illumina.auto.yml
+│   └── illumina.samplesheet.csv
+└── oncotracer_results/
+</code></pre></div>
+<p>Run:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/real/path/to/illumina_fastq/oncotracer_config/illumina.auto.yml
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/real/path/to/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w"> </span>-resume
+</code></pre></div>
+<h2 id="ont">ONT<a class="headerlink" href="#ont" title="Permanent link">&para;</a></h2>
+<p>Point <code>--reads_folder</code> to <code>fastq_pass</code>, with FASTQ files inside barcode folders. The safest table includes the barcode explicitly:</p>
+<div class="highlight"><pre><span></span><code>barcode,sample_name,status
+barcode01,A5645,TUMOR
+barcode02,A5544,NORMAL
+barcode03,B5437,TUMOR
+</code></pre></div>
+<p>Generate and run:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/real/path/to/fastq_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/real/path/to/fastq_pass/samples.csv
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/real/path/to/fastq_pass/oncotracer_config/ont.auto.yml
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/real/path/to/fastq_pass/oncotracer_config/ont.auto.yml<span class="w"> </span>-resume
+</code></pre></div>
+<p>A two-column <code>sample_name,status</code> table is also accepted for ONT; rows are mapped to alphabetically sorted barcode directories. Use the explicit three-column form to avoid accidental ordering mistakes.</p>
+<h2 id="optional-output-locations">Optional output locations<a class="headerlink" href="#optional-output-locations" title="Permanent link">&para;</a></h2>
+<p>The defaults keep generated files and results beside the reads. Override them when needed:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/data/run42/fastq<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/data/run42/samples.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span>/data/run42/config<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span>/data/run42/results
+</code></pre></div>
+<p>CSV, tab-delimited, and whitespace-delimited TXT tables are accepted. Status is case-insensitive but must be <code>TUMOR</code> or <code>NORMAL</code>. SAMURAI directories are derived automatically as <code>&lt;outdir&gt;/01_samurai_illumina</code> or <code>&lt;outdir&gt;/01_samurai_ont</code>; they do not belong in the YAML.</p>
 
 
 

@@ -52,6 +52,8 @@
       
     
     
+      <link rel="stylesheet" href="../stylesheets/oncotracer.css">
+    
     <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -82,9 +84,7 @@
     
       
 
-  
-
-<header class="md-header md-header--shadow" data-md-component="header">
+<header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="OncoTracer" class="md-header__button md-logo" aria-label="OncoTracer" data-md-component="logo">
       
@@ -143,6 +143,8 @@
         </button>
       </nav>
       
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
     </form>
     <div class="md-search__output">
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
@@ -180,6 +182,116 @@
       
         
           
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Start
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../configuration/illumina/" class="md-tabs__link">
+          
+  
+  
+  Configure and Run
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../outputs/" class="md-tabs__link">
+          
+  
+  
+  Results and Interpretation
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../troubleshooting/" class="md-tabs__link">
+          
+  
+  
+  Help and Project
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -193,8 +305,10 @@
                     
 
 
+  
 
-<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="OncoTracer" class="md-nav__button md-logo" aria-label="OncoTracer" data-md-component="logo">
       
@@ -262,6 +376,9 @@
         
         
       
+      
+        
+      
     
     
     <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
@@ -316,6 +433,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -332,6 +467,47 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-oncotracer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install OncoTracer
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -353,6 +529,34 @@
     
   
     Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto_params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Automatic Setup
   
 
     
@@ -440,12 +644,12 @@
     
     
       
-        
+      
         
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -454,7 +658,7 @@
         <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -669,12 +873,12 @@
     
     
       
-        
+      
         
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -683,7 +887,7 @@
         <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -814,12 +1018,12 @@
     
     
       
-        
+      
         
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -828,7 +1032,7 @@
         <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -968,6 +1172,36 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-oncotracer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install OncoTracer
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -992,23 +1226,46 @@
 
 
 <h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
-<p>OncoTracer requires Linux, Java/Nextflow, Git, and one container runtime. Docker is the simplest route for a workstation.</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>--version<span class="w">                                                     </span><span class="c1"># confirm that Git is installed</span>
-java<span class="w"> </span>-version<span class="w">                                                     </span><span class="c1"># confirm Java 17 or newer is available</span>
-curl<span class="w"> </span>-s<span class="w"> </span>https://get.nextflow.io<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash<span class="w">                            </span><span class="c1"># download the Nextflow launcher</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="nv">$HOME</span>/bin<span class="w">                                                </span><span class="c1"># create a personal executable directory</span>
-mv<span class="w"> </span>nextflow<span class="w"> </span><span class="nv">$HOME</span>/bin/<span class="w">                                            </span><span class="c1"># install the launcher without administrator privileges</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$HOME</span>/bin:<span class="nv">$PATH</span><span class="w">                                       </span><span class="c1"># make Nextflow available in this shell</span>
-nextflow<span class="w"> </span>-version<span class="w">                                                 </span><span class="c1"># verify the Nextflow installation</span>
-docker<span class="w"> </span>--version<span class="w">                                                   </span><span class="c1"># verify Docker; use Apptainer/Singularity on HPC</span>
-git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">               </span><span class="c1"># clone OncoTracer</span>
-<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                     </span><span class="c1"># enter the repository; always run main.nf from here</span>
-<span class="nv">current_dir</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                </span><span class="c1"># save the absolute repository path</span>
-<span class="nb">echo</span><span class="w"> </span><span class="nv">$current_dir</span><span class="w">                                                 </span><span class="c1"># confirm the working directory</span>
-docker<span class="w"> </span>pull<span class="w"> </span>carlosfarkas/oncotracer:latest<span class="w">                        </span><span class="c1"># download the maintained workflow container</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--make_test<span class="w">                                  </span><span class="c1"># download public FASTQ tests and create ready-to-run YAML files</span>
+<p>OncoTracer itself does not require a manual software stack. Install the four prerequisites below, then clone the pipeline. All analysis programs are supplied by the maintained container.</p>
+<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Check</th>
+<th>Official installation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Git</td>
+<td><code>git --version</code></td>
+<td><a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">Install Git</a></td>
+</tr>
+<tr>
+<td>Java 17 or newer</td>
+<td><code>java -version</code></td>
+<td><a href="https://www.nextflow.io/docs/latest/install.html#requirements">Nextflow Java requirements</a></td>
+</tr>
+<tr>
+<td>Nextflow</td>
+<td><code>nextflow -version</code></td>
+<td><a href="https://www.nextflow.io/docs/latest/install.html">Install Nextflow</a></td>
+</tr>
+<tr>
+<td>Docker</td>
+<td><code>docker --version</code></td>
+<td><a href="https://docs.docker.com/engine/install/">Install Docker Engine</a></td>
+</tr>
+</tbody>
+</table>
+<p>On an HPC system, use <a href="https://apptainer.org/docs/admin/main/installation.html">Apptainer</a> instead of Docker and replace <code>--docker</code> with <code>--singularity</code>.</p>
+<h2 id="install-oncotracer">Install OncoTracer<a class="headerlink" href="#install-oncotracer" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">  </span><span class="c1"># download the pipeline</span>
+<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                        </span><span class="c1"># enter it; run main.nf from here</span>
+bash<span class="w"> </span>run_test.sh<span class="w"> </span>--docker<span class="w">                            </span><span class="c1"># install the local Nextflow launcher if missing, pull/update the container, reuse or download test data, and test both branches</span>
 </code></pre></div>
-<p>For HPC, install Apptainer and replace <code>--docker</code> with <code>--singularity</code> in workflow commands. A Conda fallback remains available with <code>conda env create -f environment.yml</code>, <code>conda activate oncotracer</code>, and the <code>--conda</code> runtime flag.</p>
+<p><code>run_test.sh</code> does not install Java, Git, or Docker because those require operating-system permissions. It checks them and gives a clear error. It downloads Nextflow locally only when <code>nextflow</code> is unavailable. Docker reuses unchanged image layers, and the data preparation step reuses every FASTQ that already exists and passes gzip validation.</p>
 
 
 
@@ -1028,6 +1285,12 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
           
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
         
       </main>
       
@@ -1058,7 +1321,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit", "navigation.tabs", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
