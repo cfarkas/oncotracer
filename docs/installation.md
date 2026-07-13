@@ -1,22 +1,24 @@
 # Installation
 
-OncoTracer requires Linux, Java/Nextflow, Git, and one container runtime. Docker is the simplest route for a workstation.
+OncoTracer itself does not require a manual software stack. Install the four prerequisites below, then clone the pipeline. All analysis programs are supplied by the maintained container.
+
+## Requirements
+
+| Requirement | Check | Official installation |
+| --- | --- | --- |
+| Git | `git --version` | [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) |
+| Java 17 or newer | `java -version` | [Nextflow Java requirements](https://www.nextflow.io/docs/latest/install.html#requirements) |
+| Nextflow | `nextflow -version` | [Install Nextflow](https://www.nextflow.io/docs/latest/install.html) |
+| Docker | `docker --version` | [Install Docker Engine](https://docs.docker.com/engine/install/) |
+
+On an HPC system, use [Apptainer](https://apptainer.org/docs/admin/main/installation.html) instead of Docker and replace `--docker` with `--singularity`.
+
+## Install OncoTracer
 
 ```bash
-git --version                                                     # confirm that Git is installed
-java -version                                                     # confirm Java 17 or newer is available
-curl -s https://get.nextflow.io | bash                            # download the Nextflow launcher
-mkdir -p $HOME/bin                                                # create a personal executable directory
-mv nextflow $HOME/bin/                                            # install the launcher without administrator privileges
-export PATH=$HOME/bin:$PATH                                       # make Nextflow available in this shell
-nextflow -version                                                 # verify the Nextflow installation
-docker --version                                                   # verify Docker; use Apptainer/Singularity on HPC
-git clone https://github.com/cfarkas/oncotracer.git               # clone OncoTracer
-cd oncotracer                                                     # enter the repository; always run main.nf from here
-current_dir=$(pwd)                                                # save the absolute repository path
-echo $current_dir                                                 # confirm the working directory
-docker pull carlosfarkas/oncotracer:latest                        # download the maintained workflow container
-nextflow run main.nf --make_test                                  # download public FASTQ tests and create ready-to-run YAML files
+git clone https://github.com/cfarkas/oncotracer.git  # download the pipeline
+cd oncotracer                                        # enter it; run main.nf from here
+bash run_test.sh --docker                            # install the local Nextflow launcher if missing, pull/update the container, reuse or download test data, and test both branches
 ```
 
-For HPC, install Apptainer and replace `--docker` with `--singularity` in workflow commands. A Conda fallback remains available with `conda env create -f environment.yml`, `conda activate oncotracer`, and the `--conda` runtime flag.
+`run_test.sh` does not install Java, Git, or Docker because those require operating-system permissions. It checks them and gives a clear error. It downloads Nextflow locally only when `nextflow` is unavailable. Docker reuses unchanged image layers, and the data preparation step reuses every FASTQ that already exists and passes gzip validation.

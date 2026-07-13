@@ -55,14 +55,13 @@ cp test/configs/illumina.quickstart.yml params/illumina.conservative.yml # copy 
 nano params/illumina.conservative.yml                                  # edit the copied YAML
 ```
 
-Inside `nano`, change `outdir` and add the refinement block shown below. Keep `illumina_samurai_outdir` pointing to the already generated public SAMURAI result so both runs start from the same upstream data.
+Inside `nano`, change `outdir` and add the refinement block shown below. OncoTracer derives the SAMURAI directory automatically below the new `outdir`.
 
 ```yaml
 mode: illumina
 lpwgs_root: /absolute/path/oncotracer/test
 outdir: /absolute/path/oncotracer/test/runs/illumina_conservative
-illumina_samplesheet: /absolute/path/oncotracer/test/public/illumina_DRR000542/illumina.samplesheet.csv
-illumina_samurai_outdir: /absolute/path/oncotracer/test/runs/illumina/01_samurai_illumina
+illumina_samplesheet: /absolute/path/oncotracer/test/public/illumina_ERR12341627/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100

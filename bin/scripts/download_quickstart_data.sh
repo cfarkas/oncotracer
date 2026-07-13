@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 ROOT="${1:-test}"
 ROOT="$(readlink -m "$ROOT")"
-ILLUMINA_DIR="$ROOT/public/illumina_DRR000542"
+ILLUMINA_DIR="$ROOT/public/illumina_ERR12341627"
 ONT_DIR="$ROOT/public/ont_DRR165691/fastq_pass/barcode01"
 CONFIG_DIR="$ROOT/configs"
 
@@ -25,15 +25,15 @@ download_if_missing() {
 }
 
 download_if_missing \
-  "https://ftp.sra.ebi.ac.uk/vol1/fastq/DRR000/DRR000542/DRR000542_1.fastq.gz" \
-  "$ILLUMINA_DIR/DRR000542_1.fastq.gz"
+  "https://ftp.sra.ebi.ac.uk/vol1/fastq/ERR123/027/ERR12341627/ERR12341627_1.fastq.gz" \
+  "$ILLUMINA_DIR/ERR12341627_1.fastq.gz"
 download_if_missing \
-  "https://ftp.sra.ebi.ac.uk/vol1/fastq/DRR000/DRR000542/DRR000542_2.fastq.gz" \
-  "$ILLUMINA_DIR/DRR000542_2.fastq.gz"
+  "https://ftp.sra.ebi.ac.uk/vol1/fastq/ERR123/027/ERR12341627/ERR12341627_2.fastq.gz" \
+  "$ILLUMINA_DIR/ERR12341627_2.fastq.gz"
 
-printf 'sample,fastq_1,fastq_2,status\nDRR000542,%s,%s,tumor\n' \
-  "$ILLUMINA_DIR/DRR000542_1.fastq.gz" \
-  "$ILLUMINA_DIR/DRR000542_2.fastq.gz" \
+printf 'sample,fastq_1,fastq_2,status\nERR12341627,%s,%s,tumor\n' \
+  "$ILLUMINA_DIR/ERR12341627_1.fastq.gz" \
+  "$ILLUMINA_DIR/ERR12341627_2.fastq.gz" \
   > "$ILLUMINA_DIR/illumina.samplesheet.csv"
 
 download_if_missing \
@@ -41,12 +41,11 @@ download_if_missing \
   "$ONT_DIR/DRR165691_1.fastq.gz"
 
 cat > "$CONFIG_DIR/illumina.quickstart.yml" <<EOF
-# Illumina public test: DRR000542 paired-end FASTQ.
+# Illumina public test: ERR12341627 paired-end FASTQ.
 mode: illumina
 lpwgs_root: $ROOT
 outdir: $ROOT/runs/illumina
 illumina_samplesheet: $ILLUMINA_DIR/illumina.samplesheet.csv
-illumina_samurai_outdir: $ROOT/runs/illumina/01_samurai_illumina
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -62,7 +61,6 @@ outdir: $ROOT/runs/ont
 ont_folder: $ROOT/public/ont_DRR165691/fastq_pass
 ont_barcodes: barcode01
 ont_sample_names: DRR165691
-ont_samurai_outdir: $ROOT/runs/ont/01_samurai_ont
 ont_analysis_type: liquid_biopsy
 ont_caller: ichorcna
 ont_binsize_kb: 500

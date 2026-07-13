@@ -20,8 +20,6 @@ outdir: /home/student/oncotracer_project/runs/illumina_example
 # Sample_A,/home/student/data/Sample_A_R1.fastq.gz,/home/student/data/Sample_A_R2.fastq.gz,tumor
 illumina_samplesheet: /home/student/oncotracer_project/input/illumina_samplesheet.csv
 
-# Output folder for the upstream Illumina SAMURAI/qDNAseq step.
-illumina_samurai_outdir: /home/student/oncotracer_project/runs/illumina_example/01_samurai_illumina
 
 # Scientific defaults for the standard Illumina route.
 illumina_analysis_type: solid_biopsy

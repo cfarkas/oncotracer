@@ -16,15 +16,15 @@ FASTQ -> SAMURAI qDNAseq/ichorCNA -> boundary refinement -> CNA tables -> plots/
 
 ## For the Impatient
 
-Clone the repository and let the tested helper prepare data, validate both branches, run both complete workflows, and verify their outputs:
+Clone the repository and let the helper install a local Nextflow launcher when needed, pull the current Docker image and its analysis tools, reuse or download validated test data, run both complete workflows, and verify their outputs:
 
 ```bash
 git clone https://github.com/cfarkas/oncotracer.git  # clone OncoTracer
 cd oncotracer                                        # enter the repository
-bash run_test.sh --docker                            # download public FASTQ files, run Illumina and ONT, and verify outputs
+bash run_test.sh --docker                            # prepare tools and data, then run and verify Illumina plus ONT
 ```
 
-Use `--singularity` or `--conda` instead of `--docker` when appropriate. See the [complete documentation](https://cfarkas.github.io/oncotracer/) for requirements and explanations.
+Java 17+, Git, and Docker are host prerequisites; the helper cannot install system packages requiring administrator access. Existing valid FASTQs and unchanged Docker layers are reused. Use `--singularity` or `--conda` instead of `--docker` when appropriate. See the [complete documentation](https://cfarkas.github.io/oncotracer/) for requirements and explanations.
 
 ## Install and prepare public tests
 
@@ -53,6 +53,10 @@ nextflow run main.nf --docker -params-file test/configs/ont.quickstart.yml -resu
 ```
 
 See the [complete Quick Start](https://cfarkas.github.io/oncotracer/quick_start/) for the generated YAML files, line-by-line explanations, expected outputs, and examples using your own data.
+
+## Automatic setup for your own FASTQ folder
+
+Point OncoTracer at a reads folder and a small tumor/normal table; `--auto_params` detects Illumina pairs or ONT barcode folders and writes the YAML automatically. See [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/).
 
 ## Main outputs
 

@@ -44,7 +44,6 @@ outdir: /home/user/oncotracer/project/runs/ont_run  # final numbered OncoTracer 
 ont_folder: /home/user/oncotracer/project/input/fastq_pass # folder containing barcode directories
 ont_barcodes: barcode01,barcode02                   # barcode directory names, in order
 ont_sample_names: Patient_A,Patient_B               # biological names in the same order
-ont_samurai_outdir: /home/user/oncotracer/project/runs/ont_run/01_samurai_ont # ichorCNA/SAMURAI output
 ont_analysis_type: liquid_biopsy                    # SAMURAI analysis preset
 ont_caller: ichorcna                                # ONT CNA caller
 ont_binsize_kb: 500                                 # coarse ichorCNA bin size
@@ -81,7 +80,6 @@ cat project/runs/ont_run/06_workflow_summary/workflow_summary.txt      # inspect
 | `ont_folder` | Yes | Folder containing barcode FASTQ directories. |
 | `ont_barcodes` | Yes | Comma-separated barcode IDs. |
 | `ont_sample_names` | Recommended | Comma-separated names matching barcode order. |
-| `ont_samurai_outdir` | Yes | SAMURAI/ichorCNA output directory. |
 | `ont_analysis_type` | Default | Usually `liquid_biopsy`. |
 | `ont_caller` | Default | `ichorcna`. |
 | `ont_binsize_kb` | Default | `500`. |

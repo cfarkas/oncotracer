@@ -10,6 +10,16 @@ This page lists top-level OncoTracer parameters from `nextflow.config`.
 | `outdir` | `null` | Required. Main output folder. |
 | `lpwgs_root` | server default | Absolute folder path bound into Docker/Singularity. Replace with your project root. |
 
+## Automatic Setup Fields
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `auto_params` | `false` | Generate a runnable YAML from a reads folder and sample table. |
+| `reads_folder` | `null` | Illumina FASTQ folder or ONT `fastq_pass` folder. |
+| `sample_table` | `null` | CSV, TSV, or TXT mapping samples to tumor/normal status. |
+| `auto_config_dir` | beside reads | Optional generated-file directory. |
+| `auto_outdir` | beside reads | Optional results directory written into the YAML. |
+
 ## Runtime Fields
 
 | Field | Default | Meaning |
@@ -28,7 +38,6 @@ This page lists top-level OncoTracer parameters from `nextflow.config`.
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `illumina_samplesheet` | `null` | Required CSV with `sample,fastq_1,fastq_2,status`. |
-| `illumina_samurai_outdir` | `null` | Required upstream SAMURAI/qDNAseq output folder. |
 | `illumina_analysis_type` | `solid_biopsy` | Upstream Illumina analysis type. |
 | `illumina_caller` | `qdnaseq` | Upstream Illumina CNA caller. |
 | `illumina_binsize_kb` | `100` | Illumina coarse bin size in kb. |
@@ -40,7 +49,6 @@ This page lists top-level OncoTracer parameters from `nextflow.config`.
 | `ont_folder` | `null` | Required ONT FASTQ/barcode folder. |
 | `ont_barcodes` | `null` | Required comma-separated barcode IDs. |
 | `ont_sample_names` | `null` | Optional sample names matching barcode order. |
-| `ont_samurai_outdir` | `null` | Required upstream SAMURAI/ichorCNA output folder. |
 | `ont_analysis_type` | `liquid_biopsy` | Upstream ONT analysis type. |
 | `ont_caller` | `ichorcna` | Upstream ONT CNA caller. |
 | `ont_binsize_kb` | `500` | ONT coarse bin size in kb. |

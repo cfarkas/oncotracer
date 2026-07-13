@@ -6,6 +6,9 @@ repo_name: cfarkas/oncotracer
 repo_url: https://github.com/cfarkas/oncotracer
 edit_uri: edit/main/docs/
 
+extra_css:
+  - stylesheets/oncotracer.css
+
 theme:
   name: material
   features:
@@ -13,12 +16,18 @@ theme:
     - navigation.expand
     - content.code.copy
     - content.action.edit
+    - navigation.tabs
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
 
 nav:
   - Home: index.md
   - Start:
       - Installation: installation.md
       - Quick Start: quick_start.md
+      - Automatic Setup: auto_params.md
       - YAML and Paths: configuration/yaml_basics.md
       - Input Files: inputs.md
   - Configure and Run:

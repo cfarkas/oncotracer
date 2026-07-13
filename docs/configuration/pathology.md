@@ -25,7 +25,7 @@ oncotracer/
 - The **YAML** tells OncoTracer where files are and which columns/settings to use.
 - The **pathology CSV** contains one row per matched sample/case and the diagnosis text.
 
-The public pathology example does not match the public DRR000542 FASTQ test. It teaches the format only. Your pathology sample identifiers must match your own Illumina samplesheet and CNA sample names exactly.
+The public pathology example does not match the public ERR12341627 FASTQ test. It teaches the format only. Your pathology sample identifiers must match your own Illumina samplesheet and CNA sample names exactly.
 
 ## Required pathology columns
 
@@ -89,7 +89,6 @@ mode: illumina
 lpwgs_root: /absolute/path/oncotracer
 outdir: /absolute/path/oncotracer/project/runs/illumina_pathology
 illumina_samplesheet: /absolute/path/oncotracer/project/input/illumina.samplesheet.csv
-illumina_samurai_outdir: /absolute/path/oncotracer/project/runs/illumina_pathology/01_samurai_illumina
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100

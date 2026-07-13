@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-labelledby="title desc">
+  <title id="title">OncoTracer automatic parameter input folder layouts</title>
+  <desc id="desc">Beginner-friendly comparison of Illumina paired FASTQ files and Oxford Nanopore barcode folders, with metadata CSV rows mapping sample names and tumor or normal status to the detected inputs.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" x2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#134e4a"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#0f172a" flood-opacity=".12"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#0f766e"/>
+    </marker>
+  </defs>
+  <style>
+    .h1 { font: 700 32px system-ui, sans-serif; fill: #f8fafc; }
+    .lead { font: 17px system-ui, sans-serif; fill: #cbd5e1; }
+    .panel-title { font: 700 24px system-ui, sans-serif; fill: #0f172a; }
+    .panel-sub { font: 15px system-ui, sans-serif; fill: #64748b; }
+    .label { font: 700 15px system-ui, sans-serif; fill: #0f766e; letter-spacing: .04em; }
+    .tree { font: 16px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #334155; }
+    .tree-strong { font: 700 16px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #0f172a; }
+    .csv-head { font: 700 15px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #f8fafc; }
+    .csv { font: 15px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #334155; }
+    .note { font: 15px system-ui, sans-serif; fill: #475569; }
+    .badge { font: 700 13px system-ui, sans-serif; }
+  </style>
+
+  <rect width="1200" height="780" fill="#f1f5f9"/>
+  <rect width="1200" height="118" fill="url(#header)"/>
+  <text class="h1" x="54" y="49">Point OncoTracer to a folder</text>
+  <text class="lead" x="54" y="81">Keep reads together, add a small sample metadata file, and let <tspan font-family="ui-monospace, monospace" fill="#99f6e4">--auto_params</tspan> build the YAML.</text>
+
+  <!-- Illumina panel -->
+  <g filter="url(#shadow)">
+    <rect x="42" y="146" width="548" height="536" rx="18" fill="#ffffff"/>
+  </g>
+  <circle cx="81" cy="187" r="21" fill="#ccfbf1"/>
+  <path d="M70 187h22M81 176v22" stroke="#0f766e" stroke-width="3" stroke-linecap="round"/>
+  <text class="panel-title" x="116" y="193">Illumina paired-end reads</text>
+  <text class="panel-sub" x="68" y="224">Match each sample by its shared name before _R1 and _R2.</text>
+
+  <text class="label" x="68" y="267">INPUT FOLDER</text>
+  <rect x="68" y="282" width="494" height="218" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M92 309h18l6 7h27v25H92z" fill="#fbbf24" stroke="#d97706"/>
+  <text class="tree-strong" x="154" y="329">illumina_fastq/</text>
+  <path d="M110 346v119M110 367h25M110 400h25M110 433h25M110 466h25" stroke="#94a3b8" stroke-width="1.5"/>
+  <text class="tree" x="145" y="373">A5645_R1.fastq.gz</text>
+  <text class="tree" x="145" y="406">A5645_R2.fastq.gz</text>
+  <text class="tree" x="145" y="439">A5544_R1.fastq.gz</text>
+  <text class="tree" x="145" y="472">A5544_R2.fastq.gz</text>
+  <rect x="391" y="352" width="65" height="25" rx="12" fill="#dbeafe"/>
+  <text class="badge" x="409" y="369" fill="#1d4ed8">READ 1</text>
+  <rect x="391" y="385" width="65" height="25" rx="12" fill="#ede9fe"/>
+  <text class="badge" x="409" y="402" fill="#6d28d9">READ 2</text>
+  <rect x="391" y="418" width="65" height="25" rx="12" fill="#dbeafe"/>
+  <text class="badge" x="409" y="435" fill="#1d4ed8">READ 1</text>
+  <rect x="391" y="451" width="65" height="25" rx="12" fill="#ede9fe"/>
+  <text class="badge" x="409" y="468" fill="#6d28d9">READ 2</text>
+
+  <path d="M315 510v28" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)"/>
+  <text class="label" x="68" y="552">SAMPLE METADATA — samples.csv</text>
+  <rect x="68" y="568" width="494" height="89" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M68 578a10 10 0 0 1 10-10h474a10 10 0 0 1 10 10v22H68z" fill="#334155"/>
+  <text class="csv-head" x="88" y="590">sample_name</text>
+  <text class="csv-head" x="328" y="590">status</text>
+  <line x1="68" y1="600" x2="562" y2="600" stroke="#cbd5e1"/>
+  <text class="csv" x="88" y="623">A5645</text><text class="csv" x="328" y="623">tumor</text>
+  <line x1="68" y1="633" x2="562" y2="633" stroke="#e2e8f0"/>
+  <text class="csv" x="88" y="651">A5544</text><text class="csv" x="328" y="651">normal</text>
+
+  <!-- ONT panel -->
+  <g filter="url(#shadow)">
+    <rect x="610" y="146" width="548" height="536" rx="18" fill="#ffffff"/>
+  </g>
+  <circle cx="649" cy="187" r="21" fill="#ccfbf1"/>
+  <path d="M638 195c8-22 15-22 23 0M642 183h15" fill="none" stroke="#0f766e" stroke-width="3" stroke-linecap="round"/>
+  <text class="panel-title" x="684" y="193">ONT barcoded reads</text>
+  <text class="panel-sub" x="636" y="224">Put FASTQ files below the barcode assigned to each sample.</text>
+
+  <text class="label" x="636" y="267">INPUT FOLDER</text>
+  <rect x="636" y="282" width="494" height="218" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M660 309h18l6 7h27v25h-51z" fill="#fbbf24" stroke="#d97706"/>
+  <text class="tree-strong" x="722" y="329">fastq_pass/</text>
+  <path d="M678 346v119M678 365h25M678 428h25" stroke="#94a3b8" stroke-width="1.5"/>
+  <path d="M704 350h15l5 6h23v20h-43z" fill="#fde68a" stroke="#d97706"/>
+  <text class="tree-strong" x="757" y="368">barcode01/</text>
+  <path d="M718 378v30M718 399h25" stroke="#94a3b8" stroke-width="1.5"/>
+  <text class="tree" x="752" y="405">reads_001.fastq.gz</text>
+  <path d="M704 413h15l5 6h23v20h-43z" fill="#fde68a" stroke="#d97706"/>
+  <text class="tree-strong" x="757" y="431">barcode02/</text>
+  <path d="M718 441v30M718 462h25" stroke="#94a3b8" stroke-width="1.5"/>
+  <text class="tree" x="752" y="468">reads_001.fastq.gz</text>
+
+  <path d="M883 510v28" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)"/>
+  <text class="label" x="636" y="552">SAMPLE METADATA — samples.csv</text>
+  <rect x="636" y="568" width="494" height="89" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M636 578a10 10 0 0 1 10-10h474a10 10 0 0 1 10 10v22H636z" fill="#334155"/>
+  <text class="csv-head" x="656" y="590">barcode</text>
+  <text class="csv-head" x="782" y="590">sample_name</text>
+  <text class="csv-head" x="1000" y="590">status</text>
+  <line x1="636" y1="600" x2="1130" y2="600" stroke="#cbd5e1"/>
+  <text class="csv" x="656" y="623">barcode01</text><text class="csv" x="782" y="623">B5437</text><text class="csv" x="1000" y="623">tumor</text>
+  <line x1="636" y1="633" x2="1130" y2="633" stroke="#e2e8f0"/>
+  <text class="csv" x="656" y="651">barcode02</text><text class="csv" x="782" y="651">B5438</text><text class="csv" x="1000" y="651">normal</text>
+
+  <rect x="42" y="712" width="1116" height="44" rx="12" fill="#ccfbf1"/>
+  <circle cx="69" cy="734" r="12" fill="#0f766e"/>
+  <path d="M64 734l4 4 7-9" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text class="note" x="91" y="740"><tspan font-weight="700" fill="#115e59">Tip:</tspan> sample_name must match the FASTQ prefix (Illumina) or the barcode mapping (ONT); status is tumor or normal.</text>
+</svg>

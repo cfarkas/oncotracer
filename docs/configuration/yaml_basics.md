@@ -19,7 +19,7 @@ Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
 - Use absolute Linux paths beginning with `/`.
 - Do not put `$HOME`, `~`, or shell commands in YAML; YAML does not expand them.
 - `lpwgs_root` must be a common parent of inputs and outputs because it is mounted into Docker or Singularity.
-- Keep `outdir` and the matching `*_samurai_outdir` below `lpwgs_root`.
+- Keep `outdir` below `lpwgs_root`; the SAMURAI subdirectory is derived automatically.
 - WSL paths use `/mnt/c/...`, not `C:\...`.
 - Paths are case-sensitive and spaces are best avoided.
 - Confirm each input with `realpath` and `ls -lh` before a full run.
@@ -31,7 +31,6 @@ mode: illumina                                      # select paired-end Illumina
 lpwgs_root: /home/user/oncotracer_project           # common parent mounted into the container
 outdir: /home/user/oncotracer_project/runs/sample_a # final OncoTracer run directory
 illumina_samplesheet: /home/user/oncotracer_project/input/illumina_samplesheet.csv # CSV with paired FASTQ paths
-illumina_samurai_outdir: /home/user/oncotracer_project/runs/sample_a/01_samurai_illumina # qDNAseq output directory
 illumina_analysis_type: solid_biopsy                # SAMURAI analysis preset
 illumina_caller: qdnaseq                            # CNA caller used for Illumina
 illumina_binsize_kb: 100                            # copy-number bin size in kilobases
@@ -48,7 +47,6 @@ outdir: /home/user/oncotracer_project/runs/ont_a    # final OncoTracer run direc
 ont_folder: /home/user/oncotracer_project/input/fastq_pass # folder containing barcode FASTQ directories
 ont_barcodes: barcode01,barcode02                   # comma-separated barcode directories
 ont_sample_names: Patient_A,Patient_B               # names matching barcode order one-to-one
-ont_samurai_outdir: /home/user/oncotracer_project/runs/ont_a/01_samurai_ont # ichorCNA output directory
 ont_analysis_type: liquid_biopsy                    # SAMURAI analysis preset
 ont_caller: ichorcna                                # CNA caller used for ONT
 ont_binsize_kb: 500                                 # copy-number bin size in kilobases

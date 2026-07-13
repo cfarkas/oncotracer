@@ -6,7 +6,6 @@ lpwgs_root: /home/student/oncotracer_project
 outdir: /home/student/oncotracer_project/runs/illumina_pathology_example
 
 illumina_samplesheet: /home/student/oncotracer_project/input/illumina_samplesheet.csv
-illumina_samurai_outdir: /home/student/oncotracer_project/runs/illumina_pathology_example/01_samurai_illumina
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100

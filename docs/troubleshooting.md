@@ -26,6 +26,19 @@ For FASTQ runs, leave `bam` and `gender` empty.
 
 Fix the problem, then rerun the same command with `-resume`.
 
+## SAMURAI Remains at `0 of 1`
+
+The outer OncoTracer task waits for a nested SAMURAI workflow, so `RUN_ILLUMINA_SAMURAI | 0 of 1` or `RUN_ONT_SAMURAI | 0 of 1` can remain visible while alignment and CNA calling are active. This is not automatically a stall. `run_test.sh` prints an activity message every 30 seconds.
+
+In another terminal, confirm that alignment or Nextflow is still running:
+
+```bash
+ps -ef | grep -E 'bwa|samtools|nextflow'                         # inspect active analysis processes
+tail -f test/runs/illumina/01_samurai_illumina/.nextflow.log    # follow the nested Illumina workflow
+```
+
+For ONT, replace `illumina/01_samurai_illumina` with `ont/01_samurai_ont`. Stop a run only after checking the log for an error and confirming that no analysis process is active.
+
 ## Documentation Website
 
 The online documentation is https://cfarkas.github.io/oncotracer/. You do not need to build docs locally to run the workflow.

@@ -48,7 +48,6 @@ mode: illumina                                      # choose the Illumina branch
 lpwgs_root: /home/user/oncotracer                   # common parent mounted into Docker/Singularity
 outdir: /home/user/oncotracer/project/runs/sample_a # final numbered OncoTracer outputs
 illumina_samplesheet: /home/user/oncotracer/project/input/illumina.samplesheet.csv # paired FASTQ table
-illumina_samurai_outdir: /home/user/oncotracer/project/runs/sample_a/01_samurai_illumina # qDNAseq/SAMURAI output
 illumina_analysis_type: solid_biopsy                # SAMURAI analysis preset
 illumina_caller: qdnaseq                            # Illumina CNA caller
 illumina_binsize_kb: 100                            # coarse qDNAseq bin size
@@ -56,7 +55,7 @@ run_cna_classifier: false                           # optional classifier/pathol
 force: false                                        # preserve existing outputs unless intentionally refreshing
 ```
 
-The first five lines answer: which branch, which container-visible root, where final results go, where samples are listed, and where upstream qDNAseq results go. The remaining lines select established defaults and optional stages.
+The first four lines answer which branch to run, which root is container-visible, where final results go, and where samples are listed. OncoTracer automatically places SAMURAI/qDNAseq under `outdir/01_samurai_illumina`. The remaining lines select established defaults and optional stages.
 
 ## Create the samplesheet
 
@@ -95,7 +94,6 @@ cat project/runs/sample_a/06_workflow_summary/workflow_summary.txt          # in
 | `lpwgs_root` | Yes | Absolute common parent mounted into the runtime. |
 | `outdir` | Yes | Main numbered-output directory. |
 | `illumina_samplesheet` | Yes | CSV with `sample,fastq_1,fastq_2,status`. |
-| `illumina_samurai_outdir` | Yes | SAMURAI/qDNAseq output directory. |
 | `illumina_analysis_type` | Default | Usually `solid_biopsy`. |
 | `illumina_caller` | Default | `qdnaseq`. |
 | `illumina_binsize_kb` | Default | `100`. |

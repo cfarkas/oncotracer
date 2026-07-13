@@ -42,6 +42,14 @@ def workflowOutdir() {
   return params.outdir.toString()
 }
 
+def illuminaSamuraiOutdir() {
+  return "${workflowOutdir()}/01_samurai_illumina"
+}
+
+def ontSamuraiOutdir() {
+  return "${workflowOutdir()}/01_samurai_ont"
+}
+
 def datasetName() {
   if( params.mode.toString() == 'ont' ) {
     return "ONT_ichorcna_${params.ont_binsize_kb}kb"
@@ -56,6 +64,8 @@ workflow {
   main:
   if( asBool(params.make_test) ) {
     MAKE_TEST_DATA()
+  } else if( asBool(params.auto_params) ) {
+    AUTO_PARAMS()
   } else {
   requireParam('mode', params.mode)
   def mode = params.mode.toString()
@@ -93,6 +103,32 @@ workflow {
 }
 
 
+process AUTO_PARAMS {
+  tag "auto_params"
+  container null
+
+  output:
+  path "auto_params_done.txt", emit: marker
+
+  script:
+  requireParam("mode", params.mode)
+  requireParam("reads_folder", params.reads_folder)
+  requireParam("sample_table", params.sample_table)
+  def generator = scriptPath("scripts/generate_auto_params.sh")
+  def configOpt = blank(params.auto_config_dir) ? "" : "--config-dir '${params.auto_config_dir}'"
+  def outOpt = blank(params.auto_outdir) ? "" : "--outdir '${params.auto_outdir}'"
+
+  """
+  set -Eeuo pipefail
+  bash '${generator}' \
+    --mode '${params.mode}' \
+    --reads-folder '${params.reads_folder}' \
+    --sample-table '${params.sample_table}' \
+    ${configOpt} ${outOpt}
+  echo "Auto-parameter files generated" > auto_params_done.txt
+  """
+}
+
 process MAKE_TEST_DATA {
   tag 'public_quickstart_data'
   container null
@@ -127,7 +163,7 @@ process RUN_ILLUMINA_SAMURAI {
 
   script:
   requireParam('illumina_samplesheet', params.illumina_samplesheet)
-  requireParam('illumina_samurai_outdir', params.illumina_samurai_outdir)
+  def samuraiOutdir = illuminaSamuraiOutdir()
 
   def samuraiScript = scriptPath('scripts/run_illumina_samurai_fastq.sh')
   def samuraiRuntime = samuraiProfile()
@@ -137,7 +173,7 @@ process RUN_ILLUMINA_SAMURAI {
   set -Eeuo pipefail
   bash '${samuraiScript}' \\
     --samplesheet '${params.illumina_samplesheet}' \\
-    --outdir '${params.illumina_samurai_outdir}' \\
+    --outdir '${samuraiOutdir}' \\
     --analysis_type '${params.illumina_analysis_type}' \\
     --caller '${params.illumina_caller}' \\
     --binsize '${params.illumina_binsize_kb}' \\
@@ -145,9 +181,9 @@ process RUN_ILLUMINA_SAMURAI {
     --profile '${samuraiRuntime}' \\
     ${forceOpt}
 
-  test -d '${params.illumina_samurai_outdir}/qdnaseq'
-  test -d '${params.illumina_samurai_outdir}/alignment'
-  echo "Illumina SAMURAI completed: ${params.illumina_samurai_outdir}" > samurai_illumina_done.txt
+  test -d '${samuraiOutdir}/qdnaseq'
+  test -d '${samuraiOutdir}/alignment'
+  echo "Illumina SAMURAI completed: ${samuraiOutdir}" > samurai_illumina_done.txt
   """
 
   stub:
@@ -171,7 +207,7 @@ process RUN_ONT_SAMURAI {
   script:
   requireParam('ont_folder', params.ont_folder)
   requireParam('ont_barcodes', params.ont_barcodes)
-  requireParam('ont_samurai_outdir', params.ont_samurai_outdir)
+  def samuraiOutdir = ontSamuraiOutdir()
 
   def samuraiScript = scriptPath('scripts/run_ont_samurai_barcodes.sh')
   def samuraiRuntime = samuraiProfile()
@@ -196,7 +232,7 @@ process RUN_ONT_SAMURAI {
     --folder '${params.ont_folder}' \\
     --barcodes '${params.ont_barcodes}' \\
     ${sampleNamesOpt} \\
-    --outdir '${params.ont_samurai_outdir}' \\
+    --outdir '${samuraiOutdir}' \\
     --analysis_type '${params.ont_analysis_type}' \\
     --caller '${params.ont_caller}' \\
     --binsize '${params.ont_binsize_kb}' \\
@@ -207,8 +243,8 @@ process RUN_ONT_SAMURAI {
     ${ponOpt} \\
     ${realignOpt}
 
-  test -d '${params.ont_samurai_outdir}'
-  echo "ONT SAMURAI completed: ${params.ont_samurai_outdir}" > samurai_ont_done.txt
+  test -d '${samuraiOutdir}'
+  echo "ONT SAMURAI completed: ${samuraiOutdir}" > samurai_ont_done.txt
   """
 
   stub:
@@ -230,6 +266,7 @@ process RUN_BAM_REFINE {
 
   script:
   def mode = run_meta[0]
+  def samuraiOutdir = mode == "ont" ? ontSamuraiOutdir() : illuminaSamuraiOutdir()
   def outRoot = run_meta[1]
   def refineOut = "${outRoot}/02_bam_refinement"
   def refineScript = scriptPath('scripts/bam_cnv_boundary_refine.sh')
@@ -238,8 +275,8 @@ process RUN_BAM_REFINE {
 
   def modeArgs
   if( mode == 'ont' ) {
-    def ichorDir = "${params.ont_samurai_outdir}/results/ichorcna"
-    def bamDir = "${params.ont_samurai_outdir}/bam"
+    def ichorDir = "${samuraiOutdir}/results/ichorcna"
+    def bamDir = "${samuraiOutdir}/bam"
     def priorSeg = "${ichorDir}/segments_logR_corrected_gistic.seg"
     modeArgs = """--mode ont \\
       --ont-ichor-dir '${ichorDir}' \\
@@ -253,8 +290,8 @@ process RUN_BAM_REFINE {
       --min-local-log2-diff '${params.min_local_log2_diff_ont}' \
     """
   } else {
-    def qdnaseqDir = "${params.illumina_samurai_outdir}/qdnaseq"
-    def bamDir = "${params.illumina_samurai_outdir}/alignment"
+    def qdnaseqDir = "${samuraiOutdir}/qdnaseq"
+    def bamDir = "${samuraiOutdir}/alignment"
     def priorSeg = "${qdnaseqDir}/all_segments.seg"
     modeArgs = """--mode illumina \\
       --illumina-qdnaseq-dir '${qdnaseqDir}' \\

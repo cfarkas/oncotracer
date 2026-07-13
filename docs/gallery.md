@@ -6,7 +6,7 @@ These are real outputs from the public FASTQ tests documented in the [Quick Star
 
 [Download the original qDNAseq bin plot PDF](assets/gallery/illumina_samurai_qdnaseq_bin_plot.pdf).
 
-![Public Illumina DRR000542 SAMURAI qDNAseq bin plot](assets/gallery/illumina_samurai_qdnaseq_bin_plot.png)
+![Public Illumina ERR12341627 SAMURAI qDNAseq bin plot](assets/gallery/illumina_samurai_qdnaseq_bin_plot.png)
 
 ## ONT ichorCNA-derived test result
 

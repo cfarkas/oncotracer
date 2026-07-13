@@ -15,8 +15,6 @@ ont_folder: /home/student/data/ont_run/fastq_pass
 ont_barcodes: barcode07,barcode08
 ont_sample_names: Sample_ONT_1,Sample_ONT_2
 
-# Output folder for the upstream ONT SAMURAI/ichorCNA step.
-ont_samurai_outdir: /home/student/oncotracer_project/runs/ont_example/01_samurai_ont
 
 # Scientific defaults for the standard ONT route.
 ont_analysis_type: liquid_biopsy

@@ -12,7 +12,7 @@ cd oncotracer                                        # enter the repository; the
 bash run_test.sh --docker                            # prepare data, validate, run Illumina and ONT, and check final outputs
 ```
 
-The script stops at the first error. A successful run ends with `SUCCESS` and prints both workflow-summary paths. It performs the same preparation and analysis commands explained below. Use `--singularity` or `--conda` instead of `--docker` when needed.
+The script installs a local Nextflow launcher only when needed, pulls the current container, reuses existing FASTQs that pass gzip validation, and stops at the first error. A successful run ends with `SUCCESS` and prints both workflow-summary paths. It performs the same preparation and analysis commands explained below. Use `--singularity` or `--conda` instead of `--docker` when needed.
 
 ## Requirements
 
@@ -44,8 +44,7 @@ The generated Illumina YAML is located at the real path `<your-clone>/test/confi
 mode: illumina                                      # select the Illumina branch
 lpwgs_root: /absolute/path/oncotracer-illumina/test # folder mounted into Docker; all test inputs and outputs are below it
 outdir: /absolute/path/oncotracer-illumina/test/runs/illumina # main results directory
-illumina_samplesheet: /absolute/path/oncotracer-illumina/test/public/illumina_DRR000542/illumina.samplesheet.csv # paired FASTQ table
-illumina_samurai_outdir: /absolute/path/oncotracer-illumina/test/runs/illumina/01_samurai_illumina # qDNAseq/SAMURAI output
+illumina_samplesheet: /absolute/path/oncotracer-illumina/test/public/illumina_ERR12341627/illumina.samplesheet.csv # paired FASTQ table
 illumina_analysis_type: solid_biopsy                # SAMURAI analysis preset
 illumina_caller: qdnaseq                            # Illumina CNA caller
 illumina_binsize_kb: 100                            # qDNAseq bin size in kilobases
@@ -57,10 +56,12 @@ The generated samplesheet is:
 
 ```csv
 sample,fastq_1,fastq_2,status
-DRR000542,/absolute/path/oncotracer-illumina/test/public/illumina_DRR000542/DRR000542_1.fastq.gz,/absolute/path/oncotracer-illumina/test/public/illumina_DRR000542/DRR000542_2.fastq.gz,tumor
+ERR12341627,/absolute/path/oncotracer-illumina/test/public/illumina_ERR12341627/ERR12341627_1.fastq.gz,/absolute/path/oncotracer-illumina/test/public/illumina_ERR12341627/ERR12341627_2.fastq.gz,tumor
 ```
 
 Expected plots include the SAMURAI/qDNAseq genome, bin, and segment PDFs under `test/runs/illumina/01_samurai_illumina/`, plus OncoTracer plots under `test/runs/illumina/04_cna_custom_plots/`.
+
+The Illumina example is [ENA `ERR12341627`](https://www.ebi.ac.uk/ena/browser/view/ERR12341627), an OVCAR8 cancer WGS run with about 125 MB of compressed paired reads. During the nested SAMURAI run, outer Nextflow may display `RUN_ILLUMINA_SAMURAI | 0 of 1` until alignment and qDNAseq both finish; this means the nested task is active, not frozen. `run_test.sh` prints a progress message every 30 seconds.
 
 ## Complete ONT public test
 
@@ -89,7 +90,6 @@ outdir: /absolute/path/oncotracer-ont/test/runs/ont # main results directory
 ont_folder: /absolute/path/oncotracer-ont/test/public/ont_DRR165691/fastq_pass # folder containing barcode FASTQ directories
 ont_barcodes: barcode01                             # barcode directory to analyze
 ont_sample_names: DRR165691                         # biological sample name assigned to barcode01
-ont_samurai_outdir: /absolute/path/oncotracer-ont/test/runs/ont/01_samurai_ont # ichorCNA/SAMURAI output
 ont_analysis_type: liquid_biopsy                    # SAMURAI analysis preset
 ont_caller: ichorcna                                # ONT CNA caller
 ont_binsize_kb: 500                                 # ichorCNA bin size in kilobases
@@ -116,7 +116,7 @@ The columns mean:
 - `case_code`: anonymized case identifier used to group or trace research records;
 - `final_diagnosis`: pathology diagnosis text used for compatibility/concordance reporting.
 
-The public DRR000542 test is not one of these pathology cases, so do not attach this CSV to that public run. Use it as a format example for your own matched samples. To enable pathology reporting for matched data, add the following to your Illumina YAML:
+The public ERR12341627 test is not one of these pathology cases, so do not attach this CSV to that public run. Use it as a format example for your own matched samples. To enable pathology reporting for matched data, add the following to your Illumina YAML:
 
 ```yaml
 run_cna_classifier: true                          # enable optional CNA classification and reports
@@ -152,7 +152,6 @@ mode: illumina                                      # select the Illumina branch
 lpwgs_root: /home/maria/oncotracer_project          # common parent visible to Docker/Singularity
 outdir: /home/maria/oncotracer_project/runs/sample_a # main result directory
 illumina_samplesheet: /home/maria/oncotracer_project/input/illumina_samplesheet.csv # paired FASTQ table
-illumina_samurai_outdir: /home/maria/oncotracer_project/runs/sample_a/01_samurai_illumina # qDNAseq/SAMURAI output
 illumina_analysis_type: solid_biopsy                # established analysis preset
 illumina_caller: qdnaseq                            # Illumina CNA caller
 illumina_binsize_kb: 100                            # coarse CNA bin size
@@ -192,7 +191,6 @@ outdir: /home/maria/oncotracer_project/runs/ont_a   # main result directory
 ont_folder: /home/maria/oncotracer_project/input/fastq_pass # barcode FASTQ folder
 ont_barcodes: barcode01,barcode02                   # barcode directories in input order
 ont_sample_names: Patient_A,Patient_B               # sample names in exactly the same order
-ont_samurai_outdir: /home/maria/oncotracer_project/runs/ont_a/01_samurai_ont # ichorCNA/SAMURAI output
 ont_analysis_type: liquid_biopsy                    # established analysis preset
 ont_caller: ichorcna                                # ONT CNA caller
 ont_binsize_kb: 500                                 # coarse CNA bin size
