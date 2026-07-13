@@ -33,7 +33,7 @@ realpath project/input/fastq_pass                   # obtain the absolute ONT fo
 nano params/my_ont.yml                              # edit the copied YAML
 ```
 
-In `nano`, use arrow keys to move. Replace the example paths and barcode/sample lists. Save with `Ctrl+O`, Enter, and exit with `Ctrl+X`. The [Illumina YAML page](illumina.md#video-a-human-style-nano-editing-session) contains a video of the same nano workflow.
+In `nano`, use arrow keys to move and replace the example paths and barcode/sample lists. Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
 
 ## What the YAML means
 

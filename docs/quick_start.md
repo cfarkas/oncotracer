@@ -38,7 +38,7 @@ cat test/runs/illumina/06_workflow_summary/workflow_summary.txt                 
 
 The `--make_test` command is a **preparation step only**. It does not run CNA analysis. It downloads the public FASTQ files, validates their gzip integrity, creates the Illumina samplesheet, and writes `test/configs/illumina.quickstart.yml` plus `test/configs/ont.quickstart.yml`. The next two `nextflow` commands consume those generated YAML files.
 
-The box below is **not another command to paste into the terminal**. It is an annotated preview of the generated Illumina YAML so you can understand what the workflow will read. Your real file contains your clone path instead of `/absolute/path/...`:
+The generated Illumina YAML is located at the real path `<your-clone>/test/configs/illumina.quickstart.yml`. For example, if the clone is `/home/maria/oncotracer-illumina`, the file is `/home/maria/oncotracer-illumina/test/configs/illumina.quickstart.yml`. This is how that YAML file looks. The code box shows file contents, not a terminal command; `/absolute/path/...` represents the real path written by `--make_test`:
 
 ```yaml
 mode: illumina                                      # select the Illumina branch
@@ -80,7 +80,7 @@ nextflow run main.nf --docker -params-file test/configs/ont.quickstart.yml -resu
 cat test/runs/ont/06_workflow_summary/workflow_summary.txt                           # confirm the final output locations
 ```
 
-The `--make_test` command has already prepared both datasets and YAML files. The box below is **not a terminal command**. It is an annotated preview of `test/configs/ont.quickstart.yml`; the ONT run command above reads this file with `-params-file`. Your generated file contains the real absolute path of your clone:
+The generated ONT YAML is located at the real path `<your-clone>/test/configs/ont.quickstart.yml`. For example, if the clone is `/home/maria/oncotracer-ont`, the file is `/home/maria/oncotracer-ont/test/configs/ont.quickstart.yml`. This is how that YAML file looks. The code box shows file contents, not a terminal command; `--make_test` replaces `/absolute/path/...` with the actual absolute path of the clone. The ONT run above reads this file through `-params-file`:
 
 ```yaml
 mode: ont                                           # select the Oxford Nanopore branch
@@ -131,48 +131,81 @@ See [Models & Pathology](models_pathology.md) for interpretation limits and outp
 
 ## Use your own Illumina FASTQ files
 
+First create a private editable YAML and open it in `nano`:
+
 ```bash
 git clone https://github.com/cfarkas/oncotracer.git              # clone the repository
 cd oncotracer                                                    # enter the repository
-cp params/illumina.minimal.yml params/my_illumina.yml            # create an editable YAML without changing the versioned template
-realpath .                                                       # print the absolute repository path
-realpath /path/to/Sample_A_R1.fastq.gz                            # print the absolute read-1 FASTQ path
-realpath /path/to/Sample_A_R2.fastq.gz                            # print the absolute read-2 FASTQ path
-nano params/my_illumina.yml                                      # replace every example path with your absolute paths
-nextflow run main.nf -stub-run --docker -params-file params/my_illumina.yml # validate before computation
-nextflow run main.nf --docker -params-file params/my_illumina.yml -resume   # run from FASTQ to final reports
+cp params/illumina.minimal.yml params/my_illumina.yml            # copy the versioned template
+realpath .                                                       # print the absolute clone path
+realpath /path/to/Sample_A_R1.fastq.gz                            # print the absolute R1 path
+realpath /path/to/Sample_A_R2.fastq.gz                            # print the absolute R2 path
+nano params/my_illumina.yml                                      # replace every example path
 ```
+
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
+
+The YAML you edited is located at the real path `<your-clone>/params/my_illumina.yml`. For example, if the clone is `/home/maria/oncotracer`, the file is `/home/maria/oncotracer/params/my_illumina.yml`. This is how its contents look after the example paths have been replaced. This code box is YAML file content, not a terminal command:
 
 ```yaml
 mode: illumina                                      # select the Illumina branch
-lpwgs_root: /home/user/oncotracer_project           # common parent visible to Docker for input and output paths
-outdir: /home/user/oncotracer_project/runs/sample_a # main output directory
-illumina_samplesheet: /home/user/oncotracer_project/input/illumina_samplesheet.csv # CSV pointing to paired FASTQ files
-illumina_samurai_outdir: /home/user/oncotracer_project/runs/sample_a/01_samurai_illumina # upstream output directory
+lpwgs_root: /home/maria/oncotracer_project          # common parent visible to Docker/Singularity
+outdir: /home/maria/oncotracer_project/runs/sample_a # main result directory
+illumina_samplesheet: /home/maria/oncotracer_project/input/illumina_samplesheet.csv # paired FASTQ table
+illumina_samurai_outdir: /home/maria/oncotracer_project/runs/sample_a/01_samurai_illumina # qDNAseq/SAMURAI output
+illumina_analysis_type: solid_biopsy                # established analysis preset
+illumina_caller: qdnaseq                            # Illumina CNA caller
+illumina_binsize_kb: 100                            # coarse CNA bin size
+run_cna_classifier: false                           # optional classifier/pathology stage
+force: false                                        # protect existing real-project outputs
+```
+
+Now validate and run from the repository root:
+
+```bash
+nextflow run main.nf -stub-run --docker -params-file params/my_illumina.yml # validate YAML and workflow wiring
+nextflow run main.nf --docker -params-file params/my_illumina.yml -resume   # run from FASTQ to final reports
 ```
 
 ## Use your own ONT FASTQ files
 
+First create a private editable YAML and inspect the barcode layout:
+
 ```bash
 git clone https://github.com/cfarkas/oncotracer.git              # clone the repository
 cd oncotracer                                                    # enter the repository
-cp params/ont.minimal.yml params/my_ont.yml                      # create an editable YAML without changing the versioned template
-realpath .                                                       # print the absolute repository path
-realpath /path/to/fastq_pass                                     # print the absolute ONT FASTQ folder path
-find /path/to/fastq_pass -maxdepth 2 -type f | head              # confirm the barcode FASTQ layout
-nano params/my_ont.yml                                           # replace every example path, barcode, and sample name
-nextflow run main.nf -stub-run --docker -params-file params/my_ont.yml # validate before computation
-nextflow run main.nf --docker -params-file params/my_ont.yml -resume   # run from FASTQ to final reports
+cp params/ont.minimal.yml params/my_ont.yml                      # copy the versioned template
+realpath .                                                       # print the absolute clone path
+realpath /path/to/fastq_pass                                     # print the absolute ONT folder path
+find /path/to/fastq_pass -maxdepth 2 -type f | head              # confirm barcode FASTQ files exist
+nano params/my_ont.yml                                           # replace paths, barcodes, and sample names
 ```
+
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
+
+The YAML you edited is located at the real path `<your-clone>/params/my_ont.yml`. For example, if the clone is `/home/maria/oncotracer`, the file is `/home/maria/oncotracer/params/my_ont.yml`. This is how its contents look after the example paths have been replaced. This code box is YAML file content, not a terminal command:
 
 ```yaml
 mode: ont                                           # select the Oxford Nanopore branch
-lpwgs_root: /home/user/oncotracer_project           # common parent visible to Docker for input and output paths
-outdir: /home/user/oncotracer_project/runs/ont_a    # main output directory
-ont_folder: /home/user/oncotracer_project/input/fastq_pass # folder containing barcode FASTQ directories
+lpwgs_root: /home/maria/oncotracer_project          # common parent visible to Docker/Singularity
+outdir: /home/maria/oncotracer_project/runs/ont_a   # main result directory
+ont_folder: /home/maria/oncotracer_project/input/fastq_pass # barcode FASTQ folder
 ont_barcodes: barcode01,barcode02                   # barcode directories in input order
 ont_sample_names: Patient_A,Patient_B               # sample names in exactly the same order
-ont_samurai_outdir: /home/user/oncotracer_project/runs/ont_a/01_samurai_ont # upstream output directory
+ont_samurai_outdir: /home/maria/oncotracer_project/runs/ont_a/01_samurai_ont # ichorCNA/SAMURAI output
+ont_analysis_type: liquid_biopsy                    # established analysis preset
+ont_caller: ichorcna                                # ONT CNA caller
+ont_binsize_kb: 500                                 # coarse CNA bin size
+ont_min_age_minutes: 0                              # analyze completed FASTQ immediately
+run_cna_classifier: false                           # optional classifier/report stage
+force: false                                        # protect existing real-project outputs
+```
+
+Now validate and run from the repository root:
+
+```bash
+nextflow run main.nf -stub-run --docker -params-file params/my_ont.yml # validate YAML and workflow wiring
+nextflow run main.nf --docker -params-file params/my_ont.yml -resume   # run from FASTQ to final reports
 ```
 
 Use `--singularity` instead of `--docker` on supported HPC systems.

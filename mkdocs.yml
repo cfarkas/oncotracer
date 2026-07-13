@@ -16,23 +16,26 @@ theme:
 
 nav:
   - Home: index.md
-  - Installation: installation.md
-  - Quick Start: quick_start.md
-  - YAML and Paths: configuration/yaml_basics.md
-  - Configuration:
+  - Start:
+      - Installation: installation.md
+      - Quick Start: quick_start.md
+      - YAML and Paths: configuration/yaml_basics.md
+      - Input Files: inputs.md
+  - Configure and Run:
       - Illumina: configuration/illumina.md
       - ONT: configuration/ont.md
       - Pathology and Classifier: configuration/pathology.md
       - Advanced Refinement: configuration/refinement.md
       - Parameter Reference: configuration/parameter_reference.md
-  - Input Files: inputs.md
-  - Workflow Overview: running.md
-  - Output Files: outputs.md
-  - Models & Pathology: models_pathology.md
-  - Gallery: gallery.md
-  - Troubleshooting: troubleshooting.md
-  - Citation and Research Use: citation_research_use.md
-  - Developer Guide: developer_guide.md
+      - Workflow Overview: running.md
+  - Results and Interpretation:
+      - Output Files: outputs.md
+      - Models & Pathology: models_pathology.md
+      - Gallery: gallery.md
+  - Help and Project:
+      - Troubleshooting: troubleshooting.md
+      - Citation and Research Use: citation_research_use.md
+      - Developer Guide: developer_guide.md
 
 markdown_extensions:
   - admonition

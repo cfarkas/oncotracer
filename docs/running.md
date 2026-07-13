@@ -19,6 +19,11 @@ Use exactly one runtime flag:
 ```bash
 cp params/illumina.example.yml params/my_illumina.yml
 nano params/my_illumina.yml
+```
+
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run:
+
+```bash
 nextflow run main.nf --docker -params-file params/my_illumina.yml -resume
 ```
 
@@ -27,6 +32,11 @@ nextflow run main.nf --docker -params-file params/my_illumina.yml -resume
 ```bash
 cp params/ont.example.yml params/my_ont.yml
 nano params/my_ont.yml
+```
+
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run:
+
+```bash
 nextflow run main.nf --docker -params-file params/my_ont.yml -resume
 ```
 
@@ -35,6 +45,11 @@ nextflow run main.nf --docker -params-file params/my_ont.yml -resume
 ```bash
 cp params/illumina.pathology.example.yml params/my_illumina_pathology.yml
 nano params/my_illumina_pathology.yml
+```
+
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run:
+
+```bash
 nextflow run main.nf --docker -params-file params/my_illumina_pathology.yml -resume
 ```
 

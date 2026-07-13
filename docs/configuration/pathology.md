@@ -106,7 +106,7 @@ pathology_biomed_local_files_only: false
 force: false
 ```
 
-In `nano`: use arrow keys to move, Backspace/Delete to remove example text, and type the new value after each colon. Press `Ctrl+O`, Enter, then `Ctrl+X`.
+In `nano`, use arrow keys to move, Backspace/Delete to remove example text, and type the new value after each colon. Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
 
 ### 5. Check identifiers before running
 

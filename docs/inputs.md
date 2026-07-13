@@ -31,12 +31,7 @@ mkdir -p project/input/fastq_pass          # create the ONT folder only when nee
 
 ## Editing text files with nano
 
-Open a file with `nano path/to/file`. Move with arrow keys, type normally, use Backspace/Delete to correct text, search with `Ctrl+W`, save with `Ctrl+O` followed by Enter, and exit with `Ctrl+X`.
-
-<video controls preload="metadata" poster="../assets/tutorial/edit_yaml_with_nano_poster.png" style="width:100%;max-width:960px">
-  <source src="../assets/tutorial/edit_yaml_with_nano.mp4" type="video/mp4">
-  Your browser cannot play the embedded video. <a href="../assets/tutorial/edit_yaml_with_nano.mp4">Download the MP4</a>.
-</video>
+Open a file with `nano path/to/file`. Move with arrow keys, type normally, use Backspace/Delete to correct text, and search with `Ctrl+W`. Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
 
 ## Illumina FASTQ samplesheet
 
@@ -45,6 +40,8 @@ Create `project/input/illumina.samplesheet.csv`:
 ```bash
 nano project/input/illumina.samplesheet.csv # open a new samplesheet in nano
 ```
+
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
 
 ```csv
 sample,fastq_1,fastq_2,status
@@ -104,6 +101,8 @@ cp examples/pathology/anonymized_pathology_example.csv project/input/pathology.c
 nano project/input/pathology.csv                                                   # inspect or replace rows in nano
 ```
 
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
+
 For real work, export only the minimum fields required from the pathology system. Do not add names, national identifiers, addresses, dates of birth, insurance data, or unnecessary narrative text.
 
 ### Step 2: use matching sample IDs
@@ -132,6 +131,8 @@ Copy the pathology-enabled template:
 cp params/illumina.pathology.example.yml params/my_illumina_pathology.yml # make an editable run YAML
 nano params/my_illumina_pathology.yml                                    # replace example paths and column names
 ```
+
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
 
 ```yaml
 run_cna_classifier: true

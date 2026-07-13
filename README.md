@@ -26,12 +26,6 @@ bash run_test.sh --docker                            # download public FASTQ fil
 
 Use `--singularity` or `--conda` instead of `--docker` when appropriate. See the [complete documentation](https://cfarkas.github.io/oncotracer/) for requirements and explanations.
 
-## YAML editing video
-
-[![Watch a human-paced nano YAML editing walkthrough](docs/assets/tutorial/edit_yaml_with_nano_poster.png)](docs/assets/tutorial/edit_yaml_with_nano.mp4)
-
-The 26-second MP4 shows paced terminal typing, copying a template, editing paths in `nano`, saving/exiting, and running stub validation.
-
 ## Install and prepare public tests
 
 ```bash

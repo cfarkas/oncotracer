@@ -12,6 +12,8 @@ mkdir -p /home/user/oncotracer_project/runs                # create an output ar
 nano params/my_illumina.yml                                # edit the copied YAML
 ```
 
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
+
 ## Path rules
 
 - Use absolute Linux paths beginning with `/`.

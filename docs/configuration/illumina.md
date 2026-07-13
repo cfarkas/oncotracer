@@ -30,9 +30,11 @@ realpath .                                           # print the absolute clone 
 nano params/my_illumina.yml                          # edit the copied YAML
 ```
 
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
+
 ### Video: a human-style nano editing session
 
-The video shows paced typing, opening `nano`, replacing paths, saving with `Ctrl+O`, exiting with `Ctrl+X`, and validating the YAML.
+This real example pauses on each edit so you can follow it. It shows a user opening `nano`, replacing absolute paths, saving with `Ctrl+O`, exiting with `Ctrl+X`, and starting the complete Illumina run with the edited YAML.
 
 <video controls preload="metadata" poster="../../assets/tutorial/edit_yaml_with_nano_poster.png" style="width:100%;max-width:960px">
   <source src="../../assets/tutorial/edit_yaml_with_nano.mp4" type="video/mp4">
@@ -71,7 +73,7 @@ sample,fastq_1,fastq_2,status
 Sample_A,/home/user/oncotracer/project/input/Sample_A_R1.fastq.gz,/home/user/oncotracer/project/input/Sample_A_R2.fastq.gz,tumor
 ```
 
-Save with `Ctrl+O`, Enter, then `Ctrl+X`. Check every file before running:
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run. First check every file:
 
 ```bash
 realpath project/input/Sample_A_R1.fastq.gz          # confirm the R1 absolute path
