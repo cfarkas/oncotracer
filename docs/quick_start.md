@@ -12,7 +12,7 @@ cd oncotracer                                        # enter the repository; the
 bash run_test.sh --docker                            # prepare data, validate, run Illumina and ONT, and check final outputs
 ```
 
-The script installs a local Nextflow launcher only when needed, pulls the current container, reuses existing FASTQs that pass gzip validation, and stops at the first error. A successful run ends with `SUCCESS` and prints both workflow-summary paths. It performs the same preparation and analysis commands explained below. Use `--singularity` or `--conda` instead of `--docker` when needed.
+The script installs a local Nextflow launcher only when needed, pulls the current container, reuses existing FASTQs that pass gzip validation, and stops at the first error. A completely fresh run also downloads and indexes the hg38 reference (about 3.16 GB). BWA indexing is single-core and often takes 30–60 minutes; later runs reuse it. A successful run ends with `SUCCESS` and prints both workflow-summary paths. It performs the same preparation and analysis commands explained below. Use `--singularity` or `--conda` instead of `--docker` when needed.
 
 ## Requirements
 

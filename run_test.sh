@@ -52,7 +52,7 @@ echo "[2/8] Validating the Illumina workflow"
 nextflow run main.nf -stub-run "$RUNTIME" -params-file "$ILLUMINA_YAML"
 
 echo "[3/8] Running the Illumina public test"
-run_with_progress "Illumina workflow" "$TEST_ROOT/runs/illumina/01_samurai_illumina/.nextflow.log" nextflow run main.nf "$RUNTIME" -params-file "$ILLUMINA_YAML" -resume
+run_with_progress "Illumina workflow" "$TEST_ROOT/runs/illumina/01_samurai_illumina/nextflow_launch/.nextflow.log" nextflow run main.nf "$RUNTIME" -params-file "$ILLUMINA_YAML" -resume
 
 echo "[4/8] Checking Illumina outputs"
 test -s "$TEST_ROOT/runs/illumina/06_workflow_summary/workflow_summary.txt"
@@ -63,7 +63,7 @@ echo "[5/8] Validating the ONT workflow"
 nextflow run main.nf -stub-run "$RUNTIME" -params-file "$ONT_YAML"
 
 echo "[6/8] Running the ONT public test"
-run_with_progress "ONT workflow" "$TEST_ROOT/runs/ont/01_samurai_ont/.nextflow.log" nextflow run main.nf "$RUNTIME" -params-file "$ONT_YAML" -resume
+run_with_progress "ONT workflow" "$TEST_ROOT/runs/ont/01_samurai_ont/nextflow_launch/.nextflow.log" nextflow run main.nf "$RUNTIME" -params-file "$ONT_YAML" -resume
 
 echo "[7/8] Checking ONT outputs"
 test -s "$TEST_ROOT/runs/ont/06_workflow_summary/workflow_summary.txt"

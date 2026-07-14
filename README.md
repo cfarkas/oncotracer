@@ -24,7 +24,7 @@ cd oncotracer                                        # enter the repository
 bash run_test.sh --docker                            # prepare tools and data, then run and verify Illumina plus ONT
 ```
 
-Java 17+, Git, and Docker are host prerequisites; the helper cannot install system packages requiring administrator access. Existing valid FASTQs and unchanged Docker layers are reused. Use `--singularity` or `--conda` instead of `--docker` when appropriate. See the [complete documentation](https://cfarkas.github.io/oncotracer/) for requirements and explanations.
+Java 17+, Git, and Docker are host prerequisites; the helper cannot install system packages requiring administrator access. The first clean run also downloads and indexes the hg38 reference (about 3.16 GB); this one-time single-core step often takes 30–60 minutes. Existing valid FASTQs, the reference, Docker layers, and Nextflow work are reused on later runs. Use `--singularity` or `--conda` instead of `--docker` when appropriate. See the [complete documentation](https://cfarkas.github.io/oncotracer/) for requirements and explanations.
 
 ## Install and prepare public tests
 

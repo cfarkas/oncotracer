@@ -34,7 +34,7 @@ In another terminal, confirm that alignment or Nextflow is still running:
 
 ```bash
 ps -ef | grep -E 'bwa|samtools|nextflow'                         # inspect active analysis processes
-tail -f test/runs/illumina/01_samurai_illumina/.nextflow.log    # follow the nested Illumina workflow
+tail -f test/runs/illumina/01_samurai_illumina/nextflow_launch/.nextflow.log    # follow the nested Illumina workflow
 ```
 
 For ONT, replace `illumina/01_samurai_illumina` with `ont/01_samurai_ont`. Stop a run only after checking the log for an error and confirming that no analysis process is active.
