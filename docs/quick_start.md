@@ -1,209 +1,186 @@
 # Quick Start
 
-This page contains complete, copy-pasteable public-data runs. Run every `main.nf` command from the cloned repository directory.
+This tutorial verifies a new OncoTracer installation with one public Illumina sample and one public Oxford Nanopore Technologies (ONT) sample. It downloads about **225 MB of compressed reads** in total. It is separate from the larger, optional [three-sample HCC1143 cohort](public_cohort.md).
 
-## For the Impatient
+## Before running
 
-If you want to verify the complete workflow before learning each command, use the repository test runner:
-
-```bash
-git clone https://github.com/cfarkas/oncotracer.git  # clone a fresh copy of OncoTracer
-cd oncotracer                                        # enter the repository; the helper runs main.nf from here
-bash run_test.sh --docker                            # prepare data, validate, run Illumina and ONT, and check final outputs
-```
-
-The script installs a local Nextflow launcher only when needed, pulls the current container, reuses existing FASTQs that pass gzip validation, and stops at the first error. A completely fresh run also downloads and indexes the hg38 reference (about 3.16 GB). BWA indexing is single-core and often takes 30–60 minutes; later runs reuse it. A successful run ends with `SUCCESS` and prints both workflow-summary paths. It performs the same preparation and analysis commands explained below. Use `--singularity` or `--conda` instead of `--docker` when needed.
-
-## Requirements
-
-Install Nextflow and Docker first. See [Installation](installation.md).
-
-## Complete Illumina public test
-
-Copy this entire code box into a terminal:
+Complete [Installation](installation.md), then confirm these commands work:
 
 ```bash
-git clone https://github.com/cfarkas/oncotracer.git oncotracer-illumina                 # clone a fresh repository for the Illumina tutorial
-cd oncotracer-illumina                                                               # enter the repository; main.nf is in this directory
-current_dir=$(pwd)                                                                   # save the absolute repository path
-echo $current_dir                                                                    # verify where inputs, work files, and results will be created
-nextflow -version                                                                    # verify that Nextflow is installed
-docker --version                                                                     # verify that Docker is installed and visible
-nextflow run main.nf --make_test                                                     # download both public FASTQ examples and generate absolute-path YAML files
-sed -n 1,120p test/configs/illumina.quickstart.yml                                   # inspect the generated Illumina YAML
-nextflow run main.nf -stub-run --docker -params-file test/configs/illumina.quickstart.yml  # validate parameters and workflow connections
-nextflow run main.nf --docker -params-file test/configs/illumina.quickstart.yml -resume    # run SAMURAI/qDNAseq and all OncoTracer steps
-cat test/runs/illumina/06_workflow_summary/workflow_summary.txt                      # confirm the final output locations
+git --version       # Git must be installed
+java -version       # Java must be version 17 or newer
+nextflow -version   # Nextflow must be available; run_test.sh can provide a local fallback
+docker --version    # Docker must be installed
 ```
 
-The `--make_test` command is a **preparation step only**. It does not run CNA analysis. It downloads the public FASTQ files, validates their gzip integrity, creates the Illumina samplesheet, and writes `test/configs/illumina.quickstart.yml` plus `test/configs/ont.quickstart.yml`. The next two `nextflow` commands consume those generated YAML files.
+!!! warning "The first analysis is much larger than the example reads"
+    On the first real run, SAMURAI downloads the hg38 reference (about **3.16 GB**) and BWA commonly takes **30–60 minutes** to create its index. This happens once; later `-resume` runs reuse it. Docker layers and workflow intermediates require additional disk space.
 
-The generated Illumina YAML is located at the real path `<your-clone>/test/configs/illumina.quickstart.yml`. For example, if the clone is `/home/maria/oncotracer-illumina`, the file is `/home/maria/oncotracer-illumina/test/configs/illumina.quickstart.yml`. This is how that YAML file looks. The code box shows file contents, not a terminal command; `/absolute/path/...` represents the real path written by `--make_test`:
+## Recommended: run and verify everything
+
+Copy this complete terminal block:
+
+```bash
+git clone https://github.com/cfarkas/oncotracer.git  # create a fresh local clone
+cd oncotracer                                        # enter the repository; main.nf is here
+pwd                                                  # show the absolute location of this clone
+bash run_test.sh --docker                            # prepare, run, and verify both public examples
+```
+
+`run_test.sh` performs these actions in order:
+
+1. checks Java and Docker, and provides a repository-local Nextflow launcher if needed;
+2. pulls the current `carlosfarkas/oncotracer:latest` Docker image;
+3. downloads the public FASTQs, checks their expected size, MD5, and gzip integrity, and reuses valid existing copies;
+4. writes absolute-path Illumina and ONT YAML files;
+5. performs a stub wiring check for each branch;
+6. runs the real Illumina/qDNAseq and ONT/ichorCNA analyses;
+7. verifies the main tables, plots, and workflow summaries.
+
+A successful run ends with:
+
+```text
+SUCCESS: both public workflows completed and produced the expected outputs.
+```
+
+!!! info "If Nextflow displays `0 of 1`"
+    The outer `RUN_ILLUMINA_SAMURAI` or `RUN_ONT_SAMURAI` task waits for a nested SAMURAI workflow. Its counter can remain at `0 of 1` while alignment and CNA calling are active. The helper prints an activity message every 30 seconds. See [Troubleshooting](troubleshooting.md) before stopping it.
+
+## Understand and run each command yourself
+
+Use this route if you want to see what the helper does. Start from a fresh clone:
+
+```bash
+git clone https://github.com/cfarkas/oncotracer.git oncotracer-quickstart # clone into a clearly named folder
+cd oncotracer-quickstart                                                  # enter it; run every main.nf command here
+nextflow run main.nf --make_test                                         # download and validate reads, then write both YAML files
+```
+
+`--make_test` is a **preparation command**. It does not perform CNA analysis. It creates:
+
+```text
+test/
+├── configs/
+│   ├── illumina.quickstart.yml
+│   └── ont.quickstart.yml
+├── public/
+│   ├── illumina_ERR12341627/
+│   └── ont_DRR165691/
+└── runs/
+```
+
+Inspect the generated files:
+
+```bash
+sed -n '1,120p' test/configs/illumina.quickstart.yml # display the Illumina YAML
+sed -n '1,120p' test/configs/ont.quickstart.yml      # display the ONT YAML
+```
+
+### What the generated Illumina YAML means
+
+The file is at `<your-clone>/test/configs/illumina.quickstart.yml`. The following box is an annotated **preview of YAML file contents**, not a terminal command. `--make_test` writes your clone's real absolute path in place of `/absolute/path/oncotracer-quickstart`.
 
 ```yaml
-mode: illumina                                      # select the Illumina branch
-lpwgs_root: /absolute/path/oncotracer-illumina/test # folder mounted into Docker; all test inputs and outputs are below it
-outdir: /absolute/path/oncotracer-illumina/test/runs/illumina # main results directory
-illumina_samplesheet: /absolute/path/oncotracer-illumina/test/public/illumina_ERR12341627/illumina.samplesheet.csv # paired FASTQ table
+mode: illumina                                      # use paired-end Illumina processing
+lpwgs_root: /absolute/path/oncotracer-quickstart/test # common input/output parent mounted in Docker
+outdir: /absolute/path/oncotracer-quickstart/test/runs/illumina # final run directory
+illumina_samplesheet: /absolute/path/oncotracer-quickstart/test/public/illumina_ERR12341627/illumina.samplesheet.csv # table linking the sample to R1 and R2
 illumina_analysis_type: solid_biopsy                # SAMURAI analysis preset
-illumina_caller: qdnaseq                            # Illumina CNA caller
-illumina_binsize_kb: 100                            # qDNAseq bin size in kilobases
-run_cna_classifier: false                           # keep optional classifier/pathology reporting off for this tutorial
-force: true                                         # allow the tutorial outputs to be refreshed
+illumina_caller: qdnaseq                            # CNA caller used for Illumina
+illumina_binsize_kb: 100                            # analyze copy number in 100-kilobase bins
+run_cna_classifier: false                           # skip the optional classifier/pathology stage
+force: true                                         # allow this disposable tutorial output to be refreshed
 ```
 
-The generated samplesheet is:
+The YAML points to this generated samplesheet:
 
 ```csv
 sample,fastq_1,fastq_2,status
-ERR12341627,/absolute/path/oncotracer-illumina/test/public/illumina_ERR12341627/ERR12341627_1.fastq.gz,/absolute/path/oncotracer-illumina/test/public/illumina_ERR12341627/ERR12341627_2.fastq.gz,tumor
+ERR12341627,/absolute/path/oncotracer-quickstart/test/public/illumina_ERR12341627/ERR12341627_1.fastq.gz,/absolute/path/oncotracer-quickstart/test/public/illumina_ERR12341627/ERR12341627_2.fastq.gz,tumor
 ```
 
-Expected plots include the SAMURAI/qDNAseq genome, bin, and segment PDFs under `test/runs/illumina/01_samurai_illumina/`, plus OncoTracer plots under `test/runs/illumina/04_cna_custom_plots/`.
+The sample is [ENA ERR12341627](https://www.ebi.ac.uk/ena/browser/view/ERR12341627), an OVCAR8 cancer whole-genome sequencing run represented by a paired R1/R2 FASTQ set.
 
-The Illumina example is [ENA `ERR12341627`](https://www.ebi.ac.uk/ena/browser/view/ERR12341627), an OVCAR8 cancer WGS run with about 125 MB of compressed paired reads. During the nested SAMURAI run, outer Nextflow may display `RUN_ILLUMINA_SAMURAI | 0 of 1` until alignment and qDNAseq both finish; this means the nested task is active, not frozen. `run_test.sh` prints a progress message every 30 seconds.
+### What the generated ONT YAML means
 
-## Complete ONT public test
-
-Copy this entire code box into a terminal:
-
-```bash
-git clone https://github.com/cfarkas/oncotracer.git oncotracer-ont                      # clone a fresh repository for the ONT tutorial
-cd oncotracer-ont                                                                    # enter the repository; main.nf is in this directory
-current_dir=$(pwd)                                                                   # save the absolute repository path
-echo $current_dir                                                                    # verify where inputs, work files, and results will be created
-nextflow -version                                                                    # verify that Nextflow is installed
-docker --version                                                                     # verify that Docker is installed and visible
-nextflow run main.nf --make_test                                                     # download both public FASTQ examples and generate absolute-path YAML files
-sed -n 1,120p test/configs/ont.quickstart.yml                                        # inspect the generated ONT YAML
-nextflow run main.nf -stub-run --docker -params-file test/configs/ont.quickstart.yml # validate parameters and workflow connections
-nextflow run main.nf --docker -params-file test/configs/ont.quickstart.yml -resume   # run SAMURAI/ichorCNA and all OncoTracer steps
-cat test/runs/ont/06_workflow_summary/workflow_summary.txt                           # confirm the final output locations
-```
-
-The generated ONT YAML is located at the real path `<your-clone>/test/configs/ont.quickstart.yml`. For example, if the clone is `/home/maria/oncotracer-ont`, the file is `/home/maria/oncotracer-ont/test/configs/ont.quickstart.yml`. This is how that YAML file looks. The code box shows file contents, not a terminal command; `--make_test` replaces `/absolute/path/...` with the actual absolute path of the clone. The ONT run above reads this file through `-params-file`:
+The file is at `<your-clone>/test/configs/ont.quickstart.yml`. Again, this is an annotated **preview of YAML contents**; it is not a command to paste into the terminal.
 
 ```yaml
-mode: ont                                           # select the Oxford Nanopore branch
-lpwgs_root: /absolute/path/oncotracer-ont/test      # folder mounted into Docker; all test inputs and outputs are below it
-outdir: /absolute/path/oncotracer-ont/test/runs/ont # main results directory
-ont_folder: /absolute/path/oncotracer-ont/test/public/ont_DRR165691/fastq_pass # folder containing barcode FASTQ directories
-ont_barcodes: barcode01                             # barcode directory to analyze
-ont_sample_names: DRR165691                         # biological sample name assigned to barcode01
+mode: ont                                           # use Oxford Nanopore processing
+lpwgs_root: /absolute/path/oncotracer-quickstart/test # common input/output parent mounted in Docker
+outdir: /absolute/path/oncotracer-quickstart/test/runs/ont # final run directory
+ont_folder: /absolute/path/oncotracer-quickstart/test/public/ont_DRR165691/fastq_pass # parent of barcode folders
+ont_barcodes: barcode01                             # barcode directory that contains this sample's FASTQ
+ont_sample_names: DRR165691                         # sample name assigned to barcode01
 ont_analysis_type: liquid_biopsy                    # SAMURAI analysis preset
-ont_caller: ichorcna                                # ONT CNA caller
-ont_binsize_kb: 500                                 # ichorCNA bin size in kilobases
-ont_min_age_minutes: 0                              # analyze completed FASTQ immediately
-run_cna_classifier: false                           # keep optional classifier/pathology reporting off for this tutorial
-force: true                                         # refresh supported tutorial outputs
+ont_caller: ichorcna                                # CNA caller used for ONT
+ont_binsize_kb: 500                                 # analyze copy number in 500-kilobase bins
+ont_min_age_minutes: 0                              # accept the completed tutorial FASTQ immediately
+run_cna_classifier: false                           # skip the optional classifier/pathology stage
+force: true                                         # allow this disposable tutorial output to be refreshed
 ```
 
-Expected outputs include ichorCNA segment/depth tables under `test/runs/ont/01_samurai_ont/results/ichorcna/` and the ichorCNA-derived copy-number profile at `test/runs/ont/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf`.
+### Wiring check versus real run
 
-## Pathology CSV example
-
-The repository includes `examples/pathology/anonymized_pathology_example.csv`, a minimized UTF-8 extract of the sanitized project table. Only sequenced rows and the three fields used by OncoTracer are included; unrelated clinical and demographic columns were intentionally excluded.
-
-```csv
-illumina_sample_id,case_code,final_diagnosis
-I7738,2023-07738,"Glioblastoma, IDH-wildtype."
-H10058,2023-10058,Findings concordant with arachnoid cyst.
-```
-
-The columns mean:
-
-- `illumina_sample_id`: must exactly match the sample identifier in the Illumina samplesheet and CNA results;
-- `case_code`: anonymized case identifier used to group or trace research records;
-- `final_diagnosis`: pathology diagnosis text used for compatibility/concordance reporting.
-
-The public ERR12341627 test is not one of these pathology cases, so do not attach this CSV to that public run. Use it as a format example for your own matched samples. To enable pathology reporting for matched data, add the following to your Illumina YAML:
-
-```yaml
-run_cna_classifier: true                          # enable optional CNA classification and reports
-cna_classifier_sample_set: broad_cancer          # select the appropriate disease context; use a narrower context when justified
-pathology_csv: /absolute/path/to/my_pathology.csv # CSV with identifiers matching the Illumina samplesheet
-pathology_sample_col: illumina_sample_id          # sample-matching column
-pathology_case_col: case_code                     # case identifier column
-pathology_diagnosis_col: final_diagnosis          # diagnosis text column
-```
-
-See [Models & Pathology](models_pathology.md) for interpretation limits and outputs.
-
-## Use your own Illumina FASTQ files
-
-First create a private editable YAML and open it in `nano`:
+Run the Illumina branch:
 
 ```bash
-git clone https://github.com/cfarkas/oncotracer.git              # clone the repository
-cd oncotracer                                                    # enter the repository
-cp params/illumina.minimal.yml params/my_illumina.yml            # copy the versioned template
-realpath .                                                       # print the absolute clone path
-realpath /path/to/Sample_A_R1.fastq.gz                            # print the absolute R1 path
-realpath /path/to/Sample_A_R2.fastq.gz                            # print the absolute R2 path
-nano params/my_illumina.yml                                      # replace every example path
+nextflow run main.nf -stub-run --docker -params-file test/configs/illumina.quickstart.yml # create placeholder task outputs and check workflow wiring
+nextflow run main.nf --docker -params-file test/configs/illumina.quickstart.yml -resume   # perform the real Illumina analysis
 ```
 
-Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
-
-The YAML you edited is located at the real path `<your-clone>/params/my_illumina.yml`. For example, if the clone is `/home/maria/oncotracer`, the file is `/home/maria/oncotracer/params/my_illumina.yml`. This is how its contents look after the example paths have been replaced. This code box is YAML file content, not a terminal command:
-
-```yaml
-mode: illumina                                      # select the Illumina branch
-lpwgs_root: /home/maria/oncotracer_project          # common parent visible to Docker/Singularity
-outdir: /home/maria/oncotracer_project/runs/sample_a # main result directory
-illumina_samplesheet: /home/maria/oncotracer_project/input/illumina_samplesheet.csv # paired FASTQ table
-illumina_analysis_type: solid_biopsy                # established analysis preset
-illumina_caller: qdnaseq                            # Illumina CNA caller
-illumina_binsize_kb: 100                            # coarse CNA bin size
-run_cna_classifier: false                           # optional classifier/pathology stage
-force: false                                        # protect existing real-project outputs
-```
-
-Now validate and run from the repository root:
+Then run the ONT branch:
 
 ```bash
-nextflow run main.nf -stub-run --docker -params-file params/my_illumina.yml # validate YAML and workflow wiring
-nextflow run main.nf --docker -params-file params/my_illumina.yml -resume   # run from FASTQ to final reports
+nextflow run main.nf -stub-run --docker -params-file test/configs/ont.quickstart.yml # create placeholder task outputs and check workflow wiring
+nextflow run main.nf --docker -params-file test/configs/ont.quickstart.yml -resume   # perform the real ONT analysis
 ```
 
-## Use your own ONT FASTQ files
+A `-stub-run` is fast because it replaces process commands with lightweight placeholders. It checks parameter parsing and workflow connections, but it is **not full validation of the FASTQ contents, tools, reference preparation, or real analysis**. Only the commands without `-stub-run` perform the analysis.
 
-First create a private editable YAML and inspect the barcode layout:
+`-resume` tells Nextflow to reuse unchanged tasks already present in its cache and `work/` directory. Keep `work/` if you want to resume after an interruption. It does not mean “continue from a particular sample,” and Nextflow reruns a task when its relevant command or inputs changed.
+
+## Confirm the results
+
+Start with the two summaries:
 
 ```bash
-git clone https://github.com/cfarkas/oncotracer.git              # clone the repository
-cd oncotracer                                                    # enter the repository
-cp params/ont.minimal.yml params/my_ont.yml                      # copy the versioned template
-realpath .                                                       # print the absolute clone path
-realpath /path/to/fastq_pass                                     # print the absolute ONT folder path
-find /path/to/fastq_pass -maxdepth 2 -type f | head              # confirm barcode FASTQ files exist
-nano params/my_ont.yml                                           # replace paths, barcodes, and sample names
+cat test/runs/illumina/06_workflow_summary/workflow_summary.txt # Illumina output inventory
+cat test/runs/ont/06_workflow_summary/workflow_summary.txt      # ONT output inventory
 ```
 
-Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
+Important output locations are:
 
-The YAML you edited is located at the real path `<your-clone>/params/my_ont.yml`. For example, if the clone is `/home/maria/oncotracer`, the file is `/home/maria/oncotracer/params/my_ont.yml`. This is how its contents look after the example paths have been replaced. This code box is YAML file content, not a terminal command:
+```text
+test/runs/illumina/
+├── 01_samurai_illumina/        # alignment and qDNAseq results
+├── 03_cna_codification/        # CNA event and notation tables
+├── 04_cna_custom_plots/        # OncoTracer PDF plots
+└── 06_workflow_summary/        # human-readable output summary
 
-```yaml
-mode: ont                                           # select the Oxford Nanopore branch
-lpwgs_root: /home/maria/oncotracer_project          # common parent visible to Docker/Singularity
-outdir: /home/maria/oncotracer_project/runs/ont_a   # main result directory
-ont_folder: /home/maria/oncotracer_project/input/fastq_pass # barcode FASTQ folder
-ont_barcodes: barcode01,barcode02                   # barcode directories in input order
-ont_sample_names: Patient_A,Patient_B               # sample names in exactly the same order
-ont_analysis_type: liquid_biopsy                    # established analysis preset
-ont_caller: ichorcna                                # ONT CNA caller
-ont_binsize_kb: 500                                 # coarse CNA bin size
-ont_min_age_minutes: 0                              # analyze completed FASTQ immediately
-run_cna_classifier: false                           # optional classifier/report stage
-force: false                                        # protect existing real-project outputs
+test/runs/ont/
+├── 01_samurai_ont/             # alignment and ichorCNA results
+├── 03_cna_codification/        # CNA event and notation tables
+├── 04_cna_custom_plots/        # OncoTracer PDF plots
+└── 06_workflow_summary/        # human-readable output summary
 ```
 
-Now validate and run from the repository root:
+See [Output Files](outputs.md) for interpretation and [Gallery](gallery.md) for example plots.
+
+## Next: run the real six-FASTQ cohort
+
+The default verification deliberately uses small, single-sample inputs. After it succeeds, the opt-in HCC1143 example demonstrates a three-sample Illumina cohort: three paired libraries, or six physical FASTQ files. The read download is **1.08 GiB**.
 
 ```bash
-nextflow run main.nf -stub-run --docker -params-file params/my_ont.yml # validate YAML and workflow wiring
-nextflow run main.nf --docker -params-file params/my_ont.yml -resume   # run from FASTQ to final reports
+bash examples/hcc1143_lpwgs/run_example.sh --docker # download, validate, configure, run, and verify all three samples
 ```
 
-Use `--singularity` instead of `--docker` on supported HPC systems.
+Read the [complete public-cohort tutorial](public_cohort.md) and the repository's [`examples/hcc1143_lpwgs`](https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs) notes for provenance, resource expectations, preparation-only options, and results.
+
+## Next: run your own data
+
+- Use [Automatic Setup](auto_params.md) to generate YAML from an Illumina FASTQ folder or ONT barcode tree.
+- Use [YAML and Paths](configuration/yaml_basics.md) if you prefer to edit a configuration manually.
+- Use [Pathology and Classifier](configuration/pathology.md) only when your pathology sample identifiers match your sequencing sample identifiers.
+
+Use `--singularity` instead of `--docker` on an HPC system configured with Apptainer/Singularity.

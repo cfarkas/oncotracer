@@ -1,5 +1,8 @@
-# Minimal Illumina template. Copy this file and replace the example paths.
+# Minimal Illumina template for a real run.
+# Copy this file, then replace /home/student/oncotracer with the value printed
+# by `pwd` in your clone. Keep every input and output below lpwgs_root.
 mode: illumina
-lpwgs_root: /home/student/oncotracer_project
-outdir: /home/student/oncotracer_project/runs/my_first_illumina_run
-illumina_samplesheet: /home/student/oncotracer_project/input/illumina_samplesheet.csv
+lpwgs_root: /home/student/oncotracer
+outdir: /home/student/oncotracer/project/runs/my_first_illumina_run
+illumina_samplesheet: /home/student/oncotracer/project/input/illumina.samplesheet.csv
+force: false

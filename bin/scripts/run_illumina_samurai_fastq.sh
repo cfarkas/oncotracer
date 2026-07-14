@@ -71,6 +71,46 @@ REF_FAI="${REF_FA}.fai"
 DICT="${REF_FA%.fa}.dict"
 LOCAL_CONFIG="$RUN_ROOT/samurai_hg38.config"
 RUN_SAMPLESHEET="$RUN_ROOT/input/samplesheet.csv"
+BWA_INDEX_DIR="$(dirname "$REF_FA")/bwa"
+
+bwa_index_valid() {
+  local index_dir="$1" extension
+  for extension in amb ann bwt pac sa; do
+    [[ -s "$index_dir/genome.$extension" ]] || return 1
+  done
+}
+
+persist_bwa_index() (
+  local source_dir="$1" destination_dir="$2" destination_parent temp_dir=""
+  destination_parent="$(dirname "$destination_dir")"
+
+  cleanup_bwa_index_temp() {
+    [[ -z "$temp_dir" ]] || rm -rf -- "$temp_dir"
+  }
+  trap cleanup_bwa_index_temp EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  bwa_index_valid "$destination_dir" && return 0
+  mkdir -p "$destination_parent" || return 1
+  temp_dir="$(mktemp -d "${destination_dir}.tmp.XXXXXX")" || return 1
+
+  if ! cp -al "$source_dir/." "$temp_dir/" 2>/dev/null; then
+    rm -rf -- "$temp_dir" || return 1
+    temp_dir="$(mktemp -d "${destination_dir}.tmp.XXXXXX")" || return 1
+    cp -a --reflink=auto "$source_dir/." "$temp_dir/" || return 1
+  fi
+  bwa_index_valid "$temp_dir" || return 1
+
+  if mv -T "$temp_dir" "$destination_dir" 2>/dev/null; then
+    temp_dir=""
+    return 0
+  fi
+
+  # A concurrent run may have published the same cache first.
+  bwa_index_valid "$destination_dir"
+)
+
 
 download_samurai_hg38_reference() {
   local ref_dir="$1" fasta="$1/genome.fa" fai="$1/genome.fa.fai" dict="$1/genome.dict"
@@ -144,6 +184,14 @@ if [[ ! -s "$DICT" ]]; then
   fi
 fi
 
+INDEX_ARGS=(--index_genome true)
+if bwa_index_valid "$BWA_INDEX_DIR"; then
+  echo "Reusing persistent BWA index: $BWA_INDEX_DIR"
+  INDEX_ARGS=(--aligner_index "$BWA_INDEX_DIR" --index_genome false)
+else
+  echo "No persistent BWA index found; SAMURAI will build it once."
+fi
+
 cat > "$LOCAL_CONFIG" <<EOF_CONFIG
 params {
   genomes {
@@ -151,6 +199,7 @@ params {
       fasta     = "${REF_FA}"
       fasta_fai = "${REF_FAI}"
       dict      = "${DICT}"
+      bwa       = "${BWA_INDEX_DIR}"
     }
   }
 }
@@ -182,9 +231,16 @@ nextflow run dincalcilab/samurai -latest \
   --caller "$CALLER" \
   --binsize "$BINSIZE" \
   --aligner "$ALIGNER" \
-  --index_genome true \
+  "${INDEX_ARGS[@]}" \
   --run_fastp false \
   -resume
+
+if ! bwa_index_valid "$BWA_INDEX_DIR" && bwa_index_valid "$RUN_ROOT/genome_index/bwa"; then
+  echo "Saving the BWA index for later runs: $BWA_INDEX_DIR"
+  if ! persist_bwa_index "$RUN_ROOT/genome_index/bwa" "$BWA_INDEX_DIR"; then
+    echo "WARN: could not persist the BWA index; this completed run remains valid." >&2
+  fi
+fi
 
 if ! compgen -G "$RUN_ROOT/alignment/*.bam" >/dev/null; then
   echo "WARN: SAMURAI FASTQ mode did not publish alignment; falling back to host bwa/samtools and SAMURAI BAM mode" >&2
@@ -192,14 +248,24 @@ if ! compgen -G "$RUN_ROOT/alignment/*.bam" >/dev/null; then
   command -v samtools >/dev/null 2>&1 || { echo "ERROR: samtools is required for Illumina FASTQ fallback alignment" >&2; exit 1; }
   mkdir -p "$RUN_ROOT/alignment"
   BAM_SAMPLESHEET="$RUN_ROOT/input/bam.samplesheet.csv"
-  python3 - "$RUN_SAMPLESHEET" "$BAM_SAMPLESHEET" "$RUN_ROOT/alignment" "$REF_FA" <<'PY_BAM_FALLBACK'
+  python3 - "$RUN_SAMPLESHEET" "$BAM_SAMPLESHEET" "$RUN_ROOT/alignment" "$REF_FA" "$BWA_INDEX_DIR" <<'PY_BAM_FALLBACK'
 import csv, subprocess, sys
 from pathlib import Path
-fastq_sheet, bam_sheet, align_dir, ref = sys.argv[1:5]
+fastq_sheet, bam_sheet, align_dir, ref, persistent_index = sys.argv[1:6]
 align_dir = Path(align_dir)
-index_prefix = align_dir.parent / "genome_index" / "bwa" / "genome"
-if Path(str(index_prefix) + ".bwt").exists():
-    ref = str(index_prefix)
+run_index = align_dir.parent / "genome_index" / "bwa" / "genome"
+persistent_index = Path(persistent_index) / "genome"
+
+def bwa_index_exists(prefix):
+    return all(
+        (path := Path(str(prefix) + suffix)).is_file() and path.stat().st_size > 0
+        for suffix in ('.amb', '.ann', '.bwt', '.pac', '.sa')
+    )
+
+if bwa_index_exists(persistent_index):
+    ref = str(persistent_index)
+elif bwa_index_exists(run_index):
+    ref = str(run_index)
 rows = []
 with open(fastq_sheet, newline='') as handle:
     for row in csv.DictReader(handle):

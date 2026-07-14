@@ -1,32 +1,30 @@
 # OncoTracer Illumina example configuration.
-# Copy before editing: cp params/illumina.example.yml params/my_illumina.yml
-# YAML is plain text: setting_name: value. Use spaces, not tabs.
-# Use real Linux absolute paths from commands such as:
-#   pwd
-#   realpath .
-#   realpath data/sample_R1.fastq.gz
-#   ls -lh /home/student/data/sample_R1.fastq.gz
+# Recommended first choice: let --auto_params generate this file for you.
+# Manual use: cp params/illumina.example.yml params/my_illumina.yml
+#
+# YAML uses `setting: value`, one setting per line. Use spaces, never tabs.
+# Replace /home/student/oncotracer with the absolute path printed by `pwd`.
+# Keep the samplesheet and output directory below lpwgs_root.
 
 mode: illumina
 
-# Absolute project/data root visible to Docker or Singularity.
-lpwgs_root: /home/student/oncotracer_project
+# Absolute common parent mounted into Docker or Singularity.
+lpwgs_root: /home/student/oncotracer
 
-# Main output folder for numbered OncoTracer directories.
-outdir: /home/student/oncotracer_project/runs/illumina_example
+# Results are written here. OncoTracer creates 01_ through 06_ subdirectories.
+outdir: /home/student/oncotracer/project/runs/illumina_example
 
-# CSV with columns: sample,fastq_1,fastq_2,status
-# Example row:
-# Sample_A,/home/student/data/Sample_A_R1.fastq.gz,/home/student/data/Sample_A_R2.fastq.gz,tumor
-illumina_samplesheet: /home/student/oncotracer_project/input/illumina_samplesheet.csv
+# CSV columns: sample,fastq_1,fastq_2,status
+# Example row (the paths must exist):
+# Sample_A,/home/student/oncotracer/project/input/illumina_fastq/Sample_A_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Sample_A_R2.fastq.gz,tumor
+illumina_samplesheet: /home/student/oncotracer/project/input/illumina.samplesheet.csv
 
-
-# Scientific defaults for the standard Illumina route.
+# Standard Illumina scientific settings. Omit these lines to use the same defaults.
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
 
-# Optional classifier/pathology route.
+# Optional CNA classifier and pathology report. Leave false for the standard run.
 run_cna_classifier: false
 cna_classifier_sample_set: broad_cancer
 pathology_csv: null
@@ -36,4 +34,5 @@ pathology_diagnosis_col: final_diagnosis
 pathology_use_biomed_models: true
 pathology_biomed_local_files_only: false
 
-force: true
+# Protect an existing real-project output directory.
+force: false

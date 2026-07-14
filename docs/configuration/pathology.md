@@ -1,94 +1,141 @@
-# Pathology and Classifier
+# Pathology and classifier configuration
 
-## Is this another YAML?
+Pathology is **not a second pipeline**. It is an optional section in the same Illumina run YAML. When enabled, OncoTracer first completes the CNA workflow and then sends the CNA event table to the research classifier. If a pathology table is also supplied, the classifier compares its CNA-based result with the diagnosis text.
 
-It is a **separate copied run YAML**, but not a different file format or a different workflow. Start from the Illumina pathology template, edit it, and pass it to the same `main.nf`. It contains the normal Illumina FASTQ settings plus extra keys that enable CNA classification and pathology concordance.
+Start without this feature if you only need CNA calls and plots. Enable it after a normal Illumina run works.
+
+## The three files and how they connect
+
+| File | Purpose | Identifier that must match |
+| --- | --- | --- |
+| Illumina samplesheet | Points to each R1/R2 FASTQ pair | `sample` |
+| Pathology CSV | Holds the case identifier and diagnosis | `illumina_sample_id` in this example |
+| Run YAML | Points OncoTracer to both files and names the pathology columns | No sample rows are stored here |
+
+The join is exact and case-sensitive. `I7738` matches `I7738`; `i7738`, `I7738_R1`, and `Case_001` do not.
+
+## Recommended folder layout
+
+Keep every input and output below `lpwgs_root` so Docker or Singularity can see it.
 
 ```text
 oncotracer/
 ├── main.nf
-├── examples/
-│   └── pathology/
-│       └── anonymized_pathology_example.csv  # format example from the sanitized project table
 ├── params/
-│   ├── illumina.pathology.example.yml         # versioned template; do not edit directly
-│   └── my_illumina_pathology.yml              # your copied YAML
-└── project/
+│   ├── illumina.pathology.example.yml     # repository template
+│   └── my_illumina_pathology.yml          # your editable copy
+└── project/                               # lpwgs_root in this example
     ├── input/
+    │   ├── I7738_R1.fastq.gz
+    │   ├── I7738_R2.fastq.gz
+    │   ├── V480_R1.fastq.gz
+    │   ├── V480_R2.fastq.gz
     │   ├── illumina.samplesheet.csv
-    │   └── pathology.csv                      # your matched, minimized pathology table
+    │   └── pathology.csv
     └── runs/
 ```
 
-## The two files have different jobs
+The anonymized repository table at `examples/pathology/anonymized_pathology_example.csv` demonstrates the accepted three-column format. It is a format example, not FASTQ data.
 
-- The **YAML** tells OncoTracer where files are and which columns/settings to use.
-- The **pathology CSV** contains one row per matched sample/case and the diagnosis text.
+## Complete matched example
 
-The public pathology example does not match the public ERR12341627 FASTQ test. It teaches the format only. Your pathology sample identifiers must match your own Illumina samplesheet and CNA sample names exactly.
+The following walkthrough deliberately uses `I7738` and `V480` in both CSV files. Their FASTQs are not distributed with this repository, so this is a matched file-configuration example rather than a public sequencing test. Substitute your own research identifiers and FASTQs in a real run.
 
-## Required pathology columns
-
-A minimal table is:
-
-```csv
-illumina_sample_id,case_code,final_diagnosis
-Sample_A,Case_001,Diffuse large B-cell lymphoma
-Sample_B,Case_002,Reactive lymphoid tissue
-```
-
-| Column in this example | How OncoTracer uses it |
-| --- | --- |
-| `illumina_sample_id` | Joins the pathology row to the CNA sample. It must equal the samplesheet `sample` value exactly, including capitalization. |
-| `case_code` | An anonymized case or patient grouping identifier. |
-| `final_diagnosis` | Diagnosis text used for compatibility/concordance reporting. |
-
-Your institution can use different header names. Point the YAML keys to the names you actually use.
-
-## Complete step-by-step example
-
-### 1. Clone and enter the repository
+### 1. Clone the repository and make folders
 
 ```bash
-git clone https://github.com/cfarkas/oncotracer.git  # clone OncoTracer
-cd oncotracer                                        # run main.nf from this directory
-current_dir=$(pwd)                                   # save the repository path
-echo $current_dir                                    # confirm the current directory
+git clone https://github.com/cfarkas/oncotracer.git  # download OncoTracer
+cd oncotracer                                        # main.nf is here
+mkdir -p project/input project/runs                  # inputs and outputs remain under one visible root
+cp params/illumina.pathology.example.yml params/my_illumina_pathology.yml # preserve the original template
+realpath project                                     # copy this absolute path for the YAML
 ```
 
-### 2. Create a simple project tree
+Copy your four FASTQ files into `project/input/` before continuing. A symbolic link is safe only when its target is also below `lpwgs_root`; otherwise the container cannot follow it. Confirm their names:
 
 ```bash
-mkdir -p project/input project/runs                  # create input and output folders inside the clone
-cp examples/pathology/anonymized_pathology_example.csv project/input/pathology.csv # copy the format example
-cp params/illumina.pathology.example.yml params/my_illumina_pathology.yml # copy the YAML template
+find project/input -maxdepth 1 -type f -name '*.fastq.gz' -print | sort # expect two files per sample
 ```
 
-For a real run, replace `project/input/pathology.csv` with a minimized export containing only matched research identifiers and the fields needed for analysis.
+### 2. Create the Illumina samplesheet
 
-### 3. Make the Illumina samplesheet
+Open a new file:
+
+```bash
+nano project/input/illumina.samplesheet.csv
+```
+
+Paste this content, replacing `/absolute/path/oncotracer` with the result of `realpath .`:
 
 ```csv
 sample,fastq_1,fastq_2,status
-Sample_A,/absolute/path/oncotracer/project/input/Sample_A_R1.fastq.gz,/absolute/path/oncotracer/project/input/Sample_A_R2.fastq.gz,tumor
-Sample_B,/absolute/path/Sample_B_R1.fastq.gz,/absolute/path/Sample_B_R2.fastq.gz,tumor
+I7738,/absolute/path/oncotracer/project/input/I7738_R1.fastq.gz,/absolute/path/oncotracer/project/input/I7738_R2.fastq.gz,tumor
+V480,/absolute/path/oncotracer/project/input/V480_R1.fastq.gz,/absolute/path/oncotracer/project/input/V480_R2.fastq.gz,tumor
 ```
 
-Save it as `project/input/illumina.samplesheet.csv`. The values `Sample_A` and `Sample_B` must also appear in the pathology sample column.
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`.
 
-### 4. Edit the copied YAML with nano
+### 3. Create the matching pathology CSV
 
 ```bash
-nano params/my_illumina_pathology.yml               # open the copied YAML in nano
+nano project/input/pathology.csv
 ```
 
-Replace its example values with absolute paths:
+Paste:
+
+```csv
+illumina_sample_id,case_code,final_diagnosis
+I7738,2023-07738,"Glioblastoma, IDH-wildtype."
+V480,2024-00480,"Infiltration by diffuse large B-cell non-Hodgkin lymphoma, NOS, in fibroadipose and skeletal muscle tissue."
+```
+
+The quotes protect diagnoses that contain commas. Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`.
+
+Your headers may be different. For example, a table headed `sample_id,case_id,diagnosis` is valid when the YAML names those three headers exactly.
+
+### 4. Verify the join with Python
+
+This uses Python's standard CSV module and prints a clear error if either file contains an unmatched sample:
+
+```bash
+python3 - <<'PY'
+import csv
+
+with open('project/input/illumina.samplesheet.csv', newline='') as handle:
+    fastq_ids = {row['sample'].strip() for row in csv.DictReader(handle)}
+with open('project/input/pathology.csv', newline='') as handle:
+    pathology_ids = {row['illumina_sample_id'].strip() for row in csv.DictReader(handle)}
+
+print('FASTQ samples:    ', sorted(fastq_ids))
+print('Pathology samples:', sorted(pathology_ids))
+missing_pathology = fastq_ids - pathology_ids
+missing_fastq = pathology_ids - fastq_ids
+if missing_pathology or missing_fastq:
+    raise SystemExit(f'ERROR: missing pathology={sorted(missing_pathology)}; missing FASTQ={sorted(missing_fastq)}')
+print('OK: every sample identifier matches exactly')
+PY
+```
+
+Expected last line:
+
+```text
+OK: every sample identifier matches exactly
+```
+
+### 5. Edit the copied run YAML
+
+```bash
+nano params/my_illumina_pathology.yml
+```
+
+Make it look like this, using the real absolute path of your clone:
 
 ```yaml
 mode: illumina
-lpwgs_root: /absolute/path/oncotracer
+lpwgs_root: /absolute/path/oncotracer/project
 outdir: /absolute/path/oncotracer/project/runs/illumina_pathology
 illumina_samplesheet: /absolute/path/oncotracer/project/input/illumina.samplesheet.csv
+
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -96,50 +143,56 @@ illumina_binsize_kb: 100
 run_cna_classifier: true
 cna_classifier_sample_set: broad_cancer
 cna_classifier_profile: conda
+
 pathology_csv: /absolute/path/oncotracer/project/input/pathology.csv
 pathology_sample_col: illumina_sample_id
 pathology_case_col: case_code
 pathology_diagnosis_col: final_diagnosis
-pathology_use_biomed_models: true
-pathology_biomed_local_files_only: false
+pathology_use_biomed_models: false
+pathology_biomed_local_files_only: true
 force: false
 ```
 
-In `nano`, use arrow keys to move, Backspace/Delete to remove example text, and type the new value after each colon. Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Validate and run.
+Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`.
 
-### 5. Check identifiers before running
+For a first classifier run, the example disables biomedical language models. This avoids large model downloads and makes setup easier to diagnose. Enable them later only after reading [Models and pathology](../models_pathology.md).
 
-```bash
-head -5 project/input/illumina.samplesheet.csv       # inspect Illumina sample names
-head -5 project/input/pathology.csv                  # inspect pathology sample names
-csvcut -c sample project/input/illumina.samplesheet.csv | sort -u # list samplesheet identifiers
-csvcut -c illumina_sample_id project/input/pathology.csv | sort -u # list pathology identifiers
-```
+!!! note "The classifier uses Conda"
+    `cna_classifier_profile: conda` starts the nested optional classifier environment. With `--docker`, Conda is supplied inside the OncoTracer image; with a native `--conda` run, confirm `conda --version` works on the host. A normal run with `run_cna_classifier: false` skips this optional environment.
 
-If `csvcut` is unavailable, inspect the two files manually. Do not proceed until the identifiers match.
-
-### 6. Validate and run
+### 6. Validate, then run
 
 ```bash
-nextflow run main.nf -stub-run --docker -params-file params/my_illumina_pathology.yml # validate the YAML without analysis
-nextflow run main.nf --docker -params-file params/my_illumina_pathology.yml -resume   # run Illumina CNA plus classifier/pathology reports
+nextflow run main.nf -stub-run --docker -params-file params/my_illumina_pathology.yml # check parameters and workflow connections
+nextflow run main.nf --docker -params-file params/my_illumina_pathology.yml -resume   # run CNA analysis and optional interpretation
 ```
 
-### 7. Find the results
+The stub run checks workflow wiring but does not analyze FASTQs. Only the second command performs the real analysis.
 
-Core CNA outputs remain under the numbered OncoTracer directories. Optional classifier outputs include sample classifications, reports, literature/driver summaries, and `07_pathology/pathology_concordance.tsv` inside the classifier result directory.
+### 7. Inspect the result
+
+```bash
+OUT="$PWD/project/runs/illumina_pathology"                                  # use the same outdir as the YAML
+cat "$OUT/06_workflow_summary/workflow_summary.txt"                         # locate core outputs
+sed -n '1,8p' "$OUT/05_cna_classifier/02_classification/cna_patient_classification.tsv" # CNA-based research classes
+sed -n '1,8p' "$OUT/05_cna_classifier/07_pathology/pathology_concordance.tsv"            # matched pathology comparison
+```
+
+See [Output files](../outputs.md) for the difference between caller output, refined segments, final event tables, plots, and optional research interpretation.
+
+## What each pathology setting means
 
 | YAML field | Meaning |
 | --- | --- |
-| `run_cna_classifier` | Enables optional classifier and report processes. |
-| `cna_classifier_sample_set` | Restricts classification labels and knowledge to the chosen disease context. |
-| `cna_classifier_profile` | Runtime profile for the nested classifier workflow. |
-| `pathology_csv` | Absolute path to the matched pathology table; use `null` when no table is available. |
-| `pathology_sample_col` | Header containing sample IDs matching OncoTracer sample names. |
-| `pathology_case_col` | Header containing case IDs. |
+| `run_cna_classifier` | Adds the optional classifier/report/pathology stage when `true`. |
+| `cna_classifier_sample_set` | Sets the biological context. Choose it from study design, not from the result you prefer. |
+| `cna_classifier_profile` | Runtime used by the nested classifier; the supplied template uses Conda. |
+| `pathology_csv` | Absolute path to the matched table. Use `null` when no pathology table is available. |
+| `pathology_sample_col` | Header containing identifiers equal to samplesheet `sample` values. |
+| `pathology_case_col` | Header containing anonymized case or patient identifiers. |
 | `pathology_diagnosis_col` | Header containing diagnosis text. |
-| `pathology_use_biomed_models` | Enables biomedical-model-assisted concordance behavior. |
-| `pathology_biomed_local_files_only` | Restricts model use to files already cached locally. |
+| `pathology_use_biomed_models` | Allows optional biomedical language-model assistance. Start with `false`. |
+| `pathology_biomed_local_files_only` | When `true`, prevents model retrieval and uses only an existing local cache. |
 
 !!! danger "Research use only"
-    Pathology agreement means CNA compatibility, not diagnostic confirmation. Review morphology, IHC, tumor fraction, sequencing depth, and orthogonal molecular assays.
+    Pathology concordance means that a CNA pattern is more or less compatible with supplied text under the chosen context. It is not diagnostic confirmation and cannot replace morphology, IHC, tumor-fraction assessment, orthogonal molecular tests, or expert review.

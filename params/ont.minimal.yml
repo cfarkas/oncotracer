@@ -1,7 +1,10 @@
-# Minimal ONT template. Copy this file and replace the example paths and barcodes.
+# Minimal ONT template for a real run.
+# Copy this file, then replace /home/student/oncotracer with the value printed
+# by `pwd` in your clone. Keep every input and output below lpwgs_root.
 mode: ont
-lpwgs_root: /home/student/oncotracer_project
-outdir: /home/student/oncotracer_project/runs/my_first_ont_run
-ont_folder: /home/student/data/ont_run/fastq_pass
+lpwgs_root: /home/student/oncotracer
+outdir: /home/student/oncotracer/project/runs/my_first_ont_run
+ont_folder: /home/student/oncotracer/project/input/fastq_pass
 ont_barcodes: barcode01
 ont_sample_names: Sample_ONT_1
+force: false

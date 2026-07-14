@@ -1,28 +1,33 @@
 # OncoTracer ONT example configuration.
-# Copy before editing: cp params/ont.example.yml params/my_ont.yml
-# Use Linux absolute paths. Windows paths such as C:\Users\Name\data are not
-# Linux paths; in WSL use /mnt/c/Users/Name/data or /home/name/data.
+# Recommended first choice: let --auto_params generate this file for you.
+# Manual use: cp params/ont.example.yml params/my_ont.yml
+#
+# YAML uses `setting: value`, one setting per line. Use spaces, never tabs.
+# Replace /home/student/oncotracer with the absolute path printed by `pwd`.
+# Keep every input, reference, and output below lpwgs_root.
 
 mode: ont
-lpwgs_root: /home/student/oncotracer_project
-outdir: /home/student/oncotracer_project/runs/ont_example
 
-# Folder containing ONT FASTQ files or barcode folders.
-# Check with: find /home/student/data/ont_run/fastq_pass -maxdepth 2 -type f | head
-ont_folder: /home/student/data/ont_run/fastq_pass
+# Absolute common parent mounted into Docker or Singularity.
+lpwgs_root: /home/student/oncotracer
 
-# Comma-separated barcode IDs; order must match ont_sample_names.
+# Results are written here. OncoTracer creates 01_ through 06_ subdirectories.
+outdir: /home/student/oncotracer/project/runs/ont_example
+
+# Parent directory containing one subdirectory per barcode.
+ont_folder: /home/student/oncotracer/project/input/fastq_pass
+
+# Comma-separated lists are positional: barcode07 is Sample_ONT_1.
 ont_barcodes: barcode07,barcode08
 ont_sample_names: Sample_ONT_1,Sample_ONT_2
 
-
-# Scientific defaults for the standard ONT route.
+# Standard ONT scientific settings. Omit these lines to use the same defaults.
 ont_analysis_type: liquid_biopsy
 ont_caller: ichorcna
 ont_binsize_kb: 500
 ont_min_age_minutes: 0
 
-# Optional advanced ONT inputs.
+# Optional advanced ONT inputs. Keep null/false unless you need these routes.
 ont_ref: null
 ont_normal_folder: null
 ont_normal_barcodes: null
@@ -31,4 +36,6 @@ ont_build_pon: false
 ont_force_realign: false
 
 run_cna_classifier: false
-force: true
+
+# Protect an existing real-project output directory.
+force: false
