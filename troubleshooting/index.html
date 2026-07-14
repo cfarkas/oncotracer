@@ -1353,7 +1353,7 @@
 <p>The outer OncoTracer task waits for a nested SAMURAI workflow, so <code>RUN_ILLUMINA_SAMURAI | 0 of 1</code> or <code>RUN_ONT_SAMURAI | 0 of 1</code> can remain visible while alignment and CNA calling are active. This is not automatically a stall. <code>run_test.sh</code> prints an activity message every 30 seconds.</p>
 <p>In another terminal, confirm that alignment or Nextflow is still running:</p>
 <div class="highlight"><pre><span></span><code>ps<span class="w"> </span>-ef<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;bwa|samtools|nextflow&#39;</span><span class="w">                         </span><span class="c1"># inspect active analysis processes</span>
-tail<span class="w"> </span>-f<span class="w"> </span>test/runs/illumina/01_samurai_illumina/.nextflow.log<span class="w">    </span><span class="c1"># follow the nested Illumina workflow</span>
+tail<span class="w"> </span>-f<span class="w"> </span>test/runs/illumina/01_samurai_illumina/nextflow_launch/.nextflow.log<span class="w">    </span><span class="c1"># follow the nested Illumina workflow</span>
 </code></pre></div>
 <p>For ONT, replace <code>illumina/01_samurai_illumina</code> with <code>ont/01_samurai_ont</code>. Stop a run only after checking the log for an error and confirming that no analysis process is active.</p>
 <h2 id="documentation-website">Documentation Website<a class="headerlink" href="#documentation-website" title="Permanent link">&para;</a></h2>

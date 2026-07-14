@@ -1265,7 +1265,7 @@
 <span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                        </span><span class="c1"># enter it; run main.nf from here</span>
 bash<span class="w"> </span>run_test.sh<span class="w"> </span>--docker<span class="w">                            </span><span class="c1"># install the local Nextflow launcher if missing, pull/update the container, reuse or download test data, and test both branches</span>
 </code></pre></div>
-<p><code>run_test.sh</code> does not install Java, Git, or Docker because those require operating-system permissions. It checks them and gives a clear error. It downloads Nextflow locally only when <code>nextflow</code> is unavailable. Docker reuses unchanged image layers, and the data preparation step reuses every FASTQ that already exists and passes gzip validation.</p>
+<p><code>run_test.sh</code> does not install Java, Git, or Docker because those require operating-system permissions. It checks them and gives a clear error. It downloads Nextflow locally only when <code>nextflow</code> is unavailable. Docker reuses unchanged image layers, and the data preparation step reuses every FASTQ that already exists and passes gzip validation. A completely clean first run downloads and indexes the hg38 reference (about 3.16 GB). BWA indexing is single-core and often takes 30–60 minutes; later runs reuse it.</p>
 
 
 
