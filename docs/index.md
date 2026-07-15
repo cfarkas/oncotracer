@@ -2,7 +2,7 @@
 
 ![OncoTracer sequencing-to-CNA workflow](assets/oncotracer-hero.png)
 
-OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-genome sequencing (LP-WGS)**. It turns Illumina paired-end or Oxford Nanopore Technologies (ONT) FASTQ reads into **copy-number alteration (CNA)** tables, plots, and reports. A CNA is a genomic region with a gain or loss of DNA.
+OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-genome sequencing (LP-WGS)**. It turns Illumina single-end or paired-end and Oxford Nanopore Technologies (ONT) FASTQ reads into **copy-number alteration (CNA)** tables, plots, and reports. A CNA is a genomic region with a gain or loss of DNA.
 
 ## Choose where to start
 
@@ -37,7 +37,7 @@ FASTQ reads
 
 | Input | Main CNA route | Beginner guide |
 | --- | --- | --- |
-| Illumina paired-end FASTQ | SAMURAI + qDNAseq | [Automatic Illumina setup](auto_params.md#illumina-step-by-step) |
+| Illumina single-end or paired-end FASTQ | SAMURAI + qDNAseq | [Illumina setup](configuration/illumina.md) |
 | ONT barcode FASTQ folders | SAMURAI + ichorCNA | [Automatic ONT setup](auto_params.md#ont-step-by-step) |
 | Illumina plus pathology CSV | Optional classifier and concordance reports | [Pathology tutorial](configuration/pathology.md) |
 

@@ -18,7 +18,9 @@ dependencies:
   - reportlab>=4.0
   - pypdf>=4.0
   - samtools
+  - bwa
   - minimap2
+  - pigz
   - git
   - curl
   - wget

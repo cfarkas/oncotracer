@@ -4,7 +4,7 @@ Choose the row that matches your data. The optional pathology file does not repl
 
 | Route | Required sequencing input | Required small metadata |
 | --- | --- | --- |
-| Illumina | One paired R1/R2 FASTQ pair per sample | Automatic `sample_name,status` table, or manual four-column samplesheet |
+| Illumina | One single-end FASTQ or one paired R1/R2 FASTQ pair per sample | Automatic paired-read `sample_name,status` table, or manual four-column samplesheet |
 | ONT | One or more FASTQs inside each selected barcode directory | Automatic `barcode,sample_name,status` table, or manual barcode/sample lists in YAML |
 | Classifier + pathology | Illumina or ONT input above | Pathology CSV with matching sample, case, and diagnosis columns |
 
@@ -112,8 +112,17 @@ Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`.
 | --- | --- |
 | `sample` | Unique sample ID. Use letters, numbers, `_`, or `-`. Pathology matching is exact and case-sensitive. |
 | `fastq_1` | Absolute path to this sample's R1 `.fastq.gz`. |
-| `fastq_2` | Absolute path to this sample's R2 `.fastq.gz`. |
+| `fastq_2` | Absolute path to this sample's R2 `.fastq.gz`, or an empty cell when every library in the run is single-end. |
 | `status` | `tumor` or `normal`. |
+
+For single-end data, keep the header unchanged and leave the third field empty:
+
+```csv
+sample,fastq_1,fastq_2,status
+Patient_SE,/home/student/oncotracer/project/input/illumina_fastq/Patient_SE.fastq.gz,,tumor
+```
+
+Do not mix single-end and paired-end rows in one workflow invocation.
 
 Inspect every row and test both mates before running:
 

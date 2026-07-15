@@ -37,6 +37,24 @@ def samuraiProfile() {
   return 'singularity'
 }
 
+def installRuntime() {
+  def selected = []
+  if( asBool(params.docker) ) selected << 'docker'
+  if( asBool(params.singularity) ) selected << 'singularity'
+  if( asBool(params.conda) ) selected << 'conda'
+  if( selected.size() != 1 ) {
+    error 'Installation requires exactly one runtime flag: --docker, --singularity, or --conda.'
+  }
+  return selected[0]
+}
+
+def installOutdir() {
+  if( blank(params.install_dir) ) {
+    return "${projectDir}/.oncotracer/install"
+  }
+  return file(params.install_dir).toString()
+}
+
 def workflowOutdir() {
   requireParam('outdir', params.outdir)
   return params.outdir.toString()
@@ -62,7 +80,10 @@ def datasetName() {
 
 workflow {
   main:
-  if( asBool(params.make_test) ) {
+  if( asBool(params.install) ) {
+    Channel.value(installRuntime()).set { install_runtime_ch }
+    INSTALL(install_runtime_ch)
+  } else if( asBool(params.make_test) ) {
     MAKE_TEST_DATA()
   } else if( asBool(params.auto_params) ) {
     AUTO_PARAMS()
@@ -103,9 +124,48 @@ workflow {
 }
 
 
+process INSTALL {
+  tag { "install_${runtime}" }
+  container null
+  conda "${projectDir}/environment.yml"
+  publishDir { installOutdir() }, mode: 'copy', overwrite: true
+
+  input:
+  val runtime
+
+  output:
+  path 'install_manifest.txt', emit: manifest
+
+  script:
+  def installer = scriptPath('scripts/install_oncotracer.sh')
+
+  """
+  set -Eeuo pipefail
+  bash '${installer}' \\
+    --runtime '${runtime}' \\
+    --project-dir '${projectDir}' \\
+    --lpwgs-root '${params.lpwgs_root}' \\
+    --docker-image '${params.docker_image}' \\
+    --singularity-image '${params.singularity_image}' \\
+    --samurai-revision 'v1.4.0' \\
+    --manifest install_manifest.txt
+  """
+
+  stub:
+  """
+  cat > install_manifest.txt <<EOF
+status=stub
+runtime=${runtime}
+analysis_started=false
+EOF
+  """
+}
+
+
 process AUTO_PARAMS {
   tag "auto_params"
   container null
+  conda "${projectDir}/environment.yml"
 
   output:
   path "auto_params_done.txt", emit: marker
@@ -132,6 +192,7 @@ process AUTO_PARAMS {
 process MAKE_TEST_DATA {
   tag 'public_quickstart_data'
   container null
+  conda "${projectDir}/environment.yml"
 
   output:
   path 'make_test_done.txt', emit: marker
@@ -152,6 +213,7 @@ process MAKE_TEST_DATA {
 process RUN_ILLUMINA_SAMURAI {
   tag 'illumina_samurai'
   container null
+  conda "${projectDir}/environment.yml"
   publishDir { "${params.outdir}/01_samurai_illumina" }, mode: 'copy', overwrite: true
 
   input:
@@ -195,6 +257,7 @@ process RUN_ILLUMINA_SAMURAI {
 process RUN_ONT_SAMURAI {
   tag 'ont_samurai'
   container null
+  conda "${projectDir}/environment.yml"
   publishDir { "${params.outdir}/01_samurai_ont" }, mode: 'copy', overwrite: true
 
   input:
@@ -255,6 +318,7 @@ process RUN_ONT_SAMURAI {
 
 process RUN_BAM_REFINE {
   tag { run_meta[2] }
+  conda "${projectDir}/environment.yml"
   publishDir { "${params.outdir}/02_bam_refinement" }, mode: 'copy', overwrite: true
 
   input:
@@ -327,7 +391,7 @@ process RUN_BAM_REFINE {
     --zipcnv-min-segment-bins '${params.zipcnv_min_segment_bins}' \\
     --zipcnv-min-abs-log2 '${params.zipcnv_min_abs_log2}' \\
     --zipcnv-compare-min-overlap '${params.zipcnv_compare_min_overlap}' \\
-    ${forceOpt}
+    ${forceOpt} ${skipInstallOpt}
 
   test -s '${refineOut}/${run_meta[2]}/04_final_results/final_segments.tsv'
   test -d '${refineOut}/${run_meta[2]}/04_final_results/cna_cytogenomic_input/qdnaseq_bins'
@@ -342,6 +406,7 @@ process RUN_BAM_REFINE {
 
 process RUN_CNA_CODIFICATION {
   tag { run_meta[2] }
+  conda "${projectDir}/environment.yml"
   publishDir { "${params.outdir}/03_cna_codification" }, mode: 'copy', overwrite: true
 
   input:
@@ -384,6 +449,7 @@ process RUN_CNA_CODIFICATION {
 
 process RUN_CNA_CUSTOM_PLOTS {
   tag { run_meta[2] }
+  conda "${projectDir}/environment.yml"
   publishDir { "${params.outdir}/04_cna_custom_plots" }, mode: 'copy', overwrite: true
 
   input:
@@ -426,6 +492,7 @@ process RUN_CNA_CUSTOM_PLOTS {
 
 process RUN_CNA_CLASSIFIER {
   tag 'cna_classifier'
+  conda "${projectDir}/environment.yml"
   publishDir { "${params.outdir}/05_cna_classifier" }, mode: 'copy', overwrite: true
 
   input:
@@ -438,9 +505,16 @@ process RUN_CNA_CLASSIFIER {
   def outRoot = run_meta[1]
   def classifierDir = scriptPath('cna_classifier_nf')
   def pathologyCsv = blank(params.pathology_csv) ? '' : params.pathology_csv.toString()
+  def classifierNxfHome = "${outRoot}/05_cna_classifier/.nextflow"
+  def classifierWork = "${outRoot}/05_cna_classifier/work"
+  def classifierCondaCache = "${params.lpwgs_root}/.oncotracer/conda"
 
   """
   set -Eeuo pipefail
+  export NXF_HOME='${classifierNxfHome}'
+  export NXF_CONDA_CACHEDIR='${classifierCondaCache}'
+  mkdir -p "\$NXF_HOME" '${classifierWork}' "\$NXF_CONDA_CACHEDIR"
+
   EXTRA_ARGS=()
   PATHOLOGY_CSV='${pathologyCsv}'
   if [ -n "\$PATHOLOGY_CSV" ]; then
@@ -453,6 +527,7 @@ process RUN_CNA_CLASSIFIER {
   fi
 
   nextflow run '${classifierDir}/main.nf' -profile '${params.cna_classifier_profile}' \\
+    -work-dir '${classifierWork}' \\
     --input '${outRoot}/03_cna_codification' \\
     --outdir '${outRoot}/05_cna_classifier' \\
     --sample_set '${params.cna_classifier_sample_set}' \
@@ -469,6 +544,7 @@ process RUN_CNA_CLASSIFIER {
 
 process WRITE_SUMMARY {
   tag 'summary'
+  conda "${projectDir}/environment.yml"
   publishDir { "${params.outdir}/06_workflow_summary" }, mode: 'copy', overwrite: true
 
   input:
@@ -497,4 +573,3 @@ EOF
   cp workflow_summary.txt '${outRoot}/06_workflow_summary/workflow_summary.txt'
   """
 }
-

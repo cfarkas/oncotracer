@@ -24,18 +24,21 @@ A command-line pipeline parameter begins with two hyphens, for example `--mode i
 
 | Goal | Required route settings |
 | --- | --- |
+| Prepare and verify one software runtime | `--install` and exactly one of `--docker`, `--singularity`, or `--conda` |
 | Generate configuration from Illumina reads | `--auto_params --mode illumina --reads_folder PATH --sample_table FILE` |
 | Generate configuration from ONT reads | `--auto_params --mode ont --reads_folder PATH --sample_table FILE` |
 | Prepare public tests | `--make_test`; optionally `--test_root PATH` |
 | Run a real Illumina analysis | `mode`, `lpwgs_root`, `outdir`, `illumina_samplesheet` |
 | Run a real ONT analysis | `mode`, `lpwgs_root`, `outdir`, `ont_folder`, `ont_barcodes` |
 
-`--make_test` and `--auto_params` are preparation routes: each writes files and stops. They do not perform the real CNA workflow.
+`--install`, `--make_test`, and `--auto_params` are preparation routes: each writes its documented files and stops. They do not perform the real CNA workflow. When more than one route flag is present, `--install` takes precedence.
 
 ## Preparation parameters
 
 | Parameter | Type / accepted values | Effective default | Meaning |
 | --- | --- | --- | --- |
+| `install` | Boolean | `false` | Prepare and smoke-test one explicitly selected runtime, cache SAMURAI v1.4.0, write a manifest, and stop. Use as `--install`. |
+| `install_dir` | absolute directory or `null` | `<repository>/.oncotracer/install` | Alternate destination for `install_manifest.txt`. Runtime and SAMURAI caches remain below `lpwgs_root`. |
 | `make_test` | Boolean | `false` | Download or reuse public FASTQs and write quick-start YAML files. Use as `--make_test`. |
 | `test_root` | absolute directory or `null` | `<repository>/test` | Alternate destination for public inputs, configurations, and results. |
 | `auto_params` | Boolean | `false` | Generate a run YAML from a reads folder and sample table. Use as `--auto_params`. |
@@ -55,7 +58,7 @@ A command-line pipeline parameter begins with two hyphens, for example `--mode i
 
 ## Runtime parameters
 
-Use exactly one of `--docker`, `--singularity`, or `--conda` for a real run.
+Use exactly one of `--docker`, `--singularity`, or `--conda` for installation or a real run. Installation rejects a missing or ambiguous runtime flag before starting a process.
 
 | Parameter | Type / accepted values | Default | Meaning |
 | --- | --- | --- | --- |
@@ -71,7 +74,7 @@ Use exactly one of `--docker`, `--singularity`, or `--conda` for a real run.
 
 | Parameter | Type / accepted values | Default | Meaning |
 | --- | --- | --- | --- |
-| `illumina_samplesheet` | absolute CSV path | `null` | Required. Columns are `sample,fastq_1,fastq_2,status`; FASTQ paths must be absolute. |
+| `illumina_samplesheet` | absolute CSV path | `null` | Required. Columns are `sample,fastq_1,fastq_2,status`; FASTQ paths must be absolute. Leave `fastq_2` empty for every row in a single-end run. |
 | `illumina_analysis_type` | text; standard route `solid_biopsy` | `solid_biopsy` | Analysis preset passed to SAMURAI. |
 | `illumina_caller` | text; current route `qdnaseq` | `qdnaseq` | CNA caller. Downstream Illumina paths expect qDNAseq output. |
 | `illumina_binsize_kb` | positive integer, kilobases | `100` | Initial qDNAseq copy-number bin width. |

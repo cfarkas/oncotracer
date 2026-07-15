@@ -5,9 +5,10 @@ usage() {
   cat <<'EOF_USAGE'
 Usage: run_illumina_samurai_fastq.sh --samplesheet FILE --outdir DIR [options]
 
-Run the upstream SAMURAI/qDNAseq Illumina LP-WGS step from FASTQ input.
+Run the pinned SAMURAI/qDNAseq Illumina LP-WGS step from FASTQ input.
 The samplesheet is a CSV with columns:
   sample,fastq_1,fastq_2,status
+For single-end data, keep the fastq_2 column and leave its value empty.
 Optional extra columns such as gender are ignored for the upstream SAMURAI FASTQ run.
 
 Required:
@@ -150,15 +151,17 @@ with src.open(newline='') as handle:
         sample = (row.get('sample') or '').strip()
         fq1 = (row.get('fastq_1') or '').strip()
         fq2 = (row.get('fastq_2') or '').strip()
-        status = (row.get('status') or 'tumor').strip() or 'tumor'
+        status = ((row.get('status') or 'tumor').strip() or 'tumor').lower()
         if not sample:
             raise SystemExit('ERROR: samplesheet contains a row with empty sample')
-        if not fq1 or not fq2:
-            raise SystemExit(f'ERROR: sample {sample} must have fastq_1 and fastq_2')
-        if not Path(fq1).exists():
-            raise SystemExit(f'ERROR: fastq_1 does not exist for {sample}: {fq1}')
-        if not Path(fq2).exists():
-            raise SystemExit(f'ERROR: fastq_2 does not exist for {sample}: {fq2}')
+        if not fq1:
+            raise SystemExit(f'ERROR: sample {sample} must have fastq_1')
+        if not Path(fq1).is_file() or Path(fq1).stat().st_size == 0:
+            raise SystemExit(f'ERROR: fastq_1 is missing or empty for {sample}: {fq1}')
+        if fq2 and (not Path(fq2).is_file() or Path(fq2).stat().st_size == 0):
+            raise SystemExit(f'ERROR: fastq_2 is missing or empty for {sample}: {fq2}')
+        if status not in {'tumor', 'normal'}:
+            raise SystemExit(f'ERROR: status for {sample} must be tumor or normal, found: {status}')
         rows.append({'sample': sample, 'fastq_1': fq1, 'fastq_2': fq2, 'status': status})
 if not rows:
     raise SystemExit('ERROR: samplesheet has no samples')
@@ -168,6 +171,25 @@ with dst.open('w', newline='') as handle:
     writer.writerows(rows)
 print(f'Validated {len(rows)} Illumina FASTQ sample(s): {dst}')
 PY_VALIDATE
+
+READ_LAYOUT="$(python3 - "$RUN_SAMPLESHEET" <<'PY_LAYOUT'
+import csv, sys
+with open(sys.argv[1], newline='') as handle:
+    paired = [bool((row.get('fastq_2') or '').strip()) for row in csv.DictReader(handle)]
+if all(paired):
+    print('paired')
+elif not any(paired):
+    print('single')
+else:
+    raise SystemExit('ERROR: a single run cannot mix single-end and paired-end Illumina libraries')
+PY_LAYOUT
+)"
+if [[ "$READ_LAYOUT" == "single" ]]; then
+  QDNASEQ_LAYOUT_ARGS=(--qdnaseq_paired_ends false)
+else
+  QDNASEQ_LAYOUT_ARGS=(--qdnaseq_paired_ends true)
+fi
+echo "Detected Illumina read layout: $READ_LAYOUT-end"
 
 if [[ ! -s "$REF_FA" ]]; then
   echo "ERROR: missing reference FASTA: $REF_FA" >&2
@@ -211,6 +233,8 @@ export NXF_SYNTAX_PARSER="v1"
 export NXF_HOME="$RUN_ROOT/.nextflow"
 mkdir -p "$NXF_HOME" "$NXF_HOME/plugins"
 export NXF_PLUGINS_DIR="$NXF_HOME/plugins"
+export NXF_ASSETS="$LPWGS_ROOT/.oncotracer/nxf-assets"
+mkdir -p "$NXF_ASSETS"
 export NXF_WORK="$RUN_ROOT/work"
 export NXF_SINGULARITY_CACHEDIR="$LPWGS_ROOT/.singularity_cache"
 unset DISPLAY
@@ -220,7 +244,7 @@ if [[ "$FORCE" == "true" ]]; then
 fi
 
 cd "$RUN_ROOT/nextflow_launch"
-nextflow run dincalcilab/samurai -latest \
+nextflow run dincalcilab/samurai -r v1.4.0 \
   -c "$LOCAL_CONFIG" \
   -profile "$SAMURAI_PROFILE" \
   -work-dir "$NXF_WORK" \
@@ -232,6 +256,7 @@ nextflow run dincalcilab/samurai -latest \
   --binsize "$BINSIZE" \
   --aligner "$ALIGNER" \
   "${INDEX_ARGS[@]}" \
+  "${QDNASEQ_LAYOUT_ARGS[@]}" \
   --run_fastp false \
   -resume
 
@@ -272,13 +297,27 @@ with open(fastq_sheet, newline='') as handle:
         sample = row['sample']
         status = row.get('status') or 'tumor'
         fq1 = row['fastq_1']
-        fq2 = row['fastq_2']
+        fq2 = (row.get('fastq_2') or '').strip()
         bam = align_dir / f'{sample}.bam'
         bai = Path(str(bam) + '.bai')
         if not bam.exists() or bam.stat().st_size == 0:
-            read_group = f'@RG\\tID:{sample}\\tPU:1\\tSM:{sample}\\tLB:{sample}\\tPL:Illumina'
-            cmd = f'bwa mem -t 8 -R "{read_group}" {ref} {fq1} {fq2} | samtools sort -@ 4 -o {bam} -'
-            subprocess.run(cmd, shell=True, check=True, executable='/bin/bash')
+            read_group = f'@RG\tID:{sample}\tPU:1\tSM:{sample}\tLB:{sample}\tPL:Illumina'
+            reads = [fq1] + ([fq2] if fq2 else [])
+            align = subprocess.Popen(
+                ['bwa', 'mem', '-t', '8', '-R', read_group, ref, *reads],
+                stdout=subprocess.PIPE,
+            )
+            try:
+                subprocess.run(
+                    ['samtools', 'sort', '-@', '4', '-o', str(bam), '-'],
+                    stdin=align.stdout,
+                    check=True,
+                )
+            finally:
+                if align.stdout is not None:
+                    align.stdout.close()
+            if align.wait() != 0:
+                raise subprocess.CalledProcessError(align.returncode, align.args)
         if not bai.exists() or bai.stat().st_size == 0:
             subprocess.run(['samtools', 'index', str(bam)], check=True)
         rows.append({'sample': sample, 'bam': str(bam), 'status': status})
@@ -289,7 +328,7 @@ with open(bam_sheet, 'w', newline='') as handle:
 print(f'Prepared {len(rows)} BAM sample(s): {bam_sheet}')
 PY_BAM_FALLBACK
 
-  nextflow run dincalcilab/samurai -latest \
+  nextflow run dincalcilab/samurai -r v1.4.0 \
     -c "$LOCAL_CONFIG" \
     -profile "$SAMURAI_PROFILE" \
     -work-dir "$NXF_WORK" \
@@ -299,6 +338,7 @@ PY_BAM_FALLBACK
     --analysis_type "$ANALYSIS_TYPE" \
     --caller "$CALLER" \
     --binsize "$BINSIZE" \
+    "${QDNASEQ_LAYOUT_ARGS[@]}" \
     --index_genome false \
     -resume
 fi

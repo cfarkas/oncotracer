@@ -1,6 +1,6 @@
 # Illumina Configuration
 
-Use this route for paired-end Illumina FASTQ files. OncoTracer aligns the reads, calls broad copy-number changes with SAMURAI/qDNAseq, refines CNA boundaries from the BAM files, creates tables and plots, and writes a run summary.
+Use this route for single-end or paired-end Illumina FASTQ files. OncoTracer aligns the reads, calls broad copy-number changes with SAMURAI/qDNAseq, refines CNA boundaries from the BAM files, creates tables and plots, and writes a run summary.
 
 ## Recommended: create the YAML automatically
 
@@ -110,7 +110,7 @@ The stub command uses placeholder outputs; it does not analyze or fully validate
 
 ## Second option: manual setup
 
-Choose manual setup when FASTQ naming does not match automatic detection or when you need advanced settings.
+Choose manual setup for single-end reads, when FASTQ naming does not match automatic paired-read detection, or when you need advanced settings.
 
 ### 1. Create the samplesheet
 
@@ -131,6 +131,15 @@ Patient_B,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R1.fas
 ```
 
 Each row is one biological sample. `fastq_1` and `fastq_2` are absolute paths; `status` is `tumor` or `normal`. Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`.
+
+For a single-end library, retain the four-column header and leave `fastq_2` empty:
+
+```csv
+sample,fastq_1,fastq_2,status
+Patient_SE,/home/student/oncotracer/project/input/illumina_fastq/Patient_SE.fastq.gz,,tumor
+```
+
+One OncoTracer invocation must contain only one layout: all rows single-end or all rows paired-end. Mixed-layout samplesheets stop with an error because qDNAseq applies one paired-read setting to the run.
 
 Check the table and files:
 
@@ -188,10 +197,10 @@ cat project/runs/my_first_illumina_run/06_workflow_summary/workflow_summary.txt 
 
 | Setting | Type and accepted value | Default | Purpose |
 | --- | --- | --- | --- |
-| `mode` | text: `illumina` | required | Selects the paired-end Illumina route. |
+| `mode` | text: `illumina` | required | Selects the Illumina route. |
 | `lpwgs_root` | absolute directory | site-specific | Common parent mounted into the container. Every input and output must be below it. |
 | `outdir` | absolute directory | required | Results for this run. Use a new directory for a new experiment. |
-| `illumina_samplesheet` | absolute CSV path | required | Four columns: `sample,fastq_1,fastq_2,status`. |
+| `illumina_samplesheet` | absolute CSV path | required | Four columns: `sample,fastq_1,fastq_2,status`; leave `fastq_2` empty for a single-end run. |
 | `illumina_analysis_type` | text: `solid_biopsy` | `solid_biopsy` | Standard SAMURAI analysis preset for this route. |
 | `illumina_caller` | text: `qdnaseq` | `qdnaseq` | CNA caller used by the current Illumina workflow. |
 | `illumina_binsize_kb` | positive integer, kb | `100` | Width of the initial copy-number bins. |

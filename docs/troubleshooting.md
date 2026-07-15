@@ -103,7 +103,7 @@ Check it without Excel:
 sed -n '1,6p' project/input/illumina.samplesheet.csv
 ```
 
-Each sample needs one existing R1 and one existing R2 path. Sample names should be unique and should not change between the samplesheet, pathology table, and outputs.
+Each sample needs an existing `fastq_1` path. For paired-end data, `fastq_2` must also exist; for an all-single-end run, leave every `fastq_2` cell empty. Do not mix layouts in one invocation. Sample names should be unique and should not change between the samplesheet, pathology table, and outputs.
 
 ## ONT barcode not found or skipped
 

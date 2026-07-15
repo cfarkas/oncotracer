@@ -6,13 +6,15 @@
 [![Docker](https://img.shields.io/badge/docker-carlosfarkas%2Foncotracer-blue)](https://hub.docker.com/r/carlosfarkas/oncotracer)
 [![Nextflow](https://img.shields.io/badge/nextflow-%E2%89%A525.04-green)](https://www.nextflow.io/)
 
-OncoTracer is a Nextflow research workflow for **low-pass whole-genome sequencing (LP-WGS)**. It accepts Illumina paired-end or Oxford Nanopore Technologies (ONT) FASTQ files and reports **copy-number alterations (CNAs)**: genomic regions with gains or losses of DNA.
+OncoTracer is a Nextflow research workflow for **low-pass whole-genome sequencing (LP-WGS)**. It accepts Illumina single-end or paired-end FASTQ files and Oxford Nanopore Technologies (ONT) FASTQ files, then reports **copy-number alterations (CNAs)**: genomic regions with gains or losses of DNA.
 
 ```text
 FASTQ -> SAMURAI qDNAseq/ichorCNA -> boundary refinement -> CNA tables -> plots and reports
 ```
 
 Read the [beginner documentation](https://cfarkas.github.io/oncotracer/) for explanations of every file and command.
+
+For a complete public patient-cohort demonstration, use the [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/): all 12 single-end plasma libraries currently exposed by PRJNA754199, from checksum-validated download through SAMURAI plots, boundary-refinement statistics, and research-use CNA interpretation.
 
 ## Before you start
 
@@ -22,6 +24,7 @@ Use Linux and install these host prerequisites:
 - [Java 17 or newer](https://www.nextflow.io/docs/latest/install.html#requirements)
 - [Nextflow](https://www.nextflow.io/docs/latest/install.html)
 - [Docker Engine](https://docs.docker.com/engine/install/) or, on HPC, [Apptainer](https://apptainer.org/docs/admin/main/installation.html)
+- Python 3, samtools, BWA, minimap2, pigz, and curl or wget for the host-side stage-01/reference helpers
 
 The first real analysis downloads the hg38 reference (about **3.16 GB**) and BWA may take **30–60 minutes** to index it. This is a one-time preparation; later runs reuse the reference. Docker images and working files require additional disk space.
 
