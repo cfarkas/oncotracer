@@ -9,7 +9,7 @@ Run every command from the cloned repository directory—the directory that cont
 | You want to verify the installation with public data | Run `bash run_test.sh --docker`; see [Quick Start](quick_start.md). |
 | You have paired Illumina FASTQs with regular R1/R2 names | Generate configuration with `--auto_params`, then run the generated YAML. |
 | You have ONT FASTQs in barcode directories | Generate configuration with `--auto_params`, then run the generated YAML. |
-| Automatic naming does not fit the study | Create a manual [Illumina YAML](configuration/illumina.md) or [ONT YAML](configuration/ont.md). |
+| Automatic naming does not fit the study | Use the second option: a manual [Illumina YAML](configuration/illumina.md) or [ONT YAML](configuration/ont.md). |
 | You already have a checked YAML | Go directly to [Check wiring, then run](#check-wiring-then-run). |
 
 ## 1. Enter the repository and choose a runtime
@@ -31,7 +31,7 @@ Use exactly one runtime flag on a real run:
 
 The examples below use Docker. Replace only `--docker` with `--singularity` when appropriate.
 
-## 2. Recommended: generate configuration from a reads folder
+## 2. Recommended default: generate configuration from a reads folder
 
 `--auto_params` writes configuration files and stops. After inspecting them, launch a second command for the real analysis.
 
@@ -104,7 +104,7 @@ nextflow run main.nf --docker -params-file project/config/ont/ont.auto.yml -resu
 
 Automatic setup validates its supported file layout and compressed FASTQs. See [Automatic Setup](auto_params.md) for multiple samples, normal controls, filename rules, and optional destinations.
 
-## 3. Manual configuration route
+## 3. Second option: manual configuration
 
 For Illumina:
 

@@ -6,13 +6,13 @@ The images below are rendered from OncoTracer output files. A plot demonstrates 
 
 **Provenance:** ENA run `ERR12341627`, processed by the public Illumina Quick Start with qDNAseq at 100 kb. See [Quick verification](quick_start.md) for the reproducible command and generated YAML.
 
-[Open the original qDNAseq bin plot PDF](assets/gallery/illumina_samurai_qdnaseq_bin_plot.pdf).
+[Open the original qDNAseq fitted-segment plot PDF](assets/gallery/illumina_samurai_qdnaseq_segment_plot.pdf).
 
-![Public Illumina ERR12341627 SAMURAI qDNAseq bin plot](assets/gallery/illumina_samurai_qdnaseq_bin_plot.png)
+![Public Illumina ERR12341627 SAMURAI qDNAseq profile with fitted copy-number segments](assets/gallery/illumina_samurai_qdnaseq_segment_plot.png)
 
-**How to read it:** genomic position runs across the chromosomes; deviations in normalized bin signal support candidate copy-number change. Segmentation and final event calls should be checked in stages 02 and 03 rather than estimated from pixels.
+**How to read it:** black points are normalized qDNAseq bins; orange horizontal lines are the fitted segment means produced by SAMURAI. Genomic position runs across the chromosomes. Final refined segments and event calls remain available in stages 02 and 03.
 
-## One-sample ONT public test
+## ONT ichorCNA-derived test result
 
 **Provenance:** public ONT run `DRR165691`, processed by the ONT Quick Start with ichorCNA-derived 500 kb inputs.
 
@@ -22,7 +22,7 @@ The run produces ichorCNA depth and segment tables. OncoTracer renders the profi
 
 ![Public ONT DRR165691 ichorCNA-derived copy-number profile](assets/gallery/ont_ichorcna_derived_profile.png)
 
-**How to read it:** broad changes are more defensible than isolated noisy points in low-pass data. Review the used/skipped FASTQ logs, coverage, segment table, and tumor fraction before biological interpretation.
+**How to read it:** black points are bin-level log2 ratios; colored horizontal lines are the fitted ichorCNA-derived segment means on the same log2 scale. The chromosome axis shows only chromosomes represented in the sample, so empty X/Y panels are omitted. Broad changes are more defensible than isolated noisy points in low-pass data. Review the used/skipped FASTQ logs, coverage, segment table, and tumor fraction before biological interpretation.
 
 ## Final OncoTracer Illumina visualizations
 

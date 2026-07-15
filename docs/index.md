@@ -9,10 +9,12 @@ OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-gen
 | Your goal | Start here | What you will do |
 | --- | --- | --- |
 | Check that OncoTracer works | [Quick Start](quick_start.md) | Run one public Illumina sample and one public ONT sample. |
+| Analyze your own reads (recommended default) | [Automatic setup](auto_params.md) | Point to a FASTQ folder and let OncoTracer write the configuration. |
 | Run a realistic public cohort | [Three-sample public cohort](public_cohort.md) | Download and analyze three paired HCC1143 samples (six FASTQs). |
-| Analyze your own reads | [Automatic setup](auto_params.md) | Point to a FASTQ folder and let OncoTracer write the configuration. |
-| Learn configuration first | [YAML and paths](configuration/yaml_basics.md) | Understand paths and edit a YAML example safely. |
+| Configure unusual inputs manually (second option) | [Manual YAML editing](configuration/yaml_basics.md) | Understand paths and edit a YAML example safely. |
 | Add pathology data | [Pathology and classifier](configuration/pathology.md) | Match a pathology CSV to Illumina sample names. |
+
+For your own standard Illumina or ONT layout, start with automatic setup. Edit a YAML manually only when automatic detection does not fit the study or you need advanced settings.
 
 !!! warning "First real analysis"
     The first analysis downloads the hg38 reference (about **3.16 GB**). BWA indexing is single-core and commonly takes **30–60 minutes**. Later runs reuse the prepared reference. The small public verification also downloads about **225 MB of reads**; the optional three-sample cohort downloads **1.08 GiB**.
@@ -45,7 +47,7 @@ Every analysis follows the same sequence:
 
 1. Install and check Java, Git, Nextflow, and a container runtime.
 2. Clone the repository and enter the `oncotracer` directory.
-3. Prepare a YAML file that points to inputs and an output directory.
+3. Generate a YAML automatically (recommended), or edit one manually as the second option.
 4. Perform an optional `-stub-run` wiring check.
 5. Run the real workflow with `-resume`.
 6. Open `06_workflow_summary/workflow_summary.txt` and inspect the plots.

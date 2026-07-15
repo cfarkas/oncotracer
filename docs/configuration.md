@@ -8,14 +8,14 @@ You normally need **one run YAML**, not every configuration page. Use this page 
 | --- | --- | --- |
 | Verify that OncoTracer works on this computer | [Quick verification](quick_start.md) | Public Illumina and ONT data plus generated test YAMLs |
 | Run the real three-library/six-FASTQ cohort | [Three-sample public cohort](public_cohort.md) | Download manifest, automatic YAML, full cohort results |
-| Run your own folder with standard names | [Automatic setup](auto_params.md) | A small sample table; OncoTracer generates YAML/samplesheet |
-| Write an Illumina YAML manually | [Illumina YAML example](configuration/illumina.md) | Paired-end samplesheet plus one copied YAML |
-| Write an ONT YAML manually | [ONT YAML example](configuration/ont.md) | Barcode folders/mapping plus one copied YAML |
+| Run your own folder with standard names | [Automatic setup (recommended default)](auto_params.md) | A small sample table; OncoTracer generates YAML/samplesheet |
+| Write an Illumina YAML manually | [Illumina manual setup (second option)](configuration/illumina.md) | Paired-end samplesheet plus one copied YAML |
+| Write an ONT YAML manually | [ONT manual setup (second option)](configuration/ont.md) | Barcode folders/mapping plus one copied YAML |
 | Add CNA classifier/pathology comparison | [Pathology and classifier](configuration/pathology.md) | Extra keys in the same Illumina YAML plus matched pathology CSV |
 | Change boundary-refinement behavior | [Advanced refinement](configuration/refinement.md) | Carefully justified changes in the same run YAML |
 | Look up one field/default | [All parameters](configuration/parameter_reference.md) | Reference only; do not copy every option |
 
-If this is your first run with your own data, use automatic setup. Manual YAML is useful when filenames do not follow the expected patterns or when you need non-default options.
+If this is your first run with your own data, use automatic setup as the default. Manual YAML editing is the second option when filenames do not follow the expected patterns or when you need non-default options.
 
 ## One YAML controls one run
 
@@ -32,7 +32,7 @@ All three paths in this example belong to the same project root. See [YAML examp
 
 Pathology is not a second YAML format. Copy the Illumina pathology template and use that single file for the Illumina run, classifier settings, and pathology column mapping.
 
-## Safe manual workflow
+## Second option: safe manual workflow
 
 ### 1. Copy a template
 

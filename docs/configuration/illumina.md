@@ -108,7 +108,7 @@ cat project/runs/illumina_auto/06_workflow_summary/workflow_summary.txt         
 
 The stub command uses placeholder outputs; it does not analyze or fully validate the real reads. The second command is the real run. Use `--singularity` instead of `--docker` on a configured HPC system.
 
-## Manual setup
+## Second option: manual setup
 
 Choose manual setup when FASTQ naming does not match automatic detection or when you need advanced settings.
 
@@ -167,7 +167,7 @@ Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`. Inspect the result:
 sed -n '1,120p' params/my_illumina.yml                                # verify every saved value
 ```
 
-### Edit an Illumina YAML with Nano
+### How to edit a YAML file from the terminal
 
 The video below shows the same manual task: copy the example YAML, open it in Nano, replace the project root, samplesheet, and output paths, save with `Ctrl+O` and `Enter`, exit with `Ctrl+X`, inspect the saved YAML, perform a stub wiring check, and start the real run. The pauses are intentional so each edit can be followed.
 

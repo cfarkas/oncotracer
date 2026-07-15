@@ -1,6 +1,6 @@
 # Automatic Setup from a Reads Folder
 
-`--auto_params` is the recommended way to configure your own FASTQs. You provide:
+`--auto_params` is the recommended default for configuring your own FASTQs. You provide:
 
 1. a folder containing the reads; and
 2. a small table that maps each sample to `TUMOR` or `NORMAL`.
@@ -132,17 +132,7 @@ A5544,/data/study42/illumina_fastq/A5544_R1.fastq.gz,/data/study42/illumina_fast
 B5437,/data/study42/illumina_fastq/B5437_R1.fastq.gz,/data/study42/illumina_fastq/B5437_R2.fastq.gz,tumor
 ```
 
-### 5. YAML example: inspect or edit with nano
-
-The generated YAML is ready to use. If you need to inspect it in an editor:
-
-```bash
-nano /data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml # open the generated YAML example
-```
-
-Use the arrow keys to move. A YAML setting is written as `name: value`; keep one setting per line and preserve the colon. Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. If you change paths, use complete absolute paths and keep `outdir` and all inputs below `lpwgs_root`. The [YAML and Paths](configuration/yaml_basics.md) page explains every path rule.
-
-### 6. Check wiring, then run
+### 5. Check wiring, then run
 
 ```bash
 nextflow run main.nf -stub-run --docker -params-file /data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml # optional workflow-wiring check
@@ -247,3 +237,11 @@ CSV, tab-delimited, and whitespace-delimited TXT sample tables are accepted. CSV
 ## See automatic setup with real public data
 
 The [HCC1143 public cohort](public_cohort.md) uses `--auto_params` on three paired Illumina samples—six FASTQ files—and then verifies that all three samples appear in the results. Its runnable files are in [`examples/hcc1143_lpwgs`](https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs).
+
+## Second option: manual YAML editing
+
+For the supported folder layouts above, the generated YAML is ready to run; you do not need to edit it. Use manual editing only when automatic detection does not fit the study or you need settings that are not exposed by automatic setup.
+
+- [Manual YAML editing and path rules](configuration/yaml_basics.md) explains YAML syntax and container-visible paths.
+- [Illumina manual setup](configuration/illumina.md#second-option-manual-setup) includes [How to edit a YAML file from the terminal](configuration/illumina.md#how-to-edit-a-yaml-file-from-the-terminal).
+- [ONT manual setup](configuration/ont.md#second-option-manual-setup) covers custom barcode mappings and settings.

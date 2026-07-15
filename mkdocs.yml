@@ -27,14 +27,14 @@ nav:
   - Getting Started:
       - 1. Install Requirements: installation.md
       - 2. Quick Verification: quick_start.md
-      - 3. Three-Sample Public Cohort: public_cohort.md
-      - 4. Run Your Own FASTQs Automatically: auto_params.md
+      - 3. Automatic Setup for Your FASTQs (Recommended): auto_params.md
+      - 4. Three-Sample Public Cohort: public_cohort.md
       - Input Files and Folder Layouts: inputs.md
-      - YAML Examples and Path Rules: configuration/yaml_basics.md
+      - Manual YAML Editing (Second Option): configuration/yaml_basics.md
   - Run and Configure:
       - Workflow Overview: running.md
-      - Illumina YAML Example: configuration/illumina.md
-      - ONT YAML Example: configuration/ont.md
+      - Illumina Setup: configuration/illumina.md
+      - ONT Setup: configuration/ont.md
       - Pathology and Classifier: configuration/pathology.md
       - Advanced Refinement: configuration/refinement.md
       - All Parameters: configuration/parameter_reference.md

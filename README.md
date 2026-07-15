@@ -49,10 +49,10 @@ Allow at least 40 GiB of working space. Read the [example notes](examples/hcc114
 
 ## Run your own FASTQs
 
-For the simplest setup, point `--auto_params` at a reads folder and a small tumor/normal table. OncoTracer detects Illumina pairs or ONT barcode folders and creates the YAML and Illumina samplesheet:
+The recommended default is to point `--auto_params` at a reads folder and a small tumor/normal table. OncoTracer detects Illumina pairs or ONT barcode folders and creates the YAML and Illumina samplesheet:
 
-- [Automatic setup from your FASTQ folder](https://cfarkas.github.io/oncotracer/auto_params/)
-- [Manual YAML and path guide](https://cfarkas.github.io/oncotracer/configuration/yaml_basics/)
+- [Automatic setup from your FASTQ folder](https://cfarkas.github.io/oncotracer/auto_params/) — recommended default
+- [Manual YAML and path guide](https://cfarkas.github.io/oncotracer/configuration/yaml_basics/) — second option for unusual layouts or advanced settings
 - [Input-file formats](https://cfarkas.github.io/oncotracer/inputs/)
 
 `-stub-run` checks workflow wiring with placeholder tasks; it is **not** a complete validation of real FASTQ content or analysis behavior. The real command uses `-resume`, which lets Nextflow reuse unchanged tasks from an earlier or interrupted run.

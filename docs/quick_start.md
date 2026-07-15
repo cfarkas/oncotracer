@@ -179,8 +179,8 @@ Read the [complete public-cohort tutorial](public_cohort.md) and the repository'
 
 ## Next: run your own data
 
-- Use [Automatic Setup](auto_params.md) to generate YAML from an Illumina FASTQ folder or ONT barcode tree.
-- Use [YAML and Paths](configuration/yaml_basics.md) if you prefer to edit a configuration manually.
+- Use [Automatic Setup](auto_params.md) as the recommended default for an Illumina FASTQ folder or ONT barcode tree.
+- Use [Manual YAML Editing](configuration/yaml_basics.md) as the second option when automatic detection does not fit.
 - Use [Pathology and Classifier](configuration/pathology.md) only when your pathology sample identifiers match your sequencing sample identifiers.
 
 Use `--singularity` instead of `--docker` on an HPC system configured with Apptainer/Singularity.

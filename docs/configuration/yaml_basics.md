@@ -6,11 +6,11 @@ A YAML file is a small plain-text run configuration. It tells OncoTracer which s
 
 | Situation | Use this route |
 | --- | --- |
-| You have a folder of paired Illumina FASTQs or ONT barcode folders | **Automatic setup** with `--auto_params` (recommended) |
-| You need a custom samplesheet, custom reference, or advanced settings | Copy and edit a YAML template manually |
+| You have a folder of paired Illumina FASTQs or ONT barcode folders | **Automatic setup** with `--auto_params` (recommended default) |
+| You need a custom samplesheet, custom reference, or advanced settings | **Manual YAML editing** (second option) |
 | You want to learn with public data | Use `--make_test`; see [Quick Start](../quick_start.md) |
 
-## Recommended: generate it automatically
+## Recommended default: generate it automatically
 
 Automatic setup checks the supported FASTQ layout, writes the YAML, and—for Illumina—writes the four-column samplesheet. It stops after creating these files; it does not run the analysis.
 
@@ -93,7 +93,7 @@ gzip -t project/input/illumina_fastq/Sample_A_R1.fastq.gz              # verify 
 
 On Linux, an absolute path starts with `/`. In WSL use a Linux path such as `/mnt/c/Users/Name/oncotracer`, not `C:\Users\Name\oncotracer`. Paths are case-sensitive.
 
-## Manual setup
+## Second option: manual YAML editing
 
 Use manual setup only when automatic detection does not fit the study.
 

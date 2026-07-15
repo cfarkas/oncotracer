@@ -1021,7 +1021,9 @@ def numeric_series(s: pd.Series) -> pd.Series:
 
 def choose_value_col(df: pd.DataFrame, exclude: List[str]) -> str:
     aliases = [
-        "final_log2", "value", "adj.seg", "adj_seg", "adjSeg", "seg.mean", "seg_mean", "Segment_Mean", "segment_mean",
+        "final_log2", "value", "adj.seg", "adj_seg", "adjSeg",
+        "seg.median.logR", "seg_median_logR", "seg.median.log2", "seg_median_log2",
+        "seg.mean", "seg_mean", "Segment_Mean", "segment_mean",
         "corrected.seg", "corrected_seg", "log2", "log2ratio", "log2_ratio", "log2_TNratio_corrected", "log2_TNratio", "logR", "log.r", "copy.ratio", "copy_ratio",
         "copynumber", "copy.number", "cn", "CN", "ratio", "median", "mean"
     ]

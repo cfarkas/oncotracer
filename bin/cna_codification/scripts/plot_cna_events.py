@@ -832,6 +832,34 @@ def event_profile_y(row):
     return 0.0
 
 
+def data_aware_genome_layout(chrom_sizes, ordered_chroms, *frames):
+    """Build a genome axis from chromosomes represented in the plotted data.
+
+    The cytoband reference contains chr1-22, X, and Y. Profile plots should not
+    reserve empty panels for chromosomes that are absent from both the bins and
+    fitted segments for a sample.
+    """
+    present = set()
+    for frame in frames:
+        if frame is not None and not frame.empty and "chrom" in frame.columns:
+            present.update(frame["chrom"].dropna().astype(str))
+
+    profile_chroms = [
+        chrom for chrom in ordered_chroms
+        if chrom in chrom_sizes and chrom in present
+    ]
+    if not profile_chroms:
+        profile_chroms = [chrom for chrom in ordered_chroms if chrom in chrom_sizes]
+
+    profile_offsets = {}
+    genome_size = 0
+    for chrom in profile_chroms:
+        profile_offsets[chrom] = genome_size
+        genome_size += int(chrom_sizes[chrom])
+
+    return profile_offsets, profile_chroms, genome_size
+
+
 def plot_one_log2_ratio_profile(
     bins,
     events,
@@ -855,6 +883,9 @@ def plot_one_log2_ratio_profile(
         print(f"WARNING: no bin-level log2-ratio rows found for sample '{sample}'. Skipping profile plot.")
         return False
 
+    offsets, ordered_chroms, genome_size = data_aware_genome_layout(
+        chrom_sizes, ordered_chroms, sub_bins, sub_events
+    )
     sub_bins = sub_bins[sub_bins["chrom"].isin(offsets)].copy()
     sub_bins["x"] = sub_bins.apply(
         lambda r: offsets[r["chrom"]] + int((int(r["start"]) + int(r["end"])) / 2),
@@ -965,20 +996,23 @@ def plot_log2_ratio_profiles(
                 sub_events = events[events["sample"].astype(str) == str(sample)].copy()
                 if sub_bins.empty:
                     continue
-                sub_bins = sub_bins[sub_bins["chrom"].isin(offsets)].copy()
+                sample_offsets, sample_chroms, sample_genome_size = data_aware_genome_layout(
+                    chrom_sizes, ordered_chroms, sub_bins, sub_events
+                )
+                sub_bins = sub_bins[sub_bins["chrom"].isin(sample_offsets)].copy()
                 sub_bins["x"] = sub_bins.apply(
-                    lambda r: offsets[r["chrom"]] + int((int(r["start"]) + int(r["end"])) / 2),
+                    lambda r: sample_offsets[r["chrom"]] + int((int(r["start"]) + int(r["end"])) / 2),
                     axis=1,
                 )
 
                 fig, ax = plt.subplots(figsize=(width, height))
                 centers = []
-                for chrom in ordered_chroms:
-                    c0 = offsets[chrom]
-                    c1 = offsets[chrom] + chrom_sizes[chrom]
+                for chrom in sample_chroms:
+                    c0 = sample_offsets[chrom]
+                    c1 = sample_offsets[chrom] + chrom_sizes[chrom]
                     ax.axvline(c0, color="#D8D8D8", linewidth=0.75, zorder=0)
                     centers.append((c0 + c1) / 2)
-                ax.axvline(genome_size, color="#D8D8D8", linewidth=0.75, zorder=0)
+                ax.axvline(sample_genome_size, color="#D8D8D8", linewidth=0.75, zorder=0)
                 ax.scatter(
                     sub_bins["x"],
                     sub_bins["log2"],
@@ -992,19 +1026,19 @@ def plot_log2_ratio_profiles(
                 colors = state_colors()
                 for _, row in sub_events.iterrows():
                     chrom = row["chrom"]
-                    if chrom not in offsets:
+                    if chrom not in sample_offsets:
                         continue
-                    x0 = offsets[chrom] + int(row["start"]) - 1
-                    x1 = offsets[chrom] + int(row["end"])
+                    x0 = sample_offsets[chrom] + int(row["start"]) - 1
+                    x1 = sample_offsets[chrom] + int(row["end"])
                     y = event_profile_y(row)
                     ax.hlines(y, x0, x1, colors=colors.get(row["state"], "#666666"), linewidth=3.4, alpha=0.95, zorder=4)
                 ax.axhline(0, color="black", linewidth=0.85, zorder=3)
                 ax.grid(axis="y", color=REFERENCE_GRID_COLOR, linewidth=0.65)
                 ax.grid(axis="x", color="#ECECEC", linewidth=0.5)
-                ax.set_xlim(0, genome_size)
+                ax.set_xlim(0, sample_genome_size)
                 ax.set_ylim(y_min, y_max)
                 ax.set_xticks(centers)
-                ax.set_xticklabels(ordered_chroms)
+                ax.set_xticklabels(sample_chroms)
                 ax.set_ylabel(r"Log$_2$ ratio")
                 ax.set_xlabel("Chr")
                 ax.set_title(str(sample), pad=6)

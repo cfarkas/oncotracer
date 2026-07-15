@@ -110,7 +110,7 @@ cat project/runs/ont_auto/06_workflow_summary/workflow_summary.txt              
 
 `-stub-run` uses placeholder task outputs. It checks workflow wiring but does not align or fully validate the real reads, reference, tools, or scientific results. Use `--singularity` instead of `--docker` on a configured HPC system.
 
-## Manual setup
+## Second option: manual setup
 
 Choose manual setup when you need to select only some barcodes, use a custom reference, or configure normal/control data explicitly.
 
