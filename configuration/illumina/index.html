@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/configuration/illumina/">
       
       
-        <link rel="prev" href="../../inputs/">
+        <link rel="prev" href="../../running/">
       
       
         <link rel="next" href="../ont/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Illumina - OncoTracer</title>
+        <title>Illumina Setup - OncoTracer</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#illumina-yaml" class="md-skip">
+        <a href="#illumina-configuration" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Illumina
+              Illumina Setup
             
           </span>
         </div>
@@ -218,7 +218,7 @@
           
   
   
-  Start
+  Getting Started
 
         </a>
       </li>
@@ -236,11 +236,11 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+        <a href="../../running/" class="md-tabs__link">
           
   
   
-  Configure and Run
+  Run and Configure
 
         </a>
       </li>
@@ -260,7 +260,7 @@
           
   
   
-  Results and Interpretation
+  Understand Results
 
         </a>
       </li>
@@ -280,7 +280,7 @@
           
   
   
-  Help and Project
+  Help and About
 
         </a>
       </li>
@@ -392,7 +392,7 @@
   <span class="md-ellipsis">
     
   
-    Start
+    Getting Started
   
 
     
@@ -408,7 +408,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Start
+    Getting Started
   
 
           </label>
@@ -428,7 +428,7 @@
   <span class="md-ellipsis">
     
   
-    Installation
+    1. Install Requirements
   
 
     
@@ -456,7 +456,7 @@
   <span class="md-ellipsis">
     
   
-    Quick Start
+    2. Quick Verification
   
 
     
@@ -484,7 +484,7 @@
   <span class="md-ellipsis">
     
   
-    Automatic Setup
+    3. Automatic Setup for Your FASTQs (Recommended)
   
 
     
@@ -505,14 +505,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../yaml_basics/" class="md-nav__link">
+      <a href="../../public_cohort/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    YAML and Paths
+    4. Three-Sample Public Cohort
   
 
     
@@ -540,7 +540,35 @@
   <span class="md-ellipsis">
     
   
-    Input Files
+    Input Files and Folder Layouts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../yaml_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manual YAML Editing (Second Option)
   
 
     
@@ -596,7 +624,7 @@
   <span class="md-ellipsis">
     
   
-    Configure and Run
+    Run and Configure
   
 
     
@@ -612,11 +640,39 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Configure and Run
+    Run and Configure
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../running/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -641,7 +697,7 @@
   <span class="md-ellipsis">
     
   
-    Illumina
+    Illumina Setup
   
 
     
@@ -659,7 +715,7 @@
   <span class="md-ellipsis">
     
   
-    Illumina
+    Illumina Setup
   
 
     
@@ -685,33 +741,66 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recommended-folder-layout" class="md-nav__link">
+  <a href="#recommended-create-the-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended folder layout
+        Recommended: create the YAML automatically
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended: create the YAML automatically">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-arrange-the-fastqs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Arrange the FASTQs
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#create-and-edit-the-yaml" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-create-the-sample-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create and edit the YAML
+        2. Create the sample table
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Create and edit the YAML">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#video-a-human-style-nano-editing-session" class="md-nav__link">
+  <a href="#3-generate-the-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Video: a human-style nano editing session
+        3. Generate the configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-inspect-the-generated-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Inspect the generated files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-check-wiring-run-and-inspect-the-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Check wiring, run, and inspect the summary
       
     </span>
   </a>
@@ -724,32 +813,71 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-the-yaml-means" class="md-nav__link">
+  <a href="#second-option-manual-setup" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What the YAML means
+        Second option: manual setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Second option: manual setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-create-the-samplesheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Create the samplesheet
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#create-the-samplesheet" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-copy-and-edit-the-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create the samplesheet
+        2. Copy and edit the YAML
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#validate-and-run" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#how-to-edit-a-yaml-file-from-the-terminal" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validate and run
+        How to edit a YAML file from the terminal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-check-wiring-and-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Check wiring and run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-each-setting-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What each setting means
       
     </span>
   </a>
@@ -779,7 +907,7 @@
   <span class="md-ellipsis">
     
   
-    ONT
+    ONT Setup
   
 
     
@@ -863,35 +991,7 @@
   <span class="md-ellipsis">
     
   
-    Parameter Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../running/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflow Overview
+    All Parameters
   
 
     
@@ -944,7 +1044,7 @@
   <span class="md-ellipsis">
     
   
-    Results and Interpretation
+    Understand Results
   
 
     
@@ -960,7 +1060,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Results and Interpretation
+    Understand Results
   
 
           </label>
@@ -1008,7 +1108,7 @@
   <span class="md-ellipsis">
     
   
-    Models & Pathology
+    Models and Pathology
   
 
     
@@ -1036,7 +1136,7 @@
   <span class="md-ellipsis">
     
   
-    Gallery
+    Results Gallery
   
 
     
@@ -1089,7 +1189,7 @@
   <span class="md-ellipsis">
     
   
-    Help and Project
+    Help and About
   
 
     
@@ -1105,7 +1205,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Help and Project
+    Help and About
   
 
           </label>
@@ -1229,33 +1329,66 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recommended-folder-layout" class="md-nav__link">
+  <a href="#recommended-create-the-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended folder layout
+        Recommended: create the YAML automatically
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended: create the YAML automatically">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-arrange-the-fastqs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Arrange the FASTQs
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#create-and-edit-the-yaml" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-create-the-sample-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create and edit the YAML
+        2. Create the sample table
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Create and edit the YAML">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#video-a-human-style-nano-editing-session" class="md-nav__link">
+  <a href="#3-generate-the-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Video: a human-style nano editing session
+        3. Generate the configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-inspect-the-generated-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Inspect the generated files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-check-wiring-run-and-inspect-the-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Check wiring, run, and inspect the summary
       
     </span>
   </a>
@@ -1268,32 +1401,71 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-the-yaml-means" class="md-nav__link">
+  <a href="#second-option-manual-setup" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What the YAML means
+        Second option: manual setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Second option: manual setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-create-the-samplesheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Create the samplesheet
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#create-the-samplesheet" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-copy-and-edit-the-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create the samplesheet
+        2. Copy and edit the YAML
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#validate-and-run" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#how-to-edit-a-yaml-file-from-the-terminal" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validate and run
+        How to edit a YAML file from the terminal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-check-wiring-and-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Check wiring and run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-each-setting-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What each setting means
       
     </span>
   </a>
@@ -1325,123 +1497,192 @@
   
 
 
-<h1 id="illumina-yaml">Illumina YAML<a class="headerlink" href="#illumina-yaml" title="Permanent link">&para;</a></h1>
-<p>This page explains the file you pass after <code>-params-file</code>. The YAML does not contain sequencing reads. It contains settings and absolute paths that tell OncoTracer where the paired FASTQ samplesheet is, where SAMURAI/qDNAseq should write, and where the final numbered outputs belong.</p>
-<h2 id="recommended-folder-layout">Recommended folder layout<a class="headerlink" href="#recommended-folder-layout" title="Permanent link">&para;</a></h2>
-<p>You can keep the editable YAML in <code>params/</code> and your small input tables in a project folder inside the clone. FASTQ files may also live elsewhere, but every path must be visible below <code>lpwgs_root</code> when Docker or Singularity runs.</p>
+<h1 id="illumina-configuration">Illumina Configuration<a class="headerlink" href="#illumina-configuration" title="Permanent link">&para;</a></h1>
+<p>Use this route for paired-end Illumina FASTQ files. OncoTracer aligns the reads, calls broad copy-number changes with SAMURAI/qDNAseq, refines CNA boundaries from the BAM files, creates tables and plots, and writes a run summary.</p>
+<h2 id="recommended-create-the-yaml-automatically">Recommended: create the YAML automatically<a class="headerlink" href="#recommended-create-the-yaml-automatically" title="Permanent link">&para;</a></h2>
+<p>Choose automatic setup when each sample has one compressed R1/R2 pair in a single folder.</p>
+<h3 id="1-arrange-the-fastqs">1. Arrange the FASTQs<a class="headerlink" href="#1-arrange-the-fastqs" title="Permanent link">&para;</a></h3>
+<p>From the cloned repository, create a project tree and place the reads in <code>illumina_fastq/</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                        </span><span class="c1"># enter the repository</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/illumina_fastq<span class="w"> </span>project/config/illumina<span class="w"> </span>project/runs<span class="w"> </span><span class="c1"># create project directories</span>
+find<span class="w"> </span>project/input/illumina_fastq<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq.gz&#39;</span><span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="c1"># inspect the reads</span>
+</code></pre></div>
+<p>The filenames must share the sample prefix:</p>
 <div class="highlight"><pre><span></span><code>oncotracer/
-├── main.nf
-├── params/
-│   ├── illumina.minimal.yml     # versioned template
-│   └── my_illumina.yml          # your copied and edited YAML
 └── project/
-    ├── input/
-    │   └── illumina.samplesheet.csv
-    └── runs/
-        └── sample_a/            # created by the workflow
+    └── input/
+        └── illumina_fastq/
+            ├── Patient_A_R1.fastq.gz
+            ├── Patient_A_R2.fastq.gz
+            ├── Patient_B_R1.fastq.gz
+            └── Patient_B_R2.fastq.gz
 </code></pre></div>
-<h2 id="create-and-edit-the-yaml">Create and edit the YAML<a class="headerlink" href="#create-and-edit-the-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">  </span><span class="c1"># clone the repository</span>
-<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                        </span><span class="c1"># enter the repository</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span>project/input<span class="w"> </span>project/runs<span class="w">                  </span><span class="c1"># create a simple project tree</span>
-cp<span class="w"> </span>params/illumina.minimal.yml<span class="w"> </span>params/my_illumina.yml<span class="w"> </span><span class="c1"># copy the template; preserve the original</span>
-realpath<span class="w"> </span>.<span class="w">                                           </span><span class="c1"># print the absolute clone path</span>
-nano<span class="w"> </span>params/my_illumina.yml<span class="w">                          </span><span class="c1"># edit the copied YAML</span>
+<p><code>Patient_A_R1.fastq.gz</code> pairs with <code>Patient_A_R2.fastq.gz</code>. Names ending in <code>_1.fastq.gz</code> and <code>_2.fastq.gz</code>, and the corresponding <code>.fq.gz</code> forms, are also accepted. Automatic setup expects exactly one pair per sample at the top level of this folder.</p>
+<h3 id="2-create-the-sample-table">2. Create the sample table<a class="headerlink" href="#2-create-the-sample-table" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nano<span class="w"> </span>project/input/illumina_fastq/samples.csv<span class="w">                         </span><span class="c1"># create the sample-to-status table</span>
 </code></pre></div>
-<p>Save with <code>Ctrl+O</code>, press Enter, then exit with <code>Ctrl+X</code>. Validate and run.</p>
-<h3 id="video-a-human-style-nano-editing-session">Video: a human-style nano editing session<a class="headerlink" href="#video-a-human-style-nano-editing-session" title="Permanent link">&para;</a></h3>
-<p>This real example pauses on each edit so you can follow it. It shows a user opening <code>nano</code>, replacing absolute paths, saving with <code>Ctrl+O</code>, exiting with <code>Ctrl+X</code>, and starting the complete Illumina run with the edited YAML.</p>
-<video controls preload="metadata" poster="../../assets/tutorial/edit_yaml_with_nano_poster.png" style="width:100%;max-width:960px">
-  <source src="../../assets/tutorial/edit_yaml_with_nano.mp4" type="video/mp4">
-  Your browser cannot play the embedded video. <a href="../../assets/tutorial/edit_yaml_with_nano.mp4">Download the MP4</a>.
-</video>
-
-<h2 id="what-the-yaml-means">What the YAML means<a class="headerlink" href="#what-the-yaml-means" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span><span class="w">                                      </span><span class="c1"># choose the Illumina branch</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer</span><span class="w">                   </span><span class="c1"># common parent mounted into Docker/Singularity</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer/project/runs/sample_a</span><span class="w"> </span><span class="c1"># final numbered OncoTracer outputs</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer/project/input/illumina.samplesheet.csv</span><span class="w"> </span><span class="c1"># paired FASTQ table</span>
-<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span><span class="w">                </span><span class="c1"># SAMURAI analysis preset</span>
-<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span><span class="w">                            </span><span class="c1"># Illumina CNA caller</span>
-<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">                            </span><span class="c1"># coarse qDNAseq bin size</span>
-<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># optional classifier/pathology stage</span>
-<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                                        </span><span class="c1"># preserve existing outputs unless intentionally refreshing</span>
+<p>Enter the header and one row per sample:</p>
+<div class="highlight"><pre><span></span><code>sample_name,status
+Patient_A,TUMOR
+Patient_B,NORMAL
 </code></pre></div>
-<p>The first four lines answer which branch to run, which root is container-visible, where final results go, and where samples are listed. OncoTracer automatically places SAMURAI/qDNAseq under <code>outdir/01_samurai_illumina</code>. The remaining lines select established defaults and optional stages.</p>
-<h2 id="create-the-samplesheet">Create the samplesheet<a class="headerlink" href="#create-the-samplesheet" title="Permanent link">&para;</a></h2>
-<p>Open a new file:</p>
-<div class="highlight"><pre><span></span><code>nano<span class="w"> </span>project/input/illumina.samplesheet.csv<span class="w">          </span><span class="c1"># create the paired FASTQ table</span>
+<p>The <code>sample_name</code> must exactly match the filename text before <code>_R1</code>/<code>_R2</code>. <code>status</code> must be <code>TUMOR</code> or <code>NORMAL</code> (case-insensitive). In Nano, save with <code>Ctrl+O</code>, press <code>Enter</code>, then exit with <code>Ctrl+X</code>.</p>
+<p>Inspect the table:</p>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/input/illumina_fastq/samples.csv<span class="w">               </span><span class="c1"># verify the header and rows</span>
+</code></pre></div>
+<h3 id="3-generate-the-configuration">3. Generate the configuration<a class="headerlink" href="#3-generate-the-configuration" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                           </span><span class="c1"># save the absolute repository path</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/illumina_auto&quot;</span><span class="w">                    </span><span class="c1"># generate files and stop</span>
+</code></pre></div>
+<p>This command checks that every row has exactly one R1/R2 pair and that each gzip file is complete. It creates:</p>
+<div class="highlight"><pre><span></span><code>project/config/illumina/
+├── illumina.auto.yml          # pass this file to -params-file
+└── illumina.samplesheet.csv   # detected R1/R2 paths
+</code></pre></div>
+<p>It does <strong>not</strong> start alignment or CNA analysis.</p>
+<h3 id="4-inspect-the-generated-files">4. Inspect the generated files<a class="headerlink" href="#4-inspect-the-generated-files" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w">              </span><span class="c1"># inspect settings and absolute paths</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/config/illumina/illumina.samplesheet.csv<span class="w">        </span><span class="c1"># inspect detected pairs and status values</span>
+</code></pre></div>
+<p>The generated YAML will resemble this. It is a <strong>YAML example</strong>, not a terminal command:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/runs/illumina_auto</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/config/illumina/illumina.samplesheet.csv</span>
+<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
+<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
+<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<p>The generator chooses an absolute <code>lpwgs_root</code> that contains the reads, generated configuration, and results. Your path will differ from <code>/home/student/oncotracer</code>.</p>
+<h3 id="5-check-wiring-run-and-inspect-the-summary">5. Check wiring, run, and inspect the summary<a class="headerlink" href="#5-check-wiring-run-and-inspect-the-summary" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
+cat<span class="w"> </span>project/runs/illumina_auto/06_workflow_summary/workflow_summary.txt<span class="w">                         </span><span class="c1"># show key output paths</span>
+</code></pre></div>
+<p>The stub command uses placeholder outputs; it does not analyze or fully validate the real reads. The second command is the real run. Use <code>--singularity</code> instead of <code>--docker</code> on a configured HPC system.</p>
+<h2 id="second-option-manual-setup">Second option: manual setup<a class="headerlink" href="#second-option-manual-setup" title="Permanent link">&para;</a></h2>
+<p>Choose manual setup when FASTQ naming does not match automatic detection or when you need advanced settings.</p>
+<h3 id="1-create-the-samplesheet">1. Create the samplesheet<a class="headerlink" href="#1-create-the-samplesheet" title="Permanent link">&para;</a></h3>
+<p>This example assumes <code>pwd</code> prints <code>/home/student/oncotracer</code>. Replace that prefix everywhere if your clone is elsewhere.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer
+mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/illumina_fastq<span class="w"> </span>project/runs<span class="w">                     </span><span class="c1"># create directories if absent</span>
+nano<span class="w"> </span>project/input/illumina.samplesheet.csv<span class="w">                            </span><span class="c1"># create the paired-read table</span>
 </code></pre></div>
 <p>Enter:</p>
 <div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
-Sample_A,/home/user/oncotracer/project/input/Sample_A_R1.fastq.gz,/home/user/oncotracer/project/input/Sample_A_R2.fastq.gz,tumor
+Patient_A,/home/student/oncotracer/project/input/illumina_fastq/Patient_A_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor
+Patient_B,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R2.fastq.gz,normal
 </code></pre></div>
-<p>Save with <code>Ctrl+O</code>, press Enter, then exit with <code>Ctrl+X</code>. Validate and run. First check every file:</p>
-<div class="highlight"><pre><span></span><code>realpath<span class="w"> </span>project/input/Sample_A_R1.fastq.gz<span class="w">          </span><span class="c1"># confirm the R1 absolute path</span>
-realpath<span class="w"> </span>project/input/Sample_A_R2.fastq.gz<span class="w">          </span><span class="c1"># confirm the R2 absolute path</span>
-head<span class="w"> </span>-5<span class="w"> </span>project/input/illumina.samplesheet.csv<span class="w">       </span><span class="c1"># confirm the CSV header and sample row</span>
+<p>Each row is one biological sample. <code>fastq_1</code> and <code>fastq_2</code> are absolute paths; <code>status</code> is <code>tumor</code> or <code>normal</code>. Save with <code>Ctrl+O</code>, press <code>Enter</code>, then exit with <code>Ctrl+X</code>.</p>
+<p>Check the table and files:</p>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/input/illumina.samplesheet.csv<span class="w">                 </span><span class="c1"># inspect the saved CSV</span>
+ls<span class="w"> </span>-lh<span class="w"> </span>project/input/illumina_fastq/Patient_A_R1.fastq.gz<span class="w">             </span><span class="c1"># confirm R1 exists and is not empty</span>
+ls<span class="w"> </span>-lh<span class="w"> </span>project/input/illumina_fastq/Patient_A_R2.fastq.gz<span class="w">             </span><span class="c1"># confirm R2 exists and is not empty</span>
+gzip<span class="w"> </span>-t<span class="w"> </span>project/input/illumina_fastq/Patient_A_R1.fastq.gz<span class="w">            </span><span class="c1"># no output means gzip is valid</span>
+gzip<span class="w"> </span>-t<span class="w"> </span>project/input/illumina_fastq/Patient_A_R2.fastq.gz<span class="w">            </span><span class="c1"># test the mate too</span>
 </code></pre></div>
-<h2 id="validate-and-run">Validate and run<a class="headerlink" href="#validate-and-run" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span><span class="c1"># validate paths/settings without analysis</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># run the complete analysis</span>
-cat<span class="w"> </span>project/runs/sample_a/06_workflow_summary/workflow_summary.txt<span class="w">          </span><span class="c1"># inspect final output locations</span>
+<h3 id="2-copy-and-edit-the-yaml">2. Copy and edit the YAML<a class="headerlink" href="#2-copy-and-edit-the-yaml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/illumina.minimal.yml<span class="w"> </span>params/my_illumina.yml<span class="w">                  </span><span class="c1"># preserve the versioned template</span>
+nano<span class="w"> </span>params/my_illumina.yml<span class="w">                                           </span><span class="c1"># replace the example paths</span>
 </code></pre></div>
+<p>A complete minimal file is:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/runs/my_first_illumina_run</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/input/illumina.samplesheet.csv</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<p>The remaining settings use tested defaults: <code>solid_biopsy</code>, <code>qdnaseq</code>, and <code>100</code> kb bins. OncoTracer automatically writes the upstream results to <code>outdir/01_samurai_illumina</code>; do not add a separate SAMURAI output path.</p>
+<p>Save with <code>Ctrl+O</code>, press <code>Enter</code>, then exit with <code>Ctrl+X</code>. Inspect the result:</p>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>params/my_illumina.yml<span class="w">                                </span><span class="c1"># verify every saved value</span>
+</code></pre></div>
+<h3 id="how-to-edit-a-yaml-file-from-the-terminal">How to edit a YAML file from the terminal<a class="headerlink" href="#how-to-edit-a-yaml-file-from-the-terminal" title="Permanent link">&para;</a></h3>
+<p>The video below shows the same manual task: copy the example YAML, open it in Nano, replace the project root, samplesheet, and output paths, save with <code>Ctrl+O</code> and <code>Enter</code>, exit with <code>Ctrl+X</code>, inspect the saved YAML, perform a stub wiring check, and start the real run. The pauses are intentional so each edit can be followed.</p>
+<video controls preload="metadata" poster="../../assets/tutorial/edit_yaml_with_nano_poster.png" style="width:100%;max-width:960px">
+  <source src="../../assets/tutorial/edit_yaml_with_nano.mp4" type="video/mp4">
+  Your browser cannot play the embedded video. <a href="../../assets/tutorial/edit_yaml_with_nano.mp4">Open the MP4 video</a>.
+</video>
+
+<h3 id="3-check-wiring-and-run">3. Check wiring and run<a class="headerlink" href="#3-check-wiring-and-run" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
+cat<span class="w"> </span>project/runs/my_first_illumina_run/06_workflow_summary/workflow_summary.txt<span class="w"> </span><span class="c1"># inspect final locations</span>
+</code></pre></div>
+<h2 id="what-each-setting-means">What each setting means<a class="headerlink" href="#what-each-setting-means" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Field</th>
-<th>Required?</th>
-<th>Meaning</th>
+<th>Setting</th>
+<th>Type and accepted value</th>
+<th>Default</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>mode</code></td>
-<td>Yes</td>
-<td>Must be <code>illumina</code>.</td>
+<td>text: <code>illumina</code></td>
+<td>required</td>
+<td>Selects the paired-end Illumina route.</td>
 </tr>
 <tr>
 <td><code>lpwgs_root</code></td>
-<td>Yes</td>
-<td>Absolute common parent mounted into the runtime.</td>
+<td>absolute directory</td>
+<td>site-specific</td>
+<td>Common parent mounted into the container. Every input and output must be below it.</td>
 </tr>
 <tr>
 <td><code>outdir</code></td>
-<td>Yes</td>
-<td>Main numbered-output directory.</td>
+<td>absolute directory</td>
+<td>required</td>
+<td>Results for this run. Use a new directory for a new experiment.</td>
 </tr>
 <tr>
 <td><code>illumina_samplesheet</code></td>
-<td>Yes</td>
-<td>CSV with <code>sample,fastq_1,fastq_2,status</code>.</td>
+<td>absolute CSV path</td>
+<td>required</td>
+<td>Four columns: <code>sample,fastq_1,fastq_2,status</code>.</td>
 </tr>
 <tr>
 <td><code>illumina_analysis_type</code></td>
-<td>Default</td>
-<td>Usually <code>solid_biopsy</code>.</td>
+<td>text: <code>solid_biopsy</code></td>
+<td><code>solid_biopsy</code></td>
+<td>Standard SAMURAI analysis preset for this route.</td>
 </tr>
 <tr>
 <td><code>illumina_caller</code></td>
-<td>Default</td>
-<td><code>qdnaseq</code>.</td>
+<td>text: <code>qdnaseq</code></td>
+<td><code>qdnaseq</code></td>
+<td>CNA caller used by the current Illumina workflow.</td>
 </tr>
 <tr>
 <td><code>illumina_binsize_kb</code></td>
-<td>Default</td>
-<td><code>100</code>.</td>
+<td>positive integer, kb</td>
+<td><code>100</code></td>
+<td>Width of the initial copy-number bins.</td>
 </tr>
 <tr>
 <td><code>run_cna_classifier</code></td>
-<td>Optional</td>
-<td>Enables classifier/report/pathology steps.</td>
+<td>Boolean</td>
+<td><code>false</code></td>
+<td>Adds classifier/pathology outputs when <code>true</code>.</td>
 </tr>
 <tr>
 <td><code>force</code></td>
-<td>Optional</td>
-<td>Allows supported refresh behavior. Prefer <code>false</code> for real projects.</td>
+<td>Boolean</td>
+<td><code>false</code></td>
+<td>Requests supported refresh behavior. Keep <code>false</code> for real runs.</td>
 </tr>
 </tbody>
 </table>
+<p>For all optional settings, see the <a href="../parameter_reference/">parameter reference</a>.</p>
 
 
 

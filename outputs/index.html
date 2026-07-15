@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/outputs/">
       
       
-        <link rel="prev" href="../running/">
+        <link rel="prev" href="../configuration/parameter_reference/">
       
       
         <link rel="next" href="../models_pathology/">
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#outputs" class="md-skip">
+        <a href="#output-files" class="md-skip">
           Skip to content
         </a>
       
@@ -218,7 +218,7 @@
           
   
   
-  Start
+  Getting Started
 
         </a>
       </li>
@@ -234,11 +234,11 @@
     
     
       <li class="md-tabs__item">
-        <a href="../configuration/illumina/" class="md-tabs__link">
+        <a href="../running/" class="md-tabs__link">
           
   
   
-  Configure and Run
+  Run and Configure
 
         </a>
       </li>
@@ -260,7 +260,7 @@
           
   
   
-  Results and Interpretation
+  Understand Results
 
         </a>
       </li>
@@ -280,7 +280,7 @@
           
   
   
-  Help and Project
+  Help and About
 
         </a>
       </li>
@@ -392,7 +392,7 @@
   <span class="md-ellipsis">
     
   
-    Start
+    Getting Started
   
 
     
@@ -408,7 +408,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Start
+    Getting Started
   
 
           </label>
@@ -428,7 +428,7 @@
   <span class="md-ellipsis">
     
   
-    Installation
+    1. Install Requirements
   
 
     
@@ -456,7 +456,7 @@
   <span class="md-ellipsis">
     
   
-    Quick Start
+    2. Quick Verification
   
 
     
@@ -484,7 +484,7 @@
   <span class="md-ellipsis">
     
   
-    Automatic Setup
+    3. Automatic Setup for Your FASTQs (Recommended)
   
 
     
@@ -505,14 +505,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/yaml_basics/" class="md-nav__link">
+      <a href="../public_cohort/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    YAML and Paths
+    4. Three-Sample Public Cohort
   
 
     
@@ -540,7 +540,35 @@
   <span class="md-ellipsis">
     
   
-    Input Files
+    Input Files and Folder Layouts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/yaml_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manual YAML Editing (Second Option)
   
 
     
@@ -593,7 +621,7 @@
   <span class="md-ellipsis">
     
   
-    Configure and Run
+    Run and Configure
   
 
     
@@ -609,11 +637,39 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Configure and Run
+    Run and Configure
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../running/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -629,7 +685,7 @@
   <span class="md-ellipsis">
     
   
-    Illumina
+    Illumina Setup
   
 
     
@@ -657,7 +713,7 @@
   <span class="md-ellipsis">
     
   
-    ONT
+    ONT Setup
   
 
     
@@ -741,35 +797,7 @@
   <span class="md-ellipsis">
     
   
-    Parameter Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../running/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflow Overview
+    All Parameters
   
 
     
@@ -825,7 +853,7 @@
   <span class="md-ellipsis">
     
   
-    Results and Interpretation
+    Understand Results
   
 
     
@@ -841,7 +869,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Results and Interpretation
+    Understand Results
   
 
           </label>
@@ -914,10 +942,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#key-files" class="md-nav__link">
+  <a href="#which-result-is-authoritative" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Key Files
+        Which result is authoritative?
       
     </span>
   </a>
@@ -925,10 +953,93 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-plots" class="md-nav__link">
+  <a href="#stage-01-alignment-and-initial-caller" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example Plots
+        Stage 01: alignment and initial caller
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Stage 01: alignment and initial caller">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#illumina" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Illumina
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ont" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ONT
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-02-refined-segmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 02: refined segmentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-03-final-cna-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 03: final CNA tables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-04-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 04: plots
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-05-optional-classifier-and-pathology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 05: optional classifier and pathology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#confirm-a-run-before-sharing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Confirm a run before sharing it
       
     </span>
   </a>
@@ -958,7 +1069,7 @@
   <span class="md-ellipsis">
     
   
-    Models & Pathology
+    Models and Pathology
   
 
     
@@ -986,7 +1097,7 @@
   <span class="md-ellipsis">
     
   
-    Gallery
+    Results Gallery
   
 
     
@@ -1039,7 +1150,7 @@
   <span class="md-ellipsis">
     
   
-    Help and Project
+    Help and About
   
 
     
@@ -1055,7 +1166,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Help and Project
+    Help and About
   
 
           </label>
@@ -1179,10 +1290,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#key-files" class="md-nav__link">
+  <a href="#which-result-is-authoritative" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Key Files
+        Which result is authoritative?
       
     </span>
   </a>
@@ -1190,10 +1301,93 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-plots" class="md-nav__link">
+  <a href="#stage-01-alignment-and-initial-caller" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example Plots
+        Stage 01: alignment and initial caller
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Stage 01: alignment and initial caller">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#illumina" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Illumina
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ont" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ONT
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-02-refined-segmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 02: refined segmentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-03-final-cna-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 03: final CNA tables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-04-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 04: plots
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-05-optional-classifier-and-pathology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 05: optional classifier and pathology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#confirm-a-run-before-sharing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Confirm a run before sharing it
       
     </span>
   </a>
@@ -1225,50 +1419,140 @@
   
 
 
-<h1 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h1>
-<p>OncoTracer writes a numbered output structure inside <code>outdir</code>.</p>
-<div class="highlight"><pre><span></span><code>outdir/
-  01_samurai_illumina/ or 01_samurai_ont/
-  02_bam_refinement/
-  03_cna_codification/
-  04_cna_custom_plots/
-  05_cna_classifier/          # when enabled
-  06_workflow_summary/
+<h1 id="output-files">Output files<a class="headerlink" href="#output-files" title="Permanent link">&para;</a></h1>
+<p>Every run writes a numbered directory tree under the YAML <code>outdir</code>. Start with the summary, then move from the upstream caller through refined segments, final tables, and plots.</p>
+<p>Set one shell variable so the commands below are easy to reuse:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/runs/my_first_run&quot;</span><span class="w"> </span><span class="c1"># replace this with the exact outdir from your YAML</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
 </code></pre></div>
-<h2 id="key-files">Key Files<a class="headerlink" href="#key-files" title="Permanent link">&para;</a></h2>
+<p>If <code>cat</code> says the file does not exist, either the run has not finished or <code>OUT</code> does not match the YAML.</p>
+<h2 id="which-result-is-authoritative">Which result is authoritative?<a class="headerlink" href="#which-result-is-authoritative" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>File</th>
-<th>Meaning</th>
+<th>Stage</th>
+<th>Main question</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>06_workflow_summary/workflow_summary.txt</code></td>
-<td>Short run summary and important output paths.</td>
+<td><code>01_samurai_illumina/</code> or <code>01_samurai_ont/</code></td>
+<td>What did alignment and the initial CNA caller produce?</td>
+<td>Upstream caller/QC output; important provenance, but refinement follows</td>
 </tr>
 <tr>
-<td><code>03_cna_codification/cna_events.tsv</code></td>
-<td>CNA event table.</td>
+<td><code>02_bam_refinement/</code></td>
+<td>Where are the final refined segment boundaries and bins?</td>
+<td>Authoritative refined segmentation</td>
 </tr>
 <tr>
-<td><code>03_cna_codification/cna_cytogenomic_notation.tsv</code></td>
-<td>Cytogenomic notation table.</td>
+<td><code>03_cna_codification/</code></td>
+<td>Which CNA events and cytogenomic descriptions does OncoTracer report?</td>
+<td>Authoritative machine-readable OncoTracer CNA results</td>
 </tr>
 <tr>
-<td><code>04_cna_custom_plots/cna_per_sample_pages.pdf</code></td>
-<td>Per-sample CNA plot pages.</td>
+<td><code>04_cna_custom_plots/</code></td>
+<td>How do those tables look visually?</td>
+<td>Derived presentation; use tables for exact values</td>
 </tr>
 <tr>
-<td><code>04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf</code></td>
-<td>Cohort-level genome profile plot.</td>
+<td><code>05_cna_classifier/</code></td>
+<td>What optional CNA-pattern/pathology research interpretation was produced?</td>
+<td>Optional and non-diagnostic</td>
+</tr>
+<tr>
+<td><code>06_workflow_summary/</code></td>
+<td>Where are the important folders?</td>
+<td>Index/pointer file, not a scientific result</td>
 </tr>
 </tbody>
 </table>
-<h2 id="example-plots">Example Plots<a class="headerlink" href="#example-plots" title="Permanent link">&para;</a></h2>
-<p><img alt="Illumina CNA overview" src="../assets/gallery/illumina_cna_genome_overview.png" /></p>
-<p><img alt="ONT CNA overview" src="../assets/gallery/ont_cna_genome_overview.png" /></p>
+<p>Do not report files from <code>work/</code> as results. That directory is Nextflow's resumable task cache and may contain temporary or duplicated files.</p>
+<h2 id="stage-01-alignment-and-initial-caller">Stage 01: alignment and initial caller<a class="headerlink" href="#stage-01-alignment-and-initial-caller" title="Permanent link">&para;</a></h2>
+<h3 id="illumina">Illumina<a class="headerlink" href="#illumina" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,80p&#39;</span><span class="w"> </span><span class="c1"># inventory</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq/all_segments.seg&quot;</span><span class="w">          </span><span class="c1"># initial qDNAseq segments</span>
+find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/alignment&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.bam&#39;</span><span class="w"> </span>-print<span class="w"> </span><span class="c1"># aligned BAMs</span>
+</code></pre></div>
+<p>Useful quality-control files include <code>fastqc/</code>, <code>multiqc/</code>, <code>picard/</code>, and <code>pipeline_info/</code>. Open the MultiQC HTML on a workstation before interpreting CNA calls.</p>
+<h3 id="ont">ONT<a class="headerlink" href="#ont" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,100p&#39;</span><span class="w"> </span><span class="c1"># inventory</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,80p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/logs/run_summary.txt&quot;</span><span class="w">               </span><span class="c1"># used/skipped barcode summary</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/results/ichorcna/segments_logR_corrected_gistic.seg&quot;</span><span class="w"> </span><span class="c1"># initial ichorCNA segments</span>
+find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/bam&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.bam&#39;</span><span class="w"> </span>-print<span class="w">        </span><span class="c1"># aligned BAMs</span>
+</code></pre></div>
+<p>Also inspect <code>logs/used_fastq.tsv</code>, <code>logs/skipped_fastq.tsv</code>, <code>logs/skipped_samples.tsv</code>, and <code>logs/warning_samples.tsv</code>. A completed workflow can still contain a skipped barcode warning that matters scientifically.</p>
+<h2 id="stage-02-refined-segmentation">Stage 02: refined segmentation<a class="headerlink" href="#stage-02-refined-segmentation" title="Permanent link">&para;</a></h2>
+<p>The dataset subdirectory is normally <code>illumina_qdnaseq_100kb</code> or <code>ONT_ichorcna_500kb</code>, depending on the YAML. List it rather than guessing:</p>
+<div class="highlight"><pre><span></span><code>find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/02_bam_refinement&quot;</span><span class="w"> </span>-mindepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span>/02_bam_refinement/*/04_final_results/final_segments.tsv
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span>/02_bam_refinement/*/01_tables/boundary_refinement_statistics.csv
+</code></pre></div>
+<p>Use <code>04_final_results/final_segments.tsv</code> as the primary refined segment table. <code>01_tables/</code> and <code>03_consolidated/</code> preserve detailed calculations and comparisons for audit. <code>02_samurai_compatible/</code> is an interoperability representation, not a second independent call set.</p>
+<p>Key files:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>04_final_results/final_segments.tsv</code></td>
+<td>Refined segment coordinates and values</td>
+</tr>
+<tr>
+<td><code>04_final_results/final_segments.bed</code></td>
+<td>BED representation for genome tools</td>
+</tr>
+<tr>
+<td><code>04_final_results/refined_bins_boundary_bp_difference.csv</code></td>
+<td>Per-bin boundary difference audit</td>
+</tr>
+<tr>
+<td><code>01_tables/sample_refinement_summary.csv</code></td>
+<td>Per-sample refinement counts/status</td>
+</tr>
+<tr>
+<td><code>critical_outputs_manifest.csv</code></td>
+<td>Inventory of required outputs</td>
+</tr>
+</tbody>
+</table>
+<h2 id="stage-03-final-cna-tables">Stage 03: final CNA tables<a class="headerlink" href="#stage-03-final-cna-tables" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv&quot;</span>
+wc<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv&quot;</span>
+</code></pre></div>
+<ul>
+<li><code>cna_events.tsv</code> is the main event-level result for downstream analysis.</li>
+<li><code>cna_cytogenomic_notation.tsv</code> provides the corresponding cytoband-oriented descriptions.</li>
+<li><code>input_bed_files.tsv</code> and <code>input_cna_files.tsv</code> record the exact inputs used by codification.</li>
+</ul>
+<p>A table containing only a header can be a valid CNA-flat result; confirm the sample in the notation/QC outputs rather than assuming the workflow failed.</p>
+<h2 id="stage-04-plots">Stage 04: plots<a class="headerlink" href="#stage-04-plots" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+xdg-open<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_per_sample_pages.pdf&quot;</span><span class="w">                  </span><span class="c1"># one page per sample</span>
+xdg-open<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf&quot;</span><span class="w">   </span><span class="c1"># cohort profiles</span>
+</code></pre></div>
+<p>On a headless server, copy PDFs to your workstation. Common outputs include genome overview, event burden/counts, recurrent cytobands, gene-panel frequency, per-sample pages, and log2-ratio profiles. PNG/SVG files are convenient for slides; the TSV tables remain the source for exact values.</p>
+<h2 id="stage-05-optional-classifier-and-pathology">Stage 05: optional classifier and pathology<a class="headerlink" href="#stage-05-optional-classifier-and-pathology" title="Permanent link">&para;</a></h2>
+<p>This directory exists only when <code>run_cna_classifier: true</code>.</p>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/02_classification/cna_patient_classification.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/06_knowledge/sample_knowledge_summary.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/07_pathology/pathology_concordance.tsv&quot;</span>
+</code></pre></div>
+<p>Read <a href="../models_pathology/">Models and pathology</a> before interpreting these files. They are research interpretations derived from stage 03, not replacements for the underlying event table or for diagnostic review.</p>
+<h2 id="confirm-a-run-before-sharing-it">Confirm a run before sharing it<a class="headerlink" href="#confirm-a-run-before-sharing-it" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span><span class="w">                </span><span class="c1"># summary exists</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span><span class="w">                     </span><span class="c1"># event table exists</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv&quot;</span><span class="w">       </span><span class="c1"># notation table exists</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_per_sample_pages.pdf&quot;</span><span class="w">           </span><span class="c1"># plots exist</span>
+find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.command.err&#39;</span><span class="w"> </span>-size<span class="w"> </span>+0c<span class="w"> </span>-print<span class="w">             </span><span class="c1"># review any non-empty task stderr files</span>
+</code></pre></div>
+<p>Non-empty standard error is not automatically a failure--many tools write progress there--but it must be reviewed. Preserve the YAML, samplesheet, commit hash (<code>git rev-parse HEAD</code>), container digest, and workflow summary with any released result.</p>
 
 
 

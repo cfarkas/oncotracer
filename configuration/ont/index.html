@@ -29,7 +29,7 @@
     
     
       
-        <title>ONT - OncoTracer</title>
+        <title>ONT Setup - OncoTracer</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ont-yaml" class="md-skip">
+        <a href="#ont-configuration" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ONT
+              ONT Setup
             
           </span>
         </div>
@@ -218,7 +218,7 @@
           
   
   
-  Start
+  Getting Started
 
         </a>
       </li>
@@ -236,11 +236,11 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../illumina/" class="md-tabs__link">
+        <a href="../../running/" class="md-tabs__link">
           
   
   
-  Configure and Run
+  Run and Configure
 
         </a>
       </li>
@@ -260,7 +260,7 @@
           
   
   
-  Results and Interpretation
+  Understand Results
 
         </a>
       </li>
@@ -280,7 +280,7 @@
           
   
   
-  Help and Project
+  Help and About
 
         </a>
       </li>
@@ -392,7 +392,7 @@
   <span class="md-ellipsis">
     
   
-    Start
+    Getting Started
   
 
     
@@ -408,7 +408,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Start
+    Getting Started
   
 
           </label>
@@ -428,7 +428,7 @@
   <span class="md-ellipsis">
     
   
-    Installation
+    1. Install Requirements
   
 
     
@@ -456,7 +456,7 @@
   <span class="md-ellipsis">
     
   
-    Quick Start
+    2. Quick Verification
   
 
     
@@ -484,7 +484,7 @@
   <span class="md-ellipsis">
     
   
-    Automatic Setup
+    3. Automatic Setup for Your FASTQs (Recommended)
   
 
     
@@ -505,14 +505,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../yaml_basics/" class="md-nav__link">
+      <a href="../../public_cohort/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    YAML and Paths
+    4. Three-Sample Public Cohort
   
 
     
@@ -540,7 +540,35 @@
   <span class="md-ellipsis">
     
   
-    Input Files
+    Input Files and Folder Layouts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../yaml_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manual YAML Editing (Second Option)
   
 
     
@@ -596,7 +624,7 @@
   <span class="md-ellipsis">
     
   
-    Configure and Run
+    Run and Configure
   
 
     
@@ -612,11 +640,39 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Configure and Run
+    Run and Configure
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../running/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -632,7 +688,7 @@
   <span class="md-ellipsis">
     
   
-    Illumina
+    Illumina Setup
   
 
     
@@ -669,7 +725,7 @@
   <span class="md-ellipsis">
     
   
-    ONT
+    ONT Setup
   
 
     
@@ -687,7 +743,7 @@
   <span class="md-ellipsis">
     
   
-    ONT
+    ONT Setup
   
 
     
@@ -713,54 +769,132 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recommended-folder-layout" class="md-nav__link">
+  <a href="#recommended-create-the-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended folder layout
+        Recommended: create the YAML automatically
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended: create the YAML automatically">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-arrange-the-fastqs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Arrange the FASTQs
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#create-and-edit-the-yaml" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-create-an-explicit-barcode-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create and edit the YAML
+        2. Create an explicit barcode table
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#what-the-yaml-means" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#3-generate-the-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What the YAML means
+        3. Generate the configuration
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#check-the-input-before-running" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#4-inspect-the-generated-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Check the input before running
+        4. Inspect the generated YAML
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#validate-and-run" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#5-check-wiring-run-and-inspect-the-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validate and run
+        5. Check wiring, run, and inspect the summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#second-option-manual-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Second option: manual setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Second option: manual setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-inspect-the-input-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Inspect the input tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-copy-and-edit-the-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Copy and edit the YAML
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-check-wiring-and-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Check wiring and run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-each-setting-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What each setting means
       
     </span>
   </a>
@@ -846,35 +980,7 @@
   <span class="md-ellipsis">
     
   
-    Parameter Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../running/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflow Overview
+    All Parameters
   
 
     
@@ -927,7 +1033,7 @@
   <span class="md-ellipsis">
     
   
-    Results and Interpretation
+    Understand Results
   
 
     
@@ -943,7 +1049,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Results and Interpretation
+    Understand Results
   
 
           </label>
@@ -991,7 +1097,7 @@
   <span class="md-ellipsis">
     
   
-    Models & Pathology
+    Models and Pathology
   
 
     
@@ -1019,7 +1125,7 @@
   <span class="md-ellipsis">
     
   
-    Gallery
+    Results Gallery
   
 
     
@@ -1072,7 +1178,7 @@
   <span class="md-ellipsis">
     
   
-    Help and Project
+    Help and About
   
 
     
@@ -1088,7 +1194,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Help and Project
+    Help and About
   
 
           </label>
@@ -1212,54 +1318,132 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recommended-folder-layout" class="md-nav__link">
+  <a href="#recommended-create-the-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended folder layout
+        Recommended: create the YAML automatically
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended: create the YAML automatically">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-arrange-the-fastqs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Arrange the FASTQs
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#create-and-edit-the-yaml" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-create-an-explicit-barcode-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Create and edit the YAML
+        2. Create an explicit barcode table
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#what-the-yaml-means" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#3-generate-the-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What the YAML means
+        3. Generate the configuration
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#check-the-input-before-running" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#4-inspect-the-generated-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Check the input before running
+        4. Inspect the generated YAML
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#validate-and-run" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#5-check-wiring-run-and-inspect-the-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validate and run
+        5. Check wiring, run, and inspect the summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#second-option-manual-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Second option: manual setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Second option: manual setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-inspect-the-input-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Inspect the input tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-copy-and-edit-the-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Copy and edit the YAML
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-check-wiring-and-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Check wiring and run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-each-setting-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What each setting means
       
     </span>
   </a>
@@ -1291,156 +1475,224 @@
   
 
 
-<h1 id="ont-yaml">ONT YAML<a class="headerlink" href="#ont-yaml" title="Permanent link">&para;</a></h1>
-<p>This YAML tells OncoTracer where an Oxford Nanopore <code>fastq_pass</code> tree is, which barcode directories belong to which sample names, where SAMURAI/ichorCNA should write, and where final OncoTracer outputs belong.</p>
-<h2 id="recommended-folder-layout">Recommended folder layout<a class="headerlink" href="#recommended-folder-layout" title="Permanent link">&para;</a></h2>
+<h1 id="ont-configuration">ONT Configuration<a class="headerlink" href="#ont-configuration" title="Permanent link">&para;</a></h1>
+<p>Use this route for Oxford Nanopore FASTQ files organized in barcode directories. OncoTracer merges reads per selected barcode, aligns them, calls broad copy-number changes with SAMURAI/ichorCNA, refines CNA boundaries from the BAM files, and creates tables, plots, and a run summary.</p>
+<h2 id="recommended-create-the-yaml-automatically">Recommended: create the YAML automatically<a class="headerlink" href="#recommended-create-the-yaml-automatically" title="Permanent link">&para;</a></h2>
+<p>Automatic setup is safest because it checks each barcode folder and writes the comma-separated barcode/sample lists in matching order.</p>
+<h3 id="1-arrange-the-fastqs">1. Arrange the FASTQs<a class="headerlink" href="#1-arrange-the-fastqs" title="Permanent link">&para;</a></h3>
+<p>Point OncoTracer to the <code>fastq_pass</code> directory, not to an individual barcode directory:</p>
 <div class="highlight"><pre><span></span><code>oncotracer/
-├── main.nf
-├── params/
-│   ├── ont.minimal.yml        # versioned template
-│   └── my_ont.yml             # your copied and edited YAML
 └── project/
-    ├── input/
-    │   └── fastq_pass/
-    │       ├── barcode01/
-    │       │   └── reads.fastq.gz
-    │       └── barcode02/
-    │           └── reads.fastq.gz
-    └── runs/
-        └── ont_run/            # created by the workflow
+    └── input/
+        └── fastq_pass/
+            ├── barcode01/
+            │   ├── reads_001.fastq.gz
+            │   └── reads_002.fastq.gz
+            └── barcode02/
+                └── reads_001.fastq.gz
 </code></pre></div>
-<h2 id="create-and-edit-the-yaml">Create and edit the YAML<a class="headerlink" href="#create-and-edit-the-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w"> </span><span class="c1"># clone the repository</span>
-<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                       </span><span class="c1"># enter the repository</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>project/runs<span class="w">      </span><span class="c1"># create a simple project tree</span>
-cp<span class="w"> </span>params/ont.minimal.yml<span class="w"> </span>params/my_ont.yml<span class="w">         </span><span class="c1"># copy the template; preserve the original</span>
-find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span><span class="c1"># inspect barcode FASTQ placement</span>
-realpath<span class="w"> </span>project/input/fastq_pass<span class="w">                   </span><span class="c1"># obtain the absolute ONT folder path</span>
-nano<span class="w"> </span>params/my_ont.yml<span class="w">                              </span><span class="c1"># edit the copied YAML</span>
+<p>Each barcode can contain one or more <code>.fastq</code>, <code>.fq</code>, <code>.fastq.gz</code>, or <code>.fq.gz</code> files directly inside it. For an unbarcoded run, create a directory such as <code>barcode01</code> and put the FASTQs inside it.</p>
+<p>Create and inspect the project tree:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                        </span><span class="c1"># enter the repository</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>project/config/ont<span class="w"> </span>project/runs<span class="w">     </span><span class="c1"># create project directories</span>
+find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w">       </span><span class="c1"># list barcode directories</span>
+find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-20<span class="w"> </span><span class="c1"># inspect FASTQ placement</span>
 </code></pre></div>
-<p>In <code>nano</code>, use arrow keys to move and replace the example paths and barcode/sample lists. Save with <code>Ctrl+O</code>, press Enter, then exit with <code>Ctrl+X</code>. Validate and run.</p>
-<h2 id="what-the-yaml-means">What the YAML means<a class="headerlink" href="#what-the-yaml-means" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span><span class="w">                                           </span><span class="c1"># choose the Oxford Nanopore branch</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer</span><span class="w">                   </span><span class="c1"># common parent mounted into Docker/Singularity</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer/project/runs/ont_run</span><span class="w">  </span><span class="c1"># final numbered OncoTracer outputs</span>
-<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/oncotracer/project/input/fastq_pass</span><span class="w"> </span><span class="c1"># folder containing barcode directories</span>
-<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span><span class="w">                   </span><span class="c1"># barcode directory names, in order</span>
-<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A,Patient_B</span><span class="w">               </span><span class="c1"># biological names in the same order</span>
-<span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_biopsy</span><span class="w">                    </span><span class="c1"># SAMURAI analysis preset</span>
-<span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ichorcna</span><span class="w">                                </span><span class="c1"># ONT CNA caller</span>
-<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w">                                 </span><span class="c1"># coarse ichorCNA bin size</span>
-<span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w">                              </span><span class="c1"># process completed FASTQ immediately</span>
-<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># optional classifier/report stage</span>
-<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                                        </span><span class="c1"># preserve existing outputs unless intentionally refreshing</span>
+<h3 id="2-create-an-explicit-barcode-table">2. Create an explicit barcode table<a class="headerlink" href="#2-create-an-explicit-barcode-table" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nano<span class="w"> </span>project/input/fastq_pass/samples.csv<span class="w">                             </span><span class="c1"># create barcode-to-sample metadata</span>
 </code></pre></div>
-<p>The lists are positional: <code>barcode01</code> becomes <code>Patient_A</code>, and <code>barcode02</code> becomes <code>Patient_B</code>. The list lengths must match.</p>
-<h2 id="check-the-input-before-running">Check the input before running<a class="headerlink" href="#check-the-input-before-running" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="c1"># list barcode directories</span>
-find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span><span class="c1"># show example FASTQ files</span>
-ls<span class="w"> </span>-lh<span class="w"> </span>project/input/fastq_pass/barcode01<span class="w">                </span><span class="c1"># confirm barcode01 is not empty</span>
+<p>Enter:</p>
+<div class="highlight"><pre><span></span><code>barcode,sample_name,status
+barcode01,Patient_A,TUMOR
+barcode02,Patient_B,NORMAL
 </code></pre></div>
-<p>For a single unbarcoded folder, the wrapper still needs a barcode/sample selection consistent with the documented layout. The public tutorial shows a complete single-barcode example.</p>
-<h2 id="validate-and-run">Validate and run<a class="headerlink" href="#validate-and-run" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span><span class="c1"># validate settings without analysis</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># run the complete ONT analysis</span>
-cat<span class="w"> </span>project/runs/ont_run/06_workflow_summary/workflow_summary.txt<span class="w">      </span><span class="c1"># inspect final output locations</span>
+<ul>
+<li><code>barcode</code> must exactly match a directory name.</li>
+<li><code>sample_name</code> becomes the biological label in the outputs.</li>
+<li><code>status</code> must be <code>TUMOR</code> or <code>NORMAL</code> (case-insensitive).</li>
+<li>At least one row must be <code>TUMOR</code>.</li>
+</ul>
+<p>Save with <code>Ctrl+O</code>, press <code>Enter</code>, then exit with <code>Ctrl+X</code>. Inspect the file:</p>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/input/fastq_pass/samples.csv<span class="w">                    </span><span class="c1"># verify the header and mappings</span>
 </code></pre></div>
+<h3 id="3-generate-the-configuration">3. Generate the configuration<a class="headerlink" href="#3-generate-the-configuration" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                           </span><span class="c1"># save the absolute repository path</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/fastq_pass/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/ont&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/ont_auto&quot;</span><span class="w">                         </span><span class="c1"># generate YAML and stop</span>
+</code></pre></div>
+<p>Automatic setup verifies that each listed barcode exists, contains FASTQs, and has no empty or incomplete gzip file. It writes <code>project/config/ont/ont.auto.yml</code>; it does <strong>not</strong> start alignment or CNA analysis.</p>
+<h3 id="4-inspect-the-generated-yaml">4. Inspect the generated YAML<a class="headerlink" href="#4-inspect-the-generated-yaml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span>project/config/ont/ont.auto.yml<span class="w">                        </span><span class="c1"># inspect all generated settings</span>
+</code></pre></div>
+<p>For the table above, the file will resemble this. It is a <strong>YAML example</strong>, not a terminal command:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/runs/ont_auto</span>
+<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/input/fastq_pass</span>
+<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A</span>
+<span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_biopsy</span>
+<span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ichorcna</span>
+<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
+<span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">ont_normal_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/input/fastq_pass</span>
+<span class="nt">ont_normal_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode02</span>
+<span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_B</span>
+</code></pre></div>
+<p>Tumor and normal barcodes are written to separate settings. Every comma-separated list is positional: the first barcode maps to the first sample name. Your absolute root will differ from <code>/home/student/oncotracer</code>.</p>
+<h3 id="5-check-wiring-run-and-inspect-the-summary">5. Check wiring, run, and inspect the summary<a class="headerlink" href="#5-check-wiring-run-and-inspect-the-summary" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/ont/ont.auto.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/ont/ont.auto.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
+cat<span class="w"> </span>project/runs/ont_auto/06_workflow_summary/workflow_summary.txt<span class="w">                   </span><span class="c1"># show key output paths</span>
+</code></pre></div>
+<p><code>-stub-run</code> uses placeholder task outputs. It checks workflow wiring but does not align or fully validate the real reads, reference, tools, or scientific results. Use <code>--singularity</code> instead of <code>--docker</code> on a configured HPC system.</p>
+<h2 id="second-option-manual-setup">Second option: manual setup<a class="headerlink" href="#second-option-manual-setup" title="Permanent link">&para;</a></h2>
+<p>Choose manual setup when you need to select only some barcodes, use a custom reference, or configure normal/control data explicitly.</p>
+<h3 id="1-inspect-the-input-tree">1. Inspect the input tree<a class="headerlink" href="#1-inspect-the-input-tree" title="Permanent link">&para;</a></h3>
+<p>This example assumes <code>pwd</code> prints <code>/home/student/oncotracer</code>. Replace that prefix if your clone is elsewhere.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer
+find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w">        </span><span class="c1"># list barcode directories</span>
+find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-20<span class="w"> </span><span class="c1"># inspect FASTQs</span>
+ls<span class="w"> </span>-lh<span class="w"> </span>project/input/fastq_pass/barcode01<span class="w">                             </span><span class="c1"># confirm the first barcode is not empty</span>
+</code></pre></div>
+<h3 id="2-copy-and-edit-the-yaml">2. Copy and edit the YAML<a class="headerlink" href="#2-copy-and-edit-the-yaml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>params/ont.minimal.yml<span class="w"> </span>params/my_ont.yml<span class="w">                            </span><span class="c1"># preserve the versioned template</span>
+nano<span class="w"> </span>params/my_ont.yml<span class="w">                                                </span><span class="c1"># replace paths, barcodes, and names</span>
+</code></pre></div>
+<p>A minimal two-tumor configuration is:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/runs/my_first_ont_run</span>
+<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/input/fastq_pass</span>
+<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A,Patient_B</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<p>The first barcode maps to the first sample name; list lengths must match. The standard defaults are <code>liquid_biopsy</code>, <code>ichorcna</code>, <code>500</code> kb bins, and a minimum file age of <code>0</code> minutes. OncoTracer automatically writes upstream results to <code>outdir/01_samurai_ont</code>; do not add a separate SAMURAI output path.</p>
+<p>For a normal/control barcode in the same <code>fastq_pass</code> tree, add:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">ont_normal_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/student/oncotracer/project/input/fastq_pass</span>
+<span class="nt">ont_normal_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode03</span>
+<span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_Normal</span>
+</code></pre></div>
+<p>Providing normal inputs activates the wrapper's local panel-of-normals route. Review the study design before combining controls from different runs.</p>
+<p>Save with <code>Ctrl+O</code>, press <code>Enter</code>, then exit with <code>Ctrl+X</code>. Inspect the saved file:</p>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span>params/my_ont.yml<span class="w">                                    </span><span class="c1"># verify paths and positional lists</span>
+</code></pre></div>
+<h3 id="3-check-wiring-and-run">3. Check wiring and run<a class="headerlink" href="#3-check-wiring-and-run" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_ont.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
+cat<span class="w"> </span>project/runs/my_first_ont_run/06_workflow_summary/workflow_summary.txt<span class="w"> </span><span class="c1"># inspect final locations</span>
+</code></pre></div>
+<h2 id="what-each-setting-means">What each setting means<a class="headerlink" href="#what-each-setting-means" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Field</th>
-<th>Required?</th>
-<th>Meaning</th>
+<th>Setting</th>
+<th>Type and accepted value</th>
+<th>Default</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>mode</code></td>
-<td>Yes</td>
-<td>Must be <code>ont</code>.</td>
+<td>text: <code>ont</code></td>
+<td>required</td>
+<td>Selects the Oxford Nanopore route.</td>
 </tr>
 <tr>
 <td><code>lpwgs_root</code></td>
-<td>Yes</td>
-<td>Absolute common parent mounted into the runtime.</td>
+<td>absolute directory</td>
+<td>site-specific</td>
+<td>Common parent mounted into the container. Every configured path must be below it.</td>
 </tr>
 <tr>
 <td><code>outdir</code></td>
-<td>Yes</td>
-<td>Main numbered-output directory.</td>
+<td>absolute directory</td>
+<td>required</td>
+<td>Results for this run. Use a new directory for a new experiment.</td>
 </tr>
 <tr>
 <td><code>ont_folder</code></td>
-<td>Yes</td>
-<td>Folder containing barcode FASTQ directories.</td>
+<td>absolute directory</td>
+<td>required</td>
+<td>Parent containing barcode directories.</td>
 </tr>
 <tr>
 <td><code>ont_barcodes</code></td>
-<td>Yes</td>
-<td>Comma-separated barcode IDs.</td>
+<td>comma-separated directory names</td>
+<td>required</td>
+<td>Tumor barcode selection.</td>
 </tr>
 <tr>
 <td><code>ont_sample_names</code></td>
-<td>Recommended</td>
-<td>Comma-separated names matching barcode order.</td>
+<td>comma-separated names</td>
+<td><code>null</code></td>
+<td>Biological names in the same order; strongly recommended.</td>
 </tr>
 <tr>
 <td><code>ont_analysis_type</code></td>
-<td>Default</td>
-<td>Usually <code>liquid_biopsy</code>.</td>
+<td><code>liquid_biopsy</code> or <code>solid_biopsy</code></td>
+<td><code>liquid_biopsy</code></td>
+<td>SAMURAI analysis preset. Keep the standard default unless the study design requires another supported route.</td>
 </tr>
 <tr>
 <td><code>ont_caller</code></td>
-<td>Default</td>
-<td><code>ichorcna</code>.</td>
+<td>text: <code>ichorcna</code></td>
+<td><code>ichorcna</code></td>
+<td>CNA caller required by the current downstream ONT route.</td>
 </tr>
 <tr>
 <td><code>ont_binsize_kb</code></td>
-<td>Default</td>
-<td><code>500</code>.</td>
+<td>positive integer, kb</td>
+<td><code>500</code></td>
+<td>Width of the initial copy-number bins.</td>
 </tr>
 <tr>
 <td><code>ont_min_age_minutes</code></td>
-<td>Optional</td>
-<td>Use <code>0</code> for completed FASTQ; positive values avoid files still being written.</td>
+<td>non-negative integer, minutes</td>
+<td><code>0</code></td>
+<td>Use <code>0</code> for completed data; a positive delay helps avoid files still being written.</td>
 </tr>
 <tr>
 <td><code>ont_ref</code></td>
-<td>Optional</td>
-<td>Reference FASTA path.</td>
+<td>absolute FASTA path or <code>null</code></td>
+<td><code>null</code></td>
+<td>Optional custom reference below <code>lpwgs_root</code>.</td>
 </tr>
 <tr>
-<td><code>ont_normal_folder</code></td>
-<td>Optional</td>
-<td>Normal/control FASTQ folder.</td>
-</tr>
-<tr>
-<td><code>ont_normal_barcodes</code></td>
-<td>Optional</td>
-<td>Normal/control barcode IDs.</td>
-</tr>
-<tr>
-<td><code>ont_normal_sample_names</code></td>
-<td>Optional</td>
-<td>Matching normal/control names.</td>
+<td><code>ont_normal_*</code></td>
+<td>path and positional lists</td>
+<td><code>null</code></td>
+<td>Optional normal/control inputs. Supply the folder and barcode list together.</td>
 </tr>
 <tr>
 <td><code>ont_build_pon</code></td>
-<td>Optional</td>
-<td>Build a panel of normals when supported.</td>
+<td>Boolean</td>
+<td><code>false</code></td>
+<td>Explicitly request the supported panel-of-normals route. Normal inputs also trigger the wrapper's default local PoN behavior.</td>
 </tr>
 <tr>
 <td><code>ont_force_realign</code></td>
-<td>Optional</td>
-<td>Force ONT realignment.</td>
+<td>Boolean</td>
+<td><code>false</code></td>
+<td>Recreate supported alignments instead of reusing them.</td>
 </tr>
 <tr>
 <td><code>force</code></td>
-<td>Optional</td>
-<td>Allows supported refresh behavior. Prefer <code>false</code> for real projects.</td>
+<td>Boolean</td>
+<td><code>false</code></td>
+<td>Requests supported refresh behavior. Keep <code>false</code> for real runs.</td>
 </tr>
 </tbody>
 </table>
+<p>For all optional settings, see the <a href="../parameter_reference/">parameter reference</a>.</p>
 
 
 

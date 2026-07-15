@@ -18,7 +18,7 @@
         <link rel="prev" href="../quick_start/">
       
       
-        <link rel="next" href="../configuration/yaml_basics/">
+        <link rel="next" href="../public_cohort/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Automatic Setup - OncoTracer</title>
+        <title>3. Automatic Setup for Your FASTQs (Recommended) - OncoTracer</title>
       
     
     
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Automatic Setup
+              3. Automatic Setup for Your FASTQs (Recommended)
             
           </span>
         </div>
@@ -220,7 +220,7 @@
           
   
   
-  Start
+  Getting Started
 
         </a>
       </li>
@@ -236,11 +236,11 @@
     
     
       <li class="md-tabs__item">
-        <a href="../configuration/illumina/" class="md-tabs__link">
+        <a href="../running/" class="md-tabs__link">
           
   
   
-  Configure and Run
+  Run and Configure
 
         </a>
       </li>
@@ -260,7 +260,7 @@
           
   
   
-  Results and Interpretation
+  Understand Results
 
         </a>
       </li>
@@ -280,7 +280,7 @@
           
   
   
-  Help and Project
+  Help and About
 
         </a>
       </li>
@@ -395,7 +395,7 @@
   <span class="md-ellipsis">
     
   
-    Start
+    Getting Started
   
 
     
@@ -411,7 +411,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Start
+    Getting Started
   
 
           </label>
@@ -431,7 +431,7 @@
   <span class="md-ellipsis">
     
   
-    Installation
+    1. Install Requirements
   
 
     
@@ -459,7 +459,7 @@
   <span class="md-ellipsis">
     
   
-    Quick Start
+    2. Quick Verification
   
 
     
@@ -496,7 +496,7 @@
   <span class="md-ellipsis">
     
   
-    Automatic Setup
+    3. Automatic Setup for Your FASTQs (Recommended)
   
 
     
@@ -514,7 +514,7 @@
   <span class="md-ellipsis">
     
   
-    Automatic Setup
+    3. Automatic Setup for Your FASTQs (Recommended)
   
 
     
@@ -540,10 +540,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#illumina" class="md-nav__link">
+  <a href="#before-you-begin" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina
+        Before you begin
       
     </span>
   </a>
@@ -551,10 +551,143 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont" class="md-nav__link">
+  <a href="#illumina-step-by-step" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT
+        Illumina step by step
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Illumina step by step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-organize-paired-reads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Organize paired reads
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-the-sample-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create the sample table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-generate-the-illumina-yaml-and-samplesheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Generate the Illumina YAML and samplesheet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-inspect-what-was-generated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Inspect what was generated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-check-wiring-then-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Check wiring, then run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ont-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ONT step by step
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ONT step by step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-organize-barcode-folders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Organize barcode folders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-an-explicit-barcode-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create an explicit barcode table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-generate-and-inspect-the-ont-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Generate and inspect the ONT YAML
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-check-wiring-then-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Check wiring, then run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#put-configuration-and-results-elsewhere" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Put configuration and results elsewhere
       
     </span>
   </a>
@@ -562,10 +695,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-output-locations" class="md-nav__link">
+  <a href="#see-automatic-setup-with-real-public-data" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optional output locations
+        See automatic setup with real public data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#second-option-manual-yaml-editing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Second option: manual YAML editing
       
     </span>
   </a>
@@ -588,14 +732,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/yaml_basics/" class="md-nav__link">
+      <a href="../public_cohort/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    YAML and Paths
+    4. Three-Sample Public Cohort
   
 
     
@@ -623,7 +767,35 @@
   <span class="md-ellipsis">
     
   
-    Input Files
+    Input Files and Folder Layouts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/yaml_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manual YAML Editing (Second Option)
   
 
     
@@ -676,7 +848,7 @@
   <span class="md-ellipsis">
     
   
-    Configure and Run
+    Run and Configure
   
 
     
@@ -692,11 +864,39 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Configure and Run
+    Run and Configure
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../running/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -712,7 +912,7 @@
   <span class="md-ellipsis">
     
   
-    Illumina
+    Illumina Setup
   
 
     
@@ -740,7 +940,7 @@
   <span class="md-ellipsis">
     
   
-    ONT
+    ONT Setup
   
 
     
@@ -824,35 +1024,7 @@
   <span class="md-ellipsis">
     
   
-    Parameter Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../running/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflow Overview
+    All Parameters
   
 
     
@@ -905,7 +1077,7 @@
   <span class="md-ellipsis">
     
   
-    Results and Interpretation
+    Understand Results
   
 
     
@@ -921,7 +1093,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Results and Interpretation
+    Understand Results
   
 
           </label>
@@ -969,7 +1141,7 @@
   <span class="md-ellipsis">
     
   
-    Models & Pathology
+    Models and Pathology
   
 
     
@@ -997,7 +1169,7 @@
   <span class="md-ellipsis">
     
   
-    Gallery
+    Results Gallery
   
 
     
@@ -1050,7 +1222,7 @@
   <span class="md-ellipsis">
     
   
-    Help and Project
+    Help and About
   
 
     
@@ -1066,7 +1238,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Help and Project
+    Help and About
   
 
           </label>
@@ -1190,10 +1362,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#illumina" class="md-nav__link">
+  <a href="#before-you-begin" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina
+        Before you begin
       
     </span>
   </a>
@@ -1201,10 +1373,143 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont" class="md-nav__link">
+  <a href="#illumina-step-by-step" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT
+        Illumina step by step
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Illumina step by step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-organize-paired-reads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Organize paired reads
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-the-sample-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create the sample table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-generate-the-illumina-yaml-and-samplesheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Generate the Illumina YAML and samplesheet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-inspect-what-was-generated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Inspect what was generated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-check-wiring-then-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Check wiring, then run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ont-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ONT step by step
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ONT step by step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-organize-barcode-folders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Organize barcode folders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-an-explicit-barcode-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create an explicit barcode table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-generate-and-inspect-the-ont-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Generate and inspect the ONT YAML
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-check-wiring-then-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Check wiring, then run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#put-configuration-and-results-elsewhere" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Put configuration and results elsewhere
       
     </span>
   </a>
@@ -1212,10 +1517,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-output-locations" class="md-nav__link">
+  <a href="#see-automatic-setup-with-real-public-data" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optional output locations
+        See automatic setup with real public data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#second-option-manual-yaml-editing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Second option: manual YAML editing
       
     </span>
   </a>
@@ -1247,66 +1563,176 @@
   
 
 
-<h1 id="automatic-setup-from-a-reads-folder">Automatic setup from a reads folder<a class="headerlink" href="#automatic-setup-from-a-reads-folder" title="Permanent link">&para;</a></h1>
-<p><code>--auto_params</code> is the shortest path from your FASTQ folder to a reproducible run. It detects the files, validates tumor/normal labels, and writes the YAML automatically. For Illumina it also writes the full paired-FASTQ samplesheet.</p>
+<h1 id="automatic-setup-from-a-reads-folder">Automatic Setup from a Reads Folder<a class="headerlink" href="#automatic-setup-from-a-reads-folder" title="Permanent link">&para;</a></h1>
+<p><code>--auto_params</code> is the recommended default for configuring your own FASTQs. You provide:</p>
+<ol>
+<li>a folder containing the reads; and</li>
+<li>a small table that maps each sample to <code>TUMOR</code> or <code>NORMAL</code>.</li>
+</ol>
+<p>OncoTracer checks the expected layout and writes a runnable YAML file. For Illumina, it also writes the paired-FASTQ samplesheet.</p>
 <p><img alt="Example OncoTracer input layouts: paired Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv." src="../assets/tutorial/auto_params_folder_layout.svg" /></p>
-<p><em>Organize Illumina reads by matching R1/R2 prefixes or ONT reads by barcode, then map each sample in <code>samples.csv</code>; <code>--auto_params</code> detects the inputs and writes the run configuration.</em></p>
 <div class="admonition note">
-<p class="admonition-title">Preparation only</p>
-<p><code>--auto_params</code> writes and validates configuration files. It does not start the analysis. Inspect the files, then run the two commands printed at the end.</p>
+<p class="admonition-title">Configuration step, not analysis</p>
+<p><code>--auto_params</code> creates configuration files and then stops. It does not align reads or call CNAs. Inspect the generated files, optionally perform a stub wiring check, and then start the real run with the command printed at the end.</p>
 </div>
-<h2 id="illumina">Illumina<a class="headerlink" href="#illumina" title="Permanent link">&para;</a></h2>
-<p>Put exactly one pair per sample in one folder. Supported names include <code>A5645_R1.fastq.gz</code>/<code>A5645_R2.fastq.gz</code> and <code>A5645_1.fastq.gz</code>/<code>A5645_2.fastq.gz</code>.</p>
-<p>Create <code>samples.csv</code>:</p>
+<h2 id="before-you-begin">Before you begin<a class="headerlink" href="#before-you-begin" title="Permanent link">&para;</a></h2>
+<p>Install the <a href="../installation/">requirements</a>, clone OncoTracer, and enter the repository:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">  </span><span class="c1"># skip this line if you already have a current clone</span>
+<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                        </span><span class="c1"># main.nf is here; run all commands from this directory</span>
+nextflow<span class="w"> </span>-version<span class="w">                                    </span><span class="c1"># verify Nextflow</span>
+</code></pre></div>
+<p>Use absolute paths. Find one with <code>realpath</code>:</p>
+<div class="highlight"><pre><span></span><code>realpath<span class="w"> </span>/path/to/my_reads<span class="w"> </span><span class="c1"># print the absolute path to the reads folder</span>
+</code></pre></div>
+<p>Choose the section matching your sequencer.</p>
+<h2 id="illumina-step-by-step">Illumina step by step<a class="headerlink" href="#illumina-step-by-step" title="Permanent link">&para;</a></h2>
+<h3 id="1-organize-paired-reads">1. Organize paired reads<a class="headerlink" href="#1-organize-paired-reads" title="Permanent link">&para;</a></h3>
+<p>Put exactly one R1 file and one R2 file per sample directly inside one folder. Keep the sample prefix identical:</p>
+<div class="highlight"><pre><span></span><code>/data/study42/illumina_fastq/
+├── A5645_R1.fastq.gz
+├── A5645_R2.fastq.gz
+├── A5544_R1.fastq.gz
+├── A5544_R2.fastq.gz
+├── B5437_R1.fastq.gz
+└── B5437_R2.fastq.gz
+</code></pre></div>
+<p>Supported pair names include:</p>
+<ul>
+<li><code>A5645_R1.fastq.gz</code> and <code>A5645_R2.fastq.gz</code>;</li>
+<li><code>A5645_1.fastq.gz</code> and <code>A5645_2.fastq.gz</code>;</li>
+<li>the same patterns ending in <code>.fq.gz</code>.</li>
+</ul>
+<p>The text before <code>_R1</code>/<code>_R2</code> or <code>_1</code>/<code>_2</code> must exactly match <code>sample_name</code> in the table. The automatic detector expects one pair per sample in the top level of the reads folder; it does not recursively combine lane files.</p>
+<h3 id="2-create-the-sample-table">2. Create the sample table<a class="headerlink" href="#2-create-the-sample-table" title="Permanent link">&para;</a></h3>
+<p>Open a new CSV file:</p>
+<div class="highlight"><pre><span></span><code>nano<span class="w"> </span>/data/study42/illumina_fastq/samples.csv<span class="w"> </span><span class="c1"># create the sample-to-status table</span>
+</code></pre></div>
+<p>Type these headers and one row per sample:</p>
 <div class="highlight"><pre><span></span><code>sample_name,status
 A5645,TUMOR
 A5544,NORMAL
 B5437,TUMOR
 </code></pre></div>
-<p>Generate the files:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<p>In <code>nano</code>, save with <code>Ctrl+O</code>, press Enter to confirm the filename, and exit with <code>Ctrl+X</code>.</p>
+<ul>
+<li><code>sample_name</code> is the exact FASTQ filename prefix.</li>
+<li><code>status</code> is case-insensitive but must be <code>TUMOR</code> or <code>NORMAL</code>.</li>
+<li>Use short unique names containing letters, numbers, <code>_</code>, or <code>-</code>; avoid spaces.</li>
+</ul>
+<h3 id="3-generate-the-illumina-yaml-and-samplesheet">3. Generate the Illumina YAML and samplesheet<a class="headerlink" href="#3-generate-the-illumina-yaml-and-samplesheet" title="Permanent link">&para;</a></h3>
+<p>Run from the cloned <code>oncotracer</code> directory:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span>/real/path/to/illumina_fastq<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span>/real/path/to/illumina_fastq/samples.csv
+<span class="w">  </span>--reads_folder<span class="w"> </span>/data/study42/illumina_fastq<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/data/study42/illumina_fastq/samples.csv
 </code></pre></div>
-<p>Generated beside the reads:</p>
-<div class="highlight"><pre><span></span><code>illumina_fastq/
+<p>Before writing files, the generator requires exactly one R1/R2 pair for every table row and runs <code>gzip -t</code> on every pair. It stops with an error if a pair is missing, ambiguous, empty, or incomplete.</p>
+<p>By default it creates:</p>
+<div class="highlight"><pre><span></span><code>/data/study42/illumina_fastq/
 ├── oncotracer_config/
 │   ├── illumina.auto.yml
 │   └── illumina.samplesheet.csv
 └── oncotracer_results/
 </code></pre></div>
-<p>Run:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/real/path/to/illumina_fastq/oncotracer_config/illumina.auto.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/real/path/to/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w"> </span>-resume
+<h3 id="4-inspect-what-was-generated">4. Inspect what was generated<a class="headerlink" href="#4-inspect-what-was-generated" title="Permanent link">&para;</a></h3>
+<p>Display both files:</p>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w">       </span><span class="c1"># show the run YAML</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.samplesheet.csv<span class="w"> </span><span class="c1"># show detected R1/R2 mappings</span>
 </code></pre></div>
-<h2 id="ont">ONT<a class="headerlink" href="#ont" title="Permanent link">&para;</a></h2>
-<p>Point <code>--reads_folder</code> to <code>fastq_pass</code>, with FASTQ files inside barcode folders. The safest table includes the barcode explicitly:</p>
+<p>The generated YAML will look like this. This box is an annotated <strong>YAML example</strong>, not a terminal command:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span><span class="w">                                      </span><span class="c1"># choose paired-end Illumina processing</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/illumina_fastq</span><span class="w">            </span><span class="c1"># common input/output parent mounted into the container</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/illumina_fastq/oncotracer_results</span><span class="w"> </span><span class="c1"># final output directory</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/illumina_fastq/oncotracer_config/illumina.samplesheet.csv</span><span class="w"> </span><span class="c1"># generated R1/R2 table</span>
+<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span><span class="w">                </span><span class="c1"># SAMURAI analysis preset</span>
+<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span><span class="w">                            </span><span class="c1"># CNA caller used for Illumina</span>
+<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">                            </span><span class="c1"># copy-number bin size in kilobases</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># optional classifier/pathology reporting is off</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                                        </span><span class="c1"># protect an existing real-project output directory</span>
+</code></pre></div>
+<p>The generated samplesheet contains absolute paths:</p>
+<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
+A5645,/data/study42/illumina_fastq/A5645_R1.fastq.gz,/data/study42/illumina_fastq/A5645_R2.fastq.gz,tumor
+A5544,/data/study42/illumina_fastq/A5544_R1.fastq.gz,/data/study42/illumina_fastq/A5544_R2.fastq.gz,normal
+B5437,/data/study42/illumina_fastq/B5437_R1.fastq.gz,/data/study42/illumina_fastq/B5437_R2.fastq.gz,tumor
+</code></pre></div>
+<h3 id="5-check-wiring-then-run">5. Check wiring, then run<a class="headerlink" href="#5-check-wiring-then-run" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
+</code></pre></div>
+<p><code>-stub-run</code> uses placeholder task outputs. It can catch parameter and connection problems, but it does <strong>not</strong> fully test the real FASTQs, tools, reference, or CNA analysis. The second command performs the real work. <code>-resume</code> reuses unchanged completed tasks if a run is repeated or interrupted.</p>
+<h2 id="ont-step-by-step">ONT step by step<a class="headerlink" href="#ont-step-by-step" title="Permanent link">&para;</a></h2>
+<h3 id="1-organize-barcode-folders">1. Organize barcode folders<a class="headerlink" href="#1-organize-barcode-folders" title="Permanent link">&para;</a></h3>
+<p>Point <code>--reads_folder</code> at the <code>fastq_pass</code> directory. Put one or more <code>.fastq</code>, <code>.fq</code>, <code>.fastq.gz</code>, or <code>.fq.gz</code> files directly inside each barcode directory:</p>
+<div class="highlight"><pre><span></span><code>/data/study42/fastq_pass/
+├── barcode01/
+│   └── reads_001.fastq.gz
+├── barcode02/
+│   └── reads_001.fastq.gz
+└── barcode03/
+    └── reads_001.fastq.gz
+</code></pre></div>
+<h3 id="2-create-an-explicit-barcode-table">2. Create an explicit barcode table<a class="headerlink" href="#2-create-an-explicit-barcode-table" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nano<span class="w"> </span>/data/study42/fastq_pass/samples.csv<span class="w"> </span><span class="c1"># create the barcode-to-sample table</span>
+</code></pre></div>
+<p>Enter:</p>
 <div class="highlight"><pre><span></span><code>barcode,sample_name,status
 barcode01,A5645,TUMOR
 barcode02,A5544,NORMAL
 barcode03,B5437,TUMOR
 </code></pre></div>
-<p>Generate and run:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<p>Save with <code>Ctrl+O</code>, press Enter, then exit with <code>Ctrl+X</code>.</p>
+<p>Each barcode value must exactly match a directory name. OncoTracer requires at least one <code>TUMOR</code> row. Normal rows are written to the optional ONT normal settings. A two-column <code>sample_name,status</code> table is accepted and is mapped to alphabetically sorted barcode directories, but the explicit three-column form above is safer and easier to audit.</p>
+<h3 id="3-generate-and-inspect-the-ont-yaml">3. Generate and inspect the ONT YAML<a class="headerlink" href="#3-generate-and-inspect-the-ont-yaml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span>/real/path/to/fastq_pass<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span>/real/path/to/fastq_pass/samples.csv
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/real/path/to/fastq_pass/oncotracer_config/ont.auto.yml
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/real/path/to/fastq_pass/oncotracer_config/ont.auto.yml<span class="w"> </span>-resume
+<span class="w">  </span>--reads_folder<span class="w"> </span>/data/study42/fastq_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/data/study42/fastq_pass/samples.csv
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,140p&#39;</span><span class="w"> </span>/data/study42/fastq_pass/oncotracer_config/ont.auto.yml<span class="w"> </span><span class="c1"># inspect the generated YAML</span>
 </code></pre></div>
-<p>A two-column <code>sample_name,status</code> table is also accepted for ONT; rows are mapped to alphabetically sorted barcode directories. Use the explicit three-column form to avoid accidental ordering mistakes.</p>
-<h2 id="optional-output-locations">Optional output locations<a class="headerlink" href="#optional-output-locations" title="Permanent link">&para;</a></h2>
-<p>The defaults keep generated files and results beside the reads. Override them when needed:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
+<p>The generated file will look like this:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span><span class="w">                                           </span><span class="c1"># choose Oxford Nanopore processing</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/fastq_pass</span><span class="w">                </span><span class="c1"># common input/output parent mounted into the container</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/fastq_pass/oncotracer_results</span><span class="w"> </span><span class="c1"># final output directory</span>
+<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/fastq_pass</span><span class="w">                </span><span class="c1"># parent directory containing barcode folders</span>
+<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode03</span><span class="w">                   </span><span class="c1"># tumor barcode folders, in sample order</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A5645,B5437</span><span class="w">                       </span><span class="c1"># tumor sample names, in the same order</span>
+<span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_biopsy</span><span class="w">                    </span><span class="c1"># SAMURAI analysis preset</span>
+<span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ichorcna</span><span class="w">                                </span><span class="c1"># CNA caller used for ONT</span>
+<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w">                                 </span><span class="c1"># copy-number bin size in kilobases</span>
+<span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w">                              </span><span class="c1"># accept completed FASTQs immediately</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># optional classifier/pathology reporting is off</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                                        </span><span class="c1"># protect an existing real-project output directory</span>
+<span class="nt">ont_normal_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/fastq_pass</span><span class="w">         </span><span class="c1"># parent directory for normal barcode folders</span>
+<span class="nt">ont_normal_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode02</span><span class="w">                      </span><span class="c1"># normal barcode folders</span>
+<span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A5544</span><span class="w">                      </span><span class="c1"># matching normal sample names</span>
+</code></pre></div>
+<p>The barcode and sample-name lists are positional: <code>barcode01</code> maps to <code>A5645</code>, and <code>barcode03</code> maps to <code>B5437</code>.</p>
+<h3 id="4-check-wiring-then-run">4. Check wiring, then run<a class="headerlink" href="#4-check-wiring-then-run" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/fastq_pass/oncotracer_config/ont.auto.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/fastq_pass/oncotracer_config/ont.auto.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
+</code></pre></div>
+<p>Use <code>--singularity</code> instead of <code>--docker</code> on a configured HPC system.</p>
+<h2 id="put-configuration-and-results-elsewhere">Put configuration and results elsewhere<a class="headerlink" href="#put-configuration-and-results-elsewhere" title="Permanent link">&para;</a></h2>
+<p>The defaults create <code>oncotracer_config/</code> and <code>oncotracer_results/</code> beside the reads. To choose other locations:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span>/data/run42/fastq<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span>/data/run42/samples.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/data/run42/samples.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--auto_config_dir<span class="w"> </span>/data/run42/config<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--auto_outdir<span class="w"> </span>/data/run42/results
 </code></pre></div>
-<p>CSV, tab-delimited, and whitespace-delimited TXT tables are accepted. Status is case-insensitive but must be <code>TUMOR</code> or <code>NORMAL</code>. SAMURAI directories are derived automatically as <code>&lt;outdir&gt;/01_samurai_illumina</code> or <code>&lt;outdir&gt;/01_samurai_ont</code>; they do not belong in the YAML.</p>
+<p>OncoTracer derives <code>lpwgs_root</code> as a common parent that makes the reads, generated configuration, and outputs visible inside the container. It also derives the SAMURAI directory automatically as <code>&lt;outdir&gt;/01_samurai_illumina</code> or <code>&lt;outdir&gt;/01_samurai_ont</code>; do not add a SAMURAI output directory to the YAML.</p>
+<p>CSV, tab-delimited, and whitespace-delimited TXT sample tables are accepted. CSV is recommended because its columns are easiest to see and check.</p>
+<h2 id="see-automatic-setup-with-real-public-data">See automatic setup with real public data<a class="headerlink" href="#see-automatic-setup-with-real-public-data" title="Permanent link">&para;</a></h2>
+<p>The <a href="../public_cohort/">HCC1143 public cohort</a> uses <code>--auto_params</code> on three paired Illumina samples—six FASTQ files—and then verifies that all three samples appear in the results. Its runnable files are in <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs"><code>examples/hcc1143_lpwgs</code></a>.</p>
+<h2 id="second-option-manual-yaml-editing">Second option: manual YAML editing<a class="headerlink" href="#second-option-manual-yaml-editing" title="Permanent link">&para;</a></h2>
+<p>For the supported folder layouts above, the generated YAML is ready to run; you do not need to edit it. Use manual editing only when automatic detection does not fit the study or you need settings that are not exposed by automatic setup.</p>
+<ul>
+<li><a href="../configuration/yaml_basics/">Manual YAML editing and path rules</a> explains YAML syntax and container-visible paths.</li>
+<li><a href="../configuration/illumina/#second-option-manual-setup">Illumina manual setup</a> includes <a href="../configuration/illumina/#how-to-edit-a-yaml-file-from-the-terminal">How to edit a YAML file from the terminal</a>.</li>
+<li><a href="../configuration/ont/#second-option-manual-setup">ONT manual setup</a> covers custom barcode mappings and settings.</li>
+</ul>
 
 
 
