@@ -10,7 +10,15 @@ OncoTracer checks the expected layout and writes a runnable YAML file. For Illum
 ![Example OncoTracer input layouts: Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv.](assets/tutorial/auto_params_folder_layout.svg)
 
 !!! note "Configuration step, not analysis"
-    `--auto_params` creates configuration files and then stops. It does not align reads or call CNAs. The command printed at the end starts the real analysis.
+    `--auto_params` creates configuration files and then stops. It does not align reads or call CNAs. After it finishes, use the generated YAML in the real analysis command shown below.
+
+## Why Automatic Setup creates a YAML
+
+Automatic Setup first checks and matches the input files. For Illumina, it saves the FASTQ-to-sample matches in a samplesheet. It saves that samplesheet path, the results path, and the analysis settings in a readable YAML file. The real Nextflow command reads the YAML with `-params-file`, so you do not have to retype every path and option.
+
+[![Diagram showing reads, samples.csv, and the results destination entering Automatic Setup; a generated YAML run plan stores the paths and settings, and the real Nextflow command reads it to produce BAMs, CNA tables, plots, and reports.](assets/tutorial/yaml_run_plan.svg)](assets/tutorial/yaml_run_plan.svg)
+
+*The YAML is a saved instruction sheet, not sequencing data and not an analysis result. Automatic Setup writes it; you can inspect it; the next command uses it to start the analysis. For Illumina, a separate generated samplesheet connects each sample to its FASTQ file or R1/R2 pair. Select a linked diagram or terminal image below to open it full size.*
 
 ## Before you begin
 
@@ -99,7 +107,17 @@ nextflow run main.nf --auto_params \
   --sample_table /data/study42/illumina_fastq/samples.csv
 ```
 
-Before writing files, the generator requires either one exact single-end file for every row or one R1/R2 pair for every row, and runs `gzip -t` on every file. It stops if an input is missing, corrupt, ambiguous, or if layouts are mixed.
+Before reporting success, the generator requires either one exact single-end file for every row or one R1/R2 pair for every row, and runs `gzip -t` on every file. It stops if an input is missing, corrupt, ambiguous, or if layouts are mixed.
+
+When the task finishes, list the generated files:
+
+```bash
+ls -1 /data/study42/illumina_fastq/oncotracer_config
+```
+
+[![Example terminal showing Automatic Setup completing one task and the generated Illumina YAML and samplesheet listed in the configuration folder.](assets/tutorial/auto_params_checkpoint.svg)](assets/tutorial/auto_params_checkpoint.svg)
+
+*What success looks like. The two files appear in `oncotracer_config`, while the result folder remains empty of analysis outputs. The characters in brackets and the Nextflow progress layout can differ.*
 
 By default it creates:
 

@@ -2,6 +2,10 @@
 
 This tutorial processes **all 12 Illumina plasma cfDNA libraries currently exposed by the public PRJNA754199 archive**. The main path is intentionally short: download validated reads, let OncoTracer generate the samplesheet and YAML, run the workflow, verify the outputs, and review the reports.
 
+[![Roadmap for Full Tutorial sections 1 through 7: plan and prepare the software, download and validate 12 FASTQs, generate a samplesheet and YAML with Automatic Setup, run the real analysis, verify all required outputs, and review CNA plots and reports.](assets/tutorial/full_tutorial_flow.svg)](assets/tutorial/full_tutorial_flow.svg)
+
+*Follow the numbered sections in order. The YAML connects preparation to the real analysis by saving the checked inputs, selected settings, and result folder. Select a linked diagram or terminal image below to open it full size.*
+
 ## What this tutorial does—and does not—contain
 
 The associated PLOS ONE article describes 41 plasma specimens from 15 patients: 10 longitudinal specimens from four DDLPS/WDLPS patients and 31 specimens from 11 patients with other soft-tissue tumors. On **15 July 2026**, the ENA read-run report returned only 12 read runs for the BioProject.
@@ -63,6 +67,10 @@ bash /home/student/oncotracer/examples/prjna754199/run_example.sh --download-onl
 
 This command creates `/home/student/oncotracer/test/public/prjna754199`, downloads the 12 FASTQ files, and checks their file sizes, MD5 checksums, and gzip contents. It also places `samples.csv` in the same folder. A completed file is reused if the command is run again, and an interrupted download can continue. No analysis starts yet.
 
+[![Example terminal showing successful validation of all 12 PRJNA754199 single-end FASTQs, including the final reads folder, samples.csv path, download size, and read count.](assets/tutorial/full_tutorial_download_checkpoint.svg)](assets/tutorial/full_tutorial_download_checkpoint.svg)
+
+*A complete download ends with this summary. `DOWNLOAD` and `REUSE` lines above it are both normal. If the command stops before the summary, run the same command again.*
+
 For the exact URLs, checksums, archive search, and download checks, see the [example README](https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199) and [archive details](https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md).
 
 <a id="4-generate-and-inspect-the-single-end-configuration"></a>
@@ -90,6 +98,16 @@ This command prepares the run; it does not process the reads. OncoTracer:
 3. checks that every file uses the supported single-end name and that each gzip file can be read;
 4. creates the samplesheet and YAML required by the analysis command; and
 5. records where the final results should be saved.
+
+List the two generated files:
+
+```bash
+ls -1 /home/student/oncotracer/test/configs/prjna754199
+```
+
+[![Example terminal showing PRJNA754199 Automatic Setup completed and listing illumina.auto.yml and illumina.samplesheet.csv, with labels explaining the purpose of each file.](assets/tutorial/full_tutorial_setup_checkpoint.svg)](assets/tutorial/full_tutorial_setup_checkpoint.svg)
+
+*Automatic Setup has prepared the 12-sample run but has not analyzed the reads. The samplesheet connects each sample to its FASTQ; the YAML stores the paths and analysis choices used in the next section.*
 
 The four path options have distinct purposes:
 
@@ -133,6 +151,10 @@ Run the versioned verifier against the final output directory:
 python3 /home/student/oncotracer/examples/prjna754199/verify_outputs.py \
   --outdir /home/student/oncotracer/test/runs/prjna754199
 ```
+
+[![Example terminal showing the PRJNA754199 output verifier's exact success message that the complete tutorial outputs are verified.](assets/tutorial/full_tutorial_verify_checkpoint.svg)](assets/tutorial/full_tutorial_verify_checkpoint.svg)
+
+*Continue to interpretation only after the verifier prints `SUCCESS: complete PRJNA754199 tutorial outputs are verified.`*
 
 The verifier requires the exact 12 manifest aliases—not merely 12 arbitrary rows—across the BAMs, SAMURAI segments, refinement summary, and classifier table. It also requires the CNA tables, plots, clinician-report index, and workflow summary used by this tutorial.
 

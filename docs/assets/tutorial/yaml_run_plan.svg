@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">Why OncoTracer generates a YAML file</title>
+  <desc id="desc">A beginner diagram showing sample information, read locations, analysis choices, and result location entering a YAML run plan. Nextflow reads that plan to choose the correct workflow, find files, apply settings, and save outputs. The YAML contains paths and settings, not sequencing reads.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" x2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#134e4a"/></linearGradient>
+    <filter id="shadow" x="-15%" y="-10%" width="130%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0f172a" flood-opacity=".14"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#0f766e"/></marker>
+  </defs>
+  <style>
+    .h1{font:700 34px system-ui,sans-serif;fill:#f8fafc}.lead{font:18px system-ui,sans-serif;fill:#cbd5e1}.title{font:700 23px system-ui,sans-serif;fill:#0f172a}
+    .body{font:17px system-ui,sans-serif;fill:#475569}.label{font:700 14px system-ui,sans-serif;fill:#0f766e;letter-spacing:.08em}.code{font:15px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
+    .codekey{font:700 15px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#0f766e}.small{font:14px system-ui,sans-serif;fill:#64748b}.banner{font:700 18px system-ui,sans-serif;fill:#115e59}
+  </style>
+  <rect width="1400" height="760" fill="#f1f5f9"/>
+  <rect width="1400" height="116" fill="url(#header)"/>
+  <text class="h1" x="54" y="49">Why does OncoTracer generate a YAML file?</text>
+  <text class="lead" x="54" y="82">The YAML is a small, readable run plan. It connects your files and choices to the real Nextflow analysis.</text>
+
+  <g filter="url(#shadow)"><rect x="54" y="158" width="326" height="460" rx="18" fill="#fff"/></g>
+  <text class="label" x="82" y="196">AUTOMATIC SETUP COLLECTS</text>
+  <text class="title" x="82" y="231">What this run needs</text>
+  <rect x="82" y="260" width="270" height="70" rx="10" fill="#eff6ff" stroke="#93c5fd"/>
+  <circle cx="109" cy="284" r="12" fill="#2563eb"/><text class="body" x="132" y="289">Sequencer route</text><text class="small" x="132" y="312">Illumina or ONT</text>
+  <rect x="82" y="345" width="270" height="70" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M99 369h16l5 6h20v20H99z" fill="#fbbf24" stroke="#d97706"/><text class="body" x="151" y="376">Where the reads are</text><text class="small" x="151" y="399">FASTQs or barcode folders</text>
+  <rect x="82" y="430" width="270" height="70" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <path d="M100 449h40v35h-40z" fill="#fff" stroke="#64748b"/><path d="M107 459h26M107 468h26M107 477h18" stroke="#64748b"/><text class="body" x="151" y="461">Who each sample is</text><text class="small" x="151" y="484">samples.csv mappings</text>
+  <rect x="82" y="515" width="270" height="70" rx="10" fill="#f0fdf4" stroke="#86efac"/>
+  <circle cx="120" cy="550" r="18" fill="#16a34a"/><path d="M110 550h20M120 540v20" stroke="#fff" stroke-width="3"/><text class="body" x="151" y="546">Where results go</text><text class="small" x="151" y="569">optional --auto_outdir</text>
+
+  <path d="M398 388 H458" stroke="#0f766e" stroke-width="5" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)"><path d="M480 150h330l86 86v382H480z" fill="#fffbeb" stroke="#f59e0b" stroke-width="3"/><path d="M810 150v86h86" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"/></g>
+  <text class="label" x="516" y="202" fill="#92400e">GENERATED YAML RUN PLAN</text>
+  <text class="title" x="516" y="238">illumina.auto.yml</text>
+  <rect x="516" y="264" width="328" height="265" rx="10" fill="#fff" stroke="#fbbf24"/>
+  <text class="codekey" x="538" y="298">mode:</text><text class="code" x="604" y="298">illumina</text>
+  <text class="codekey" x="538" y="330">lpwgs_root:</text><text class="code" x="556" y="353">/data/study42/illumina_fastq</text>
+  <text class="codekey" x="538" y="385">outdir:</text><text class="code" x="556" y="408">.../oncotracer_results</text>
+  <text class="codekey" x="538" y="440">illumina_samplesheet:</text>
+  <text class="code" x="556" y="463">.../oncotracer_config/</text><text class="code" x="556" y="485">illumina.samplesheet.csv</text>
+  <text class="codekey" x="538" y="518">illumina_caller:</text><text class="code" x="690" y="518">qdnaseq</text>
+  <text class="small" x="516" y="561">Contains paths and settings—not sequencing reads.</text>
+  <text class="small" x="516" y="586">Illumina setup also writes the samplesheet named above.</text>
+
+  <path d="M916 388 H976" stroke="#0f766e" stroke-width="5" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)"><rect x="998" y="158" width="348" height="460" rx="18" fill="#fff"/></g>
+  <text class="label" x="1026" y="196">THE REAL COMMAND READS IT</text>
+  <text class="title" x="1026" y="231">Nextflow now knows</text>
+  <rect x="1026" y="260" width="292" height="92" rx="10" fill="#111827"/>
+  <text x="1044" y="289" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="14" fill="#e2e8f0">nextflow run main.nf --docker</text>
+  <text x="1044" y="316" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="14" fill="#99f6e4">  -params-file illumina.auto.yml</text>
+  <text x="1044" y="338" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="14" fill="#e2e8f0">  -resume</text>
+  <circle cx="1047" cy="392" r="13" fill="#0f766e"/><path d="M1041 392l4 4 9-11" fill="none" stroke="#fff" stroke-width="2.5"/><text class="body" x="1072" y="398">which workflow route to use</text>
+  <circle cx="1047" cy="438" r="13" fill="#0f766e"/><path d="M1041 438l4 4 9-11" fill="none" stroke="#fff" stroke-width="2.5"/><text class="body" x="1072" y="444">where every input is located</text>
+  <circle cx="1047" cy="484" r="13" fill="#0f766e"/><path d="M1041 484l4 4 9-11" fill="none" stroke="#fff" stroke-width="2.5"/><text class="body" x="1072" y="490">which analysis settings to apply</text>
+  <circle cx="1047" cy="530" r="13" fill="#0f766e"/><path d="M1041 530l4 4 9-11" fill="none" stroke="#fff" stroke-width="2.5"/><text class="body" x="1072" y="536">where to save tables and plots</text>
+  <text class="small" x="1026" y="578">-resume can reuse completed work because the</text><text class="small" x="1026" y="598">same saved plan is supplied again.</text>
+
+  <rect x="54" y="661" width="1292" height="64" rx="14" fill="#ccfbf1"/>
+  <text class="banner" x="83" y="690">Automatic Setup writes the YAML → you can inspect it → the real analysis reads it.</text>
+  <text class="body" x="83" y="714">This separates preparation from analysis and prevents long commands full of paths and settings.</text>
+</svg>
