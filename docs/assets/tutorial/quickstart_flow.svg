@@ -26,7 +26,7 @@
   <rect x="78" y="258" width="324" height="68" rx="9" fill="#111827"/>
   <text class="code" x="94" y="283">git clone ...</text>
   <text class="code" x="94" y="308">cd /home/student/oncotracer</text>
-  <text class="small" x="78" y="352">This folder contains main.nf and the example helper.</text>
+  <text class="small" x="78" y="352">Contains main.nf and the example helper.</text>
 
   <path d="M438 283 H478" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
   <g filter="url(#shadow)"><rect x="492" y="188" width="372" height="190" rx="16" fill="#fff"/></g>

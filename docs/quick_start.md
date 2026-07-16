@@ -58,15 +58,19 @@ This preparation command:
 
 It does **not** align reads or call CNAs.
 
-List the two YAML files:
+[![Terminal checkpoint showing the QuickStart preparation command completed, with the checked Illumina and ONT example reads and generated run files ready.](assets/tutorial/quickstart_prepare_checkpoint.svg)](assets/tutorial/quickstart_prepare_checkpoint.svg)
+
+*Continue when `MAKE_TEST_DATA` reaches `[100%] 1 of 1` and the terminal prompt returns. The characters in brackets and the progress layout can differ. No CNA analysis has started.*
+
+List the two generated run plans:
 
 ```bash
-find /home/student/oncotracer/test/configs -maxdepth 1 -type f -print
+ls -1 /home/student/oncotracer/test/configs
 ```
 
-[![Example terminal showing a clone, the QuickStart preparation command completing, and the two generated YAML files under test/configs.](assets/tutorial/quickstart_terminal_prepare.svg)](assets/tutorial/quickstart_terminal_prepare.svg)
+[![Terminal checkpoint listing the generated Illumina and ONT YAML run plans, with labels explaining what each file controls.](assets/tutorial/quickstart_setup_checkpoint.svg)](assets/tutorial/quickstart_setup_checkpoint.svg)
 
-*What preparation looks like. `DOWNLOAD` means a file was transferred; `REUSE` means an existing checked file was kept. The characters in brackets and the progress layout can differ.*
+*The two YAML files are separate because Illumina and ONT use different inputs and CNA callers. They contain paths and settings, not reads or results.*
 
 The prepared folders are:
 
@@ -169,6 +173,17 @@ Keep the terminal open. This command aligns the Illumina reads, runs qDNAseq, re
 !!! info "If Nextflow displays `0 of 1`"
     The outer `RUN_ILLUMINA_SAMURAI` task waits for a nested SAMURAI workflow. Its counter can remain at `0 of 1` while alignment and CNA calling are active. See [Troubleshooting](troubleshooting.md) before stopping it.
 
+After the command returns to the normal prompt, display the first three summary lines:
+
+```bash
+head -n 3 \
+  /home/student/oncotracer/test/runs/illumina/06_workflow_summary/workflow_summary.txt
+```
+
+[![Terminal checkpoint showing the completed Illumina QuickStart summary with qDNAseq, 100 kilobase bins, and the Illumina result folder.](assets/tutorial/quickstart_illumina_run_checkpoint.svg)](assets/tutorial/quickstart_illumina_run_checkpoint.svg)
+
+*Continue to the ONT run when the summary begins with `mode=illumina` and `dataset=illumina_qdnaseq_100kb`. Your absolute paths can differ.*
+
 ### 5. Run the ONT analysis
 
 After the Illumina command finishes, run:
@@ -182,14 +197,31 @@ nextflow run /home/student/oncotracer/main.nf --docker \
 
 This command reads the ONT YAML, assigns the FASTQ below `barcode01` to `DRR165691`, aligns the reads, runs ichorCNA, refines boundaries, and creates tables and plots.
 
-### 6. Confirm and open the results
-
-Display the two workflow summaries:
+After the command returns to the normal prompt, display the first three ONT summary lines:
 
 ```bash
-cat /home/student/oncotracer/test/runs/illumina/06_workflow_summary/workflow_summary.txt
-cat /home/student/oncotracer/test/runs/ont/06_workflow_summary/workflow_summary.txt
+head -n 3 \
+  /home/student/oncotracer/test/runs/ont/06_workflow_summary/workflow_summary.txt
 ```
+
+[![Terminal checkpoint showing the completed ONT QuickStart summary with ichorCNA, 500 kilobase bins, and the ONT result folder.](assets/tutorial/quickstart_ont_run_checkpoint.svg)](assets/tutorial/quickstart_ont_run_checkpoint.svg)
+
+*Continue when the summary begins with `mode=ont` and `dataset=ONT_ichorcna_500kb`. Your absolute paths can differ.*
+
+### 6. Confirm and open the results
+
+Run the versioned QuickStart verifier. It only checks completed files; it does not rerun either analysis.
+
+```bash
+python3 /home/student/oncotracer/examples/quickstart/verify_outputs.py \
+  --test-root /home/student/oncotracer/test
+```
+
+[![Terminal checkpoint showing the QuickStart verifier success message and confirmation that both workflow summaries, CNA tables, and plot PDFs were found.](assets/tutorial/quickstart_results_checkpoint.svg)](assets/tutorial/quickstart_results_checkpoint.svg)
+
+*Open the results only after the verifier prints `SUCCESS: both QuickStart workflows completed and required outputs were found.` If a file is missing, it prints that path instead.*
+
+For each technology, the verifier checks the workflow summary, CNA event table, and per-sample plot PDF.
 
 Important result folders are:
 
@@ -232,9 +264,7 @@ A complete helper run ends with:
 SUCCESS: both public workflows completed and produced the expected outputs.
 ```
 
-[![Example terminal showing the final QuickStart success message and the Illumina and ONT workflow summary paths.](assets/tutorial/quickstart_terminal_success.svg)](assets/tutorial/quickstart_terminal_success.svg)
-
-*The exact paths differ if the repository was cloned somewhere else. The final success sentence should match.*
+The exact paths differ if the repository was cloned somewhere else. The final success sentence should match.
 
 <a id="next-run-the-real-six-fastq-cohort"></a>
 
