@@ -10,12 +10,14 @@ single folder. Use one layout consistently across the run.
 
 ### 1. Arrange the FASTQs
 
-From the cloned repository, create a project tree and place the reads in `illumina_fastq/`:
+Place the reads in `illumina_fastq/`. The example below assumes the repository
+is `/home/student/oncotracer`; replace that prefix if your clone is elsewhere.
+The configuration and result folders are created automatically.
 
 ```bash
-cd oncotracer                                                        # enter the repository
-mkdir -p project/input/illumina_fastq project/config/illumina project/runs # create project directories
-find project/input/illumina_fastq -maxdepth 1 -type f -name '*.fastq.gz' -print | sort # inspect the reads
+cd /home/student/oncotracer
+find /home/student/oncotracer/project/input/illumina_fastq \
+  -maxdepth 1 -type f -name '*.fastq.gz' -print | sort
 ```
 
 The filenames must share the sample prefix:
@@ -67,13 +69,12 @@ sed -n '1,20p' project/input/illumina_fastq/samples.csv               # verify t
 ### 3. Generate the configuration
 
 ```bash
-ROOT=$(pwd)                                                           # save the absolute repository path
 nextflow run main.nf --auto_params \
   --mode illumina \
-  --reads_folder "$ROOT/project/input/illumina_fastq" \
-  --sample_table "$ROOT/project/input/illumina_fastq/samples.csv" \
-  --auto_config_dir "$ROOT/project/config/illumina" \
-  --auto_outdir "$ROOT/project/runs/illumina_auto"                    # generate files and stop
+  --reads_folder /home/student/oncotracer/project/input/illumina_fastq \
+  --sample_table /home/student/oncotracer/project/input/illumina_fastq/samples.csv \
+  --auto_config_dir /home/student/oncotracer/project/config/illumina \
+  --auto_outdir /home/student/oncotracer/project/runs/illumina_auto
 ```
 
 This command checks that every row has exactly one single-end file or one R1/R2 pair, requires one layout for the whole run, and verifies every gzip stream. It creates:
@@ -109,15 +110,16 @@ force: false
 
 The generator chooses an absolute `lpwgs_root` that contains the reads, generated configuration, and results. Your path will differ from `/home/student/oncotracer`.
 
-### 5. Check wiring, run, and inspect the summary
+### 5. Run and inspect the summary
 
 ```bash
-nextflow run main.nf -stub-run --docker -params-file project/config/illumina/illumina.auto.yml # optional workflow-wiring check
-nextflow run main.nf --docker -params-file project/config/illumina/illumina.auto.yml -resume   # real analysis
-cat project/runs/illumina_auto/06_workflow_summary/workflow_summary.txt                         # show key output paths
+nextflow run main.nf --docker \
+  -params-file /home/student/oncotracer/project/config/illumina/illumina.auto.yml \
+  -resume
+cat /home/student/oncotracer/project/runs/illumina_auto/06_workflow_summary/workflow_summary.txt
 ```
 
-The stub command uses placeholder outputs; it does not analyze or fully validate the real reads. The second command is the real run. Use `--singularity` instead of `--docker` on a configured HPC system.
+Use `--singularity` instead of `--docker` on a configured HPC system.
 
 ## Second option: manual setup
 

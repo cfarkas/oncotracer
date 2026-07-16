@@ -10,7 +10,7 @@ OncoTracer checks the expected layout and writes a runnable YAML file. For Illum
 ![Example OncoTracer input layouts: Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv.](assets/tutorial/auto_params_folder_layout.svg)
 
 !!! note "Configuration step, not analysis"
-    `--auto_params` creates configuration files and then stops. It does not align reads or call CNAs. Inspect the generated files, optionally perform a stub wiring check, and then start the real run with the command printed at the end.
+    `--auto_params` creates configuration files and then stops. It does not align reads or call CNAs. The command printed at the end starts the real analysis.
 
 ## Before you begin
 
@@ -157,14 +157,15 @@ A5645,/data/study42/illumina_fastq/A5645.fastq.gz,,tumor
 
 Classifier and pathology-model options supplied to the `--auto_params` command are written into the YAML, making the later real run self-contained. The [Full Tutorial](full_tutorial.md#4-generate-the-samplesheet-and-yaml-automatically) demonstrates this with CNA-only clinician-facing reports and no pathology table.
 
-### 5. Check wiring, then run
+### 5. Run the analysis
 
 ```bash
-nextflow run main.nf -stub-run --docker -params-file /data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml # optional workflow-wiring check
-nextflow run main.nf --docker -params-file /data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml -resume   # real analysis
+nextflow run main.nf --docker \
+  -params-file /data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml \
+  -resume
 ```
 
-`-stub-run` uses placeholder task outputs. It can catch parameter and connection problems, but it does **not** fully test the real FASTQs, tools, reference, or CNA analysis. The second command performs the real work. `-resume` reuses unchanged completed tasks if a run is repeated or interrupted.
+`-resume` reuses unchanged completed tasks if a run is repeated or interrupted.
 
 ## ONT step by step
 
@@ -199,7 +200,7 @@ barcode03,B5437,TUMOR
 
 Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`.
 
-Each barcode value must exactly match a directory name. OncoTracer requires at least one `TUMOR` row. Normal rows are written to the optional ONT normal settings. A two-column `sample_name,status` table is accepted and is mapped to alphabetically sorted barcode directories, but the explicit three-column form above is safer and easier to audit.
+Each barcode value must exactly match a directory name. OncoTracer requires at least one `TUMOR` row. Normal rows are written to the optional ONT normal settings. A two-column `sample_name,status` table is accepted and is mapped to alphabetically sorted barcode directories, but the explicit three-column form above is safer and easier to check.
 
 ### 3. Generate and inspect the ONT YAML
 
@@ -238,18 +239,19 @@ ont_normal_sample_names: A5544                      # matching normal sample nam
 
 The barcode and sample-name lists are positional: `barcode01` maps to `A5645`, and `barcode03` maps to `B5437`.
 
-### 4. Check wiring, then run
+### 4. Run the analysis
 
 ```bash
-nextflow run main.nf -stub-run --docker -params-file /data/study42/fastq_pass/oncotracer_config/ont.auto.yml # optional workflow-wiring check
-nextflow run main.nf --docker -params-file /data/study42/fastq_pass/oncotracer_config/ont.auto.yml -resume   # real analysis
+nextflow run main.nf --docker \
+  -params-file /data/study42/fastq_pass/oncotracer_config/ont.auto.yml \
+  -resume
 ```
 
 Use `--singularity` instead of `--docker` on a configured HPC system.
 
 ## Put configuration and results elsewhere
 
-The defaults create `oncotracer_config/` and `oncotracer_results/` beside the reads. To choose other locations:
+The defaults create `oncotracer_config/` and `oncotracer_results/` inside the reads folder. To choose other locations:
 
 ```bash
 nextflow run main.nf --auto_params \
@@ -259,6 +261,12 @@ nextflow run main.nf --auto_params \
   --auto_config_dir /data/run42/config \
   --auto_outdir /data/run42/results
 ```
+
+`--auto_config_dir` is where Automatic Setup saves the generated YAML and
+Illumina samplesheet. `--auto_outdir` is where the later real analysis saves
+BAMs, CNA tables, plots, and reports. Automatic Setup creates both folders,
+writes the results path as `outdir:` in the YAML, and then stops without
+analyzing reads.
 
 OncoTracer derives `lpwgs_root` as a common parent that makes the reads, generated configuration, and outputs visible inside the container. It also derives the SAMURAI directory automatically as `<outdir>/01_samurai_illumina` or `<outdir>/01_samurai_ont`; do not add a SAMURAI output directory to the YAML.
 

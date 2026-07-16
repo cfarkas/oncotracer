@@ -12,7 +12,7 @@ OncoTracer is a Nextflow research workflow for **low-pass whole-genome sequencin
 FASTQ -> SAMURAI qDNAseq/ichorCNA -> boundary refinement -> CNA tables -> plots and reports
 ```
 
-Read the [beginner documentation](https://cfarkas.github.io/oncotracer/) for explanations of every file and command.
+Read the [documentation](https://cfarkas.github.io/oncotracer/).
 
 For a complete public patient-cohort demonstration, use the [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/): all 12 single-end plasma libraries currently exposed by PRJNA754199, from checksum-validated download through SAMURAI plots, boundary-refinement statistics, and research-use CNA interpretation.
 
@@ -62,7 +62,7 @@ The recommended default is to point `--auto_params` at a reads folder and a smal
 - [Manual YAML and path guide](https://cfarkas.github.io/oncotracer/configuration/yaml_basics/) — second option for unusual layouts or advanced settings
 - [Input-file formats](https://cfarkas.github.io/oncotracer/inputs/)
 
-`-stub-run` checks workflow wiring with placeholder tasks; it is **not** a complete validation of real FASTQ content or analysis behavior. The real command uses `-resume`, which lets Nextflow reuse unchanged tasks from an earlier or interrupted run.
+The real analysis command uses `-resume`, which lets Nextflow continue from unchanged completed steps after an interruption.
 
 ## Main outputs
 

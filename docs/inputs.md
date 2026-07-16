@@ -10,43 +10,50 @@ Choose the row that matches your data. The optional pathology file does not repl
 
 ## Keep one understandable project tree
 
-This layout keeps every configured path below one `lpwgs_root`:
+This page uses `/home/student/oncotracer` as an example repository location.
+Replace that prefix with the location of your clone. Put the reads and
+`samples.csv` in the input folders shown below. OncoTracer creates the
+`config` and `runs` folders when Automatic Setup is run.
 
 ```text
-oncotracer/                              # lpwgs_root in this example
+oncotracer/
 ├── main.nf
 ├── params/
 │   ├── my_illumina.yml
 │   └── my_ont.yml
-└── project/
+└── project/                             # lpwgs_root in this example
     ├── input/
     │   ├── illumina_fastq/
     │   │   ├── Patient_A_R1.fastq.gz
-    │   │   └── Patient_A_R2.fastq.gz
-    │   ├── illumina.samplesheet.csv
+    │   │   ├── Patient_A_R2.fastq.gz
+    │   │   ├── Patient_B_R1.fastq.gz
+    │   │   ├── Patient_B_R2.fastq.gz
+    │   │   └── samples.csv
     │   ├── pathology.csv
     │   └── fastq_pass/
     │       ├── barcode01/
     │       │   └── reads_001.fastq.gz
-    │       └── barcode02/
-    │           └── reads_001.fastq.gz
-    ├── config/
-    └── runs/
-```
-
-Create the empty directories from the repository root:
-
-```bash
-cd oncotracer                                                        # enter the cloned repository
-mkdir -p project/input/illumina_fastq project/input/fastq_pass        # sequencing input directories
-mkdir -p project/config project/runs                                  # generated configuration and result directories
-ROOT=$(pwd)                                                           # save the absolute lpwgs_root used in examples below
-echo "$ROOT"                                                        # verify it before editing files
+    │       ├── barcode02/
+    │       │   └── reads_001.fastq.gz
+    │       └── samples.csv
+    ├── config/                         # created by Automatic Setup
+    └── runs/                           # created by Automatic Setup
 ```
 
 ## Recommended: let OncoTracer map the inputs
 
-Automatic setup checks supported filenames and writes the analysis YAML. It is a configuration step and stops before analysis.
+Automatic Setup checks supported filenames and writes the analysis YAML. It
+is a configuration step and stops before analysis. The reads folder and
+sample table must already exist; the two destination folders do not.
+
+| Option | What it means |
+| --- | --- |
+| `--reads_folder` | The existing folder containing the FASTQ files. |
+| `--sample_table` | The existing CSV that connects file or barcode names to sample names and `TUMOR`/`NORMAL`. |
+| `--auto_config_dir` | Where Automatic Setup creates the YAML and, for Illumina, the generated samplesheet. The folder is created if needed. |
+| `--auto_outdir` | Where the later real analysis will save BAMs, CNA tables, plots, and reports. Automatic Setup creates this folder if needed and writes it as `outdir:` in the YAML, but no reads are analyzed yet. |
+
+Use absolute paths because Automatic Setup runs inside a Nextflow task.
 
 For Illumina, create `project/input/illumina_fastq/samples.csv`:
 
@@ -59,13 +66,13 @@ Patient_B,NORMAL
 Then run:
 
 ```bash
-ROOT=$(pwd)                                                           # run from the repository root
+cd /home/student/oncotracer
 nextflow run main.nf --auto_params \
   --mode illumina \
-  --reads_folder "$ROOT/project/input/illumina_fastq" \
-  --sample_table "$ROOT/project/input/illumina_fastq/samples.csv" \
-  --auto_config_dir "$ROOT/project/config/illumina" \
-  --auto_outdir "$ROOT/project/runs/illumina_auto"
+  --reads_folder /home/student/oncotracer/project/input/illumina_fastq \
+  --sample_table /home/student/oncotracer/project/input/illumina_fastq/samples.csv \
+  --auto_config_dir /home/student/oncotracer/project/config/illumina \
+  --auto_outdir /home/student/oncotracer/project/runs/illumina_auto
 ```
 
 For ONT, create `project/input/fastq_pass/samples.csv`:
@@ -79,13 +86,13 @@ barcode02,Patient_B,NORMAL
 Then run:
 
 ```bash
-ROOT=$(pwd)                                                           # run from the repository root
+cd /home/student/oncotracer
 nextflow run main.nf --auto_params \
   --mode ont \
-  --reads_folder "$ROOT/project/input/fastq_pass" \
-  --sample_table "$ROOT/project/input/fastq_pass/samples.csv" \
-  --auto_config_dir "$ROOT/project/config/ont" \
-  --auto_outdir "$ROOT/project/runs/ont_auto"
+  --reads_folder /home/student/oncotracer/project/input/fastq_pass \
+  --sample_table /home/student/oncotracer/project/input/fastq_pass/samples.csv \
+  --auto_config_dir /home/student/oncotracer/project/config/ont \
+  --auto_outdir /home/student/oncotracer/project/runs/ont_auto
 ```
 
 See [Automatic Setup](auto_params.md) for exact filename detection and complete run commands.
@@ -224,5 +231,3 @@ Before the real command, confirm:
 - ONT barcode and sample lists have the same length and order;
 - sample names are unique and match pathology exactly; and
 - `outdir` is a new directory for this experiment.
-
-An optional `-stub-run` checks workflow wiring only. It does not replace these input checks or the real analysis.

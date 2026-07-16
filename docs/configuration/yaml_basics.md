@@ -22,20 +22,23 @@ Sample_A,TUMOR
 Sample_B,NORMAL
 ```
 
-Then generate configuration files. Replace the two input paths with real absolute paths:
+Then generate configuration files. This example uses
+`/home/student/oncotracer`; replace that prefix with your repository location.
+OncoTracer creates the configuration and result folders automatically.
 
 ```bash
-cd oncotracer                                                        # enter the cloned repository
-ROOT=$(pwd)                                                           # save its absolute path
-nextflow run main.nf --auto_params \
+cd /home/student/oncotracer
+nextflow run /home/student/oncotracer/main.nf --auto_params \
   --mode illumina \
-  --reads_folder "$ROOT/project/input/illumina_fastq" \
-  --sample_table "$ROOT/project/input/illumina_fastq/samples.csv" \
-  --auto_config_dir "$ROOT/project/config/illumina" \
-  --auto_outdir "$ROOT/project/runs/illumina_auto"                    # create YAML and samplesheet, then stop
-sed -n '1,120p' project/config/illumina/illumina.auto.yml              # inspect the generated YAML
-sed -n '1,20p' project/config/illumina/illumina.samplesheet.csv        # inspect detected FASTQ inputs
+  --reads_folder /home/student/oncotracer/project/input/illumina_fastq \
+  --sample_table /home/student/oncotracer/project/input/illumina_fastq/samples.csv \
+  --auto_config_dir /home/student/oncotracer/project/config/illumina \
+  --auto_outdir /home/student/oncotracer/project/runs/illumina_auto
 ```
+
+`--auto_config_dir` receives the generated YAML and samplesheet.
+`--auto_outdir` is the folder where the later real run saves its results; no
+reads are analyzed by the command above.
 
 See [Automatic Setup](../auto_params.md) for the required Illumina filenames and ONT barcode table.
 
@@ -98,8 +101,7 @@ On Linux, an absolute path starts with `/`. In WSL use a Linux path such as `/mn
 Use manual setup only when automatic detection does not fit the study.
 
 ```bash
-cd oncotracer                                                        # enter the repository
-mkdir -p project/input project/runs                                 # create input and result directories
+cd /home/student/oncotracer                                         # enter the repository
 cp params/illumina.minimal.yml params/my_illumina.yml               # preserve the versioned template
 pwd                                                                  # copy this absolute path for the YAML
 nano params/my_illumina.yml                                         # edit the copied file
@@ -125,10 +127,9 @@ Inspect the saved file before running:
 
 ```bash
 sed -n '1,120p' params/my_illumina.yml                               # print the file without editing it
-nextflow run main.nf -stub-run --docker -params-file params/my_illumina.yml # optional workflow-wiring check
 nextflow run main.nf --docker -params-file params/my_illumina.yml -resume   # real analysis
 ```
 
-`-stub-run` creates placeholder task outputs and checks workflow wiring. It does **not** validate the real FASTQs, tools, reference downloads, or scientific results. Perform the file checks above, then run the real command.
+Perform the file checks above before starting the real command.
 
 Continue with [Illumina configuration](illumina.md), [ONT configuration](ont.md), or the [complete parameter reference](parameter_reference.md).

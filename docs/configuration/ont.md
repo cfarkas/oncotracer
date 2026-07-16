@@ -24,13 +24,16 @@ oncotracer/
 
 Each barcode can contain one or more `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz` files directly inside it. For an unbarcoded run, create a directory such as `barcode01` and put the FASTQs inside it.
 
-Create and inspect the project tree:
+Inspect the reads already placed in the project. The example below assumes the
+repository is `/home/student/oncotracer`; replace that prefix if your clone is
+elsewhere. The configuration and result folders are created automatically.
 
 ```bash
-cd oncotracer                                                        # enter the repository
-mkdir -p project/input/fastq_pass project/config/ont project/runs     # create project directories
-find project/input/fastq_pass -maxdepth 2 -type d -print | sort       # list barcode directories
-find project/input/fastq_pass -maxdepth 2 -type f -print | sort | head -20 # inspect FASTQ placement
+cd /home/student/oncotracer
+find /home/student/oncotracer/project/input/fastq_pass \
+  -maxdepth 2 -type d -print | sort
+find /home/student/oncotracer/project/input/fastq_pass \
+  -maxdepth 2 -type f -print | sort | head -20
 ```
 
 ### 2. Create an explicit barcode table
@@ -61,13 +64,12 @@ sed -n '1,20p' project/input/fastq_pass/samples.csv                    # verify 
 ### 3. Generate the configuration
 
 ```bash
-ROOT=$(pwd)                                                           # save the absolute repository path
 nextflow run main.nf --auto_params \
   --mode ont \
-  --reads_folder "$ROOT/project/input/fastq_pass" \
-  --sample_table "$ROOT/project/input/fastq_pass/samples.csv" \
-  --auto_config_dir "$ROOT/project/config/ont" \
-  --auto_outdir "$ROOT/project/runs/ont_auto"                         # generate YAML and stop
+  --reads_folder /home/student/oncotracer/project/input/fastq_pass \
+  --sample_table /home/student/oncotracer/project/input/fastq_pass/samples.csv \
+  --auto_config_dir /home/student/oncotracer/project/config/ont \
+  --auto_outdir /home/student/oncotracer/project/runs/ont_auto
 ```
 
 Automatic setup verifies that each listed barcode exists, contains FASTQs, and has no empty or incomplete gzip file. It writes `project/config/ont/ont.auto.yml`; it does **not** start alignment or CNA analysis.
@@ -100,15 +102,16 @@ ont_normal_sample_names: Patient_B
 
 Tumor and normal barcodes are written to separate settings. Every comma-separated list is positional: the first barcode maps to the first sample name. Your absolute root will differ from `/home/student/oncotracer`.
 
-### 5. Check wiring, run, and inspect the summary
+### 5. Run and inspect the summary
 
 ```bash
-nextflow run main.nf -stub-run --docker -params-file project/config/ont/ont.auto.yml # optional workflow-wiring check
-nextflow run main.nf --docker -params-file project/config/ont/ont.auto.yml -resume   # real analysis
-cat project/runs/ont_auto/06_workflow_summary/workflow_summary.txt                   # show key output paths
+nextflow run main.nf --docker \
+  -params-file /home/student/oncotracer/project/config/ont/ont.auto.yml \
+  -resume
+cat /home/student/oncotracer/project/runs/ont_auto/06_workflow_summary/workflow_summary.txt
 ```
 
-`-stub-run` uses placeholder task outputs. It checks workflow wiring but does not align or fully validate the real reads, reference, tools, or scientific results. Use `--singularity` instead of `--docker` on a configured HPC system.
+Use `--singularity` instead of `--docker` on a configured HPC system.
 
 ## Second option: manual setup
 

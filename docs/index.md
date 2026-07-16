@@ -49,11 +49,10 @@ Every analysis follows the same sequence:
 1. Install and check Java, Git, Nextflow, and a container runtime.
 2. Clone the repository and enter the `oncotracer` directory.
 3. Generate a YAML automatically (recommended), or edit one manually as the second option.
-4. Perform an optional `-stub-run` wiring check.
-5. Run the real workflow with `-resume`.
-6. Open `06_workflow_summary/workflow_summary.txt` and inspect the plots.
+4. Run the workflow with the generated YAML and `-resume`.
+5. Open `06_workflow_summary/workflow_summary.txt` and inspect the plots.
 
-`-stub-run` creates placeholder task outputs to check workflow connections. It does **not** fully validate real FASTQ contents or prove that the analysis will finish. `-resume` tells Nextflow to reuse unchanged completed tasks, which is useful after interruption and on repeat commands.
+`-resume` tells Nextflow to reuse unchanged completed tasks, which is useful after interruption and on repeat commands.
 
 !!! warning "Research use"
     OncoTracer is not a standalone diagnostic system. Results require expert interpretation, laboratory validation, and integration with pathology and orthogonal molecular tests.
