@@ -626,10 +626,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-check-wiring-then-run" class="md-nav__link">
+  <a href="#5-run-the-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check wiring, then run
+        5. Run the analysis
       
     </span>
   </a>
@@ -687,10 +687,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-check-wiring-then-run" class="md-nav__link">
+  <a href="#4-run-the-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Check wiring, then run
+        4. Run the analysis
       
     </span>
   </a>
@@ -1475,10 +1475,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-check-wiring-then-run" class="md-nav__link">
+  <a href="#5-run-the-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check wiring, then run
+        5. Run the analysis
       
     </span>
   </a>
@@ -1536,10 +1536,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-check-wiring-then-run" class="md-nav__link">
+  <a href="#4-run-the-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Check wiring, then run
+        4. Run the analysis
       
     </span>
   </a>
@@ -1619,7 +1619,7 @@
 <p><img alt="Example OncoTracer input layouts: Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv." src="../assets/tutorial/auto_params_folder_layout.svg" /></p>
 <div class="admonition note">
 <p class="admonition-title">Configuration step, not analysis</p>
-<p><code>--auto_params</code> creates configuration files and then stops. It does not align reads or call CNAs. Inspect the generated files, optionally perform a stub wiring check, and then start the real run with the command printed at the end.</p>
+<p><code>--auto_params</code> creates configuration files and then stops. It does not align reads or call CNAs. The command printed at the end starts the real analysis.</p>
 </div>
 <h2 id="before-you-begin">Before you begin<a class="headerlink" href="#before-you-begin" title="Permanent link">&para;</a></h2>
 <p>Install the <a href="../installation/">requirements</a>, clone OncoTracer, and enter the repository:</p>
@@ -1719,11 +1719,12 @@ B5437,/data/study42/illumina_fastq/B5437_R1.fastq.gz,/data/study42/illumina_fast
 A5645,/data/study42/illumina_fastq/A5645.fastq.gz,,tumor
 </code></pre></div>
 <p>Classifier and pathology-model options supplied to the <code>--auto_params</code> command are written into the YAML, making the later real run self-contained. The <a href="../full_tutorial/#4-generate-the-samplesheet-and-yaml-automatically">Full Tutorial</a> demonstrates this with CNA-only clinician-facing reports and no pathology table.</p>
-<h3 id="5-check-wiring-then-run">5. Check wiring, then run<a class="headerlink" href="#5-check-wiring-then-run" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
+<h3 id="5-run-the-analysis">5. Run the analysis<a class="headerlink" href="#5-run-the-analysis" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
 </code></pre></div>
-<p><code>-stub-run</code> uses placeholder task outputs. It can catch parameter and connection problems, but it does <strong>not</strong> fully test the real FASTQs, tools, reference, or CNA analysis. The second command performs the real work. <code>-resume</code> reuses unchanged completed tasks if a run is repeated or interrupted.</p>
+<p><code>-resume</code> reuses unchanged completed tasks if a run is repeated or interrupted.</p>
 <h2 id="ont-step-by-step">ONT step by step<a class="headerlink" href="#ont-step-by-step" title="Permanent link">&para;</a></h2>
 <h3 id="1-organize-barcode-folders">1. Organize barcode folders<a class="headerlink" href="#1-organize-barcode-folders" title="Permanent link">&para;</a></h3>
 <p>Point <code>--reads_folder</code> at the <code>fastq_pass</code> directory. Put one or more <code>.fastq</code>, <code>.fq</code>, <code>.fastq.gz</code>, or <code>.fq.gz</code> files directly inside each barcode directory:</p>
@@ -1745,7 +1746,7 @@ barcode02,A5544,NORMAL
 barcode03,B5437,TUMOR
 </code></pre></div>
 <p>Save with <code>Ctrl+O</code>, press Enter, then exit with <code>Ctrl+X</code>.</p>
-<p>Each barcode value must exactly match a directory name. OncoTracer requires at least one <code>TUMOR</code> row. Normal rows are written to the optional ONT normal settings. A two-column <code>sample_name,status</code> table is accepted and is mapped to alphabetically sorted barcode directories, but the explicit three-column form above is safer and easier to audit.</p>
+<p>Each barcode value must exactly match a directory name. OncoTracer requires at least one <code>TUMOR</code> row. Normal rows are written to the optional ONT normal settings. A two-column <code>sample_name,status</code> table is accepted and is mapped to alphabetically sorted barcode directories, but the explicit three-column form above is safer and easier to check.</p>
 <h3 id="3-generate-and-inspect-the-ont-yaml">3. Generate and inspect the ONT YAML<a class="headerlink" href="#3-generate-and-inspect-the-ont-yaml" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
@@ -1776,13 +1777,14 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,140
 <span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A5544</span><span class="w">                      </span><span class="c1"># matching normal sample names</span>
 </code></pre></div>
 <p>The barcode and sample-name lists are positional: <code>barcode01</code> maps to <code>A5645</code>, and <code>barcode03</code> maps to <code>B5437</code>.</p>
-<h3 id="4-check-wiring-then-run">4. Check wiring, then run<a class="headerlink" href="#4-check-wiring-then-run" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/fastq_pass/oncotracer_config/ont.auto.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/fastq_pass/oncotracer_config/ont.auto.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
+<h3 id="4-run-the-analysis">4. Run the analysis<a class="headerlink" href="#4-run-the-analysis" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span>/data/study42/fastq_pass/oncotracer_config/ont.auto.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
 </code></pre></div>
 <p>Use <code>--singularity</code> instead of <code>--docker</code> on a configured HPC system.</p>
 <h2 id="put-configuration-and-results-elsewhere">Put configuration and results elsewhere<a class="headerlink" href="#put-configuration-and-results-elsewhere" title="Permanent link">&para;</a></h2>
-<p>The defaults create <code>oncotracer_config/</code> and <code>oncotracer_results/</code> beside the reads. To choose other locations:</p>
+<p>The defaults create <code>oncotracer_config/</code> and <code>oncotracer_results/</code> inside the reads folder. To choose other locations:</p>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span>/data/run42/fastq<span class="w"> </span><span class="se">\</span>
@@ -1790,6 +1792,11 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <span class="w">  </span>--auto_config_dir<span class="w"> </span>/data/run42/config<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--auto_outdir<span class="w"> </span>/data/run42/results
 </code></pre></div>
+<p><code>--auto_config_dir</code> is where Automatic Setup saves the generated YAML and
+Illumina samplesheet. <code>--auto_outdir</code> is where the later real analysis saves
+BAMs, CNA tables, plots, and reports. Automatic Setup creates both folders,
+writes the results path as <code>outdir:</code> in the YAML, and then stops without
+analyzing reads.</p>
 <p>OncoTracer derives <code>lpwgs_root</code> as a common parent that makes the reads, generated configuration, and outputs visible inside the container. It also derives the SAMURAI directory automatically as <code>&lt;outdir&gt;/01_samurai_illumina</code> or <code>&lt;outdir&gt;/01_samurai_ont</code>; do not add a SAMURAI output directory to the YAML.</p>
 <p>CSV, tab-delimited, and whitespace-delimited TXT sample tables are accepted. CSV is recommended because its columns are easiest to see and check.</p>
 <h2 id="see-automatic-setup-with-real-public-data">See automatic setup with real public data<a class="headerlink" href="#see-automatic-setup-with-real-public-data" title="Permanent link">&para;</a></h2>

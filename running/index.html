@@ -831,10 +831,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#check-wiring-then-run" class="md-nav__link">
+  <a href="#run-a-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Check wiring, then run
+        Run a YAML
       
     </span>
   </a>
@@ -1419,10 +1419,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#check-wiring-then-run" class="md-nav__link">
+  <a href="#run-a-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Check wiring, then run
+        Run a YAML
       
     </span>
   </a>
@@ -1516,7 +1516,7 @@
 </tr>
 <tr>
 <td>You already have a checked YAML</td>
-<td>Go directly to <a href="#check-wiring-then-run">Check wiring, then run</a>.</td>
+<td>Go directly to <a href="#run-a-yaml">Run a YAML</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -1551,7 +1551,7 @@ docker<span class="w"> </span>--version<span class="w">                         
 </table>
 <p>The examples below use Docker. Replace only <code>--docker</code> with <code>--singularity</code> when appropriate.</p>
 <h2 id="2-recommended-default-generate-configuration-from-a-reads-folder">2. Recommended default: generate configuration from a reads folder<a class="headerlink" href="#2-recommended-default-generate-configuration-from-a-reads-folder" title="Permanent link">&para;</a></h2>
-<p><code>--auto_params</code> writes configuration files and stops. After inspecting them, launch a second command for the real analysis.</p>
+<p><code>--auto_params</code> writes configuration files and stops. After Automatic Setup finishes, launch a second command for the real analysis.</p>
 <h3 id="illumina">Illumina<a class="headerlink" href="#illumina" title="Permanent link">&para;</a></h3>
 <p>Required layout:</p>
 <div class="highlight"><pre><span></span><code>project/input/illumina_fastq/
@@ -1563,18 +1563,19 @@ docker<span class="w"> </span>--version<span class="w">                         
 <div class="highlight"><pre><span></span><code>sample_name,status
 Patient_A,TUMOR
 </code></pre></div>
-<p>Generate, inspect, and run:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span>project/config/illumina<span class="w"> </span>project/runs<span class="w">                          </span><span class="c1"># create output parents</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<p>The example below assumes the repository is <code>/home/student/oncotracer</code>.
+OncoTracer creates the configuration and result folders; no <code>mkdir</code> command
+is needed.</p>
+<p>Generate and run:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/illumina_auto&quot;</span><span class="w">                    </span><span class="c1"># create files; no analysis yet</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w">              </span><span class="c1"># inspect the YAML</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/config/illumina/illumina.samplesheet.csv<span class="w">        </span><span class="c1"># inspect detected single or paired paths</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w"> </span>-resume<span class="w"> </span><span class="c1"># real analysis</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/home/student/oncotracer/project/input/illumina_fastq<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/home/student/oncotracer/project/input/illumina_fastq/samples.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span>/home/student/oncotracer/project/config/illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span>/home/student/oncotracer/project/runs/illumina_auto
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span>/home/student/oncotracer/project/config/illumina/illumina.auto.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
 </code></pre></div>
 <h3 id="ont">ONT<a class="headerlink" href="#ont" title="Permanent link">&para;</a></h3>
 <p>Required layout:</p>
@@ -1587,17 +1588,16 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <div class="highlight"><pre><span></span><code>barcode,sample_name,status
 barcode01,Patient_A,TUMOR
 </code></pre></div>
-<p>Generate, inspect, and run:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span>project/config/ont<span class="w"> </span>project/runs<span class="w">                               </span><span class="c1"># create output parents</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<p>Generate and run:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/fastq_pass/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/ont&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/ont_auto&quot;</span><span class="w">                         </span><span class="c1"># create YAML; no analysis yet</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span>project/config/ont/ont.auto.yml<span class="w">                        </span><span class="c1"># inspect barcode/sample mappings</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/ont/ont.auto.yml<span class="w"> </span>-resume<span class="w"> </span><span class="c1"># real analysis</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/home/student/oncotracer/project/input/fastq_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/home/student/oncotracer/project/input/fastq_pass/samples.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span>/home/student/oncotracer/project/config/ont<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span>/home/student/oncotracer/project/runs/ont_auto
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span>/home/student/oncotracer/project/config/ont/ont.auto.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
 </code></pre></div>
 <p>Automatic setup validates its supported file layout and compressed FASTQs. See <a href="../auto_params/">Automatic Setup</a> for multiple samples, normal controls, filename rules, and optional destinations.</p>
 <h2 id="3-second-option-manual-configuration">3. Second option: manual configuration<a class="headerlink" href="#3-second-option-manual-configuration" title="Permanent link">&para;</a></h2>
@@ -1611,11 +1611,10 @@ nano<span class="w"> </span>params/my_ont.yml<span class="w">                   
 </code></pre></div>
 <p>In Nano, save with <code>Ctrl+O</code>, press <code>Enter</code>, then exit with <code>Ctrl+X</code>. Print the saved file with <code>sed -n '1,160p' params/my_illumina.yml</code> or the ONT equivalent. All configured input, reference, and output paths must be absolute and below <code>lpwgs_root</code>.</p>
 <p>Do not add <code>illumina_samurai_outdir</code> or <code>ont_samurai_outdir</code>. OncoTracer derives stage <code>01</code> from <code>outdir</code>.</p>
-<h2 id="check-wiring-then-run">Check wiring, then run<a class="headerlink" href="#check-wiring-then-run" title="Permanent link">&para;</a></h2>
-<p>The optional stub command checks that Nextflow can construct the selected workflow:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
-</code></pre></div>
-<p>A stub uses placeholder task outputs. It does <strong>not</strong> align reads, validate the full toolchain, download/test the reference, or verify scientific outputs. Check real input files as described in <a href="../inputs/">Input Files</a>, then start the real run:</p>
+<p><a id="check-wiring-then-run"></a></p>
+<h2 id="run-a-yaml">Run a YAML<a class="headerlink" href="#run-a-yaml" title="Permanent link">&para;</a></h2>
+<p>After checking the input files described in <a href="../inputs/">Input Files</a>, start the
+real run:</p>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span>-resume<span class="w"> </span><span class="c1"># real Illumina analysis</span>
 </code></pre></div>
 <p>For ONT, substitute <code>params/my_ont.yml</code>.</p>
@@ -1665,18 +1664,18 @@ nano<span class="w"> </span>params/my_ont.yml<span class="w">                   
 <p>The <code>01</code> wrapper launches an upstream SAMURAI Nextflow workflow. Therefore the outer Nextflow display can remain at <code>RUN_*_SAMURAI (0 of 1)</code> while alignment and CNA tasks are active inside it. This alone does not mean the run is stalled. The first Illumina run can also spend substantial time downloading and indexing hg38; later runs reuse those files below <code>lpwgs_root</code>.</p>
 <h2 id="watch-and-verify-a-run">Watch and verify a run<a class="headerlink" href="#watch-and-verify-a-run" title="Permanent link">&para;</a></h2>
 <p>Keep the terminal open. A successful run ends with <code>Succeeded</code> and no <code>Failed</code> count. After completion, inspect the summary and key results:</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>project/runs/illumina_auto/06_workflow_summary/workflow_summary.txt<span class="w"> </span><span class="c1"># show important paths</span>
-ls<span class="w"> </span>-lh<span class="w"> </span>project/runs/illumina_auto/03_cna_codification/cna_events.tsv<span class="w">    </span><span class="c1"># verify the event table</span>
-ls<span class="w"> </span>-lh<span class="w"> </span>project/runs/illumina_auto/04_cna_custom_plots/*.pdf<span class="w">             </span><span class="c1"># verify plot PDFs</span>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>/home/student/oncotracer/project/runs/illumina_auto/06_workflow_summary/workflow_summary.txt
+ls<span class="w"> </span>-lh<span class="w"> </span>/home/student/oncotracer/project/runs/illumina_auto/03_cna_codification/cna_events.tsv
+ls<span class="w"> </span>-lh<span class="w"> </span>/home/student/oncotracer/project/runs/illumina_auto/04_cna_custom_plots/*.pdf
 </code></pre></div>
-<p>For a manual run or ONT run, replace <code>project/runs/illumina_auto</code> with the exact <code>outdir</code> from that YAML.</p>
+<p>For a manual run or ONT run, replace <code>/home/student/oncotracer/project/runs/illumina_auto</code> with the exact <code>outdir</code> from that YAML.</p>
 <p>If the command stops, read the first <code>ERROR</code> message and see <a href="../troubleshooting/">Troubleshooting</a>. Do not delete <code>work/</code> before diagnosing the problem because it contains task logs needed by <code>-resume</code>.</p>
 <h2 id="resume-and-rerun-safely">Resume and rerun safely<a class="headerlink" href="#resume-and-rerun-safely" title="Permanent link">&para;</a></h2>
 <p><code>-resume</code> tells Nextflow to reuse completed tasks when their inputs, command, and configuration are unchanged:</p>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>params/my_illumina.yml<span class="w"> </span>-resume<span class="w"> </span><span class="c1"># continue or efficiently repeat</span>
 </code></pre></div>
 <p>Use the same command, repository, YAML, <code>outdir</code>, and <code>work/</code> directory. If you change inputs or settings, Nextflow reruns affected tasks.</p>
-<p>Keep <code>force: false</code> for real projects. For a different scientific configuration, copy the YAML and use a new <code>outdir</code>; this preserves the original results and makes comparisons auditable.</p>
+<p>Keep <code>force: false</code> for real projects. For a different scientific configuration, copy the YAML and use a new <code>outdir</code>; this keeps the original results separate and easier to compare.</p>
 
 
 

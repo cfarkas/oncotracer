@@ -871,10 +871,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-check-wiring-run-and-inspect-the-summary" class="md-nav__link">
+  <a href="#5-run-and-inspect-the-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check wiring, run, and inspect the summary
+        5. Run and inspect the summary
       
     </span>
   </a>
@@ -1420,10 +1420,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-check-wiring-run-and-inspect-the-summary" class="md-nav__link">
+  <a href="#5-run-and-inspect-the-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check wiring, run, and inspect the summary
+        5. Run and inspect the summary
       
     </span>
   </a>
@@ -1538,11 +1538,14 @@
                 └── reads_001.fastq.gz
 </code></pre></div>
 <p>Each barcode can contain one or more <code>.fastq</code>, <code>.fq</code>, <code>.fastq.gz</code>, or <code>.fq.gz</code> files directly inside it. For an unbarcoded run, create a directory such as <code>barcode01</code> and put the FASTQs inside it.</p>
-<p>Create and inspect the project tree:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                        </span><span class="c1"># enter the repository</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>project/config/ont<span class="w"> </span>project/runs<span class="w">     </span><span class="c1"># create project directories</span>
-find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w">       </span><span class="c1"># list barcode directories</span>
-find<span class="w"> </span>project/input/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-20<span class="w"> </span><span class="c1"># inspect FASTQ placement</span>
+<p>Inspect the reads already placed in the project. The example below assumes the
+repository is <code>/home/student/oncotracer</code>; replace that prefix if your clone is
+elsewhere. The configuration and result folders are created automatically.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/home/student/oncotracer
+find<span class="w"> </span>/home/student/oncotracer/project/input/fastq_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+find<span class="w"> </span>/home/student/oncotracer/project/input/fastq_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-20
 </code></pre></div>
 <h3 id="2-create-an-explicit-barcode-table">2. Create an explicit barcode table<a class="headerlink" href="#2-create-an-explicit-barcode-table" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>nano<span class="w"> </span>project/input/fastq_pass/samples.csv<span class="w">                             </span><span class="c1"># create barcode-to-sample metadata</span>
@@ -1562,13 +1565,12 @@ barcode02,Patient_B,NORMAL
 <div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/input/fastq_pass/samples.csv<span class="w">                    </span><span class="c1"># verify the header and mappings</span>
 </code></pre></div>
 <h3 id="3-generate-the-configuration">3. Generate the configuration<a class="headerlink" href="#3-generate-the-configuration" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                           </span><span class="c1"># save the absolute repository path</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/fastq_pass/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/ont&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/ont_auto&quot;</span><span class="w">                         </span><span class="c1"># generate YAML and stop</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/home/student/oncotracer/project/input/fastq_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/home/student/oncotracer/project/input/fastq_pass/samples.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span>/home/student/oncotracer/project/config/ont<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span>/home/student/oncotracer/project/runs/ont_auto
 </code></pre></div>
 <p>Automatic setup verifies that each listed barcode exists, contains FASTQs, and has no empty or incomplete gzip file. It writes <code>project/config/ont/ont.auto.yml</code>; it does <strong>not</strong> start alignment or CNA analysis.</p>
 <h3 id="4-inspect-the-generated-yaml">4. Inspect the generated YAML<a class="headerlink" href="#4-inspect-the-generated-yaml" title="Permanent link">&para;</a></h3>
@@ -1592,12 +1594,13 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_B</span>
 </code></pre></div>
 <p>Tumor and normal barcodes are written to separate settings. Every comma-separated list is positional: the first barcode maps to the first sample name. Your absolute root will differ from <code>/home/student/oncotracer</code>.</p>
-<h3 id="5-check-wiring-run-and-inspect-the-summary">5. Check wiring, run, and inspect the summary<a class="headerlink" href="#5-check-wiring-run-and-inspect-the-summary" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/ont/ont.auto.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/ont/ont.auto.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
-cat<span class="w"> </span>project/runs/ont_auto/06_workflow_summary/workflow_summary.txt<span class="w">                   </span><span class="c1"># show key output paths</span>
+<h3 id="5-run-and-inspect-the-summary">5. Run and inspect the summary<a class="headerlink" href="#5-run-and-inspect-the-summary" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span>/home/student/oncotracer/project/config/ont/ont.auto.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+cat<span class="w"> </span>/home/student/oncotracer/project/runs/ont_auto/06_workflow_summary/workflow_summary.txt
 </code></pre></div>
-<p><code>-stub-run</code> uses placeholder task outputs. It checks workflow wiring but does not align or fully validate the real reads, reference, tools, or scientific results. Use <code>--singularity</code> instead of <code>--docker</code> on a configured HPC system.</p>
+<p>Use <code>--singularity</code> instead of <code>--docker</code> on a configured HPC system.</p>
 <h2 id="second-option-manual-setup">Second option: manual setup<a class="headerlink" href="#second-option-manual-setup" title="Permanent link">&para;</a></h2>
 <p>Choose manual setup when you need to select only some barcodes, use a custom reference, or configure normal/control data explicitly.</p>
 <h3 id="1-inspect-the-input-tree">1. Inspect the input tree<a class="headerlink" href="#1-inspect-the-input-tree" title="Permanent link">&para;</a></h3>

@@ -843,10 +843,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-check-wiring-run-and-inspect-the-summary" class="md-nav__link">
+  <a href="#5-run-and-inspect-the-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check wiring, run, and inspect the summary
+        5. Run and inspect the summary
       
     </span>
   </a>
@@ -1431,10 +1431,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-check-wiring-run-and-inspect-the-summary" class="md-nav__link">
+  <a href="#5-run-and-inspect-the-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check wiring, run, and inspect the summary
+        5. Run and inspect the summary
       
     </span>
   </a>
@@ -1550,10 +1550,12 @@
 <code>&lt;sample&gt;.fastq.gz</code>/<code>&lt;sample&gt;.fq.gz</code> file or one compressed R1/R2 pair in a
 single folder. Use one layout consistently across the run.</p>
 <h3 id="1-arrange-the-fastqs">1. Arrange the FASTQs<a class="headerlink" href="#1-arrange-the-fastqs" title="Permanent link">&para;</a></h3>
-<p>From the cloned repository, create a project tree and place the reads in <code>illumina_fastq/</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                        </span><span class="c1"># enter the repository</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/illumina_fastq<span class="w"> </span>project/config/illumina<span class="w"> </span>project/runs<span class="w"> </span><span class="c1"># create project directories</span>
-find<span class="w"> </span>project/input/illumina_fastq<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq.gz&#39;</span><span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="c1"># inspect the reads</span>
+<p>Place the reads in <code>illumina_fastq/</code>. The example below assumes the repository
+is <code>/home/student/oncotracer</code>; replace that prefix if your clone is elsewhere.
+The configuration and result folders are created automatically.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/home/student/oncotracer
+find<span class="w"> </span>/home/student/oncotracer/project/input/illumina_fastq<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq.gz&#39;</span><span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 </code></pre></div>
 <p>The filenames must share the sample prefix:</p>
 <div class="highlight"><pre><span></span><code>oncotracer/
@@ -1588,13 +1590,12 @@ filename without <code>.fastq.gz</code> or <code>.fq.gz</code>. <code>status</co
 <div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/input/illumina_fastq/samples.csv<span class="w">               </span><span class="c1"># verify the header and rows</span>
 </code></pre></div>
 <h3 id="3-generate-the-configuration">3. Generate the configuration<a class="headerlink" href="#3-generate-the-configuration" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                           </span><span class="c1"># save the absolute repository path</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/illumina_auto&quot;</span><span class="w">                    </span><span class="c1"># generate files and stop</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/home/student/oncotracer/project/input/illumina_fastq<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/home/student/oncotracer/project/input/illumina_fastq/samples.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span>/home/student/oncotracer/project/config/illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span>/home/student/oncotracer/project/runs/illumina_auto
 </code></pre></div>
 <p>This command checks that every row has exactly one single-end file or one R1/R2 pair, requires one layout for the whole run, and verifies every gzip stream. It creates:</p>
 <div class="highlight"><pre><span></span><code>project/config/illumina/
@@ -1618,12 +1619,13 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
 <p>The generator chooses an absolute <code>lpwgs_root</code> that contains the reads, generated configuration, and results. Your path will differ from <code>/home/student/oncotracer</code>.</p>
-<h3 id="5-check-wiring-run-and-inspect-the-summary">5. Check wiring, run, and inspect the summary<a class="headerlink" href="#5-check-wiring-run-and-inspect-the-summary" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
-cat<span class="w"> </span>project/runs/illumina_auto/06_workflow_summary/workflow_summary.txt<span class="w">                         </span><span class="c1"># show key output paths</span>
+<h3 id="5-run-and-inspect-the-summary">5. Run and inspect the summary<a class="headerlink" href="#5-run-and-inspect-the-summary" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span>/home/student/oncotracer/project/config/illumina/illumina.auto.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+cat<span class="w"> </span>/home/student/oncotracer/project/runs/illumina_auto/06_workflow_summary/workflow_summary.txt
 </code></pre></div>
-<p>The stub command uses placeholder outputs; it does not analyze or fully validate the real reads. The second command is the real run. Use <code>--singularity</code> instead of <code>--docker</code> on a configured HPC system.</p>
+<p>Use <code>--singularity</code> instead of <code>--docker</code> on a configured HPC system.</p>
 <h2 id="second-option-manual-setup">Second option: manual setup<a class="headerlink" href="#second-option-manual-setup" title="Permanent link">&para;</a></h2>
 <p>Choose manual setup when FASTQ naming does not match the supported automatic single-end/paired patterns or when you need advanced settings.</p>
 <h3 id="1-create-the-samplesheet">1. Create the samplesheet<a class="headerlink" href="#1-create-the-samplesheet" title="Permanent link">&para;</a></h3>

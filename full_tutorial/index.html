@@ -730,10 +730,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-check-the-wiring-then-run-the-real-workflow" class="md-nav__link">
+  <a href="#5-run-the-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check the wiring, then run the real workflow
+        5. Run the analysis
       
     </span>
   </a>
@@ -763,10 +763,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-preserve-provenance" class="md-nav__link">
+  <a href="#8-keep-the-files-that-describe-the-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        8. Preserve provenance
+        8. Keep the files that describe the run
       
     </span>
   </a>
@@ -1443,10 +1443,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-check-the-wiring-then-run-the-real-workflow" class="md-nav__link">
+  <a href="#5-run-the-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check the wiring, then run the real workflow
+        5. Run the analysis
       
     </span>
   </a>
@@ -1476,10 +1476,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-preserve-provenance" class="md-nav__link">
+  <a href="#8-keep-the-files-that-describe-the-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        8. Preserve provenance
+        8. Keep the files that describe the run
       
     </span>
   </a>
@@ -1617,79 +1617,99 @@
 <p>Ten archive aliases correspond to the article's primary serial-sampling set. The additional aliases <code>WDLPS_2</code> and <code>WDLPS_3</code> are not reconciled to rows in the article supplement. None of the 31 other-tumor specimens is currently present in the read archive. One deposited run, <code>DDLPS_2</code>, contains 8,351,915 reads and is therefore below the article's general 10-million-read description.</p>
 <div class="admonition warning">
 <p class="admonition-title">Archive aliases are not diagnoses</p>
-<p><code>DDLPS_*</code> and <code>WDLPS_*</code> are submitter-provided sample aliases. OncoTracer preserves them for provenance; it does not independently verify a diagnosis. The generated <code>tumor</code> status is a SAMURAI condition label for this patient cohort, not proof of detectable ctDNA, active disease, or a CNA in any specimen.</p>
+<p><code>DDLPS_*</code> and <code>WDLPS_*</code> are sample names supplied with the public files. OncoTracer keeps those names but does not independently verify a diagnosis. The generated <code>tumor</code> status is a workflow label for this patient cohort, not proof of detectable ctDNA, active disease, or a CNA in any specimen.</p>
 </div>
 <p>This is an <strong>independent reanalysis</strong>, not an exact reproduction of the publication. The publication used GRCh37/hg19, a Plasma-Seq Z-score method, variable-mappability windows, and healthy-donor references. This tutorial uses OncoTracer's hg38 SAMURAI/qDNAseq route and has no matched tumor or healthy-donor controls.</p>
 <h2 id="1-plan-the-run">1. Plan the run<a class="headerlink" href="#1-plan-the-run" title="Permanent link">&para;</a></h2>
 <p>Use Linux with at least <strong>150 GiB of free working space</strong>. Sixteen CPU cores and 64 GiB RAM are a practical starting point. The first run also prepares hg38 and its BWA index; that one-time step adds several GiB and can take 30–60 minutes before alignment begins.</p>
-<p>Complete the <a href="../installation/#1-install-the-host-prerequisites">host installation requirements</a>, then clone OncoTracer and choose one absolute project root. Keep the same terminal open so these variables remain available:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git
-<span class="nb">cd</span><span class="w"> </span>oncotracer
-<span class="nb">export</span><span class="w"> </span><span class="nv">COHORT_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/test&quot;</span><span class="w">  </span><span class="c1"># use a larger absolute filesystem path if needed</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/public/prjna754199&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">CONFIG_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/configs/prjna754199&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/runs/prjna754199&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">YAML</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">/illumina.auto.yml&quot;</span>
+<p>Complete the <a href="../installation/#1-install-the-host-prerequisites">host installation requirements</a>, then clone OncoTracer. This tutorial uses <code>/home/student/oncotracer</code> as an example location. <code>student</code> is only an example Linux username; if <code>pwd</code> shows a different location, replace <code>/home/student/oncotracer</code> in the commands below with that location.</p>
+<p>If OncoTracer is already cloned, skip the first command and enter the existing repository.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w"> </span>/home/student/oncotracer
+<span class="nb">cd</span><span class="w"> </span>/home/student/oncotracer
+<span class="nb">pwd</span>
 </code></pre></div>
-<p>The commands below use the ignored <code>test/</code> directory. If you change <code>COHORT_ROOT</code>, keep all reads, configuration, work, and output paths below that root so the container can see them.</p>
+<p>The remaining commands use <code>/home/student/oncotracer/test</code> for the reads, generated setup files, temporary work, and final results. OncoTracer creates the required subdirectories automatically.</p>
 <p><a id="2-prepare-software-only"></a></p>
 <h2 id="2-prepare-the-software">2. Prepare the software<a class="headerlink" href="#2-prepare-the-software" title="Permanent link">&para;</a></h2>
-<p>Prepare and smoke-test Docker without starting an analysis:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/work/install&quot;</span>
+<p>Prepare and check Docker without starting an analysis:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span>/home/student/oncotracer/test<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span>/home/student/oncotracer/test/work/install
 </code></pre></div>
-<p>This command pulls and checks the software, records the runtime and pinned SAMURAI identity, and then stops. It does not download hg38 or patient reads and does not create analysis stages <code>01</code>–<code>06</code>. See <a href="../installation/#4-prepare-one-runtime-without-starting-an-analysis">Installation</a> for Singularity and Conda alternatives.</p>
+<p>This command pulls and checks the software, records the selected runtime and SAMURAI version, and then stops. It does not download hg38 or patient reads and does not create analysis stages <code>01</code>–<code>06</code>. See <a href="../installation/#4-prepare-one-runtime-without-starting-an-analysis">Installation</a> for Singularity and Conda alternatives.</p>
 <h2 id="3-download-and-validate-the-complete-public-archive">3. Download and validate the complete public archive<a class="headerlink" href="#3-download-and-validate-the-complete-public-archive" title="Permanent link">&para;</a></h2>
 <p>Download all 12 FASTQs with one resumable command:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">COHORT_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">&quot;</span><span class="w"> </span>bash<span class="w"> </span>examples/prjna754199/run_example.sh<span class="w"> </span>--download-only
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>/home/student/oncotracer/examples/prjna754199/run_example.sh<span class="w"> </span>--download-only
 </code></pre></div>
-<p>The command uses the frozen 12-run manifest and accepts a file only after its ENA byte count, MD5 checksum, and gzip stream all pass. Valid files are reused and interrupted transfers resume. It stops after download validation; it does not generate the workflow configuration or run an analysis.</p>
-<p>For the pinned URLs, checksums, archive query, and the implementation of the validation step, see the <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">example README</a> and <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md">provenance notes</a>.</p>
+<p>This command creates <code>/home/student/oncotracer/test/public/prjna754199</code>, downloads the 12 FASTQ files, and checks their file sizes, MD5 checksums, and gzip contents. It also places <code>samples.csv</code> in the same folder. A completed file is reused if the command is run again, and an interrupted download can continue. No analysis starts yet.</p>
+<p>For the exact URLs, checksums, archive search, and download checks, see the <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">example README</a> and <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md">archive details</a>.</p>
 <p><a id="4-generate-and-inspect-the-single-end-configuration"></a></p>
 <h2 id="4-generate-the-samplesheet-and-yaml-automatically">4. Generate the samplesheet and YAML automatically<a class="headerlink" href="#4-generate-the-samplesheet-and-yaml-automatically" title="Permanent link">&para;</a></h2>
-<p>The download command places an auditable <code>samples.csv</code> beside the FASTQs. It contains the 12 archive aliases and their patient-cohort <code>TUMOR</code> condition labels. Point <strong>Automatic Setup from a Reads Folder</strong> at that self-contained directory:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<p>The download command created <code>samples.csv</code>. This small file lists each sample name and marks it as <code>TUMOR</code> for the workflow. You do not need to write the larger workflow samplesheet or YAML by hand. Run Automatic Setup:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/home/student/oncotracer/test/public/prjna754199<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/home/student/oncotracer/test/public/prjna754199/samples.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span>/home/student/oncotracer/test/configs/prjna754199<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span>/home/student/oncotracer/test/runs/prjna754199<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--cna_classifier_sample_set<span class="w"> </span>sarcoma<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--cna_classifier_profile<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pathology_use_biomed_models<span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pathology_biomed_local_files_only<span class="w"> </span><span class="nb">true</span>
+<span class="w">  </span>--pathology_use_biomed_models<span class="w"> </span><span class="nb">false</span>
 </code></pre></div>
-<p>Automatic setup validates the supported single-end layout, writes a blank <code>fastq_2</code> field for every library, and creates:</p>
-<div class="highlight"><pre><span></span><code>test/configs/prjna754199/
+<p>This command prepares the run; it does not process the reads. OncoTracer:</p>
+<ol>
+<li>reads the 12 names in <code>samples.csv</code>;</li>
+<li>finds the matching FASTQ for each name;</li>
+<li>checks that every file uses the supported single-end name and that each gzip file can be read;</li>
+<li>creates the samplesheet and YAML required by the analysis command; and</li>
+<li>records where the final results should be saved.</li>
+</ol>
+<p>The four path options have distinct purposes:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--reads_folder</code></td>
+<td>The existing folder that contains the downloaded FASTQ files.</td>
+</tr>
+<tr>
+<td><code>--sample_table</code></td>
+<td>The existing <code>samples.csv</code> file that connects each sample name to its workflow status.</td>
+</tr>
+<tr>
+<td><code>--auto_config_dir</code></td>
+<td>The folder where OncoTracer creates <code>illumina.samplesheet.csv</code> and <code>illumina.auto.yml</code>.</td>
+</tr>
+<tr>
+<td><code>--auto_outdir</code></td>
+<td>The folder where the next, real analysis command will save BAMs, CNA tables, plots, and reports. Automatic Setup creates it if needed and records it in the YAML, but does not put analysis results in it yet.</td>
+</tr>
+</tbody>
+</table>
+<p>The generated files are:</p>
+<div class="highlight"><pre><span></span><code>/home/student/oncotracer/test/configs/prjna754199/
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
 </code></pre></div>
-<p>Inspect both generated files before running:</p>
-<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">/illumina.samplesheet.csv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$YAML</span><span class="s2">&quot;</span>
-</code></pre></div>
-<p>Confirm that the samplesheet contains 12 data rows, each <code>fastq_1</code> path exists, every <code>fastq_2</code> cell is empty, and the YAML points to the intended output directory. It should also contain <code>run_cna_classifier: true</code> and <code>cna_classifier_sample_set: sarcoma</code>, which preserve the research-use interpretation reports shown below.</p>
-<p>The workflow recognizes the uniform single-end layout and passes <code>qdnaseq_paired_ends=false</code> to SAMURAI. No pathology table is supplied, so stage 05 produces a <strong>CNA-only research interpretation</strong>, not a pathology-concordance assessment. Use <a href="../configuration/illumina/#second-option-manual-setup">manual Illumina setup</a> only when automatic detection does not fit your data.</p>
+<p><code>illumina.samplesheet.csv</code> contains one row per sample and the full path to its FASTQ. Its <code>fastq_2</code> column is empty because these reads are single-end. <code>illumina.auto.yml</code> contains the settings and paths used by the next command. The classifier is enabled, but no pathology file is supplied, so the reports contain CNA-only research interpretation rather than a pathology comparison.</p>
 <p><a id="5-check-wiring-then-run-the-real-workflow"></a></p>
-<h2 id="5-check-the-wiring-then-run-the-real-workflow">5. Check the wiring, then run the real workflow<a class="headerlink" href="#5-check-the-wiring-then-run-the-real-workflow" title="Permanent link">&para;</a></h2>
-<p>Run the fast wiring check first, followed by the real 12-library analysis:</p>
-<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$YAML</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/work/prjna754199_stub&quot;</span>
-
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$YAML</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/work/prjna754199&quot;</span><span class="w"> </span>-resume
+<h2 id="5-run-the-analysis">5. Run the analysis<a class="headerlink" href="#5-run-the-analysis" title="Permanent link">&para;</a></h2>
+<p>Start the real 12-library analysis:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span>/home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span>/home/student/oncotracer/test/work/prjna754199<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
 </code></pre></div>
-<p><code>-stub-run</code> creates placeholders and cannot validate scientific output. Only the second command performs alignment, CNA analysis, boundary refinement, and interpretation. Keep <code>-resume</code>: it reuses unchanged successful tasks after an interruption.</p>
-<p>The real command runs in the foreground. To follow SAMURAI in a <strong>second terminal</strong>, return to the clone, set the same output path, and follow the nested log:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/absolute/path/to/oncotracer
-<span class="nb">export</span><span class="w"> </span><span class="nv">OUT</span><span class="o">=</span>/absolute/path/to/cohort-root/runs/prjna754199
-tail<span class="w"> </span>-n<span class="w"> </span><span class="m">30</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/nextflow_launch/.nextflow.log&quot;</span>
-</code></pre></div>
-<p>Stop only the log view with <code>Ctrl+C</code>; that does not stop the workflow in the first terminal. During stage 01, the outer task may display <code>0 of 1</code> while the nested SAMURAI workflow is active. A changing nested log is the reliable progress signal.</p>
+<p>Keep the terminal open while this command runs. It performs alignment, CNA analysis, boundary refinement, plotting, and report generation. The first run also prepares the hg38 reference, so it can take several hours. <code>-resume</code> lets the same command continue from completed steps after an interruption.</p>
 <h2 id="6-verify-the-completed-run">6. Verify the completed run<a class="headerlink" href="#6-verify-the-completed-run" title="Permanent link">&para;</a></h2>
 <p>Run the versioned verifier against the final output directory:</p>
-<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>examples/prjna754199/verify_outputs.py<span class="w"> </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>/home/student/oncotracer/examples/prjna754199/verify_outputs.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span>/home/student/oncotracer/test/runs/prjna754199
 </code></pre></div>
 <p>The verifier requires the exact 12 manifest aliases—not merely 12 arbitrary rows—across the BAMs, SAMURAI segments, refinement summary, and classifier table. It also requires the CNA tables, plots, clinician-report index, and workflow summary used by this tutorial.</p>
 <p>Start reviewing the verified run from these locations:</p>
@@ -1703,31 +1723,31 @@ tail<span class="w"> </span>-n<span class="w"> </span><span class="m">30</span><
 <tbody>
 <tr>
 <td>Workflow inventory</td>
-<td><code>06_workflow_summary/workflow_summary.txt</code></td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/06_workflow_summary/workflow_summary.txt</code></td>
 </tr>
 <tr>
 <td>SAMURAI fitted CNA profiles</td>
-<td><code>01_samurai_illumina/qdnaseq/plots/*_segment_plot.pdf</code></td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/01_samurai_illumina/qdnaseq/plots/</code></td>
 </tr>
 <tr>
 <td>Boundary-refinement evidence</td>
-<td><code>02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv</code></td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv</code></td>
 </tr>
 <tr>
 <td>Final CNA event table</td>
-<td><code>03_cna_codification/cna_events.tsv</code></td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/03_cna_codification/cna_events.tsv</code></td>
 </tr>
 <tr>
 <td>Cohort and per-sample plots</td>
-<td><code>04_cna_custom_plots/</code></td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/04_cna_custom_plots/</code></td>
 </tr>
 <tr>
 <td>Classifier report</td>
-<td><code>05_cna_classifier/03_report/cna_classifier_report.html</code></td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/05_cna_classifier/03_report/cna_classifier_report.html</code></td>
 </tr>
 <tr>
 <td>Per-sample research reports</td>
-<td><code>05_cna_classifier/03_report/clinician_reports/</code></td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/05_cna_classifier/03_report/clinician_reports/</code></td>
 </tr>
 </tbody>
 </table>
@@ -1737,23 +1757,20 @@ tail<span class="w"> </span>-n<span class="w"> </span><span class="m">30</span><
 <p>The classifier may flag a region such as 12q13–q15 or an MDM2/CDK4 overlap for research review. A flag is not confirmation of gene amplification, disease subtype, prognosis, or treatment actionability. Review coverage, segment size, focality, longitudinal consistency, and the original event table; confirm important findings with a validated orthogonal assay.</p>
 <p>The stage-05 HTML and per-sample PDFs are useful clinician-facing research summaries, but this archive supplies no pathology table. They must not be described as pathology-confirmed findings. To combine a future cohort with real pathology metadata, follow <a href="../configuration/pathology/">Pathology and Classifier</a> and require exact sample-identifier matching.</p>
 <p>The article reported MDM2-associated signals for selected specimens under its own method. Do not use that statement to relabel a discordant OncoTracer result or choose parameters after seeing the answer. This reanalysis has no matched tissue or healthy-donor controls and is not a sensitivity/specificity validation set.</p>
-<h2 id="8-preserve-provenance">8. Preserve provenance<a class="headerlink" href="#8-preserve-provenance" title="Permanent link">&para;</a></h2>
-<p>Keep these files with any shared result:</p>
+<p><a id="8-preserve-provenance"></a></p>
+<h2 id="8-keep-the-files-that-describe-the-run">8. Keep the files that describe the run<a class="headerlink" href="#8-keep-the-files-that-describe-the-run" title="Permanent link">&para;</a></h2>
+<p>Keep these files with any result you share:</p>
 <ul>
-<li>frozen <code>examples/prjna754199/manifest.tsv</code> and its SHA-256;</li>
-<li><code>examples/prjna754199/samples.csv</code>;</li>
-<li>generated <code>illumina.samplesheet.csv</code> and <code>illumina.auto.yml</code>;</li>
-<li>OncoTracer commit and clean/dirty worktree state;</li>
-<li>install manifest and immutable container digest;</li>
-<li>hg38/reference identity and SAMURAI <code>pipeline_info</code>;</li>
-<li>outer and nested Nextflow logs, report, timeline, and trace;</li>
-<li>classifier report, clinician-report index, and per-sample PDFs;</li>
-<li>unedited source tables behind every exported figure.</li>
+<li><code>/home/student/oncotracer/examples/prjna754199/manifest.tsv</code>, which lists the downloaded public files and their checksums;</li>
+<li><code>/home/student/oncotracer/examples/prjna754199/samples.csv</code>, which lists the sample names and workflow status;</li>
+<li><code>/home/student/oncotracer/test/configs/prjna754199/illumina.samplesheet.csv</code> and <code>illumina.auto.yml</code>, which record the inputs and settings;</li>
+<li><code>/home/student/oncotracer/test/runs/prjna754199/06_workflow_summary/workflow_summary.txt</code>;</li>
+<li>the CNA tables, plots, classifier report, and per-sample PDFs used in the interpretation.</li>
 </ul>
 <p><a id="optional-automated-replay"></a></p>
-<p>The <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md">example provenance notes</a> document the archive snapshot and exact integrity checks. The <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">example README</a> retains the advanced audit and automated-replay details without interrupting this main path.</p>
+<p>The <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md">archive and checksum notes</a> describe the public files used here. The <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">example README</a> contains extra technical details for users who need them.</p>
 <h2 id="verified-result-gallery">Verified result gallery<a class="headerlink" href="#verified-result-gallery" title="Permanent link">&para;</a></h2>
-<p>The following images are static exports from the complete 12-run workflow described above. They demonstrate software output; they do not validate a diagnosis. <a href="../assets/full_tutorial/gallery_provenance.tsv">Inspect the asset/source checksums and transformation record</a>.</p>
+<p>The following images are static exports from the complete 12-run workflow described above. They demonstrate software output; they do not validate a diagnosis. <a href="../assets/full_tutorial/gallery_provenance.tsv">See the source files and checksums used for the gallery</a>.</p>
 <h3 id="samurai-fitted-copy-number-profile">SAMURAI fitted copy-number profile<a class="headerlink" href="#samurai-fitted-copy-number-profile" title="Permanent link">&para;</a></h3>
 <p><a href="../assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.pdf">Open the source qDNAseq segment PDF</a>.</p>
 <p><img alt="SAMURAI qDNAseq profile for the public DDLPS_1b archive alias, with bin-level signal and fitted horizontal CNA segments" src="../assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.png" /></p>

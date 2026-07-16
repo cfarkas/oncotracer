@@ -1416,49 +1416,77 @@
 </tbody>
 </table>
 <h2 id="keep-one-understandable-project-tree">Keep one understandable project tree<a class="headerlink" href="#keep-one-understandable-project-tree" title="Permanent link">&para;</a></h2>
-<p>This layout keeps every configured path below one <code>lpwgs_root</code>:</p>
-<div class="highlight"><pre><span></span><code>oncotracer/                              # lpwgs_root in this example
+<p>This page uses <code>/home/student/oncotracer</code> as an example repository location.
+Replace that prefix with the location of your clone. Put the reads and
+<code>samples.csv</code> in the input folders shown below. OncoTracer creates the
+<code>config</code> and <code>runs</code> folders when Automatic Setup is run.</p>
+<div class="highlight"><pre><span></span><code>oncotracer/
 ├── main.nf
 ├── params/
 │   ├── my_illumina.yml
 │   └── my_ont.yml
-└── project/
+└── project/                             # lpwgs_root in this example
     ├── input/
     │   ├── illumina_fastq/
     │   │   ├── Patient_A_R1.fastq.gz
-    │   │   └── Patient_A_R2.fastq.gz
-    │   ├── illumina.samplesheet.csv
+    │   │   ├── Patient_A_R2.fastq.gz
+    │   │   ├── Patient_B_R1.fastq.gz
+    │   │   ├── Patient_B_R2.fastq.gz
+    │   │   └── samples.csv
     │   ├── pathology.csv
     │   └── fastq_pass/
     │       ├── barcode01/
     │       │   └── reads_001.fastq.gz
-    │       └── barcode02/
-    │           └── reads_001.fastq.gz
-    ├── config/
-    └── runs/
-</code></pre></div>
-<p>Create the empty directories from the repository root:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                        </span><span class="c1"># enter the cloned repository</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/illumina_fastq<span class="w"> </span>project/input/fastq_pass<span class="w">        </span><span class="c1"># sequencing input directories</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span>project/config<span class="w"> </span>project/runs<span class="w">                                  </span><span class="c1"># generated configuration and result directories</span>
-<span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                           </span><span class="c1"># save the absolute lpwgs_root used in examples below</span>
-<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">&quot;</span><span class="w">                                                        </span><span class="c1"># verify it before editing files</span>
+    │       ├── barcode02/
+    │       │   └── reads_001.fastq.gz
+    │       └── samples.csv
+    ├── config/                         # created by Automatic Setup
+    └── runs/                           # created by Automatic Setup
 </code></pre></div>
 <h2 id="recommended-let-oncotracer-map-the-inputs">Recommended: let OncoTracer map the inputs<a class="headerlink" href="#recommended-let-oncotracer-map-the-inputs" title="Permanent link">&para;</a></h2>
-<p>Automatic setup checks supported filenames and writes the analysis YAML. It is a configuration step and stops before analysis.</p>
+<p>Automatic Setup checks supported filenames and writes the analysis YAML. It
+is a configuration step and stops before analysis. The reads folder and
+sample table must already exist; the two destination folders do not.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--reads_folder</code></td>
+<td>The existing folder containing the FASTQ files.</td>
+</tr>
+<tr>
+<td><code>--sample_table</code></td>
+<td>The existing CSV that connects file or barcode names to sample names and <code>TUMOR</code>/<code>NORMAL</code>.</td>
+</tr>
+<tr>
+<td><code>--auto_config_dir</code></td>
+<td>Where Automatic Setup creates the YAML and, for Illumina, the generated samplesheet. The folder is created if needed.</td>
+</tr>
+<tr>
+<td><code>--auto_outdir</code></td>
+<td>Where the later real analysis will save BAMs, CNA tables, plots, and reports. Automatic Setup creates this folder if needed and writes it as <code>outdir:</code> in the YAML, but no reads are analyzed yet.</td>
+</tr>
+</tbody>
+</table>
+<p>Use absolute paths because Automatic Setup runs inside a Nextflow task.</p>
 <p>For Illumina, create <code>project/input/illumina_fastq/samples.csv</code>:</p>
 <div class="highlight"><pre><span></span><code>sample_name,status
 Patient_A,TUMOR
 Patient_B,NORMAL
 </code></pre></div>
 <p>Then run:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                           </span><span class="c1"># run from the repository root</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/home/student/oncotracer
 nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/illumina_auto&quot;</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/home/student/oncotracer/project/input/illumina_fastq<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/home/student/oncotracer/project/input/illumina_fastq/samples.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span>/home/student/oncotracer/project/config/illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span>/home/student/oncotracer/project/runs/illumina_auto
 </code></pre></div>
 <p>For ONT, create <code>project/input/fastq_pass/samples.csv</code>:</p>
 <div class="highlight"><pre><span></span><code>barcode,sample_name,status
@@ -1466,13 +1494,13 @@ barcode01,Patient_A,TUMOR
 barcode02,Patient_B,NORMAL
 </code></pre></div>
 <p>Then run:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="w">                                                           </span><span class="c1"># run from the repository root</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/home/student/oncotracer
 nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/input/fastq_pass/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/ont&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/ont_auto&quot;</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/home/student/oncotracer/project/input/fastq_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/home/student/oncotracer/project/input/fastq_pass/samples.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span>/home/student/oncotracer/project/config/ont<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span>/home/student/oncotracer/project/runs/ont_auto
 </code></pre></div>
 <p>See <a href="../auto_params/">Automatic Setup</a> for exact filename detection and complete run commands.</p>
 <h2 id="manual-illumina-samplesheet">Manual Illumina samplesheet<a class="headerlink" href="#manual-illumina-samplesheet" title="Permanent link">&para;</a></h2>
@@ -1585,7 +1613,6 @@ head<span class="w"> </span>-5<span class="w"> </span>project/input/pathology.cs
 <li>sample names are unique and match pathology exactly; and</li>
 <li><code>outdir</code> is a new directory for this experiment.</li>
 </ul>
-<p>An optional <code>-stub-run</code> checks workflow wiring only. It does not replace these input checks or the real analysis.</p>
 
 
 
