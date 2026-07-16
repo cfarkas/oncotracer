@@ -18,7 +18,7 @@ Java is required to launch Nextflow. It is infrastructure, not a CNA analysis st
 
 | Program/component | What it does | Result to inspect |
 | --- | --- | --- |
-| [BWA-MEM](https://github.com/lh3/bwa) | Aligns paired short reads to hg38 | `01_samurai_illumina/alignment/*.bam` |
+| [BWA-MEM](https://github.com/lh3/bwa) | Aligns single-end or paired short reads to hg38 | `01_samurai_illumina/alignment/*.bam` |
 | [SAMtools](https://www.htslib.org/) | Sorts, indexes, and inspects BAM/reference files | BAM/BAI and reference indices |
 | [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) | Per-FASTQ quality control | `01_samurai_illumina/fastqc/` |
 | [MultiQC](https://multiqc.info/) | Aggregates sample QC | `01_samurai_illumina/multiqc/` |

@@ -8,9 +8,10 @@ OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-gen
 
 | Your goal | Start here | What you will do |
 | --- | --- | --- |
-| Check that OncoTracer works | [Quick Start](quick_start.md) | Run one public Illumina sample and one public ONT sample. |
+| Check that OncoTracer works | [QuickStart Example 1](quick_start.md) | Run one public Illumina sample and one public ONT sample. |
 | Analyze your own reads (recommended default) | [Automatic setup](auto_params.md) | Point to a FASTQ folder and let OncoTracer write the configuration. |
-| Run a realistic public cohort | [Three-sample public cohort](public_cohort.md) | Download and analyze three paired HCC1143 samples (six FASTQs). |
+| Run a realistic public cohort | [QuickStart Example 2](public_cohort.md) | Download and analyze three paired HCC1143 samples (six FASTQs). |
+| Reproduce the complete patient-cohort workflow | [Full Tutorial](full_tutorial.md) | Process all 12 public PRJNA754199 libraries and review CNA reports. |
 | Configure unusual inputs manually (second option) | [Manual YAML editing](configuration/yaml_basics.md) | Understand paths and edit a YAML example safely. |
 | Add pathology data | [Pathology and classifier](configuration/pathology.md) | Match a pathology CSV to Illumina sample names. |
 

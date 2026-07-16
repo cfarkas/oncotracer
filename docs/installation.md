@@ -84,8 +84,8 @@ Also allow space for the Docker image, uncompressed/intermediate files, the Next
 
 ## 6. Choose the first run
 
-- [Quick verification](quick_start.md): about **225 MB of public reads**, one Illumina sample and one ONT sample.
-- [Three-sample HCC1143 cohort](public_cohort.md): **1.08 GiB** of reads in six FASTQ files; use this after the quick verification.
+- [QuickStart Example 1](quick_start.md): about **225 MB of public reads**, one Illumina sample and one ONT sample.
+- [QuickStart Example 2](public_cohort.md): **1.08 GiB** of reads in six FASTQ files; use this after Example 1.
 - [Your own FASTQ folder](auto_params.md): automatically generate a samplesheet and YAML.
 
-The quick verification is the recommended first run because it exercises both workflow branches with the smallest provided datasets.
+QuickStart Example 1 is the recommended first run because it exercises both workflow branches with the smallest provided datasets.

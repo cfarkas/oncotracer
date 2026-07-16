@@ -6,9 +6,9 @@ A YAML file is a small plain-text run configuration. It tells OncoTracer which s
 
 | Situation | Use this route |
 | --- | --- |
-| You have a folder of paired Illumina FASTQs or ONT barcode folders | **Automatic setup** with `--auto_params` (recommended default) |
+| You have a folder of uniformly single-end or paired Illumina FASTQs, or ONT barcode folders | **Automatic setup** with `--auto_params` (recommended default) |
 | You need a custom samplesheet, custom reference, or advanced settings | **Manual YAML editing** (second option) |
-| You want to learn with public data | Use `--make_test`; see [Quick Start](../quick_start.md) |
+| You want to learn with public data | Use `--make_test`; see [QuickStart Example 1](../quick_start.md) |
 
 ## Recommended default: generate it automatically
 
@@ -34,7 +34,7 @@ nextflow run main.nf --auto_params \
   --auto_config_dir "$ROOT/project/config/illumina" \
   --auto_outdir "$ROOT/project/runs/illumina_auto"                    # create YAML and samplesheet, then stop
 sed -n '1,120p' project/config/illumina/illumina.auto.yml              # inspect the generated YAML
-sed -n '1,20p' project/config/illumina/illumina.samplesheet.csv        # inspect detected read pairs
+sed -n '1,20p' project/config/illumina/illumina.samplesheet.csv        # inspect detected FASTQ inputs
 ```
 
 See [Automatic Setup](../auto_params.md) for the required Illumina filenames and ONT barcode table.
@@ -73,7 +73,7 @@ illumina_samplesheet: /home/student/oncotracer/project/input/illumina.sampleshee
 - `mode` chooses the `illumina` or `ont` route.
 - `lpwgs_root` is the absolute common parent that Docker or Singularity can mount. Put **every configured input, reference, and output below it**.
 - `outdir` is the result directory for one run. Give each experiment a new `outdir`.
-- `illumina_samplesheet` is a CSV that points to each paired FASTQ.
+- `illumina_samplesheet` is a CSV that points to each sample's single FASTQ or R1/R2 pair.
 
 In this example, both `project/runs/sample_a` and `project/input/illumina.samplesheet.csv` begin with `/home/student/oncotracer`, so they are below `lpwgs_root`.
 

@@ -28,7 +28,9 @@ Use Linux and install these host prerequisites:
 
 The first real analysis downloads the hg38 reference (about **3.16 GB**) and BWA may take **30–60 minutes** to index it. This is a one-time preparation; later runs reuse the reference. Docker images and working files require additional disk space.
 
-## Quick verification: one Illumina and one ONT sample
+<a id="quick-verification-one-illumina-and-one-ont-sample"></a>
+
+## QuickStart Example 1: one Illumina + one ONT sample
 
 This is the smallest end-to-end check. It downloads about **225 MB of public reads**, runs both branches, and verifies their expected outputs:
 
@@ -38,9 +40,11 @@ cd oncotracer                                        # enter the repository; run
 bash run_test.sh --docker                            # prepare data and run the Illumina and ONT checks
 ```
 
-The script can place a Nextflow launcher in `.tools/` when Nextflow is missing, but Java, Git, and Docker must already work on the host. A successful run ends with `SUCCESS`. See the [Quick Start](https://cfarkas.github.io/oncotracer/quick_start/) for each command, generated YAML, expected runtime behavior, and output paths.
+The script can place a Nextflow launcher in `.tools/` when Nextflow is missing, but Java, Git, and Docker must already work on the host. A successful run ends with `SUCCESS`. See [QuickStart Example 1](https://cfarkas.github.io/oncotracer/quick_start/) for each command, generated YAML, expected runtime behavior, and output paths.
 
-## Real three-sample public example: six FASTQs
+<a id="real-three-sample-public-example-six-fastqs"></a>
+
+## QuickStart Example 2: three-sample public cohort
 
 The optional HCC1143 example downloads **1.08 GiB**: three paired LP-WGS samples, or six FASTQ files. It validates every file against ENA metadata, generates the samplesheet and YAML, runs the workflow, and checks the results:
 
@@ -52,7 +56,7 @@ Allow at least 40 GiB of working space. Read the [example notes](examples/hcc114
 
 ## Run your own FASTQs
 
-The recommended default is to point `--auto_params` at a reads folder and a small tumor/normal table. OncoTracer detects Illumina pairs or ONT barcode folders and creates the YAML and Illumina samplesheet:
+The recommended default is to point `--auto_params` at a reads folder and a small tumor/normal table. OncoTracer detects uniform Illumina single-end files, Illumina pairs, or ONT barcode folders and creates the YAML and Illumina samplesheet:
 
 - [Automatic setup from your FASTQ folder](https://cfarkas.github.io/oncotracer/auto_params/) — recommended default
 - [Manual YAML and path guide](https://cfarkas.github.io/oncotracer/configuration/yaml_basics/) — second option for unusual layouts or advanced settings

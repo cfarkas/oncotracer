@@ -25,8 +25,9 @@ all rows because these are patient-cohort condition libraries. It does not asser
 active tumor or detectable circulating tumor DNA was present at a collection time.
 
 See [`manifest.tsv`](manifest.tsv) for every BioSample, experiment, run, byte count,
-MD5 checksum, and immutable HTTPS FASTQ path. See [`PROVENANCE.md`](PROVENANCE.md) for
-the archive query and interpretation boundaries.
+MD5 checksum, and immutable HTTPS FASTQ path. [`samples.csv`](samples.csv) is the
+explicit sample-to-condition table used by Automatic Setup. See
+[`PROVENANCE.md`](PROVENANCE.md) for the archive query and interpretation boundaries.
 
 ## Requirements
 
@@ -41,10 +42,10 @@ Actual time and storage depend on the executor, filesystem, cache state, and run
 ## Follow the complete tutorial
 
 The [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/) is the
-primary route. It shows every operation separately: installation-only verification,
-manifest inspection, resumable download logic, byte/MD5/gzip checks, samplesheet
-construction, terminal YAML editing, stub and real runs, exact 12-sample output
-validation, interpretation, and provenance.
+primary route. Its main path is deliberately short: prepare the software, run one
+validated download command, use **Automatic Setup from a Reads Folder** to generate the
+12-sample samplesheet and YAML, run the stub and real workflows, invoke one exact-output
+verifier, and review the CNA and clinician-facing research reports.
 
 ## Optional automated replay
 
@@ -61,12 +62,14 @@ After following the manual lesson, the runner can replay the same operations:
 1. validates the pinned 12-row manifest;
 2. downloads each FASTQ over HTTPS with restart support;
 3. verifies exact compressed bytes, ENA MD5, and `gzip -t`;
-4. writes an Illumina samplesheet with a blank `fastq_2` field for each single-end run;
-5. writes a qDNAseq 100 kb YAML with the research classifier enabled in `sarcoma` context;
+4. runs OncoTracer `--auto_params` on the reads folder and explicit `samples.csv`;
+5. verifies that Automatic Setup writes a blank `fastq_2` field for every single-end
+   library and a qDNAseq 100 kb YAML with the classifier enabled in `sarcoma` context;
 6. performs a Nextflow stub wiring check;
 7. runs the real workflow with `-resume`;
-8. checks the exact 12 manifest sample IDs in BAM, SAMURAI, refinement, and
-   classifier outputs, plus the remaining CNA, plot, and summary outputs.
+8. calls [`verify_outputs.py`](verify_outputs.py), which checks the exact 12 manifest
+   aliases in BAM, SAMURAI, refinement, classifier, fitted-plot, and clinician-report
+   outputs, plus the remaining CNA, plot, and summary files.
 
 Use another supported runtime by replacing `--docker` with `--singularity` or
 `--conda`.
@@ -79,7 +82,8 @@ Download and validate all 12 files, then stop:
 bash examples/prjna754199/run_example.sh --download-only
 ```
 
-Also generate and print the samplesheet, YAML, and provenance receipt, then stop:
+Also run Automatic Setup, print its samplesheet and YAML, write a provenance receipt,
+and then stop:
 
 ```bash
 bash examples/prjna754199/run_example.sh --prepare-only
@@ -87,6 +91,14 @@ bash examples/prjna754199/run_example.sh --prepare-only
 
 Both operations are resumable. A complete file is reused only after its byte count,
 MD5, and gzip stream all validate. A partial file remains available for the next run.
+The download step also places `samples.csv` and a frozen manifest copy beside the reads,
+so the folder is self-describing.
+
+After a completed analysis, rerun the exact checks without repeating any workflow task:
+
+```bash
+python3 examples/prjna754199/verify_outputs.py --outdir test/runs/prjna754199
+```
 
 Set a separate analysis root when the repository filesystem is too small:
 
@@ -104,14 +116,17 @@ test/
 ├── public/prjna754199/
 │   ├── DDLPS_1a.fastq.gz
 │   ├── ...
-│   └── WDLPS_3.fastq.gz
+│   ├── WDLPS_3.fastq.gz
+│   ├── manifest.tsv
+│   └── samples.csv
 ├── configs/prjna754199/
-│   ├── illumina.single_end.samplesheet.csv
-│   ├── illumina.full_tutorial.yml
+│   ├── illumina.samplesheet.csv
+│   ├── illumina.auto.yml
 │   └── run_provenance.tsv
 ├── references/samurai_hg38/
 ├── work/
 │   ├── prjna754199/
+│   ├── prjna754199_auto_params/
 │   └── prjna754199_stub/
 └── runs/prjna754199/
 ```

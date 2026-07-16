@@ -4,7 +4,7 @@ Choose the row that matches your data. The optional pathology file does not repl
 
 | Route | Required sequencing input | Required small metadata |
 | --- | --- | --- |
-| Illumina | One single-end FASTQ or one paired R1/R2 FASTQ pair per sample | Automatic paired-read `sample_name,status` table, or manual four-column samplesheet |
+| Illumina | One single-end FASTQ or one paired R1/R2 FASTQ pair per sample | Automatic `sample_name,status` table, or manual four-column samplesheet |
 | ONT | One or more FASTQs inside each selected barcode directory | Automatic `barcode,sample_name,status` table, or manual barcode/sample lists in YAML |
 | Classifier + pathology | Illumina or ONT input above | Pathology CSV with matching sample, case, and diagnosis columns |
 
@@ -92,7 +92,8 @@ See [Automatic Setup](auto_params.md) for exact filename detection and complete 
 
 ## Manual Illumina samplesheet
 
-Use a manual samplesheet when filenames do not follow automatic R1/R2 detection. Create it with Nano:
+Use a manual samplesheet when filenames do not follow the supported automatic
+single-end or R1/R2 detection patterns. Create it with Nano:
 
 ```bash
 nano project/input/illumina.samplesheet.csv                            # create or edit the CSV

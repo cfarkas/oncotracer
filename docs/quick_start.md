@@ -1,6 +1,8 @@
-# Quick Start
+<a id="quick-start"></a>
 
-This tutorial verifies a new OncoTracer installation with one public Illumina sample and one public Oxford Nanopore Technologies (ONT) sample. It downloads about **225 MB of compressed reads** in total. It is separate from the larger, optional [three-sample HCC1143 cohort](public_cohort.md).
+# QuickStart Example 1: one Illumina + one ONT sample
+
+This tutorial verifies a new OncoTracer installation with one public Illumina sample and one public Oxford Nanopore Technologies (ONT) sample. It downloads about **225 MB of compressed reads** in total. It is separate from [QuickStart Example 2](public_cohort.md), the larger optional three-sample HCC1143 cohort.
 
 ## Before running
 
@@ -167,7 +169,9 @@ test/runs/ont/
 
 See [Output Files](outputs.md) for interpretation and [Gallery](gallery.md) for example plots.
 
-## Next: run the real six-FASTQ cohort
+<a id="next-run-the-real-six-fastq-cohort"></a>
+
+## Next: run QuickStart Example 2
 
 The default verification deliberately uses small, single-sample inputs. After it succeeds, the opt-in HCC1143 example demonstrates a three-sample Illumina cohort: three paired libraries, or six physical FASTQ files. The read download is **1.08 GiB**.
 
@@ -175,7 +179,7 @@ The default verification deliberately uses small, single-sample inputs. After it
 bash examples/hcc1143_lpwgs/run_example.sh --docker # download, validate, configure, run, and verify all three samples
 ```
 
-Read the [complete public-cohort tutorial](public_cohort.md) and the repository's [`examples/hcc1143_lpwgs`](https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs) notes for provenance, resource expectations, preparation-only options, and results.
+Read [QuickStart Example 2](public_cohort.md) and the repository's [`examples/hcc1143_lpwgs`](https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs) notes for provenance, resource expectations, preparation-only options, and results.
 
 ## Next: run your own data
 

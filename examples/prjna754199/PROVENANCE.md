@@ -41,9 +41,12 @@ verified diagnoses. Public sex/age metadata are not needed for this software tut
 and are deliberately omitted from the generated analysis samplesheet. The generated
 `tumor` status is a workflow condition label for patient-cohort libraries, not a claim
 about tumor presence, tumor fraction, or MDM2 amplification in a particular specimen.
+The versioned `samples.csv` records those 12 labels explicitly; Automatic Setup uses it
+to generate `illumina.samplesheet.csv` and leaves `fastq_2` empty for every library.
 
-For a shareable result, retain the generated `run_provenance.tsv`, unedited YAML and
-samplesheet, Nextflow report/trace, SAMURAI `pipeline_info`, reference identity, container
+For a shareable result, retain `samples.csv`, the generated `run_provenance.tsv`,
+unedited `illumina.auto.yml` and `illumina.samplesheet.csv`, Nextflow report/trace,
+SAMURAI `pipeline_info`, reference identity, container
 digest, OncoTracer commit, and source-file checksums. Static gallery exports should point
 back to those files and identify the exact source table or PDF used to generate each
 image.

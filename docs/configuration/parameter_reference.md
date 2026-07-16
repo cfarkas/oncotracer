@@ -42,7 +42,7 @@ A command-line pipeline parameter begins with two hyphens, for example `--mode i
 | `make_test` | Boolean | `false` | Download or reuse public FASTQs and write quick-start YAML files. Use as `--make_test`. |
 | `test_root` | absolute directory or `null` | `<repository>/test` | Alternate destination for public inputs, configurations, and results. |
 | `auto_params` | Boolean | `false` | Generate a run YAML from a reads folder and sample table. Use as `--auto_params`. |
-| `reads_folder` | absolute directory | `null` | Flat paired-FASTQ folder for Illumina, or the ONT `fastq_pass` folder containing barcode directories. Required with `auto_params`. |
+| `reads_folder` | absolute directory | `null` | Flat all-single-end or all-paired FASTQ folder for Illumina, or the ONT `fastq_pass` folder containing barcode directories. Required with `auto_params`. |
 | `sample_table` | absolute CSV, TSV, or whitespace-delimited TXT path | `null` | Illumina `sample_name,status` table or ONT `barcode,sample_name,status` table. Required with `auto_params`. |
 | `auto_config_dir` | absolute directory or `null` | `<reads_folder>/oncotracer_config` | Destination for generated YAML and, for Illumina, the generated samplesheet. |
 | `auto_outdir` | absolute directory or `null` | `<reads_folder>/oncotracer_results` | Result path written into the generated YAML. |

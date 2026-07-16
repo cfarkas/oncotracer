@@ -4,7 +4,9 @@ Use this route for single-end or paired-end Illumina FASTQ files. OncoTracer ali
 
 ## Recommended: create the YAML automatically
 
-Choose automatic setup when each sample has one compressed R1/R2 pair in a single folder.
+Choose automatic setup when each sample has either one exact
+`<sample>.fastq.gz`/`<sample>.fq.gz` file or one compressed R1/R2 pair in a
+single folder. Use one layout consistently across the run.
 
 ### 1. Arrange the FASTQs
 
@@ -29,7 +31,12 @@ oncotracer/
             └── Patient_B_R2.fastq.gz
 ```
 
-`Patient_A_R1.fastq.gz` pairs with `Patient_A_R2.fastq.gz`. Names ending in `_1.fastq.gz` and `_2.fastq.gz`, and the corresponding `.fq.gz` forms, are also accepted. Automatic setup expects exactly one pair per sample at the top level of this folder.
+`Patient_A_R1.fastq.gz` pairs with `Patient_A_R2.fastq.gz`. Names ending in
+`_1.fastq.gz` and `_2.fastq.gz`, and the corresponding `.fq.gz` forms, are
+also accepted. For a single-end run, use exact names such as
+`Patient_A.fastq.gz` and `Patient_B.fastq.gz`. Automatic setup expects exactly
+one supported input per sample at the top level of this folder and rejects a
+mixed single-end/paired-end cohort.
 
 ### 2. Create the sample table
 
@@ -45,7 +52,11 @@ Patient_A,TUMOR
 Patient_B,NORMAL
 ```
 
-The `sample_name` must exactly match the filename text before `_R1`/`_R2`. `status` must be `TUMOR` or `NORMAL` (case-insensitive). In Nano, save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`.
+For paired data, `sample_name` must exactly match the filename text before
+`_R1`/`_R2` (or `_1`/`_2`). For single-end data, it must exactly match the
+filename without `.fastq.gz` or `.fq.gz`. `status` must be `TUMOR` or `NORMAL`
+(case-insensitive). In Nano, save with `Ctrl+O`, press `Enter`, then exit with
+`Ctrl+X`.
 
 Inspect the table:
 
@@ -65,12 +76,12 @@ nextflow run main.nf --auto_params \
   --auto_outdir "$ROOT/project/runs/illumina_auto"                    # generate files and stop
 ```
 
-This command checks that every row has exactly one R1/R2 pair and that each gzip file is complete. It creates:
+This command checks that every row has exactly one single-end file or one R1/R2 pair, requires one layout for the whole run, and verifies every gzip stream. It creates:
 
 ```text
 project/config/illumina/
 ├── illumina.auto.yml          # pass this file to -params-file
-└── illumina.samplesheet.csv   # detected R1/R2 paths
+└── illumina.samplesheet.csv   # detected single-end or R1/R2 paths
 ```
 
 It does **not** start alignment or CNA analysis.
@@ -79,7 +90,7 @@ It does **not** start alignment or CNA analysis.
 
 ```bash
 sed -n '1,120p' project/config/illumina/illumina.auto.yml              # inspect settings and absolute paths
-sed -n '1,20p' project/config/illumina/illumina.samplesheet.csv        # inspect detected pairs and status values
+sed -n '1,20p' project/config/illumina/illumina.samplesheet.csv        # inspect detected inputs and status values
 ```
 
 The generated YAML will resemble this. It is a **YAML example**, not a terminal command:
@@ -110,7 +121,7 @@ The stub command uses placeholder outputs; it does not analyze or fully validate
 
 ## Second option: manual setup
 
-Choose manual setup for single-end reads, when FASTQ naming does not match automatic paired-read detection, or when you need advanced settings.
+Choose manual setup when FASTQ naming does not match the supported automatic single-end/paired patterns or when you need advanced settings.
 
 ### 1. Create the samplesheet
 
@@ -119,7 +130,7 @@ This example assumes `pwd` prints `/home/student/oncotracer`. Replace that prefi
 ```bash
 cd oncotracer
 mkdir -p project/input/illumina_fastq project/runs                     # create directories if absent
-nano project/input/illumina.samplesheet.csv                            # create the paired-read table
+nano project/input/illumina.samplesheet.csv                            # create the FASTQ table
 ```
 
 Enter:

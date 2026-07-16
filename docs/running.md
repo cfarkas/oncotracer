@@ -6,8 +6,8 @@ Run every command from the cloned repository directory—the directory that cont
 
 | Starting point | What to do |
 | --- | --- |
-| You want to verify the installation with public data | Run `bash run_test.sh --docker`; see [Quick Start](quick_start.md). |
-| You have paired Illumina FASTQs with regular R1/R2 names | Generate configuration with `--auto_params`, then run the generated YAML. |
+| You want to verify the installation with public data | Run `bash run_test.sh --docker`; see [QuickStart Example 1](quick_start.md). |
+| You have uniformly single-end or paired Illumina FASTQs with supported names | Generate configuration with `--auto_params`, then run the generated YAML. |
 | You have ONT FASTQs in barcode directories | Generate configuration with `--auto_params`, then run the generated YAML. |
 | Automatic naming does not fit the study | Use the second option: a manual [Illumina YAML](configuration/illumina.md) or [ONT YAML](configuration/ont.md). |
 | You already have a checked YAML | Go directly to [Check wiring, then run](#check-wiring-then-run). |
@@ -65,7 +65,7 @@ nextflow run main.nf --auto_params \
   --auto_config_dir "$ROOT/project/config/illumina" \
   --auto_outdir "$ROOT/project/runs/illumina_auto"                    # create files; no analysis yet
 sed -n '1,120p' project/config/illumina/illumina.auto.yml              # inspect the YAML
-sed -n '1,20p' project/config/illumina/illumina.samplesheet.csv        # inspect detected R1/R2 paths
+sed -n '1,20p' project/config/illumina/illumina.samplesheet.csv        # inspect detected single or paired paths
 nextflow run main.nf --docker -params-file project/config/illumina/illumina.auto.yml -resume # real analysis
 ```
 
@@ -150,7 +150,7 @@ These stages run in order inside the configured `outdir`:
 | `02_bam_refinement` | Always | Uses BAM read depth to test and refine coarse CNA boundaries; keeps an original boundary when evidence for moving it is insufficient. |
 | `03_cna_codification` | Always | Converts final CNA segments into event tables and cytogenomic notation. |
 | `04_cna_custom_plots` | Always | Creates per-sample and combined copy-number PDF plots. |
-| `05_cna_classifier` | Only when `run_cna_classifier: true` | Runs optional CNA classification and pathology concordance. |
+| `05_cna_classifier` | Only when `run_cna_classifier: true` | Runs optional CNA classification and, when pathology is supplied, concordance reporting. |
 | `06_workflow_summary` | Always | Records important output paths. |
 
 The `01` wrapper launches an upstream SAMURAI Nextflow workflow. Therefore the outer Nextflow display can remain at `RUN_*_SAMURAI (0 of 1)` while alignment and CNA tasks are active inside it. This alone does not mean the run is stalled. The first Illumina run can also spend substantial time downloading and indexing hg38; later runs reuse those files below `lpwgs_root`.

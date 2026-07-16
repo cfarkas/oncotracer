@@ -26,9 +26,9 @@ nav:
   - Home: index.md
   - Getting Started:
       - 1. Install Requirements: installation.md
-      - 2. Quick Verification: quick_start.md
+      - 2. QuickStart Example 1 (Illumina + ONT): quick_start.md
       - 3. Automatic Setup for Your FASTQs (Recommended): auto_params.md
-      - 4. Three-Sample Public Cohort: public_cohort.md
+      - 4. QuickStart Example 2 (Three-Sample Public): public_cohort.md
       - Input Files and Folder Layouts: inputs.md
       - Manual YAML Editing (Second Option): configuration/yaml_basics.md
   - Full Tutorial: full_tutorial.md

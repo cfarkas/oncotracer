@@ -1,6 +1,6 @@
 # Developer guide
 
-This guide is for contributors changing code, tests, examples, or documentation. Users running their own FASTQs should start with [Quick verification](quick_start.md) or [Run your own FASTQs automatically](auto_params.md).
+This guide is for contributors changing code, tests, examples, or documentation. Users running their own FASTQs should start with [QuickStart Example 1](quick_start.md) or [Run your own FASTQs automatically](auto_params.md).
 
 ## Repository map
 

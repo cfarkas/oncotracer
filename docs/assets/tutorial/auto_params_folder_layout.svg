@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-labelledby="title desc">
   <title id="title">OncoTracer automatic parameter input folder layouts</title>
-  <desc id="desc">Beginner-friendly comparison of Illumina paired FASTQ files and Oxford Nanopore barcode folders, with metadata CSV rows mapping sample names and tumor or normal status to the detected inputs.</desc>
+  <desc id="desc">Beginner-friendly comparison of Illumina single-end or paired FASTQ files and Oxford Nanopore barcode folders, with metadata CSV rows mapping sample names and tumor or normal status to the detected inputs.</desc>
   <defs>
     <linearGradient id="header" x1="0" x2="1">
       <stop offset="0" stop-color="#0f172a"/>
@@ -38,8 +38,8 @@
   </g>
   <circle cx="81" cy="187" r="21" fill="#ccfbf1"/>
   <path d="M70 187h22M81 176v22" stroke="#0f766e" stroke-width="3" stroke-linecap="round"/>
-  <text class="panel-title" x="116" y="193">Illumina paired-end reads</text>
-  <text class="panel-sub" x="68" y="224">Match each sample by its shared name before _R1 and _R2.</text>
+  <text class="panel-title" x="116" y="193">Illumina single or paired reads</text>
+  <text class="panel-sub" x="68" y="224">Use sample.fastq.gz, or match a shared name before _R1 and _R2.</text>
 
   <text class="label" x="68" y="267">INPUT FOLDER</text>
   <rect x="68" y="282" width="494" height="218" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
@@ -108,5 +108,5 @@
   <rect x="42" y="712" width="1116" height="44" rx="12" fill="#ccfbf1"/>
   <circle cx="69" cy="734" r="12" fill="#0f766e"/>
   <path d="M64 734l4 4 7-9" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <text class="note" x="91" y="740"><tspan font-weight="700" fill="#115e59">Tip:</tspan> sample_name must match the FASTQ prefix (Illumina) or the barcode mapping (ONT); status is tumor or normal.</text>
+  <text class="note" x="91" y="740"><tspan font-weight="700" fill="#115e59">Tip:</tspan> sample_name must match the singleton basename/paired prefix (Illumina) or barcode mapping (ONT); status is tumor or normal.</text>
 </svg>

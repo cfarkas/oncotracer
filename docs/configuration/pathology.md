@@ -8,7 +8,7 @@ Start without this feature if you only need CNA calls and plots. Enable it after
 
 | File | Purpose | Identifier that must match |
 | --- | --- | --- |
-| Illumina samplesheet | Points to each R1/R2 FASTQ pair | `sample` |
+| Illumina samplesheet | Points to each single FASTQ or R1/R2 pair | `sample` |
 | Pathology CSV | Holds the case identifier and diagnosis | `illumina_sample_id` in this example |
 | Run YAML | Points OncoTracer to both files and names the pathology columns | No sample rows are stored here |
 

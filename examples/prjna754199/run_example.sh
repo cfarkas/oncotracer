@@ -6,7 +6,7 @@ usage() {
 Usage: bash examples/prjna754199/run_example.sh [--docker|--singularity|--conda] [--download-only|--prepare-only|--run]
 
 --download-only  Download and validate all 12 currently public FASTQs, then stop.
---prepare-only   Download/validate the FASTQs and write the samplesheet and YAML, then stop.
+--prepare-only   Download/validate the FASTQs and run Automatic Setup, then stop.
 --run            Complete download, configuration, stub check, real run, and output checks (default).
 
 Set COHORT_ROOT=/absolute/path to move downloads, configuration, references, work,
@@ -49,10 +49,14 @@ CONFIG_DIR="$COHORT_ROOT/configs/prjna754199"
 OUTDIR="$COHORT_ROOT/runs/prjna754199"
 WORK_DIR="$COHORT_ROOT/work/prjna754199"
 STUB_WORK_DIR="$COHORT_ROOT/work/prjna754199_stub"
-SAMPLESHEET="$CONFIG_DIR/illumina.single_end.samplesheet.csv"
-YAML="$CONFIG_DIR/illumina.full_tutorial.yml"
+AUTO_WORK_DIR="$COHORT_ROOT/work/prjna754199_auto_params"
+SAMPLESHEET="$CONFIG_DIR/illumina.samplesheet.csv"
+YAML="$CONFIG_DIR/illumina.auto.yml"
 RUN_PROVENANCE="$CONFIG_DIR/run_provenance.tsv"
 MANIFEST="$SCRIPT_DIR/manifest.tsv"
+SAMPLE_TABLE_SOURCE="$SCRIPT_DIR/samples.csv"
+SAMPLE_TABLE="$READS_DIR/samples.csv"
+VERIFIER="$SCRIPT_DIR/verify_outputs.py"
 
 source "$ROOT_DIR/bin/scripts/download_helpers.sh"
 
@@ -64,12 +68,13 @@ for command_name in python3 curl gzip md5sum stat readlink; do
 done
 
 # Refuse a silently truncated or edited manifest before transferring human data.
-python3 - "$MANIFEST" <<'PY_VALIDATE_MANIFEST'
+python3 - "$MANIFEST" "$SAMPLE_TABLE_SOURCE" <<'PY_VALIDATE_MANIFEST'
 import csv
 import sys
 from pathlib import Path
 
 manifest = Path(sys.argv[1])
+sample_table = Path(sys.argv[2])
 required = {
     "sample_alias", "biosample_accession", "experiment_accession", "run_accession",
     "instrument_model", "library_layout", "read_length_bp", "read_count", "base_count",
@@ -99,10 +104,18 @@ if sum(int(row["fastq_bytes"]) for row in rows) != 6_171_900_300:
     raise SystemExit("ERROR: manifest byte total does not match the pinned ENA report")
 if sum(int(row["read_count"]) for row in rows) != 266_097_582:
     raise SystemExit("ERROR: manifest read total does not match the pinned ENA report")
+with sample_table.open(newline="") as handle:
+    metadata_rows = list(csv.DictReader(handle))
+metadata_aliases = [row.get("sample_name", "") for row in metadata_rows]
+manifest_aliases = [row["sample_alias"] for row in rows]
+if metadata_aliases != manifest_aliases:
+    raise SystemExit("ERROR: samples.csv aliases/order do not match the frozen manifest")
+if any(row.get("status", "").upper() != "TUMOR" for row in metadata_rows):
+    raise SystemExit("ERROR: every public patient-cohort metadata row must use TUMOR")
 print("Manifest validated: 12 unique single-end runs; 6,171,900,300 compressed bytes")
 PY_VALIDATE_MANIFEST
 
-mkdir -p "$READS_DIR" "$CONFIG_DIR" "$OUTDIR" "$WORK_DIR" "$STUB_WORK_DIR"
+mkdir -p "$READS_DIR" "$CONFIG_DIR" "$OUTDIR" "$WORK_DIR" "$STUB_WORK_DIR" "$AUTO_WORK_DIR"
 
 downloaded_rows=0
 while IFS=$'\t' read -r sample_alias biosample experiment run instrument layout read_length reads bases archive_filename bytes md5 url; do
@@ -116,67 +129,38 @@ done < "$MANIFEST"
   exit 1
 }
 
+cp "$MANIFEST" "$READS_DIR/manifest.tsv"
+cp "$SAMPLE_TABLE_SOURCE" "$SAMPLE_TABLE"
+
 cat <<EOF_DOWNLOAD
 Twelve validated public single-end FASTQs are ready:
   reads:       $READS_DIR
   manifest:    $MANIFEST
+  metadata:    $SAMPLE_TABLE
   download:    6,171,900,300 bytes (about 5.75 GiB)
   read count:  266,097,582 reads (all archive files are 36 bp)
 EOF_DOWNLOAD
 [[ "$ACTION" == "--download-only" ]] && exit 0
 
-# Use Python's CSV writer so an unusual COHORT_ROOT remains a valid samplesheet.
-# JSON strings are valid YAML scalars, so paths with spaces are quoted safely.
-python3 - "$MANIFEST" "$READS_DIR" "$SAMPLESHEET" "$YAML" "$COHORT_ROOT" "$OUTDIR" <<'PY_CONFIG'
-import csv
-import json
-import sys
-from pathlib import Path
+command -v java >/dev/null 2>&1 || { echo "ERROR: Java 17+ is required for Automatic Setup." >&2; exit 1; }
+command -v nextflow >/dev/null 2>&1 || { echo "ERROR: Nextflow is required for Automatic Setup." >&2; exit 1; }
 
-manifest_path, reads_dir, samplesheet_path, yaml_path, cohort_root, outdir = map(Path, sys.argv[1:])
-with manifest_path.open(newline="") as handle:
-    rows = list(csv.DictReader(handle, delimiter="\t"))
+cd "$ROOT_DIR"
+nextflow run main.nf --auto_params \
+  --mode illumina \
+  --reads_folder "$READS_DIR" \
+  --sample_table "$SAMPLE_TABLE" \
+  --auto_config_dir "$CONFIG_DIR" \
+  --auto_outdir "$OUTDIR" \
+  --run_cna_classifier true \
+  --cna_classifier_sample_set sarcoma \
+  --cna_classifier_profile conda \
+  --pathology_use_biomed_models false \
+  --pathology_biomed_local_files_only true \
+  -work-dir "$AUTO_WORK_DIR"
 
-with samplesheet_path.open("w", newline="") as handle:
-    writer = csv.DictWriter(handle, fieldnames=["sample", "fastq_1", "fastq_2", "status"])
-    writer.writeheader()
-    for row in rows:
-        fastq = (reads_dir / f"{row['sample_alias']}.fastq.gz").resolve()
-        if not fastq.is_file() or fastq.stat().st_size != int(row["fastq_bytes"]):
-            raise SystemExit(f"ERROR: validated FASTQ is missing or has the wrong size: {fastq}")
-        # `tumor` is the SAMURAI condition group for this patient cohort. It does not
-        # assert detectable ctDNA, active tumor, or a diagnosis at that time point.
-        writer.writerow({
-            "sample": row["sample_alias"],
-            "fastq_1": str(fastq),
-            "fastq_2": "",
-            "status": "tumor",
-        })
-
-quote = lambda value: json.dumps(str(value.resolve()))
-yaml_path.write_text(
-    "\n".join([
-        "mode: illumina",
-        f"lpwgs_root: {quote(cohort_root)}",
-        f"outdir: {quote(outdir)}",
-        f"illumina_samplesheet: {quote(samplesheet_path)}",
-        "illumina_analysis_type: solid_biopsy",
-        "illumina_caller: qdnaseq",
-        "illumina_binsize_kb: 100",
-        "run_cna_classifier: true",
-        "cna_classifier_sample_set: sarcoma",
-        "cna_classifier_profile: conda",
-        "pathology_csv: null",
-        "pathology_use_biomed_models: false",
-        "pathology_biomed_local_files_only: true",
-        "force: false",
-        "",
-    ]),
-    encoding="utf-8",
-)
-print(f"Generated single-end samplesheet: {samplesheet_path}")
-print(f"Generated run YAML: {yaml_path}")
-PY_CONFIG
+[[ -s "$SAMPLESHEET" ]] || { echo "ERROR: Automatic Setup did not create: $SAMPLESHEET" >&2; exit 1; }
+[[ -s "$YAML" ]] || { echo "ERROR: Automatic Setup did not create: $YAML" >&2; exit 1; }
 
 oncotracer_commit="unavailable"
 oncotracer_tree="unavailable"
@@ -189,8 +173,10 @@ if command -v git >/dev/null 2>&1 && git -C "$ROOT_DIR" rev-parse --is-inside-wo
   fi
 fi
 manifest_sha256="unavailable"
+sample_table_sha256="unavailable"
 if command -v sha256sum >/dev/null 2>&1; then
   manifest_sha256="$(sha256sum "$MANIFEST" | awk '{print $1}')"
+  sample_table_sha256="$(sha256sum "$SAMPLE_TABLE_SOURCE" | awk '{print $1}')"
 fi
 {
   printf 'field\tvalue\n'
@@ -198,6 +184,7 @@ fi
   printf 'archive_inventory_date\t2026-07-15\n'
   printf 'public_run_count\t12\n'
   printf 'manifest_sha256\t%s\n' "$manifest_sha256"
+  printf 'sample_table_sha256\t%s\n' "$sample_table_sha256"
   printf 'oncotracer_commit\t%s\n' "$oncotracer_commit"
   printf 'oncotracer_worktree\t%s\n' "$oncotracer_tree"
   printf 'runtime_flag\t%s\n' "$RUNTIME"
@@ -215,8 +202,6 @@ echo "Generated provenance receipt: $RUN_PROVENANCE"
 sed -n '1,80p' "$RUN_PROVENANCE"
 [[ "$ACTION" == "--prepare-only" ]] && exit 0
 
-command -v java >/dev/null 2>&1 || { echo "ERROR: Java 17+ is required." >&2; exit 1; }
-command -v nextflow >/dev/null 2>&1 || { echo "ERROR: Nextflow is required." >&2; exit 1; }
 case "$RUNTIME" in
   --docker)
     command -v docker >/dev/null 2>&1 || { echo "ERROR: Docker is required." >&2; exit 1; }
@@ -259,103 +244,10 @@ run_with_progress \
   nextflow run main.nf "$RUNTIME" -params-file "$YAML" \
     -work-dir "$WORK_DIR" -resume
 
-alignment_dir="$OUTDIR/01_samurai_illumina/alignment"
+python3 "$VERIFIER" --outdir "$OUTDIR"
+
 segment_table="$OUTDIR/01_samurai_illumina/qdnaseq/all_segments.seg"
 refinement_summary="$OUTDIR/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv"
-classification_table="$OUTDIR/05_cna_classifier/02_classification/cna_patient_classification.tsv"
-
-bam_count="$(find "$alignment_dir" -maxdepth 1 -type f -name '*.bam' | wc -l | tr -d ' ')"
-[[ "$bam_count" -eq 12 ]] || { echo "ERROR: expected 12 BAMs, found $bam_count" >&2; exit 1; }
-while IFS=$'\t' read -r sample_alias rest; do
-  [[ "$sample_alias" == "sample_alias" ]] && continue
-  grep -Fq "$sample_alias" "$segment_table" || {
-    echo "ERROR: $sample_alias is absent from the SAMURAI qDNAseq segment table" >&2
-    exit 1
-  }
-done < "$MANIFEST"
-
-for expected in \
-  "$segment_table" \
-  "$refinement_summary" \
-  "$OUTDIR/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv" \
-  "$OUTDIR/03_cna_codification/cna_events.tsv" \
-  "$OUTDIR/03_cna_codification/cna_cytogenomic_notation.tsv" \
-  "$OUTDIR/04_cna_custom_plots/cna_per_sample_pages.pdf" \
-  "$OUTDIR/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf" \
-  "$classification_table" \
-  "$OUTDIR/05_cna_classifier/03_report/cna_classifier_report.html" \
-  "$OUTDIR/06_workflow_summary/workflow_summary.txt"; do
-  [[ -s "$expected" ]] || { echo "ERROR: expected output missing or empty: $expected" >&2; exit 1; }
-done
-
-python3 - "$MANIFEST" "$OUTDIR" <<'PY_VERIFY_SAMPLES'
-import csv
-import sys
-from pathlib import Path
-
-manifest, outdir = Path(sys.argv[1]), Path(sys.argv[2])
-with manifest.open(newline="") as handle:
-    expected = {
-        row["sample_alias"]
-        for row in csv.DictReader(handle, delimiter="\t")
-    }
-
-def require_exact(label, observed):
-    missing = sorted(expected - observed)
-    unexpected = sorted(observed - expected)
-    if missing or unexpected:
-        raise SystemExit(
-            f"ERROR: {label} sample mismatch; "
-            f"missing={missing}; unexpected={unexpected}"
-        )
-    print(f"VERIFIED: {label} contains all {len(observed)} manifest samples")
-
-bam_dir = outdir / "01_samurai_illumina" / "alignment"
-require_exact("BAM outputs", {path.stem for path in bam_dir.glob("*.bam")})
-
-segments = (
-    outdir / "01_samurai_illumina" / "qdnaseq" / "all_segments.seg"
-)
-with segments.open(newline="") as handle:
-    segment_ids = {
-        row["ID"]
-        for row in csv.DictReader(handle, delimiter="\t")
-    }
-segment_samples = set()
-for value in segment_ids:
-    matches = [
-        sample
-        for sample in expected
-        if value == sample or value.startswith(sample + "_")
-    ]
-    if not matches:
-        raise SystemExit(f"ERROR: unrecognized SAMURAI segment ID: {value}")
-    segment_samples.add(max(matches, key=len))
-require_exact("SAMURAI segments", segment_samples)
-
-refinement = (
-    outdir / "02_bam_refinement" / "illumina_qdnaseq_100kb"
-    / "01_tables" / "sample_refinement_summary.csv"
-)
-with refinement.open(newline="") as handle:
-    require_exact(
-        "refinement summary",
-        {row["sample"] for row in csv.DictReader(handle)},
-    )
-
-classification = (
-    outdir / "05_cna_classifier" / "02_classification"
-    / "cna_patient_classification.tsv"
-)
-with classification.open(newline="") as handle:
-    require_exact(
-        "classifier table",
-        {
-            row["sample"]
-            for row in csv.DictReader(handle, delimiter="\t")
-        },
-    )
-PY_VERIFY_SAMPLES
 
 cat <<EOF_SUCCESS
 SUCCESS: all 12 FASTQs currently exposed by PRJNA754199 completed the configured workflow.

@@ -1,6 +1,8 @@
-# Three-sample HCC1143 public cohort
+<a id="three-sample-hcc1143-public-cohort"></a>
 
-This optional example moves beyond the small Quick Start inputs and runs three paired-end low-pass whole-genome sequencing libraries—six physical FASTQ files—through the Illumina workflow. It is intended for users who have already completed [Quick verification](quick_start.md) and want to test automatic configuration and multi-sample output handling with public data.
+# QuickStart Example 2: three-sample HCC1143 public cohort
+
+This optional example moves beyond the small QuickStart Example 1 inputs and runs three paired-end low-pass whole-genome sequencing libraries—six physical FASTQ files—through the Illumina workflow. It is intended for users who have already completed [QuickStart Example 1](quick_start.md) and want to test automatic configuration and multi-sample output handling with public data.
 
 !!! warning "Workflow demonstration, not a biological conclusion"
     This cohort is a reproducible software example. The verified gallery artifact and measured result summary are still pending. Do not infer treatment effects or clinical meaning from this three-library demonstration.
@@ -15,7 +17,7 @@ The libraries come from the HCC1143 triple-negative breast-cancer cell line in p
 | `HCC1143_BEZ235` | 1 uM BEZ235 | `SRR7085655` | paired R1/R2 FASTQs |
 | `HCC1143_TRAMETINIB` | 1 uM Trametinib | `SRR7085657` | paired R1/R2 FASTQs |
 
-All three samples are labeled `TUMOR`. DMSO is the experimental treatment control, but its DNA still comes from a cancer cell line; it is not a matched normal genome. Tiny unpaired singleton files exposed by ENA are deliberately excluded because the Illumina workflow requires matched R1/R2 inputs.
+All three samples are labeled `TUMOR`. DMSO is the experimental treatment control, but its DNA still comes from a cancer cell line; it is not a matched normal genome. Tiny unpaired singleton files exposed by ENA are deliberately excluded so this paired-end example uses one matched R1/R2 pair for every sample.
 
 Exact URLs, byte counts, and MD5 checksums are recorded in [`examples/hcc1143_lpwgs/manifest.tsv`](https://github.com/cfarkas/oncotracer/blob/main/examples/hcc1143_lpwgs/manifest.tsv). The six selected files total 1,158,812,143 bytes, approximately 1.08 GiB.
 
@@ -32,7 +34,9 @@ Use Linux with:
 
 The first Illumina analysis also prepares the hg38 reference and BWA index. Allow roughly 1–2 hours depending on the network, storage, and CPU. Later runs reuse completed downloads, reference files, indexes, and Nextflow work where possible.
 
-## Run the complete example
+<a id="run-the-complete-example"></a>
+
+## Run QuickStart Example 2
 
 Start from a fresh clone:
 

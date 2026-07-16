@@ -4,7 +4,7 @@ The images below are rendered from OncoTracer output files. A plot demonstrates 
 
 ## One-sample Illumina public test
 
-**Provenance:** ENA run `ERR12341627`, processed by the public Illumina Quick Start with qDNAseq at 100 kb. See [Quick verification](quick_start.md) for the reproducible command and generated YAML.
+**Provenance:** ENA run `ERR12341627`, processed by the public Illumina branch in QuickStart Example 1 with qDNAseq at 100 kb. See [QuickStart Example 1](quick_start.md) for the reproducible command and generated YAML.
 
 [Open the original qDNAseq fitted-segment plot PDF](assets/gallery/illumina_samurai_qdnaseq_segment_plot.pdf).
 
@@ -14,7 +14,7 @@ The images below are rendered from OncoTracer output files. A plot demonstrates 
 
 ## ONT ichorCNA-derived test result
 
-**Provenance:** public ONT run `DRR165691`, processed by the ONT Quick Start with ichorCNA-derived 500 kb inputs.
+**Provenance:** public ONT run `DRR165691`, processed by the ONT branch in QuickStart Example 1 with ichorCNA-derived 500 kb inputs.
 
 The run produces ichorCNA depth and segment tables. OncoTracer renders the profile from those tables even when an upstream plotting helper encounters missing depth values.
 

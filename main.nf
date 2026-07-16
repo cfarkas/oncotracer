@@ -177,6 +177,11 @@ process AUTO_PARAMS {
   def generator = scriptPath("scripts/generate_auto_params.sh")
   def configOpt = blank(params.auto_config_dir) ? "" : "--config-dir '${params.auto_config_dir}'"
   def outOpt = blank(params.auto_outdir) ? "" : "--outdir '${params.auto_outdir}'"
+  // Forward the original values so the generator can reject misspelled booleans
+  // instead of silently converting every unrecognized value to false.
+  def runClassifier = params.run_cna_classifier.toString()
+  def useBiomedModels = params.pathology_use_biomed_models.toString()
+  def biomedLocalOnly = params.pathology_biomed_local_files_only.toString()
 
   """
   set -Eeuo pipefail
@@ -184,6 +189,11 @@ process AUTO_PARAMS {
     --mode '${params.mode}' \
     --reads-folder '${params.reads_folder}' \
     --sample-table '${params.sample_table}' \
+    --run-cna-classifier '${runClassifier}' \
+    --cna-classifier-sample-set '${params.cna_classifier_sample_set}' \
+    --cna-classifier-profile '${params.cna_classifier_profile}' \
+    --pathology-use-biomed-models '${useBiomedModels}' \
+    --pathology-biomed-local-files-only '${biomedLocalOnly}' \
     ${configOpt} ${outOpt}
   echo "Auto-parameter files generated" > auto_params_done.txt
   """
