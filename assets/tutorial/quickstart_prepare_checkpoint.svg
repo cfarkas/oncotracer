@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="650" viewBox="0 0 1400 650" role="img" aria-labelledby="title desc">
+  <title id="title">QuickStart public-read preparation checkpoint</title>
+  <desc id="desc">Terminal-style checkpoint showing the make test command and the MAKE TEST DATA process at 100 percent, one of one tasks complete, followed by the returned terminal prompt. A checklist explains that three FASTQ files passed size, MD5, and gzip checks, two YAML plans were written, and no copy-number analysis has started.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" x2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#134e4a"/></linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#0f172a" flood-opacity=".18"/></filter>
+  </defs>
+  <style>
+    .h1{font:700 32px system-ui,sans-serif;fill:#f8fafc}.lead{font:18px system-ui,sans-serif;fill:#cbd5e1}
+    .term{font:16px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#e2e8f0}.prompt{fill:#5eead4}.success{fill:#86efac;font-weight:700}
+    .label{font:700 15px system-ui,sans-serif;fill:#0f766e;letter-spacing:.08em}.body{font:16px system-ui,sans-serif;fill:#334155}.small{font:14px system-ui,sans-serif;fill:#64748b}
+  </style>
+  <rect width="1400" height="650" fill="#f1f5f9"/>
+  <rect width="1400" height="112" fill="url(#header)"/>
+  <text class="h1" x="54" y="47">Checkpoint: both public examples are ready</text>
+  <text class="lead" x="54" y="79">The preparation command checks three FASTQs and writes the run files used in the next steps.</text>
+
+  <g filter="url(#shadow)"><rect x="54" y="145" width="935" height="440" rx="15" fill="#0b1220"/></g>
+  <rect x="54" y="145" width="935" height="48" rx="15" fill="#1e293b"/>
+  <rect x="54" y="178" width="935" height="15" fill="#1e293b"/>
+  <circle cx="83" cy="169" r="7" fill="#fb7185"/><circle cx="107" cy="169" r="7" fill="#fbbf24"/><circle cx="131" cy="169" r="7" fill="#4ade80"/>
+  <text x="417" y="176" font-family="system-ui,sans-serif" font-size="15" fill="#cbd5e1">student — Terminal</text>
+
+  <text class="term prompt" x="82" y="226">student@workstation:~/oncotracer$</text>
+  <text class="term" x="410" y="226">nextflow run /home/student/oncotracer/main.nf \</text>
+  <text class="term" x="110" y="256">--make_test --test_root /home/student/oncotracer/test</text>
+  <text class="term" x="82" y="310">N E X T F L O W  ~  version 26.x</text>
+  <text class="term" x="82" y="350">Launching `/home/student/oncotracer/main.nf`</text>
+  <rect x="82" y="382" width="879" height="72" rx="10" fill="#123527" stroke="#4ade80"/>
+  <circle cx="111" cy="418" r="16" fill="#16a34a"/><path d="M103 418l6 6 12-15" fill="none" stroke="#fff" stroke-width="3"/>
+  <text class="term success" x="140" y="424">[34/4c7024] process &gt; MAKE_TEST_DATA (public_quickstart_data) [100%] 1 of 1 ✔</text>
+  <text class="term prompt" x="82" y="505">student@workstation:~/oncotracer$</text>
+  <text x="82" y="548" font-family="system-ui,sans-serif" font-size="14" fill="#94a3b8">The prompt returns after preparation completes.</text>
+
+  <g filter="url(#shadow)"><rect x="1025" y="145" width="321" height="440" rx="15" fill="#fff"/></g>
+  <text class="label" x="1053" y="188">YOU CAN CONTINUE WHEN</text>
+  <circle cx="1067" cy="235" r="11" fill="#16a34a"/><path d="M1062 235l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1089" y="241">2 Illumina FASTQs</text>
+  <circle cx="1067" cy="275" r="11" fill="#16a34a"/><path d="M1062 275l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1089" y="281">1 ONT FASTQ</text>
+  <circle cx="1067" cy="315" r="11" fill="#16a34a"/><path d="M1062 315l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1089" y="321">size + MD5 + gzip</text>
+  <circle cx="1067" cy="355" r="11" fill="#16a34a"/><path d="M1062 355l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1089" y="361">2 YAML plans written</text>
+  <rect x="1053" y="408" width="265" height="96" rx="10" fill="#eff6ff" stroke="#93c5fd"/>
+  <text class="body" x="1073" y="438">Next: inspect the two</text>
+  <text class="body" x="1073" y="465">generated run plans.</text>
+  <text class="small" x="1073" y="488">No CNA analysis yet.</text>
+  <text class="small" x="1053" y="540">The bracketed task code and progress</text>
+  <text class="small" x="1053" y="561">layout can differ by Nextflow version.</text>
+</svg>

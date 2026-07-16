@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="570" viewBox="0 0 1400 570" role="img" aria-labelledby="title desc">
+  <title id="title">Completed ONT QuickStart checkpoint</title>
+  <desc id="desc">Terminal-style checkpoint showing the first three lines of the completed Oxford Nanopore workflow summary: ONT mode, the ichorCNA 500 kilobase dataset, and the ONT result folder. A checklist identifies public sample DRR165691, ichorCNA, 500 kilobase bins, and the results location.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" x2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#134e4a"/></linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#0f172a" flood-opacity=".18"/></filter>
+  </defs>
+  <style>
+    .h1{font:700 32px system-ui,sans-serif;fill:#f8fafc}.lead{font:18px system-ui,sans-serif;fill:#cbd5e1}
+    .term{font:16px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#e2e8f0}.prompt{fill:#5eead4}.success{fill:#86efac;font-weight:700}
+    .label{font:700 15px system-ui,sans-serif;fill:#0f766e;letter-spacing:.08em}.body{font:17px system-ui,sans-serif;fill:#334155}.small{font:14px system-ui,sans-serif;fill:#64748b}
+  </style>
+  <rect width="1400" height="570" fill="#f1f5f9"/>
+  <rect width="1400" height="112" fill="url(#header)"/>
+  <text class="h1" x="54" y="47">Checkpoint: the ONT run wrote its summary</text>
+  <text class="lead" x="54" y="79">Read the first three lines after the Nextflow command returns to the normal prompt.</text>
+
+  <g filter="url(#shadow)"><rect x="54" y="145" width="900" height="360" rx="15" fill="#0b1220"/></g>
+  <rect x="54" y="145" width="900" height="48" rx="15" fill="#1e293b"/>
+  <rect x="54" y="178" width="900" height="15" fill="#1e293b"/>
+  <circle cx="83" cy="169" r="7" fill="#fb7185"/><circle cx="107" cy="169" r="7" fill="#fbbf24"/><circle cx="131" cy="169" r="7" fill="#4ade80"/>
+  <text x="392" y="176" font-family="system-ui,sans-serif" font-size="15" fill="#cbd5e1">student — Terminal</text>
+
+  <text class="term prompt" x="82" y="232">student@workstation:~/oncotracer$</text>
+  <text class="term" x="410" y="232">head -n 3 \</text>
+  <text class="term" x="110" y="265">/home/student/oncotracer/test/runs/ont/06_workflow_summary/</text>
+  <text class="term" x="110" y="296">workflow_summary.txt</text>
+  <text class="term success" x="82" y="345">mode=ont</text>
+  <text class="term success" x="82" y="380">dataset=ONT_ichorcna_500kb</text>
+  <text class="term success" x="82" y="415">outdir=/home/student/oncotracer/test/runs/ont</text>
+  <rect x="82" y="447" width="844" height="36" rx="9" fill="#123527" stroke="#4ade80"/>
+  <text x="102" y="471" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#bbf7d0">The summary is written after the ONT workflow reaches its final stage.</text>
+
+  <g filter="url(#shadow)"><rect x="990" y="145" width="356" height="360" rx="15" fill="#fff"/></g>
+  <text class="label" x="1018" y="188">THIS QUICKSTART RUN USED</text>
+  <circle cx="1032" cy="232" r="11" fill="#16a34a"/><path d="M1027 232l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1054" y="238">sample DRR165691</text>
+  <circle cx="1032" cy="274" r="11" fill="#16a34a"/><path d="M1027 274l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1054" y="280">caller: ichorCNA</text>
+  <circle cx="1032" cy="316" r="11" fill="#16a34a"/><path d="M1027 316l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1054" y="322">bin size: 500 kb</text>
+  <circle cx="1032" cy="358" r="11" fill="#16a34a"/><path d="M1027 358l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1054" y="364">folder: runs/ont</text>
+  <rect x="1018" y="408" width="300" height="52" rx="9" fill="#ecfdf5"/>
+  <text x="1040" y="440" font-family="system-ui,sans-serif" font-size="16" font-weight="700" fill="#166534">Next: verify both runs.</text>
+  <text class="small" x="1018" y="486">Absolute paths can differ by computer.</text>
+</svg>

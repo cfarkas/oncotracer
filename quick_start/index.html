@@ -1604,11 +1604,13 @@ docker<span class="w"> </span>--version<span class="w">    </span><span class="c
 <li>writes one YAML run plan for Illumina and another for ONT.</li>
 </ol>
 <p>It does <strong>not</strong> align reads or call CNAs.</p>
-<p>List the two YAML files:</p>
-<div class="highlight"><pre><span></span><code>find<span class="w"> </span>/home/student/oncotracer/test/configs<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print
+<p><a href="../assets/tutorial/quickstart_prepare_checkpoint.svg"><img alt="Terminal checkpoint showing the QuickStart preparation command completed, with the checked Illumina and ONT example reads and generated run files ready." src="../assets/tutorial/quickstart_prepare_checkpoint.svg" /></a></p>
+<p><em>Continue when <code>MAKE_TEST_DATA</code> reaches <code>[100%] 1 of 1</code> and the terminal prompt returns. The characters in brackets and the progress layout can differ. No CNA analysis has started.</em></p>
+<p>List the two generated run plans:</p>
+<div class="highlight"><pre><span></span><code>ls<span class="w"> </span>-1<span class="w"> </span>/home/student/oncotracer/test/configs
 </code></pre></div>
-<p><a href="../assets/tutorial/quickstart_terminal_prepare.svg"><img alt="Example terminal showing a clone, the QuickStart preparation command completing, and the two generated YAML files under test/configs." src="../assets/tutorial/quickstart_terminal_prepare.svg" /></a></p>
-<p><em>What preparation looks like. <code>DOWNLOAD</code> means a file was transferred; <code>REUSE</code> means an existing checked file was kept. The characters in brackets and the progress layout can differ.</em></p>
+<p><a href="../assets/tutorial/quickstart_setup_checkpoint.svg"><img alt="Terminal checkpoint listing the generated Illumina and ONT YAML run plans, with labels explaining what each file controls." src="../assets/tutorial/quickstart_setup_checkpoint.svg" /></a></p>
+<p><em>The two YAML files are separate because Illumina and ONT use different inputs and CNA callers. They contain paths and settings, not reads or results.</em></p>
 <p>The prepared folders are:</p>
 <div class="highlight"><pre><span></span><code>/home/student/oncotracer/test/
 ├── configs/
@@ -1698,6 +1700,12 @@ docker<span class="w"> </span>--version<span class="w">    </span><span class="c
 <p class="admonition-title">If Nextflow displays <code>0 of 1</code></p>
 <p>The outer <code>RUN_ILLUMINA_SAMURAI</code> task waits for a nested SAMURAI workflow. Its counter can remain at <code>0 of 1</code> while alignment and CNA calling are active. See <a href="../troubleshooting/">Troubleshooting</a> before stopping it.</p>
 </div>
+<p>After the command returns to the normal prompt, display the first three summary lines:</p>
+<div class="highlight"><pre><span></span><code>head<span class="w"> </span>-n<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/home/student/oncotracer/test/runs/illumina/06_workflow_summary/workflow_summary.txt
+</code></pre></div>
+<p><a href="../assets/tutorial/quickstart_illumina_run_checkpoint.svg"><img alt="Terminal checkpoint showing the completed Illumina QuickStart summary with qDNAseq, 100 kilobase bins, and the Illumina result folder." src="../assets/tutorial/quickstart_illumina_run_checkpoint.svg" /></a></p>
+<p><em>Continue to the ONT run when the summary begins with <code>mode=illumina</code> and <code>dataset=illumina_qdnaseq_100kb</code>. Your absolute paths can differ.</em></p>
 <h3 id="5-run-the-ont-analysis">5. Run the ONT analysis<a class="headerlink" href="#5-run-the-ont-analysis" title="Permanent link">&para;</a></h3>
 <p>After the Illumina command finishes, run:</p>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
@@ -1706,11 +1714,20 @@ docker<span class="w"> </span>--version<span class="w">    </span><span class="c
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>This command reads the ONT YAML, assigns the FASTQ below <code>barcode01</code> to <code>DRR165691</code>, aligns the reads, runs ichorCNA, refines boundaries, and creates tables and plots.</p>
-<h3 id="6-confirm-and-open-the-results">6. Confirm and open the results<a class="headerlink" href="#6-confirm-and-open-the-results" title="Permanent link">&para;</a></h3>
-<p>Display the two workflow summaries:</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>/home/student/oncotracer/test/runs/illumina/06_workflow_summary/workflow_summary.txt
-cat<span class="w"> </span>/home/student/oncotracer/test/runs/ont/06_workflow_summary/workflow_summary.txt
+<p>After the command returns to the normal prompt, display the first three ONT summary lines:</p>
+<div class="highlight"><pre><span></span><code>head<span class="w"> </span>-n<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/home/student/oncotracer/test/runs/ont/06_workflow_summary/workflow_summary.txt
 </code></pre></div>
+<p><a href="../assets/tutorial/quickstart_ont_run_checkpoint.svg"><img alt="Terminal checkpoint showing the completed ONT QuickStart summary with ichorCNA, 500 kilobase bins, and the ONT result folder." src="../assets/tutorial/quickstart_ont_run_checkpoint.svg" /></a></p>
+<p><em>Continue when the summary begins with <code>mode=ont</code> and <code>dataset=ONT_ichorcna_500kb</code>. Your absolute paths can differ.</em></p>
+<h3 id="6-confirm-and-open-the-results">6. Confirm and open the results<a class="headerlink" href="#6-confirm-and-open-the-results" title="Permanent link">&para;</a></h3>
+<p>Run the versioned QuickStart verifier. It only checks completed files; it does not rerun either analysis.</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>/home/student/oncotracer/examples/quickstart/verify_outputs.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span>/home/student/oncotracer/test
+</code></pre></div>
+<p><a href="../assets/tutorial/quickstart_results_checkpoint.svg"><img alt="Terminal checkpoint showing the QuickStart verifier success message and confirmation that both workflow summaries, CNA tables, and plot PDFs were found." src="../assets/tutorial/quickstart_results_checkpoint.svg" /></a></p>
+<p><em>Open the results only after the verifier prints <code>SUCCESS: both QuickStart workflows completed and required outputs were found.</code> If a file is missing, it prints that path instead.</em></p>
+<p>For each technology, the verifier checks the workflow summary, CNA event table, and per-sample plot PDF.</p>
 <p>Important result folders are:</p>
 <div class="highlight"><pre><span></span><code>/home/student/oncotracer/test/runs/illumina/
 ├── 01_samurai_illumina/        # alignment and qDNAseq results
@@ -1737,8 +1754,7 @@ bash<span class="w"> </span>run_test.sh<span class="w"> </span>--docker
 <p>A complete helper run ends with:</p>
 <div class="highlight"><pre><span></span><code>SUCCESS: both public workflows completed and produced the expected outputs.
 </code></pre></div>
-<p><a href="../assets/tutorial/quickstart_terminal_success.svg"><img alt="Example terminal showing the final QuickStart success message and the Illumina and ONT workflow summary paths." src="../assets/tutorial/quickstart_terminal_success.svg" /></a></p>
-<p><em>The exact paths differ if the repository was cloned somewhere else. The final success sentence should match.</em></p>
+<p>The exact paths differ if the repository was cloned somewhere else. The final success sentence should match.</p>
 <p><a id="next-run-the-real-six-fastq-cohort"></a></p>
 <h2 id="next-run-quickstart-example-2">Next: run QuickStart Example 2<a class="headerlink" href="#next-run-quickstart-example-2" title="Permanent link">&para;</a></h2>
 <p>The default verification uses small, single-sample inputs. After it succeeds, the optional HCC1143 example demonstrates a three-sample Illumina cohort: three paired libraries, or six physical FASTQ files. The read download is <strong>1.08 GiB</strong>.</p>
