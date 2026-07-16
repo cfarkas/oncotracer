@@ -29,7 +29,7 @@
     
     
       
-        <title>4. Three-Sample Public Cohort - OncoTracer</title>
+        <title>4. QuickStart Example 2 (Three-Sample Public) - OncoTracer</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#three-sample-hcc1143-public-cohort" class="md-skip">
+        <a href="#quickstart-example-2-three-sample-hcc1143-public-cohort" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              4. Three-Sample Public Cohort
+              4. QuickStart Example 2 (Three-Sample Public)
             
           </span>
         </div>
@@ -478,7 +478,7 @@
   <span class="md-ellipsis">
     
   
-    2. Quick Verification
+    2. QuickStart Example 1 (Illumina + ONT)
   
 
     
@@ -543,7 +543,7 @@
   <span class="md-ellipsis">
     
   
-    4. Three-Sample Public Cohort
+    4. QuickStart Example 2 (Three-Sample Public)
   
 
     
@@ -561,7 +561,7 @@
   <span class="md-ellipsis">
     
   
-    4. Three-Sample Public Cohort
+    4. QuickStart Example 2 (Three-Sample Public)
   
 
     
@@ -609,10 +609,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-the-complete-example" class="md-nav__link">
+  <a href="#run-quickstart-example-2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run the complete example
+        Run QuickStart Example 2
       
     </span>
   </a>
@@ -1341,10 +1341,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-the-complete-example" class="md-nav__link">
+  <a href="#run-quickstart-example-2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run the complete example
+        Run QuickStart Example 2
       
     </span>
   </a>
@@ -1431,8 +1431,9 @@
   
 
 
-<h1 id="three-sample-hcc1143-public-cohort">Three-sample HCC1143 public cohort<a class="headerlink" href="#three-sample-hcc1143-public-cohort" title="Permanent link">&para;</a></h1>
-<p>This optional example moves beyond the small Quick Start inputs and runs three paired-end low-pass whole-genome sequencing libraries—six physical FASTQ files—through the Illumina workflow. It is intended for users who have already completed <a href="../quick_start/">Quick verification</a> and want to test automatic configuration and multi-sample output handling with public data.</p>
+<p><a id="three-sample-hcc1143-public-cohort"></a></p>
+<h1 id="quickstart-example-2-three-sample-hcc1143-public-cohort">QuickStart Example 2: three-sample HCC1143 public cohort<a class="headerlink" href="#quickstart-example-2-three-sample-hcc1143-public-cohort" title="Permanent link">&para;</a></h1>
+<p>This optional example moves beyond the small QuickStart Example 1 inputs and runs three paired-end low-pass whole-genome sequencing libraries—six physical FASTQ files—through the Illumina workflow. It is intended for users who have already completed <a href="../quick_start/">QuickStart Example 1</a> and want to test automatic configuration and multi-sample output handling with public data.</p>
 <div class="admonition warning">
 <p class="admonition-title">Workflow demonstration, not a biological conclusion</p>
 <p>This cohort is a reproducible software example. The verified gallery artifact and measured result summary are still pending. Do not infer treatment effects or clinical meaning from this three-library demonstration.</p>
@@ -1469,7 +1470,7 @@
 </tr>
 </tbody>
 </table>
-<p>All three samples are labeled <code>TUMOR</code>. DMSO is the experimental treatment control, but its DNA still comes from a cancer cell line; it is not a matched normal genome. Tiny unpaired singleton files exposed by ENA are deliberately excluded because the Illumina workflow requires matched R1/R2 inputs.</p>
+<p>All three samples are labeled <code>TUMOR</code>. DMSO is the experimental treatment control, but its DNA still comes from a cancer cell line; it is not a matched normal genome. Tiny unpaired singleton files exposed by ENA are deliberately excluded so this paired-end example uses one matched R1/R2 pair for every sample.</p>
 <p>Exact URLs, byte counts, and MD5 checksums are recorded in <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/hcc1143_lpwgs/manifest.tsv"><code>examples/hcc1143_lpwgs/manifest.tsv</code></a>. The six selected files total 1,158,812,143 bytes, approximately 1.08 GiB.</p>
 <h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
 <p>Use Linux with:</p>
@@ -1482,7 +1483,8 @@
 <li>16 CPU cores and 64 GiB RAM recommended for the complete run.</li>
 </ul>
 <p>The first Illumina analysis also prepares the hg38 reference and BWA index. Allow roughly 1–2 hours depending on the network, storage, and CPU. Later runs reuse completed downloads, reference files, indexes, and Nextflow work where possible.</p>
-<h2 id="run-the-complete-example">Run the complete example<a class="headerlink" href="#run-the-complete-example" title="Permanent link">&para;</a></h2>
+<p><a id="run-the-complete-example"></a></p>
+<h2 id="run-quickstart-example-2">Run QuickStart Example 2<a class="headerlink" href="#run-quickstart-example-2" title="Permanent link">&para;</a></h2>
 <p>Start from a fresh clone:</p>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w"> </span><span class="c1"># clone the pipeline</span>
 <span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                      </span><span class="c1"># run commands from the repository root</span>

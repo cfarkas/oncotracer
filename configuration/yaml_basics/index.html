@@ -478,7 +478,7 @@
   <span class="md-ellipsis">
     
   
-    2. Quick Verification
+    2. QuickStart Example 1 (Illumina + ONT)
   
 
     
@@ -534,7 +534,7 @@
   <span class="md-ellipsis">
     
   
-    4. Three-Sample Public Cohort
+    4. QuickStart Example 2 (Three-Sample Public)
   
 
     
@@ -1399,7 +1399,7 @@
 </thead>
 <tbody>
 <tr>
-<td>You have a folder of paired Illumina FASTQs or ONT barcode folders</td>
+<td>You have a folder of uniformly single-end or paired Illumina FASTQs, or ONT barcode folders</td>
 <td><strong>Automatic setup</strong> with <code>--auto_params</code> (recommended default)</td>
 </tr>
 <tr>
@@ -1408,7 +1408,7 @@
 </tr>
 <tr>
 <td>You want to learn with public data</td>
-<td>Use <code>--make_test</code>; see <a href="../../quick_start/">Quick Start</a></td>
+<td>Use <code>--make_test</code>; see <a href="../../quick_start/">QuickStart Example 1</a></td>
 </tr>
 </tbody>
 </table>
@@ -1429,7 +1429,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/illumina_auto&quot;</span><span class="w">                    </span><span class="c1"># create YAML and samplesheet, then stop</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w">              </span><span class="c1"># inspect the generated YAML</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/config/illumina/illumina.samplesheet.csv<span class="w">        </span><span class="c1"># inspect detected read pairs</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/config/illumina/illumina.samplesheet.csv<span class="w">        </span><span class="c1"># inspect detected FASTQ inputs</span>
 </code></pre></div>
 <p>See <a href="../../auto_params/">Automatic Setup</a> for the required Illumina filenames and ONT barcode table.</p>
 <h2 id="yaml-vocabulary">YAML vocabulary<a class="headerlink" href="#yaml-vocabulary" title="Permanent link">&para;</a></h2>
@@ -1460,7 +1460,7 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p
 <li><code>mode</code> chooses the <code>illumina</code> or <code>ont</code> route.</li>
 <li><code>lpwgs_root</code> is the absolute common parent that Docker or Singularity can mount. Put <strong>every configured input, reference, and output below it</strong>.</li>
 <li><code>outdir</code> is the result directory for one run. Give each experiment a new <code>outdir</code>.</li>
-<li><code>illumina_samplesheet</code> is a CSV that points to each paired FASTQ.</li>
+<li><code>illumina_samplesheet</code> is a CSV that points to each sample's single FASTQ or R1/R2 pair.</li>
 </ul>
 <p>In this example, both <code>project/runs/sample_a</code> and <code>project/input/illumina.samplesheet.csv</code> begin with <code>/home/student/oncotracer</code>, so they are below <code>lpwgs_root</code>.</p>
 <div class="admonition warning">

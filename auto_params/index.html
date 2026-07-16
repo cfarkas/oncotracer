@@ -478,7 +478,7 @@
   <span class="md-ellipsis">
     
   
-    2. Quick Verification
+    2. QuickStart Example 1 (Illumina + ONT)
   
 
     
@@ -582,10 +582,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-organize-paired-reads" class="md-nav__link">
+  <a href="#1-organize-single-end-files-or-paired-reads" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Organize paired reads
+        1. Organize single-end files or paired reads
       
     </span>
   </a>
@@ -758,7 +758,7 @@
   <span class="md-ellipsis">
     
   
-    4. Three-Sample Public Cohort
+    4. QuickStart Example 2 (Three-Sample Public)
   
 
     
@@ -1431,10 +1431,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-organize-paired-reads" class="md-nav__link">
+  <a href="#1-organize-single-end-files-or-paired-reads" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Organize paired reads
+        1. Organize single-end files or paired reads
       
     </span>
   </a>
@@ -1615,8 +1615,8 @@
 <li>a folder containing the reads; and</li>
 <li>a small table that maps each sample to <code>TUMOR</code> or <code>NORMAL</code>.</li>
 </ol>
-<p>OncoTracer checks the expected layout and writes a runnable YAML file. For Illumina, it also writes the paired-FASTQ samplesheet.</p>
-<p><img alt="Example OncoTracer input layouts: paired Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv." src="../assets/tutorial/auto_params_folder_layout.svg" /></p>
+<p>OncoTracer checks the expected layout and writes a runnable YAML file. For Illumina, it also writes the single-end or paired-end FASTQ samplesheet.</p>
+<p><img alt="Example OncoTracer input layouts: Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv." src="../assets/tutorial/auto_params_folder_layout.svg" /></p>
 <div class="admonition note">
 <p class="admonition-title">Configuration step, not analysis</p>
 <p><code>--auto_params</code> creates configuration files and then stops. It does not align reads or call CNAs. Inspect the generated files, optionally perform a stub wiring check, and then start the real run with the command printed at the end.</p>
@@ -1632,8 +1632,15 @@ nextflow<span class="w"> </span>-version<span class="w">                        
 </code></pre></div>
 <p>Choose the section matching your sequencer.</p>
 <h2 id="illumina-step-by-step">Illumina step by step<a class="headerlink" href="#illumina-step-by-step" title="Permanent link">&para;</a></h2>
-<h3 id="1-organize-paired-reads">1. Organize paired reads<a class="headerlink" href="#1-organize-paired-reads" title="Permanent link">&para;</a></h3>
-<p>Put exactly one R1 file and one R2 file per sample directly inside one folder. Keep the sample prefix identical:</p>
+<h3 id="1-organize-single-end-files-or-paired-reads">1. Organize single-end files or paired reads<a class="headerlink" href="#1-organize-single-end-files-or-paired-reads" title="Permanent link">&para;</a></h3>
+<p>For single-end data, put exactly one gzip-compressed file per sample directly inside one folder. Its basename must exactly equal the sample name:</p>
+<div class="highlight"><pre><span></span><code>/data/study42/illumina_fastq/
+├── A5645.fastq.gz
+├── A5544.fastq.gz
+└── B5437.fastq.gz
+</code></pre></div>
+<p>Supported exact single-end names are <code>&lt;sample&gt;.fastq.gz</code> and <code>&lt;sample&gt;.fq.gz</code>.</p>
+<p>For paired-end data, put exactly one R1 and one R2 per sample in the folder. Keep the sample prefix identical:</p>
 <div class="highlight"><pre><span></span><code>/data/study42/illumina_fastq/
 ├── A5645_R1.fastq.gz
 ├── A5645_R2.fastq.gz
@@ -1648,7 +1655,7 @@ nextflow<span class="w"> </span>-version<span class="w">                        
 <li><code>A5645_1.fastq.gz</code> and <code>A5645_2.fastq.gz</code>;</li>
 <li>the same patterns ending in <code>.fq.gz</code>.</li>
 </ul>
-<p>The text before <code>_R1</code>/<code>_R2</code> or <code>_1</code>/<code>_2</code> must exactly match <code>sample_name</code> in the table. The automatic detector expects one pair per sample in the top level of the reads folder; it does not recursively combine lane files.</p>
+<p>The text before <code>_R1</code>/<code>_R2</code> or <code>_1</code>/<code>_2</code> must exactly match <code>sample_name</code> in the table. The automatic detector expects one exact singleton or one pair per sample in the top level of the reads folder; it does not recursively combine lane files. Do not mix single-end and paired-end rows in one invocation.</p>
 <h3 id="2-create-the-sample-table">2. Create the sample table<a class="headerlink" href="#2-create-the-sample-table" title="Permanent link">&para;</a></h3>
 <p>Open a new CSV file:</p>
 <div class="highlight"><pre><span></span><code>nano<span class="w"> </span>/data/study42/illumina_fastq/samples.csv<span class="w"> </span><span class="c1"># create the sample-to-status table</span>
@@ -1661,7 +1668,7 @@ B5437,TUMOR
 </code></pre></div>
 <p>In <code>nano</code>, save with <code>Ctrl+O</code>, press Enter to confirm the filename, and exit with <code>Ctrl+X</code>.</p>
 <ul>
-<li><code>sample_name</code> is the exact FASTQ filename prefix.</li>
+<li><code>sample_name</code> is the exact single-end basename or paired FASTQ filename prefix.</li>
 <li><code>status</code> is case-insensitive but must be <code>TUMOR</code> or <code>NORMAL</code>.</li>
 <li>Use short unique names containing letters, numbers, <code>_</code>, or <code>-</code>; avoid spaces.</li>
 </ul>
@@ -1672,7 +1679,7 @@ B5437,TUMOR
 <span class="w">  </span>--reads_folder<span class="w"> </span>/data/study42/illumina_fastq<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span>/data/study42/illumina_fastq/samples.csv
 </code></pre></div>
-<p>Before writing files, the generator requires exactly one R1/R2 pair for every table row and runs <code>gzip -t</code> on every pair. It stops with an error if a pair is missing, ambiguous, empty, or incomplete.</p>
+<p>Before writing files, the generator requires either one exact single-end file for every row or one R1/R2 pair for every row, and runs <code>gzip -t</code> on every file. It stops if an input is missing, corrupt, ambiguous, or if layouts are mixed.</p>
 <p>By default it creates:</p>
 <div class="highlight"><pre><span></span><code>/data/study42/illumina_fastq/
 ├── oncotracer_config/
@@ -1683,17 +1690,22 @@ B5437,TUMOR
 <h3 id="4-inspect-what-was-generated">4. Inspect what was generated<a class="headerlink" href="#4-inspect-what-was-generated" title="Permanent link">&para;</a></h3>
 <p>Display both files:</p>
 <div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w">       </span><span class="c1"># show the run YAML</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.samplesheet.csv<span class="w"> </span><span class="c1"># show detected R1/R2 mappings</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.samplesheet.csv<span class="w"> </span><span class="c1"># show detected FASTQ mappings</span>
 </code></pre></div>
 <p>The generated YAML will look like this. This box is an annotated <strong>YAML example</strong>, not a terminal command:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span><span class="w">                                      </span><span class="c1"># choose paired-end Illumina processing</span>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span><span class="w">                                      </span><span class="c1"># choose Illumina processing</span>
 <span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/illumina_fastq</span><span class="w">            </span><span class="c1"># common input/output parent mounted into the container</span>
 <span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/illumina_fastq/oncotracer_results</span><span class="w"> </span><span class="c1"># final output directory</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/illumina_fastq/oncotracer_config/illumina.samplesheet.csv</span><span class="w"> </span><span class="c1"># generated R1/R2 table</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/illumina_fastq/oncotracer_config/illumina.samplesheet.csv</span><span class="w"> </span><span class="c1"># generated FASTQ table</span>
 <span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span><span class="w">                </span><span class="c1"># SAMURAI analysis preset</span>
 <span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span><span class="w">                            </span><span class="c1"># CNA caller used for Illumina</span>
 <span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">                            </span><span class="c1"># copy-number bin size in kilobases</span>
 <span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># optional classifier/pathology reporting is off</span>
+<span class="nt">cna_classifier_sample_set</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">broad_cancer</span><span class="w">             </span><span class="c1"># classifier context used if enabled</span>
+<span class="nt">cna_classifier_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda</span><span class="w">                       </span><span class="c1"># nested classifier runtime</span>
+<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                                 </span><span class="c1"># no pathology table supplied</span>
+<span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                   </span><span class="c1"># default optional pathology-model setting</span>
+<span class="nt">pathology_biomed_local_files_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">             </span><span class="c1"># default model file policy</span>
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                                        </span><span class="c1"># protect an existing real-project output directory</span>
 </code></pre></div>
 <p>The generated samplesheet contains absolute paths:</p>
@@ -1702,6 +1714,11 @@ A5645,/data/study42/illumina_fastq/A5645_R1.fastq.gz,/data/study42/illumina_fast
 A5544,/data/study42/illumina_fastq/A5544_R1.fastq.gz,/data/study42/illumina_fastq/A5544_R2.fastq.gz,normal
 B5437,/data/study42/illumina_fastq/B5437_R1.fastq.gz,/data/study42/illumina_fastq/B5437_R2.fastq.gz,tumor
 </code></pre></div>
+<p>For a single-end folder, the same generated table has an empty third field, for example:</p>
+<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
+A5645,/data/study42/illumina_fastq/A5645.fastq.gz,,tumor
+</code></pre></div>
+<p>Classifier and pathology-model options supplied to the <code>--auto_params</code> command are written into the YAML, making the later real run self-contained. The <a href="../full_tutorial/#4-generate-the-samplesheet-and-yaml-automatically">Full Tutorial</a> demonstrates this with CNA-only clinician-facing reports and no pathology table.</p>
 <h3 id="5-check-wiring-then-run">5. Check wiring, then run<a class="headerlink" href="#5-check-wiring-then-run" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w"> </span><span class="c1"># optional workflow-wiring check</span>
 nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>/data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml<span class="w"> </span>-resume<span class="w">   </span><span class="c1"># real analysis</span>
@@ -1748,6 +1765,11 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,140
 <span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w">                                 </span><span class="c1"># copy-number bin size in kilobases</span>
 <span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w">                              </span><span class="c1"># accept completed FASTQs immediately</span>
 <span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                           </span><span class="c1"># optional classifier/pathology reporting is off</span>
+<span class="nt">cna_classifier_sample_set</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">broad_cancer</span><span class="w">             </span><span class="c1"># classifier context used if enabled</span>
+<span class="nt">cna_classifier_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda</span><span class="w">                       </span><span class="c1"># nested classifier runtime</span>
+<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                                 </span><span class="c1"># no pathology table supplied</span>
+<span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                   </span><span class="c1"># default optional pathology-model setting</span>
+<span class="nt">pathology_biomed_local_files_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">             </span><span class="c1"># default model file policy</span>
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                                        </span><span class="c1"># protect an existing real-project output directory</span>
 <span class="nt">ont_normal_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study42/fastq_pass</span><span class="w">         </span><span class="c1"># parent directory for normal barcode folders</span>
 <span class="nt">ont_normal_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode02</span><span class="w">                      </span><span class="c1"># normal barcode folders</span>
@@ -1771,7 +1793,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <p>OncoTracer derives <code>lpwgs_root</code> as a common parent that makes the reads, generated configuration, and outputs visible inside the container. It also derives the SAMURAI directory automatically as <code>&lt;outdir&gt;/01_samurai_illumina</code> or <code>&lt;outdir&gt;/01_samurai_ont</code>; do not add a SAMURAI output directory to the YAML.</p>
 <p>CSV, tab-delimited, and whitespace-delimited TXT sample tables are accepted. CSV is recommended because its columns are easiest to see and check.</p>
 <h2 id="see-automatic-setup-with-real-public-data">See automatic setup with real public data<a class="headerlink" href="#see-automatic-setup-with-real-public-data" title="Permanent link">&para;</a></h2>
-<p>The <a href="../public_cohort/">HCC1143 public cohort</a> uses <code>--auto_params</code> on three paired Illumina samples—six FASTQ files—and then verifies that all three samples appear in the results. Its runnable files are in <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs"><code>examples/hcc1143_lpwgs</code></a>.</p>
+<p>The <a href="../public_cohort/">QuickStart Example 2 HCC1143 cohort</a> uses <code>--auto_params</code> on three paired Illumina samples—six FASTQ files. The <a href="../full_tutorial/">Full Tutorial</a> uses it on all 12 single-end PRJNA754199 libraries and preserves the CNA-only clinician-facing reports. Runnable inputs are in <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs"><code>examples/hcc1143_lpwgs</code></a> and <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199"><code>examples/prjna754199</code></a>.</p>
 <h2 id="second-option-manual-yaml-editing">Second option: manual YAML editing<a class="headerlink" href="#second-option-manual-yaml-editing" title="Permanent link">&para;</a></h2>
 <p>For the supported folder layouts above, the generated YAML is ready to run; you do not need to edit it. Use manual editing only when automatic detection does not fit the study or you need settings that are not exposed by automatic setup.</p>
 <ul>

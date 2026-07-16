@@ -475,7 +475,7 @@
   <span class="md-ellipsis">
     
   
-    2. Quick Verification
+    2. QuickStart Example 1 (Illumina + ONT)
   
 
     
@@ -531,7 +531,7 @@
   <span class="md-ellipsis">
     
   
-    4. Three-Sample Public Cohort
+    4. QuickStart Example 2 (Three-Sample Public)
   
 
     
@@ -1500,10 +1500,10 @@
 <tbody>
 <tr>
 <td>You want to verify the installation with public data</td>
-<td>Run <code>bash run_test.sh --docker</code>; see <a href="../quick_start/">Quick Start</a>.</td>
+<td>Run <code>bash run_test.sh --docker</code>; see <a href="../quick_start/">QuickStart Example 1</a>.</td>
 </tr>
 <tr>
-<td>You have paired Illumina FASTQs with regular R1/R2 names</td>
+<td>You have uniformly single-end or paired Illumina FASTQs with supported names</td>
 <td>Generate configuration with <code>--auto_params</code>, then run the generated YAML.</td>
 </tr>
 <tr>
@@ -1573,7 +1573,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/illumina_auto&quot;</span><span class="w">                    </span><span class="c1"># create files; no analysis yet</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w">              </span><span class="c1"># inspect the YAML</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/config/illumina/illumina.samplesheet.csv<span class="w">        </span><span class="c1"># inspect detected R1/R2 paths</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/config/illumina/illumina.samplesheet.csv<span class="w">        </span><span class="c1"># inspect detected single or paired paths</span>
 nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w"> </span>-resume<span class="w"> </span><span class="c1"># real analysis</span>
 </code></pre></div>
 <h3 id="ont">ONT<a class="headerlink" href="#ont" title="Permanent link">&para;</a></h3>
@@ -1653,7 +1653,7 @@ nano<span class="w"> </span>params/my_ont.yml<span class="w">                   
 <tr>
 <td><code>05_cna_classifier</code></td>
 <td>Only when <code>run_cna_classifier: true</code></td>
-<td>Runs optional CNA classification and pathology concordance.</td>
+<td>Runs optional CNA classification and, when pathology is supplied, concordance reporting.</td>
 </tr>
 <tr>
 <td><code>06_workflow_summary</code></td>

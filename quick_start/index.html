@@ -29,7 +29,7 @@
     
     
       
-        <title>2. Quick Verification - OncoTracer</title>
+        <title>2. QuickStart Example 1 (Illumina + ONT) - OncoTracer</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#quick-start" class="md-skip">
+        <a href="#quickstart-example-1-one-illumina-one-ont-sample" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              2. Quick Verification
+              2. QuickStart Example 1 (Illumina + ONT)
             
           </span>
         </div>
@@ -487,7 +487,7 @@
   <span class="md-ellipsis">
     
   
-    2. Quick Verification
+    2. QuickStart Example 1 (Illumina + ONT)
   
 
     
@@ -505,7 +505,7 @@
   <span class="md-ellipsis">
     
   
-    2. Quick Verification
+    2. QuickStart Example 1 (Illumina + ONT)
   
 
     
@@ -614,10 +614,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-run-the-real-six-fastq-cohort" class="md-nav__link">
+  <a href="#next-run-quickstart-example-2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next: run the real six-FASTQ cohort
+        Next: run QuickStart Example 2
       
     </span>
   </a>
@@ -686,7 +686,7 @@
   <span class="md-ellipsis">
     
   
-    4. Three-Sample Public Cohort
+    4. QuickStart Example 2 (Three-Sample Public)
   
 
     
@@ -1419,10 +1419,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-run-the-real-six-fastq-cohort" class="md-nav__link">
+  <a href="#next-run-quickstart-example-2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next: run the real six-FASTQ cohort
+        Next: run QuickStart Example 2
       
     </span>
   </a>
@@ -1465,8 +1465,9 @@
   
 
 
-<h1 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h1>
-<p>This tutorial verifies a new OncoTracer installation with one public Illumina sample and one public Oxford Nanopore Technologies (ONT) sample. It downloads about <strong>225 MB of compressed reads</strong> in total. It is separate from the larger, optional <a href="../public_cohort/">three-sample HCC1143 cohort</a>.</p>
+<p><a id="quick-start"></a></p>
+<h1 id="quickstart-example-1-one-illumina-one-ont-sample">QuickStart Example 1: one Illumina + one ONT sample<a class="headerlink" href="#quickstart-example-1-one-illumina-one-ont-sample" title="Permanent link">&para;</a></h1>
+<p>This tutorial verifies a new OncoTracer installation with one public Illumina sample and one public Oxford Nanopore Technologies (ONT) sample. It downloads about <strong>225 MB of compressed reads</strong> in total. It is separate from <a href="../public_cohort/">QuickStart Example 2</a>, the larger optional three-sample HCC1143 cohort.</p>
 <h2 id="before-running">Before running<a class="headerlink" href="#before-running" title="Permanent link">&para;</a></h2>
 <p>Complete <a href="../installation/">Installation</a>, then confirm these commands work:</p>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>--version<span class="w">       </span><span class="c1"># Git must be installed</span>
@@ -1584,11 +1585,12 @@ test/runs/ont/
 └── 06_workflow_summary/        # human-readable output summary
 </code></pre></div>
 <p>See <a href="../outputs/">Output Files</a> for interpretation and <a href="../gallery/">Gallery</a> for example plots.</p>
-<h2 id="next-run-the-real-six-fastq-cohort">Next: run the real six-FASTQ cohort<a class="headerlink" href="#next-run-the-real-six-fastq-cohort" title="Permanent link">&para;</a></h2>
+<p><a id="next-run-the-real-six-fastq-cohort"></a></p>
+<h2 id="next-run-quickstart-example-2">Next: run QuickStart Example 2<a class="headerlink" href="#next-run-quickstart-example-2" title="Permanent link">&para;</a></h2>
 <p>The default verification deliberately uses small, single-sample inputs. After it succeeds, the opt-in HCC1143 example demonstrates a three-sample Illumina cohort: three paired libraries, or six physical FASTQ files. The read download is <strong>1.08 GiB</strong>.</p>
 <div class="highlight"><pre><span></span><code>bash<span class="w"> </span>examples/hcc1143_lpwgs/run_example.sh<span class="w"> </span>--docker<span class="w"> </span><span class="c1"># download, validate, configure, run, and verify all three samples</span>
 </code></pre></div>
-<p>Read the <a href="../public_cohort/">complete public-cohort tutorial</a> and the repository's <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs"><code>examples/hcc1143_lpwgs</code></a> notes for provenance, resource expectations, preparation-only options, and results.</p>
+<p>Read <a href="../public_cohort/">QuickStart Example 2</a> and the repository's <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs"><code>examples/hcc1143_lpwgs</code></a> notes for provenance, resource expectations, preparation-only options, and results.</p>
 <h2 id="next-run-your-own-data">Next: run your own data<a class="headerlink" href="#next-run-your-own-data" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Use <a href="../auto_params/">Automatic Setup</a> as the recommended default for an Illumina FASTQ folder or ONT barcode tree.</li>

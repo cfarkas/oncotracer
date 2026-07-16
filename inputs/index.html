@@ -478,7 +478,7 @@
   <span class="md-ellipsis">
     
   
-    2. Quick Verification
+    2. QuickStart Example 1 (Illumina + ONT)
   
 
     
@@ -534,7 +534,7 @@
   <span class="md-ellipsis">
     
   
-    4. Three-Sample Public Cohort
+    4. QuickStart Example 2 (Three-Sample Public)
   
 
     
@@ -1401,7 +1401,7 @@
 <tr>
 <td>Illumina</td>
 <td>One single-end FASTQ or one paired R1/R2 FASTQ pair per sample</td>
-<td>Automatic paired-read <code>sample_name,status</code> table, or manual four-column samplesheet</td>
+<td>Automatic <code>sample_name,status</code> table, or manual four-column samplesheet</td>
 </tr>
 <tr>
 <td>ONT</td>
@@ -1476,7 +1476,8 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 </code></pre></div>
 <p>See <a href="../auto_params/">Automatic Setup</a> for exact filename detection and complete run commands.</p>
 <h2 id="manual-illumina-samplesheet">Manual Illumina samplesheet<a class="headerlink" href="#manual-illumina-samplesheet" title="Permanent link">&para;</a></h2>
-<p>Use a manual samplesheet when filenames do not follow automatic R1/R2 detection. Create it with Nano:</p>
+<p>Use a manual samplesheet when filenames do not follow the supported automatic
+single-end or R1/R2 detection patterns. Create it with Nano:</p>
 <div class="highlight"><pre><span></span><code>nano<span class="w"> </span>project/input/illumina.samplesheet.csv<span class="w">                            </span><span class="c1"># create or edit the CSV</span>
 </code></pre></div>
 <p>This example assumes the clone is <code>/home/student/oncotracer</code>; replace that prefix with the output of <code>pwd</code>:</p>

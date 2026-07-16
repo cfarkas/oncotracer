@@ -475,7 +475,7 @@
   <span class="md-ellipsis">
     
   
-    2. Quick Verification
+    2. QuickStart Example 1 (Illumina + ONT)
   
 
     
@@ -531,7 +531,7 @@
   <span class="md-ellipsis">
     
   
-    4. Three-Sample Public Cohort
+    4. QuickStart Example 2 (Three-Sample Public)
   
 
     
@@ -1546,7 +1546,9 @@
 <h1 id="illumina-configuration">Illumina Configuration<a class="headerlink" href="#illumina-configuration" title="Permanent link">&para;</a></h1>
 <p>Use this route for single-end or paired-end Illumina FASTQ files. OncoTracer aligns the reads, calls broad copy-number changes with SAMURAI/qDNAseq, refines CNA boundaries from the BAM files, creates tables and plots, and writes a run summary.</p>
 <h2 id="recommended-create-the-yaml-automatically">Recommended: create the YAML automatically<a class="headerlink" href="#recommended-create-the-yaml-automatically" title="Permanent link">&para;</a></h2>
-<p>Choose automatic setup when each sample has one compressed R1/R2 pair in a single folder.</p>
+<p>Choose automatic setup when each sample has either one exact
+<code>&lt;sample&gt;.fastq.gz</code>/<code>&lt;sample&gt;.fq.gz</code> file or one compressed R1/R2 pair in a
+single folder. Use one layout consistently across the run.</p>
 <h3 id="1-arrange-the-fastqs">1. Arrange the FASTQs<a class="headerlink" href="#1-arrange-the-fastqs" title="Permanent link">&para;</a></h3>
 <p>From the cloned repository, create a project tree and place the reads in <code>illumina_fastq/</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                        </span><span class="c1"># enter the repository</span>
@@ -1563,7 +1565,12 @@ find<span class="w"> </span>project/input/illumina_fastq<span class="w"> </span>
             ├── Patient_B_R1.fastq.gz
             └── Patient_B_R2.fastq.gz
 </code></pre></div>
-<p><code>Patient_A_R1.fastq.gz</code> pairs with <code>Patient_A_R2.fastq.gz</code>. Names ending in <code>_1.fastq.gz</code> and <code>_2.fastq.gz</code>, and the corresponding <code>.fq.gz</code> forms, are also accepted. Automatic setup expects exactly one pair per sample at the top level of this folder.</p>
+<p><code>Patient_A_R1.fastq.gz</code> pairs with <code>Patient_A_R2.fastq.gz</code>. Names ending in
+<code>_1.fastq.gz</code> and <code>_2.fastq.gz</code>, and the corresponding <code>.fq.gz</code> forms, are
+also accepted. For a single-end run, use exact names such as
+<code>Patient_A.fastq.gz</code> and <code>Patient_B.fastq.gz</code>. Automatic setup expects exactly
+one supported input per sample at the top level of this folder and rejects a
+mixed single-end/paired-end cohort.</p>
 <h3 id="2-create-the-sample-table">2. Create the sample table<a class="headerlink" href="#2-create-the-sample-table" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>nano<span class="w"> </span>project/input/illumina_fastq/samples.csv<span class="w">                         </span><span class="c1"># create the sample-to-status table</span>
 </code></pre></div>
@@ -1572,7 +1579,11 @@ find<span class="w"> </span>project/input/illumina_fastq<span class="w"> </span>
 Patient_A,TUMOR
 Patient_B,NORMAL
 </code></pre></div>
-<p>The <code>sample_name</code> must exactly match the filename text before <code>_R1</code>/<code>_R2</code>. <code>status</code> must be <code>TUMOR</code> or <code>NORMAL</code> (case-insensitive). In Nano, save with <code>Ctrl+O</code>, press <code>Enter</code>, then exit with <code>Ctrl+X</code>.</p>
+<p>For paired data, <code>sample_name</code> must exactly match the filename text before
+<code>_R1</code>/<code>_R2</code> (or <code>_1</code>/<code>_2</code>). For single-end data, it must exactly match the
+filename without <code>.fastq.gz</code> or <code>.fq.gz</code>. <code>status</code> must be <code>TUMOR</code> or <code>NORMAL</code>
+(case-insensitive). In Nano, save with <code>Ctrl+O</code>, press <code>Enter</code>, then exit with
+<code>Ctrl+X</code>.</p>
 <p>Inspect the table:</p>
 <div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/input/illumina_fastq/samples.csv<span class="w">               </span><span class="c1"># verify the header and rows</span>
 </code></pre></div>
@@ -1585,15 +1596,15 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/project/runs/illumina_auto&quot;</span><span class="w">                    </span><span class="c1"># generate files and stop</span>
 </code></pre></div>
-<p>This command checks that every row has exactly one R1/R2 pair and that each gzip file is complete. It creates:</p>
+<p>This command checks that every row has exactly one single-end file or one R1/R2 pair, requires one layout for the whole run, and verifies every gzip stream. It creates:</p>
 <div class="highlight"><pre><span></span><code>project/config/illumina/
 ├── illumina.auto.yml          # pass this file to -params-file
-└── illumina.samplesheet.csv   # detected R1/R2 paths
+└── illumina.samplesheet.csv   # detected single-end or R1/R2 paths
 </code></pre></div>
 <p>It does <strong>not</strong> start alignment or CNA analysis.</p>
 <h3 id="4-inspect-the-generated-files">4. Inspect the generated files<a class="headerlink" href="#4-inspect-the-generated-files" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>project/config/illumina/illumina.auto.yml<span class="w">              </span><span class="c1"># inspect settings and absolute paths</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/config/illumina/illumina.samplesheet.csv<span class="w">        </span><span class="c1"># inspect detected pairs and status values</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>project/config/illumina/illumina.samplesheet.csv<span class="w">        </span><span class="c1"># inspect detected inputs and status values</span>
 </code></pre></div>
 <p>The generated YAML will resemble this. It is a <strong>YAML example</strong>, not a terminal command:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
@@ -1614,12 +1625,12 @@ cat<span class="w"> </span>project/runs/illumina_auto/06_workflow_summary/workfl
 </code></pre></div>
 <p>The stub command uses placeholder outputs; it does not analyze or fully validate the real reads. The second command is the real run. Use <code>--singularity</code> instead of <code>--docker</code> on a configured HPC system.</p>
 <h2 id="second-option-manual-setup">Second option: manual setup<a class="headerlink" href="#second-option-manual-setup" title="Permanent link">&para;</a></h2>
-<p>Choose manual setup for single-end reads, when FASTQ naming does not match automatic paired-read detection, or when you need advanced settings.</p>
+<p>Choose manual setup when FASTQ naming does not match the supported automatic single-end/paired patterns or when you need advanced settings.</p>
 <h3 id="1-create-the-samplesheet">1. Create the samplesheet<a class="headerlink" href="#1-create-the-samplesheet" title="Permanent link">&para;</a></h3>
 <p>This example assumes <code>pwd</code> prints <code>/home/student/oncotracer</code>. Replace that prefix everywhere if your clone is elsewhere.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>oncotracer
 mkdir<span class="w"> </span>-p<span class="w"> </span>project/input/illumina_fastq<span class="w"> </span>project/runs<span class="w">                     </span><span class="c1"># create directories if absent</span>
-nano<span class="w"> </span>project/input/illumina.samplesheet.csv<span class="w">                            </span><span class="c1"># create the paired-read table</span>
+nano<span class="w"> </span>project/input/illumina.samplesheet.csv<span class="w">                            </span><span class="c1"># create the FASTQ table</span>
 </code></pre></div>
 <p>Enter:</p>
 <div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status

@@ -475,7 +475,7 @@
   <span class="md-ellipsis">
     
   
-    2. Quick Verification
+    2. QuickStart Example 1 (Illumina + ONT)
   
 
     
@@ -531,7 +531,7 @@
   <span class="md-ellipsis">
     
   
-    4. Three-Sample Public Cohort
+    4. QuickStart Example 2 (Three-Sample Public)
   
 
     
@@ -697,10 +697,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-prepare-software-only" class="md-nav__link">
+  <a href="#2-prepare-the-software" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Prepare software only
+        2. Prepare the software
       
     </span>
   </a>
@@ -719,10 +719,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-generate-and-inspect-the-single-end-configuration" class="md-nav__link">
+  <a href="#4-generate-the-samplesheet-and-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Generate and inspect the single-end configuration
+        4. Generate the samplesheet and YAML automatically
       
     </span>
   </a>
@@ -730,10 +730,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-check-wiring-then-run-the-real-workflow" class="md-nav__link">
+  <a href="#5-check-the-wiring-then-run-the-real-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check wiring, then run the real workflow
+        5. Check the wiring, then run the real workflow
       
     </span>
   </a>
@@ -752,10 +752,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-interpret-without-overclaiming" class="md-nav__link">
+  <a href="#7-review-the-cna-and-pathology-facing-reports-carefully" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Interpret without overclaiming
+        7. Review the CNA and pathology-facing reports carefully
       
     </span>
   </a>
@@ -767,17 +767,6 @@
     <span class="md-ellipsis">
       
         8. Preserve provenance
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-automated-replay" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional automated replay
       
     </span>
   </a>
@@ -1421,10 +1410,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-prepare-software-only" class="md-nav__link">
+  <a href="#2-prepare-the-software" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Prepare software only
+        2. Prepare the software
       
     </span>
   </a>
@@ -1443,10 +1432,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-generate-and-inspect-the-single-end-configuration" class="md-nav__link">
+  <a href="#4-generate-the-samplesheet-and-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Generate and inspect the single-end configuration
+        4. Generate the samplesheet and YAML automatically
       
     </span>
   </a>
@@ -1454,10 +1443,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-check-wiring-then-run-the-real-workflow" class="md-nav__link">
+  <a href="#5-check-the-wiring-then-run-the-real-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Check wiring, then run the real workflow
+        5. Check the wiring, then run the real workflow
       
     </span>
   </a>
@@ -1476,10 +1465,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-interpret-without-overclaiming" class="md-nav__link">
+  <a href="#7-review-the-cna-and-pathology-facing-reports-carefully" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Interpret without overclaiming
+        7. Review the CNA and pathology-facing reports carefully
       
     </span>
   </a>
@@ -1491,17 +1480,6 @@
     <span class="md-ellipsis">
       
         8. Preserve provenance
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-automated-replay" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional automated replay
       
     </span>
   </a>
@@ -1595,7 +1573,7 @@
 
 
 <h1 id="full-tutorial-complete-public-prjna754199-archive">Full tutorial: complete public PRJNA754199 archive<a class="headerlink" href="#full-tutorial-complete-public-prjna754199-archive" title="Permanent link">&para;</a></h1>
-<p>This tutorial processes <strong>all 12 Illumina plasma cfDNA libraries currently exposed by the public PRJNA754199 archive</strong>. It starts with an installation-only check, validates every downloaded byte against ENA, runs the real OncoTracer workflow, and ends with plots, refinement statistics, and research-use CNA interpretation.</p>
+<p>This tutorial processes <strong>all 12 Illumina plasma cfDNA libraries currently exposed by the public PRJNA754199 archive</strong>. The main path is intentionally short: download validated reads, let OncoTracer generate the samplesheet and YAML, run the workflow, verify the outputs, and review the reports.</p>
 <h2 id="what-this-tutorial-doesand-does-notcontain">What this tutorial does—and does not—contain<a class="headerlink" href="#what-this-tutorial-doesand-does-notcontain" title="Permanent link">&para;</a></h2>
 <p>The associated PLOS ONE article describes 41 plasma specimens from 15 patients: 10 longitudinal specimens from four DDLPS/WDLPS patients and 31 specimens from 11 patients with other soft-tissue tumors. On <strong>15 July 2026</strong>, the ENA read-run report returned only 12 read runs for the BioProject.</p>
 <table>
@@ -1641,280 +1619,80 @@
 <p class="admonition-title">Archive aliases are not diagnoses</p>
 <p><code>DDLPS_*</code> and <code>WDLPS_*</code> are submitter-provided sample aliases. OncoTracer preserves them for provenance; it does not independently verify a diagnosis. The generated <code>tumor</code> status is a SAMURAI condition label for this patient cohort, not proof of detectable ctDNA, active disease, or a CNA in any specimen.</p>
 </div>
-<p>This is also an <strong>independent reanalysis</strong>, not an exact reproduction of the publication. The publication used GRCh37/hg19, a Plasma-Seq Z-score method, variable-mappability windows, and healthy-donor references. This tutorial uses OncoTracer's hg38 SAMURAI/qDNAseq route and has no matched tumor or healthy-donor controls.</p>
+<p>This is an <strong>independent reanalysis</strong>, not an exact reproduction of the publication. The publication used GRCh37/hg19, a Plasma-Seq Z-score method, variable-mappability windows, and healthy-donor references. This tutorial uses OncoTracer's hg38 SAMURAI/qDNAseq route and has no matched tumor or healthy-donor controls.</p>
 <h2 id="1-plan-the-run">1. Plan the run<a class="headerlink" href="#1-plan-the-run" title="Permanent link">&para;</a></h2>
-<p>Use Linux with at least <strong>150 GiB of free working space</strong>. Sixteen CPU cores and 64 GiB RAM are a practical starting point; more cores and fast local storage reduce alignment time. The 5.75 GiB compressed FASTQs expand into BAMs, Nextflow work, reference indexes, and final reports.</p>
-<p>The first run also prepares hg38 and its BWA index if they are not already cached. That one-time step adds several GiB of reference/index data and can take 30–60 minutes before sample alignment begins.</p>
-<p>Complete the <a href="../installation/#1-install-the-host-prerequisites">host installation requirements</a> first. This verified tutorial uses Docker and also needs the host-side stage-01 tools because the outer workflow launches SAMURAI and prepares references from the host:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">set</span><span class="w"> </span>-Eeuo<span class="w"> </span>pipefail<span class="w">                                                       </span><span class="c1"># stop immediately when a required check fails</span>
-<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>git<span class="w"> </span>java<span class="w"> </span>nextflow<span class="w"> </span>docker<span class="w"> </span>python3<span class="w"> </span>curl<span class="w"> </span>samtools<span class="w"> </span>bwa<span class="w"> </span>minimap2<span class="w"> </span>pigz
-<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>gzip<span class="w"> </span>md5sum<span class="w"> </span>sha256sum<span class="w"> </span>awk<span class="w"> </span>stat<span class="w"> </span>find<span class="w"> </span>wc<span class="w"> </span>seq<span class="w"> </span>readlink
-<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>nano<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Nano is absent; substitute your terminal editor in step 4.&quot;</span>
-docker<span class="w"> </span>info<span class="w"> </span>&gt;/dev/null<span class="w">                                                   </span><span class="c1"># prove this user can reach the daemon</span>
+<p>Use Linux with at least <strong>150 GiB of free working space</strong>. Sixteen CPU cores and 64 GiB RAM are a practical starting point. The first run also prepares hg38 and its BWA index; that one-time step adds several GiB and can take 30–60 minutes before alignment begins.</p>
+<p>Complete the <a href="../installation/#1-install-the-host-prerequisites">host installation requirements</a>, then clone OncoTracer and choose one absolute project root. Keep the same terminal open so these variables remain available:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git
+<span class="nb">cd</span><span class="w"> </span>oncotracer
+<span class="nb">export</span><span class="w"> </span><span class="nv">COHORT_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/test&quot;</span><span class="w">  </span><span class="c1"># use a larger absolute filesystem path if needed</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/public/prjna754199&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CONFIG_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/configs/prjna754199&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/runs/prjna754199&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">YAML</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">/illumina.auto.yml&quot;</span>
 </code></pre></div>
-<p><code>nano</code> is used only for the editing lesson; another terminal editor is fine. Choose a root that will contain reads, references, Nextflow work, and results. Keep the same terminal open so the variables defined here remain available in later steps:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w">                    </span><span class="c1"># clone the workflow</span>
-<span class="nb">cd</span><span class="w"> </span>oncotracer<span class="w">                                                        </span><span class="c1"># main.nf is here</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">COHORT_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/test&quot;</span><span class="w">                                       </span><span class="c1"># or a larger absolute filesystem path</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">INSTALL_WORK_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/work/install&quot;</span><span class="w">                  </span><span class="c1"># small installation-only task</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">WORK_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/work/prjna754199&quot;</span><span class="w">                      </span><span class="c1"># large real-run intermediates</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">STUB_WORK_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/work/prjna754199_stub&quot;</span><span class="w">            </span><span class="c1"># disposable wiring-check work</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$INSTALL_WORK_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$WORK_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$STUB_WORK_DIR</span><span class="s2">&quot;</span>
-</code></pre></div>
-<p>The commands below use the ignored <code>test/</code> directory. To use another disk, set <code>COHORT_ROOT=/absolute/path</code> for every command below.</p>
-<h2 id="2-prepare-software-only">2. Prepare software only<a class="headerlink" href="#2-prepare-software-only" title="Permanent link">&para;</a></h2>
-<p>The <code>--install</code> route prepares Docker and then stops:</p>
+<p>The commands below use the ignored <code>test/</code> directory. If you change <code>COHORT_ROOT</code>, keep all reads, configuration, work, and output paths below that root so the container can see them.</p>
+<p><a id="2-prepare-software-only"></a></p>
+<h2 id="2-prepare-the-software">2. Prepare the software<a class="headerlink" href="#2-prepare-the-software" title="Permanent link">&para;</a></h2>
+<p>Prepare and smoke-test Docker without starting an analysis:</p>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$INSTALL_WORK_DIR</span><span class="s2">&quot;</span><span class="w">                                      </span><span class="c1"># pull, cache, and smoke-test software</span>
-cat<span class="w"> </span>.oncotracer/install/install_manifest.txt<span class="w">                         </span><span class="c1"># inspect exact runtime and SAMURAI identity</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/work/install&quot;</span>
 </code></pre></div>
-<p>The command does not require <code>mode</code>, reads, or an output directory. It does not download hg38 or PRJNA754199 and does not create analysis stages <code>01</code>–<code>06</code>. The <a href="../installation/#4-prepare-one-runtime-without-starting-an-analysis">installation guide</a> gives the equivalent Singularity and Conda routes; use exactly one runtime flag.</p>
-<p>A successful manifest records:</p>
-<ul>
-<li>the selected runtime and immutable image/environment identity;</li>
-<li>Java, Nextflow, Python, and samtools versions;</li>
-<li>pinned SAMURAI revision <code>v1.4.0</code> and its resolved commit;</li>
-<li><code>hg38_prepared=false</code>, <code>reads_downloaded=false</code>, and <code>analysis_started=false</code>.</li>
-</ul>
-<p>Repeating the command is safe: valid Docker layers, Conda packages, and the shared SAMURAI cache are reused.</p>
+<p>This command pulls and checks the software, records the runtime and pinned SAMURAI identity, and then stops. It does not download hg38 or patient reads and does not create analysis stages <code>01</code>–<code>06</code>. See <a href="../installation/#4-prepare-one-runtime-without-starting-an-analysis">Installation</a> for Singularity and Conda alternatives.</p>
 <h2 id="3-download-and-validate-the-complete-public-archive">3. Download and validate the complete public archive<a class="headerlink" href="#3-download-and-validate-the-complete-public-archive" title="Permanent link">&para;</a></h2>
-<p>First define the source manifest and destination. Inspect its header and confirm that it contains 12 data rows:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">MANIFEST</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/examples/prjna754199/manifest.tsv&quot;</span>
-<span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/public/prjna754199&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span>
-
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,4p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span><span class="w">                                         </span><span class="c1"># understand the columns</span>
-<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">&#39;END {print NR-1}&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">12</span><span class="w">                </span><span class="c1"># exactly 12 public runs</span>
+<p>Download all 12 FASTQs with one resumable command:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">COHORT_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">&quot;</span><span class="w"> </span>bash<span class="w"> </span>examples/prjna754199/run_example.sh<span class="w"> </span>--download-only
 </code></pre></div>
-<p>Before downloading, independently recalculate the manifest totals:</p>
-<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
-<span class="s">import csv, sys</span>
-<span class="s">with open(sys.argv[1], newline=&quot;&quot;) as handle:</span>
-<span class="s">    rows = list(csv.DictReader(handle, delimiter=&quot;\t&quot;))</span>
-<span class="s">print(&quot;runs:&quot;, len(rows))</span>
-<span class="s">print(&quot;reads:&quot;, sum(int(row[&quot;read_count&quot;]) for row in rows))</span>
-<span class="s">print(&quot;bases:&quot;, sum(int(row[&quot;base_count&quot;]) for row in rows))</span>
-<span class="s">print(&quot;compressed bytes:&quot;, sum(int(row[&quot;fastq_bytes&quot;]) for row in rows))</span>
-<span class="s">assert len(rows) == 12</span>
-<span class="s">assert sum(int(row[&quot;read_count&quot;]) for row in rows) == 266_097_582</span>
-<span class="s">assert sum(int(row[&quot;base_count&quot;]) for row in rows) == 9_579_512_952</span>
-<span class="s">assert sum(int(row[&quot;fastq_bytes&quot;]) for row in rows) == 6_171_900_300</span>
-<span class="s">PY</span>
+<p>The command uses the frozen 12-run manifest and accepts a file only after its ENA byte count, MD5 checksum, and gzip stream all pass. Valid files are reused and interrupted transfers resume. It stops after download validation; it does not generate the workflow configuration or run an analysis.</p>
+<p>For the pinned URLs, checksums, archive query, and the implementation of the validation step, see the <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">example README</a> and <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md">provenance notes</a>.</p>
+<p><a id="4-generate-and-inspect-the-single-end-configuration"></a></p>
+<h2 id="4-generate-the-samplesheet-and-yaml-automatically">4. Generate the samplesheet and YAML automatically<a class="headerlink" href="#4-generate-the-samplesheet-and-yaml-automatically" title="Permanent link">&para;</a></h2>
+<p>The download command places an auditable <code>samples.csv</code> beside the FASTQs. It contains the 12 archive aliases and their patient-cohort <code>TUMOR</code> condition labels. Point <strong>Automatic Setup from a Reads Folder</strong> at that self-contained directory:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cna_classifier_sample_set<span class="w"> </span>sarcoma<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cna_classifier_profile<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pathology_use_biomed_models<span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pathology_biomed_local_files_only<span class="w"> </span><span class="nb">true</span>
 </code></pre></div>
-<p>Now define the validation and download function directly in the terminal. It reuses a local file only when all three checks pass, keeps a smaller partial file for HTTP resume, and resets a complete-but-invalid file before retrying:</p>
-<div class="highlight"><pre><span></span><code>validate_fastq<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">  </span><span class="nb">local</span><span class="w"> </span><span class="nv">fastq</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span><span class="nv">expected_bytes</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span><span class="w"> </span><span class="nv">expected_md5</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span>
-<span class="w">  </span><span class="o">[[</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">  </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>stat<span class="w"> </span>-c<span class="w"> </span>%s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$expected_bytes</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">  </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>md5sum<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $1}&#39;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$expected_md5</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="w">  </span>gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span>
-<span class="o">}</span>
-
-download_fastq<span class="o">()</span><span class="w"> </span><span class="o">{</span>
-<span class="w">  </span><span class="nb">local</span><span class="w"> </span><span class="nv">url</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$1</span><span class="s2">&quot;</span><span class="w"> </span><span class="nv">fastq</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$2</span><span class="s2">&quot;</span><span class="w"> </span><span class="nv">expected_bytes</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$3</span><span class="s2">&quot;</span><span class="w"> </span><span class="nv">expected_md5</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$4</span><span class="s2">&quot;</span>
-<span class="w">  </span><span class="nb">local</span><span class="w"> </span>attempt<span class="w"> </span>current_bytes
-
-<span class="w">  </span><span class="k">if</span><span class="w"> </span>validate_fastq<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$expected_bytes</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$expected_md5</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;REUSE: </span><span class="nv">$fastq</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">  </span><span class="k">fi</span>
-
-<span class="w">  </span><span class="k">for</span><span class="w"> </span>attempt<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>seq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">20</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="nv">current_bytes</span><span class="o">=</span><span class="m">0</span>
-<span class="w">    </span><span class="o">[[</span><span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">current_bytes</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>stat<span class="w"> </span>-c<span class="w"> </span>%s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$current_bytes</span><span class="s2">&quot;</span><span class="w"> </span>-ge<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$expected_bytes</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">      </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;RESET: invalid complete file </span><span class="nv">$fastq</span><span class="s2">&quot;</span>
-<span class="w">      </span>rm<span class="w"> </span>-f<span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span>
-<span class="w">      </span><span class="nv">current_bytes</span><span class="o">=</span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-
-<span class="w">    </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;DOWNLOAD </span><span class="nv">$attempt</span><span class="s2">/20: </span><span class="nv">$fastq</span><span class="s2"> (</span><span class="nv">$current_bytes</span><span class="s2">/</span><span class="nv">$expected_bytes</span><span class="s2"> bytes present)&quot;</span>
-<span class="w">    </span>curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class="w"> </span>--continue-at<span class="w"> </span>-<span class="w"> </span><span class="se">\</span>
-<span class="w">      </span>--connect-timeout<span class="w"> </span><span class="m">30</span><span class="w"> </span>--speed-time<span class="w"> </span><span class="m">60</span><span class="w"> </span>--speed-limit<span class="w"> </span><span class="m">1024</span><span class="w"> </span><span class="se">\</span>
-<span class="w">      </span>--retry<span class="w"> </span><span class="m">3</span><span class="w"> </span>--retry-delay<span class="w"> </span><span class="m">3</span><span class="w"> </span>--retry-all-errors<span class="w"> </span><span class="se">\</span>
-<span class="w">      </span>--output<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$url</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>validate_fastq<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$expected_bytes</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$expected_md5</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">      </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;VALIDATED: </span><span class="nv">$fastq</span><span class="s2">&quot;</span>
-<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
-<span class="w">    </span><span class="k">fi</span>
-<span class="w">    </span>sleep<span class="w"> </span><span class="k">$((</span><span class="nv">attempt</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="m">10</span><span class="w"> </span>?<span class="w"> </span><span class="nv">attempt</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">2</span><span class="w"> </span>:<span class="w"> </span><span class="m">20</span><span class="k">))</span>
-<span class="w">  </span><span class="k">done</span>
-
-<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ERROR: download did not validate after 20 resumable attempts: </span><span class="nv">$url</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="m">1</span>
-<span class="o">}</span>
+<p>Automatic setup validates the supported single-end layout, writes a blank <code>fastq_2</code> field for every library, and creates:</p>
+<div class="highlight"><pre><span></span><code>test/configs/prjna754199/
+├── illumina.auto.yml
+└── illumina.samplesheet.csv
 </code></pre></div>
-<p>Apply that function to every manifest row. The field names on the <code>read</code> line follow the manifest header from left to right:</p>
-<div class="highlight"><pre><span></span><code><span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$&#39;\t&#39;</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>sample<span class="w"> </span>biosample<span class="w"> </span>experiment<span class="w"> </span>run<span class="w"> </span>instrument<span class="w"> </span>layout<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>read_length<span class="w"> </span>reads<span class="w"> </span>bases<span class="w"> </span>filename<span class="w"> </span>bytes<span class="w"> </span>md5<span class="w"> </span>url<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">  </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$sample</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;sample_alias&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Preparing </span><span class="nv">$sample</span><span class="s2"> from </span><span class="nv">$run</span><span class="s2">&quot;</span>
-<span class="w">  </span>download_fastq<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;</span><span class="nv">$url</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">/</span><span class="nv">$sample</span><span class="s2">.fastq.gz&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;</span><span class="nv">$bytes</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;</span><span class="nv">$md5</span><span class="s2">&quot;</span>
-<span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span>
+<p>Inspect both generated files before running:</p>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">/illumina.samplesheet.csv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$YAML</span><span class="s2">&quot;</span>
 </code></pre></div>
-<p>Check that all 12 files exist, then print the checksum of each downloaded file beside its expected checksum:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq.gz&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">12</span>
-
-<span class="k">while</span><span class="w"> </span><span class="nv">IFS</span><span class="o">=</span><span class="s1">$&#39;\t&#39;</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>-r<span class="w"> </span>sample<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>run<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>_<span class="w"> </span>bytes<span class="w"> </span>md5<span class="w"> </span>_<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">  </span><span class="o">[[</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$sample</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;sample_alias&quot;</span><span class="w"> </span><span class="o">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="k">continue</span>
-<span class="w">  </span><span class="nv">fastq</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">/</span><span class="nv">$sample</span><span class="s2">.fastq.gz&quot;</span>
-<span class="w">  </span><span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>stat<span class="w"> </span>-c<span class="w"> </span>%s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$bytes</span><span class="s2">&quot;</span>
-<span class="w">  </span><span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>md5sum<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $1}&#39;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$md5</span><span class="s2">&quot;</span>
-<span class="w">  </span>gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%-10s %s  OK\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$sample</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$run</span><span class="s2">&quot;</span>
-<span class="k">done</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span>
-</code></pre></div>
-<p>These checks cover:</p>
-<ol>
-<li>the pinned HTTPS ENA path;</li>
-<li>exact compressed byte count;</li>
-<li>ENA MD5 checksum;</li>
-<li>a complete gzip stream.</li>
-</ol>
-<p>An interrupted transfer is resumed. A local file is reused only after all validation checks pass.</p>
-<h2 id="4-generate-and-inspect-the-single-end-configuration">4. Generate and inspect the single-end configuration<a class="headerlink" href="#4-generate-and-inspect-the-single-end-configuration" title="Permanent link">&para;</a></h2>
-<p>Create configuration paths:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">CONFIG_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/configs/prjna754199&quot;</span>
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/runs/prjna754199&quot;</span>
-<span class="nv">SAMPLESHEET</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">/illumina.single_end.samplesheet.csv&quot;</span>
-<span class="nv">YAML</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">/illumina.full_tutorial.yml&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span>
-</code></pre></div>
-<p>Write one samplesheet row per manifest entry. The code deliberately leaves <code>fastq_2</code> empty and stops if a downloaded file is missing:</p>
-<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SAMPLESHEET</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
-<span class="s">import csv, sys</span>
-<span class="s">from pathlib import Path</span>
-
-<span class="s">manifest, reads_dir, output = map(Path, sys.argv[1:])</span>
-<span class="s">with manifest.open(newline=&quot;&quot;) as handle:</span>
-<span class="s">    rows = list(csv.DictReader(handle, delimiter=&quot;\t&quot;))</span>
-<span class="s">with output.open(&quot;w&quot;, newline=&quot;&quot;) as handle:</span>
-<span class="s">    writer = csv.DictWriter(</span>
-<span class="s">        handle, fieldnames=[&quot;sample&quot;, &quot;fastq_1&quot;, &quot;fastq_2&quot;, &quot;status&quot;]</span>
-<span class="s">    )</span>
-<span class="s">    writer.writeheader()</span>
-<span class="s">    for row in rows:</span>
-<span class="s">        fastq = (reads_dir / f&quot;{row[&#39;sample_alias&#39;]}.fastq.gz&quot;).resolve()</span>
-<span class="s">        if not fastq.is_file():</span>
-<span class="s">            raise SystemExit(f&quot;Missing FASTQ: {fastq}&quot;)</span>
-<span class="s">        writer.writerow({</span>
-<span class="s">            &quot;sample&quot;: row[&quot;sample_alias&quot;],</span>
-<span class="s">            &quot;fastq_1&quot;: str(fastq),</span>
-<span class="s">            &quot;fastq_2&quot;: &quot;&quot;,</span>
-<span class="s">            &quot;status&quot;: &quot;tumor&quot;,</span>
-<span class="s">        })</span>
-<span class="s">PY</span>
-
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SAMPLESHEET</span><span class="s2">&quot;</span>
-</code></pre></div>
-<p>The samplesheet retains the standard four-column contract. <code>fastq_2</code> is intentionally blank:</p>
-<div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
-DDLPS_1a,/absolute/path/DDLPS_1a.fastq.gz,,tumor
-DDLPS_1b,/absolute/path/DDLPS_1b.fastq.gz,,tumor
-</code></pre></div>
-<p>The workflow detects that every row is single-end and passes <code>qdnaseq_paired_ends=false</code> to SAMURAI. A single invocation cannot mix single-end and paired-end rows.</p>
-<p>Create the YAML in a terminal editor:</p>
-<div class="highlight"><pre><span></span><code>readlink<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">&quot;</span><span class="w">                                            </span><span class="c1"># value for lpwgs_root</span>
-readlink<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w">                                                    </span><span class="c1"># value for outdir</span>
-readlink<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SAMPLESHEET</span><span class="s2">&quot;</span><span class="w">                                            </span><span class="c1"># value for illumina_samplesheet</span>
-nano<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$YAML</span><span class="s2">&quot;</span>
-</code></pre></div>
-<p>Paste the block below, replacing the three <code>/absolute/path/...</code> values with the three paths printed above:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/to/cohort-root</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/to/cohort-root/runs/prjna754199</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/to/cohort-root/configs/prjna754199/illumina.single_end.samplesheet.csv</span>
-<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
-<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
-<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
-<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">cna_classifier_sample_set</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sarcoma</span>
-<span class="nt">cna_classifier_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda</span>
-<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
-<span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="nt">pathology_biomed_local_files_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</code></pre></div>
-<p>In Nano, save with <code>Ctrl+O</code>, press <code>Enter</code>, and exit with <code>Ctrl+X</code>. Then inspect the saved file and make sure no placeholder remains:</p>
-<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$YAML</span><span class="s2">&quot;</span>
-<span class="k">if</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s1">&#39;/absolute/path&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$YAML</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ERROR: replace every placeholder before running&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
-<span class="w">  </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
-<span class="k">fi</span>
-</code></pre></div>
-<p>The fixed <code>sarcoma</code> context is chosen from the study design before results are examined. No pathology table is supplied, so the downstream report is a CNA-only research interpretation, not a pathology-concordance assessment.</p>
-<h2 id="5-check-wiring-then-run-the-real-workflow">5. Check wiring, then run the real workflow<a class="headerlink" href="#5-check-wiring-then-run-the-real-workflow" title="Permanent link">&para;</a></h2>
-<p>Run the wiring check first, then the real analysis. The explicit work directories keep large intermediates below <code>COHORT_ROOT</code>, even when the repository itself is on a smaller filesystem:</p>
+<p>Confirm that the samplesheet contains 12 data rows, each <code>fastq_1</code> path exists, every <code>fastq_2</code> cell is empty, and the YAML points to the intended output directory. It should also contain <code>run_cna_classifier: true</code> and <code>cna_classifier_sample_set: sarcoma</code>, which preserve the research-use interpretation reports shown below.</p>
+<p>The workflow recognizes the uniform single-end layout and passes <code>qdnaseq_paired_ends=false</code> to SAMURAI. No pathology table is supplied, so stage 05 produces a <strong>CNA-only research interpretation</strong>, not a pathology-concordance assessment. Use <a href="../configuration/illumina/#second-option-manual-setup">manual Illumina setup</a> only when automatic detection does not fit your data.</p>
+<p><a id="5-check-wiring-then-run-the-real-workflow"></a></p>
+<h2 id="5-check-the-wiring-then-run-the-real-workflow">5. Check the wiring, then run the real workflow<a class="headerlink" href="#5-check-the-wiring-then-run-the-real-workflow" title="Permanent link">&para;</a></h2>
+<p>Run the fast wiring check first, followed by the real 12-library analysis:</p>
 <div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$YAML</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$STUB_WORK_DIR</span><span class="s2">&quot;</span><span class="w">                                         </span><span class="c1"># wiring only; no real analysis</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/work/prjna754199_stub&quot;</span>
 
 nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$YAML</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$WORK_DIR</span><span class="s2">&quot;</span><span class="w"> </span>-resume<span class="w">                                     </span><span class="c1"># real 12-library analysis</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/work/prjna754199&quot;</span><span class="w"> </span>-resume
 </code></pre></div>
-<p><code>-stub-run</code> creates placeholders and cannot validate scientific output. Only the command without <code>-stub-run</code> performs alignment, CNA analysis, boundary refinement, and interpretation. Keep <code>-resume</code>: it reuses unchanged successful tasks after interruption.</p>
-<p>The real command runs in the foreground. While it is active, open a <strong>second terminal</strong>, return to the same clone, set the same cohort root, and inspect the nested log. Stop only this live log view with <code>Ctrl+C</code>; that does not stop the workflow in the first terminal:</p>
+<p><code>-stub-run</code> creates placeholders and cannot validate scientific output. Only the second command performs alignment, CNA analysis, boundary refinement, and interpretation. Keep <code>-resume</code>: it reuses unchanged successful tasks after an interruption.</p>
+<p>The real command runs in the foreground. To follow SAMURAI in a <strong>second terminal</strong>, return to the clone, set the same output path, and follow the nested log:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/absolute/path/to/oncotracer
-<span class="nb">export</span><span class="w"> </span><span class="nv">COHORT_ROOT</span><span class="o">=</span><span class="s2">&quot;/the/same/cohort/root/used/in/terminal/one&quot;</span>
-tail<span class="w"> </span>-n<span class="w"> </span><span class="m">30</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/runs/prjna754199/01_samurai_illumina/nextflow_launch/.nextflow.log&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OUT</span><span class="o">=</span>/absolute/path/to/cohort-root/runs/prjna754199
+tail<span class="w"> </span>-n<span class="w"> </span><span class="m">30</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/nextflow_launch/.nextflow.log&quot;</span>
 </code></pre></div>
-<p>During stage 01, the outer OncoTracer task may display <code>0 of 1</code> while this nested SAMURAI workflow is active. The changing nested log is the reliable progress signal.</p>
+<p>Stop only the log view with <code>Ctrl+C</code>; that does not stop the workflow in the first terminal. During stage 01, the outer task may display <code>0 of 1</code> while the nested SAMURAI workflow is active. A changing nested log is the reliable progress signal.</p>
 <h2 id="6-verify-the-completed-run">6. Verify the completed run<a class="headerlink" href="#6-verify-the-completed-run" title="Permanent link">&para;</a></h2>
-<p>First require non-empty outputs from every configured stage:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">/runs/prjna754199&quot;</span>
-<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/alignment&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.bam&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">12</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq/all_segments.seg&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/02_classification/cna_patient_classification.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/03_report/cna_classifier_report.html&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
+<p>Run the versioned verifier against the final output directory:</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>examples/prjna754199/verify_outputs.py<span class="w"> </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span>
 </code></pre></div>
-<p>Then compare the manifest IDs to all four sample-bearing stages. This is stronger than accepting 12 arbitrary files or rows. SAMURAI adds a processing suffix such as <code>_markdup</code> to its segment IDs, so the check maps those IDs back to the longest matching manifest alias:</p>
-<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
-<span class="s">import csv, sys</span>
-<span class="s">from pathlib import Path</span>
-
-<span class="s">manifest, out = Path(sys.argv[1]), Path(sys.argv[2])</span>
-<span class="s">with manifest.open(newline=&quot;&quot;) as handle:</span>
-<span class="s">    expected = {row[&quot;sample_alias&quot;] for row in csv.DictReader(handle, delimiter=&quot;\t&quot;)}</span>
-
-<span class="s">def require_exact(label, observed):</span>
-<span class="s">    missing = sorted(expected - observed)</span>
-<span class="s">    extra = sorted(observed - expected)</span>
-<span class="s">    if missing or extra:</span>
-<span class="s">        raise SystemExit(f&quot;{label}: missing={missing}; unexpected={extra}&quot;)</span>
-<span class="s">    print(f&quot;{label}: {len(observed)} expected samples&quot;)</span>
-
-<span class="s">bam_dir = out / &quot;01_samurai_illumina&quot; / &quot;alignment&quot;</span>
-<span class="s">require_exact(&quot;BAMs&quot;, {path.stem for path in bam_dir.glob(&quot;*.bam&quot;)})</span>
-
-<span class="s">segments = out / &quot;01_samurai_illumina&quot; / &quot;qdnaseq&quot; / &quot;all_segments.seg&quot;</span>
-<span class="s">with segments.open(newline=&quot;&quot;) as handle:</span>
-<span class="s">    segment_ids = {row[&quot;ID&quot;] for row in csv.DictReader(handle, delimiter=&quot;\t&quot;)}</span>
-<span class="s">segment_samples = set()</span>
-<span class="s">for value in segment_ids:</span>
-<span class="s">    matches = [sample for sample in expected if value == sample or value.startswith(sample + &quot;_&quot;)]</span>
-<span class="s">    if not matches:</span>
-<span class="s">        raise SystemExit(f&quot;SAMURAI segments: unrecognized ID {value!r}&quot;)</span>
-<span class="s">    segment_samples.add(max(matches, key=len))</span>
-<span class="s">require_exact(&quot;SAMURAI segments&quot;, segment_samples)</span>
-
-<span class="s">refinement = out / &quot;02_bam_refinement&quot; / &quot;illumina_qdnaseq_100kb&quot; / &quot;01_tables&quot; / &quot;sample_refinement_summary.csv&quot;</span>
-<span class="s">with refinement.open(newline=&quot;&quot;) as handle:</span>
-<span class="s">    require_exact(&quot;Refinement summary&quot;, {row[&quot;sample&quot;] for row in csv.DictReader(handle)})</span>
-
-<span class="s">classification = out / &quot;05_cna_classifier&quot; / &quot;02_classification&quot; / &quot;cna_patient_classification.tsv&quot;</span>
-<span class="s">with classification.open(newline=&quot;&quot;) as handle:</span>
-<span class="s">    require_exact(&quot;Classifier table&quot;, {row[&quot;sample&quot;] for row in csv.DictReader(handle, delimiter=&quot;\t&quot;)})</span>
-<span class="s">PY</span>
-</code></pre></div>
-<p>Start interpretation from:</p>
+<p>The verifier requires the exact 12 manifest aliases—not merely 12 arbitrary rows—across the BAMs, SAMURAI segments, refinement summary, and classifier table. It also requires the CNA tables, plots, clinician-report index, and workflow summary used by this tutorial.</p>
+<p>Start reviewing the verified run from these locations:</p>
 <table>
 <thead>
 <tr>
@@ -1923,6 +1701,10 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>Workflow inventory</td>
+<td><code>06_workflow_summary/workflow_summary.txt</code></td>
+</tr>
 <tr>
 <td>SAMURAI fitted CNA profiles</td>
 <td><code>01_samurai_illumina/qdnaseq/plots/*_segment_plot.pdf</code></td>
@@ -1940,60 +1722,36 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</
 <td><code>04_cna_custom_plots/</code></td>
 </tr>
 <tr>
-<td>CNA-only interpretation</td>
-<td><code>05_cna_classifier/03_report/</code></td>
+<td>Classifier report</td>
+<td><code>05_cna_classifier/03_report/cna_classifier_report.html</code></td>
 </tr>
 <tr>
-<td>Run entry point</td>
-<td><code>06_workflow_summary/workflow_summary.txt</code></td>
+<td>Per-sample research reports</td>
+<td><code>05_cna_classifier/03_report/clinician_reports/</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="7-interpret-without-overclaiming">7. Interpret without overclaiming<a class="headerlink" href="#7-interpret-without-overclaiming" title="Permanent link">&para;</a></h2>
+<p><a id="7-interpret-without-overclaiming"></a></p>
+<h2 id="7-review-the-cna-and-pathology-facing-reports-carefully">7. Review the CNA and pathology-facing reports carefully<a class="headerlink" href="#7-review-the-cna-and-pathology-facing-reports-carefully" title="Permanent link">&para;</a></h2>
 <p>Black qDNAseq points show normalized bin-level signal; fitted horizontal segment lines summarize the caller's piecewise CNA model. Boundary refinement asks whether local BAM coverage supports moving each coarse boundary and records refined, retained, and low-resolution outcomes.</p>
 <p>The classifier may flag a region such as 12q13–q15 or an MDM2/CDK4 overlap for research review. A flag is not confirmation of gene amplification, disease subtype, prognosis, or treatment actionability. Review coverage, segment size, focality, longitudinal consistency, and the original event table; confirm important findings with a validated orthogonal assay.</p>
+<p>The stage-05 HTML and per-sample PDFs are useful clinician-facing research summaries, but this archive supplies no pathology table. They must not be described as pathology-confirmed findings. To combine a future cohort with real pathology metadata, follow <a href="../configuration/pathology/">Pathology and Classifier</a> and require exact sample-identifier matching.</p>
 <p>The article reported MDM2-associated signals for selected specimens under its own method. Do not use that statement to relabel a discordant OncoTracer result or choose parameters after seeing the answer. This reanalysis has no matched tissue or healthy-donor controls and is not a sensitivity/specificity validation set.</p>
 <h2 id="8-preserve-provenance">8. Preserve provenance<a class="headerlink" href="#8-preserve-provenance" title="Permanent link">&para;</a></h2>
-<p>For the manual route, write a small receipt before moving the output:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">PROVENANCE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$CONFIG_DIR</span><span class="s2">/run_provenance.tsv&quot;</span>
-<span class="o">{</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;field\tvalue\n&#39;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;archive_project\tPRJNA754199\n&#39;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;archive_inventory_date\t2026-07-15\n&#39;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;public_run_count\t12\n&#39;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;manifest_sha256\t%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>sha256sum<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $1}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;oncotracer_commit\t%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>HEAD<span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="o">[[</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>git<span class="w"> </span>status<span class="w"> </span>--short<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">]]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;oncotracer_worktree\tdirty\n&#39;</span>
-<span class="w">  </span><span class="k">else</span>
-<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;oncotracer_worktree\tclean\n&#39;</span>
-<span class="w">  </span><span class="k">fi</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;runtime_flag\t--docker\n&#39;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;container_identity\t%s\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>docker<span class="w"> </span>image<span class="w"> </span>inspect<span class="w"> </span>carlosfarkas/oncotracer:latest<span class="w"> </span>--format<span class="w"> </span><span class="s1">&#39;{{index .RepoDigests 0}}&#39;</span><span class="k">)</span><span class="s2">&quot;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;reference_build\thg38\n&#39;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;initial_caller\tqDNAseq\n&#39;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;initial_bin_size_kb\t100\n&#39;</span>
-<span class="w">  </span><span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;classifier_context\tsarcoma\n&#39;</span>
-<span class="o">}</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROVENANCE</span><span class="s2">&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,80p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROVENANCE</span><span class="s2">&quot;</span>
-</code></pre></div>
-<p>Replace the runtime line and identity command when using Singularity or Conda. The automated replay writes the equivalent receipt itself.</p>
 <p>Keep these files with any shared result:</p>
 <ul>
 <li>frozen <code>examples/prjna754199/manifest.tsv</code> and its SHA-256;</li>
-<li>generated samplesheet, YAML, and <code>run_provenance.tsv</code>;</li>
-<li>OncoTracer commit and clean/dirty state;</li>
-<li>install manifest and container digest;</li>
+<li><code>examples/prjna754199/samples.csv</code>;</li>
+<li>generated <code>illumina.samplesheet.csv</code> and <code>illumina.auto.yml</code>;</li>
+<li>OncoTracer commit and clean/dirty worktree state;</li>
+<li>install manifest and immutable container digest;</li>
 <li>hg38/reference identity and SAMURAI <code>pipeline_info</code>;</li>
-<li>outer and nested Nextflow logs, plus the SAMURAI report, timeline, and trace;</li>
+<li>outer and nested Nextflow logs, report, timeline, and trace;</li>
+<li>classifier report, clinician-report index, and per-sample PDFs;</li>
 <li>unedited source tables behind every exported figure.</li>
 </ul>
-<h2 id="optional-automated-replay">Optional automated replay<a class="headerlink" href="#optional-automated-replay" title="Permanent link">&para;</a></h2>
-<p>After learning each step above, the <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">versioned runner</a> can replay the same operations and output checks. It is a convenience and reproducibility tool, not a substitute for understanding the manifest, samplesheet, YAML, and result tables:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">COHORT_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$COHORT_ROOT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>bash<span class="w"> </span>examples/prjna754199/run_example.sh<span class="w"> </span>--docker
-</code></pre></div>
-<p>Use <code>--download-only</code> to stop after validation or <code>--prepare-only</code> to stop after writing the samplesheet, YAML, and provenance receipt.</p>
+<p><a id="optional-automated-replay"></a></p>
+<p>The <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md">example provenance notes</a> document the archive snapshot and exact integrity checks. The <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">example README</a> retains the advanced audit and automated-replay details without interrupting this main path.</p>
 <h2 id="verified-result-gallery">Verified result gallery<a class="headerlink" href="#verified-result-gallery" title="Permanent link">&para;</a></h2>
 <p>The following images are static exports from the complete 12-run workflow described above. They demonstrate software output; they do not validate a diagnosis. <a href="../assets/full_tutorial/gallery_provenance.tsv">Inspect the asset/source checksums and transformation record</a>.</p>
 <h3 id="samurai-fitted-copy-number-profile">SAMURAI fitted copy-number profile<a class="headerlink" href="#samurai-fitted-copy-number-profile" title="Permanent link">&para;</a></h3>
