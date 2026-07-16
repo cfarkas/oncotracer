@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="780" viewBox="0 0 1400 780" role="img" aria-labelledby="title desc">
+  <title id="title">OncoTracer QuickStart from example reads to results</title>
+  <desc id="desc">Six-step beginner flow matching the page. Clone OncoTracer, prepare the public reads and run plans, understand the two YAML files, run Illumina, run Oxford Nanopore after Illumina, and confirm and open the copy-number results.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" x2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#134e4a"/></linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#0f172a" flood-opacity=".13"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#0f766e"/></marker>
+  </defs>
+  <style>
+    .h1{font:700 34px system-ui,sans-serif;fill:#f8fafc}.lead{font:18px system-ui,sans-serif;fill:#cbd5e1}
+    .lane{font:700 14px system-ui,sans-serif;fill:#0f766e;letter-spacing:.12em}.num{font:700 18px system-ui,sans-serif;fill:#fff}
+    .card-title{font:700 22px system-ui,sans-serif;fill:#0f172a}.body{font:16px system-ui,sans-serif;fill:#475569}.code{font:15px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#e2e8f0}
+    .file{font:14px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}.small{font:14px system-ui,sans-serif;fill:#64748b}.banner{font:700 18px system-ui,sans-serif;fill:#115e59}
+  </style>
+  <rect width="1400" height="780" fill="#f1f5f9"/>
+  <rect width="1400" height="116" fill="url(#header)"/>
+  <text class="h1" x="54" y="49">QuickStart: what OncoTracer does, step by step</text>
+  <text class="lead" x="54" y="82">The first three steps prepare a saved run plan. The last three steps perform and check the real CNA analyses.</text>
+
+  <text class="lane" x="54" y="151">PREPARE — NO CNA ANALYSIS YET</text>
+  <line x1="54" y1="165" x2="1346" y2="165" stroke="#99f6e4" stroke-width="3"/>
+
+  <g filter="url(#shadow)"><rect x="54" y="188" width="372" height="190" rx="16" fill="#fff"/></g>
+  <circle cx="91" cy="226" r="22" fill="#0f766e"/><text class="num" x="85" y="233">1</text>
+  <text class="card-title" x="126" y="232">Clone OncoTracer</text>
+  <rect x="78" y="258" width="324" height="68" rx="9" fill="#111827"/>
+  <text class="code" x="94" y="283">git clone ...</text>
+  <text class="code" x="94" y="308">cd /home/student/oncotracer</text>
+  <text class="small" x="78" y="352">This folder contains main.nf and the example helper.</text>
+
+  <path d="M438 283 H478" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)"><rect x="492" y="188" width="372" height="190" rx="16" fill="#fff"/></g>
+  <circle cx="529" cy="226" r="22" fill="#0f766e"/><text class="num" x="523" y="233">2</text>
+  <text class="card-title" x="564" y="232">Prepare reads + run plans</text>
+  <rect x="516" y="258" width="324" height="44" rx="9" fill="#111827"/>
+  <text class="code" x="531" y="286">nextflow run main.nf --make_test</text>
+  <text class="body" x="516" y="328">Checks reads and writes two YAML files.</text>
+  <text class="small" x="516" y="352">The command stops before CNA analysis.</text>
+
+  <path d="M876 283 H916" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)"><rect x="930" y="188" width="416" height="190" rx="16" fill="#fffbeb" stroke="#f59e0b" stroke-width="3"/></g>
+  <circle cx="967" cy="226" r="22" fill="#d97706"/><text class="num" x="961" y="233">3</text>
+  <text class="card-title" x="1002" y="232">Understand the YAML</text>
+  <rect x="954" y="255" width="368" height="75" rx="9" fill="#fff" stroke="#fbbf24"/>
+  <text class="file" x="972" y="280">test/configs/illumina.quickstart.yml</text>
+  <text class="file" x="972" y="307">test/configs/ont.quickstart.yml</text>
+  <text class="small" x="954" y="352">Each plan saves inputs, settings, and its result folder.</text>
+
+  <path d="M1138 390 V420" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
+  <text class="lane" x="54" y="441">RUN AND REVIEW — THE YAML TELLS NEXTFLOW WHAT TO DO</text>
+  <line x1="54" y1="455" x2="1346" y2="455" stroke="#99f6e4" stroke-width="3"/>
+
+  <g filter="url(#shadow)"><rect x="54" y="478" width="372" height="174" rx="16" fill="#fff"/></g>
+  <circle cx="91" cy="516" r="22" fill="#0f766e"/><text class="num" x="85" y="523">4</text>
+  <text class="card-title" x="126" y="522">Run Illumina</text>
+  <text class="body" x="78" y="556">Nextflow reads the Illumina YAML.</text>
+  <rect x="78" y="574" width="324" height="47" rx="9" fill="#ecfdf5" stroke="#6ee7b7"/>
+  <text class="file" x="94" y="594">qDNAseq</text>
+  <text class="file" x="94" y="614">100 kb bins</text>
+
+  <path d="M438 564 H478" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)"><rect x="492" y="478" width="372" height="174" rx="16" fill="#fff"/></g>
+  <circle cx="529" cy="516" r="22" fill="#0f766e"/><text class="num" x="523" y="523">5</text>
+  <text class="card-title" x="564" y="522">Run ONT</text>
+  <text class="body" x="516" y="556">After Illumina finishes, Nextflow reads</text>
+  <text class="body" x="516" y="580">the ONT YAML.</text>
+  <rect x="516" y="596" width="324" height="34" rx="8" fill="#f5f3ff" stroke="#c4b5fd"/>
+  <text class="file" x="533" y="618">ichorCNA • 500 kb bins</text>
+
+  <path d="M876 564 H916" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)"><rect x="930" y="478" width="416" height="174" rx="16" fill="#fff"/></g>
+  <circle cx="967" cy="516" r="22" fill="#0f766e"/><text class="num" x="961" y="523">6</text>
+  <text class="card-title" x="1002" y="522">Confirm + open results</text>
+  <line x1="965" y1="590" x2="1307" y2="590" stroke="#334155" stroke-width="2"/>
+  <rect x="1000" y="590" width="66" height="22" fill="#2563eb"/><rect x="1120" y="566" width="82" height="24" fill="#ef4444"/><rect x="1250" y="590" width="35" height="15" fill="#2563eb"/>
+  <text class="small" x="954" y="550">Open summaries, CNA tables, and plots.</text>
+
+  <rect x="54" y="690" width="1292" height="58" rx="14" fill="#ccfbf1"/>
+  <circle cx="88" cy="719" r="15" fill="#0f766e"/><path d="M81 719l5 5 11-13" fill="none" stroke="#fff" stroke-width="3"/>
+  <text class="banner" x="116" y="725">Why YAML? It is a readable saved plan, so Nextflow can use the same paths and settings again with -resume.</text>
+</svg>

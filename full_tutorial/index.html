@@ -1574,6 +1574,8 @@
 
 <h1 id="full-tutorial-complete-public-prjna754199-archive">Full tutorial: complete public PRJNA754199 archive<a class="headerlink" href="#full-tutorial-complete-public-prjna754199-archive" title="Permanent link">&para;</a></h1>
 <p>This tutorial processes <strong>all 12 Illumina plasma cfDNA libraries currently exposed by the public PRJNA754199 archive</strong>. The main path is intentionally short: download validated reads, let OncoTracer generate the samplesheet and YAML, run the workflow, verify the outputs, and review the reports.</p>
+<p><a href="../assets/tutorial/full_tutorial_flow.svg"><img alt="Roadmap for Full Tutorial sections 1 through 7: plan and prepare the software, download and validate 12 FASTQs, generate a samplesheet and YAML with Automatic Setup, run the real analysis, verify all required outputs, and review CNA plots and reports." src="../assets/tutorial/full_tutorial_flow.svg" /></a></p>
+<p><em>Follow the numbered sections in order. The YAML connects preparation to the real analysis by saving the checked inputs, selected settings, and result folder. Select a linked diagram or terminal image below to open it full size.</em></p>
 <h2 id="what-this-tutorial-doesand-does-notcontain">What this tutorial does—and does not—contain<a class="headerlink" href="#what-this-tutorial-doesand-does-notcontain" title="Permanent link">&para;</a></h2>
 <p>The associated PLOS ONE article describes 41 plasma specimens from 15 patients: 10 longitudinal specimens from four DDLPS/WDLPS patients and 31 specimens from 11 patients with other soft-tissue tumors. On <strong>15 July 2026</strong>, the ENA read-run report returned only 12 read runs for the BioProject.</p>
 <table>
@@ -1642,6 +1644,8 @@
 <div class="highlight"><pre><span></span><code>bash<span class="w"> </span>/home/student/oncotracer/examples/prjna754199/run_example.sh<span class="w"> </span>--download-only
 </code></pre></div>
 <p>This command creates <code>/home/student/oncotracer/test/public/prjna754199</code>, downloads the 12 FASTQ files, and checks their file sizes, MD5 checksums, and gzip contents. It also places <code>samples.csv</code> in the same folder. A completed file is reused if the command is run again, and an interrupted download can continue. No analysis starts yet.</p>
+<p><a href="../assets/tutorial/full_tutorial_download_checkpoint.svg"><img alt="Example terminal showing successful validation of all 12 PRJNA754199 single-end FASTQs, including the final reads folder, samples.csv path, download size, and read count." src="../assets/tutorial/full_tutorial_download_checkpoint.svg" /></a></p>
+<p><em>A complete download ends with this summary. <code>DOWNLOAD</code> and <code>REUSE</code> lines above it are both normal. If the command stops before the summary, run the same command again.</em></p>
 <p>For the exact URLs, checksums, archive search, and download checks, see the <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">example README</a> and <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md">archive details</a>.</p>
 <p><a id="4-generate-and-inspect-the-single-end-configuration"></a></p>
 <h2 id="4-generate-the-samplesheet-and-yaml-automatically">4. Generate the samplesheet and YAML automatically<a class="headerlink" href="#4-generate-the-samplesheet-and-yaml-automatically" title="Permanent link">&para;</a></h2>
@@ -1664,6 +1668,11 @@
 <li>creates the samplesheet and YAML required by the analysis command; and</li>
 <li>records where the final results should be saved.</li>
 </ol>
+<p>List the two generated files:</p>
+<div class="highlight"><pre><span></span><code>ls<span class="w"> </span>-1<span class="w"> </span>/home/student/oncotracer/test/configs/prjna754199
+</code></pre></div>
+<p><a href="../assets/tutorial/full_tutorial_setup_checkpoint.svg"><img alt="Example terminal showing PRJNA754199 Automatic Setup completed and listing illumina.auto.yml and illumina.samplesheet.csv, with labels explaining the purpose of each file." src="../assets/tutorial/full_tutorial_setup_checkpoint.svg" /></a></p>
+<p><em>Automatic Setup has prepared the 12-sample run but has not analyzed the reads. The samplesheet connects each sample to its FASTQ; the YAML stores the paths and analysis choices used in the next section.</em></p>
 <p>The four path options have distinct purposes:</p>
 <table>
 <thead>
@@ -1711,6 +1720,8 @@
 <div class="highlight"><pre><span></span><code>python3<span class="w"> </span>/home/student/oncotracer/examples/prjna754199/verify_outputs.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--outdir<span class="w"> </span>/home/student/oncotracer/test/runs/prjna754199
 </code></pre></div>
+<p><a href="../assets/tutorial/full_tutorial_verify_checkpoint.svg"><img alt="Example terminal showing the PRJNA754199 output verifier's exact success message that the complete tutorial outputs are verified." src="../assets/tutorial/full_tutorial_verify_checkpoint.svg" /></a></p>
+<p><em>Continue to interpretation only after the verifier prints <code>SUCCESS: complete PRJNA754199 tutorial outputs are verified.</code></em></p>
 <p>The verifier requires the exact 12 manifest aliases—not merely 12 arbitrary rows—across the BAMs, SAMURAI segments, refinement summary, and classifier table. It also requires the CNA tables, plots, clinician-report index, and workflow summary used by this tutorial.</p>
 <p>Start reviewing the verified run from these locations:</p>
 <table>
