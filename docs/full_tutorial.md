@@ -88,7 +88,8 @@ nextflow run /home/student/oncotracer/main.nf --auto_params \
   --auto_outdir /home/student/oncotracer/test/runs/prjna754199 \
   --run_cna_classifier true \
   --cna_classifier_sample_set sarcoma \
-  --pathology_use_biomed_models false
+  --pathology_use_biomed_models false \
+  -work-dir /home/student/oncotracer/test/work/prjna754199_auto_params
 ```
 
 This command prepares the run; it does not process the reads. OncoTracer:

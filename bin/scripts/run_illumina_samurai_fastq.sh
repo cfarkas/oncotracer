@@ -301,7 +301,9 @@ with open(fastq_sheet, newline='') as handle:
         bam = align_dir / f'{sample}.bam'
         bai = Path(str(bam) + '.bai')
         if not bam.exists() or bam.stat().st_size == 0:
-            read_group = f'@RG\tID:{sample}\tPU:1\tSM:{sample}\tLB:{sample}\tPL:Illumina'
+            # BWA parses escaped ``\t`` separators in the -R argument and
+            # rejects literal tab bytes.
+            read_group = rf'@RG\tID:{sample}\tPU:1\tSM:{sample}\tLB:{sample}\tPL:Illumina'
             reads = [fq1] + ([fq2] if fq2 else [])
             align = subprocess.Popen(
                 ['bwa', 'mem', '-t', '8', '-R', read_group, ref, *reads],

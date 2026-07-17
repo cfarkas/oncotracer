@@ -1,0 +1,196 @@
+OncoTracer fresh-clone validation commands
+Validated locally on 2026-07-16 (America/Santiago)
+Fresh clone: /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716
+Starting main commit: 2085a13c23223d62e91c41a475f98f51c6a4efd6
+
+Result
+------
+PASS: QuickStart Example 1 (one Illumina sample and one ONT sample)
+PASS: QuickStart Example 2 (three Illumina samples, six FASTQs)
+PASS: Full Tutorial (all 12 PRJNA754199 patient libraries)
+PASS: installation-only mode
+PASS: strict MkDocs documentation build
+
+Important sequencing note
+-------------------------
+Run the top-level Nextflow analysis commands one at a time in the same clone.
+A bare -resume uses the clone's shared .nextflow session history. Launching two
+-resume commands concurrently can make the second command select the active
+session and report a lock. This is a test-scheduling collision, not an
+OncoTracer analysis failure.
+
+1. Fresh clone and environment checks
+--------------------------------------
+git clone https://github.com/cfarkas/oncotracer.git /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716
+cd /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716
+pwd
+git rev-parse HEAD
+java -version
+nextflow -version
+docker --version
+docker info
+python3 --version
+samtools --version
+bwa
+nproc
+free -h
+df -h .
+
+Observed environment:
+- Java: OpenJDK 17.0.10
+- Nextflow: 26.04.2
+- Docker: 29.2.0
+- CPU cores: 128
+- Memory: 995 GiB
+- Free disk before analysis: about 8.4 TiB
+- OncoTracer image: carlosfarkas/oncotracer@sha256:4856aed020e1102f891b91de54d6acf365d6b8a57e2283a4f7b670b0bd5b07ed
+
+2. Installation-only mode
+-------------------------
+nextflow run /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/main.nf --install --docker --lpwgs_root /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test -work-dir /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/work/install
+cat /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/.oncotracer/install/install_manifest.txt
+
+Required manifest values observed:
+status=ok
+analysis_started=false
+runtime_identity=carlosfarkas/oncotracer@sha256:4856aed020e1102f891b91de54d6acf365d6b8a57e2283a4f7b670b0bd5b07ed
+
+3. QuickStart Example 1
+-----------------------
+Prepare and validate the public reads:
+nextflow run /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/main.nf --make_test --test_root /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test
+
+Run Illumina:
+nextflow run /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/main.nf --docker -params-file /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/configs/illumina.quickstart.yml -work-dir /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/work/illumina -resume
+
+Inspect and validate Illumina:
+head -n 3 /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/runs/illumina/06_workflow_summary/workflow_summary.txt
+samtools quickcheck -v /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/runs/illumina/01_samurai_illumina/alignment/ERR12341627.bam
+samtools view -H /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/runs/illumina/01_samurai_illumina/alignment/ERR12341627.bam
+
+Run ONT only after Illumina finishes:
+nextflow run /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/main.nf --docker -params-file /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/configs/ont.quickstart.yml -work-dir /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/work/ont -resume
+
+Inspect ONT and run the versioned verifier:
+head -n 3 /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/runs/ont/06_workflow_summary/workflow_summary.txt
+python3 /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/examples/quickstart/verify_outputs.py --test-root /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test
+
+Exact verifier success:
+SUCCESS: both QuickStart workflows completed and required outputs were found.
+
+Defect found and corrected:
+The Illumina fallback constructed the BWA -R value with a normal Python
+f-string. Python converted \t into literal tab bytes, which BWA rejects.
+The fixed code uses a raw f-string, leaving five escaped \t separators for BWA.
+
+Regression checks:
+bash -n /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/bin/scripts/run_illumina_samurai_fastq.sh
+python3 -c 'sample="ERR12341627"; read_group=rf"@RG\tID:{sample}\tPU:1\tSM:{sample}\tLB:{sample}\tPL:Illumina"; assert "\t" not in read_group; assert read_group.count("\\t") == 5; print(repr(read_group))'
+
+Observed regression result:
+literal tab bytes: 0
+escaped tab sequences: 5
+The BAM header contains a valid tab-delimited @RG record with ID, PU, SM, LB,
+and PL:Illumina.
+
+4. QuickStart Example 2
+-----------------------
+Download and validate the six public FASTQs:
+bash /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/examples/hcc1143_lpwgs/run_example.sh --docker --download-only
+
+Run the complete three-sample example:
+cd /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716
+bash examples/hcc1143_lpwgs/run_example.sh --docker
+
+Independent BAM integrity check:
+samtools quickcheck -v test/runs/hcc1143_lpwgs/01_samurai_illumina/alignment/HCC1143_DMSO.bam test/runs/hcc1143_lpwgs/01_samurai_illumina/alignment/HCC1143_BEZ235.bam test/runs/hcc1143_lpwgs/01_samurai_illumina/alignment/HCC1143_TRAMETINIB.bam
+
+Independent sample and artifact checks:
+rg -q HCC1143_DMSO test/runs/hcc1143_lpwgs/01_samurai_illumina/qdnaseq/all_segments.seg
+rg -q HCC1143_BEZ235 test/runs/hcc1143_lpwgs/01_samurai_illumina/qdnaseq/all_segments.seg
+rg -q HCC1143_TRAMETINIB test/runs/hcc1143_lpwgs/01_samurai_illumina/qdnaseq/all_segments.seg
+stat -c '%s %n' test/runs/hcc1143_lpwgs/03_cna_codification/cna_events.tsv test/runs/hcc1143_lpwgs/04_cna_custom_plots/cna_per_sample_pages.pdf test/runs/hcc1143_lpwgs/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf test/runs/hcc1143_lpwgs/06_workflow_summary/workflow_summary.txt
+head -n 3 test/runs/hcc1143_lpwgs/06_workflow_summary/workflow_summary.txt
+
+Exact runner success:
+SUCCESS: the three-sample, six-FASTQ HCC1143 cohort completed.
+
+Validated download:
+- 6 FASTQ files
+- 1,158,812,143 compressed bytes
+- size, MD5, and gzip checks passed for every file
+
+5. Full Tutorial: complete PRJNA754199 project
+----------------------------------------------
+Download and validate all 12 public patient libraries:
+bash /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/examples/prjna754199/run_example.sh --download-only
+
+Generate the samplesheet and YAML automatically:
+nextflow run /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/main.nf --auto_params --mode illumina --reads_folder /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/public/prjna754199 --sample_table /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/public/prjna754199/samples.csv --auto_config_dir /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/configs/prjna754199 --auto_outdir /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/runs/prjna754199 --run_cna_classifier true --cna_classifier_sample_set sarcoma --pathology_use_biomed_models false -work-dir /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/work/prjna754199_auto_params
+
+Inspect generated files:
+ls -l /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/configs/prjna754199
+wc -l /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/configs/prjna754199/illumina.samplesheet.csv
+sed -n '1,80p' /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/configs/prjna754199/illumina.auto.yml
+
+Run the complete 12-sample analysis:
+nextflow run /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/main.nf --docker -params-file /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/configs/prjna754199/illumina.auto.yml -work-dir /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/work/prjna754199 -resume
+
+Run the strict versioned verifier:
+python3 /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/examples/prjna754199/verify_outputs.py --outdir /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716/test/runs/prjna754199
+
+Check every patient BAM:
+cd /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716
+bash -c 'samtools quickcheck -v test/runs/prjna754199/01_samurai_illumina/alignment/*.bam'
+
+Inspect representative required outputs:
+head -n 3 test/runs/prjna754199/06_workflow_summary/workflow_summary.txt
+stat -c '%s %n' test/runs/prjna754199/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv test/runs/prjna754199/03_cna_codification/cna_events.tsv test/runs/prjna754199/04_cna_custom_plots/cna_per_sample_pages.pdf test/runs/prjna754199/05_cna_classifier/03_report/cna_classifier_report.html test/runs/prjna754199/06_workflow_summary/workflow_summary.txt
+
+Exact verifier success:
+VERIFIED: BAM outputs contains all 12 manifest samples
+VERIFIED: SAMURAI segments contains all 12 manifest samples
+VERIFIED: SAMURAI fitted plots contains all 12 manifest samples
+VERIFIED: refinement summary contains all 12 manifest samples
+VERIFIED: classifier table contains all 12 manifest samples
+VERIFIED: clinician report index contains all 12 manifest samples
+SUCCESS: complete PRJNA754199 tutorial outputs are verified.
+
+Validated download:
+- 12 single-end FASTQ files
+- 6,171,900,300 compressed bytes
+- 266,097,582 reads
+- every archive file is 36 bp
+- size, MD5, and gzip checks passed for every file
+
+6. Source and documentation checks before publication
+------------------------------------------------------
+cd /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716
+bash -n bin/scripts/run_illumina_samurai_fastq.sh
+git diff --check
+/tmp/oncotracer-docs-venv-validation-20260714/bin/mkdocs build --strict
+git status --short
+git diff -- bin/scripts/run_illumina_samurai_fastq.sh docs/full_tutorial.md
+sed -n '1,240p' commands.txt
+
+Files intentionally published:
+- bin/scripts/run_illumina_samurai_fastq.sh
+- docs/full_tutorial.md
+- commands.txt
+
+7. Direct publication to GitHub main and GitHub Pages
+------------------------------------------------------
+cd /media/server/STORAGE/LPWGS_2025/oncotracer_fresh_validation_20260716
+git fetch origin main
+git add bin/scripts/run_illumina_samurai_fastq.sh docs/full_tutorial.md commands.txt
+git commit -m "Fix fresh-clone workflows and record validation"
+git push origin HEAD:main
+/tmp/oncotracer-docs-venv-validation-20260714/bin/mkdocs gh-deploy --force
+git ls-remote origin refs/heads/main
+curl -L https://raw.githubusercontent.com/cfarkas/oncotracer/main/commands.txt
+curl -L https://cfarkas.github.io/oncotracer/full_tutorial/
+
+Publication rule used:
+- direct push to main
+- no pull request
+- local integration tests completed before push
