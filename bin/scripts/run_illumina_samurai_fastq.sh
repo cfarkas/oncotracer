@@ -345,6 +345,20 @@ PY_BAM_FALLBACK
     -resume
 fi
 
+# Rebuild every published alignment index because a prior run can leave a stale BAI beside a new BAM.
+for bam in "$RUN_ROOT"/alignment/*.bam; do
+  [[ -s "$bam" ]] || continue
+  bai="${bam}.bai"
+  tmp_bai="${bai}.tmp.$$"
+  rm -f "$tmp_bai"
+  if ! samtools index -@ 4 "$bam" "$tmp_bai"; then
+    rm -f "$tmp_bai"
+    echo "ERROR: could not index published BAM: $bam" >&2
+    exit 1
+  fi
+  mv -f "$tmp_bai" "$bai"
+done
+
 [[ -d "$RUN_ROOT/qdnaseq" ]] || { echo "ERROR: SAMURAI qdnaseq output not found: $RUN_ROOT/qdnaseq" >&2; exit 1; }
 [[ -d "$RUN_ROOT/alignment" ]] || { echo "ERROR: SAMURAI alignment output not found: $RUN_ROOT/alignment" >&2; exit 1; }
 [[ -s "$RUN_ROOT/qdnaseq/all_segments.seg" ]] || { echo "ERROR: SAMURAI segment table missing: $RUN_ROOT/qdnaseq/all_segments.seg" >&2; exit 1; }
