@@ -1,0 +1,59 @@
+name: Validate repository and deploy documentation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: docs/requirements.txt
+
+      - name: Install documentation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r docs/requirements.txt
+
+      - name: Check shell syntax
+        run: |
+          find bin examples tests -type f -name '*.sh' -print0 \
+            | xargs -0 -n1 bash -n
+
+      - name: Test Automatic Setup
+        run: bash tests/test_generate_auto_params.sh
+
+      - name: Test Illumina PoN preflight
+        run: bash tests/test_illumina_pon_preflight.sh
+
+      - name: Test qDNAseq local PoN helpers
+        run: bash tests/test_qdnaseq_local_pon.sh
+
+      - name: Audit documentation examples
+        run: python tests/test_documentation_examples.py
+
+      - name: Build MkDocs strictly
+        run: mkdocs build --strict
+
+      - name: Publish GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          force_orphan: true
