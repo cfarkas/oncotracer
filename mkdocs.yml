@@ -27,12 +27,13 @@ nav:
   - Getting Started:
       - 1. Install Requirements: installation.md
       - 2. QuickStart Example 1 (Illumina + ONT): quick_start.md
-      - 3. Automatic Setup for Your FASTQs (Recommended): auto_params.md
-      - 4. QuickStart Example 2 (Three-Sample Public): public_cohort.md
-      - 5. QuickStart Example 3 (Six Tumors + Four Controls): six_tumor_four_control.md
+      - 3. Automatic Setup for Your FASTQs: auto_params.md
+      - 4. QuickStart Example 2 (Three Public Samples): public_cohort.md
       - Input Files and Folder Layouts: inputs.md
-      - Manual YAML Editing (Second Option): configuration/yaml_basics.md
+      - Manual YAML Editing: configuration/yaml_basics.md
   - Full Tutorial: full_tutorial.md
+  - Other Example Runs:
+      - Six Tumors + Four Controls (User Data Required): six_tumor_four_control.md
   - Run and Configure:
       - Choose a Configuration Route: configuration.md
       - Workflow Overview: running.md
