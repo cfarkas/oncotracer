@@ -4,6 +4,9 @@
 
 This tutorial verifies a new OncoTracer installation with one public Illumina sample and one public Oxford Nanopore Technologies (ONT) sample. It downloads about **225 MB of compressed reads**. Follow the numbered steps to see what is prepared, why two YAML files are generated, how each analysis starts, and where the results appear.
 
+!!! important "Every OncoTracer command starts with Nextflow"
+    Copy the `nextflow run ...` commands shown on this page. `--docker` is an option passed to Nextflow; it does **not** mean that you should type a separate Docker command. Do not launch OncoTracer or one of its tools with `docker run`, `docker exec`, `apptainer run`, `apptainer exec`, `singularity run`, or `singularity exec`. Nextflow selects, downloads, and starts the required containers for you.
+
 [![Six-step OncoTracer QuickStart flow: clone the repository, prepare the reads and two run plans, understand the YAML files, run Illumina, run ONT, and confirm and open the CNA results.](assets/tutorial/quickstart_flow.svg)](assets/tutorial/quickstart_flow.svg)
 
 *The first three steps prepare files and stop. The real CNA analyses begin only when a generated YAML is supplied with `-params-file`. Select a linked diagram or terminal image below to open it full size.*
@@ -18,11 +21,17 @@ Confirm the required programs:
 git --version       # Git must be installed
 java -version       # Java must be version 17 or newer
 nextflow -version   # Nextflow must be available
-docker --version    # Docker must be installed
 ```
 
+The [Installation](installation.md) page verifies the selected container runtime through Nextflow.
+
 !!! warning "The first analysis is much larger than the example reads"
-    On the first real run, SAMURAI downloads the hg38 reference (about **3.16 GB**) and BWA commonly takes **30–60 minutes** to create its index. This happens once; later `-resume` runs reuse it. Docker layers and workflow intermediate files require additional disk space.
+    On an uncached first run, SAMURAI downloads the hg38 reference (about
+    **3.16 GB**) and BWA commonly takes **30–60 minutes** to create its index.
+    The pinned BWA task requests 72 GB, so use at least 80 GiB of addressable
+    RAM unless a valid persistent index already exists. Later `-resume` runs
+    reuse it. Container layers and workflow intermediate files require
+    additional disk space.
 
 ## Beginner route: follow each step
 
@@ -249,34 +258,34 @@ These are genuine output previews from the same public examples:
 
 *ONT ichorCNA-derived output. See [Output Files](outputs.md) for interpretation and the [Gallery](gallery.md) for the complete result set.*
 
-## One-command verification shortcut
+## Exact commands to repeat or resume this example
 
-After installation, this helper performs the same preparation, checks the setup, runs both real analyses one after another, and checks required outputs:
+There is no wrapper script to remember. These are the three commands used above: one preparation command followed by the two real analyses. Repeating an analysis command with `-resume` safely reuses completed Nextflow work.
 
 ```bash
-cd /home/student/oncotracer
-bash run_test.sh --docker
+nextflow run /home/student/oncotracer/main.nf --make_test \
+  --test_root /home/student/oncotracer/test
+
+nextflow run /home/student/oncotracer/main.nf --docker \
+  -params-file /home/student/oncotracer/test/configs/illumina.quickstart.yml \
+  -work-dir /home/student/oncotracer/test/work/illumina \
+  -resume
+
+nextflow run /home/student/oncotracer/main.nf --docker \
+  -params-file /home/student/oncotracer/test/configs/ont.quickstart.yml \
+  -work-dir /home/student/oncotracer/test/work/ont \
+  -resume
 ```
-
-A complete helper run ends with:
-
-```text
-SUCCESS: both public workflows completed and produced the expected outputs.
-```
-
-The exact paths differ if the repository was cloned somewhere else. The final success sentence should match.
 
 <a id="next-run-the-real-six-fastq-cohort"></a>
 
 ## Next: run QuickStart Example 2
 
-The default verification uses small, single-sample inputs. After it succeeds, the optional HCC1143 example demonstrates a three-sample Illumina cohort: three paired libraries, or six physical FASTQ files. The read download is **1.08 GiB**.
+The default verification uses small, single-sample inputs. After it succeeds, the optional HCC1143 example demonstrates a three-sample Illumina cohort: three paired libraries, or six physical FASTQ files. The read download is **1.08 GiB**. [QuickStart Example 2](public_cohort.md) gives the literal download, configuration, and `nextflow run` commands; it does not require a shell runner.
 
-```bash
-bash /home/student/oncotracer/examples/hcc1143_lpwgs/run_example.sh --docker
-```
+## Next: build a four-control panel of normals
 
-Read [QuickStart Example 2](public_cohort.md) and the repository's [HCC1143 example notes](https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs) for resource expectations and results.
+[QuickStart Example 3](six_tumor_four_control.md) shows a complete command for six tumors (`ONCO001`–`ONCO006`) and four normal controls (`CTRL001`–`CTRL004`). It includes a 20-CPU Nextflow setup that does not request a GPU, GNU Screen instructions, automatic PoN configuration, and the exact resumable command.
 
 ## Next: run your own data
 
@@ -284,4 +293,4 @@ Read [QuickStart Example 2](public_cohort.md) and the repository's [HCC1143 exam
 - Use [Manual YAML Editing](configuration/yaml_basics.md) only when automatic detection does not fit.
 - Use [Pathology and Classifier](configuration/pathology.md) only when pathology and sequencing sample identifiers match exactly.
 
-Use `--singularity` instead of `--docker` on an HPC system configured with Apptainer/Singularity.
+On an HPC system configured with Apptainer/Singularity, change the **Nextflow option** from `--docker` to `--singularity`. Do not invoke Apptainer or Singularity yourself.

@@ -20,7 +20,8 @@ Primary records:
 - [ENA PRJNA754199 browser record](https://www.ebi.ac.uk/ena/browser/view/PRJNA754199)
 - [Associated PLOS ONE article](https://doi.org/10.1371/journal.pone.0262272)
 
-Inventory invariants checked by `run_example.sh`:
+Inventory invariants checked by the `nextflow run ... --make_prjna754199`
+preparation route:
 
 | Field | Pinned value |
 | --- | ---: |
@@ -44,9 +45,9 @@ about tumor presence, tumor fraction, or MDM2 amplification in a particular spec
 The versioned `samples.csv` records those 12 labels explicitly; Automatic Setup uses it
 to generate `illumina.samplesheet.csv` and leaves `fastq_2` empty for every library.
 
-For a shareable result, retain `samples.csv`, the generated `run_provenance.tsv`,
-unedited `illumina.auto.yml` and `illumina.samplesheet.csv`, Nextflow report/trace,
-SAMURAI `pipeline_info`, reference identity, container
+For a shareable result, retain `samples.csv`, the generated
+`auto_params_manifest.tsv`, unedited `illumina.auto.yml` and
+`illumina.samplesheet.csv`, Nextflow report/trace, SAMURAI `pipeline_info`, reference identity, container
 digest, OncoTracer commit, and source-file checksums. Static gallery exports should point
 back to those files and identify the exact source table or PDF used to generate each
 image.

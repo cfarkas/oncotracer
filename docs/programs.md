@@ -61,11 +61,13 @@ nextflow -version
 python3 --version
 ```
 
-For Docker:
+For Docker, first confirm that its launcher is present without starting it,
+then let Nextflow perform the runtime check:
 
 ```bash
-docker --version
-docker info >/dev/null && echo 'Docker engine: OK'
+command -v docker
+nextflow run main.nf --install --docker \
+  --lpwgs_root /absolute/path/to/oncotracer-data
 ```
 
 The current stage-01 launchers also prepare references/alignment outside some nested tasks. Check:
@@ -91,9 +93,14 @@ Depending on the route, `pipeline_info/` contains parameter JSON, software-versi
 
 ```bash
 git rev-parse HEAD
-docker image inspect carlosfarkas/oncotracer:latest --format '{{index .RepoDigests 0}}'
 nextflow -version
+cat .oncotracer/install/install_manifest.txt
 ```
+
+From the repository root, the install manifest is created at the path shown by
+the preceding `nextflow run ... --install` command. It records the selected
+runtime and container identity. Do not inspect or start the OncoTracer image
+with a direct container-runtime command.
 
 The current installers and Illumina wrappers pin SAMURAI `v1.4.0`; they do
 not request an unversioned latest revision. Still record the nested

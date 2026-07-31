@@ -2,6 +2,8 @@
 
 When a run fails, keep the terminal output and `.nextflow.log`. Most problems are caused by a missing host program, a path outside `lpwgs_root`, a corrupt/incomplete FASTQ, insufficient disk, or an interrupted container download.
 
+All OncoTracer preparation, testing, analysis, and resume commands must begin with `nextflow run`. Runtime commands shown only for version, daemon, or disk inspection are diagnostics; they do not launch OncoTracer. Do not start the image directly with a container-runtime run or exec command.
+
 ## Collect the basics first
 
 Run these commands from the cloned `oncotracer/` directory:
@@ -12,12 +14,14 @@ git status --short                                         # record local change
 git rev-parse --short HEAD                                 # record the exact OncoTracer revision
 java -version                                              # Nextflow requires a supported Java installation
 nextflow -version                                          # show workflow engine version
-docker --version                                           # omit when using Singularity/Conda
-docker info >/dev/null && echo 'Docker engine: OK'         # verify daemon access
+command -v docker                                          # omit when using Singularity/Conda
 df -h .                                                    # check free space on the project filesystem
 df -h /tmp                                                 # check temporary space
 du -sh work .nextflow test 2>/dev/null                     # locate large caches
 ```
+
+The Docker launcher check above does not invoke Docker. Use the Nextflow
+installation command below to test OncoTracer's actual runtime path.
 
 Copy the first `ERROR` block from the log, not only the final `Execution cancelled` line.
 
@@ -39,14 +43,16 @@ Install a supported Java/Nextflow combination using the official links on [Insta
 First distinguish a missing daemon from a permission problem:
 
 ```bash
-docker --version
-docker info
-docker run --rm hello-world
+command -v docker                                             # confirm a launcher is installed
+ROOT="$(pwd)"
+nextflow run main.nf --install --docker --lpwgs_root "$ROOT" # prepare/test through Nextflow
 ```
 
 - `Cannot connect to the Docker daemon` means Docker is stopped or the daemon socket is unavailable.
 - `permission denied` on `/var/run/docker.sock` means your account lacks access.
 - Ask the administrator to grant Docker access according to your institution's policy, then log out and back in. Docker-group membership is effectively privileged access; do not change it silently on a shared server.
+
+Do not substitute a direct container launch for the Nextflow installation check. Nextflow is responsible for retrieving the image and applying OncoTracer's mounts and runtime settings.
 
 If files created by containers have the wrong owner, pass your numeric user/group in the YAML:
 
@@ -187,13 +193,7 @@ find project/input -type f -name '*.fastq.gz' -print0 | xargs -0 -r -n1 gzip -t
 
 No output means all tested files passed. `unexpected end of file`, `invalid compressed data`, or a nonzero exit means the download/copy is incomplete; replace that file rather than resuming from it.
 
-For the six-FASTQ HCC1143 example, do not validate by filename alone. Its run script checks the exact ENA byte count, MD5, and gzip stream and re-downloads invalid files:
-
-```bash
-bash examples/hcc1143_lpwgs/run_example.sh --docker --download-only
-```
-
-For another public dataset, compare:
+For the six-FASTQ HCC1143 example, do not validate by filename alone. The exact ENA byte count and MD5 for every file are recorded in `examples/hcc1143_lpwgs/manifest.tsv`. Compare each downloaded file with that manifest and test its gzip stream. Use the same checks for another public dataset:
 
 ```bash
 wc -c path/to/sample.fastq.gz                         # exact compressed byte count
@@ -208,7 +208,6 @@ Reference files, container layers, FASTQs, BAMs, nested SAMURAI work, and the to
 ```bash
 df -h . /tmp
 du -h -d 2 . 2>/dev/null | sort -h | tail -30
-docker system df                                     # Docker usage; read-only report
 ```
 
 Do not delete `work/`, nested `01_samurai_*/work/`, `.nextflow/`, or container caches while a run is active. They are needed by `-resume`. After results are verified and archived, use Nextflow's documented cleanup commands deliberately; never run broad deletion commands on a shared project root.

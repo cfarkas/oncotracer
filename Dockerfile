@@ -72,16 +72,14 @@ set -Eeuo pipefail
 cd "${ONCOTRACER_HOME:-/opt/OncoTracer}"
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   cat <<'HELP'
-OncoTracer Docker entrypoint
+OncoTracer container entrypoint
 
 Usage:
-  docker run --rm -v /data:/data -v /results:/results carlosfarkas/oncotracer:latest \
-    -profile local -params-file /data/my_run.yml -resume
+  From a cloned OncoTracer repository on the host, let Nextflow launch this image:
+  nextflow run main.nf --docker -params-file /data/my_run.yml -resume
 
-This command expands to:
-  nextflow run /opt/OncoTracer/main.nf <arguments>
-
-Mount all input/output paths used in the YAML file into the container.
+Do not start this image directly. Nextflow supplies the required mounts,
+environment, provenance, and nested workflow runtime.
 HELP
   exit 0
 fi

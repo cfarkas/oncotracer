@@ -36,7 +36,8 @@ For download-only preparation: Linux, Python 3, `curl`, `md5sum`, and `gzip`.
 
 For analysis: Java 17+, Nextflow, Python 3, samtools, BWA, minimap2, pigz, curl or
 wget, and one supported runtime: Docker, Singularity/Apptainer, or Conda. Plan for at least 150 GiB of free working space;
-16 CPU cores and 64 GiB RAM are sensible starting resources for the complete cohort.
+Use at least 16 CPU cores and 80 GiB of addressable RAM; the pinned BWA task
+alone requests 72 GB.
 Actual time and storage depend on the executor, filesystem, cache state, and runtime.
 
 ## Follow the complete tutorial
@@ -47,52 +48,48 @@ validated download command, use **Automatic Setup from a Reads Folder** to gener
 12-sample samplesheet and YAML, run the stub and real workflows, invoke one exact-output
 verifier, and review the CNA and clinician-facing research reports.
 
-## Optional automated replay
+## Run the archive through Nextflow
 
-From a fresh clone:
-
-```bash
-git clone https://github.com/cfarkas/oncotracer.git
-cd oncotracer
-bash examples/prjna754199/run_example.sh --docker
-```
-
-After following the manual lesson, the runner can replay the same operations:
-
-1. validates the pinned 12-row manifest;
-2. downloads each FASTQ over HTTPS with restart support;
-3. verifies exact compressed bytes, ENA MD5, and `gzip -t`;
-4. runs OncoTracer `--auto_params` on the reads folder and explicit `samples.csv`;
-5. verifies that Automatic Setup writes a blank `fastq_2` field for every single-end
-   library and a qDNAseq 100 kb YAML with the classifier enabled in `sarcoma` context;
-6. performs a Nextflow stub wiring check;
-7. runs the real workflow with `-resume`;
-8. calls [`verify_outputs.py`](verify_outputs.py), which checks the exact 12 manifest
-   aliases in BAM, SAMURAI, refinement, classifier, fitted-plot, and clinician-report
-   outputs, plus the remaining CNA, plot, and summary files.
-
-Use another supported runtime by replacing `--docker` with `--singularity` or
-`--conda`.
-
-## Download or prepare without analysis
-
-Download and validate all 12 files, then stop:
+The [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/) explains
+these commands and their outputs in detail. From a fresh clone, use the literal
+commands below; no shell runner is required.
 
 ```bash
-bash examples/prjna754199/run_example.sh --download-only
+git clone https://github.com/cfarkas/oncotracer.git /home/student/oncotracer
+cd /home/student/oncotracer
+
+nextflow run /home/student/oncotracer/main.nf --make_prjna754199 \
+  --test_root /home/student/oncotracer/test \
+  -work-dir /home/student/oncotracer/test/work/prjna754199_download
+
+nextflow run /home/student/oncotracer/main.nf --auto_params \
+  --mode illumina \
+  --reads_folder /home/student/oncotracer/test/public/prjna754199 \
+  --sample_table /home/student/oncotracer/test/public/prjna754199/samples.csv \
+  --auto_config_dir /home/student/oncotracer/test/configs/prjna754199 \
+  --auto_outdir /home/student/oncotracer/test/runs/prjna754199 \
+  --run_cna_classifier true \
+  --cna_classifier_sample_set sarcoma \
+  --pathology_use_biomed_models false \
+  -work-dir /home/student/oncotracer/test/work/prjna754199_auto_params
+
+nextflow run /home/student/oncotracer/main.nf -stub-run --docker \
+  -params-file /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml \
+  -work-dir /home/student/oncotracer/test/work/prjna754199_stub
+
+nextflow run /home/student/oncotracer/main.nf --docker \
+  -params-file /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml \
+  -work-dir /home/student/oncotracer/test/work/prjna754199 \
+  -resume
 ```
 
-Also run Automatic Setup, print its samplesheet and YAML, write a provenance receipt,
-and then stop:
-
-```bash
-bash examples/prjna754199/run_example.sh --prepare-only
-```
-
-Both operations are resumable. A complete file is reused only after its byte count,
-MD5, and gzip stream all validate. A partial file remains available for the next run.
-The download step also places `samples.csv` and a frozen manifest copy beside the reads,
-so the folder is self-describing.
+The first Nextflow command validates the pinned 12-row manifest, downloads each
+FASTQ with restart support, checks exact bytes and MD5, runs `gzip -t`, and
+then stops. A complete file is reused when that same command is repeated.
+Automatic Setup writes single-end sample rows with an empty `fastq_2` field.
+The stub command checks wiring, and the final command performs the real
+analysis. For an HPC configured with Apptainer/Singularity, change only
+`--docker` to `--singularity` on the stub and real Nextflow commands.
 
 After a completed analysis, rerun the exact checks without repeating any workflow task:
 
@@ -100,11 +97,14 @@ After a completed analysis, rerun the exact checks without repeating any workflo
 python3 examples/prjna754199/verify_outputs.py --outdir test/runs/prjna754199
 ```
 
-Set a separate analysis root when the repository filesystem is too small:
+To use a different project root, replace every
+`/home/student/oncotracer/test` path above with the same absolute project
+path. For example, the download begins with:
 
 ```bash
-COHORT_ROOT=/absolute/path/to/oncotracer-prjna754199 \
-  bash examples/prjna754199/run_example.sh --docker
+nextflow run /home/student/oncotracer/main.nf --make_prjna754199 \
+  --test_root /absolute/path/to/oncotracer-prjna754199 \
+  -work-dir /absolute/path/to/oncotracer-prjna754199/work/prjna754199_download
 ```
 
 ## Generated layout
@@ -120,13 +120,14 @@ test/
 │   ├── manifest.tsv
 │   └── samples.csv
 ├── configs/prjna754199/
+│   ├── auto_params_manifest.tsv
 │   ├── illumina.samplesheet.csv
-│   ├── illumina.auto.yml
-│   └── run_provenance.tsv
+│   └── illumina.auto.yml
 ├── references/samurai_hg38/
 ├── work/
 │   ├── prjna754199/
 │   ├── prjna754199_auto_params/
+│   ├── prjna754199_download/
 │   └── prjna754199_stub/
 └── runs/prjna754199/
 ```

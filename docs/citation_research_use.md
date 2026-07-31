@@ -51,8 +51,12 @@ Archive with the result:
 ```bash
 git rev-parse HEAD
 nextflow -version
-docker image inspect carlosfarkas/oncotracer:latest --format '{{index .RepoDigests 0}}'
+cat .oncotracer/install/install_manifest.txt
 ```
+
+Create or refresh that manifest through `nextflow run main.nf --install` with
+the same Nextflow runtime option used for the analysis. Do not invoke Docker,
+Apptainer, or Singularity directly to inspect or launch the image.
 
 Also preserve:
 

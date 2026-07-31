@@ -28,10 +28,11 @@ A command-line pipeline parameter begins with two hyphens, for example `--mode i
 | Generate configuration from Illumina reads | `--auto_params --mode illumina --reads_folder PATH --sample_table FILE` |
 | Generate configuration from ONT reads | `--auto_params --mode ont --reads_folder PATH --sample_table FILE` |
 | Prepare public tests | `--make_test`; optionally `--test_root PATH` |
+| Download and validate the full PRJNA754199 tutorial archive | `--make_prjna754199`; optionally `--test_root PATH` |
 | Run a real Illumina analysis | `mode`, `lpwgs_root`, `outdir`, `illumina_samplesheet` |
 | Run a real ONT analysis | `mode`, `lpwgs_root`, `outdir`, `ont_folder`, `ont_barcodes` |
 
-`--install`, `--make_test`, and `--auto_params` are preparation routes: each writes its documented files and stops. They do not perform the real CNA workflow. When more than one route flag is present, `--install` takes precedence.
+`--install`, `--make_test`, `--make_prjna754199`, and `--auto_params` are preparation routes: each writes its documented files and stops. They do not perform the real CNA workflow. When more than one route flag is present, precedence follows that order.
 
 ## Preparation parameters
 
@@ -40,7 +41,8 @@ A command-line pipeline parameter begins with two hyphens, for example `--mode i
 | `install` | Boolean | `false` | Prepare and smoke-test one explicitly selected runtime, cache SAMURAI v1.4.0, write a manifest, and stop. Use as `--install`. |
 | `install_dir` | absolute directory or `null` | `<repository>/.oncotracer/install` | Alternate destination for `install_manifest.txt`. Runtime and SAMURAI caches remain below `lpwgs_root`. |
 | `make_test` | Boolean | `false` | Download or reuse public FASTQs and write quick-start YAML files. Use as `--make_test`. |
-| `test_root` | absolute directory or `null` | `<repository>/test` | Alternate destination for public inputs, configurations, and results. |
+| `make_prjna754199` | Boolean | `false` | Download and validate the 12 FASTQs in the full PRJNA754199 tutorial, then stop. Use as `--make_prjna754199`. |
+| `test_root` | absolute directory or `null` | `<repository>/test` | Alternate destination for public inputs, configurations, work, and results. |
 | `auto_params` | Boolean | `false` | Generate a run YAML from a reads folder and sample table. Use as `--auto_params`. |
 | `reads_folder` | absolute directory | `null` | Flat all-single-end or all-paired FASTQ folder for Illumina, or the ONT `fastq_pass` folder containing barcode directories. Required with `auto_params`. |
 | `sample_table` | absolute CSV, TSV, or whitespace-delimited TXT path | `null` | Illumina `sample_name,status` table or ONT `barcode,sample_name,status` table. Required with `auto_params`. |
