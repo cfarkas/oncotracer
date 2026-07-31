@@ -1,32 +1,28 @@
-# Results gallery
+# Results Gallery
 
-The images below are rendered from OncoTracer output files. A plot demonstrates that a workflow completed and shows the CNA profile produced under that configuration; it does not validate a diagnosis.
+The images below are rendered from OncoTracer output files. A plot demonstrates the workflow output produced under one configuration; it does not validate a diagnosis.
 
 ## One-sample Illumina public test
 
-**Provenance:** ENA run `ERR12341627`, processed by the public Illumina branch in QuickStart Example 1 with qDNAseq at 100 kb. See [QuickStart Example 1](quick_start.md) for the reproducible command and generated YAML.
+**Provenance:** ENA run `ERR12341627`, processed in [QuickStart Example 1](quick_start.md) with qDNAseq at 100 kb.
 
-[Open the original qDNAseq fitted-segment plot PDF](assets/gallery/illumina_samurai_qdnaseq_segment_plot.pdf).
+[Open the source PDF](assets/gallery/illumina_samurai_qdnaseq_segment_plot.pdf).
 
-![Public Illumina ERR12341627 SAMURAI qDNAseq profile with fitted copy-number segments](assets/gallery/illumina_samurai_qdnaseq_segment_plot.png)
+![Public Illumina qDNAseq profile](assets/gallery/illumina_samurai_qdnaseq_segment_plot.png)
 
-**How to read it:** black points are normalized qDNAseq bins; orange horizontal lines are the fitted segment means produced by SAMURAI. Genomic position runs across the chromosomes. Final refined segments and event calls remain available in stages 02 and 03.
+Black points are normalized qDNAseq bins; horizontal fitted segments summarize the initial copy-number model. Final refined segments and event tables are in stages 02 and 03.
 
-## ONT ichorCNA-derived test result
+## One-sample ONT public test
 
-**Provenance:** public ONT run `DRR165691`, processed by the ONT branch in QuickStart Example 1 with ichorCNA-derived 500 kb inputs.
+**Provenance:** public ONT run `DRR165691`, processed in [QuickStart Example 1](quick_start.md) with ichorCNA-derived 500 kb inputs.
 
-The run produces ichorCNA depth and segment tables. OncoTracer renders the profile from those tables even when an upstream plotting helper encounters missing depth values.
+[Open the source PDF](assets/gallery/ont_ichorcna_derived_profile.pdf).
 
-[Open the original ichorCNA-derived profile PDF](assets/gallery/ont_ichorcna_derived_profile.pdf).
+![Public ONT ichorCNA-derived profile](assets/gallery/ont_ichorcna_derived_profile.png)
 
-![Public ONT DRR165691 ichorCNA-derived copy-number profile](assets/gallery/ont_ichorcna_derived_profile.png)
+Black points are bin-level log2 ratios; horizontal segments are the fitted ichorCNA-derived means. Review coverage, segment tables, and used/skipped FASTQ logs before biological interpretation.
 
-**How to read it:** black points are bin-level log2 ratios; colored horizontal lines are the fitted ichorCNA-derived segment means on the same log2 scale. The chromosome axis shows only chromosomes represented in the sample, so empty X/Y panels are omitted. Broad changes are more defensible than isolated noisy points in low-pass data. Review the used/skipped FASTQ logs, coverage, segment table, and tumor fraction before biological interpretation.
-
-## Final OncoTracer Illumina visualizations
-
-These are presentation views derived from `03_cna_codification/cna_events.tsv` and the refined bin table.
+## Final Illumina visualizations
 
 ![Illumina CNA genome overview](assets/gallery/illumina_cna_genome_overview.png)
 
@@ -34,7 +30,7 @@ These are presentation views derived from `03_cna_codification/cna_events.tsv` a
 
 ![Illumina recurrent cytobands](assets/gallery/illumina_cna_recurrent_cytobands.png)
 
-## Final OncoTracer ONT visualizations
+## Final ONT visualizations
 
 ![ONT CNA genome overview](assets/gallery/ont_cna_genome_overview.png)
 
@@ -42,34 +38,25 @@ These are presentation views derived from `03_cna_codification/cna_events.tsv` a
 
 ![ONT recurrent cytobands](assets/gallery/ont_cna_recurrent_cytobands.png)
 
-## HCC1143 three-library, six-FASTQ public cohort
+## HCC1143 three-library public cohort
 
-!!! warning "Verified gallery artifact pending"
-    The complete literal download and Nextflow commands are documented, but
-    this section intentionally does not claim a cohort result until the
-    complete run, output checks, provenance record, and gallery export have
-    all been verified. The maintainer will replace this notice with the actual
-    plot and measured result summary after that run.
-
-The example contains three paired-end LP-WGS libraries (six physical FASTQ files) from the HCC1143 triple-negative breast-cancer cell line.
+The complete download and analysis commands are documented in [QuickStart Example 2](public_cohort.md). A final cohort gallery figure is not published here until the complete run, output checks, provenance record, and figure export have been verified together.
 
 | Provenance field | Value |
 | --- | --- |
 | Public project | [PRJNA454331](https://www.ebi.ac.uk/ena/browser/view/PRJNA454331) |
 | Associated study | [Ben-David et al., Nature Communications (2018)](https://doi.org/10.1038/s41467-018-05729-w) |
 | Libraries/runs | DMSO `SRR7085656`; BEZ235 `SRR7085655`; Trametinib `SRR7085657` |
-| Physical FASTQs | 6: one R1/R2 pair for each of 3 libraries |
-| Experimental status | All are `TUMOR`; DMSO is a treatment control, not a normal genome |
-| Download validation | Exact ENA byte count, ENA MD5, and `gzip -t`; values stored in `examples/hcc1143_lpwgs/manifest.tsv` |
-| Complete reproduction guide | [QuickStart Example 2](public_cohort.md) |
-| Analysis command after preparation | `nextflow run main.nf --docker -params-file test/configs/hcc1143_lpwgs/illumina.auto.yml -work-dir test/work/hcc1143_lpwgs -resume` |
-| Expected result source | `test/runs/hcc1143_lpwgs/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf` |
-| OncoTracer commit | _to be recorded after verified run_ |
-| Container digest | _to be recorded after verified run_ |
-| Reference/caller/bin size | _to be recorded after verified run_ |
-| Run completion and checks | _to be recorded after verified run_ |
-| Biological interpretation | _not reported before QC and verified tables are available_ |
+| Physical FASTQs | Six: one R1/R2 pair for each library |
+| Status | All are `TUMOR`; DMSO is not a matched normal genome |
+| Validation | Exact ENA byte count, MD5, and `gzip -t` |
+| Reproduction guide | [QuickStart Example 2](public_cohort.md) |
+| Expected combined plot | `test/runs/hcc1143_lpwgs/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf` |
 
-When populated, this gallery entry must distinguish observed signal from inference: report sample names, caller/bin size, QC warnings, number of CNA events, broad profile similarities/differences, and important limitations. Treatment-associated causality must not be inferred from this three-library demonstration alone.
+Do not infer treatment causality from this three-library software example.
 
-See the example's [provenance and resource notes](https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs) and [Output files](outputs.md) for the tables behind every plot.
+## Other example run
+
+[Six tumors and four normal controls](six_tumor_four_control.md) is a configuration template only. Its placeholder FASTQs are not included in the repository, so it has no bundled result gallery.
+
+OncoTracer is for research use and is not a standalone diagnostic system.
