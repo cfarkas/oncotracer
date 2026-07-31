@@ -12,20 +12,23 @@ The analysis can use:
 - `--docker` with [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer); or
 - `--singularity` with `docker://carlosfarkas/oncotracer:latest` on a configured HPC system.
 
-![Example OncoTracer input layouts: Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv.](assets/tutorial/auto_params_folder_layout.svg)
+![Example OncoTracer input layouts](assets/tutorial/auto_params_folder_layout.svg)
 
 ## Before you begin
 
+Use `/path/to/my/directory/oncotracer` as the repository path in these examples.
+
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Clone OncoTracer when it is not already installed.
-git clone https://github.com/cfarkas/oncotracer.git
+git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
 
 # Enter the repository and confirm Nextflow is available.
-cd oncotracer
+cd "$REPO_DIR"
 nextflow -version
 ```
-
-Use absolute paths for your reads, configuration, work, and result directories.
 
 ## Why Automatic Setup creates a YAML
 
@@ -52,7 +55,7 @@ nextflow run main.nf --docker|--singularity -params-file generated.yml -resume
 For paired-end data, keep one R1 and one R2 file per sample directly inside one folder:
 
 ```text
-/data/study42/input/fastq/
+/path/to/my/directory/oncotracer/project/input/fastq/
 ├── TUMOR_01_R1.fastq.gz
 ├── TUMOR_01_R2.fastq.gz
 ├── TUMOR_02_R1.fastq.gz
@@ -65,30 +68,34 @@ For paired-end data, keep one R1 and one R2 file per sample directly inside one 
 
 Supported paired names include `<sample>_R1.fastq.gz` and `<sample>_R2.fastq.gz`, or `<sample>_1.fastq.gz` and `<sample>_2.fastq.gz`. The same patterns may end in `.fq.gz`.
 
-For single-end data, use one `<sample>.fastq.gz` or `<sample>.fq.gz` file per sample. Do not mix single-end and paired-end libraries in the same Automatic Setup command. Automatic Setup does not combine lane files recursively.
+For single-end data, use one `<sample>.fastq.gz` or `<sample>.fq.gz` file per sample. Do not mix single-end and paired-end libraries in one Automatic Setup command. Automatic Setup does not combine lane files recursively.
 
 ### 2. Create the sample table
 
+Use this copy/paste-ready command. It creates or replaces the CSV instead of appending duplicate rows.
+
 ```bash
-# Open a new Illumina sample table.
-nano /data/study42/input/samples.csv
-```
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+mkdir -p "$PROJECT_DIR/input/fastq"
 
-Paste an exact name and role for every sample:
-
-```csv
+# Create the Illumina sample table.
+cat > "$PROJECT_DIR/input/samples.csv" <<'CSV'
 sample_name,status
 TUMOR_01,TUMOR
 TUMOR_02,TUMOR
 CONTROL_01,NORMAL
 CONTROL_02,NORMAL
-```
+CSV
 
-Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
+# Display the saved table.
+cat "$PROJECT_DIR/input/samples.csv"
+```
 
 The filename prefix must match `sample_name` exactly. `status` must be `TUMOR` or `NORMAL`.
 
-Normal-control behavior is simple:
+Normal-control behavior is:
 
 - zero `NORMAL` rows: no local panel of normals;
 - one `NORMAL` row: configuration stops with an error;
@@ -97,14 +104,19 @@ Normal-control behavior is simple:
 ### 3. Generate the Illumina YAML and samplesheet
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+cd "$REPO_DIR"
+
 # Generate the Illumina configuration without starting the analysis.
-nextflow run main.nf --auto_params \
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
-  --reads_folder /data/study42/input/fastq \
-  --sample_table /data/study42/input/samples.csv \
-  --auto_config_dir /data/study42/config \
-  --auto_outdir /data/study42/results \
-  -work-dir /data/study42/work/auto_params
+  --reads_folder "$PROJECT_DIR/input/fastq" \
+  --sample_table "$PROJECT_DIR/input/samples.csv" \
+  --auto_config_dir "$PROJECT_DIR/config" \
+  --auto_outdir "$PROJECT_DIR/results" \
+  -work-dir "$PROJECT_DIR/work/auto_params"
 ```
 
 Automatic Setup runs `gzip -t` on every compressed FASTQ. It stops when a file is missing, corrupt, ambiguous, or part of a mixed single-end/paired-end layout.
@@ -112,7 +124,7 @@ Automatic Setup runs `gzip -t` on every compressed FASTQ. It stops when a file i
 The generated directory contains:
 
 ```text
-/data/study42/config/
+/path/to/my/directory/oncotracer/project/config/
 ├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
@@ -121,23 +133,27 @@ The generated directory contains:
 ### 4. Inspect the generated files
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+
 # Inspect the analysis settings.
-sed -n '1,140p' /data/study42/config/illumina.auto.yml
+sed -n '1,140p' "$PROJECT_DIR/config/illumina.auto.yml"
 
 # Inspect the FASTQ-to-sample mapping.
-sed -n '1,30p' /data/study42/config/illumina.samplesheet.csv
+sed -n '1,30p' "$PROJECT_DIR/config/illumina.samplesheet.csv"
 
 # Inspect the sample counts and file hashes.
-cat /data/study42/config/auto_params_manifest.tsv
+cat "$PROJECT_DIR/config/auto_params_manifest.tsv"
 ```
 
 For the table above, the generated YAML includes:
 
 ```yaml
 mode: illumina
-lpwgs_root: /data/study42
-outdir: /data/study42/results
-illumina_samplesheet: /data/study42/config/illumina.samplesheet.csv
+lpwgs_root: /path/to/my/directory/oncotracer/project
+outdir: /path/to/my/directory/oncotracer/project/results
+illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -155,10 +171,10 @@ The generated samplesheet contains absolute FASTQ paths:
 
 ```csv
 sample,fastq_1,fastq_2,status
-TUMOR_01,/data/study42/input/fastq/TUMOR_01_R1.fastq.gz,/data/study42/input/fastq/TUMOR_01_R2.fastq.gz,tumor
-TUMOR_02,/data/study42/input/fastq/TUMOR_02_R1.fastq.gz,/data/study42/input/fastq/TUMOR_02_R2.fastq.gz,tumor
-CONTROL_01,/data/study42/input/fastq/CONTROL_01_R1.fastq.gz,/data/study42/input/fastq/CONTROL_01_R2.fastq.gz,normal
-CONTROL_02,/data/study42/input/fastq/CONTROL_02_R1.fastq.gz,/data/study42/input/fastq/CONTROL_02_R2.fastq.gz,normal
+TUMOR_01,/path/to/my/directory/oncotracer/project/input/fastq/TUMOR_01_R1.fastq.gz,/path/to/my/directory/oncotracer/project/input/fastq/TUMOR_01_R2.fastq.gz,tumor
+TUMOR_02,/path/to/my/directory/oncotracer/project/input/fastq/TUMOR_02_R1.fastq.gz,/path/to/my/directory/oncotracer/project/input/fastq/TUMOR_02_R2.fastq.gz,tumor
+CONTROL_01,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_01_R1.fastq.gz,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_01_R2.fastq.gz,normal
+CONTROL_02,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_02_R1.fastq.gz,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_02_R2.fastq.gz,normal
 ```
 
 ### 5. Run the Illumina analysis
@@ -166,20 +182,28 @@ CONTROL_02,/data/study42/input/fastq/CONTROL_02_R1.fastq.gz,/data/study42/input/
 Docker:
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+
 # Run the generated Illumina YAML with Docker and resume support.
-nextflow run main.nf --docker \
-  -params-file /data/study42/config/illumina.auto.yml \
-  -work-dir /data/study42/work/analysis \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/analysis" \
   -resume
 ```
 
 Singularity or Apptainer:
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+
 # Run the same YAML through the HPC container option.
-nextflow run main.nf --singularity \
-  -params-file /data/study42/config/illumina.auto.yml \
-  -work-dir /data/study42/work/analysis \
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/analysis" \
   -resume
 ```
 
@@ -188,8 +212,9 @@ nextflow run main.nf --singularity \
 When two or more controls are used, verify the control list, control QC, tumor-only corrected files, and completion marker:
 
 ```bash
-# Set convenient output paths.
-OUT=/data/study42/results
+# Set the standard project and result paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+OUT="$REPO_DIR/project/results"
 PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
 
 # Require the successful panel completion marker.
@@ -212,7 +237,7 @@ See [Output files](outputs.md#illumina-local-panel-of-normals) for the complete 
 Point `--reads_folder` at the `fastq_pass` directory. Each barcode folder must contain at least one FASTQ:
 
 ```text
-/data/study42/fastq_pass/
+/path/to/my/directory/oncotracer/project/fastq_pass/
 ├── barcode01/
 │   └── reads_001.fastq.gz
 ├── barcode02/
@@ -224,17 +249,21 @@ Point `--reads_folder` at the `fastq_pass` directory. Each barcode folder must c
 ### 2. Create the barcode table
 
 ```bash
-# Open a new ONT barcode-to-sample table.
-nano /data/study42/fastq_pass/samples.csv
-```
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+mkdir -p "$PROJECT_DIR/fastq_pass"
 
-Paste:
-
-```csv
+# Create the explicit barcode-to-sample table.
+cat > "$PROJECT_DIR/fastq_pass/samples.csv" <<'CSV'
 barcode,sample_name,status
 barcode01,TUMOR_01,TUMOR
 barcode02,CONTROL_01,NORMAL
 barcode03,TUMOR_02,TUMOR
+CSV
+
+# Display the saved table.
+cat "$PROJECT_DIR/fastq_pass/samples.csv"
 ```
 
 The barcode value must match the directory name exactly. The explicit three-column form is recommended because it is easy to review.
@@ -242,27 +271,36 @@ The barcode value must match the directory name exactly. The explicit three-colu
 ### 3. Generate the ONT YAML
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+cd "$REPO_DIR"
+
 # Generate the ONT configuration without starting the analysis.
-nextflow run main.nf --auto_params \
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode ont \
-  --reads_folder /data/study42/fastq_pass \
-  --sample_table /data/study42/fastq_pass/samples.csv \
-  --auto_config_dir /data/study42/config_ont \
-  --auto_outdir /data/study42/results_ont \
-  -work-dir /data/study42/work/auto_params_ont
+  --reads_folder "$PROJECT_DIR/fastq_pass" \
+  --sample_table "$PROJECT_DIR/fastq_pass/samples.csv" \
+  --auto_config_dir "$PROJECT_DIR/config_ont" \
+  --auto_outdir "$PROJECT_DIR/results_ont" \
+  -work-dir "$PROJECT_DIR/work/auto_params_ont"
 ```
 
 ### 4. Inspect and run the ONT YAML
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+
 # Inspect the generated ONT settings and manifest.
-sed -n '1,140p' /data/study42/config_ont/ont.auto.yml
-cat /data/study42/config_ont/auto_params_manifest.tsv
+sed -n '1,140p' "$PROJECT_DIR/config_ont/ont.auto.yml"
+cat "$PROJECT_DIR/config_ont/auto_params_manifest.tsv"
 
 # Run the generated ONT YAML with Docker.
-nextflow run main.nf --docker \
-  -params-file /data/study42/config_ont/ont.auto.yml \
-  -work-dir /data/study42/work/analysis_ont \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$PROJECT_DIR/config_ont/ont.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/analysis_ont" \
   -resume
 ```
 
