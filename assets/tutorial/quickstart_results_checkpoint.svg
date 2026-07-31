@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="520" viewBox="0 0 1400 520" role="img" aria-labelledby="title desc">
+  <title id="title">Successful QuickStart output verification</title>
+  <desc id="desc">Terminal-style checkpoint showing the QuickStart verify outputs Python command and the exact success message that both QuickStart workflows completed and required outputs were found. A checklist states that Illumina and ONT workflow summaries, CNA event tables, and per-sample plot PDFs were found.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" x2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#134e4a"/></linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#0f172a" flood-opacity=".18"/></filter>
+  </defs>
+  <style>
+    .h1{font:700 32px system-ui,sans-serif;fill:#f8fafc}.lead{font:18px system-ui,sans-serif;fill:#cbd5e1}
+    .term{font:16px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#e2e8f0}.prompt{fill:#5eead4}.success{fill:#86efac;font-weight:700}
+    .label{font:700 15px system-ui,sans-serif;fill:#0f766e;letter-spacing:.08em}.body{font:16px system-ui,sans-serif;fill:#334155}
+  </style>
+  <rect width="1400" height="520" fill="#f1f5f9"/>
+  <rect width="1400" height="112" fill="url(#header)"/>
+  <text class="h1" x="54" y="47">Checkpoint: both QuickStart workflows are complete</text>
+  <text class="lead" x="54" y="79">Open the result plots only after the verifier prints the green success message.</text>
+
+  <g filter="url(#shadow)"><rect x="54" y="145" width="920" height="310" rx="15" fill="#0b1220"/></g>
+  <rect x="54" y="145" width="920" height="48" rx="15" fill="#1e293b"/>
+  <rect x="54" y="178" width="920" height="15" fill="#1e293b"/>
+  <circle cx="83" cy="169" r="7" fill="#fb7185"/><circle cx="107" cy="169" r="7" fill="#fbbf24"/><circle cx="131" cy="169" r="7" fill="#4ade80"/>
+  <text x="402" y="176" font-family="system-ui,sans-serif" font-size="15" fill="#cbd5e1">student — Terminal</text>
+
+  <text class="term prompt" x="82" y="228">student@workstation:~/oncotracer$</text>
+  <text class="term" x="410" y="228">python3 \</text>
+  <text class="term" x="110" y="260">/home/student/oncotracer/examples/quickstart/verify_outputs.py \</text>
+  <text class="term" x="110" y="292">--test-root /home/student/oncotracer/test</text>
+  <rect x="82" y="330" width="864" height="82" rx="10" fill="#123527" stroke="#4ade80"/>
+  <circle cx="111" cy="371" r="16" fill="#16a34a"/><path d="M103 371l6 6 12-15" fill="none" stroke="#fff" stroke-width="3"/>
+  <text class="term success" x="140" y="363">SUCCESS: both QuickStart workflows completed and required</text>
+  <text class="term success" x="140" y="389">outputs were found.</text>
+
+  <g filter="url(#shadow)"><rect x="1010" y="145" width="336" height="310" rx="15" fill="#fff"/></g>
+  <text class="label" x="1038" y="188">THE VERIFIER FOUND</text>
+  <circle cx="1052" cy="232" r="11" fill="#16a34a"/><path d="M1047 232l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1074" y="238">Illumina summary</text>
+  <circle cx="1052" cy="270" r="11" fill="#16a34a"/><path d="M1047 270l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1074" y="276">Illumina CNA + PDF</text>
+  <circle cx="1052" cy="308" r="11" fill="#16a34a"/><path d="M1047 308l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1074" y="314">ONT summary</text>
+  <circle cx="1052" cy="346" r="11" fill="#16a34a"/><path d="M1047 346l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+  <text class="body" x="1074" y="352">ONT CNA + PDF</text>
+  <rect x="1038" y="387" width="280" height="43" rx="9" fill="#ecfdf5"/>
+  <text x="1058" y="414" font-family="system-ui,sans-serif" font-size="16" font-weight="700" fill="#166534">Ready to open results.</text>
+</svg>

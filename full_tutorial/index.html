@@ -1,0 +1,1868 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+      
+      
+        <meta name="author" content="OncoTracer developers">
+      
+      
+        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/full_tutorial/">
+      
+      
+        <link rel="prev" href="../configuration/yaml_basics/">
+      
+      
+        <link rel="next" href="../running/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Full Tutorial - OncoTracer</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/oncotracer.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#full-tutorial-complete-public-prjna754199-archive" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="OncoTracer" class="md-header__button md-logo" aria-label="OncoTracer" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OncoTracer
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Full Tutorial
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/cfarkas/oncotracer" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cfarkas/oncotracer
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../installation/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Full Tutorial
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../running/" class="md-tabs__link">
+          
+  
+  
+  Run and Configure
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../outputs/" class="md-tabs__link">
+          
+  
+  
+  Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../troubleshooting/" class="md-tabs__link">
+          
+  
+  
+  Help and About
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="OncoTracer" class="md-nav__button md-logo" aria-label="OncoTracer" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    OncoTracer
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/cfarkas/oncotracer" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    cfarkas/oncotracer
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Install Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. QuickStart Example 1 (Illumina + ONT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto_params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Automatic Setup for Your FASTQs (Recommended)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../public_cohort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. QuickStart Example 2 (Three-Sample Public)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Input Files and Folder Layouts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/yaml_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manual YAML Editing (Second Option)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Full Tutorial
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Full Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-tutorial-doesand-does-notcontain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this tutorial does—and does not—contain
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-plan-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Plan the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-prepare-the-software" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Prepare the software
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-download-and-validate-the-complete-public-archive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Download and validate the complete public archive
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-generate-the-samplesheet-and-yaml-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Generate the samplesheet and YAML automatically
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-run-the-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run the analysis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-verify-the-completed-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Verify the completed run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-review-the-cna-and-pathology-facing-reports-carefully" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Review the CNA and pathology-facing reports carefully
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-keep-the-files-that-describe-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Keep the files that describe the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verified-result-gallery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verified result gallery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verified result gallery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#samurai-fitted-copy-number-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SAMURAI fitted copy-number profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bam-supported-boundary-refinement-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BAM-supported boundary-refinement statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cna-only-research-interpretation-no-pathology-supplied" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CNA-only research interpretation (no pathology supplied)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#primary-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primary sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run and Configure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Run and Configure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../running/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/illumina/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Illumina Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/ont/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/pathology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pathology and Classifier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/refinement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Refinement
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/parameter_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    All Parameters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understand Results
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Understand Results
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models_pathology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models and Pathology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gallery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Results Gallery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Help and About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../citation_research_use/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Citation and Research Use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer_guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-tutorial-doesand-does-notcontain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this tutorial does—and does not—contain
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-plan-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Plan the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-prepare-the-software" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Prepare the software
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-download-and-validate-the-complete-public-archive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Download and validate the complete public archive
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-generate-the-samplesheet-and-yaml-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Generate the samplesheet and YAML automatically
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-run-the-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run the analysis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-verify-the-completed-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Verify the completed run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-review-the-cna-and-pathology-facing-reports-carefully" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Review the CNA and pathology-facing reports carefully
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-keep-the-files-that-describe-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Keep the files that describe the run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verified-result-gallery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verified result gallery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verified result gallery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#samurai-fitted-copy-number-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SAMURAI fitted copy-number profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bam-supported-boundary-refinement-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BAM-supported boundary-refinement statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cna-only-research-interpretation-no-pathology-supplied" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CNA-only research interpretation (no pathology supplied)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#primary-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primary sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/full_tutorial.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="full-tutorial-complete-public-prjna754199-archive">Full tutorial: complete public PRJNA754199 archive<a class="headerlink" href="#full-tutorial-complete-public-prjna754199-archive" title="Permanent link">&para;</a></h1>
+<p>This tutorial processes <strong>all 12 Illumina plasma cfDNA libraries currently exposed by the public PRJNA754199 archive</strong>. The main path is intentionally short: download validated reads, let OncoTracer generate the samplesheet and YAML, run the workflow, verify the outputs, and review the reports.</p>
+<p><a href="../assets/tutorial/full_tutorial_flow.svg"><img alt="Roadmap for Full Tutorial sections 1 through 7: plan and prepare the software, download and validate 12 FASTQs, generate a samplesheet and YAML with Automatic Setup, run the real analysis, verify all required outputs, and review CNA plots and reports." src="../assets/tutorial/full_tutorial_flow.svg" /></a></p>
+<p><em>Follow the numbered sections in order. The YAML connects preparation to the real analysis by saving the checked inputs, selected settings, and result folder. Select a linked diagram or terminal image below to open it full size.</em></p>
+<h2 id="what-this-tutorial-doesand-does-notcontain">What this tutorial does—and does not—contain<a class="headerlink" href="#what-this-tutorial-doesand-does-notcontain" title="Permanent link">&para;</a></h2>
+<p>The associated PLOS ONE article describes 41 plasma specimens from 15 patients: 10 longitudinal specimens from four DDLPS/WDLPS patients and 31 specimens from 11 patients with other soft-tissue tumors. On <strong>15 July 2026</strong>, the ENA read-run report returned only 12 read runs for the BioProject.</p>
+<table>
+<thead>
+<tr>
+<th>Public archive snapshot</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Public runs processed here</td>
+<td style="text-align: right;">12</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td style="text-align: right;">single-end</td>
+</tr>
+<tr>
+<td>Instrument and read length</td>
+<td style="text-align: right;">Illumina HiSeq 2500, 36 bp</td>
+</tr>
+<tr>
+<td>Deposited reads</td>
+<td style="text-align: right;">266,097,582</td>
+</tr>
+<tr>
+<td>Deposited bases</td>
+<td style="text-align: right;">9,579,512,952</td>
+</tr>
+<tr>
+<td>Compressed download</td>
+<td style="text-align: right;">6,171,900,300 bytes (5.75 GiB)</td>
+</tr>
+<tr>
+<td>Reference/caller</td>
+<td style="text-align: right;">hg38, SAMURAI/qDNAseq, 100 kb</td>
+</tr>
+</tbody>
+</table>
+<p>Ten archive aliases correspond to the article's primary serial-sampling set. The additional aliases <code>WDLPS_2</code> and <code>WDLPS_3</code> are not reconciled to rows in the article supplement. None of the 31 other-tumor specimens is currently present in the read archive. One deposited run, <code>DDLPS_2</code>, contains 8,351,915 reads and is therefore below the article's general 10-million-read description.</p>
+<div class="admonition warning">
+<p class="admonition-title">Archive aliases are not diagnoses</p>
+<p><code>DDLPS_*</code> and <code>WDLPS_*</code> are sample names supplied with the public files. OncoTracer keeps those names but does not independently verify a diagnosis. The generated <code>tumor</code> status is a workflow label for this patient cohort, not proof of detectable ctDNA, active disease, or a CNA in any specimen.</p>
+</div>
+<p>This is an <strong>independent reanalysis</strong>, not an exact reproduction of the publication. The publication used GRCh37/hg19, a Plasma-Seq Z-score method, variable-mappability windows, and healthy-donor references. This tutorial uses OncoTracer's hg38 SAMURAI/qDNAseq route and has no matched tumor or healthy-donor controls.</p>
+<h2 id="1-plan-the-run">1. Plan the run<a class="headerlink" href="#1-plan-the-run" title="Permanent link">&para;</a></h2>
+<p>Use Linux with at least <strong>150 GiB of free working space</strong>. Sixteen CPU cores and 64 GiB RAM are a practical starting point. The first run also prepares hg38 and its BWA index; that one-time step adds several GiB and can take 30–60 minutes before alignment begins.</p>
+<p>Complete the <a href="../installation/#1-install-the-host-prerequisites">host installation requirements</a>, then clone OncoTracer. This tutorial uses <code>/home/student/oncotracer</code> as an example location. <code>student</code> is only an example Linux username; if <code>pwd</code> shows a different location, replace <code>/home/student/oncotracer</code> in the commands below with that location.</p>
+<p>If OncoTracer is already cloned, skip the first command and enter the existing repository.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w"> </span>/home/student/oncotracer
+<span class="nb">cd</span><span class="w"> </span>/home/student/oncotracer
+<span class="nb">pwd</span>
+</code></pre></div>
+<p>The remaining commands use <code>/home/student/oncotracer/test</code> for the reads, generated setup files, temporary work, and final results. OncoTracer creates the required subdirectories automatically.</p>
+<p><a id="2-prepare-software-only"></a></p>
+<h2 id="2-prepare-the-software">2. Prepare the software<a class="headerlink" href="#2-prepare-the-software" title="Permanent link">&para;</a></h2>
+<p>Prepare and check Docker without starting an analysis:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span>/home/student/oncotracer/test<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span>/home/student/oncotracer/test/work/install
+</code></pre></div>
+<p>This command pulls and checks the software, records the selected runtime and SAMURAI version, and then stops. It does not download hg38 or patient reads and does not create analysis stages <code>01</code>–<code>06</code>. See <a href="../installation/#4-prepare-one-runtime-without-starting-an-analysis">Installation</a> for Singularity and Conda alternatives.</p>
+<h2 id="3-download-and-validate-the-complete-public-archive">3. Download and validate the complete public archive<a class="headerlink" href="#3-download-and-validate-the-complete-public-archive" title="Permanent link">&para;</a></h2>
+<p>Download all 12 FASTQs with one resumable command:</p>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>/home/student/oncotracer/examples/prjna754199/run_example.sh<span class="w"> </span>--download-only
+</code></pre></div>
+<p>This command creates <code>/home/student/oncotracer/test/public/prjna754199</code>, downloads the 12 FASTQ files, and checks their file sizes, MD5 checksums, and gzip contents. It also places <code>samples.csv</code> in the same folder. A completed file is reused if the command is run again, and an interrupted download can continue. No analysis starts yet.</p>
+<p><a href="../assets/tutorial/full_tutorial_download_checkpoint.svg"><img alt="Example terminal showing successful validation of all 12 PRJNA754199 single-end FASTQs, including the final reads folder, samples.csv path, download size, and read count." src="../assets/tutorial/full_tutorial_download_checkpoint.svg" /></a></p>
+<p><em>A complete download ends with this summary. <code>DOWNLOAD</code> and <code>REUSE</code> lines above it are both normal. If the command stops before the summary, run the same command again.</em></p>
+<p>For the exact URLs, checksums, archive search, and download checks, see the <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">example README</a> and <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md">archive details</a>.</p>
+<p><a id="4-generate-and-inspect-the-single-end-configuration"></a></p>
+<h2 id="4-generate-the-samplesheet-and-yaml-automatically">4. Generate the samplesheet and YAML automatically<a class="headerlink" href="#4-generate-the-samplesheet-and-yaml-automatically" title="Permanent link">&para;</a></h2>
+<p>The download command created <code>samples.csv</code>. This small file lists each sample name and marks it as <code>TUMOR</code> for the workflow. You do not need to write the larger workflow samplesheet or YAML by hand. Run Automatic Setup:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads_folder<span class="w"> </span>/home/student/oncotracer/test/public/prjna754199<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span>/home/student/oncotracer/test/public/prjna754199/samples.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span>/home/student/oncotracer/test/configs/prjna754199<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span>/home/student/oncotracer/test/runs/prjna754199<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cna_classifier_sample_set<span class="w"> </span>sarcoma<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pathology_use_biomed_models<span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span>/home/student/oncotracer/test/work/prjna754199_auto_params
+</code></pre></div>
+<p>This command prepares the run; it does not process the reads. OncoTracer:</p>
+<ol>
+<li>reads the 12 names in <code>samples.csv</code>;</li>
+<li>finds the matching FASTQ for each name;</li>
+<li>checks that every file uses the supported single-end name and that each gzip file can be read;</li>
+<li>creates the samplesheet and YAML required by the analysis command; and</li>
+<li>records where the final results should be saved.</li>
+</ol>
+<p>List the two generated files:</p>
+<div class="highlight"><pre><span></span><code>ls<span class="w"> </span>-1<span class="w"> </span>/home/student/oncotracer/test/configs/prjna754199
+</code></pre></div>
+<p><a href="../assets/tutorial/full_tutorial_setup_checkpoint.svg"><img alt="Example terminal showing PRJNA754199 Automatic Setup completed and listing illumina.auto.yml and illumina.samplesheet.csv, with labels explaining the purpose of each file." src="../assets/tutorial/full_tutorial_setup_checkpoint.svg" /></a></p>
+<p><em>Automatic Setup has prepared the 12-sample run but has not analyzed the reads. The samplesheet connects each sample to its FASTQ; the YAML stores the paths and analysis choices used in the next section.</em></p>
+<p>The four path options have distinct purposes:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--reads_folder</code></td>
+<td>The existing folder that contains the downloaded FASTQ files.</td>
+</tr>
+<tr>
+<td><code>--sample_table</code></td>
+<td>The existing <code>samples.csv</code> file that connects each sample name to its workflow status.</td>
+</tr>
+<tr>
+<td><code>--auto_config_dir</code></td>
+<td>The folder where OncoTracer creates <code>illumina.samplesheet.csv</code> and <code>illumina.auto.yml</code>.</td>
+</tr>
+<tr>
+<td><code>--auto_outdir</code></td>
+<td>The folder where the next, real analysis command will save BAMs, CNA tables, plots, and reports. Automatic Setup creates it if needed and records it in the YAML, but does not put analysis results in it yet.</td>
+</tr>
+</tbody>
+</table>
+<p>The generated files are:</p>
+<div class="highlight"><pre><span></span><code>/home/student/oncotracer/test/configs/prjna754199/
+├── illumina.auto.yml
+└── illumina.samplesheet.csv
+</code></pre></div>
+<p><code>illumina.samplesheet.csv</code> contains one row per sample and the full path to its FASTQ. Its <code>fastq_2</code> column is empty because these reads are single-end. <code>illumina.auto.yml</code> contains the settings and paths used by the next command. The classifier is enabled, but no pathology file is supplied, so the reports contain CNA-only research interpretation rather than a pathology comparison.</p>
+<p><a id="5-check-wiring-then-run-the-real-workflow"></a></p>
+<h2 id="5-run-the-analysis">5. Run the analysis<a class="headerlink" href="#5-run-the-analysis" title="Permanent link">&para;</a></h2>
+<p>Start the real 12-library analysis:</p>
+<div class="highlight"><pre><span></span><code>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span>/home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span>/home/student/oncotracer/test/work/prjna754199<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<p>Keep the terminal open while this command runs. It performs alignment, CNA analysis, boundary refinement, plotting, and report generation. The first run also prepares the hg38 reference, so it can take several hours. <code>-resume</code> lets the same command continue from completed steps after an interruption.</p>
+<h2 id="6-verify-the-completed-run">6. Verify the completed run<a class="headerlink" href="#6-verify-the-completed-run" title="Permanent link">&para;</a></h2>
+<p>Run the versioned verifier against the final output directory:</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>/home/student/oncotracer/examples/prjna754199/verify_outputs.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span>/home/student/oncotracer/test/runs/prjna754199
+</code></pre></div>
+<p><a href="../assets/tutorial/full_tutorial_verify_checkpoint.svg"><img alt="Example terminal showing the PRJNA754199 output verifier's exact success message that the complete tutorial outputs are verified." src="../assets/tutorial/full_tutorial_verify_checkpoint.svg" /></a></p>
+<p><em>Continue to interpretation only after the verifier prints <code>SUCCESS: complete PRJNA754199 tutorial outputs are verified.</code></em></p>
+<p>The verifier requires the exact 12 manifest aliases—not merely 12 arbitrary rows—across the BAMs, SAMURAI segments, refinement summary, and classifier table. It also requires the CNA tables, plots, clinician-report index, and workflow summary used by this tutorial.</p>
+<p>Start reviewing the verified run from these locations:</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Source output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Workflow inventory</td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/06_workflow_summary/workflow_summary.txt</code></td>
+</tr>
+<tr>
+<td>SAMURAI fitted CNA profiles</td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/01_samurai_illumina/qdnaseq/plots/</code></td>
+</tr>
+<tr>
+<td>Boundary-refinement evidence</td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv</code></td>
+</tr>
+<tr>
+<td>Final CNA event table</td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/03_cna_codification/cna_events.tsv</code></td>
+</tr>
+<tr>
+<td>Cohort and per-sample plots</td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/04_cna_custom_plots/</code></td>
+</tr>
+<tr>
+<td>Classifier report</td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/05_cna_classifier/03_report/cna_classifier_report.html</code></td>
+</tr>
+<tr>
+<td>Per-sample research reports</td>
+<td><code>/home/student/oncotracer/test/runs/prjna754199/05_cna_classifier/03_report/clinician_reports/</code></td>
+</tr>
+</tbody>
+</table>
+<p><a id="7-interpret-without-overclaiming"></a></p>
+<h2 id="7-review-the-cna-and-pathology-facing-reports-carefully">7. Review the CNA and pathology-facing reports carefully<a class="headerlink" href="#7-review-the-cna-and-pathology-facing-reports-carefully" title="Permanent link">&para;</a></h2>
+<p>Black qDNAseq points show normalized bin-level signal; fitted horizontal segment lines summarize the caller's piecewise CNA model. Boundary refinement asks whether local BAM coverage supports moving each coarse boundary and records refined, retained, and low-resolution outcomes.</p>
+<p>The classifier may flag a region such as 12q13–q15 or an MDM2/CDK4 overlap for research review. A flag is not confirmation of gene amplification, disease subtype, prognosis, or treatment actionability. Review coverage, segment size, focality, longitudinal consistency, and the original event table; confirm important findings with a validated orthogonal assay.</p>
+<p>The stage-05 HTML and per-sample PDFs are useful clinician-facing research summaries, but this archive supplies no pathology table. They must not be described as pathology-confirmed findings. To combine a future cohort with real pathology metadata, follow <a href="../configuration/pathology/">Pathology and Classifier</a> and require exact sample-identifier matching.</p>
+<p>The article reported MDM2-associated signals for selected specimens under its own method. Do not use that statement to relabel a discordant OncoTracer result or choose parameters after seeing the answer. This reanalysis has no matched tissue or healthy-donor controls and is not a sensitivity/specificity validation set.</p>
+<p><a id="8-preserve-provenance"></a></p>
+<h2 id="8-keep-the-files-that-describe-the-run">8. Keep the files that describe the run<a class="headerlink" href="#8-keep-the-files-that-describe-the-run" title="Permanent link">&para;</a></h2>
+<p>Keep these files with any result you share:</p>
+<ul>
+<li><code>/home/student/oncotracer/examples/prjna754199/manifest.tsv</code>, which lists the downloaded public files and their checksums;</li>
+<li><code>/home/student/oncotracer/examples/prjna754199/samples.csv</code>, which lists the sample names and workflow status;</li>
+<li><code>/home/student/oncotracer/test/configs/prjna754199/illumina.samplesheet.csv</code> and <code>illumina.auto.yml</code>, which record the inputs and settings;</li>
+<li><code>/home/student/oncotracer/test/runs/prjna754199/06_workflow_summary/workflow_summary.txt</code>;</li>
+<li>the CNA tables, plots, classifier report, and per-sample PDFs used in the interpretation.</li>
+</ul>
+<p><a id="optional-automated-replay"></a></p>
+<p>The <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md">archive and checksum notes</a> describe the public files used here. The <a href="https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199">example README</a> contains extra technical details for users who need them.</p>
+<h2 id="verified-result-gallery">Verified result gallery<a class="headerlink" href="#verified-result-gallery" title="Permanent link">&para;</a></h2>
+<p>The following images are static exports from the complete 12-run workflow described above. They demonstrate software output; they do not validate a diagnosis. <a href="../assets/full_tutorial/gallery_provenance.tsv">See the source files and checksums used for the gallery</a>.</p>
+<h3 id="samurai-fitted-copy-number-profile">SAMURAI fitted copy-number profile<a class="headerlink" href="#samurai-fitted-copy-number-profile" title="Permanent link">&para;</a></h3>
+<p><a href="../assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.pdf">Open the source qDNAseq segment PDF</a>.</p>
+<p><img alt="SAMURAI qDNAseq profile for the public DDLPS_1b archive alias, with bin-level signal and fitted horizontal CNA segments" src="../assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.png" /></p>
+<h3 id="bam-supported-boundary-refinement-statistics">BAM-supported boundary-refinement statistics<a class="headerlink" href="#bam-supported-boundary-refinement-statistics" title="Permanent link">&para;</a></h3>
+<p><a href="../assets/full_tutorial/prjna754199_refinement_summary.csv">Open the source 12-sample refinement summary</a>.</p>
+<p><img alt="Counts of refined, retained, and poor-resolution boundaries for all 12 public PRJNA754199 libraries" src="../assets/full_tutorial/prjna754199_refinement_summary.png" /></p>
+<h3 id="cna-only-research-interpretation-no-pathology-supplied">CNA-only research interpretation (no pathology supplied)<a class="headerlink" href="#cna-only-research-interpretation-no-pathology-supplied" title="Permanent link">&para;</a></h3>
+<p><a href="../assets/full_tutorial/prjna754199_cna_interpretation.pdf">Open the source research-use classifier report</a>.</p>
+<p><img alt="CNA-only research interpretation for DDLPS_1b exported from the verified OncoTracer classifier output; no pathology was supplied" src="../assets/full_tutorial/prjna754199_cna_interpretation.png" /></p>
+<div class="admonition warning">
+<p class="admonition-title">Research use only</p>
+<p>OncoTracer is not a standalone diagnostic system or medical device. The gallery is a reproducible software demonstration. It must not be used by itself to diagnose disease, choose treatment, establish prognosis, or report a clinical result.</p>
+</div>
+<h2 id="primary-sources">Primary sources<a class="headerlink" href="#primary-sources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://www.ncbi.nlm.nih.gov/bioproject/PRJNA754199">NCBI BioProject PRJNA754199</a></li>
+<li><a href="https://www.ebi.ac.uk/ena/browser/view/PRJNA754199">ENA PRJNA754199 archive record</a></li>
+<li><a href="https://doi.org/10.1371/journal.pone.0262272">Przybyl et al., PLOS ONE (2022)</a></li>
+<li><a href="https://doi.org/10.1371/journal.pone.0262272.s001">Publication supplementary table S1</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit", "navigation.tabs", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

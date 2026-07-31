@@ -1,0 +1,13 @@
+sample,n_prior_boundaries_evaluated,n_boundaries_refined,n_boundaries_kept_original,n_boundaries_with_poor_bam_resolution,sample_level_result,user_interpretation
+DDLPS_1a,2,1,1,0,bam_refined_one_or_more_boundaries,At least one prior CNA segment boundary was moved using BAM-supported local coverage evidence
+DDLPS_1b,34,26,8,0,bam_refined_one_or_more_boundaries,At least one prior CNA segment boundary was moved using BAM-supported local coverage evidence
+DDLPS_1c,2,1,1,0,bam_refined_one_or_more_boundaries,At least one prior CNA segment boundary was moved using BAM-supported local coverage evidence
+DDLPS_2,2,1,1,0,bam_refined_one_or_more_boundaries,At least one prior CNA segment boundary was moved using BAM-supported local coverage evidence
+DDLPS_3a,2,2,0,0,bam_refined_one_or_more_boundaries,At least one prior CNA segment boundary was moved using BAM-supported local coverage evidence
+DDLPS_3b,0,0,0,0,no_prior_boundaries_to_refine,Existing SAMURAI/qDNAseq/ichorCNA binning was retained for this sample
+WDLPS_1a,0,0,0,0,no_prior_boundaries_to_refine,Existing SAMURAI/qDNAseq/ichorCNA binning was retained for this sample
+WDLPS_1b,0,0,0,0,no_prior_boundaries_to_refine,Existing SAMURAI/qDNAseq/ichorCNA binning was retained for this sample
+WDLPS_1c,0,0,0,0,no_prior_boundaries_to_refine,Existing SAMURAI/qDNAseq/ichorCNA binning was retained for this sample
+WDLPS_1d,0,0,0,0,no_prior_boundaries_to_refine,Existing SAMURAI/qDNAseq/ichorCNA binning was retained for this sample
+WDLPS_2,0,0,0,0,no_prior_boundaries_to_refine,Existing SAMURAI/qDNAseq/ichorCNA binning was retained for this sample
+WDLPS_3,2,1,1,0,bam_refined_one_or_more_boundaries,At least one prior CNA segment boundary was moved using BAM-supported local coverage evidence

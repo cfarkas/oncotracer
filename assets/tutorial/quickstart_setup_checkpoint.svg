@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620" role="img" aria-labelledby="title desc">
+  <title id="title">QuickStart generated run-plan checkpoint</title>
+  <desc id="desc">Terminal-style checkpoint listing illumina dot quickstart dot yml and ont dot quickstart dot yml. Two explanation cards state that the Illumina plan selects paired reads, qDNAseq, and 100 kilobase bins while the ONT plan selects barcode reads, ichorCNA, and 500 kilobase bins. The files contain paths and settings rather than reads or results.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" x2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#134e4a"/></linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#0f172a" flood-opacity=".18"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#0f766e"/></marker>
+  </defs>
+  <style>
+    .h1{font:700 32px system-ui,sans-serif;fill:#f8fafc}.lead{font:18px system-ui,sans-serif;fill:#cbd5e1}
+    .term{font:17px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#e2e8f0}.prompt{fill:#5eead4}.success{fill:#86efac;font-weight:700}
+    .label{font:700 15px system-ui,sans-serif;fill:#0f766e;letter-spacing:.08em}.body{font:16px system-ui,sans-serif;fill:#334155}.small{font:14px system-ui,sans-serif;fill:#64748b}
+  </style>
+  <rect width="1400" height="620" fill="#f1f5f9"/>
+  <rect width="1400" height="112" fill="url(#header)"/>
+  <text class="h1" x="54" y="47">Checkpoint: two separate run plans were created</text>
+  <text class="lead" x="54" y="79">Each YAML saves the paths and analysis choices for one sequencing technology.</text>
+
+  <g filter="url(#shadow)"><rect x="54" y="145" width="790" height="410" rx="15" fill="#0b1220"/></g>
+  <rect x="54" y="145" width="790" height="48" rx="15" fill="#1e293b"/>
+  <rect x="54" y="178" width="790" height="15" fill="#1e293b"/>
+  <circle cx="83" cy="169" r="7" fill="#fb7185"/><circle cx="107" cy="169" r="7" fill="#fbbf24"/><circle cx="131" cy="169" r="7" fill="#4ade80"/>
+  <text x="345" y="176" font-family="system-ui,sans-serif" font-size="15" fill="#cbd5e1">student — Terminal</text>
+
+  <text class="term prompt" x="82" y="238">student@workstation:~/oncotracer$</text>
+  <text class="term" x="410" y="238">ls -1 \</text>
+  <text class="term" x="110" y="271">/home/student/oncotracer/test/configs</text>
+  <text class="term success" x="82" y="329">illumina.quickstart.yml</text>
+  <text class="term success" x="82" y="383">ont.quickstart.yml</text>
+  <rect x="82" y="438" width="734" height="83" rx="10" fill="#3f2f0b" stroke="#fbbf24"/>
+  <text x="104" y="470" font-family="system-ui,sans-serif" font-size="16" font-weight="700" fill="#fde68a">These files contain paths and settings.</text>
+  <text x="104" y="497" font-family="system-ui,sans-serif" font-size="16" fill="#fef3c7">They do not contain sequencing reads or analysis results.</text>
+
+  <path d="M856 329 H918" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M856 383 H918" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)"><rect x="930" y="145" width="416" height="410" rx="15" fill="#fff"/></g>
+  <text class="label" x="958" y="188">WHAT EACH PLAN CONTROLS</text>
+  <rect x="958" y="214" width="360" height="118" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="980" y="245" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="16" font-weight="700" fill="#1d4ed8">illumina.quickstart.yml</text>
+  <text class="body" x="980" y="276">Paired FASTQs • qDNAseq</text>
+  <text class="body" x="980" y="303">100 kb bins • runs/illumina</text>
+  <rect x="958" y="350" width="360" height="118" rx="12" fill="#f5f3ff" stroke="#c4b5fd"/>
+  <text x="980" y="381" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="16" font-weight="700" fill="#6d28d9">ont.quickstart.yml</text>
+  <text class="body" x="980" y="412">barcode01 • ichorCNA</text>
+  <text class="body" x="980" y="439">500 kb bins • runs/ont</text>
+  <text class="small" x="958" y="510">Nextflow reads one selected YAML at a time</text>
+  <text class="small" x="958" y="531">when you supply it with -params-file.</text>
+</svg>

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="360" viewBox="0 0 980 360" role="img" aria-labelledby="title desc">
+  <title id="title">OncoTracer quickstart walkthrough</title>
+  <desc id="desc">Animated overview of cloning OncoTracer, downloading example FASTQ files, generating YAML, running Illumina and ONT analyses, and viewing CNA plots.</desc>
+  <style>
+    .bg { fill: #0f172a; }
+    .panel { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; }
+    .muted { fill: #64748b; font: 18px sans-serif; }
+    .title { fill: #0f172a; font: 700 26px sans-serif; }
+    .code { fill: #e2e8f0; font: 18px monospace; }
+    .step { fill: #0f766e; font: 700 18px sans-serif; }
+    .arrow { stroke: #14b8a6; stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .pulse { fill: #14b8a6; opacity: .9; }
+    .plotgain { fill: #ef4444; }
+    .plotloss { fill: #2563eb; }
+    .plotbase { stroke: #334155; stroke-width: 3; }
+    .fade { animation: fade 10s infinite; }
+    .delay1 { animation-delay: 0s; }
+    .delay2 { animation-delay: 2s; }
+    .delay3 { animation-delay: 4s; }
+    .delay4 { animation-delay: 6s; }
+    .delay5 { animation-delay: 8s; }
+    @keyframes fade {
+      0%, 17% { opacity: 1; transform: translateY(0); }
+      22%, 100% { opacity: .28; transform: translateY(0); }
+    }
+  </style>
+  <rect class="bg" width="980" height="360" rx="0"/>
+  <text x="42" y="48" fill="#f8fafc" font-family="sans-serif" font-size="30" font-weight="700">OncoTracer quickstart</text>
+  <text x="42" y="82" fill="#cbd5e1" font-family="sans-serif" font-size="18">From public FASTQ files to copy-number plots and summary tables</text>
+
+  <g class="fade delay1">
+    <rect class="panel" x="42" y="120" width="160" height="126" rx="8"/>
+    <text class="step" x="62" y="150">1. Clone</text>
+    <rect x="62" y="168" width="120" height="48" rx="6" fill="#111827"/>
+    <text class="code" x="72" y="198">git clone</text>
+  </g>
+  <path class="arrow" d="M212 184 H262"/>
+
+  <g class="fade delay2">
+    <rect class="panel" x="272" y="120" width="160" height="126" rx="8"/>
+    <text class="step" x="292" y="150">2. Download</text>
+    <path d="M322 170 h60 v38 h-60 z" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"/>
+    <path d="M352 164 v38 m-16 -16 16 16 16 -16" class="arrow"/>
+  </g>
+  <path class="arrow" d="M442 184 H492"/>
+
+  <g class="fade delay3">
+    <rect class="panel" x="502" y="120" width="160" height="126" rx="8"/>
+    <text class="step" x="522" y="150">3. YAML</text>
+    <rect x="532" y="168" width="100" height="56" rx="4" fill="#f8fafc" stroke="#64748b"/>
+    <text x="546" y="191" fill="#0f172a" font-family="monospace" font-size="14">mode: ont</text>
+    <text x="546" y="211" fill="#0f172a" font-family="monospace" font-size="14">outdir: ...</text>
+  </g>
+  <path class="arrow" d="M672 184 H722"/>
+
+  <g class="fade delay4">
+    <rect class="panel" x="732" y="120" width="190" height="126" rx="8"/>
+    <text class="step" x="752" y="150">4. Run</text>
+    <circle class="pulse" cx="786" cy="194" r="13">
+      <animate attributeName="r" values="10;18;10" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".95;.35;.95" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <text x="815" y="201" fill="#0f172a" font-family="sans-serif" font-size="18">Nextflow</text>
+  </g>
+
+  <g class="fade delay5">
+    <rect x="260" y="280" width="460" height="48" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+    <line class="plotbase" x1="292" y1="304" x2="688" y2="304"/>
+    <rect class="plotloss" x="330" y="304" width="68" height="14"/>
+    <rect class="plotgain" x="470" y="286" width="82" height="18"/>
+    <rect class="plotloss" x="610" y="304" width="46" height="12"/>
+    <text x="352" y="264" fill="#f8fafc" font-family="sans-serif" font-size="22" font-weight="700">Open the CNA gallery and summary files</text>
+  </g>
+</svg>

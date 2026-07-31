@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="650" viewBox="0 0 1400 650" role="img" aria-labelledby="title desc">
+  <title id="title">Successful Illumina Automatic Setup checkpoint</title>
+  <desc id="desc">Terminal-style screenshot showing the Illumina automatic parameters command completing one of one tasks. A following list command shows illumina dot auto dot yml and illumina dot samplesheet dot csv in the configuration folder. A note states that analysis has not started.</desc>
+  <defs><linearGradient id="header" x1="0" x2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#134e4a"/></linearGradient><filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#0f172a" flood-opacity=".18"/></filter></defs>
+  <style>.h1{font:700 32px system-ui,sans-serif;fill:#f8fafc}.lead{font:18px system-ui,sans-serif;fill:#cbd5e1}.term{font:17px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#e2e8f0}.prompt{fill:#5eead4}.dim{fill:#94a3b8}.success{fill:#86efac;font-weight:700}.label{font:700 15px system-ui,sans-serif;fill:#0f766e;letter-spacing:.08em}.body{font:17px system-ui,sans-serif;fill:#334155}.note{font:700 17px system-ui,sans-serif;fill:#92400e}</style>
+  <rect width="1400" height="650" fill="#f1f5f9"/><rect width="1400" height="112" fill="url(#header)"/>
+  <text class="h1" x="54" y="47">What successful Automatic Setup looks like</text><text class="lead" x="54" y="79">The Nextflow task finishes once; listing the configuration folder confirms the two generated files.</text>
+  <g filter="url(#shadow)"><rect x="54" y="145" width="925" height="440" rx="15" fill="#0b1220"/></g>
+  <rect x="54" y="145" width="925" height="48" rx="15" fill="#1e293b"/><rect x="54" y="178" width="925" height="15" fill="#1e293b"/>
+  <circle cx="83" cy="169" r="7" fill="#fb7185"/><circle cx="107" cy="169" r="7" fill="#fbbf24"/><circle cx="131" cy="169" r="7" fill="#4ade80"/><text x="412" y="176" font-family="system-ui,sans-serif" font-size="15" fill="#cbd5e1">student — Terminal</text>
+  <text class="term prompt" x="82" y="226">student@workstation:~/oncotracer$</text><text class="term" x="390" y="226">nextflow run main.nf --auto_params \</text>
+  <text class="term" x="110" y="258">--mode illumina \</text><text class="term" x="110" y="290">--reads_folder /data/study42/illumina_fastq \</text>
+  <text class="term" x="110" y="322">--sample_table /data/study42/illumina_fastq/samples.csv</text>
+  <text class="term dim" x="82" y="371">executor &gt; local (1)</text>
+  <text class="term success" x="82" y="407">[36/047b27] process &gt; AUTO_PARAMS (auto_params) [100%] 1 of 1 ✔</text>
+  <text class="term prompt" x="82" y="456">student@workstation:~/oncotracer$</text><text class="term" x="390" y="456">ls -1 /data/study42/illumina_fastq/oncotracer_config</text>
+  <text class="term success" x="82" y="494">illumina.auto.yml</text><text class="term success" x="82" y="527">illumina.samplesheet.csv</text>
+  <text x="82" y="563" font-family="system-ui,sans-serif" font-size="14" fill="#94a3b8">The characters in brackets and progress layout can differ between Nextflow versions.</text>
+  <g filter="url(#shadow)"><rect x="1015" y="145" width="331" height="440" rx="15" fill="#fff"/></g>
+  <text class="label" x="1043" y="188">CHECKPOINT</text><text x="1043" y="225" font-family="system-ui,sans-serif" font-size="23" font-weight="700" fill="#0f172a">Two setup files exist</text>
+  <path d="M1045 263h62l16 16v82h-78z" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/><path d="M1107 263v16h16" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+  <text class="body" x="1145" y="287">YAML</text><text x="1145" y="311" font-family="system-ui,sans-serif" font-size="14" fill="#64748b">paths + settings</text>
+  <path d="M1045 384h62l16 16v82h-78z" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/><path d="M1107 384v16h16" fill="#dbeafe" stroke="#3b82f6" stroke-width="2"/>
+  <text class="body" x="1145" y="408">Samplesheet</text><text x="1145" y="432" font-family="system-ui,sans-serif" font-size="14" fill="#64748b">sample → FASTQ</text>
+  <rect x="1043" y="509" width="275" height="48" rx="10" fill="#fffbeb" stroke="#fbbf24"/><text class="note" x="1064" y="539">No reads analyzed yet.</text>
+</svg>
