@@ -85,6 +85,8 @@ workflow {
     INSTALL(install_runtime_ch)
   } else if( asBool(params.make_test) ) {
     MAKE_TEST_DATA()
+  } else if( asBool(params.make_prjna754199) ) {
+    MAKE_PRJNA754199_DATA()
   } else if( asBool(params.auto_params) ) {
     AUTO_PARAMS()
   } else {
@@ -216,6 +218,32 @@ process MAKE_TEST_DATA {
   bash '${downloader}' '${testRoot}'
   echo "Public FASTQ test data and YAML files are ready under: ${testRoot}" > make_test_done.txt
   cat make_test_done.txt
+  """
+}
+
+
+process MAKE_PRJNA754199_DATA {
+  tag 'public_prjna754199_data'
+  container null
+  conda "${projectDir}/environment.yml"
+
+  output:
+  path 'make_prjna754199_done.txt', emit: marker
+
+  script:
+  def runner = file("${projectDir}/examples/prjna754199/run_example.sh").toString()
+  def cohortRoot = blank(params.test_root) ? "${projectDir}/test" : file(params.test_root).toString()
+
+  """
+  set -Eeuo pipefail
+  COHORT_ROOT='${cohortRoot}' bash '${runner}' --download-only
+  echo "Validated PRJNA754199 FASTQs are ready under: ${cohortRoot}/public/prjna754199" > make_prjna754199_done.txt
+  cat make_prjna754199_done.txt
+  """
+
+  stub:
+  """
+  echo "STUB: PRJNA754199 download and validation" > make_prjna754199_done.txt
   """
 }
 

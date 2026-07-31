@@ -29,7 +29,10 @@ This is an **independent reanalysis**, not an exact reproduction of the publicat
 
 ## 1. Plan the run
 
-Use Linux with at least **150 GiB of free working space**. Sixteen CPU cores and 64 GiB RAM are a practical starting point. The first run also prepares hg38 and its BWA index; that one-time step adds several GiB and can take 30–60 minutes before alignment begins.
+Use Linux with at least **150 GiB of free working space**, 16 CPU cores, and at
+least 80 GiB of addressable RAM. The pinned BWA task alone requests 72 GB. The
+first run also prepares hg38 and its BWA index; that one-time step adds several
+GiB and can take 30–60 minutes before alignment begins.
 
 Complete the [host installation requirements](installation.md#1-install-the-host-prerequisites), then clone OncoTracer. This tutorial uses `/home/student/oncotracer` as an example location. `student` is only an example Linux username; if `pwd` shows a different location, replace `/home/student/oncotracer` in the commands below with that location.
 
@@ -62,14 +65,16 @@ This command pulls and checks the software, records the selected runtime and SAM
 Download all 12 FASTQs with one resumable command:
 
 ```bash
-bash /home/student/oncotracer/examples/prjna754199/run_example.sh --download-only
+nextflow run /home/student/oncotracer/main.nf --make_prjna754199 \
+  --test_root /home/student/oncotracer/test \
+  -work-dir /home/student/oncotracer/test/work/prjna754199_download
 ```
 
 This command creates `/home/student/oncotracer/test/public/prjna754199`, downloads the 12 FASTQ files, and checks their file sizes, MD5 checksums, and gzip contents. It also places `samples.csv` in the same folder. A completed file is reused if the command is run again, and an interrupted download can continue. No analysis starts yet.
 
 [![Example terminal showing successful validation of all 12 PRJNA754199 single-end FASTQs, including the final reads folder, samples.csv path, download size, and read count.](assets/tutorial/full_tutorial_download_checkpoint.svg)](assets/tutorial/full_tutorial_download_checkpoint.svg)
 
-*A complete download ends with this summary. `DOWNLOAD` and `REUSE` lines above it are both normal. If the command stops before the summary, run the same command again.*
+*A complete download ends with this summary. `DOWNLOAD` and `REUSE` lines above it are both normal. If the command stops before the summary, run the same Nextflow command again.*
 
 For the exact URLs, checksums, archive search, and download checks, see the [example README](https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199) and [archive details](https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md).
 
@@ -97,18 +102,22 @@ This command prepares the run; it does not process the reads. OncoTracer:
 1. reads the 12 names in `samples.csv`;
 2. finds the matching FASTQ for each name;
 3. checks that every file uses the supported single-end name and that each gzip file can be read;
-4. creates the samplesheet and YAML required by the analysis command; and
+4. creates the samplesheet, YAML, and checksum/count audit manifest required
+   to review the configuration; and
 5. records where the final results should be saved.
 
-List the two generated files:
+List the three generated files:
 
 ```bash
 ls -1 /home/student/oncotracer/test/configs/prjna754199
 ```
 
-[![Example terminal showing PRJNA754199 Automatic Setup completed and listing illumina.auto.yml and illumina.samplesheet.csv, with labels explaining the purpose of each file.](assets/tutorial/full_tutorial_setup_checkpoint.svg)](assets/tutorial/full_tutorial_setup_checkpoint.svg)
+[![Example terminal showing PRJNA754199 Automatic Setup completed and listing the YAML, samplesheet, and audit manifest.](assets/tutorial/full_tutorial_setup_checkpoint.svg)](assets/tutorial/full_tutorial_setup_checkpoint.svg)
 
-*Automatic Setup has prepared the 12-sample run but has not analyzed the reads. The samplesheet connects each sample to its FASTQ; the YAML stores the paths and analysis choices used in the next section.*
+*Automatic Setup has prepared the 12-sample run but has not analyzed the
+reads. The samplesheet connects each sample to its FASTQ; the YAML stores the
+paths and analysis choices used in the next section; the manifest records
+sample counts and file hashes.*
 
 The four path options have distinct purposes:
 
@@ -116,18 +125,24 @@ The four path options have distinct purposes:
 | --- | --- |
 | `--reads_folder` | The existing folder that contains the downloaded FASTQ files. |
 | `--sample_table` | The existing `samples.csv` file that connects each sample name to its workflow status. |
-| `--auto_config_dir` | The folder where OncoTracer creates `illumina.samplesheet.csv` and `illumina.auto.yml`. |
+| `--auto_config_dir` | The folder where OncoTracer creates `illumina.samplesheet.csv`, `illumina.auto.yml`, and `auto_params_manifest.tsv`. |
 | `--auto_outdir` | The folder where the next, real analysis command will save BAMs, CNA tables, plots, and reports. Automatic Setup creates it if needed and records it in the YAML, but does not put analysis results in it yet. |
 
 The generated files are:
 
 ```text
 /home/student/oncotracer/test/configs/prjna754199/
+├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
 ```
 
-`illumina.samplesheet.csv` contains one row per sample and the full path to its FASTQ. Its `fastq_2` column is empty because these reads are single-end. `illumina.auto.yml` contains the settings and paths used by the next command. The classifier is enabled, but no pathology file is supplied, so the reports contain CNA-only research interpretation rather than a pathology comparison.
+`illumina.samplesheet.csv` contains one row per sample and the full path to
+its FASTQ. Its `fastq_2` column is empty because these reads are single-end.
+`illumina.auto.yml` contains the settings and paths used by the next command,
+and `auto_params_manifest.tsv` records tumor/normal counts and SHA-256 values.
+The classifier is enabled, but no pathology file is supplied, so the reports
+contain CNA-only research interpretation rather than a pathology comparison.
 
 <a id="5-check-wiring-then-run-the-real-workflow"></a>
 

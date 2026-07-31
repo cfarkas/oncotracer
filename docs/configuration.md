@@ -8,6 +8,7 @@ You normally need **one run YAML**, not every configuration page. Use this page 
 | --- | --- | --- |
 | Verify that OncoTracer works on this computer | [QuickStart Example 1](quick_start.md) | Public Illumina and ONT data plus generated test YAMLs |
 | Run the real three-library/six-FASTQ cohort | [QuickStart Example 2](public_cohort.md) | Download manifest, automatic YAML, full cohort results |
+| Run six tumors against four normal controls | [QuickStart Example 3](six_tumor_four_control.md) | Ten-sample table, automatic local-PoN YAML, and tumor-only corrected outputs |
 | Run your own folder with standard names | [Automatic setup (recommended default)](auto_params.md) | A small sample table; OncoTracer generates a YAML, audit manifest, and Illumina samplesheet |
 | Write an Illumina YAML manually | [Illumina manual setup (second option)](configuration/illumina.md#second-option-manual-setup) | Single-end or paired-end samplesheet plus one copied YAML |
 | Write an ONT YAML manually | [ONT manual setup (second option)](configuration/ont.md) | Barcode folders/mapping plus one copied YAML |

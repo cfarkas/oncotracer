@@ -2,9 +2,12 @@
 
 A container packages analysis software, but Nextflow still runs on the host and needs permission to launch that container. Choose one runtime for each command.
 
+!!! important "Start OncoTracer through Nextflow"
+    Every OncoTracer preparation, smoke test, stub validation, and analysis must begin with `nextflow run`. Do not launch the OncoTracer image with `docker run`, `apptainer exec`, or `singularity exec`; the `--docker` or `--singularity` flag tells Nextflow which runtime to manage.
+
 | Situation | Recommended flag | What must work on the host |
 | --- | --- | --- |
-| Linux workstation/server with Docker | `--docker` | Java, Nextflow, Docker daemon; launch helpers used before nested containers |
+| Linux workstation/server with Docker | `--docker` | Java, Nextflow, Docker daemon; Nextflow launches the containers |
 | HPC where Docker is forbidden | `--singularity` | Java, Nextflow, Singularity/Apptainer configured by the cluster |
 | No container runtime | `--conda` | Java, Nextflow, Conda and enough space for environments |
 
@@ -15,13 +18,13 @@ Do not combine runtime flags.
 From the cloned repository:
 
 ```bash
-docker pull carlosfarkas/oncotracer:latest                        # download/update the maintained image
-docker run --rm hello-world                                       # prove this account can use the daemon
+ROOT="$(pwd)"
+nextflow run main.nf --install --docker --lpwgs_root "$ROOT"          # prepare and test the runtime
 nextflow run main.nf -stub-run --docker -params-file params/my_run.yml # validate workflow wiring
 nextflow run main.nf --docker -params-file params/my_run.yml -resume   # run the analysis
 ```
 
-`--docker` is an OncoTracer parameter. Do not replace it with `-profile docker` in the documented top-level commands.
+Nextflow pulls or reuses the maintained image when needed. `--docker` is an OncoTracer parameter. Do not replace it with `-profile docker` in the documented top-level commands.
 
 ### What is mounted
 
@@ -50,26 +53,29 @@ id -g
 
 ### Reproducible image identity
 
-`latest` is convenient for tutorials but can change. Record the digest used in a study:
+`latest` is convenient for tutorials but can change. The Nextflow installation route records the selected runtime and image identity:
 
 ```bash
-docker image inspect carlosfarkas/oncotracer:latest --format '{{index .RepoDigests 0}}'
+cat .oncotracer/install/install_manifest.txt
 ```
 
-For a frozen analysis, use an approved immutable digest and record it with the OncoTracer commit/YAML. Pulling again reuses unchanged Docker layers.
+For a frozen analysis, use an approved immutable digest and record it with the OncoTracer commit/YAML. Nextflow reuses unchanged Docker layers.
 
 ## Singularity or Apptainer on HPC
 
-Check the command provided by the cluster:
+Check which launcher name is present without invoking it:
 
 ```bash
-singularity --version   # some systems retain this command name
-apptainer --version     # newer installations often use Apptainer
+command -v singularity  # some systems retain this command name
+command -v apptainer    # newer installations often use Apptainer
 ```
 
-Then use OncoTracer's flag name:
+One of those checks should print a path. Then use OncoTracer's flag name for
+every preparation and run:
 
 ```bash
+ROOT="$(pwd)"
+nextflow run main.nf --install --singularity --lpwgs_root "$ROOT"
 nextflow run main.nf -stub-run --singularity -params-file params/my_run.yml
 nextflow run main.nf --singularity -params-file params/my_run.yml -resume
 ```
@@ -81,8 +87,8 @@ The configured image is `docker://carlosfarkas/oncotracer:latest`, and `lpwgs_ro
 Use Conda only when container execution is unavailable or when running the optional classifier profile:
 
 ```bash
-conda env create -f environment.yml
-conda activate oncotracer
+ROOT="$(pwd)"
+nextflow run main.nf --install --conda --lpwgs_root "$ROOT"
 nextflow run main.nf -stub-run --conda -params-file params/my_run.yml
 nextflow run main.nf --conda -params-file params/my_run.yml -resume
 ```

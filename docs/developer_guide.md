@@ -14,7 +14,7 @@ bin/cna_classifier_nf/          # optional nested classifier/report workflow
 docs/                           # MkDocs source
 examples/                       # reproducible opt-in examples and manifests
 test/                           # downloaded fixtures, generated configs, and test outputs
-run_test.sh                     # public Illumina + ONT end-to-end check
+run_test.sh                     # legacy maintainer helper; tutorials use direct Nextflow commands
 ```
 
 Do not hand-edit generated FASTQs, test outputs, `work/`, `.nextflow/`, or `site/` and then treat those changes as source changes.
@@ -59,10 +59,20 @@ A stub run validates channels, parameters, and process wiring. It does not execu
 For a change that can affect execution, run:
 
 ```bash
-bash run_test.sh --docker
+nextflow run main.nf --docker \
+  -params-file test/configs/illumina.quickstart.yml \
+  -work-dir test/work/illumina -resume
+nextflow run main.nf --docker \
+  -params-file test/configs/ont.quickstart.yml \
+  -work-dir test/work/ont -resume
+python3 examples/quickstart/verify_outputs.py --test-root test
 ```
 
-This prepares/revalidates the two public datasets, checks both stub workflows, runs Illumina and ONT with `-resume`, and tests core outputs. A successful cached rerun is useful, but at least one uncached run is required when changing task commands, containers, callers, parsing, or output contracts.
+Run the preparation and stub commands from the preceding sections first. The
+commands above then run Illumina and ONT with `-resume` and verify core
+outputs. A successful cached rerun is useful, but at least one uncached run is
+required when changing task commands, containers, callers, parsing, or output
+contracts.
 
 Verify results explicitly:
 
@@ -82,10 +92,22 @@ Review plots and tables, not just file existence, after scientific or visualizat
 The HCC1143 cohort is deliberately opt-in because it is larger:
 
 ```bash
-bash examples/hcc1143_lpwgs/run_example.sh --docker --download-only # provenance/checksum/gzip validation
-bash examples/hcc1143_lpwgs/run_example.sh --docker --prepare-only  # also test auto-generated YAML/samplesheet
-bash examples/hcc1143_lpwgs/run_example.sh --docker                 # complete cohort run and output checks
+nextflow run main.nf --auto_params \
+  --mode illumina \
+  --reads_folder test/public/hcc1143_lpwgs \
+  --sample_table test/public/hcc1143_lpwgs/samples.csv \
+  --auto_config_dir test/configs/hcc1143_lpwgs \
+  --auto_outdir test/runs/hcc1143_lpwgs
+nextflow run main.nf -stub-run --docker \
+  -params-file test/configs/hcc1143_lpwgs/illumina.auto.yml \
+  -work-dir test/work/hcc1143_lpwgs_stub
+nextflow run main.nf --docker \
+  -params-file test/configs/hcc1143_lpwgs/illumina.auto.yml \
+  -work-dir test/work/hcc1143_lpwgs -resume
 ```
+
+First download and validate the six FASTQs with the literal commands in
+[QuickStart Example 2](public_cohort.md#2-download-the-six-fastq-files).
 
 Record the commit, image digest, start/end time, reference, caller/bin size, and inspected outputs before adding its plots to the gallery. Do not replace a pending gallery notice with an unverified screenshot.
 

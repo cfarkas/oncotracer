@@ -26,7 +26,18 @@ Use Linux and install these host prerequisites:
 - [Docker Engine](https://docs.docker.com/engine/install/) or, on HPC, [Apptainer](https://apptainer.org/docs/admin/main/installation.html)
 - Python 3, samtools, BWA, minimap2, pigz, and curl or wget for the host-side stage-01/reference helpers
 
-The first real analysis downloads the hg38 reference (about **3.16 GB**) and BWA may take **30–60 minutes** to index it. This is a one-time preparation; later runs reuse the reference. Docker images and working files require additional disk space.
+> [!IMPORTANT]
+> Launch every OncoTracer preparation, test, and analysis with `nextflow run`.
+> `--docker` and `--singularity` are options on that Nextflow command;
+> Nextflow selects and starts the required containers. Do not type `docker run`,
+> `docker exec`, `apptainer run`, `apptainer exec`, `singularity run`, or
+> `singularity exec` to start OncoTracer yourself.
+
+The first real analysis downloads the hg38 reference (about **3.16 GB**) and
+BWA may take **30–60 minutes** to index it. That pinned task requests 72 GB,
+so an uncached first run needs at least 80 GiB of addressable RAM. A valid
+cached index is reused by later runs. Container images and working files
+require additional disk space.
 
 <a id="quick-verification-one-illumina-and-one-ont-sample"></a>
 
@@ -35,24 +46,82 @@ The first real analysis downloads the hg38 reference (about **3.16 GB**) and BWA
 This is the smallest end-to-end check. It downloads about **225 MB of public reads**, runs both branches, and verifies their expected outputs:
 
 ```bash
-git clone https://github.com/cfarkas/oncotracer.git  # download OncoTracer
-cd oncotracer                                        # enter the repository; run main.nf from here
-bash run_test.sh --docker                            # prepare data and run the Illumina and ONT checks
+git clone https://github.com/cfarkas/oncotracer.git /home/student/oncotracer
+cd /home/student/oncotracer
+
+nextflow run /home/student/oncotracer/main.nf --make_test \
+  --test_root /home/student/oncotracer/test
+
+nextflow run /home/student/oncotracer/main.nf --docker \
+  -params-file /home/student/oncotracer/test/configs/illumina.quickstart.yml \
+  -work-dir /home/student/oncotracer/test/work/illumina \
+  -resume
+
+nextflow run /home/student/oncotracer/main.nf --docker \
+  -params-file /home/student/oncotracer/test/configs/ont.quickstart.yml \
+  -work-dir /home/student/oncotracer/test/work/ont \
+  -resume
+
+python3 /home/student/oncotracer/examples/quickstart/verify_outputs.py \
+  --test-root /home/student/oncotracer/test
 ```
 
-The script can place a Nextflow launcher in `.tools/` when Nextflow is missing, but Java, Git, and Docker must already work on the host. A successful run ends with `SUCCESS`. See [QuickStart Example 1](https://cfarkas.github.io/oncotracer/quick_start/) for each command, generated YAML, expected runtime behavior, and output paths.
+Run the two analyses one after the other. Java, Git, Nextflow, and the selected container runtime must already be installed. See [QuickStart Example 1](https://cfarkas.github.io/oncotracer/quick_start/) for the generated YAML, verification command, expected runtime behavior, and output paths.
 
 <a id="real-three-sample-public-example-six-fastqs"></a>
 
 ## QuickStart Example 2: three-sample public cohort
 
-The optional HCC1143 example downloads **1.08 GiB**: three paired LP-WGS samples, or six FASTQ files. It validates every file against ENA metadata, generates the samplesheet and YAML, runs the workflow, and checks the results:
+The optional HCC1143 example uses **1.08 GiB**: three paired LP-WGS samples, or six FASTQ files. After following the literal download and validation commands in the [public-cohort tutorial](https://cfarkas.github.io/oncotracer/public_cohort/), generate the configuration and run it directly through Nextflow:
 
 ```bash
-bash examples/hcc1143_lpwgs/run_example.sh --docker # run three HCC1143 samples from download to verified outputs
+cd /home/student/oncotracer
+nextflow run /home/student/oncotracer/main.nf --auto_params \
+  --mode illumina \
+  --reads_folder /home/student/oncotracer/test/public/hcc1143_lpwgs \
+  --sample_table /home/student/oncotracer/test/public/hcc1143_lpwgs/samples.csv \
+  --auto_config_dir /home/student/oncotracer/test/configs/hcc1143_lpwgs \
+  --auto_outdir /home/student/oncotracer/test/runs/hcc1143_lpwgs
+
+nextflow run /home/student/oncotracer/main.nf --docker \
+  -params-file /home/student/oncotracer/test/configs/hcc1143_lpwgs/illumina.auto.yml \
+  -work-dir /home/student/oncotracer/test/work/hcc1143_lpwgs \
+  -resume
 ```
 
-Allow at least 40 GiB of working space. Read the [example notes](examples/hcc1143_lpwgs/README.md), [public-cohort tutorial](https://cfarkas.github.io/oncotracer/public_cohort/), and [result gallery](https://cfarkas.github.io/oncotracer/gallery/) before starting.
+Allow at least 40 GiB of working space and 80 GiB of addressable RAM; the
+pinned BWA task alone requests 72 GB. Read the [example notes](examples/hcc1143_lpwgs/README.md),
+[public-cohort tutorial](https://cfarkas.github.io/oncotracer/public_cohort/),
+and [result gallery](https://cfarkas.github.io/oncotracer/gallery/) before starting.
+
+<a id="six-tumors-four-controls-local-pon"></a>
+
+## QuickStart Example 3: six tumors + four normal controls
+
+This paired-end Illumina pattern uses `ONCO001` through `ONCO006` as tumors and `CTRL001` through `CTRL004` as a four-sample local qDNAseq panel of normals (PoN). Keep the local data outside the Git clone. After placing the 20 FASTQs and ten-row `samples.csv` under `/home/student/oncotracer_projects/onco6_ctrl4`, the two OncoTracer commands are:
+
+```bash
+nextflow run /home/student/oncotracer/main.nf --auto_params \
+  --mode illumina \
+  --reads_folder /home/student/oncotracer_projects/onco6_ctrl4/input/fastq \
+  --sample_table /home/student/oncotracer_projects/onco6_ctrl4/input/samples.csv \
+  --auto_config_dir /home/student/oncotracer_projects/onco6_ctrl4/config \
+  --auto_outdir /home/student/oncotracer_projects/onco6_ctrl4/results
+
+CUDA_VISIBLE_DEVICES="" NVIDIA_VISIBLE_DEVICES=none \
+NXF_OPTS="-XX:ActiveProcessorCount=20 -Xms512m -Xmx8g" \
+taskset --cpu-list 0-19 \
+nextflow run /home/student/oncotracer/main.nf --docker \
+  -params-file /home/student/oncotracer_projects/onco6_ctrl4/config/illumina.auto.yml \
+  -work-dir /home/student/oncotracer_projects/onco6_ctrl4/work/analysis \
+  -resume
+```
+
+The [six-tumor/four-control guide](https://cfarkas.github.io/oncotracer/six_tumor_four_control/) shows the exact FASTQ names, sample table, GNU Screen steps, generated PoN settings, completion checks, and tumor-only corrected outputs. On HPC, change only the Nextflow option `--docker` to `--singularity`; never invoke the container runtime yourself.
+
+Before copying the hardcoded CPU list, confirm at least 80 GiB of addressable
+RAM and follow the guide's `taskset -pc $$` check to verify that logical CPUs
+0–19 belong to your allocation.
 
 ## Run your own FASTQs
 

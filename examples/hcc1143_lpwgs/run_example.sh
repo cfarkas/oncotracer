@@ -37,7 +37,6 @@ command -v java >/dev/null || { echo "ERROR: Java 17+ is required." >&2; exit 1;
 command -v nextflow >/dev/null || { echo "ERROR: Nextflow is required." >&2; exit 1; }
 if [[ "$RUNTIME" == "--docker" ]]; then
   command -v docker >/dev/null || { echo "ERROR: Docker is required." >&2; exit 1; }
-  docker pull carlosfarkas/oncotracer:latest
 fi
 mkdir -p "$READS_DIR" "$CONFIG_DIR" "$OUTDIR"
 

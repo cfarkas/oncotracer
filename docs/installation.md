@@ -25,8 +25,7 @@ Run this block in a terminal:
 git --version                  # should print a Git version
 java -version                  # should report Java 17 or newer
 nextflow -version              # should print a Nextflow version
-docker --version               # should print a Docker version
-docker run --rm hello-world    # should finish successfully and confirm Docker can run a container
+command -v docker              # should print the installed Docker launcher path
 python3 --version              # should print a Python 3 version
 samtools --version             # stage-01/reference helper
 bwa 2>&1 | head -2            # Illumina alignment/index fallback
@@ -34,10 +33,11 @@ minimap2 --version             # ONT alignment helper
 pigz --version                 # parallel gzip helper
 ```
 
-A printed Docker version does not prove that your user can access the Docker service; the `hello-world` command checks that access. If it reports a permission error, follow Docker's [Linux post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/) or contact the administrator.
-
-!!! note "Nextflow fallback in the test helper"
-    `run_test.sh` downloads a local Nextflow launcher into the repository's `.tools/` directory if `nextflow` is not found. Java must still be installed. Installing Nextflow yourself first makes the setup easier to diagnose and lets you use `nextflow` outside this repository.
+`command -v docker` only checks whether a launcher is installed; it does not
+invoke Docker or prove that your user can access its service. Step 4 checks
+runtime access through `nextflow run`, which is the required entry point for
+all OncoTracer preparation, testing, and analysis. If `nextflow` is missing,
+install it using the official instructions above before continuing.
 
 ## 3. Clone OncoTracer
 
@@ -64,6 +64,8 @@ cat .oncotracer/install/install_manifest.txt                         # record th
 
 On an HPC system, replace `--docker` with `--singularity`. Where containers are unavailable, use `--conda`; Nextflow creates or reuses the environment below `lpwgs_root/.oncotracer/conda`.
 
+Do not replace this command with a direct container-runtime launch. Nextflow must manage image retrieval, mounts, environment settings, task provenance, and the nested workflow runtime.
+
 The installation route:
 
 - checks Java, Nextflow, the selected runtime, and host-side stage-01 tools;
@@ -78,7 +80,13 @@ OncoTracer cannot install host-level Java, Docker, Apptainer, or operating-syste
 ## 5. Plan time and disk space
 
 !!! warning "Large one-time reference step"
-    The first real Illumina or ONT analysis downloads the hg38 reference (about **3.16 GB**) and prepares its BWA index. BWA indexing is single-core and commonly takes **30–60 minutes**. The terminal can display an outer SAMURAI task at `0 of 1` while nested alignment and CNA work is active. Do not assume it is stalled from that counter alone.
+    The first real Illumina or ONT analysis downloads the hg38 reference (about
+    **3.16 GB**) and prepares its BWA index. BWA indexing is single-core,
+    commonly takes **30–60 minutes**, and the pinned task requests 72 GB.
+    Unless a valid persistent index already exists, use at least 80 GiB of
+    addressable RAM. The terminal can display an outer SAMURAI task at
+    `0 of 1` while nested alignment and CNA work is active. Do not assume it
+    is stalled from that counter alone.
 
 Also allow space for the Docker image, uncompressed/intermediate files, the Nextflow `work/` directory, and final results. Completed reference and Nextflow work are reused by later `-resume` runs when inputs and commands have not changed.
 
@@ -86,6 +94,7 @@ Also allow space for the Docker image, uncompressed/intermediate files, the Next
 
 - [QuickStart Example 1](quick_start.md): about **225 MB of public reads**, one Illumina sample and one ONT sample.
 - [QuickStart Example 2](public_cohort.md): **1.08 GiB** of reads in six FASTQ files; use this after Example 1.
+- [QuickStart Example 3](six_tumor_four_control.md): your 20 FASTQ files (ten R1/R2 pairs) for six tumors and four local-PoN controls, with a 20-CPU Nextflow view, no GPU request, and a `screen` launch.
 - [Your own FASTQ folder](auto_params.md): automatically generate a samplesheet and YAML.
 
 QuickStart Example 1 is the recommended first run because it exercises both workflow branches with the smallest provided datasets.

@@ -205,7 +205,6 @@ sed -n '1,80p' "$RUN_PROVENANCE"
 case "$RUNTIME" in
   --docker)
     command -v docker >/dev/null 2>&1 || { echo "ERROR: Docker is required." >&2; exit 1; }
-    docker pull carlosfarkas/oncotracer:latest
     ;;
   --singularity)
     if ! command -v singularity >/dev/null 2>&1 && ! command -v apptainer >/dev/null 2>&1; then

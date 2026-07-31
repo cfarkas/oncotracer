@@ -28,8 +28,6 @@ if ! command -v nextflow >/dev/null; then
 fi
 if [[ "$RUNTIME" == "--docker" ]]; then
   command -v docker >/dev/null || { echo "ERROR: Docker is required. See docs/installation.md" >&2; exit 1; }
-  echo "Pulling the current OncoTracer container (Docker reuses unchanged layers)"
-  docker pull carlosfarkas/oncotracer:latest
 fi
 
 echo "[1/8] Preparing public FASTQ data and absolute-path YAML files"

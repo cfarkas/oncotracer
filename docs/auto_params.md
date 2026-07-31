@@ -7,6 +7,13 @@
 
 OncoTracer checks the expected layout and writes a runnable YAML file. For Illumina, it also writes the single-end or paired-end FASTQ samplesheet.
 
+!!! important "The user always starts OncoTracer with Nextflow"
+    Automatic Setup uses `nextflow run ... --auto_params` and does not need a
+    container runtime option. The later analysis uses `nextflow run ...` with
+    `--docker` or `--singularity`. Never replace either command with a direct
+    Docker, Apptainer, or Singularity launch. A `docker://...` value written
+    inside the YAML is an image address consumed by the workflow, not a command.
+
 ![Example OncoTracer input layouts: Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv.](assets/tutorial/auto_params_folder_layout.svg)
 
 !!! note "Configuration step, not analysis"
