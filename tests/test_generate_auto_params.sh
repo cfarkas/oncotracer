@@ -126,7 +126,7 @@ test_two_normals_enable_reproducible_pon() {
   assert_no_auto_temps "$case_dir/config"
 }
 
-test_six_tumors_and_four_normals_match_quickstart_example_3() {
+test_six_tumors_and_four_normals_match_other_example_run() {
   local case_dir="$TEST_TMP/six_tumors_four_normals"
   local sample
   mkdir -p "$case_dir/reads"
@@ -155,11 +155,11 @@ test_six_tumors_and_four_normals_match_quickstart_example_3() {
   assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_min_mapq: 37'
   assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1'
   [[ "$(grep -c ',tumor$' "$case_dir/config/illumina.samplesheet.csv")" -eq 6 ]] ||
-    fail "QuickStart Example 3 samplesheet must contain six tumor rows"
+    fail "Other Example Run samplesheet must contain six tumor rows"
   [[ "$(grep -c ',normal$' "$case_dir/config/illumina.samplesheet.csv")" -eq 4 ]] ||
-    fail "QuickStart Example 3 samplesheet must contain four normal rows"
+    fail "Other Example Run samplesheet must contain four normal rows"
   [[ "$(find "$case_dir/reads" -maxdepth 1 -type f -name '*.fastq.gz' | wc -l)" -eq 20 ]] ||
-    fail "QuickStart Example 3 fixture must contain 20 paired FASTQs"
+    fail "Other Example Run fixture must contain 20 paired FASTQs"
   assert_illumina_manifest "$case_dir/config" 6 4
   assert_no_auto_temps "$case_dir/config"
 }
@@ -237,7 +237,7 @@ test_corrupt_gzip_preserves_previous_publication() {
 test_tumor_only_disables_pon_and_reports_gzip_progress
 test_one_normal_is_rejected_without_publication
 test_two_normals_enable_reproducible_pon
-test_six_tumors_and_four_normals_match_quickstart_example_3
+test_six_tumors_and_four_normals_match_other_example_run
 test_duplicate_ids_are_rejected
 test_invalid_ids_are_rejected
 test_at_least_one_tumor_is_required
