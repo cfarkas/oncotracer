@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/outputs/">
       
       
-        <link rel="prev" href="../configuration/parameter_reference/">
+        <link rel="prev" href="../programs/">
       
       
         <link rel="next" href="../models_pathology/">
@@ -253,7 +253,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../running/" class="md-tabs__link">
+        <a href="../configuration/" class="md-tabs__link">
           
   
   
@@ -696,6 +696,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose a Configuration Route
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../running/" class="md-nav__link">
         
   
@@ -844,6 +872,62 @@
     
   
     All Parameters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../containers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Containers and Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../programs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Programs and Provenance
   
 
     
@@ -1648,7 +1732,7 @@ combined-segment, and plot outputs; the controls remain reference inputs.</p>
 </tr>
 <tr>
 <td><code>qdnaseq_local_pon.done</code></td>
-<td>Completion marker written last after the helper produces all required artifacts; the wrapper validates them afterward.</td>
+<td>Completion marker written last after validation; its exact successful content is <code>QDNASEQ_LOCAL_PON_SUCCESS</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -1657,7 +1741,7 @@ combined-segment, and plot outputs; the controls remain reference inputs.</p>
 <span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/logs/normal_panel_manifest.tsv&quot;</span>
 <span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
 <span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/illumina_local_PoN.reference_bins.tsv&quot;</span><span class="w"> </span><span class="c1"># change name if configured</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span>
+<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;QDNASEQ_LOCAL_PON_SUCCESS&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qc/normal_panel_sample_qc.tsv&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon_summary.tsv&quot;</span>
@@ -1669,7 +1753,8 @@ find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON<
 output directory and publishes that marker last; the wrapper then verifies the
 manifest and tumor-only outputs. A failed or interrupted run can leave partial
 files, but it cannot appear complete. Do not consume those files unless the
-new <code>.done</code> marker, manifest, reference, QC, and tumor outputs are all present.</p>
+new <code>.done</code> marker contains exactly <code>QDNASEQ_LOCAL_PON_SUCCESS</code> and the
+manifest, reference, QC, and tumor outputs are all present.</p>
 <h3 id="ont">ONT<a class="headerlink" href="#ont" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,100p&#39;</span><span class="w"> </span><span class="c1"># inventory</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,80p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/logs/run_summary.txt&quot;</span><span class="w">               </span><span class="c1"># used/skipped barcode summary</span>

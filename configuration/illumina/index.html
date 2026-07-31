@@ -255,7 +255,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../running/" class="md-tabs__link">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -699,6 +699,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose a Configuration Route
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../running/" class="md-nav__link">
         
   
@@ -1049,6 +1077,62 @@
     
   
     All Parameters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../containers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Containers and Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../programs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Programs and Provenance
   
 
     
@@ -1763,7 +1847,7 @@ its required outputs succeed, and the wrapper then validates the manifest and
 tumor-only results. A failed run can leave partial files but cannot appear
 complete. Require the new marker and the audit artifacts after the real run:</p>
 <div class="highlight"><pre><span></span><code><span class="nv">PON</span><span class="o">=</span>project/runs/my_first_illumina_run/01_samurai_illumina/qdnaseq_local_pon
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span>
+<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;QDNASEQ_LOCAL_PON_SUCCESS&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qc/normal_panel_sample_qc.tsv&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon_summary.tsv&quot;</span>

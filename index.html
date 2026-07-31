@@ -253,7 +253,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="running/" class="md-tabs__link">
+        <a href="configuration/" class="md-tabs__link">
           
   
   
@@ -774,6 +774,34 @@
   
   
     <li class="md-nav__item">
+      <a href="configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose a Configuration Route
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="running/" class="md-nav__link">
         
   
@@ -922,6 +950,62 @@
     
   
     All Parameters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="containers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Containers and Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="programs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Programs and Provenance
   
 
     
@@ -1362,6 +1446,20 @@
 </tbody>
 </table>
 <p>For your own standard Illumina or ONT layout, start with automatic setup. Edit a YAML manually only when automatic detection does not fit the study or you need advanced settings.</p>
+<div class="admonition important">
+<p class="admonition-title">Illumina controls are never silently ignored</p>
+<p>Current <code>main</code> corrects an earlier fail-open path where <code>NORMAL</code> rows
+could be accepted while PoN refinement was disabled, leaving controls
+aligned but unapplied. Now, no normal rows disable the local PoN, exactly
+one is rejected, and two or more enable a qDNAseq PoN whose explicit list
+must contain every and only the normal rows. The per-bin median normal log2
+signal corrects tumor profiles, and corrected CNA outputs contain tumors
+only. Review the leave-one-out normal QC and require the exact
+<code>QDNASEQ_LOCAL_PON_SUCCESS</code> completion marker.
+Start with <a href="auto_params/#illumina-step-by-step">Automatic Setup</a>, then
+read <a href="configuration/illumina/#how-the-local-pon-is-built">Illumina setup</a>
+and the <a href="outputs/#illumina-local-panel-of-normals">PoN output contract</a>.</p>
+</div>
 <div class="admonition warning">
 <p class="admonition-title">First real analysis</p>
 <p>The first analysis downloads the hg38 reference (about <strong>3.16 GB</strong>). BWA indexing is single-core and commonly takes <strong>30–60 minutes</strong>. Later runs reuse the prepared reference. The small public verification also downloads about <strong>225 MB of reads</strong>; the optional three-sample cohort downloads <strong>1.08 GiB</strong>.</p>

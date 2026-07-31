@@ -253,7 +253,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../running/" class="md-tabs__link">
+        <a href="../configuration/" class="md-tabs__link">
           
   
   
@@ -696,6 +696,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose a Configuration Route
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../running/" class="md-nav__link">
         
   
@@ -844,6 +872,62 @@
     
   
     All Parameters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../containers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Containers and Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../programs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Programs and Provenance
   
 
     
@@ -1685,6 +1769,9 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,40p
 run can leave partial files, but the old marker is invalidated before work
 starts. Fix the configuration or input error and rerun the same command with
 <code>-resume</code>; do not interpret partial PoN artifacts.</p>
+<div class="highlight"><pre><span></span><code><span class="nv">PON</span><span class="o">=</span>/absolute/path/to/outdir/01_samurai_illumina/qdnaseq_local_pon
+<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;QDNASEQ_LOCAL_PON_SUCCESS&quot;</span>
+</code></pre></div>
 <h2 id="ont-barcode-not-found-or-skipped">ONT barcode not found or skipped<a class="headerlink" href="#ont-barcode-not-found-or-skipped" title="Permanent link">&para;</a></h2>
 <p><code>ont_folder</code> must contain barcode directories, usually under <code>fastq_pass/</code>:</p>
 <div class="highlight"><pre><span></span><code>find<span class="w"> </span>/absolute/path/to/fastq_pass<span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq*&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span>
