@@ -1,10 +1,10 @@
 # Full tutorial: complete public PRJNA754199 archive
 
-This tutorial processes the **12 Illumina plasma cfDNA libraries currently available in the public PRJNA754199 read archive**. It downloads and validates the FASTQs, generates the configuration automatically, runs OncoTracer, verifies the required files, and reviews the research outputs.
+This tutorial processes the **12 Illumina plasma cfDNA libraries currently available in the public PRJNA754199 read archive**. It downloads and validates the FASTQs, creates the sample table, generates the configuration automatically, runs OncoTracer, verifies the required files, and reviews the research outputs.
 
 [![Roadmap for the complete PRJNA754199 tutorial.](assets/tutorial/full_tutorial_flow.svg)](assets/tutorial/full_tutorial_flow.svg)
 
-The commands below use Docker. On a configured HPC system, replace `--docker` with `--singularity`. See [Installation](installation.md) and the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer).
+The commands use Docker. On a configured HPC system, replace `--docker` with `--singularity`. See [Installation](installation.md) and the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer).
 
 ## What this tutorial contains
 
@@ -28,18 +28,21 @@ Use Linux with at least 150 GiB of free working space, 16 CPU cores, and at leas
 
 ## 1. Clone the repository
 
-This tutorial uses `/home/student/oncotracer` as an example path.
+Use `/path/to/my/directory/oncotracer` throughout this tutorial.
 
 ```bash
-# Clone OncoTracer into the example directory.
-git clone https://github.com/cfarkas/oncotracer.git /home/student/oncotracer
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
+# Clone OncoTracer into that directory.
+git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
 
 # Enter the repository and confirm the path.
-cd /home/student/oncotracer
+cd "$REPO_DIR"
 pwd
 ```
 
-Skip the `git clone` command when the repository already exists.
+Skip the clone command when the repository already exists.
 
 <a id="2-prepare-software-only"></a>
 
@@ -48,19 +51,25 @@ Skip the `git clone` command when the repository already exists.
 Docker:
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Pull or reuse the Docker image and test the required software.
-nextflow run /home/student/oncotracer/main.nf --install --docker \
-  --lpwgs_root /home/student/oncotracer/test \
-  -work-dir /home/student/oncotracer/test/work/install
+nextflow run "$REPO_DIR/main.nf" --install --docker \
+  --lpwgs_root "$REPO_DIR/test" \
+  -work-dir "$REPO_DIR/test/work/install_docker"
 ```
 
 Singularity or Apptainer:
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Prepare the same workflow image through the HPC container option.
-nextflow run /home/student/oncotracer/main.nf --install --singularity \
-  --lpwgs_root /home/student/oncotracer/test \
-  -work-dir /home/student/oncotracer/test/work/install
+nextflow run "$REPO_DIR/main.nf" --install --singularity \
+  --lpwgs_root "$REPO_DIR/test" \
+  -work-dir "$REPO_DIR/test/work/install_singularity"
 ```
 
 The installation route checks the software and stops. It does not download patient reads or hg38 and does not start the analysis.
@@ -68,19 +77,28 @@ The installation route checks the software and stops. It does not download patie
 ## 3. Download and validate the 12 public FASTQs
 
 ```bash
-# Download or reuse all 12 FASTQs and verify their size, MD5, and gzip integrity.
-nextflow run /home/student/oncotracer/main.nf --make_prjna754199 \
-  --test_root /home/student/oncotracer/test \
-  -work-dir /home/student/oncotracer/test/work/prjna754199_download
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
+# Download or reuse all 12 FASTQs and verify size, MD5, and gzip integrity.
+nextflow run "$REPO_DIR/main.nf" --make_prjna754199 \
+  --test_root "$REPO_DIR/test" \
+  -work-dir "$REPO_DIR/test/work/prjna754199_download"
 ```
 
-The command creates `/home/student/oncotracer/test/public/prjna754199` and places `samples.csv` beside the FASTQs. A completed file is reused when the command is repeated.
+The command creates `/path/to/my/directory/oncotracer/test/public/prjna754199`. A completed file is reused when the command is repeated.
 
 [![Successful validation checkpoint for the 12 PRJNA754199 FASTQs.](assets/tutorial/full_tutorial_download_checkpoint.svg)](assets/tutorial/full_tutorial_download_checkpoint.svg)
 
-The exact generated sample table is:
+Create or replace the exact sample table with this copy/paste-ready block:
 
-```csv
+```bash
+# Set the standard repository and reads paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+READS_DIR="$REPO_DIR/test/public/prjna754199"
+
+# Create the exact 12-sample table.
+cat > "$READS_DIR/samples.csv" <<'CSV'
 sample_name,status
 DDLPS_1a,TUMOR
 DDLPS_1b,TUMOR
@@ -94,6 +112,10 @@ WDLPS_1c,TUMOR
 WDLPS_1d,TUMOR
 WDLPS_2,TUMOR
 WDLPS_3,TUMOR
+CSV
+
+# Display the saved table.
+cat "$READS_DIR/samples.csv"
 ```
 
 See [`examples/prjna754199/manifest.tsv`](https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/manifest.tsv) for the public files and checksums and [`PROVENANCE.md`](https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md) for the archive notes.
@@ -105,39 +127,44 @@ See [`examples/prjna754199/manifest.tsv`](https://github.com/cfarkas/oncotracer/
 `--auto_params` matches the 12 sample names to the single-end FASTQs, validates the files, and writes the YAML and samplesheet. It does not start the analysis.
 
 ```bash
+# Set the standard repository path and enter it.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+
 # Generate the 12-sample Illumina configuration and enable CNA-only reports.
-nextflow run /home/student/oncotracer/main.nf --auto_params \
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
-  --reads_folder /home/student/oncotracer/test/public/prjna754199 \
-  --sample_table /home/student/oncotracer/test/public/prjna754199/samples.csv \
-  --auto_config_dir /home/student/oncotracer/test/configs/prjna754199 \
-  --auto_outdir /home/student/oncotracer/test/runs/prjna754199 \
+  --reads_folder "$REPO_DIR/test/public/prjna754199" \
+  --sample_table "$REPO_DIR/test/public/prjna754199/samples.csv" \
+  --auto_config_dir "$REPO_DIR/test/configs/prjna754199" \
+  --auto_outdir "$REPO_DIR/test/runs/prjna754199" \
   --run_cna_classifier true \
   --cna_classifier_sample_set sarcoma \
   --pathology_use_biomed_models false \
-  -work-dir /home/student/oncotracer/test/work/prjna754199_auto_params
+  -work-dir "$REPO_DIR/test/work/prjna754199_auto_params"
 ```
 
-Inspect the generated files:
-
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # List the generated YAML, samplesheet, and manifest.
-ls -1 /home/student/oncotracer/test/configs/prjna754199
+ls -1 "$REPO_DIR/test/configs/prjna754199"
 
 # Inspect the generated analysis settings.
-sed -n '1,160p' /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml
+sed -n '1,160p' "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml"
 
 # Inspect the generated 12-row single-end samplesheet.
-sed -n '1,20p' /home/student/oncotracer/test/configs/prjna754199/illumina.samplesheet.csv
+sed -n '1,20p' "$REPO_DIR/test/configs/prjna754199/illumina.samplesheet.csv"
 
 # Inspect the sample counts and file hashes.
-cat /home/student/oncotracer/test/configs/prjna754199/auto_params_manifest.tsv
+cat "$REPO_DIR/test/configs/prjna754199/auto_params_manifest.tsv"
 ```
 
 The configuration directory contains:
 
 ```text
-/home/student/oncotracer/test/configs/prjna754199/
+/path/to/my/directory/oncotracer/test/configs/prjna754199/
 ├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
@@ -150,19 +177,25 @@ The configuration directory contains:
 Optional stub check:
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Check the generated workflow connections without running the scientific tools.
-nextflow run /home/student/oncotracer/main.nf -stub-run --docker \
-  -params-file /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml \
-  -work-dir /home/student/oncotracer/test/work/prjna754199_stub
+nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199_stub"
 ```
 
 Real analysis:
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Run the complete 12-library workflow with Docker and resume support.
-nextflow run /home/student/oncotracer/main.nf --docker \
-  -params-file /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml \
-  -work-dir /home/student/oncotracer/test/work/prjna754199 \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199" \
   -resume
 ```
 
@@ -171,9 +204,12 @@ Keep the terminal open until Nextflow returns to the prompt. To resume after an 
 ## 6. Verify the completed run
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Verify the exact 12 samples and all required output groups.
-python3 /home/student/oncotracer/examples/prjna754199/verify_outputs.py \
-  --outdir /home/student/oncotracer/test/runs/prjna754199
+python3 "$REPO_DIR/examples/prjna754199/verify_outputs.py" \
+  --outdir "$REPO_DIR/test/runs/prjna754199"
 ```
 
 A successful check ends with:
@@ -186,7 +222,7 @@ SUCCESS: complete PRJNA754199 tutorial outputs are verified.
 
 Start reviewing the run from:
 
-| Output | Location |
+| Output | Location below `test/runs/prjna754199/` |
 | --- | --- |
 | Workflow summary | `06_workflow_summary/workflow_summary.txt` |
 | SAMURAI qDNAseq profiles | `01_samurai_illumina/qdnaseq/plots/` |
