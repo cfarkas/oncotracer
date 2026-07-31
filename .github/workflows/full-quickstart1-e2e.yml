@@ -49,24 +49,10 @@ jobs:
           curl -fsSL https://get.nextflow.io | bash
           sudo install -m 0755 nextflow /usr/local/bin/nextflow
 
-      - name: Configure hosted-runner resource limits
+      - name: Add virtual-memory headroom
         run: |
-          # SAMURAI's own GitHub Actions profile caps requested resources at
-          # 4 CPUs and 15 GB. Apply the same cap to this end-to-end run so the
-          # hg38 BWA index task can be scheduled on the 15.6 GiB hosted runner.
-          mkdir -p "$HOME/.nextflow"
-          cat > "$HOME/.nextflow/config" <<'EOF_CONFIG'
-          process {
-            resourceLimits = [
-              cpus: 4,
-              memory: '15.GB',
-              time: '6.h'
-            ]
-          }
-          EOF_CONFIG
-
-          # Give BWA additional virtual-memory headroom while it builds the
-          # genuine hg38 index instead of substituting a prebuilt index.
+          # Build the genuine hg38 BWA index. Additional swap avoids changing
+          # the public test to a prebuilt or reduced reference.
           if [[ ! -e /swapfile.quickstart ]]; then
             sudo fallocate -l 8G /swapfile.quickstart
             sudo chmod 600 /swapfile.quickstart
@@ -74,7 +60,6 @@ jobs:
             sudo swapon /swapfile.quickstart || true
           fi
 
-          cat "$HOME/.nextflow/config"
           swapon --show || true
           free -h
 
@@ -104,8 +89,29 @@ jobs:
             --test_root "$GITHUB_WORKSPACE/test" \
             -work-dir "$GITHUB_WORKSPACE/test/work/prepare"
 
+          # The wrappers deliberately set NXF_HOME inside each SAMURAI output
+          # directory. Put the hosted-runner cap in those exact locations so
+          # every nested SAMURAI process is limited to the runner's 4 CPUs and
+          # 15 GB of physical memory.
+          for nested_home in \
+            "$GITHUB_WORKSPACE/test/runs/illumina/01_samurai_illumina/.nextflow" \
+            "$GITHUB_WORKSPACE/test/runs/ont/01_samurai_ont/.nextflow"; do
+            mkdir -p "$nested_home"
+            cat > "$nested_home/config" <<'EOF_CONFIG'
+          process {
+            resourceLimits = [
+              cpus: 4,
+              memory: '15.GB',
+              time: '6.h'
+            ]
+          }
+          EOF_CONFIG
+          done
+
           sed -n '1,160p' "$GITHUB_WORKSPACE/test/configs/illumina.quickstart.yml"
           sed -n '1,160p' "$GITHUB_WORKSPACE/test/configs/ont.quickstart.yml"
+          cat "$GITHUB_WORKSPACE/test/runs/illumina/01_samurai_illumina/.nextflow/config"
+          cat "$GITHUB_WORKSPACE/test/runs/ont/01_samurai_ont/.nextflow/config"
 
       - name: Run full Illumina QuickStart workflow
         run: |
