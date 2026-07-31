@@ -1,6 +1,6 @@
 # Run OncoTracer
 
-Run the commands from the cloned repository directory containing `main.nf`.
+Run commands from the cloned repository directory containing `main.nf`.
 
 Choose one container option:
 
@@ -23,8 +23,11 @@ Choose one container option:
 ## 1. Enter the repository and select a runtime
 
 ```bash
-# Enter the repository and confirm the required host programs.
-cd oncotracer
+# Set the standard repository path and enter it.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+
+# Confirm Nextflow and the Docker launcher.
 pwd
 nextflow -version
 command -v docker
@@ -41,7 +44,7 @@ For HPC, check `command -v singularity` or `command -v apptainer` instead of Doc
 Input layout:
 
 ```text
-/home/student/oncotracer_project/input/fastq/
+/path/to/my/directory/oncotracer/project/input/fastq/
 ├── Patient_A_R1.fastq.gz
 ├── Patient_A_R2.fastq.gz
 ├── Control_A_R1.fastq.gz
@@ -51,31 +54,46 @@ Input layout:
 └── samples.csv
 ```
 
-Exact sample table:
+Create the exact sample table:
 
-```csv
+```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+mkdir -p "$PROJECT_DIR/input/fastq"
+
+# Create or replace the Illumina sample table.
+cat > "$PROJECT_DIR/input/fastq/samples.csv" <<'CSV'
 sample_name,status
 Patient_A,TUMOR
 Control_A,NORMAL
 Control_B,NORMAL
+CSV
+
+# Display the saved table.
+cat "$PROJECT_DIR/input/fastq/samples.csv"
 ```
 
 Generate and run:
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+
 # Generate the Illumina YAML and samplesheet.
-nextflow run main.nf --auto_params \
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
-  --reads_folder /home/student/oncotracer_project/input/fastq \
-  --sample_table /home/student/oncotracer_project/input/fastq/samples.csv \
-  --auto_config_dir /home/student/oncotracer_project/config/illumina \
-  --auto_outdir /home/student/oncotracer_project/results/illumina \
-  -work-dir /home/student/oncotracer_project/work/auto_params_illumina
+  --reads_folder "$PROJECT_DIR/input/fastq" \
+  --sample_table "$PROJECT_DIR/input/fastq/samples.csv" \
+  --auto_config_dir "$PROJECT_DIR/config/illumina" \
+  --auto_outdir "$PROJECT_DIR/results/illumina" \
+  -work-dir "$PROJECT_DIR/work/auto_params_illumina"
 
 # Run the generated Illumina YAML with Docker.
-nextflow run main.nf --docker \
-  -params-file /home/student/oncotracer_project/config/illumina/illumina.auto.yml \
-  -work-dir /home/student/oncotracer_project/work/illumina \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$PROJECT_DIR/config/illumina/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/illumina" \
   -resume
 ```
 
@@ -84,7 +102,7 @@ nextflow run main.nf --docker \
 Input layout:
 
 ```text
-/home/student/oncotracer_project/input/fastq_pass/
+/path/to/my/directory/oncotracer/project/input/fastq_pass/
 ├── barcode01/
 │   └── reads.fastq.gz
 ├── barcode02/
@@ -92,30 +110,45 @@ Input layout:
 └── samples.csv
 ```
 
-Exact sample table:
+Create the exact barcode table:
 
-```csv
+```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+mkdir -p "$PROJECT_DIR/input/fastq_pass"
+
+# Create or replace the ONT barcode table.
+cat > "$PROJECT_DIR/input/fastq_pass/samples.csv" <<'CSV'
 barcode,sample_name,status
 barcode01,Patient_A,TUMOR
 barcode02,Control_A,NORMAL
+CSV
+
+# Display the saved table.
+cat "$PROJECT_DIR/input/fastq_pass/samples.csv"
 ```
 
 Generate and run:
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+
 # Generate the ONT YAML from the barcode folders and sample table.
-nextflow run main.nf --auto_params \
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode ont \
-  --reads_folder /home/student/oncotracer_project/input/fastq_pass \
-  --sample_table /home/student/oncotracer_project/input/fastq_pass/samples.csv \
-  --auto_config_dir /home/student/oncotracer_project/config/ont \
-  --auto_outdir /home/student/oncotracer_project/results/ont \
-  -work-dir /home/student/oncotracer_project/work/auto_params_ont
+  --reads_folder "$PROJECT_DIR/input/fastq_pass" \
+  --sample_table "$PROJECT_DIR/input/fastq_pass/samples.csv" \
+  --auto_config_dir "$PROJECT_DIR/config/ont" \
+  --auto_outdir "$PROJECT_DIR/results/ont" \
+  -work-dir "$PROJECT_DIR/work/auto_params_ont"
 
 # Run the generated ONT YAML with Docker.
-nextflow run main.nf --docker \
-  -params-file /home/student/oncotracer_project/config/ont/ont.auto.yml \
-  -work-dir /home/student/oncotracer_project/work/ont \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$PROJECT_DIR/config/ont/ont.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/ont" \
   -resume
 ```
 
@@ -128,17 +161,23 @@ Use a manual YAML when Automatic Setup does not support the file naming or when 
 Illumina:
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Copy the Illumina template and edit the copied YAML.
-cp params/illumina.minimal.yml params/my_illumina.yml
-nano params/my_illumina.yml
+cp "$REPO_DIR/params/illumina.minimal.yml" "$REPO_DIR/params/my_illumina.yml"
+nano "$REPO_DIR/params/my_illumina.yml"
 ```
 
 ONT:
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Copy the ONT template and edit the copied YAML.
-cp params/ont.minimal.yml params/my_ont.yml
-nano params/my_ont.yml
+cp "$REPO_DIR/params/ont.minimal.yml" "$REPO_DIR/params/my_ont.yml"
+nano "$REPO_DIR/params/my_ont.yml"
 ```
 
 Use absolute paths under `lpwgs_root` and do not add internal SAMURAI output paths.
@@ -150,17 +189,23 @@ Use absolute paths under `lpwgs_root` and do not add internal SAMURAI output pat
 Optional stub check:
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Check parameters and workflow connections without running the analysis tools.
-nextflow run main.nf -stub-run --docker \
-  -params-file params/my_illumina.yml
+nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+  -params-file "$REPO_DIR/params/my_illumina.yml"
 ```
 
 Real run:
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Run or resume the checked Illumina YAML.
-nextflow run main.nf --docker \
-  -params-file params/my_illumina.yml \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/params/my_illumina.yml" \
   -resume
 ```
 
@@ -182,25 +227,31 @@ The outer display can remain at `RUN_*_SAMURAI (0 of 1)` while nested SAMURAI ta
 ## Verify a completed run
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+OUT="$REPO_DIR/project/results/illumina"
+
 # Read the workflow summary.
-cat /home/student/oncotracer_project/results/illumina/06_workflow_summary/workflow_summary.txt
+cat "$OUT/06_workflow_summary/workflow_summary.txt"
 
 # Confirm the main CNA table and PDF plots exist.
-ls -lh /home/student/oncotracer_project/results/illumina/03_cna_codification/cna_events.tsv
-ls -lh /home/student/oncotracer_project/results/illumina/04_cna_custom_plots/*.pdf
+ls -lh "$OUT/03_cna_codification/cna_events.tsv"
+ls -lh "$OUT/04_cna_custom_plots"/*.pdf
 ```
-
-Replace the example result path with the exact `outdir` from the YAML.
 
 ## Resume safely
 
 Use the same YAML, `outdir`, and work directory:
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+
 # Resume the existing Illumina run from unchanged completed tasks.
-nextflow run main.nf --docker \
-  -params-file /home/student/oncotracer_project/config/illumina/illumina.auto.yml \
-  -work-dir /home/student/oncotracer_project/work/illumina \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$PROJECT_DIR/config/illumina/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/illumina" \
   -resume
 ```
 

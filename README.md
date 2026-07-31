@@ -21,7 +21,7 @@ Read the [complete documentation](https://cfarkas.github.io/oncotracer/) for ins
 
 ## Requirements
 
-Use Linux with Git, Java 17 or newer, Nextflow, Python 3, samtools, BWA, minimap2, pigz, curl or wget, and either Docker or Singularity/Apptainer.
+Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), [Java 17](https://adoptium.net/temurin/releases/?version=17) or newer, [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Python 3](https://www.python.org/downloads/), [samtools](https://www.htslib.org/download/), [BWA](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2), [pigz](https://zlib.net/pigz/), [curl](https://curl.se/download.html) or [wget](https://www.gnu.org/software/wget/), and either [Docker Engine](https://docs.docker.com/engine/install/) or [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html)/[Apptainer](https://apptainer.org/docs/admin/main/installation.html).
 
 The first uncached analysis downloads the hg38 reference (about **3.16 GB**) and creates a BWA index. This commonly takes **30–60 minutes**, and the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.
 
@@ -106,35 +106,40 @@ See [QuickStart Example 1](https://cfarkas.github.io/oncotracer/quick_start/) fo
 
 ## QuickStart Example 2: three public HCC1143 libraries
 
-The HCC1143 tutorial downloads six public FASTQs and uses this exact sample table:
+The HCC1143 tutorial downloads six public FASTQs. After downloading them, create the exact sample table and run Automatic Setup:
 
-```csv
+```bash
+# Set the standard repository path and enter it.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+
+# Create or replace the HCC1143 sample table with the exact three rows.
+cat > "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" <<'CSV'
 sample_name,status
 HCC1143_DMSO,TUMOR
 HCC1143_BEZ235,TUMOR
 HCC1143_TRAMETINIB,TUMOR
-```
+CSV
 
-After the files are downloaded and validated, run:
+# Display the saved sample table before continuing.
+cat "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv"
 
-```bash
-# Enter the cloned repository.
-cd /home/student/oncotracer
-
-# Generate the Illumina YAML and samplesheet automatically.
-nextflow run /home/student/oncotracer/main.nf --auto_params \
+# Generate the Illumina YAML and R1/R2 samplesheet automatically.
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
-  --reads_folder /home/student/oncotracer/test/public/hcc1143_lpwgs \
-  --sample_table /home/student/oncotracer/test/public/hcc1143_lpwgs/samples.csv \
-  --auto_config_dir /home/student/oncotracer/test/configs/hcc1143_lpwgs \
-  --auto_outdir /home/student/oncotracer/test/runs/hcc1143_lpwgs
+  --reads_folder "$REPO_DIR/test/public/hcc1143_lpwgs" \
+  --sample_table "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" \
+  --auto_config_dir "$REPO_DIR/test/configs/hcc1143_lpwgs" \
+  --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs"
 
 # Run the generated HCC1143 configuration with Docker.
-nextflow run /home/student/oncotracer/main.nf --docker \
-  -params-file /home/student/oncotracer/test/configs/hcc1143_lpwgs/illumina.auto.yml \
-  -work-dir /home/student/oncotracer/test/work/hcc1143_lpwgs \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
   -resume
 ```
+
+The `cat > ... <<'CSV'` block is copy/paste ready and replaces an existing table instead of appending duplicate rows. To edit the file manually, use `nano /path/to/my/directory/oncotracer/test/public/hcc1143_lpwgs/samples.csv`, save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
 
 See [QuickStart Example 2](https://cfarkas.github.io/oncotracer/public_cohort/) for the downloads, checksums, output checks, and resume command.
 

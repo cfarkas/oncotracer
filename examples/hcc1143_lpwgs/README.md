@@ -4,35 +4,36 @@ This example uses three paired-end HCC1143 low-pass whole-genome sequencing libr
 
 All rows use `TUMOR`. DMSO is a treatment control, not a normal genome. Tiny unpaired singleton files are excluded because this example requires one matched R1/R2 pair per sample.
 
-The exact sample table is:
+Follow [QuickStart Example 2](https://cfarkas.github.io/oncotracer/public_cohort/) for the six download commands, MD5 checks, `gzip -t`, output checks, and resume instructions.
 
-```csv
+After downloading the FASTQs, create the exact sample table and run:
+
+```bash
+# Set the standard repository and reads paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+cd "$REPO_DIR"
+
+# Create or replace the exact HCC1143 sample table.
+cat > "$READS_DIR/samples.csv" <<'CSV'
 sample_name,status
 HCC1143_DMSO,TUMOR
 HCC1143_BEZ235,TUMOR
 HCC1143_TRAMETINIB,TUMOR
-```
-
-Follow [QuickStart Example 2](https://cfarkas.github.io/oncotracer/public_cohort/) for the six download commands, MD5 checks, `gzip -t`, output checks, and resume instructions.
-
-After the FASTQs and `samples.csv` are present, run:
-
-```bash
-# Enter the cloned OncoTracer repository.
-cd /home/student/oncotracer
+CSV
 
 # Generate the Illumina YAML and R1/R2 samplesheet automatically.
-nextflow run /home/student/oncotracer/main.nf --auto_params \
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
-  --reads_folder /home/student/oncotracer/test/public/hcc1143_lpwgs \
-  --sample_table /home/student/oncotracer/test/public/hcc1143_lpwgs/samples.csv \
-  --auto_config_dir /home/student/oncotracer/test/configs/hcc1143_lpwgs \
-  --auto_outdir /home/student/oncotracer/test/runs/hcc1143_lpwgs
+  --reads_folder "$READS_DIR" \
+  --sample_table "$READS_DIR/samples.csv" \
+  --auto_config_dir "$REPO_DIR/test/configs/hcc1143_lpwgs" \
+  --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs"
 
 # Run or resume the generated configuration with Docker.
-nextflow run /home/student/oncotracer/main.nf --docker \
-  -params-file /home/student/oncotracer/test/configs/hcc1143_lpwgs/illumina.auto.yml \
-  -work-dir /home/student/oncotracer/test/work/hcc1143_lpwgs \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
   -resume
 ```
 

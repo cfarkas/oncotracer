@@ -27,9 +27,9 @@ A YAML is a plain-text list of paths and settings. It does not contain sequencin
 
 ```yaml
 mode: illumina
-lpwgs_root: /home/user/oncotracer_project
-outdir: /home/user/oncotracer_project/results
-illumina_samplesheet: /home/user/oncotracer_project/input/illumina.samplesheet.csv
+lpwgs_root: /path/to/my/directory/oncotracer/project
+outdir: /path/to/my/directory/oncotracer/project/results
+illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
 ```
 
 Keep the input, output, work, reference, and cache paths under a project root that the selected container can access.
@@ -39,18 +39,22 @@ Keep the input, output, work, reference, and cache paths under a project root th
 Create a sample table and point `--auto_params` at the reads folder. Automatic Setup writes the YAML and, for Illumina, the FASTQ samplesheet.
 
 ```bash
+# Set the standard repository and project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+
 # Generate an Illumina YAML and samplesheet from a standard FASTQ folder.
-nextflow run main.nf --auto_params \
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
-  --reads_folder /absolute/project/input/fastq \
-  --sample_table /absolute/project/input/samples.csv \
-  --auto_config_dir /absolute/project/config \
-  --auto_outdir /absolute/project/results
+  --reads_folder "$PROJECT_DIR/input/fastq" \
+  --sample_table "$PROJECT_DIR/input/samples.csv" \
+  --auto_config_dir "$PROJECT_DIR/config" \
+  --auto_outdir "$PROJECT_DIR/results"
 
 # Run the generated configuration with Docker.
-nextflow run main.nf --docker \
-  -params-file /absolute/project/config/illumina.auto.yml \
-  -work-dir /absolute/project/work \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work" \
   -resume
 ```
 
@@ -61,14 +65,15 @@ See [Automatic Setup](auto_params.md) for exact Illumina and ONT sample tables.
 ### 1. Copy a template
 
 ```bash
-# Enter the repository.
-cd oncotracer
+# Set the standard repository path and enter it.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
 
 # Copy the Illumina template to an editable file.
-cp params/illumina.minimal.yml params/my_illumina.yml
+cp "$REPO_DIR/params/illumina.minimal.yml" "$REPO_DIR/params/my_illumina.yml"
 
 # For ONT, copy the ONT template instead.
-# cp params/ont.minimal.yml params/my_ont.yml
+# cp "$REPO_DIR/params/ont.minimal.yml" "$REPO_DIR/params/my_ont.yml"
 ```
 
 Do not edit the versioned template directly.
@@ -76,10 +81,13 @@ Do not edit the versioned template directly.
 ### 2. Resolve the project paths
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Print the absolute repository and project paths.
-realpath .
-realpath project
-realpath project/input
+realpath "$REPO_DIR"
+realpath "$REPO_DIR/project"
+realpath "$REPO_DIR/project/input"
 ```
 
 Use absolute paths in the YAML.
@@ -88,7 +96,7 @@ Use absolute paths in the YAML.
 
 ```bash
 # Open the copied Illumina YAML.
-nano params/my_illumina.yml
+nano /path/to/my/directory/oncotracer/params/my_illumina.yml
 ```
 
 Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`. Do not use tabs.
@@ -96,17 +104,23 @@ Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`. Do not use tabs.
 ### 4. Check the workflow wiring
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Validate parameters and workflow connections without running the analysis tools.
-nextflow run main.nf -stub-run --docker \
-  -params-file params/my_illumina.yml
+nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+  -params-file "$REPO_DIR/params/my_illumina.yml"
 ```
 
 ### 5. Run the analysis
 
 ```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
 # Run or resume the manual Illumina YAML with Docker.
-nextflow run main.nf --docker \
-  -params-file params/my_illumina.yml \
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/params/my_illumina.yml" \
   -resume
 ```
 

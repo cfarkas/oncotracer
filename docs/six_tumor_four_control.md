@@ -2,19 +2,25 @@
 
 This page is a **command template**, not a QuickStart. The repository does **not** include or download the `ONCO001`–`ONCO006` and `CTRL001`–`CTRL004` FASTQs. Nothing on this page can run until you provide all 20 paired-end files.
 
-The example shows how Automatic Setup can generate a local qDNAseq panel of normals from four controls and apply it to six tumors. Corrected CNA outputs contain the six tumors; the controls remain reference and quality-control inputs.
+The example shows how Automatic Setup generates a local qDNAseq panel of normals from four controls and applies it to six tumors. Corrected CNA outputs contain the six tumors; controls remain reference and quality-control inputs.
 
 The Docker commands use [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer). On an HPC system configured with Singularity or Apptainer, use `--singularity` instead of `--docker`.
 
 ## Estimated resources
 
-The first uncached run also downloads hg38 and creates a BWA index. The pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. This example gives Nextflow a 20-logical-CPU view and does not request a GPU. Actual time and storage depend on the size of your FASTQs.
+The first uncached run downloads hg38 and creates a BWA index. The pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. This example gives Nextflow a 20-logical-CPU view and does not request a GPU. Actual time and storage depend on the size of your FASTQs.
 
-## 1. Check the required programs
+## 1. Set the paths and check the programs
+
+Use `/path/to/my/directory/oncotracer` for the repository. Keep the local sequencing project outside the Git clone.
 
 ```bash
-# Enter the cloned OncoTracer repository.
-cd /home/student/oncotracer
+# Set the standard repository and local-project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+# Enter the cloned repository.
+cd "$REPO_DIR"
 
 # Confirm the required launchers.
 nextflow -version
@@ -29,21 +35,20 @@ Continue with CPU IDs `0-19` only when those IDs belong to your allocation. Othe
 
 ## 2. Arrange the 20 FASTQ files
 
-Create a project directory outside the Git clone:
-
 ```bash
-# Create the input, configuration, result, and reusable-work directories.
+# Set the local-project path and create its directories.
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
 mkdir -p \
-  /home/student/oncotracer_projects/onco6_ctrl4/input/fastq \
-  /home/student/oncotracer_projects/onco6_ctrl4/config \
-  /home/student/oncotracer_projects/onco6_ctrl4/results \
-  /home/student/oncotracer_projects/onco6_ctrl4/work
+  "$PROJECT_DIR/input/fastq" \
+  "$PROJECT_DIR/config" \
+  "$PROJECT_DIR/results" \
+  "$PROJECT_DIR/work"
 ```
 
 Place exactly one R1/R2 pair for each sample directly in `input/fastq`:
 
 ```text
-/home/student/oncotracer_projects/onco6_ctrl4/
+/path/to/my/directory/oncotracer_projects/onco6_ctrl4/
 ├── input/
 │   ├── samples.csv
 │   └── fastq/
@@ -75,8 +80,11 @@ Place exactly one R1/R2 pair for each sample directly in `input/fastq`:
 Automatic Setup expects one pair per sample in the top level of the FASTQ directory. It does not combine lane files recursively.
 
 ```bash
+# Set the local-project path.
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
 # Confirm that the input directory contains exactly 20 compressed FASTQs.
-find /home/student/oncotracer_projects/onco6_ctrl4/input/fastq \
+find "$PROJECT_DIR/input/fastq" \
   -maxdepth 1 -type f -name '*.fastq.gz' | wc -l
 ```
 
@@ -84,14 +92,14 @@ The command must print `20`.
 
 ## 3. Create the tumor/normal table
 
+Use this copy/paste-ready command. It creates or replaces the table instead of appending duplicate rows.
+
 ```bash
-# Open the sample table in Nano.
-nano /home/student/oncotracer_projects/onco6_ctrl4/input/samples.csv
-```
+# Set the local-project path.
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
 
-Paste exactly this content:
-
-```csv
+# Create the exact six-tumor/four-control table.
+cat > "$PROJECT_DIR/input/samples.csv" <<'CSV'
 sample_name,status
 ONCO001,TUMOR
 ONCO002,TUMOR
@@ -103,17 +111,20 @@ CTRL001,NORMAL
 CTRL002,NORMAL
 CTRL003,NORMAL
 CTRL004,NORMAL
-```
+CSV
 
-Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
+# Display the saved table.
+cat "$PROJECT_DIR/input/samples.csv"
+```
 
 `sample_name` must match the text before `_R1` and `_R2`. Automatic Setup uses the four `NORMAL` rows to generate the local panel settings.
 
 ## 4. Set the CPU and GPU environment
 
 ```bash
-# Enter the repository before launching Nextflow.
-cd /home/student/oncotracer
+# Set the standard repository path and enter it.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
 
 # Hide GPU devices because this example does not request a GPU.
 export CUDA_VISIBLE_DEVICES=""
@@ -132,28 +143,35 @@ export NXF_OPTS="-XX:ActiveProcessorCount=20 -Xms512m -Xmx8g"
 `--auto_params` checks the 20 FASTQs, matches them to the sample table, writes `illumina.samplesheet.csv`, and writes `illumina.auto.yml`. It does not align reads or call CNAs.
 
 ```bash
+# Set the standard repository and local-project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
 # Validate the FASTQs and generate the Illumina YAML and samplesheet.
-taskset --cpu-list 0-19 nextflow run /home/student/oncotracer/main.nf \
+taskset --cpu-list 0-19 nextflow run "$REPO_DIR/main.nf" \
   --auto_params \
   --mode illumina \
-  --reads_folder /home/student/oncotracer_projects/onco6_ctrl4/input/fastq \
-  --sample_table /home/student/oncotracer_projects/onco6_ctrl4/input/samples.csv \
-  --auto_config_dir /home/student/oncotracer_projects/onco6_ctrl4/config \
-  --auto_outdir /home/student/oncotracer_projects/onco6_ctrl4/results \
-  -work-dir /home/student/oncotracer_projects/onco6_ctrl4/work/auto_params
+  --reads_folder "$PROJECT_DIR/input/fastq" \
+  --sample_table "$PROJECT_DIR/input/samples.csv" \
+  --auto_config_dir "$PROJECT_DIR/config" \
+  --auto_outdir "$PROJECT_DIR/results" \
+  -work-dir "$PROJECT_DIR/work/auto_params"
 ```
 
 Continue only after `AUTO_PARAMS SUCCESS` appears.
 
 ```bash
+# Set the local-project path.
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
 # Inspect the generated YAML.
-sed -n '1,120p' /home/student/oncotracer_projects/onco6_ctrl4/config/illumina.auto.yml
+sed -n '1,120p' "$PROJECT_DIR/config/illumina.auto.yml"
 
 # Inspect the generated FASTQ-to-sample mapping.
-sed -n '1,20p' /home/student/oncotracer_projects/onco6_ctrl4/config/illumina.samplesheet.csv
+sed -n '1,20p' "$PROJECT_DIR/config/illumina.samplesheet.csv"
 
 # Inspect sample counts and file hashes.
-cat /home/student/oncotracer_projects/onco6_ctrl4/config/auto_params_manifest.tsv
+cat "$PROJECT_DIR/config/auto_params_manifest.tsv"
 ```
 
 The YAML must include:
@@ -167,14 +185,15 @@ illumina_pon_min_mapq: 37
 illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1
 ```
 
-Check the generated roles:
-
 ```bash
+# Set the local-project path.
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
 # Count the generated tumor rows.
-grep -c ',tumor$' /home/student/oncotracer_projects/onco6_ctrl4/config/illumina.samplesheet.csv
+grep -c ',tumor$' "$PROJECT_DIR/config/illumina.samplesheet.csv"
 
 # Count the generated normal rows.
-grep -c ',normal$' /home/student/oncotracer_projects/onco6_ctrl4/config/illumina.samplesheet.csv
+grep -c ',normal$' "$PROJECT_DIR/config/illumina.samplesheet.csv"
 ```
 
 The commands must print `6` and `4`.
@@ -184,22 +203,30 @@ The commands must print `6` and `4`.
 ### Docker
 
 ```bash
-# Run the generated configuration with Docker, 20 visible CPUs, and resume support.
-taskset --cpu-list 0-19 nextflow run /home/student/oncotracer/main.nf \
+# Set the standard repository and local-project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+# Run the generated configuration with Docker and resume support.
+taskset --cpu-list 0-19 nextflow run "$REPO_DIR/main.nf" \
   --docker \
-  -params-file /home/student/oncotracer_projects/onco6_ctrl4/config/illumina.auto.yml \
-  -work-dir /home/student/oncotracer_projects/onco6_ctrl4/work/analysis \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/analysis" \
   -resume
 ```
 
 ### Singularity or Apptainer
 
 ```bash
+# Set the standard repository and local-project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
 # Run the same configuration through the HPC container option.
-taskset --cpu-list 0-19 nextflow run /home/student/oncotracer/main.nf \
+taskset --cpu-list 0-19 nextflow run "$REPO_DIR/main.nf" \
   --singularity \
-  -params-file /home/student/oncotracer_projects/onco6_ctrl4/config/illumina.auto.yml \
-  -work-dir /home/student/oncotracer_projects/onco6_ctrl4/work/analysis \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/analysis" \
   -resume
 ```
 
@@ -210,22 +237,24 @@ Keep the terminal open until Nextflow returns to the prompt. Do not start a seco
 Restore the environment variables from step 4, then use the same YAML and work directory:
 
 ```bash
-# Return to the repository.
-cd /home/student/oncotracer
+# Set the standard repository and local-project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
 
 # Resume the existing Docker analysis.
-taskset --cpu-list 0-19 nextflow run /home/student/oncotracer/main.nf \
+taskset --cpu-list 0-19 nextflow run "$REPO_DIR/main.nf" \
   --docker \
-  -params-file /home/student/oncotracer_projects/onco6_ctrl4/config/illumina.auto.yml \
-  -work-dir /home/student/oncotracer_projects/onco6_ctrl4/work/analysis \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/analysis" \
   -resume
 ```
 
 ## 8. Verify the panel and tumor outputs
 
 ```bash
-# Set convenient paths for the checks below.
-OUT=/home/student/oncotracer_projects/onco6_ctrl4/results
+# Set the local-project and result paths.
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+OUT="$PROJECT_DIR/results"
 PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
 
 # Require the successful panel completion marker.
