@@ -105,6 +105,53 @@ sed -n '1,6p' project/input/illumina.samplesheet.csv
 
 Each sample needs an existing `fastq_1` path. For paired-end data, `fastq_2` must also exist; for an all-single-end run, leave every `fastq_2` cell empty. Do not mix layouts in one invocation. Sample names should be unique and should not change between the samplesheet, pathology table, and outputs.
 
+## Illumina NORMAL and local-PoN errors
+
+Automatic Setup accepts either no normal controls or at least two. This error
+is deliberate:
+
+```text
+ERROR: Illumina PoN requires either zero NORMAL samples or at least two; found 1
+```
+
+Provide a genuine second control, or use a tumor-only table if no local PoN is
+intended. Do not relabel a biological normal as a tumor merely to bypass the
+check. With zero `NORMAL` rows, the generated
+`illumina_build_pon: false` is expected; it is not a failed detection.
+
+For a manual YAML, these settings must agree exactly with the samplesheet:
+
+```yaml
+illumina_build_pon: true
+illumina_pon_normal_samples: ctrl001,ctrl002
+illumina_pon_min_normals: 2
+```
+
+Every and only samplesheet row marked `normal` must appear once in
+`illumina_pon_normal_samples`. IDs are exact: check case, spelling, commas, and
+duplicate entries. The selected count must be at least two and at least
+`illumina_pon_min_normals`. Common messages mean:
+
+- `samplesheet contains NORMAL rows but --build-pon is off` -- enable the PoN
+  and provide the exact list, or remove the normal rows when no PoN is intended;
+- `requested PoN normals ... do not exactly match samplesheet NORMAL rows` --
+  make the YAML list and `normal` rows identical; and
+- `--build-pon requires --pon-normal-samples` -- add the explicit list.
+
+Inspect both files together:
+
+```bash
+sed -n '1,160p' params/my_run.yml
+sed -n '1,40p' project/input/illumina.samplesheet.csv
+```
+
+For a run that reached local-PoN processing, require a newly written
+`01_samurai_illumina/qdnaseq_local_pon/qdnaseq_local_pon.done`. An interrupted
+run can leave partial files, but the old marker is invalidated before work
+starts. Fix the configuration or input error and rerun the same command with
+`-resume`; do not interpret partial PoN artifacts.
+
+
 ## ONT barcode not found or skipped
 
 `ont_folder` must contain barcode directories, usually under `fastq_pass/`:

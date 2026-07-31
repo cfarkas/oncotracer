@@ -44,7 +44,7 @@ A command-line pipeline parameter begins with two hyphens, for example `--mode i
 | `auto_params` | Boolean | `false` | Generate a run YAML from a reads folder and sample table. Use as `--auto_params`. |
 | `reads_folder` | absolute directory | `null` | Flat all-single-end or all-paired FASTQ folder for Illumina, or the ONT `fastq_pass` folder containing barcode directories. Required with `auto_params`. |
 | `sample_table` | absolute CSV, TSV, or whitespace-delimited TXT path | `null` | Illumina `sample_name,status` table or ONT `barcode,sample_name,status` table. Required with `auto_params`. |
-| `auto_config_dir` | absolute directory or `null` | `<reads_folder>/oncotracer_config` | Destination for generated YAML and, for Illumina, the generated samplesheet. |
+| `auto_config_dir` | absolute directory or `null` | `<reads_folder>/oncotracer_config` | Destination for the generated YAML, audit manifest, and, for Illumina, samplesheet. |
 | `auto_outdir` | absolute directory or `null` | `<reads_folder>/oncotracer_results` | Result path written into the generated YAML. |
 
 ## Common analysis parameters
@@ -78,8 +78,20 @@ Use exactly one of `--docker`, `--singularity`, or `--conda` for installation or
 | `illumina_analysis_type` | text; standard route `solid_biopsy` | `solid_biopsy` | Analysis preset passed to SAMURAI. |
 | `illumina_caller` | text; current route `qdnaseq` | `qdnaseq` | CNA caller. Downstream Illumina paths expect qDNAseq output. |
 | `illumina_binsize_kb` | positive integer, kilobases | `100` | Initial qDNAseq copy-number bin width. |
+| `illumina_build_pon` | Boolean | `false` | Builds and applies a run-local qDNAseq panel of normals. When `true`, the caller must be `qdnaseq` and controls must satisfy `illumina_pon_min_normals` with an absolute minimum of two. When `false`, the samplesheet must have no normal rows and the explicit list must be `null`. |
+| `illumina_pon_normal_samples` | comma-separated sample IDs or `null` | `null` | Exact control list. It must contain every and only samplesheet ID with `status: normal`, without duplicates; any missing or extra ID is an error. |
+| `illumina_pon_min_normals` | integer greater than or equal to `2` | `2` | Minimum number of selected normal controls required before panel construction starts. |
+| `illumina_pon_name` | starts with a letter/digit; then letters, digits, `.`, `_`, or `-` | `illumina_local_PoN` | Name recorded for the local panel in its generated artifacts. |
+| `illumina_pon_min_mapq` | non-negative integer, MAPQ | `37` | Minimum alignment mapping quality used to construct the normal reference and corrected profiles. |
+| `illumina_pon_r_container` | Docker/Apptainer image URI | `docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1` | Reproducible R/qDNAseq runtime used for local-PoN generation and correction. |
 
-The upstream directory is always derived as `outdir/01_samurai_illumina`; there is no user-facing SAMURAI output parameter.
+Automatic Setup writes `illumina_build_pon: false` when there are no `NORMAL`
+rows, rejects exactly one normal, and enables the panel with an explicit sample
+list and matching minimum when at least two normals are present. Local-PoN
+results are written below
+`outdir/01_samurai_illumina/qdnaseq_local_pon/`; corrected CNA results contain
+only `TUMOR` samples. The upstream directory itself is always derived as
+`outdir/01_samurai_illumina`; there is no user-facing SAMURAI output parameter.
 
 ## ONT parameters
 

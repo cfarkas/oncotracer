@@ -8,7 +8,7 @@ You normally need **one run YAML**, not every configuration page. Use this page 
 | --- | --- | --- |
 | Verify that OncoTracer works on this computer | [QuickStart Example 1](quick_start.md) | Public Illumina and ONT data plus generated test YAMLs |
 | Run the real three-library/six-FASTQ cohort | [QuickStart Example 2](public_cohort.md) | Download manifest, automatic YAML, full cohort results |
-| Run your own folder with standard names | [Automatic setup (recommended default)](auto_params.md) | A small sample table; OncoTracer generates YAML/samplesheet |
+| Run your own folder with standard names | [Automatic setup (recommended default)](auto_params.md) | A small sample table; OncoTracer generates a YAML, audit manifest, and Illumina samplesheet |
 | Write an Illumina YAML manually | [Illumina manual setup (second option)](configuration/illumina.md#second-option-manual-setup) | Single-end or paired-end samplesheet plus one copied YAML |
 | Write an ONT YAML manually | [ONT manual setup (second option)](configuration/ont.md) | Barcode folders/mapping plus one copied YAML |
 | Add CNA classifier/pathology comparison | [Pathology and classifier](configuration/pathology.md) | Extra keys in the same Illumina YAML plus matched pathology CSV |
@@ -16,6 +16,11 @@ You normally need **one run YAML**, not every configuration page. Use this page 
 | Look up one field/default | [All parameters](configuration/parameter_reference.md) | Reference only; do not copy every option |
 
 If this is your first run with your own data, use automatic setup as the default. Manual YAML editing is the second option when filenames do not follow the expected patterns or when you need non-default options.
+
+For Illumina, Automatic Setup disables the local panel of normals when the
+sample table has no `NORMAL` rows, rejects exactly one, and enables it with an
+explicit control list when there are at least two. See [Automatic Setup](auto_params.md)
+before preparing a tumor/control cohort.
 
 ## One YAML controls one run
 

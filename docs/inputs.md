@@ -28,6 +28,14 @@ oncotracer/
     │   │   ├── Patient_A_R2.fastq.gz
     │   │   ├── Patient_B_R1.fastq.gz
     │   │   ├── Patient_B_R2.fastq.gz
+    │   │   ├── ctrl001_R1.fastq.gz
+    │   │   ├── ctrl001_R2.fastq.gz
+    │   │   ├── ctrl002_R1.fastq.gz
+    │   │   ├── ctrl002_R2.fastq.gz
+    │   │   ├── ctrl003_R1.fastq.gz
+    │   │   ├── ctrl003_R2.fastq.gz
+    │   │   ├── ctrl004_R1.fastq.gz
+    │   │   ├── ctrl004_R2.fastq.gz
     │   │   └── samples.csv
     │   ├── pathology.csv
     │   └── fastq_pass/
@@ -50,17 +58,29 @@ sample table must already exist; the two destination folders do not.
 | --- | --- |
 | `--reads_folder` | The existing folder containing the FASTQ files. |
 | `--sample_table` | The existing CSV that connects file or barcode names to sample names and `TUMOR`/`NORMAL`. |
-| `--auto_config_dir` | Where Automatic Setup creates the YAML and, for Illumina, the generated samplesheet. The folder is created if needed. |
+| `--auto_config_dir` | Where Automatic Setup creates the YAML, checksum/count manifest, and, for Illumina, samplesheet. The folder is created if needed. |
 | `--auto_outdir` | Where the later real analysis will save BAMs, CNA tables, plots, and reports. Automatic Setup creates this folder if needed and writes it as `outdir:` in the YAML, but no reads are analyzed yet. |
 
 Use absolute paths because Automatic Setup runs inside a Nextflow task.
+
+For an Illumina local panel of normals, every control FASTQ must use the same
+single-end or paired-end layout as the tumors. Automatic Setup applies these
+rules to the number of `NORMAL` rows: zero disables the local panel, exactly
+one is a configuration error, and two or more enable it. With two or more, the
+generated YAML preserves the normal sample IDs in table order and sets
+`illumina_pon_min_normals` to their count. `NORMAL` samples build the reference
+only; corrected CNA outputs contain `TUMOR` samples only.
 
 For Illumina, create `project/input/illumina_fastq/samples.csv`:
 
 ```csv
 sample_name,status
 Patient_A,TUMOR
-Patient_B,NORMAL
+Patient_B,TUMOR
+ctrl001,NORMAL
+ctrl002,NORMAL
+ctrl003,NORMAL
+ctrl004,NORMAL
 ```
 
 Then run:
@@ -111,17 +131,21 @@ This example assumes the clone is `/home/student/oncotracer`; replace that prefi
 ```csv
 sample,fastq_1,fastq_2,status
 Patient_A,/home/student/oncotracer/project/input/illumina_fastq/Patient_A_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor
-Patient_B,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R2.fastq.gz,normal
+Patient_B,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor
+ctrl001,/home/student/oncotracer/project/input/illumina_fastq/ctrl001_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl001_R2.fastq.gz,normal
+ctrl002,/home/student/oncotracer/project/input/illumina_fastq/ctrl002_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl002_R2.fastq.gz,normal
+ctrl003,/home/student/oncotracer/project/input/illumina_fastq/ctrl003_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl003_R2.fastq.gz,normal
+ctrl004,/home/student/oncotracer/project/input/illumina_fastq/ctrl004_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl004_R2.fastq.gz,normal
 ```
 
 Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`.
 
 | Column | Required content |
 | --- | --- |
-| `sample` | Unique sample ID. Use letters, numbers, `_`, or `-`. Pathology matching is exact and case-sensitive. |
+| `sample` | Unique sample ID starting with a letter or digit; then use only letters, digits, `.`, `_`, or `-`. Pathology matching is exact and case-sensitive. |
 | `fastq_1` | Absolute path to this sample's R1 `.fastq.gz`. |
 | `fastq_2` | Absolute path to this sample's R2 `.fastq.gz`, or an empty cell when every library in the run is single-end. |
-| `status` | `tumor` or `normal`. |
+| `status` | `tumor` or `normal`. Tumors are analyzed and reported; selected normals are reference-only inputs when the local PoN is enabled. |
 
 For single-end data, keep the header unchanged and leave the third field empty:
 
@@ -131,6 +155,19 @@ Patient_SE,/home/student/oncotracer/project/input/illumina_fastq/Patient_SE.fast
 ```
 
 Do not mix single-end and paired-end rows in one workflow invocation.
+
+For a manually configured local panel, list the exact normal IDs and make the
+minimum agree with the intended control set:
+
+```yaml
+illumina_build_pon: true
+illumina_pon_normal_samples: ctrl001,ctrl002,ctrl003,ctrl004
+illumina_pon_min_normals: 4
+```
+
+The list must contain every and only samplesheet ID with `status: normal`, once
+each. OncoTracer rejects missing, extra, or duplicate control IDs rather than
+silently substituting a different normal.
 
 Inspect every row and test both mates before running:
 
@@ -228,6 +265,8 @@ Before the real command, confirm:
 - every configured path is absolute and below `lpwgs_root`;
 - FASTQs exist, are non-empty, and compressed files pass `gzip -t`;
 - Illumina R1 and R2 belong to the same sample;
+- all Illumina tumor and normal rows use one consistent single-end or paired-end layout;
+- an enabled Illumina PoN selects at least `max(2, illumina_pon_min_normals)` exact `normal` IDs;
 - ONT barcode and sample lists have the same length and order;
 - sample names are unique and match pathology exactly; and
 - `outdir` is a new directory for this experiment.

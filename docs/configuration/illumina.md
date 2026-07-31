@@ -30,7 +30,15 @@ oncotracer/
             ├── Patient_A_R1.fastq.gz
             ├── Patient_A_R2.fastq.gz
             ├── Patient_B_R1.fastq.gz
-            └── Patient_B_R2.fastq.gz
+            ├── Patient_B_R2.fastq.gz
+            ├── ctrl001_R1.fastq.gz
+            ├── ctrl001_R2.fastq.gz
+            ├── ctrl002_R1.fastq.gz
+            ├── ctrl002_R2.fastq.gz
+            ├── ctrl003_R1.fastq.gz
+            ├── ctrl003_R2.fastq.gz
+            ├── ctrl004_R1.fastq.gz
+            └── ctrl004_R2.fastq.gz
 ```
 
 `Patient_A_R1.fastq.gz` pairs with `Patient_A_R2.fastq.gz`. Names ending in
@@ -51,7 +59,11 @@ Enter the header and one row per sample:
 ```csv
 sample_name,status
 Patient_A,TUMOR
-Patient_B,NORMAL
+Patient_B,TUMOR
+ctrl001,NORMAL
+ctrl002,NORMAL
+ctrl003,NORMAL
+ctrl004,NORMAL
 ```
 
 For paired data, `sample_name` must exactly match the filename text before
@@ -59,6 +71,14 @@ For paired data, `sample_name` must exactly match the filename text before
 filename without `.fastq.gz` or `.fq.gz`. `status` must be `TUMOR` or `NORMAL`
 (case-insensitive). In Nano, save with `Ctrl+O`, press `Enter`, then exit with
 `Ctrl+X`.
+
+Automatic Setup counts the normal rows. Zero normals disables the local PoN;
+exactly one is a configuration error; and two or more enable it. For an
+enabled panel, the generated YAML lists the normal IDs in table order and sets
+the minimum to that count. Here, all four controls are required. `NORMAL`
+samples build the reference but are not included in corrected CNA output;
+`TUMOR` samples are the reported cohort. Keep tumor and normal FASTQs in the
+same single-end or paired-end layout.
 
 Inspect the table:
 
@@ -81,17 +101,22 @@ This command checks that every row has exactly one single-end file or one R1/R2 
 
 ```text
 project/config/illumina/
+├── auto_params_manifest.tsv   # mode, sample counts, and checksums
 ├── illumina.auto.yml          # pass this file to -params-file
 └── illumina.samplesheet.csv   # detected single-end or R1/R2 paths
 ```
 
 It does **not** start alignment or CNA analysis.
 
+The samplesheet and manifest are published before the YAML, which is the final
+transactional commit point for the runnable configuration.
+
 ### 4. Inspect the generated files
 
 ```bash
 sed -n '1,120p' project/config/illumina/illumina.auto.yml              # inspect settings and absolute paths
 sed -n '1,20p' project/config/illumina/illumina.samplesheet.csv        # inspect detected inputs and status values
+sed -n '1,10p' project/config/illumina/auto_params_manifest.tsv        # inspect counts and checksums
 ```
 
 The generated YAML will resemble this. It is a **YAML example**, not a terminal command:
@@ -105,10 +130,21 @@ illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
 run_cna_classifier: false
+illumina_build_pon: true
+illumina_pon_normal_samples: "ctrl001,ctrl002,ctrl003,ctrl004"
+illumina_pon_min_normals: 4
+illumina_pon_name: ctrl001_ctrl002_ctrl003_ctrl004_PoN
+illumina_pon_min_mapq: 37
+illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1
 force: false
 ```
 
-The generator chooses an absolute `lpwgs_root` that contains the reads, generated configuration, and results. Your path will differ from `/home/student/oncotracer`.
+The generator chooses an absolute `lpwgs_root` that contains the reads,
+generated configuration, and results. It emits all six PoN settings: the exact
+quoted control list in table order, its count as the minimum, a reproducible
+name made from sanitized control IDs plus `_PoN`, MAPQ `37`, and the pinned
+qDNAseq container. With no controls it writes `illumina_build_pon: false`;
+exactly one control stops before a YAML is published.
 
 ### 5. Run and inspect the summary
 
@@ -140,7 +176,11 @@ Enter:
 ```csv
 sample,fastq_1,fastq_2,status
 Patient_A,/home/student/oncotracer/project/input/illumina_fastq/Patient_A_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor
-Patient_B,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R2.fastq.gz,normal
+Patient_B,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor
+ctrl001,/home/student/oncotracer/project/input/illumina_fastq/ctrl001_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl001_R2.fastq.gz,normal
+ctrl002,/home/student/oncotracer/project/input/illumina_fastq/ctrl002_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl002_R2.fastq.gz,normal
+ctrl003,/home/student/oncotracer/project/input/illumina_fastq/ctrl003_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl003_R2.fastq.gz,normal
+ctrl004,/home/student/oncotracer/project/input/illumina_fastq/ctrl004_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl004_R2.fastq.gz,normal
 ```
 
 Each row is one biological sample. `fastq_1` and `fastq_2` are absolute paths; `status` is `tumor` or `normal`. Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`.
@@ -171,23 +211,73 @@ cp params/illumina.minimal.yml params/my_illumina.yml                  # preserv
 nano params/my_illumina.yml                                           # replace the example paths
 ```
 
-A complete minimal file is:
+For this tumor-plus-controls example, enable the local PoN explicitly:
 
 ```yaml
 mode: illumina
 lpwgs_root: /home/student/oncotracer
 outdir: /home/student/oncotracer/project/runs/my_first_illumina_run
 illumina_samplesheet: /home/student/oncotracer/project/input/illumina.samplesheet.csv
+illumina_build_pon: true
+illumina_pon_normal_samples: ctrl001,ctrl002,ctrl003,ctrl004
+illumina_pon_min_normals: 4
+illumina_pon_name: illumina_local_PoN
+illumina_pon_min_mapq: 37
+illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1
 force: false
 ```
 
-The remaining settings use tested defaults: `solid_biopsy`, `qdnaseq`, and `100` kb bins. OncoTracer automatically writes the upstream results to `outdir/01_samurai_illumina`; do not add a separate SAMURAI output path.
+The remaining settings use tested defaults: `solid_biopsy`, `qdnaseq`, and
+`100` kb bins. OncoTracer writes the upstream results below
+`outdir/01_samurai_illumina`; do not add a separate SAMURAI output path.
 
 Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`. Inspect the result:
 
 ```bash
 sed -n '1,120p' params/my_illumina.yml                                # verify every saved value
 ```
+
+### How the local PoN is built
+
+OncoTracer requires the explicit control list to contain every and only
+samplesheet row marked `normal`, with no duplicates, and requires at least
+`max(2, illumina_pon_min_normals)` usable controls. It processes all controls
+with the same qDNAseq bin definition and uses the median normal log2 value at
+every matched bin as the robust reference.
+That reference is applied to each tumor independently. Corrected bins,
+segments, combined tables, and plots contain only samples marked `tumor`.
+
+The main audit files are:
+
+- `01_samurai_illumina/logs/normal_panel_manifest.tsv`, the stable run-level
+  copy of the exact controls used;
+- `01_samurai_illumina/qdnaseq_local_pon/pon/normal_panel_manifest.tsv` and
+  `pon/illumina_local_PoN.reference_bins.tsv`, the panel provenance and robust
+  reference;
+- `01_samurai_illumina/qdnaseq_local_pon/qc/normal_panel_sample_qc.tsv` and
+  `qc/sample_qc.tsv`, leave-one-out normal stability against `N-1` controls and
+  per-sample QC; and
+- `01_samurai_illumina/qdnaseq_local_pon/qdnaseq_local_pon_summary.tsv`,
+  `qdnaseq_local_pon_versions.tsv`, and `qdnaseq_local_pon.done`, the summary,
+  software provenance, and validated completion marker.
+
+Before panel generation starts, OncoTracer invalidates any prior
+`qdnaseq_local_pon.done` marker. The helper writes the new marker last, after
+its required outputs succeed, and the wrapper then validates the manifest and
+tumor-only results. A failed run can leave partial files but cannot appear
+complete. Require the new marker and the audit artifacts after the real run:
+
+```bash
+PON=project/runs/my_first_illumina_run/01_samurai_illumina/qdnaseq_local_pon
+test -s "$PON/qdnaseq_local_pon.done"
+sed -n '1,12p' "$PON/pon/normal_panel_manifest.tsv"
+sed -n '1,12p' "$PON/qc/normal_panel_sample_qc.tsv"
+sed -n '1,12p' "$PON/qdnaseq_local_pon_summary.tsv"
+find "$PON/bins" "$PON/segments" -maxdepth 1 -type f -print | sort
+```
+
+See [Output files](../outputs.md#illumina-local-panel-of-normals) for every
+generated file and its interpretation.
 
 ### How to edit a YAML file from the terminal
 
@@ -218,6 +308,12 @@ cat project/runs/my_first_illumina_run/06_workflow_summary/workflow_summary.txt 
 | `illumina_caller` | text: `qdnaseq` | `qdnaseq` | CNA caller used by the current Illumina workflow. |
 | `illumina_binsize_kb` | positive integer, kb | `100` | Width of the initial copy-number bins. |
 | `run_cna_classifier` | Boolean | `false` | Adds classifier/pathology outputs when `true`. |
+| `illumina_build_pon` | Boolean | `false` | Enables local qDNAseq normal-reference construction and tumor correction. |
+| `illumina_pon_normal_samples` | comma-separated exact sample IDs or `null` | `null` | Must contain every and only samplesheet ID marked `normal`, once each; missing, extra, or duplicate IDs fail validation. |
+| `illumina_pon_min_normals` | integer greater than or equal to `2` | `2` | Minimum number of selected controls required to start panel construction. |
+| `illumina_pon_name` | letters, numbers, `.`, `_`, or `-` | `illumina_local_PoN` | Names the generated local panel and reference artifacts. |
+| `illumina_pon_min_mapq` | non-negative integer | `37` | Minimum alignment mapping quality for panel and tumor qDNAseq processing. |
+| `illumina_pon_r_container` | container URI | `docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1` | Reproducible R/qDNAseq runtime for the local-PoN helper. |
 | `force` | Boolean | `false` | Requests supported refresh behavior. Keep `false` for real runs. |
 
 For all optional settings, see the [parameter reference](parameter_reference.md).
