@@ -31,6 +31,15 @@ FORBIDDEN_PHRASES = (
     "Use container runtimes only through Nextflow",
 )
 
+FORBIDDEN_PATHS = (
+    "/home/student/oncotracer",
+    "/home/user/oncotracer",
+    "/absolute/path/oncotracer",
+    "/data/study42",
+)
+
+STANDARD_REPOSITORY_PATH = "/path/to/my/directory/oncotracer"
+
 COMMENTED_BASH_FILES = (
     "README.md",
     "docs/installation.md",
@@ -48,12 +57,32 @@ COMMENTED_BASH_FILES = (
     "examples/prjna754199/README.md",
 )
 
+GENERIC_PATH_FILES = (
+    "README.md",
+    "docs/installation.md",
+    "docs/quick_start.md",
+    "docs/public_cohort.md",
+    "docs/full_tutorial.md",
+    "docs/six_tumor_four_control.md",
+    "docs/auto_params.md",
+    "docs/configuration.md",
+    "docs/running.md",
+    "docs/containers.md",
+    "docs/programs.md",
+    "examples/hcc1143_lpwgs/README.md",
+    "examples/prjna754199/README.md",
+)
+
 REQUIRED_TEXT = {
     "README.md": (
         "https://hub.docker.com/r/carlosfarkas/oncotracer",
-        "/path/to/my/directory",
+        STANDARD_REPOSITORY_PATH,
         "## Other Example Runs",
         "does **not** include or download",
+        "cat > \"$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv\" <<'CSV'",
+        "https://www.htslib.org/download/",
+        "https://github.com/lh3/bwa",
+        "https://github.com/lh3/minimap2",
     ),
     "docs/index.md": (
         "Other Example Run: six tumors and four controls",
@@ -65,6 +94,9 @@ REQUIRED_TEXT = {
         "--singularity",
         "https://hub.docker.com/r/carlosfarkas/oncotracer",
         "Other Example Run: six tumors and four controls",
+        "https://adoptium.net/temurin/releases/?version=17",
+        "https://www.python.org/downloads/",
+        "https://zlib.net/pigz/",
     ),
     "docs/quick_start.md": (
         "sample_name,status\nERR12341627,TUMOR",
@@ -75,6 +107,8 @@ REQUIRED_TEXT = {
         "sample_name,status\nHCC1143_DMSO,TUMOR",
         "HCC1143_BEZ235,TUMOR",
         "HCC1143_TRAMETINIB,TUMOR",
+        "cat > \"$READS_DIR/samples.csv\" <<'CSV'",
+        STANDARD_REPOSITORY_PATH,
     ),
     "docs/full_tutorial.md": (
         "sample_name,status\nDDLPS_1a,TUMOR",
@@ -122,6 +156,20 @@ def check_forbidden_phrases() -> None:
                 fail(f"obsolete phrase in {path.relative_to(ROOT)}: {phrase}")
 
 
+def check_generic_paths() -> None:
+    for path in DOC_TEXT_FILES:
+        text = path.read_text(encoding="utf-8")
+        for legacy_path in FORBIDDEN_PATHS:
+            if legacy_path in text:
+                fail(f"legacy example path in {path.relative_to(ROOT)}: {legacy_path}")
+    for relative_path in GENERIC_PATH_FILES:
+        if STANDARD_REPOSITORY_PATH not in read(relative_path):
+            fail(
+                f"missing standard repository path in {relative_path}: "
+                f"{STANDARD_REPOSITORY_PATH}"
+            )
+
+
 def check_required_text() -> None:
     for relative_path, snippets in REQUIRED_TEXT.items():
         text = read(relative_path)
@@ -149,9 +197,10 @@ def check_commented_bash_blocks() -> None:
 
 def main() -> None:
     check_forbidden_phrases()
+    check_generic_paths()
     check_required_text()
     check_commented_bash_blocks()
-    print("PASS: streamlined documentation and commented example commands")
+    print("PASS: streamlined documentation, generic paths, and commented commands")
 
 
 if __name__ == "__main__":
