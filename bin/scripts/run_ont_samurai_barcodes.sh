@@ -278,7 +278,7 @@ if [[ "$CALLER" == "qdnaseq" && -n "$NORMAL_PANEL" ]]; then
   echo "WARNING: SAMURAI qDNAseq does not consume --normal_panel. Use --normal-folder + --build-pon for local qDNAseq PoN correction." >&2
 fi
 
-LPWGS_ROOT="$(readlink -f "$LPWGS_ROOT")"
+LPWGS_ROOT="$(readlink -m "$LPWGS_ROOT")"
 cd "$LPWGS_ROOT"
 
 if [[ -f /opt/conda/etc/profile.d/conda.sh ]]; then
