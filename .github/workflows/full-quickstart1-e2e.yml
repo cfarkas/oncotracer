@@ -22,7 +22,7 @@ jobs:
     env:
       NXF_ANSI_LOG: "false"
       NXF_DISABLE_CHECK_LATEST: "true"
-      NXF_OPTS: "-Xms512m -Xmx4g"
+      NXF_OPTS: "-Xms256m -Xmx1g"
 
     steps:
       - name: Check out repository
@@ -48,6 +48,35 @@ jobs:
 
           curl -fsSL https://get.nextflow.io | bash
           sudo install -m 0755 nextflow /usr/local/bin/nextflow
+
+      - name: Configure hosted-runner resource limits
+        run: |
+          # SAMURAI's own GitHub Actions profile caps requested resources at
+          # 4 CPUs and 15 GB. Apply the same cap to this end-to-end run so the
+          # hg38 BWA index task can be scheduled on the 15.6 GiB hosted runner.
+          mkdir -p "$HOME/.nextflow"
+          cat > "$HOME/.nextflow/config" <<'EOF_CONFIG'
+          process {
+            resourceLimits = [
+              cpus: 4,
+              memory: '15.GB',
+              time: '6.h'
+            ]
+          }
+          EOF_CONFIG
+
+          # Give BWA additional virtual-memory headroom while it builds the
+          # genuine hg38 index instead of substituting a prebuilt index.
+          if [[ ! -e /swapfile.quickstart ]]; then
+            sudo fallocate -l 8G /swapfile.quickstart
+            sudo chmod 600 /swapfile.quickstart
+            sudo mkswap /swapfile.quickstart
+            sudo swapon /swapfile.quickstart || true
+          fi
+
+          cat "$HOME/.nextflow/config"
+          swapon --show || true
+          free -h
 
       - name: Record runtime resources and versions
         run: |
