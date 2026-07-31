@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -39,6 +40,24 @@ FORBIDDEN_PATHS = (
 )
 
 STANDARD_REPOSITORY_PATH = "/path/to/my/directory/oncotracer"
+
+HCC1143_WGET_URLS = (
+    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_1.fastq.gz",
+    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_2.fastq.gz",
+    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_1.fastq.gz",
+    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_2.fastq.gz",
+    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_1.fastq.gz",
+    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_2.fastq.gz",
+)
+
+HCC1143_TARGETS = (
+    "HCC1143_DMSO_R1.fastq.gz",
+    "HCC1143_DMSO_R2.fastq.gz",
+    "HCC1143_BEZ235_R1.fastq.gz",
+    "HCC1143_BEZ235_R2.fastq.gz",
+    "HCC1143_TRAMETINIB_R1.fastq.gz",
+    "HCC1143_TRAMETINIB_R2.fastq.gz",
+)
 
 COMMENTED_BASH_FILES = (
     "README.md",
@@ -79,7 +98,8 @@ REQUIRED_TEXT = {
         STANDARD_REPOSITORY_PATH,
         "## Other Example Runs",
         "does **not** include or download",
-        "cat > \"$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv\" <<'CSV'",
+        "cat > \"$READS_DIR/samples.csv\" <<'CSV'",
+        "wget --continue --directory-prefix=\"$READS_DIR\"",
         "https://www.htslib.org/download/",
         "https://github.com/lh3/bwa",
         "https://github.com/lh3/minimap2",
@@ -178,6 +198,19 @@ def check_required_text() -> None:
                 fail(f"missing required text in {relative_path}: {snippet}")
 
 
+def check_hcc1143_wget_downloads() -> None:
+    readme = read("README.md")
+    wget_command = 'wget --continue --directory-prefix="$READS_DIR"'
+    if readme.count(wget_command) != 6:
+        fail("README.md must expose exactly six resumable HCC1143 wget commands")
+    for url in HCC1143_WGET_URLS:
+        if url not in readme:
+            fail(f"README.md is missing HCC1143 download URL: {url}")
+    for target in HCC1143_TARGETS:
+        if target not in readme:
+            fail(f"README.md is missing HCC1143 target filename: {target}")
+
+
 def check_commented_bash_blocks() -> None:
     for relative_path in COMMENTED_BASH_FILES:
         text = read(relative_path)
@@ -195,12 +228,32 @@ def check_commented_bash_blocks() -> None:
                 )
 
 
+def check_bash_block_syntax() -> None:
+    for path in DOC_TEXT_FILES:
+        if path.suffix != ".md":
+            continue
+        relative_path = path.relative_to(ROOT)
+        for index, block in enumerate(BASH_BLOCK_RE.findall(path.read_text(encoding="utf-8")), start=1):
+            completed = subprocess.run(
+                ["bash", "-n"],
+                input=block,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if completed.returncode != 0:
+                detail = completed.stderr.strip() or "unknown Bash parse error"
+                fail(f"invalid Bash block {index} in {relative_path}: {detail}")
+
+
 def main() -> None:
     check_forbidden_phrases()
     check_generic_paths()
     check_required_text()
+    check_hcc1143_wget_downloads()
     check_commented_bash_blocks()
-    print("PASS: streamlined documentation, generic paths, and commented commands")
+    check_bash_block_syntax()
+    print("PASS: streamlined documentation, generic paths, wget downloads, and example syntax")
 
 
 if __name__ == "__main__":
