@@ -23,7 +23,7 @@ Java 17 or newer is required to launch Nextflow.
 | [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) | Per-FASTQ quality control | `01_samurai_illumina/fastqc/` |
 | [MultiQC](https://multiqc.info/) | Aggregate sample QC | `01_samurai_illumina/multiqc/` |
 | [Picard](https://broadinstitute.github.io/picard/) | Alignment and whole-genome metrics | `01_samurai_illumina/picard/` |
-| [qDNAseq](https://bioconductor.org/packages/QDNAseq/) | Read-depth binning and segmentation; optional local normal correction | `01_samurai_illumina/qdnaseq/` or `qdnaseq_local_pon/` |
+| [qDNAseq](https://bioconductor.org/packages/QDNAseq/) | Read-depth binning, segmentation, and optional local normal correction | `01_samurai_illumina/qdnaseq/` or `qdnaseq_local_pon/` |
 
 The standard Illumina configuration uses `solid_biopsy`, qDNAseq, and 100 kb bins.
 
@@ -50,13 +50,12 @@ These stages use Python and R packages including pandas, NumPy, SciPy, pysam, Ma
 ## Host program checks
 
 ```bash
-# Confirm Java, Nextflow, and Python.
+# Confirm Java, Nextflow, Python, and the host-side helpers.
 java -version
 nextflow -version
 python3 --version
-
-# Confirm the host-side alignment and compression helpers.
 samtools --version | sed -n '1p'
+bwa 2>&1 | head -2
 minimap2 --version
 pigz --version
 ```
@@ -64,22 +63,26 @@ pigz --version
 For Docker:
 
 ```bash
-# Confirm Docker is installed.
+# Set the standard repository path and confirm Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
 command -v docker
 
 # Let Nextflow prepare and test the maintained Docker image.
-nextflow run main.nf --install --docker \
-  --lpwgs_root /absolute/path/to/oncotracer-data
+nextflow run "$REPO_DIR/main.nf" --install --docker \
+  --lpwgs_root "$REPO_DIR/project"
 ```
 
 For Singularity or Apptainer:
 
 ```bash
-# Confirm the HPC launcher and test docker://carlosfarkas/oncotracer:latest.
+# Set the standard repository path and confirm the HPC launcher.
+REPO_DIR=/path/to/my/directory/oncotracer
 command -v singularity
 command -v apptainer
-nextflow run main.nf --install --singularity \
-  --lpwgs_root /absolute/path/to/oncotracer-data
+
+# Test docker://carlosfarkas/oncotracer:latest through Nextflow.
+nextflow run "$REPO_DIR/main.nf" --install --singularity \
+  --lpwgs_root "$REPO_DIR/project"
 ```
 
 Ask the system administrator to install missing host programs on managed systems.
@@ -87,16 +90,21 @@ Ask the system administrator to install missing host programs on managed systems
 ## Record versions from a completed run
 
 ```bash
+# Set the standard repository and output paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+OUT="$REPO_DIR/project/results"
+
 # List the Illumina or ONT pipeline provenance files.
-find /absolute/path/to/outdir/01_samurai_illumina/pipeline_info \
+find "$OUT/01_samurai_illumina/pipeline_info" \
   -maxdepth 1 -type f | sort
-find /absolute/path/to/outdir/01_samurai_ont/results/pipeline_info \
+find "$OUT/01_samurai_ont/results/pipeline_info" \
   -maxdepth 1 -type f | sort
 
 # Record the OncoTracer commit, Nextflow version, and selected image.
+cd "$REPO_DIR"
 git rev-parse HEAD
 nextflow -version
-cat .oncotracer/install/install_manifest.txt
+cat "$REPO_DIR/.oncotracer/install/install_manifest.txt"
 ```
 
 The installer and Illumina wrapper pin SAMURAI `v1.4.0`. Preserve the nested `pipeline_info`, generated YAML and samplesheet, OncoTracer commit, and installation manifest with formal study outputs.
