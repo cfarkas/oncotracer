@@ -1,132 +1,117 @@
 # YAML and Paths
 
-A YAML file is a small plain-text run configuration. It tells OncoTracer which sequencing route to use, where the inputs are, and where results belong. FASTQ reads are **not** stored in YAML.
+A YAML file is a small plain-text run configuration. It stores input paths, output paths, and analysis settings. FASTQ reads are not stored in the YAML.
 
 ## Choose how to create the YAML
 
-| Situation | Use this route |
+| Situation | Route |
 | --- | --- |
-| You have a folder of uniformly single-end or paired Illumina FASTQs, or ONT barcode folders | **Automatic setup** with `--auto_params` (recommended default) |
-| You need a custom samplesheet, custom reference, or advanced settings | **Manual YAML editing** (second option) |
-| You want to learn with public data | Use `--make_test`; see [QuickStart Example 1](../quick_start.md) |
+| Standard Illumina filenames or ONT barcode folders | [Automatic Setup](../auto_params.md), recommended |
+| Custom samplesheet, reference, or advanced settings | Manual YAML editing |
+| Public verification data | [QuickStart Example 1](../quick_start.md) |
 
-## Recommended default: generate it automatically
+## Automatic Setup
 
-Automatic setup checks the supported FASTQ layout and writes a YAML plus a
-checksum/count manifest; for Illumina it also writes the four-column
-samplesheet. It stops after creating these files; it does not run the analysis.
-
-From the repository root, first create a sample table. For Illumina:
+Create an Illumina sample table:
 
 ```csv
 sample_name,status
 Sample_A,TUMOR
-ctrl001,NORMAL
-ctrl002,NORMAL
+Control_1,NORMAL
+Control_2,NORMAL
 ```
 
-For Illumina, Automatic Setup treats normal counts deliberately: zero normal
-rows writes `illumina_build_pon: false`, exactly one stops with a configuration
-error, and two or more enable the local qDNAseq panel. With two controls, the
-generated YAML contains their exact IDs in table order, requires both, and
-derives a reproducible panel name. `NORMAL` rows build the reference only;
-corrected CNA outputs contain `TUMOR` samples. Do not label a biological sample
-incorrectly just to satisfy the minimum--either provide a genuine second
-control or run without a local PoN.
-
-Then generate configuration files. This example uses
-`/home/student/oncotracer`; replace that prefix with your repository location.
-OncoTracer creates the configuration and result folders automatically.
+Then generate the YAML:
 
 ```bash
+# Enter the cloned repository.
 cd /home/student/oncotracer
-nextflow run /home/student/oncotracer/main.nf --auto_params \
+
+# Generate an Illumina YAML and samplesheet.
+nextflow run main.nf --auto_params \
   --mode illumina \
-  --reads_folder /home/student/oncotracer/project/input/illumina_fastq \
-  --sample_table /home/student/oncotracer/project/input/illumina_fastq/samples.csv \
-  --auto_config_dir /home/student/oncotracer/project/config/illumina \
-  --auto_outdir /home/student/oncotracer/project/runs/illumina_auto
+  --reads_folder /home/student/oncotracer/project/input/fastq \
+  --sample_table /home/student/oncotracer/project/input/samples.csv \
+  --auto_config_dir /home/student/oncotracer/project/config \
+  --auto_outdir /home/student/oncotracer/project/results
 ```
 
-`--auto_config_dir` receives the generated YAML, audit manifest, and Illumina
-samplesheet.
-`--auto_outdir` is the folder where the later real run saves its results; no
-reads are analyzed by the command above.
-
-See [Automatic Setup](../auto_params.md) for the required Illumina filenames and ONT barcode table.
+Automatic Setup checks the files, writes the YAML and manifest, writes an Illumina samplesheet, and stops before analysis.
 
 ## YAML vocabulary
 
-A setting has a **key**, a colon, and a **value**:
-
 ```yaml
-mode: illumina                         # key: value; text after # is a comment
-illumina_binsize_kb: 100               # integer; unit is kilobases
-run_cna_classifier: false              # Boolean: true or false
-pathology_csv: null                    # null means “not supplied”
-ont_barcodes: barcode01,barcode02      # this OncoTracer field uses a comma-separated list
+mode: illumina                         # text value
+illumina_binsize_kb: 100               # integer value
+run_cna_classifier: false              # Boolean value
+pathology_csv: null                    # null means not supplied
+ont_barcodes: barcode01,barcode02      # comma-separated list
 ```
 
-Follow these rules:
+Use these rules:
 
 - Use spaces, not tabs.
-- Keep one setting per line and keep the colon after the key.
+- Keep one `key: value` setting per line.
 - Use lowercase `true`, `false`, and `null`.
-- A line beginning with `#` is a comment and is ignored.
-- Do not repeat a key. A repeated setting is easy to miss and can override an earlier value.
-- Avoid spaces and `#` in filenames. If they cannot be avoided, enclose the complete value in quotes.
-- The YAML contains literal text. It does not expand `~`, `$HOME`, `$ROOT`, or `$(pwd)`.
+- A line beginning with `#` is a comment.
+- Do not repeat a key.
+- The YAML does not expand `~`, `$HOME`, `$ROOT`, or `$(pwd)`.
+- Use absolute paths.
 
-## Understand the three important paths
-
-```yaml
-mode: illumina
-lpwgs_root: /home/student/oncotracer
-outdir: /home/student/oncotracer/project/runs/sample_a
-illumina_samplesheet: /home/student/oncotracer/project/input/illumina.samplesheet.csv
-```
-
-- `mode` chooses the `illumina` or `ont` route.
-- `lpwgs_root` is the absolute common parent that Docker or Singularity can mount. Put **every configured input, reference, and output below it**.
-- `outdir` is the result directory for one run. Give each experiment a new `outdir`.
-- `illumina_samplesheet` is a CSV that points to each sample's single FASTQ or R1/R2 pair.
-
-In this example, both `project/runs/sample_a` and `project/input/illumina.samplesheet.csv` begin with `/home/student/oncotracer`, so they are below `lpwgs_root`.
-
-!!! warning "A path visible on the host may still be invisible in the container"
-    Docker receives only the `lpwgs_root` tree. If a FASTQ is outside that tree, move or link it below the root, or choose a common parent that contains both the input and output paths.
-
-## Find and check absolute paths
-
-Run these commands in the cloned repository:
-
-```bash
-pwd                                                                    # print the absolute repository path
-realpath project/input/illumina_fastq/Sample_A_R1.fastq.gz             # print one absolute FASTQ path
-ls -lh project/input/illumina_fastq/Sample_A_R1.fastq.gz               # confirm that it exists and is not empty
-gzip -t project/input/illumina_fastq/Sample_A_R1.fastq.gz              # verify gzip integrity; no output means success
-```
-
-On Linux, an absolute path starts with `/`. In WSL use a Linux path such as `/mnt/c/Users/Name/oncotracer`, not `C:\Users\Name\oncotracer`. Paths are case-sensitive.
-
-## Second option: manual YAML editing
-
-Use manual setup only when automatic detection does not fit the study.
-
-```bash
-cd /home/student/oncotracer                                         # enter the repository
-cp params/illumina.minimal.yml params/my_illumina.yml               # preserve the versioned template
-pwd                                                                  # copy this absolute path for the YAML
-nano params/my_illumina.yml                                         # edit the copied file
-```
-
-A complete manual Illumina file looks like this. This is a **YAML example**, not a terminal command:
+## The important paths
 
 ```yaml
 mode: illumina
-lpwgs_root: /home/student/oncotracer
-outdir: /home/student/oncotracer/project/runs/sample_a
-illumina_samplesheet: /home/student/oncotracer/project/input/illumina.samplesheet.csv
+lpwgs_root: /home/student/oncotracer/project
+outdir: /home/student/oncotracer/project/results/sample_a
+illumina_samplesheet: /home/student/oncotracer/project/config/illumina.samplesheet.csv
+```
+
+- `mode` selects `illumina` or `ont`.
+- `lpwgs_root` is the common directory made available to Docker or Singularity.
+- `outdir` is the result directory for one run.
+- `illumina_samplesheet` points to the FASTQ-to-sample CSV.
+
+All configured inputs and outputs should be below `lpwgs_root` so the container can access them.
+
+## Check absolute paths
+
+```bash
+# Print the repository path.
+pwd
+
+# Print an absolute FASTQ path.
+realpath project/input/fastq/Sample_A_R1.fastq.gz
+
+# Confirm that the FASTQ exists and is not empty.
+ls -lh project/input/fastq/Sample_A_R1.fastq.gz
+
+# Check gzip integrity; success produces no output.
+gzip -t project/input/fastq/Sample_A_R1.fastq.gz
+```
+
+Linux paths start with `/`. In WSL, use a Linux path such as `/mnt/c/Users/Name/oncotracer`, not a Windows `C:\...` path.
+
+## Manual YAML editing
+
+```bash
+# Enter the cloned repository.
+cd /home/student/oncotracer
+
+# Copy the minimal Illumina template.
+cp params/illumina.minimal.yml params/my_illumina.yml
+
+# Edit the copied file.
+nano params/my_illumina.yml
+```
+
+Example manual YAML:
+
+```yaml
+mode: illumina
+lpwgs_root: /home/student/oncotracer/project
+outdir: /home/student/oncotracer/project/results/sample_a
+illumina_samplesheet: /home/student/oncotracer/project/config/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -134,15 +119,16 @@ run_cna_classifier: false
 force: false
 ```
 
-In Nano, move with the arrow keys and replace `/home/student/oncotracer` with the path printed by `pwd`. Save with `Ctrl+O`, press `Enter` to confirm the filename, then exit with `Ctrl+X`.
-
-Inspect the saved file before running:
-
 ```bash
-sed -n '1,120p' params/my_illumina.yml                               # print the file without editing it
-nextflow run main.nf --docker -params-file params/my_illumina.yml -resume   # real analysis
+# Inspect the saved YAML.
+sed -n '1,140p' params/my_illumina.yml
+
+# Run or resume the YAML with Docker.
+nextflow run main.nf --docker \
+  -params-file params/my_illumina.yml \
+  -resume
 ```
 
-Perform the file checks above before starting the real command.
+Use `--singularity` instead of `--docker` on a configured HPC system.
 
-Continue with [Illumina configuration](illumina.md), [ONT configuration](ont.md), or the [complete parameter reference](parameter_reference.md).
+Continue with [Illumina Configuration](illumina.md), [ONT Configuration](ont.md), or the [Parameter Reference](parameter_reference.md).
