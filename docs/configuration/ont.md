@@ -1,196 +1,189 @@
 # ONT Configuration
 
-Use this route for Oxford Nanopore FASTQ files organized in barcode directories. OncoTracer merges reads per selected barcode, aligns them, calls broad copy-number changes with SAMURAI/ichorCNA, refines CNA boundaries from the BAM files, and creates tables, plots, and a run summary.
+Use this route for Oxford Nanopore FASTQs arranged in barcode directories. OncoTracer combines reads per selected barcode, aligns them, calls broad CNAs with SAMURAI/ichorCNA, refines boundaries, and creates tables, plots, and a workflow summary.
 
-## Recommended: create the YAML automatically
+Automatic Setup is recommended because it validates the barcode folders and writes matching barcode/sample lists.
 
-Automatic setup is safest because it checks each barcode folder and writes the comma-separated barcode/sample lists in matching order.
+## Recommended: Automatic Setup
 
-### 1. Arrange the FASTQs
+### 1. Arrange the barcode folders
 
-Point OncoTracer to the `fastq_pass` directory, not to an individual barcode directory:
+Point `--reads_folder` to the `fastq_pass` directory, not to an individual barcode.
 
 ```text
-oncotracer/
-└── project/
-    └── input/
-        └── fastq_pass/
-            ├── barcode01/
-            │   ├── reads_001.fastq.gz
-            │   └── reads_002.fastq.gz
-            └── barcode02/
-                └── reads_001.fastq.gz
+/home/student/oncotracer/project/input/fastq_pass/
+├── barcode01/
+│   ├── reads_001.fastq.gz
+│   └── reads_002.fastq.gz
+├── barcode02/
+│   └── reads_001.fastq.gz
+└── barcode03/
+    └── reads_001.fastq.gz
 ```
 
-Each barcode can contain one or more `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz` files directly inside it. For an unbarcoded run, create a directory such as `barcode01` and put the FASTQs inside it.
+Each barcode can contain one or more `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz` files directly inside it.
 
-Inspect the reads already placed in the project. The example below assumes the
-repository is `/home/student/oncotracer`; replace that prefix if your clone is
-elsewhere. The configuration and result folders are created automatically.
+### 2. Create the barcode table
 
 ```bash
-cd /home/student/oncotracer
-find /home/student/oncotracer/project/input/fastq_pass \
-  -maxdepth 2 -type d -print | sort
-find /home/student/oncotracer/project/input/fastq_pass \
-  -maxdepth 2 -type f -print | sort | head -20
+# Create the ONT barcode-to-sample table.
+nano /home/student/oncotracer/project/input/fastq_pass/samples.csv
 ```
 
-### 2. Create an explicit barcode table
-
-```bash
-nano project/input/fastq_pass/samples.csv                             # create barcode-to-sample metadata
-```
-
-Enter:
+Paste exactly this content:
 
 ```csv
 barcode,sample_name,status
 barcode01,Patient_A,TUMOR
-barcode02,Patient_B,NORMAL
+barcode02,Patient_B,TUMOR
+barcode03,Control_1,NORMAL
 ```
 
-- `barcode` must exactly match a directory name.
-- `sample_name` becomes the biological label in the outputs.
-- `status` must be `TUMOR` or `NORMAL` (case-insensitive).
-- At least one row must be `TUMOR`.
+Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
 
-Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`. Inspect the file:
+The barcode value must match the directory name exactly. At least one row must be `TUMOR`.
 
-```bash
-sed -n '1,20p' project/input/fastq_pass/samples.csv                    # verify the header and mappings
-```
-
-### 3. Generate the configuration
+### 3. Generate the ONT YAML
 
 ```bash
+# Enter the cloned repository.
+cd /home/student/oncotracer
+
+# Generate the ONT YAML and manifest.
 nextflow run main.nf --auto_params \
   --mode ont \
   --reads_folder /home/student/oncotracer/project/input/fastq_pass \
   --sample_table /home/student/oncotracer/project/input/fastq_pass/samples.csv \
   --auto_config_dir /home/student/oncotracer/project/config/ont \
-  --auto_outdir /home/student/oncotracer/project/runs/ont_auto
+  --auto_outdir /home/student/oncotracer/project/results/ont
 ```
 
-Automatic setup verifies that each listed barcode exists, contains FASTQs, and has no empty or incomplete gzip file. It writes `project/config/ont/ont.auto.yml`; it does **not** start alignment or CNA analysis.
-
-### 4. Inspect the generated YAML
+Automatic Setup checks that each barcode exists and contains readable FASTQs. It then stops before analysis.
 
 ```bash
-sed -n '1,160p' project/config/ont/ont.auto.yml                        # inspect all generated settings
+# Inspect the generated ONT YAML.
+sed -n '1,160p' /home/student/oncotracer/project/config/ont/ont.auto.yml
+
+# Inspect sample counts and the YAML hash.
+cat /home/student/oncotracer/project/config/ont/auto_params_manifest.tsv
 ```
 
-For the table above, the file will resemble this. It is a **YAML example**, not a terminal command:
+The generated YAML resembles:
 
 ```yaml
 mode: ont
 lpwgs_root: /home/student/oncotracer/project
-outdir: /home/student/oncotracer/project/runs/ont_auto
+outdir: /home/student/oncotracer/project/results/ont
 ont_folder: /home/student/oncotracer/project/input/fastq_pass
-ont_barcodes: barcode01
-ont_sample_names: Patient_A
+ont_barcodes: barcode01,barcode02
+ont_sample_names: Patient_A,Patient_B
 ont_analysis_type: liquid_biopsy
 ont_caller: ichorcna
 ont_binsize_kb: 500
 ont_min_age_minutes: 0
+ont_normal_folder: /home/student/oncotracer/project/input/fastq_pass
+ont_normal_barcodes: barcode03
+ont_normal_sample_names: Control_1
 run_cna_classifier: false
 force: false
-ont_normal_folder: /home/student/oncotracer/project/input/fastq_pass
-ont_normal_barcodes: barcode02
-ont_normal_sample_names: Patient_B
 ```
 
-Tumor and normal barcodes are written to separate settings. Every comma-separated list is positional: the first barcode maps to the first sample name. Your absolute root will differ from `/home/student/oncotracer`.
+Barcode and sample-name lists are positional: the first barcode maps to the first sample name.
 
-### 5. Run and inspect the summary
+### 4. Run with Docker or Singularity
 
 ```bash
+# Run or resume the ONT analysis with Docker.
 nextflow run main.nf --docker \
   -params-file /home/student/oncotracer/project/config/ont/ont.auto.yml \
+  -work-dir /home/student/oncotracer/project/work/ont \
   -resume
-cat /home/student/oncotracer/project/runs/ont_auto/06_workflow_summary/workflow_summary.txt
 ```
-
-Use `--singularity` instead of `--docker` on a configured HPC system.
-
-## Second option: manual setup
-
-Choose manual setup when you need to select only some barcodes, use a custom reference, or configure normal/control data explicitly.
-
-### 1. Inspect the input tree
-
-This example assumes `pwd` prints `/home/student/oncotracer`. Replace that prefix if your clone is elsewhere.
 
 ```bash
-cd oncotracer
-find project/input/fastq_pass -maxdepth 2 -type d -print | sort        # list barcode directories
-find project/input/fastq_pass -maxdepth 2 -type f -print | sort | head -20 # inspect FASTQs
-ls -lh project/input/fastq_pass/barcode01                             # confirm the first barcode is not empty
+# Run or resume the same analysis with Singularity or Apptainer on HPC.
+nextflow run main.nf --singularity \
+  -params-file /home/student/oncotracer/project/config/ont/ont.auto.yml \
+  -work-dir /home/student/oncotracer/project/work/ont \
+  -resume
 ```
-
-### 2. Copy and edit the YAML
 
 ```bash
-cp params/ont.minimal.yml params/my_ont.yml                            # preserve the versioned template
-nano params/my_ont.yml                                                # replace paths, barcodes, and names
+# Read the final workflow summary.
+cat /home/student/oncotracer/project/results/ont/06_workflow_summary/workflow_summary.txt
 ```
 
-A minimal two-tumor configuration is:
+## Manual setup
+
+Use manual setup when selecting only part of a barcode tree, using a custom reference, or adding advanced settings.
+
+### 1. Copy and edit the YAML
+
+```bash
+# Enter the repository.
+cd /home/student/oncotracer
+
+# Copy the minimal ONT template.
+cp params/ont.minimal.yml params/my_ont.yml
+
+# Edit paths, barcodes, and sample names.
+nano params/my_ont.yml
+```
+
+Example manual YAML:
 
 ```yaml
 mode: ont
-lpwgs_root: /home/student/oncotracer
-outdir: /home/student/oncotracer/project/runs/my_first_ont_run
+lpwgs_root: /home/student/oncotracer/project
+outdir: /home/student/oncotracer/project/results/manual_ont
 ont_folder: /home/student/oncotracer/project/input/fastq_pass
 ont_barcodes: barcode01,barcode02
 ont_sample_names: Patient_A,Patient_B
+ont_analysis_type: liquid_biopsy
+ont_caller: ichorcna
+ont_binsize_kb: 500
+ont_min_age_minutes: 0
 force: false
 ```
 
-The first barcode maps to the first sample name; list lengths must match. The standard defaults are `liquid_biopsy`, `ichorcna`, `500` kb bins, and a minimum file age of `0` minutes. OncoTracer automatically writes upstream results to `outdir/01_samurai_ont`; do not add a separate SAMURAI output path.
-
-For a normal/control barcode in the same `fastq_pass` tree, add:
+Optional normal/control settings can be added to the same YAML:
 
 ```yaml
 ont_normal_folder: /home/student/oncotracer/project/input/fastq_pass
 ont_normal_barcodes: barcode03
-ont_normal_sample_names: Patient_Normal
+ont_normal_sample_names: Control_1
 ```
 
-Providing normal inputs activates the wrapper's local panel-of-normals route. Review the study design before combining controls from different runs.
-
-Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`. Inspect the saved file:
+### 2. Check and run
 
 ```bash
-sed -n '1,160p' params/my_ont.yml                                    # verify paths and positional lists
+# Inspect the saved YAML.
+sed -n '1,160p' params/my_ont.yml
+
+# Check workflow wiring without running the scientific tools.
+nextflow run main.nf -stub-run --docker \
+  -params-file params/my_ont.yml
+
+# Run or resume the manual ONT configuration.
+nextflow run main.nf --docker \
+  -params-file params/my_ont.yml \
+  -resume
 ```
 
-### 3. Check wiring and run
+Use `--singularity` instead of `--docker` on HPC.
 
-```bash
-nextflow run main.nf -stub-run --docker -params-file params/my_ont.yml # optional workflow-wiring check
-nextflow run main.nf --docker -params-file params/my_ont.yml -resume   # real analysis
-cat project/runs/my_first_ont_run/06_workflow_summary/workflow_summary.txt # inspect final locations
-```
+## Important settings
 
-## What each setting means
+| Setting | Purpose |
+| --- | --- |
+| `ont_folder` | Parent directory containing barcode folders |
+| `ont_barcodes` | Comma-separated tumor barcode directories |
+| `ont_sample_names` | Comma-separated sample names in the same order |
+| `ont_analysis_type` | SAMURAI preset; normally `liquid_biopsy` |
+| `ont_caller` | Current supported caller: `ichorcna` |
+| `ont_binsize_kb` | Initial ichorCNA bin size; default `500` |
+| `ont_min_age_minutes` | Minimum age of input files; use `0` for completed runs |
+| `ont_normal_*` | Optional normal/control folder, barcodes, and sample names |
+| `force` | Keep `false` for normal project runs |
 
-| Setting | Type and accepted value | Default | Purpose |
-| --- | --- | --- | --- |
-| `mode` | text: `ont` | required | Selects the Oxford Nanopore route. |
-| `lpwgs_root` | absolute directory | site-specific | Common parent mounted into the container. Every configured path must be below it. |
-| `outdir` | absolute directory | required | Results for this run. Use a new directory for a new experiment. |
-| `ont_folder` | absolute directory | required | Parent containing barcode directories. |
-| `ont_barcodes` | comma-separated directory names | required | Tumor barcode selection. |
-| `ont_sample_names` | comma-separated names | `null` | Biological names in the same order; strongly recommended. |
-| `ont_analysis_type` | `liquid_biopsy` or `solid_biopsy` | `liquid_biopsy` | SAMURAI analysis preset. Keep the standard default unless the study design requires another supported route. |
-| `ont_caller` | text: `ichorcna` | `ichorcna` | CNA caller required by the current downstream ONT route. |
-| `ont_binsize_kb` | positive integer, kb | `500` | Width of the initial copy-number bins. |
-| `ont_min_age_minutes` | non-negative integer, minutes | `0` | Use `0` for completed data; a positive delay helps avoid files still being written. |
-| `ont_ref` | absolute FASTA path or `null` | `null` | Optional custom reference below `lpwgs_root`. |
-| `ont_normal_*` | path and positional lists | `null` | Optional normal/control inputs. Supply the folder and barcode list together. |
-| `ont_build_pon` | Boolean | `false` | Explicitly request the supported panel-of-normals route. Normal inputs also trigger the wrapper's default local PoN behavior. |
-| `ont_force_realign` | Boolean | `false` | Recreate supported alignments instead of reusing them. |
-| `force` | Boolean | `false` | Requests supported refresh behavior. Keep `false` for real runs. |
-
-For all optional settings, see the [parameter reference](parameter_reference.md).
+See [Automatic Setup](../auto_params.md#ont-example) for another complete example and [Output Files](../outputs.md) for result locations.
