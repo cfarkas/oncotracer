@@ -106,15 +106,65 @@ See [QuickStart Example 1](https://cfarkas.github.io/oncotracer/quick_start/) fo
 
 ## QuickStart Example 2: three public HCC1143 libraries
 
-The HCC1143 tutorial downloads six public FASTQs. After downloading them, create the exact sample table and run Automatic Setup:
+The HCC1143 example downloads six public paired-end FASTQs. The following block exposes the complete `wget` download, file naming, sample-table creation, Automatic Setup, and analysis commands.
 
 ```bash
-# Set the standard repository path and enter it.
+# Set the standard repository and HCC1143 data paths.
 REPO_DIR=/path/to/my/directory/oncotracer
+READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+mkdir -p "$READS_DIR"
 cd "$REPO_DIR"
 
-# Create or replace the HCC1143 sample table with the exact three rows.
-cat > "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" <<'CSV'
+# Download HCC1143_DMSO read 1 and rename it for Automatic Setup.
+if [[ ! -s "$READS_DIR/HCC1143_DMSO_R1.fastq.gz" ]]; then
+  wget --continue --directory-prefix="$READS_DIR" \
+    https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_1.fastq.gz
+  mv "$READS_DIR/SRR7085656_1.fastq.gz" \
+    "$READS_DIR/HCC1143_DMSO_R1.fastq.gz"
+fi
+
+# Download HCC1143_DMSO read 2 and rename it for Automatic Setup.
+if [[ ! -s "$READS_DIR/HCC1143_DMSO_R2.fastq.gz" ]]; then
+  wget --continue --directory-prefix="$READS_DIR" \
+    https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_2.fastq.gz
+  mv "$READS_DIR/SRR7085656_2.fastq.gz" \
+    "$READS_DIR/HCC1143_DMSO_R2.fastq.gz"
+fi
+
+# Download HCC1143_BEZ235 read 1 and rename it for Automatic Setup.
+if [[ ! -s "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz" ]]; then
+  wget --continue --directory-prefix="$READS_DIR" \
+    https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_1.fastq.gz
+  mv "$READS_DIR/SRR7085655_1.fastq.gz" \
+    "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz"
+fi
+
+# Download HCC1143_BEZ235 read 2 and rename it for Automatic Setup.
+if [[ ! -s "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz" ]]; then
+  wget --continue --directory-prefix="$READS_DIR" \
+    https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_2.fastq.gz
+  mv "$READS_DIR/SRR7085655_2.fastq.gz" \
+    "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz"
+fi
+
+# Download HCC1143_TRAMETINIB read 1 and rename it for Automatic Setup.
+if [[ ! -s "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz" ]]; then
+  wget --continue --directory-prefix="$READS_DIR" \
+    https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_1.fastq.gz
+  mv "$READS_DIR/SRR7085657_1.fastq.gz" \
+    "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz"
+fi
+
+# Download HCC1143_TRAMETINIB read 2 and rename it for Automatic Setup.
+if [[ ! -s "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz" ]]; then
+  wget --continue --directory-prefix="$READS_DIR" \
+    https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_2.fastq.gz
+  mv "$READS_DIR/SRR7085657_2.fastq.gz" \
+    "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz"
+fi
+
+# Create or replace the exact HCC1143 sample table.
+cat > "$READS_DIR/samples.csv" <<'CSV'
 sample_name,status
 HCC1143_DMSO,TUMOR
 HCC1143_BEZ235,TUMOR
@@ -122,13 +172,13 @@ HCC1143_TRAMETINIB,TUMOR
 CSV
 
 # Display the saved sample table before continuing.
-cat "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv"
+cat "$READS_DIR/samples.csv"
 
 # Generate the Illumina YAML and R1/R2 samplesheet automatically.
 nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
-  --reads_folder "$REPO_DIR/test/public/hcc1143_lpwgs" \
-  --sample_table "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" \
+  --reads_folder "$READS_DIR" \
+  --sample_table "$READS_DIR/samples.csv" \
   --auto_config_dir "$REPO_DIR/test/configs/hcc1143_lpwgs" \
   --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs"
 
@@ -139,9 +189,7 @@ nextflow run "$REPO_DIR/main.nf" --docker \
   -resume
 ```
 
-The `cat > ... <<'CSV'` block is copy/paste ready and replaces an existing table instead of appending duplicate rows. To edit the file manually, use `nano /path/to/my/directory/oncotracer/test/public/hcc1143_lpwgs/samples.csv`, save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
-
-See [QuickStart Example 2](https://cfarkas.github.io/oncotracer/public_cohort/) for the downloads, checksums, output checks, and resume command.
+Each `wget --continue` command can resume an accession-named partial download. After completion, the file is renamed to the sample prefix expected by Automatic Setup. The detailed [QuickStart Example 2](https://cfarkas.github.io/oncotracer/public_cohort/) also shows MD5, gzip, output, and resume checks.
 
 ## Other Example Runs
 
