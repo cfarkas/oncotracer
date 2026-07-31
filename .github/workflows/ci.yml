@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install R for the qDNAseq helper tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends r-base-core
+
+      - name: Check shell and Python syntax
+        run: |
+          find bin examples tests -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
+          python3 -m compileall -q bin examples tests
+
+      - name: Run focused source tests
+        run: |
+          bash tests/test_generate_auto_params.sh
+          bash tests/test_illumina_pon_preflight.sh
+          bash tests/test_qdnaseq_local_pon.sh
+
+      - name: Check documentation style and examples
+        run: python3 tests/test_docs_style.py
+
+      - name: Install documentation dependencies
+        run: python3 -m pip install -r docs/requirements.txt
+
+      - name: Build documentation with strict checks
+        run: mkdocs build --strict

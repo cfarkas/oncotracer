@@ -1,87 +1,59 @@
 <a id="quick-start"></a>
 
-# QuickStart Example 1: one Illumina + one ONT sample
+# QuickStart Example 1: one Illumina and one ONT sample
 
-This tutorial verifies a new OncoTracer installation with one public Illumina sample and one public Oxford Nanopore Technologies (ONT) sample. It downloads about **225 MB of compressed reads**. Follow the numbered steps to see what is prepared, why two YAML files are generated, how each analysis starts, and where the results appear.
+This tutorial verifies a new OncoTracer installation with one public Illumina sample and one public Oxford Nanopore Technologies (ONT) sample. It downloads about **225 MB** of compressed reads, generates two YAML files, runs both workflows, and verifies the main outputs.
 
-!!! important "Every OncoTracer command starts with Nextflow"
-    Copy the `nextflow run ...` commands shown on this page. `--docker` is an option passed to Nextflow; it does **not** mean that you should type a separate Docker command. Do not launch OncoTracer or one of its tools with `docker run`, `docker exec`, `apptainer run`, `apptainer exec`, `singularity run`, or `singularity exec`. Nextflow selects, downloads, and starts the required containers for you.
+The commands below use Docker. On an HPC system configured with Singularity or Apptainer, replace `--docker` with `--singularity`. See [Installation](installation.md) for both options and the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer).
 
 [![Six-step OncoTracer QuickStart flow: clone the repository, prepare the reads and two run plans, understand the YAML files, run Illumina, run ONT, and confirm and open the CNA results.](assets/tutorial/quickstart_flow.svg)](assets/tutorial/quickstart_flow.svg)
 
-*The first three steps prepare files and stop. The real CNA analyses begin only when a generated YAML is supplied with `-params-file`. Select a linked diagram or terminal image below to open it full size.*
+## Estimated time for this analysis
 
-## Before running
+The example reads are small, but an uncached first analysis also downloads hg38 and creates a BWA index. Indexing commonly takes **30–60 minutes**, and the pinned task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later `-resume` runs reuse a valid index.
 
-Complete [Installation](installation.md). This example uses Docker and the example repository location `/home/student/oncotracer`. Replace that path in the commands if your Linux username or clone location is different.
+## 1. Clone OncoTracer
 
-Confirm the required programs:
-
-```bash
-git --version       # Git must be installed
-java -version       # Java must be version 17 or newer
-nextflow -version   # Nextflow must be available
-```
-
-The [Installation](installation.md) page verifies the selected container runtime through Nextflow.
-
-!!! warning "The first analysis is much larger than the example reads"
-    On an uncached first run, SAMURAI downloads the hg38 reference (about
-    **3.16 GB**) and BWA commonly takes **30–60 minutes** to create its index.
-    The pinned BWA task requests 72 GB, so use at least 80 GiB of addressable
-    RAM unless a valid persistent index already exists. Later `-resume` runs
-    reuse it. Container layers and workflow intermediate files require
-    additional disk space.
-
-## Beginner route: follow each step
-
-### 1. Clone OncoTracer
-
-Open a terminal and enter:
-
-If [Installation](installation.md) already created `/home/student/oncotracer`, skip the `git clone` line and run only `cd` and `pwd`. Otherwise run all three lines:
+This tutorial uses `/home/student/oncotracer` as an example path. Replace it when your clone is elsewhere.
 
 ```bash
+# Clone OncoTracer into the example directory.
 git clone https://github.com/cfarkas/oncotracer.git /home/student/oncotracer
+
+# Enter the repository and confirm the current path.
 cd /home/student/oncotracer
 pwd
 ```
 
-`pwd` should print `/home/student/oncotracer`. The file `main.nf` is inside this folder.
+Skip the `git clone` command when the repository already exists.
 
-### 2. Prepare the public reads and run plans
-
-Run:
+## 2. Prepare the public reads and YAML files
 
 ```bash
+# Download and validate the public Illumina and ONT reads, then create both YAML files.
 nextflow run /home/student/oncotracer/main.nf --make_test \
   --test_root /home/student/oncotracer/test
 ```
 
-This preparation command:
+This preparation step checks file size, MD5, and gzip integrity. It does not align reads or call CNAs.
 
-1. downloads or reuses one paired Illumina example and one ONT example;
-2. checks each file's expected size, MD5 checksum, and gzip contents;
-3. creates the Illumina samplesheet; and
-4. writes one YAML run plan for Illumina and another for ONT.
+The public examples correspond to these sample mappings:
 
-It does **not** align reads or call CNAs.
+### Illumina
 
-[![Terminal checkpoint showing the QuickStart preparation command completed, with the checked Illumina and ONT example reads and generated run files ready.](assets/tutorial/quickstart_prepare_checkpoint.svg)](assets/tutorial/quickstart_prepare_checkpoint.svg)
-
-*Continue when `MAKE_TEST_DATA` reaches `[100%] 1 of 1` and the terminal prompt returns. The characters in brackets and the progress layout can differ. No CNA analysis has started.*
-
-List the two generated run plans:
-
-```bash
-ls -1 /home/student/oncotracer/test/configs
+```csv
+sample_name,status
+ERR12341627,TUMOR
 ```
 
-[![Terminal checkpoint listing the generated Illumina and ONT YAML run plans, with labels explaining what each file controls.](assets/tutorial/quickstart_setup_checkpoint.svg)](assets/tutorial/quickstart_setup_checkpoint.svg)
+### ONT
 
-*The two YAML files are separate because Illumina and ONT use different inputs and CNA callers. They contain paths and settings, not reads or results.*
+```csv
+barcode,sample_name,status
+barcode01,DRR165691,TUMOR
+```
 
-The prepared folders are:
+The preparation command writes:
 
 ```text
 /home/student/oncotracer/test/
@@ -94,203 +66,124 @@ The prepared folders are:
 └── runs/
 ```
 
-### 3. Understand why YAML is generated
-
-A FASTQ contains sequencing reads. A samplesheet connects read files to an Illumina sample. A YAML file is different: it is a small, readable **run plan** containing paths and analysis choices.
-
-[![Diagram explaining that QuickStart creates separate Illumina and ONT YAML run plans because the technologies use different inputs, callers, and bin sizes; Nextflow reads one plan at a time.](assets/tutorial/quickstart_yaml_plan.svg)](assets/tutorial/quickstart_yaml_plan.svg)
-
-*The YAML contains paths and settings, not sequencing reads or results. It prevents a very long run command and lets the same choices be supplied again with `-resume`.*
-
-Two YAML files are needed because the examples use different routes:
-
-| Run plan | Input mapping | Caller and bin size | Result folder |
-| --- | --- | --- | --- |
-| `illumina.quickstart.yml` | paired R1/R2 files through an Illumina samplesheet | qDNAseq, 100 kb | `test/runs/illumina` |
-| `ont.quickstart.yml` | `barcode01` below an ONT `fastq_pass` folder | ichorCNA, 500 kb | `test/runs/ont` |
-
-Nextflow reads the selected plan after `-params-file`:
-
-```text
--params-file /home/student/oncotracer/test/configs/illumina.quickstart.yml
-```
-
-You do not need to edit either YAML for this QuickStart.
-
-#### What the Illumina YAML means
-
-Display it:
+Inspect the generated files:
 
 ```bash
+# List the two generated run plans.
+ls -1 /home/student/oncotracer/test/configs
+
+# Inspect the Illumina YAML.
 sed -n '1,120p' /home/student/oncotracer/test/configs/illumina.quickstart.yml
-```
 
-The generated file contains your real absolute paths:
-
-```yaml
-mode: illumina
-lpwgs_root: /home/student/oncotracer/test
-outdir: /home/student/oncotracer/test/runs/illumina
-illumina_samplesheet: /home/student/oncotracer/test/public/illumina_ERR12341627/illumina.samplesheet.csv
-illumina_analysis_type: solid_biopsy
-illumina_caller: qdnaseq
-illumina_binsize_kb: 100
-run_cna_classifier: false
-force: true
-```
-
-The samplesheet links `ERR12341627` to its R1 and R2 FASTQs. This public example is [ENA ERR12341627](https://www.ebi.ac.uk/ena/browser/view/ERR12341627), an OVCAR8 cancer whole-genome sequencing run.
-
-#### What the ONT YAML means
-
-Display it:
-
-```bash
+# Inspect the ONT YAML.
 sed -n '1,120p' /home/student/oncotracer/test/configs/ont.quickstart.yml
 ```
 
-```yaml
-mode: ont
-lpwgs_root: /home/student/oncotracer/test
-outdir: /home/student/oncotracer/test/runs/ont
-ont_folder: /home/student/oncotracer/test/public/ont_DRR165691/fastq_pass
-ont_barcodes: barcode01
-ont_sample_names: DRR165691
-ont_analysis_type: liquid_biopsy
-ont_caller: ichorcna
-ont_binsize_kb: 500
-ont_min_age_minutes: 0
-run_cna_classifier: false
-force: true
-```
+A YAML is a saved run plan containing paths and analysis settings. It does not contain sequencing reads or results.
 
-`barcode01` tells OncoTracer where the ONT FASTQ is, and `DRR165691` is the sample name assigned to that barcode.
+The Illumina YAML uses qDNAseq at 100 kb and writes to `test/runs/illumina`. The ONT YAML maps `barcode01` to `DRR165691`, uses ichorCNA at 500 kb, and writes to `test/runs/ont`.
 
-### 4. Run the Illumina analysis
-
-Start the first real analysis:
+## 3. Run the Illumina analysis
 
 ```bash
+# Run the generated Illumina YAML with Docker and a reusable work directory.
 nextflow run /home/student/oncotracer/main.nf --docker \
   -params-file /home/student/oncotracer/test/configs/illumina.quickstart.yml \
   -work-dir /home/student/oncotracer/test/work/illumina \
   -resume
 ```
 
-Keep the terminal open. This command aligns the Illumina reads, runs qDNAseq, refines CNA boundaries, and creates CNA tables and plots. Wait for it to finish before starting step 5.
+Wait for this command to finish before starting the ONT run. The outer task can remain at `RUN_ILLUMINA_SAMURAI (0 of 1)` while the nested SAMURAI workflow is active.
 
-!!! info "If Nextflow displays `0 of 1`"
-    The outer `RUN_ILLUMINA_SAMURAI` task waits for a nested SAMURAI workflow. Its counter can remain at `0 of 1` while alignment and CNA calling are active. See [Troubleshooting](troubleshooting.md) before stopping it.
-
-After the command returns to the normal prompt, display the first three summary lines:
+Check the summary:
 
 ```bash
+# Display the first lines of the completed Illumina summary.
 head -n 3 \
   /home/student/oncotracer/test/runs/illumina/06_workflow_summary/workflow_summary.txt
 ```
 
-[![Terminal checkpoint showing the completed Illumina QuickStart summary with qDNAseq, 100 kilobase bins, and the Illumina result folder.](assets/tutorial/quickstart_illumina_run_checkpoint.svg)](assets/tutorial/quickstart_illumina_run_checkpoint.svg)
+The summary should begin with `mode=illumina` and `dataset=illumina_qdnaseq_100kb`.
 
-*Continue to the ONT run when the summary begins with `mode=illumina` and `dataset=illumina_qdnaseq_100kb`. Your absolute paths can differ.*
-
-### 5. Run the ONT analysis
-
-After the Illumina command finishes, run:
+## 4. Run the ONT analysis
 
 ```bash
+# Run the generated ONT YAML after the Illumina run finishes.
 nextflow run /home/student/oncotracer/main.nf --docker \
   -params-file /home/student/oncotracer/test/configs/ont.quickstart.yml \
   -work-dir /home/student/oncotracer/test/work/ont \
   -resume
 ```
 
-This command reads the ONT YAML, assigns the FASTQ below `barcode01` to `DRR165691`, aligns the reads, runs ichorCNA, refines boundaries, and creates tables and plots.
-
-After the command returns to the normal prompt, display the first three ONT summary lines:
+Check the ONT summary:
 
 ```bash
+# Display the first lines of the completed ONT summary.
 head -n 3 \
   /home/student/oncotracer/test/runs/ont/06_workflow_summary/workflow_summary.txt
 ```
 
-[![Terminal checkpoint showing the completed ONT QuickStart summary with ichorCNA, 500 kilobase bins, and the ONT result folder.](assets/tutorial/quickstart_ont_run_checkpoint.svg)](assets/tutorial/quickstart_ont_run_checkpoint.svg)
+The summary should begin with `mode=ont` and `dataset=ONT_ichorcna_500kb`.
 
-*Continue when the summary begins with `mode=ont` and `dataset=ONT_ichorcna_500kb`. Your absolute paths can differ.*
-
-### 6. Confirm and open the results
-
-Run the versioned QuickStart verifier. It only checks completed files; it does not rerun either analysis.
+## 5. Verify the outputs
 
 ```bash
+# Verify the required summary, CNA table, and plot files from both runs.
 python3 /home/student/oncotracer/examples/quickstart/verify_outputs.py \
   --test-root /home/student/oncotracer/test
 ```
 
-[![Terminal checkpoint showing the QuickStart verifier success message and confirmation that both workflow summaries, CNA tables, and plot PDFs were found.](assets/tutorial/quickstart_results_checkpoint.svg)](assets/tutorial/quickstart_results_checkpoint.svg)
+A successful check ends with:
 
-*Open the results only after the verifier prints `SUCCESS: both QuickStart workflows completed and required outputs were found.` If a file is missing, it prints that path instead.*
-
-For each technology, the verifier checks the workflow summary, CNA event table, and per-sample plot PDF.
+```text
+SUCCESS: both QuickStart workflows completed and required outputs were found.
+```
 
 Important result folders are:
 
 ```text
 /home/student/oncotracer/test/runs/illumina/
-├── 01_samurai_illumina/        # alignment and qDNAseq results
-├── 03_cna_codification/        # CNA event and notation tables
-├── 04_cna_custom_plots/        # OncoTracer PDF plots
-└── 06_workflow_summary/        # readable output summary
+├── 01_samurai_illumina/
+├── 03_cna_codification/
+├── 04_cna_custom_plots/
+└── 06_workflow_summary/
 
 /home/student/oncotracer/test/runs/ont/
-├── 01_samurai_ont/             # alignment and ichorCNA results
-├── 03_cna_codification/        # CNA event and notation tables
-├── 04_cna_custom_plots/        # OncoTracer PDF plots
-└── 06_workflow_summary/        # readable output summary
+├── 01_samurai_ont/
+├── 03_cna_codification/
+├── 04_cna_custom_plots/
+└── 06_workflow_summary/
 ```
 
-These are genuine output previews from the same public examples:
+These public outputs are also shown in the [Results Gallery](gallery.md).
 
-![Public Illumina ERR12341627 qDNAseq profile with bin-level values and fitted copy-number segments.](assets/gallery/illumina_samurai_qdnaseq_segment_plot.png)
-
-*Illumina qDNAseq output. Horizontal fitted segments summarize the copy-number model.*
-
-![Public ONT DRR165691 ichorCNA-derived copy-number profile.](assets/gallery/ont_ichorcna_derived_profile.png)
-
-*ONT ichorCNA-derived output. See [Output Files](outputs.md) for interpretation and the [Gallery](gallery.md) for the complete result set.*
-
-## Exact commands to repeat or resume this example
-
-There is no wrapper script to remember. These are the three commands used above: one preparation command followed by the two real analyses. Repeating an analysis command with `-resume` safely reuses completed Nextflow work.
+## Exact commands to repeat or resume
 
 ```bash
+# Prepare or revalidate the public reads and YAML files.
 nextflow run /home/student/oncotracer/main.nf --make_test \
   --test_root /home/student/oncotracer/test
 
+# Run or resume the Illumina example.
 nextflow run /home/student/oncotracer/main.nf --docker \
   -params-file /home/student/oncotracer/test/configs/illumina.quickstart.yml \
   -work-dir /home/student/oncotracer/test/work/illumina \
   -resume
 
+# Run or resume the ONT example after Illumina finishes.
 nextflow run /home/student/oncotracer/main.nf --docker \
   -params-file /home/student/oncotracer/test/configs/ont.quickstart.yml \
   -work-dir /home/student/oncotracer/test/work/ont \
   -resume
+
+# Verify both completed runs.
+python3 /home/student/oncotracer/examples/quickstart/verify_outputs.py \
+  --test-root /home/student/oncotracer/test
 ```
 
-<a id="next-run-the-real-six-fastq-cohort"></a>
+## Continue from here
 
-## Next: run QuickStart Example 2
-
-The default verification uses small, single-sample inputs. After it succeeds, the optional HCC1143 example demonstrates a three-sample Illumina cohort: three paired libraries, or six physical FASTQ files. The read download is **1.08 GiB**. [QuickStart Example 2](public_cohort.md) gives the literal download, configuration, and `nextflow run` commands; it does not require a shell runner.
-
-## Next: build a four-control panel of normals
-
-[QuickStart Example 3](six_tumor_four_control.md) shows a complete command for six tumors (`ONCO001`–`ONCO006`) and four normal controls (`CTRL001`–`CTRL004`). It includes a 20-CPU Nextflow setup that does not request a GPU, GNU Screen instructions, automatic PoN configuration, and the exact resumable command.
-
-## Next: run your own data
-
-- Use [Automatic Setup](auto_params.md) as the recommended default for an Illumina FASTQ folder or ONT barcode tree.
-- Use [Manual YAML Editing](configuration/yaml_basics.md) only when automatic detection does not fit.
-- Use [Pathology and Classifier](configuration/pathology.md) only when pathology and sequencing sample identifiers match exactly.
-
-On an HPC system configured with Apptainer/Singularity, change the **Nextflow option** from `--docker` to `--singularity`. Do not invoke Apptainer or Singularity yourself.
+- [Automatic Setup](auto_params.md) generates a YAML for your own Illumina or ONT FASTQs.
+- [QuickStart Example 2](public_cohort.md) runs three public HCC1143 libraries.
+- [Full Tutorial](full_tutorial.md) runs the 12 public PRJNA754199 libraries.
+- [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a command template only. The `ONCO001`–`ONCO006` and `CTRL001`–`CTRL004` FASTQs are not included or downloaded.

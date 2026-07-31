@@ -1,281 +1,215 @@
 # Automatic Setup from a Reads Folder
 
-`--auto_params` is the recommended default for configuring your own FASTQs. You provide:
+`--auto_params` is the recommended way to configure your own FASTQs. You provide:
 
-1. a folder containing the reads; and
-2. a small table that maps each sample to `TUMOR` or `NORMAL`.
+1. a reads folder; and
+2. a small CSV that maps each sample to `TUMOR` or `NORMAL`.
 
-OncoTracer checks the expected layout and writes a runnable YAML file. For Illumina, it also writes the single-end or paired-end FASTQ samplesheet.
+OncoTracer validates the supported layout and writes a YAML file. For Illumina, it also writes the FASTQ samplesheet. Automatic Setup stops after creating those files; the second Nextflow command starts the analysis.
 
-!!! important "The user always starts OncoTracer with Nextflow"
-    Automatic Setup uses `nextflow run ... --auto_params` and does not need a
-    container runtime option. The later analysis uses `nextflow run ...` with
-    `--docker` or `--singularity`. Never replace either command with a direct
-    Docker, Apptainer, or Singularity launch. A `docker://...` value written
-    inside the YAML is an image address consumed by the workflow, not a command.
+The analysis can use:
+
+- `--docker` with [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer); or
+- `--singularity` with `docker://carlosfarkas/oncotracer:latest` on a configured HPC system.
 
 ![Example OncoTracer input layouts: Illumina FASTQ files and ONT barcode folders mapped to sample names and tumor/normal status in samples.csv.](assets/tutorial/auto_params_folder_layout.svg)
 
-!!! note "Configuration step, not analysis"
-    `--auto_params` creates configuration files and then stops. It does not align reads or call CNAs. After it finishes, use the generated YAML in the real analysis command shown below.
+## Before you begin
+
+```bash
+# Clone OncoTracer when it is not already installed.
+git clone https://github.com/cfarkas/oncotracer.git
+
+# Enter the repository and confirm Nextflow is available.
+cd oncotracer
+nextflow -version
+```
+
+Use absolute paths for your reads, configuration, work, and result directories.
 
 ## Why Automatic Setup creates a YAML
 
-Automatic Setup first checks and matches the input files. For Illumina, it saves the FASTQ-to-sample matches in a samplesheet. It saves that samplesheet path, the results path, and the analysis settings in a readable YAML file. The real Nextflow command reads the YAML with `-params-file`, so you do not have to retype every path and option.
+The sample table contains names and roles. Automatic Setup matches those names to FASTQs, checks the files, and stores the paths and analysis settings in a readable YAML. The real analysis command reads that YAML with `-params-file`.
 
-[![Diagram showing reads, samples.csv, and the results destination entering Automatic Setup; a generated YAML run plan stores the paths and settings, and the real Nextflow command reads it to produce BAMs, CNA tables, plots, and reports.](assets/tutorial/yaml_run_plan.svg)](assets/tutorial/yaml_run_plan.svg)
-
-*The YAML is a saved instruction sheet, not sequencing data and not an analysis result. Automatic Setup writes it; you can inspect it; the next command uses it to start the analysis. For Illumina, a separate generated samplesheet connects each sample to its FASTQ file or R1/R2 pair. Select a linked diagram or terminal image below to open it full size.*
-
-## Before you begin
-
-Install the [requirements](installation.md), clone OncoTracer, and enter the repository:
-
-```bash
-git clone https://github.com/cfarkas/oncotracer.git  # skip this line if you already have a current clone
-cd oncotracer                                        # main.nf is here; run all commands from this directory
-nextflow -version                                    # verify Nextflow
+```text
+FASTQs + samples.csv
+        |
+        v
+nextflow run main.nf --auto_params
+        |
+        +-- generated YAML
+        +-- generated Illumina samplesheet, when mode=illumina
+        +-- sample-count and checksum manifest
+        |
+        v
+nextflow run main.nf --docker|--singularity -params-file generated.yml -resume
 ```
-
-Use absolute paths. Find one with `realpath`:
-
-```bash
-realpath /path/to/my_reads # print the absolute path to the reads folder
-```
-
-Choose the section matching your sequencer.
 
 ## Illumina step by step
 
-### 1. Organize single-end files or paired reads
+### 1. Organize the FASTQs
 
-For single-end data, put exactly one gzip-compressed file per sample directly inside one folder. Its basename must exactly equal the sample name:
-
-```text
-/data/study42/illumina_fastq/
-├── A5645.fastq.gz
-├── A5544.fastq.gz
-├── B5437.fastq.gz
-├── ctrl001.fastq.gz
-├── ctrl002.fastq.gz
-├── ctrl003.fastq.gz
-└── ctrl004.fastq.gz
-```
-
-Supported exact single-end names are `<sample>.fastq.gz` and `<sample>.fq.gz`.
-
-For paired-end data, put exactly one R1 and one R2 per sample in the folder. Keep the sample prefix identical:
+For paired-end data, keep one R1 and one R2 file per sample directly inside one folder:
 
 ```text
-/data/study42/illumina_fastq/
-├── A5645_R1.fastq.gz
-├── A5645_R2.fastq.gz
-├── A5544_R1.fastq.gz
-├── A5544_R2.fastq.gz
-├── B5437_R1.fastq.gz
-├── B5437_R2.fastq.gz
-├── ctrl001_R1.fastq.gz
-├── ctrl001_R2.fastq.gz
-├── ctrl002_R1.fastq.gz
-├── ctrl002_R2.fastq.gz
-├── ctrl003_R1.fastq.gz
-├── ctrl003_R2.fastq.gz
-├── ctrl004_R1.fastq.gz
-└── ctrl004_R2.fastq.gz
+/data/study42/input/fastq/
+├── TUMOR_01_R1.fastq.gz
+├── TUMOR_01_R2.fastq.gz
+├── TUMOR_02_R1.fastq.gz
+├── TUMOR_02_R2.fastq.gz
+├── CONTROL_01_R1.fastq.gz
+├── CONTROL_01_R2.fastq.gz
+├── CONTROL_02_R1.fastq.gz
+└── CONTROL_02_R2.fastq.gz
 ```
 
-Supported pair names include:
+Supported paired names include `<sample>_R1.fastq.gz` and `<sample>_R2.fastq.gz`, or `<sample>_1.fastq.gz` and `<sample>_2.fastq.gz`. The same patterns may end in `.fq.gz`.
 
-- `A5645_R1.fastq.gz` and `A5645_R2.fastq.gz`;
-- `A5645_1.fastq.gz` and `A5645_2.fastq.gz`;
-- the same patterns ending in `.fq.gz`.
-
-The text before `_R1`/`_R2` or `_1`/`_2` must exactly match `sample_name` in the table. The automatic detector expects one exact singleton or one pair per sample in the top level of the reads folder; it does not recursively combine lane files. Do not mix single-end and paired-end rows in one invocation.
+For single-end data, use one `<sample>.fastq.gz` or `<sample>.fq.gz` file per sample. Do not mix single-end and paired-end libraries in the same Automatic Setup command. Automatic Setup does not combine lane files recursively.
 
 ### 2. Create the sample table
 
-Open a new CSV file:
-
 ```bash
-nano /data/study42/illumina_fastq/samples.csv # create the sample-to-status table
+# Open a new Illumina sample table.
+nano /data/study42/input/samples.csv
 ```
 
-Type these headers and one row per sample:
+Paste an exact name and role for every sample:
 
 ```csv
 sample_name,status
-A5645,TUMOR
-A5544,TUMOR
-B5437,TUMOR
-ctrl001,NORMAL
-ctrl002,NORMAL
-ctrl003,NORMAL
-ctrl004,NORMAL
+TUMOR_01,TUMOR
+TUMOR_02,TUMOR
+CONTROL_01,NORMAL
+CONTROL_02,NORMAL
 ```
 
-In `nano`, save with `Ctrl+O`, press Enter to confirm the filename, and exit with `Ctrl+X`.
+Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
 
-- `sample_name` is the exact single-end basename or paired FASTQ filename prefix.
-- `status` is case-insensitive but must be `TUMOR` or `NORMAL`.
-- Use short unique names starting with a letter or digit and containing only letters, digits, `.`, `_`, or `-`; avoid spaces.
+The filename prefix must match `sample_name` exactly. `status` must be `TUMOR` or `NORMAL`.
 
-Automatic Setup counts the `NORMAL` rows after validating the table:
+Normal-control behavior is simple:
 
-- zero normals disables the local Illumina PoN;
-- exactly one normal stops with a configuration error because a robust panel
-  requires at least two controls; and
-- two or more normals enable the local PoN, preserve the normal IDs in table
-  order, and set `illumina_pon_min_normals` to the number of controls.
-
-In this example, `ctrl001` through `ctrl004` form the reference. The three
-`TUMOR` samples are the only samples reported in corrected CNA outputs.
+- zero `NORMAL` rows: no local panel of normals;
+- one `NORMAL` row: configuration stops with an error;
+- two or more `NORMAL` rows: Automatic Setup enables the local qDNAseq reference.
 
 ### 3. Generate the Illumina YAML and samplesheet
 
-Run from the cloned `oncotracer` directory:
-
 ```bash
+# Generate the Illumina configuration without starting the analysis.
 nextflow run main.nf --auto_params \
   --mode illumina \
-  --reads_folder /data/study42/illumina_fastq \
-  --sample_table /data/study42/illumina_fastq/samples.csv
+  --reads_folder /data/study42/input/fastq \
+  --sample_table /data/study42/input/samples.csv \
+  --auto_config_dir /data/study42/config \
+  --auto_outdir /data/study42/results \
+  -work-dir /data/study42/work/auto_params
 ```
 
-Before reporting success, the generator requires either one exact single-end file for every row or one R1/R2 pair for every row, and runs `gzip -t` on every file. It stops if an input is missing, corrupt, ambiguous, or if layouts are mixed.
+Automatic Setup runs `gzip -t` on every compressed FASTQ. It stops when a file is missing, corrupt, ambiguous, or part of a mixed single-end/paired-end layout.
 
-When the task finishes, list the generated files:
-
-```bash
-ls -1 /data/study42/illumina_fastq/oncotracer_config
-```
-
-[![Example terminal showing Automatic Setup completing one task and the generated Illumina YAML and samplesheet listed in the configuration folder.](assets/tutorial/auto_params_checkpoint.svg)](assets/tutorial/auto_params_checkpoint.svg)
-
-*What success looks like. The YAML, Illumina samplesheet, and audit manifest appear in `oncotracer_config`, while the result folder remains empty of analysis outputs. The characters in brackets and the Nextflow progress layout can differ.*
-
-Automatic Setup publishes the generated samplesheet first, its checksum/count
-manifest second, and the YAML last. The YAML therefore acts as the transactional
-commit point for a runnable configuration: a failed validation does not publish
-a new run plan that points to incomplete companion files.
-
-By default it creates:
+The generated directory contains:
 
 ```text
-/data/study42/illumina_fastq/
-├── oncotracer_config/
-│   ├── auto_params_manifest.tsv
-│   ├── illumina.auto.yml
-│   └── illumina.samplesheet.csv
-└── oncotracer_results/
+/data/study42/config/
+├── auto_params_manifest.tsv
+├── illumina.auto.yml
+└── illumina.samplesheet.csv
 ```
 
-### 4. Inspect what was generated
-
-Inspect all three files:
+### 4. Inspect the generated files
 
 ```bash
-sed -n '1,120p' /data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml       # show the run YAML
-sed -n '1,20p' /data/study42/illumina_fastq/oncotracer_config/illumina.samplesheet.csv # show detected FASTQ mappings
-sed -n '1,10p' /data/study42/illumina_fastq/oncotracer_config/auto_params_manifest.tsv # show counts and checksums
+# Inspect the analysis settings.
+sed -n '1,140p' /data/study42/config/illumina.auto.yml
+
+# Inspect the FASTQ-to-sample mapping.
+sed -n '1,30p' /data/study42/config/illumina.samplesheet.csv
+
+# Inspect the sample counts and file hashes.
+cat /data/study42/config/auto_params_manifest.tsv
 ```
 
-The generated YAML will look like this. This box is an annotated **YAML example**, not a terminal command:
+For the table above, the generated YAML includes:
 
 ```yaml
-mode: illumina                                      # choose Illumina processing
-lpwgs_root: /data/study42/illumina_fastq            # common input/output parent mounted into the container
-outdir: /data/study42/illumina_fastq/oncotracer_results # final output directory
-illumina_samplesheet: /data/study42/illumina_fastq/oncotracer_config/illumina.samplesheet.csv # generated FASTQ table
-illumina_analysis_type: solid_biopsy                # SAMURAI analysis preset
-illumina_caller: qdnaseq                            # CNA caller used for Illumina
-illumina_binsize_kb: 100                            # copy-number bin size in kilobases
-illumina_build_pon: true                            # enable the run-local qDNAseq normal reference
-illumina_pon_normal_samples: "ctrl001,ctrl002,ctrl003,ctrl004" # exact controls, in sample-table order
-illumina_pon_min_normals: 4                         # require all four selected controls
-illumina_pon_name: ctrl001_ctrl002_ctrl003_ctrl004_PoN # deterministic name derived from control IDs
-illumina_pon_min_mapq: 37                           # mapping-quality threshold
-illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1 # pinned qDNAseq runtime
-run_cna_classifier: false                           # optional classifier/pathology reporting is off
-cna_classifier_sample_set: broad_cancer             # classifier context used if enabled
-cna_classifier_profile: conda                       # nested classifier runtime
-pathology_csv: null                                 # no pathology table supplied
-pathology_use_biomed_models: true                   # default optional pathology-model setting
-pathology_biomed_local_files_only: false             # default model file policy
-force: false                                        # protect an existing real-project output directory
+mode: illumina
+lpwgs_root: /data/study42
+outdir: /data/study42/results
+illumina_samplesheet: /data/study42/config/illumina.samplesheet.csv
+illumina_analysis_type: solid_biopsy
+illumina_caller: qdnaseq
+illumina_binsize_kb: 100
+illumina_build_pon: true
+illumina_pon_normal_samples: "CONTROL_01,CONTROL_02"
+illumina_pon_min_normals: 2
+illumina_pon_name: CONTROL_01_CONTROL_02_PoN
+illumina_pon_min_mapq: 37
+illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1
+run_cna_classifier: false
+force: false
 ```
 
-Automatic Setup emits all six PoN settings when at least two controls exist.
-It preserves the quoted comma-separated control list in table order, makes the
-minimum equal their count, and derives a reproducible name by sanitizing and
-joining the control IDs before adding `_PoN`. It also records the MAPQ threshold
-and pinned qDNAseq container explicitly, so the generated run plan is
-self-contained. With no controls it emits only `illumina_build_pon: false`.
-
-The generated samplesheet contains absolute paths:
+The generated samplesheet contains absolute FASTQ paths:
 
 ```csv
 sample,fastq_1,fastq_2,status
-A5645,/data/study42/illumina_fastq/A5645_R1.fastq.gz,/data/study42/illumina_fastq/A5645_R2.fastq.gz,tumor
-A5544,/data/study42/illumina_fastq/A5544_R1.fastq.gz,/data/study42/illumina_fastq/A5544_R2.fastq.gz,tumor
-B5437,/data/study42/illumina_fastq/B5437_R1.fastq.gz,/data/study42/illumina_fastq/B5437_R2.fastq.gz,tumor
-ctrl001,/data/study42/illumina_fastq/ctrl001_R1.fastq.gz,/data/study42/illumina_fastq/ctrl001_R2.fastq.gz,normal
-ctrl002,/data/study42/illumina_fastq/ctrl002_R1.fastq.gz,/data/study42/illumina_fastq/ctrl002_R2.fastq.gz,normal
-ctrl003,/data/study42/illumina_fastq/ctrl003_R1.fastq.gz,/data/study42/illumina_fastq/ctrl003_R2.fastq.gz,normal
-ctrl004,/data/study42/illumina_fastq/ctrl004_R1.fastq.gz,/data/study42/illumina_fastq/ctrl004_R2.fastq.gz,normal
+TUMOR_01,/data/study42/input/fastq/TUMOR_01_R1.fastq.gz,/data/study42/input/fastq/TUMOR_01_R2.fastq.gz,tumor
+TUMOR_02,/data/study42/input/fastq/TUMOR_02_R1.fastq.gz,/data/study42/input/fastq/TUMOR_02_R2.fastq.gz,tumor
+CONTROL_01,/data/study42/input/fastq/CONTROL_01_R1.fastq.gz,/data/study42/input/fastq/CONTROL_01_R2.fastq.gz,normal
+CONTROL_02,/data/study42/input/fastq/CONTROL_02_R1.fastq.gz,/data/study42/input/fastq/CONTROL_02_R2.fastq.gz,normal
 ```
 
-For a single-end folder, the same generated table has an empty third field, for example:
+### 5. Run the Illumina analysis
 
-```csv
-sample,fastq_1,fastq_2,status
-A5645,/data/study42/illumina_fastq/A5645.fastq.gz,,tumor
-```
-
-Classifier and pathology-model options supplied to the `--auto_params` command are written into the YAML, making the later real run self-contained. The [Full Tutorial](full_tutorial.md#4-generate-the-samplesheet-and-yaml-automatically) demonstrates this with CNA-only clinician-facing reports and no pathology table.
-
-### 5. Run the analysis
+Docker:
 
 ```bash
+# Run the generated Illumina YAML with Docker and resume support.
 nextflow run main.nf --docker \
-  -params-file /data/study42/illumina_fastq/oncotracer_config/illumina.auto.yml \
+  -params-file /data/study42/config/illumina.auto.yml \
+  -work-dir /data/study42/work/analysis \
   -resume
 ```
 
-`-resume` reuses unchanged completed tasks if a run is repeated or interrupted.
-
-### 6. Verify the local PoN artifacts
-
-The local-PoN helper uses the per-bin median log2 signal across the selected
-controls and emits corrected bins, segments, and plots for tumors only. It
-invalidates the previous `qdnaseq_local_pon.done` marker before work and writes
-a new marker last. A failed run may leave partial artifacts but cannot appear
-complete. Check the manifest and completion marker before interpreting
-results:
+Singularity or Apptainer:
 
 ```bash
-OUT=/data/study42/illumina_fastq/oncotracer_results
+# Run the same YAML through the HPC container option.
+nextflow run main.nf --singularity \
+  -params-file /data/study42/config/illumina.auto.yml \
+  -work-dir /data/study42/work/analysis \
+  -resume
+```
+
+### 6. Check a local panel of normals
+
+When two or more controls are used, verify the control list, control QC, tumor-only corrected files, and completion marker:
+
+```bash
+# Set convenient output paths.
+OUT=/data/study42/results
 PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
-test -s "$OUT/01_samurai_illumina/logs/normal_panel_manifest.tsv"
-test -s "$PON/pon/normal_panel_manifest.tsv"
-test -s "$PON/pon/ctrl001_ctrl002_ctrl003_ctrl004_PoN.reference_bins.tsv"
-test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = "QDNASEQ_LOCAL_PON_SUCCESS"
-sed -n '1,12p' "$PON/pon/normal_panel_manifest.tsv"
-sed -n '1,12p' "$PON/qc/normal_panel_sample_qc.tsv"
-sed -n '1,12p' "$PON/qdnaseq_local_pon_summary.tsv"
-sed -n '1,8p' "$PON/all_segments.seg"
+
+# Require the successful panel completion marker.
+test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = QDNASEQ_LOCAL_PON_SUCCESS
+
+# Inspect the selected controls and their leave-one-out QC.
+sed -n '1,20p' "$PON/pon/normal_panel_manifest.tsv"
+sed -n '1,20p' "$PON/qc/normal_panel_sample_qc.tsv"
+
+# List the corrected tumor files.
 find "$PON/bins" "$PON/segments" -maxdepth 1 -type f -print | sort
 ```
 
-The manifest should name `ctrl001` through `ctrl004`, while the files below
-`bins/` and `segments/` should correspond only to `A5645`, `A5544`, and
-`B5437`. See [Output files](outputs.md#illumina-local-panel-of-normals) for the
-complete artifact inventory and QC interpretation.
+See [Output files](outputs.md#illumina-local-panel-of-normals) for the complete result list.
 
 ## ONT step by step
 
 ### 1. Organize barcode folders
 
-Point `--reads_folder` at the `fastq_pass` directory. Put one or more `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz` files directly inside each barcode directory:
+Point `--reads_folder` at the `fastq_pass` directory. Each barcode folder must contain at least one FASTQ:
 
 ```text
 /data/study42/fastq_pass/
@@ -287,104 +221,61 @@ Point `--reads_folder` at the `fastq_pass` directory. Put one or more `.fastq`, 
     └── reads_001.fastq.gz
 ```
 
-### 2. Create an explicit barcode table
+### 2. Create the barcode table
 
 ```bash
-nano /data/study42/fastq_pass/samples.csv # create the barcode-to-sample table
+# Open a new ONT barcode-to-sample table.
+nano /data/study42/fastq_pass/samples.csv
 ```
 
-Enter:
+Paste:
 
 ```csv
 barcode,sample_name,status
-barcode01,A5645,TUMOR
-barcode02,A5544,NORMAL
-barcode03,B5437,TUMOR
+barcode01,TUMOR_01,TUMOR
+barcode02,CONTROL_01,NORMAL
+barcode03,TUMOR_02,TUMOR
 ```
 
-Save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`.
+The barcode value must match the directory name exactly. The explicit three-column form is recommended because it is easy to review.
 
-Each barcode value must exactly match a directory name. OncoTracer requires at least one `TUMOR` row. Normal rows are written to the optional ONT normal settings. A two-column `sample_name,status` table is accepted and is mapped to alphabetically sorted barcode directories, but the explicit three-column form above is safer and easier to check.
-
-### 3. Generate and inspect the ONT YAML
+### 3. Generate the ONT YAML
 
 ```bash
+# Generate the ONT configuration without starting the analysis.
 nextflow run main.nf --auto_params \
   --mode ont \
   --reads_folder /data/study42/fastq_pass \
-  --sample_table /data/study42/fastq_pass/samples.csv
-sed -n '1,140p' /data/study42/fastq_pass/oncotracer_config/ont.auto.yml # inspect the generated YAML
+  --sample_table /data/study42/fastq_pass/samples.csv \
+  --auto_config_dir /data/study42/config_ont \
+  --auto_outdir /data/study42/results_ont \
+  -work-dir /data/study42/work/auto_params_ont
 ```
 
-The generated file will look like this:
-
-```yaml
-mode: ont                                           # choose Oxford Nanopore processing
-lpwgs_root: /data/study42/fastq_pass                # common input/output parent mounted into the container
-outdir: /data/study42/fastq_pass/oncotracer_results # final output directory
-ont_folder: /data/study42/fastq_pass                # parent directory containing barcode folders
-ont_barcodes: barcode01,barcode03                   # tumor barcode folders, in sample order
-ont_sample_names: A5645,B5437                       # tumor sample names, in the same order
-ont_analysis_type: liquid_biopsy                    # SAMURAI analysis preset
-ont_caller: ichorcna                                # CNA caller used for ONT
-ont_binsize_kb: 500                                 # copy-number bin size in kilobases
-ont_min_age_minutes: 0                              # accept completed FASTQs immediately
-run_cna_classifier: false                           # optional classifier/pathology reporting is off
-cna_classifier_sample_set: broad_cancer             # classifier context used if enabled
-cna_classifier_profile: conda                       # nested classifier runtime
-pathology_csv: null                                 # no pathology table supplied
-pathology_use_biomed_models: true                   # default optional pathology-model setting
-pathology_biomed_local_files_only: false             # default model file policy
-force: false                                        # protect an existing real-project output directory
-ont_normal_folder: /data/study42/fastq_pass         # parent directory for normal barcode folders
-ont_normal_barcodes: barcode02                      # normal barcode folders
-ont_normal_sample_names: A5544                      # matching normal sample names
-```
-
-The barcode and sample-name lists are positional: `barcode01` maps to `A5645`, and `barcode03` maps to `B5437`.
-
-### 4. Run the analysis
+### 4. Inspect and run the ONT YAML
 
 ```bash
+# Inspect the generated ONT settings and manifest.
+sed -n '1,140p' /data/study42/config_ont/ont.auto.yml
+cat /data/study42/config_ont/auto_params_manifest.tsv
+
+# Run the generated ONT YAML with Docker.
 nextflow run main.nf --docker \
-  -params-file /data/study42/fastq_pass/oncotracer_config/ont.auto.yml \
+  -params-file /data/study42/config_ont/ont.auto.yml \
+  -work-dir /data/study42/work/analysis_ont \
   -resume
 ```
 
-Use `--singularity` instead of `--docker` on a configured HPC system.
+For HPC, replace `--docker` with `--singularity` in the final command.
 
-## Put configuration and results elsewhere
+## Common setup errors
 
-The defaults create `oncotracer_config/` and `oncotracer_results/` inside the reads folder. To choose other locations:
+- The sample name does not match the FASTQ prefix.
+- More than one R1 or R2 file matches the same sample.
+- Single-end and paired-end Illumina files are mixed.
+- A compressed FASTQ fails `gzip -t`.
+- An ONT barcode in the table does not match a directory.
+- Exactly one Illumina `NORMAL` row was supplied.
+- Reads, configuration, and output paths do not share a usable project root.
 
-```bash
-nextflow run main.nf --auto_params \
-  --mode illumina \
-  --reads_folder /data/run42/fastq \
-  --sample_table /data/run42/samples.csv \
-  --auto_config_dir /data/run42/config \
-  --auto_outdir /data/run42/results
-```
-
-`--auto_config_dir` is where Automatic Setup saves the generated YAML,
-Illumina samplesheet, and checksum/count manifest. `--auto_outdir` is where the
-later real analysis saves
-BAMs, CNA tables, plots, and reports. Automatic Setup creates both folders,
-writes the results path as `outdir:` in the YAML, and then stops without
-analyzing reads.
-
-OncoTracer derives `lpwgs_root` as a common parent that makes the reads, generated configuration, and outputs visible inside the container. It also derives the SAMURAI directory automatically as `<outdir>/01_samurai_illumina` or `<outdir>/01_samurai_ont`; do not add a SAMURAI output directory to the YAML.
-
-CSV, tab-delimited, and whitespace-delimited TXT sample tables are accepted. CSV is recommended because its columns are easiest to see and check.
-
-## See automatic setup with real public data
-
-The [QuickStart Example 2 HCC1143 cohort](public_cohort.md) uses `--auto_params` on three paired Illumina samples—six FASTQ files. The [Full Tutorial](full_tutorial.md) uses it on all 12 single-end PRJNA754199 libraries and preserves the CNA-only clinician-facing reports. Runnable inputs are in [`examples/hcc1143_lpwgs`](https://github.com/cfarkas/oncotracer/tree/main/examples/hcc1143_lpwgs) and [`examples/prjna754199`](https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199).
-
-## Second option: manual YAML editing
-
-For the supported folder layouts above, the generated YAML is ready to run; you do not need to edit it. Use manual editing only when automatic detection does not fit the study or you need settings that are not exposed by automatic setup.
-
-- [Manual YAML editing and path rules](configuration/yaml_basics.md) explains YAML syntax and container-visible paths.
-- [Illumina manual setup](configuration/illumina.md#second-option-manual-setup) includes [How to edit a YAML file from the terminal](configuration/illumina.md#how-to-edit-a-yaml-file-from-the-terminal).
-- [ONT manual setup](configuration/ont.md#second-option-manual-setup) covers custom barcode mappings and settings.
+Fix the input layout or table, rerun `--auto_params`, inspect the generated files, and then run the analysis YAML.

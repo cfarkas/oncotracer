@@ -1,67 +1,56 @@
-# PRJNA754199 full public-archive tutorial input
+# PRJNA754199 complete public-archive example
 
-This opt-in example downloads and processes every FASTQ currently returned for
-[NCBI BioProject PRJNA754199](https://www.ncbi.nlm.nih.gov/bioproject/754199): 12
-Illumina HiSeq 2500, single-end, 36 bp plasma cfDNA libraries. The files contain
-266,097,582 reads and occupy 6,171,900,300 compressed bytes (about 5.75 GiB).
+This example downloads and processes the 12 Illumina HiSeq 2500 single-end plasma cfDNA libraries currently available from [NCBI BioProject PRJNA754199](https://www.ncbi.nlm.nih.gov/bioproject/754199). The archive contains 266,097,582 reads and about **5.75 GiB** of compressed FASTQs.
 
-The associated publication is Przybyl et al., *Detection of MDM2 amplification by
-shallow whole genome sequencing of cell-free DNA of patients with dedifferentiated
-liposarcoma*, PLOS ONE (2022),
-[doi:10.1371/journal.pone.0262272](https://doi.org/10.1371/journal.pone.0262272).
+The associated publication is Przybyl et al., *PLOS ONE* (2022), [doi:10.1371/journal.pone.0262272](https://doi.org/10.1371/journal.pone.0262272).
 
-## Public archive scope is not the full publication cohort
+## Archive scope
 
-The publication describes 41 plasma specimens from 15 patients: 10 serial specimens
-from four patients with DDLPS/WDLPS and 31 specimens from 11 patients with other
-soft-tissue tumors. On 2026-07-15, the ENA read-run report for `PRJNA754199` returned
-12 public runs, not 41. This example therefore means **the entire currently public
-BioProject archive (12 runs)**, not every specimen discussed in the article.
+The publication describes 41 plasma specimens, but the ENA read-run report returned 12 public runs on 15 July 2026. This example processes those 12 runs, not every specimen described in the article.
 
-`DDLPS_*` and `WDLPS_*` are submitter-provided public sample aliases. They are retained
-so the archive, generated outputs, and publication can be cross-referenced; an alias is
-not an independently verified diagnosis. The generated SAMURAI `status` is `tumor` for
-all rows because these are patient-cohort condition libraries. It does not assert that
-active tumor or detectable circulating tumor DNA was present at a collection time.
+`DDLPS_*` and `WDLPS_*` are archive aliases and are not independently verified diagnoses. See [`manifest.tsv`](manifest.tsv) for accessions, byte counts, checksums, and FASTQ URLs, and [`PROVENANCE.md`](PROVENANCE.md) for the archive notes.
 
-See [`manifest.tsv`](manifest.tsv) for every BioSample, experiment, run, byte count,
-MD5 checksum, and immutable HTTPS FASTQ path. [`samples.csv`](samples.csv) is the
-explicit sample-to-condition table used by Automatic Setup. See
-[`PROVENANCE.md`](PROVENANCE.md) for the archive query and interpretation boundaries.
+The exact sample table is:
+
+```csv
+sample_name,status
+DDLPS_1a,TUMOR
+DDLPS_1b,TUMOR
+DDLPS_1c,TUMOR
+DDLPS_2,TUMOR
+DDLPS_3a,TUMOR
+DDLPS_3b,TUMOR
+WDLPS_1a,TUMOR
+WDLPS_1b,TUMOR
+WDLPS_1c,TUMOR
+WDLPS_1d,TUMOR
+WDLPS_2,TUMOR
+WDLPS_3,TUMOR
+```
 
 ## Requirements
 
-For download-only preparation: Linux, Python 3, `curl`, `md5sum`, and `gzip`.
-`aria2c` is optional and accelerates resumable downloads when available.
+Use Linux with Java 17+, Nextflow, Python 3, samtools, BWA, minimap2, pigz, curl or wget, and Docker or Singularity/Apptainer. Plan for at least 150 GiB of free working space, 16 CPU cores, and 80 GiB of addressable RAM.
 
-For analysis: Java 17+, Nextflow, Python 3, samtools, BWA, minimap2, pigz, curl or
-wget, and one supported runtime: Docker, Singularity/Apptainer, or Conda. Plan for at least 150 GiB of free working space;
-Use at least 16 CPU cores and 80 GiB of addressable RAM; the pinned BWA task
-alone requests 72 GB.
-Actual time and storage depend on the executor, filesystem, cache state, and runtime.
+Docker uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer). Singularity/Apptainer uses the same image as `docker://carlosfarkas/oncotracer:latest`.
 
-## Follow the complete tutorial
+## Run the public archive
 
-The [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/) is the
-primary route. Its main path is deliberately short: prepare the software, run one
-validated download command, use **Automatic Setup from a Reads Folder** to generate the
-12-sample samplesheet and YAML, run the stub and real workflows, invoke one exact-output
-verifier, and review the CNA and clinician-facing research reports.
-
-## Run the archive through Nextflow
-
-The [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/) explains
-these commands and their outputs in detail. From a fresh clone, use the literal
-commands below; no shell runner is required.
+The [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/) explains each step and output.
 
 ```bash
+# Clone OncoTracer into the example directory.
 git clone https://github.com/cfarkas/oncotracer.git /home/student/oncotracer
+
+# Enter the repository.
 cd /home/student/oncotracer
 
+# Download or reuse all 12 FASTQs and verify their size, MD5, and gzip integrity.
 nextflow run /home/student/oncotracer/main.nf --make_prjna754199 \
   --test_root /home/student/oncotracer/test \
   -work-dir /home/student/oncotracer/test/work/prjna754199_download
 
+# Generate the 12-sample YAML, samplesheet, and manifest automatically.
 nextflow run /home/student/oncotracer/main.nf --auto_params \
   --mode illumina \
   --reads_folder /home/student/oncotracer/test/public/prjna754199 \
@@ -73,43 +62,42 @@ nextflow run /home/student/oncotracer/main.nf --auto_params \
   --pathology_use_biomed_models false \
   -work-dir /home/student/oncotracer/test/work/prjna754199_auto_params
 
+# Optionally check the generated workflow connections.
 nextflow run /home/student/oncotracer/main.nf -stub-run --docker \
   -params-file /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml \
   -work-dir /home/student/oncotracer/test/work/prjna754199_stub
 
+# Run or resume the complete 12-library analysis.
 nextflow run /home/student/oncotracer/main.nf --docker \
   -params-file /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml \
   -work-dir /home/student/oncotracer/test/work/prjna754199 \
   -resume
+
+# Verify the exact 12 samples and required output groups.
+python3 /home/student/oncotracer/examples/prjna754199/verify_outputs.py \
+  --outdir /home/student/oncotracer/test/runs/prjna754199
 ```
 
-The first Nextflow command validates the pinned 12-row manifest, downloads each
-FASTQ with restart support, checks exact bytes and MD5, runs `gzip -t`, and
-then stops. A complete file is reused when that same command is repeated.
-Automatic Setup writes single-end sample rows with an empty `fastq_2` field.
-The stub command checks wiring, and the final command performs the real
-analysis. For an HPC configured with Apptainer/Singularity, change only
-`--docker` to `--singularity` on the stub and real Nextflow commands.
+For HPC, replace `--docker` with `--singularity` in the stub and analysis commands.
 
-After a completed analysis, rerun the exact checks without repeating any workflow task:
+A successful verifier ends with:
 
-```bash
-python3 examples/prjna754199/verify_outputs.py --outdir test/runs/prjna754199
+```text
+SUCCESS: complete PRJNA754199 tutorial outputs are verified.
 ```
 
-To use a different project root, replace every
-`/home/student/oncotracer/test` path above with the same absolute project
-path. For example, the download begins with:
+## Use another project root
+
+Replace `/home/student/oncotracer/test` consistently with another absolute path:
 
 ```bash
+# Download the archive into a separate project root.
 nextflow run /home/student/oncotracer/main.nf --make_prjna754199 \
   --test_root /absolute/path/to/oncotracer-prjna754199 \
   -work-dir /absolute/path/to/oncotracer-prjna754199/work/prjna754199_download
 ```
 
 ## Generated layout
-
-The default paths are below the repository's ignored `test/` directory:
 
 ```text
 test/
@@ -125,27 +113,13 @@ test/
 │   └── illumina.auto.yml
 ├── references/samurai_hg38/
 ├── work/
-│   ├── prjna754199/
-│   ├── prjna754199_auto_params/
-│   ├── prjna754199_download/
-│   └── prjna754199_stub/
 └── runs/prjna754199/
 ```
 
-Downloaded reads, BAMs, references, Nextflow work, and full output directories are not
-committed to Git.
+Downloaded reads, BAMs, references, work directories, and complete outputs are ignored by Git.
 
-## Reanalysis is not a reproduction of the publication method
+## Method limitation
 
-The publication used a GRCh37/hg19 Plasma-Seq Z-score workflow with approximately
-28 kb variable-mappability windows and a healthy-donor reference. This example uses
-OncoTracer's current Illumina route: hg38, SAMURAI/qDNAseq at 100 kb, BAM-supported
-boundary refinement, CNA codification, visualization, and an optional research-use CNA
-interpretation layer. Results and thresholds are therefore not directly interchangeable
-with the published Plasma-Seq calls.
+The publication used a GRCh37/hg19 Plasma-Seq method with a healthy-donor reference. This example uses hg38, SAMURAI/qDNAseq at 100 kb, BAM-supported boundary refinement, CNA tables, plots, and optional CNA-only research reports. Results are not directly interchangeable with the published calls.
 
-The classifier context is fixed to `sarcoma` from the study design, not chosen after
-examining the output. No pathology concordance table is supplied. Classifier labels,
-driver-region summaries, literature links, and MDM2-region signals are hypotheses for
-research review; none is a diagnosis, a clinical validation, or evidence of treatment
-actionability without orthogonal confirmation.
+No pathology table is supplied. Classifier labels and gene-region flags are research hypotheses and require orthogonal validation.
