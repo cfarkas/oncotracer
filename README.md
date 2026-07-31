@@ -98,7 +98,7 @@ and [result gallery](https://cfarkas.github.io/oncotracer/gallery/) before start
 
 ## QuickStart Example 3: six tumors + four normal controls
 
-This paired-end Illumina pattern uses `ONCO001` through `ONCO006` as tumors and `CTRL001` through `CTRL004` as a four-sample local qDNAseq panel of normals (PoN). Keep the local data outside the Git clone. After placing the 20 FASTQs and ten-row `samples.csv` under `/home/student/oncotracer_projects/onco6_ctrl4`, the two OncoTracer commands are:
+This example paired-end Illumina pattern uses `ONCO001` through `ONCO006` as tumors and `CTRL001` through `CTRL004` as a four-sample local qDNAseq panel of normals (PoN). Keep the local data outside the Git clone. After placing the 20 FASTQs and ten-row `samples.csv` under `/home/student/oncotracer_projects/onco6_ctrl4`, the two OncoTracer commands are:
 
 ```bash
 nextflow run /home/student/oncotracer/main.nf --auto_params \
