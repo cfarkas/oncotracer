@@ -1,100 +1,97 @@
 # Installation
 
-OncoTracer runs on Linux. Most analysis software is inside the maintained container, while the stage-01 launch and reference helpers still use a small set of host commands.
+OncoTracer runs on Linux. Nextflow runs on the host and starts the analysis software with Docker or Singularity/Apptainer.
 
-## 1. Install the host prerequisites
+The maintained Docker image is [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
 
-| Requirement | Why OncoTracer needs it | Official instructions |
-| --- | --- | --- |
-| Git | Downloads and updates this repository. | [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) |
-| Java 17 or newer | Runs Nextflow. | [Nextflow Java requirements](https://www.nextflow.io/docs/latest/install.html#requirements) |
-| Nextflow | Orchestrates every workflow step. | [Install Nextflow](https://www.nextflow.io/docs/latest/install.html) |
-| Docker Engine | Runs the reproducible analysis container. | [Install Docker Engine](https://docs.docker.com/engine/install/) |
-| Python 3 and curl or wget | Validate metadata and retrieve references. | Use the packages provided by your Linux distribution. |
-| samtools, BWA, minimap2, and pigz | Prepare/index references and support the Illumina/ONT stage-01 launchers. | Install through your system package manager or a shared bioinformatics environment. |
+## 1. Install the host programs
 
-These are host-level programs. OncoTracer cannot install Java, Git, Docker, or operating-system packages for you because their installation commonly requires administrator access. Ask your system administrator if any check below fails.
+| Program | Purpose |
+| --- | --- |
+| Git | Clone and update the repository |
+| Java 17 or newer | Run Nextflow |
+| Nextflow | Orchestrate the workflow |
+| Docker Engine | Recommended runtime on a Linux workstation or server |
+| Singularity or Apptainer | Recommended runtime on HPC where Docker is unavailable |
+| Python 3, samtools, BWA, minimap2, pigz, curl or wget | Host-side input and reference preparation |
 
-On an HPC cluster, your administrator may provide [Apptainer](https://apptainer.org/docs/admin/main/installation.html) instead. In that case, replace `--docker` with `--singularity` in the tutorials.
+Use the official installation instructions for [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Docker Engine](https://docs.docker.com/engine/install/), or [Apptainer](https://apptainer.org/docs/admin/main/installation.html). Ask the system administrator when installation or permissions require elevated access.
 
-## 2. Verify the installation
-
-Run this block in a terminal:
+## 2. Check the installation
 
 ```bash
-git --version                  # should print a Git version
-java -version                  # should report Java 17 or newer
-nextflow -version              # should print a Nextflow version
-command -v docker              # should print the installed Docker launcher path
-python3 --version              # should print a Python 3 version
-samtools --version             # stage-01/reference helper
-bwa 2>&1 | head -2            # Illumina alignment/index fallback
-minimap2 --version             # ONT alignment helper
-pigz --version                 # parallel gzip helper
+# Confirm Git, Java, and Nextflow.
+git --version
+java -version
+nextflow -version
+
+# Confirm the Docker launcher on a workstation or server.
+command -v docker
+
+# Confirm either Singularity or Apptainer on HPC.
+command -v singularity
+command -v apptainer
+
+# Confirm the host-side sequence tools.
+python3 --version
+samtools --version
+bwa 2>&1 | head -2
+minimap2 --version
+pigz --version
 ```
 
-`command -v docker` only checks whether a launcher is installed; it does not
-invoke Docker or prove that your user can access its service. Step 4 checks
-runtime access through `nextflow run`, which is the required entry point for
-all OncoTracer preparation, testing, and analysis. If `nextflow` is missing,
-install it using the official instructions above before continuing.
+Only one container runtime is required. A workstation normally uses Docker; an HPC system normally provides Singularity or Apptainer.
 
 ## 3. Clone OncoTracer
 
-Choose a directory with enough free disk space, then run:
-
 ```bash
-git clone https://github.com/cfarkas/oncotracer.git  # download the repository into a new oncotracer folder
-cd oncotracer                                        # enter the repository
-pwd                                                  # confirm the directory; main.nf should be here
-ls main.nf                                           # confirm that the main workflow file is present
+# Clone the repository into an example directory.
+git clone https://github.com/cfarkas/oncotracer.git /home/student/oncotracer
+
+# Enter the repository and confirm that main.nf is present.
+cd /home/student/oncotracer
+pwd
+ls main.nf
 ```
 
-Run all tutorial `nextflow run main.nf ...` commands from this `oncotracer` directory.
+Replace `/home/student/oncotracer` with another absolute path when needed.
 
-## 4. Prepare one runtime without starting an analysis
+## 4. Prepare Docker or Singularity
 
-Use `--install` to prepare and smoke-test one runtime before downloading patient reads. Choose exactly one runtime flag. For Docker:
+Choose one of the following commands.
 
 ```bash
-ROOT="$(pwd)"                                                        # cloned OncoTracer repository
-nextflow run main.nf --install --docker --lpwgs_root "$ROOT"        # pull/test software and cache SAMURAI
-cat .oncotracer/install/install_manifest.txt                         # record the exact runtime identity
+# Prepare and test the Docker runtime.
+nextflow run /home/student/oncotracer/main.nf --install --docker \
+  --lpwgs_root /home/student/oncotracer/test \
+  -work-dir /home/student/oncotracer/test/work/install_docker
+
+# Read the recorded Docker image and runtime information.
+cat /home/student/oncotracer/.oncotracer/install/install_manifest.txt
 ```
 
-On an HPC system, replace `--docker` with `--singularity`. Where containers are unavailable, use `--conda`; Nextflow creates or reuses the environment below `lpwgs_root/.oncotracer/conda`.
+```bash
+# Prepare and test Singularity or Apptainer on HPC.
+nextflow run /home/student/oncotracer/main.nf --install --singularity \
+  --lpwgs_root /home/student/oncotracer/test \
+  -work-dir /home/student/oncotracer/test/work/install_singularity
 
-Do not replace this command with a direct container-runtime launch. Nextflow must manage image retrieval, mounts, environment settings, task provenance, and the nested workflow runtime.
+# Read the recorded image and runtime information.
+cat /home/student/oncotracer/.oncotracer/install/install_manifest.txt
+```
 
-The installation route:
+`--docker` and `--singularity` tell Nextflow which runtime to use. The installation command checks the selected runtime, prepares the image and SAMURAI cache, writes `install_manifest.txt`, and stops without analyzing reads.
 
-- checks Java, Nextflow, the selected runtime, and host-side stage-01 tools;
-- pulls or reuses the selected image/environment and runs an analysis-software smoke test;
-- caches the pinned SAMURAI v1.4.0 workflow below `lpwgs_root/.oncotracer/nxf-assets`;
-- writes `install_manifest.txt` and stops without requiring `mode`, inputs, or `outdir`.
+## 5. Estimated time for the first analysis
 
-It does **not** download sequencing reads or hg38, build reference indexes, or create analysis stages `01` through `06`. Those data-dependent operations begin only with a real workflow or public tutorial. Repeating the same install command is safe: existing container layers, Conda packages, and valid cached assets are reused. Use `--install_dir /absolute/path` only when the manifest must be published somewhere other than `.oncotracer/install`.
+The first uncached analysis downloads the hg38 reference, approximately **3.16 GB**, and builds its BWA index. Indexing commonly takes **30–60 minutes**. The pinned BWA task requests 72 GB, so use at least **80 GiB of addressable RAM**. Later runs reuse a valid reference and index.
 
-OncoTracer cannot install host-level Java, Docker, Apptainer, or operating-system permissions. The command fails with the missing program or daemon access problem so it can be corrected before a long run.
-
-## 5. Plan time and disk space
-
-!!! warning "Large one-time reference step"
-    The first real Illumina or ONT analysis downloads the hg38 reference (about
-    **3.16 GB**) and prepares its BWA index. BWA indexing is single-core,
-    commonly takes **30–60 minutes**, and the pinned task requests 72 GB.
-    Unless a valid persistent index already exists, use at least 80 GiB of
-    addressable RAM. The terminal can display an outer SAMURAI task at
-    `0 of 1` while nested alignment and CNA work is active. Do not assume it
-    is stalled from that counter alone.
-
-Also allow space for the Docker image, uncompressed/intermediate files, the Nextflow `work/` directory, and final results. Completed reference and Nextflow work are reused by later `-resume` runs when inputs and commands have not changed.
+Also reserve space for the container image, FASTQs, BAMs, the Nextflow `work/` directory, and final results.
 
 ## 6. Choose the first run
 
-- [QuickStart Example 1](quick_start.md): about **225 MB of public reads**, one Illumina sample and one ONT sample.
-- [QuickStart Example 2](public_cohort.md): **1.08 GiB** of reads in six FASTQ files; use this after Example 1.
-- [QuickStart Example 3](six_tumor_four_control.md): your 20 FASTQ files (ten R1/R2 pairs) for six tumors and four local-PoN controls, with a 20-CPU Nextflow view, no GPU request, and a resumable direct-terminal launch.
-- [Your own FASTQ folder](auto_params.md): automatically generate a samplesheet and YAML.
-
-QuickStart Example 1 is the recommended first run because it exercises both workflow branches with the smallest provided datasets.
+- [QuickStart Example 1](quick_start.md): one public Illumina and one public ONT sample.
+- [Automatic Setup](auto_params.md): generate a YAML for your own FASTQs.
+- [QuickStart Example 2](public_cohort.md): three public HCC1143 libraries.
+- [Full Tutorial](full_tutorial.md): all 12 public PRJNA754199 libraries.
+- [Other Example Run](six_tumor_four_control.md): six tumors and four controls using **user-provided** FASTQs that are not included in the repository.
