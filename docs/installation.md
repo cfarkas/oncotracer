@@ -94,7 +94,7 @@ Also allow space for the Docker image, uncompressed/intermediate files, the Next
 
 - [QuickStart Example 1](quick_start.md): about **225 MB of public reads**, one Illumina sample and one ONT sample.
 - [QuickStart Example 2](public_cohort.md): **1.08 GiB** of reads in six FASTQ files; use this after Example 1.
-- [QuickStart Example 3](six_tumor_four_control.md): your 20 FASTQ files (ten R1/R2 pairs) for six tumors and four local-PoN controls, with a 20-CPU Nextflow view, no GPU request, and a `screen` launch.
+- [QuickStart Example 3](six_tumor_four_control.md): your 20 FASTQ files (ten R1/R2 pairs) for six tumors and four local-PoN controls, with a 20-CPU Nextflow view, no GPU request, and a resumable direct-terminal launch.
 - [Your own FASTQ folder](auto_params.md): automatically generate a samplesheet and YAML.
 
 QuickStart Example 1 is the recommended first run because it exercises both workflow branches with the smallest provided datasets.
