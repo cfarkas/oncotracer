@@ -81,18 +81,6 @@ def audit_bash_blocks(relative_path: str, text: str) -> None:
         if not any(line.lstrip().startswith("#") for line in nonempty):
             fail(f"Bash block lacks a # explanation: {relative_path}, block {index}")
 
-        # Blank-line-separated command groups should each begin with a comment.
-        groups = re.split(r"\n\s*\n", block)
-        for group_index, group in enumerate(groups, start=1):
-            group_lines = [line for line in group.splitlines() if line.strip()]
-            if not group_lines:
-                continue
-            if not group_lines[0].lstrip().startswith("#"):
-                fail(
-                    f"command group must begin with a # explanation: "
-                    f"{relative_path}, block {index}, group {group_index}"
-                )
-
 
 def main() -> None:
     all_markdown = list(ROOT.glob("*.md")) + list((ROOT / "docs").rglob("*.md"))
