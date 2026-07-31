@@ -1,103 +1,85 @@
 # Choose how to configure a run
 
-You normally need **one run YAML**, not every configuration page. Use this page as a route selector.
+Most users need one generated YAML. Use Automatic Setup first; edit a YAML manually only when the standard FASTQ naming rules do not fit the study.
 
-## Which route should I choose?
+## Choose a route
 
-| Your goal | Start here | What you will create/use |
+| Goal | Guide | Result |
 | --- | --- | --- |
-| Verify that OncoTracer works on this computer | [QuickStart Example 1](quick_start.md) | Public Illumina and ONT data plus generated test YAMLs |
-| Run the real three-library/six-FASTQ cohort | [QuickStart Example 2](public_cohort.md) | Download manifest, automatic YAML, full cohort results |
-| Run six tumors against four normal controls | [QuickStart Example 3](six_tumor_four_control.md) | Ten-sample table, automatic local-PoN YAML, and tumor-only corrected outputs |
-| Run your own folder with standard names | [Automatic setup (recommended default)](auto_params.md) | A small sample table; OncoTracer generates a YAML, audit manifest, and Illumina samplesheet |
-| Write an Illumina YAML manually | [Illumina manual setup (second option)](configuration/illumina.md#second-option-manual-setup) | Single-end or paired-end samplesheet plus one copied YAML |
-| Write an ONT YAML manually | [ONT manual setup (second option)](configuration/ont.md) | Barcode folders/mapping plus one copied YAML |
-| Add CNA classifier/pathology comparison | [Pathology and classifier](configuration/pathology.md) | Extra keys in the same Illumina YAML plus matched pathology CSV |
-| Change boundary-refinement behavior | [Advanced refinement](configuration/refinement.md) | Carefully justified changes in the same run YAML |
-| Look up one field/default | [All parameters](configuration/parameter_reference.md) | Reference only; do not copy every option |
-
-If this is your first run with your own data, use automatic setup as the default. Manual YAML editing is the second option when filenames do not follow the expected patterns or when you need non-default options.
-
-For Illumina, Automatic Setup disables the local panel of normals when the
-sample table has no `NORMAL` rows, rejects exactly one, and enables it with an
-explicit control list when there are at least two. See [Automatic Setup](auto_params.md)
-before preparing a tumor/control cohort.
+| Verify OncoTracer with public data | [QuickStart Example 1](quick_start.md) | Generated Illumina and ONT YAML files |
+| Run three public paired libraries | [QuickStart Example 2](public_cohort.md) | HCC1143 YAML, samplesheet, and results |
+| Configure your own standard FASTQs | [Automatic Setup](auto_params.md) | Generated YAML, manifest, and Illumina samplesheet |
+| Configure six tumors and four controls | [Other Example Run](six_tumor_four_control.md) | Template for **user-provided** FASTQs; data are not included |
+| Configure Illumina manually | [Illumina Configuration](configuration/illumina.md) | Custom samplesheet and YAML |
+| Configure ONT manually | [ONT Configuration](configuration/ont.md) | Custom barcode settings and YAML |
+| Add pathology information | [Pathology and classifier](configuration/pathology.md) | Extra fields in the same Illumina YAML |
+| Change refinement parameters | [Boundary Refinement](configuration/refinement.md) | Non-default settings in the same YAML |
+| Look up a field | [Parameter Reference](configuration/parameter_reference.md) | Name, type, default, and purpose |
 
 ## One YAML controls one run
 
-A YAML is a plain-text list of `key: value` settings. It points to input files and the output directory; it does not contain FASTQ data.
-
 ```yaml
 mode: illumina
-lpwgs_root: /home/user/oncotracer/project
-outdir: /home/user/oncotracer/project/runs/sample_a
-illumina_samplesheet: /home/user/oncotracer/project/input/illumina.samplesheet.csv
+lpwgs_root: /home/student/oncotracer/project
+outdir: /home/student/oncotracer/project/runs/sample_a
+illumina_samplesheet: /home/student/oncotracer/project/input/illumina.samplesheet.csv
 ```
 
-All three paths in this example belong to the same project root. See [YAML examples and path rules](configuration/yaml_basics.md) before editing paths.
+The YAML stores paths and settings. It does not contain FASTQ reads.
 
-Pathology is not a second YAML format. Copy the Illumina pathology template and use that single file for the Illumina run, classifier settings, and pathology column mapping.
-
-## Second option: safe manual workflow
-
-### 1. Copy a template
+## Recommended: Automatic Setup
 
 ```bash
-cd oncotracer                                                   # run main.nf from the repository
-cp params/illumina.minimal.yml params/my_illumina.yml           # Illumina
-# or: cp params/ont.minimal.yml params/my_ont.yml                # ONT
+# Enter the cloned repository.
+cd /home/student/oncotracer
+
+# Generate an Illumina YAML and samplesheet from supported FASTQ names.
+nextflow run main.nf --auto_params \
+  --mode illumina \
+  --reads_folder /home/student/oncotracer/project/input/fastq \
+  --sample_table /home/student/oncotracer/project/input/samples.csv \
+  --auto_config_dir /home/student/oncotracer/project/config \
+  --auto_outdir /home/student/oncotracer/project/results
+
+# Run the generated YAML with Docker.
+nextflow run main.nf --docker \
+  -params-file /home/student/oncotracer/project/config/illumina.auto.yml \
+  -work-dir /home/student/oncotracer/project/work \
+  -resume
 ```
 
-Never edit the versioned template directly; a later `git pull` should not overwrite your run settings.
+On HPC, replace `--docker` with `--singularity` in the analysis command.
 
-### 2. Resolve and check paths
-
-```bash
-realpath .
-realpath project
-realpath project/input
-```
-
-Use those absolute paths in the YAML. Keep inputs and outputs under `lpwgs_root` so the container can access them.
-
-### 3. Edit
+## Manual YAML editing
 
 ```bash
+# Enter the repository.
+cd /home/student/oncotracer
+
+# Copy the Illumina template without changing the versioned original.
+cp params/illumina.minimal.yml params/my_illumina.yml
+
+# Edit the copied file.
 nano params/my_illumina.yml
+
+# Check the workflow wiring without running the scientific tools.
+nextflow run main.nf -stub-run --docker \
+  -params-file params/my_illumina.yml
+
+# Run or resume the real analysis.
+nextflow run main.nf --docker \
+  -params-file params/my_illumina.yml \
+  -resume
 ```
 
-Move with arrow keys, edit the value after each colon, save with `Ctrl+O`, press Enter, then exit with `Ctrl+X`. Do not use tabs. Do not remove a key unless its page says it is optional.
+Use `params/ont.minimal.yml` for a manual ONT configuration.
 
-### 4. Validate wiring
+## Runtime options
 
-```bash
-nextflow run main.nf -stub-run --docker -params-file params/my_illumina.yml
-```
+| Option | Use |
+| --- | --- |
+| `--docker` | Linux workstation or server; uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer) |
+| `--singularity` | HPC configured with Singularity or Apptainer |
+| `--conda` | Fallback when containers are unavailable |
 
-A successful stub creates placeholders and proves that parameters/channels connect. It does **not** analyze reads or validate scientific output.
-
-### 5. Run for real
-
-```bash
-nextflow run main.nf --docker -params-file params/my_illumina.yml -resume
-```
-
-Use the same YAML and command when resuming. Read [Output files](outputs.md) after completion and [Troubleshooting](troubleshooting.md) if a task fails.
-
-## Settings beginners should usually leave alone
-
-Keep caller, analysis type, binsize, and refinement defaults from the relevant template for the first successful run. Do not add internal SAMURAI output paths: OncoTracer derives stage 01 from `outdir` automatically.
-
-Do not edit `nextflow.config` for a normal analysis. A run-specific YAML is easier to archive, compare, and reproduce.
-
-## Runtime flag
-
-Use exactly one:
-
-```text
---docker       workstation/server with Docker
---singularity  supported HPC container runtime
---conda        fallback without containers
-```
-
-See [Containers and execution environments](containers.md) for mounts, permissions, caches, and reproducible image identity.
+Use one runtime option per analysis command.
