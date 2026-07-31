@@ -1,101 +1,91 @@
 # Input Files
 
-Choose the row that matches your data. The optional pathology file does not replace sequencing input.
+Choose the format that matches the sequencing platform. The optional pathology CSV does not replace sequencing input.
 
-| Route | Required sequencing input | Required small metadata |
+| Route | Sequencing input | Small metadata file |
 | --- | --- | --- |
-| Illumina | One single-end FASTQ or one paired R1/R2 FASTQ pair per sample | Automatic `sample_name,status` table, or manual four-column samplesheet |
-| ONT | One or more FASTQs inside each selected barcode directory | Automatic `barcode,sample_name,status` table, or manual barcode/sample lists in YAML |
-| Classifier + pathology | Illumina or ONT input above | Pathology CSV with matching sample, case, and diagnosis columns |
+| Illumina | One single-end FASTQ or one R1/R2 pair per sample | `sample_name,status` for Automatic Setup, or a manual four-column samplesheet |
+| ONT | One or more FASTQs inside each barcode directory | `barcode,sample_name,status` for Automatic Setup, or barcode/sample lists in YAML |
+| Pathology comparison | Illumina or ONT input above | Pathology CSV with matching sample, case, and diagnosis columns |
 
-## Keep one understandable project tree
-
-This page uses `/home/student/oncotracer` as an example repository location.
-Replace that prefix with the location of your clone. Put the reads and
-`samples.csv` in the input folders shown below. OncoTracer creates the
-`config` and `runs` folders when Automatic Setup is run.
+## Recommended project layout
 
 ```text
-oncotracer/
-├── main.nf
-├── params/
-│   ├── my_illumina.yml
-│   └── my_ont.yml
-└── project/                             # lpwgs_root in this example
-    ├── input/
-    │   ├── illumina_fastq/
-    │   │   ├── Patient_A_R1.fastq.gz
-    │   │   ├── Patient_A_R2.fastq.gz
-    │   │   ├── Patient_B_R1.fastq.gz
-    │   │   ├── Patient_B_R2.fastq.gz
-    │   │   ├── ctrl001_R1.fastq.gz
-    │   │   ├── ctrl001_R2.fastq.gz
-    │   │   ├── ctrl002_R1.fastq.gz
-    │   │   ├── ctrl002_R2.fastq.gz
-    │   │   ├── ctrl003_R1.fastq.gz
-    │   │   ├── ctrl003_R2.fastq.gz
-    │   │   ├── ctrl004_R1.fastq.gz
-    │   │   ├── ctrl004_R2.fastq.gz
-    │   │   └── samples.csv
-    │   ├── pathology.csv
-    │   └── fastq_pass/
-    │       ├── barcode01/
-    │       │   └── reads_001.fastq.gz
-    │       ├── barcode02/
-    │       │   └── reads_001.fastq.gz
-    │       └── samples.csv
-    ├── config/                         # created by Automatic Setup
-    └── runs/                           # created by Automatic Setup
+/home/student/oncotracer/project/
+├── input/
+│   ├── illumina_fastq/
+│   │   ├── Patient_A_R1.fastq.gz
+│   │   ├── Patient_A_R2.fastq.gz
+│   │   ├── Patient_B_R1.fastq.gz
+│   │   ├── Patient_B_R2.fastq.gz
+│   │   └── samples.csv
+│   ├── fastq_pass/
+│   │   ├── barcode01/
+│   │   │   └── reads_001.fastq.gz
+│   │   ├── barcode02/
+│   │   │   └── reads_001.fastq.gz
+│   │   └── samples.csv
+│   └── pathology.csv
+├── config/
+├── work/
+└── results/
 ```
 
-## Recommended: let OncoTracer map the inputs
+Keep configured inputs and outputs below `lpwgs_root` so Docker or Singularity can access them.
 
-Automatic Setup checks supported filenames and writes the analysis YAML. It
-is a configuration step and stops before analysis. The reads folder and
-sample table must already exist; the two destination folders do not.
+## Illumina Automatic Setup
 
-| Option | What it means |
-| --- | --- |
-| `--reads_folder` | The existing folder containing the FASTQ files. |
-| `--sample_table` | The existing CSV that connects file or barcode names to sample names and `TUMOR`/`NORMAL`. |
-| `--auto_config_dir` | Where Automatic Setup creates the YAML, checksum/count manifest, and, for Illumina, samplesheet. The folder is created if needed. |
-| `--auto_outdir` | Where the later real analysis will save BAMs, CNA tables, plots, and reports. Automatic Setup creates this folder if needed and writes it as `outdir:` in the YAML, but no reads are analyzed yet. |
+### Paired-end filenames
 
-Use absolute paths because Automatic Setup runs inside a Nextflow task.
+```text
+Patient_A_R1.fastq.gz
+Patient_A_R2.fastq.gz
+Patient_B_R1.fastq.gz
+Patient_B_R2.fastq.gz
+```
 
-For an Illumina local panel of normals, every control FASTQ must use the same
-single-end or paired-end layout as the tumors. Automatic Setup applies these
-rules to the number of `NORMAL` rows: zero disables the local panel, exactly
-one is a configuration error, and two or more enable it. With two or more, the
-generated YAML preserves the normal sample IDs in table order and sets
-`illumina_pon_min_normals` to their count. `NORMAL` samples build the reference
-only; corrected CNA outputs contain `TUMOR` samples only.
+The sample name is the text before `_R1` and `_R2`. Names ending in `_1` and `_2`, and equivalent `.fq.gz` files, are also accepted.
 
-For Illumina, create `project/input/illumina_fastq/samples.csv`:
+For single-end data, use one exact file per sample, such as `Patient_A.fastq.gz`. Do not mix single-end and paired-end samples in one run.
+
+Create this table:
 
 ```csv
 sample_name,status
 Patient_A,TUMOR
 Patient_B,TUMOR
-ctrl001,NORMAL
-ctrl002,NORMAL
-ctrl003,NORMAL
-ctrl004,NORMAL
+Control_1,NORMAL
+Control_2,NORMAL
 ```
 
-Then run:
-
 ```bash
+# Enter the cloned repository.
 cd /home/student/oncotracer
+
+# Generate the Illumina YAML and samplesheet.
 nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder /home/student/oncotracer/project/input/illumina_fastq \
   --sample_table /home/student/oncotracer/project/input/illumina_fastq/samples.csv \
   --auto_config_dir /home/student/oncotracer/project/config/illumina \
-  --auto_outdir /home/student/oncotracer/project/runs/illumina_auto
+  --auto_outdir /home/student/oncotracer/project/results/illumina
 ```
 
-For ONT, create `project/input/fastq_pass/samples.csv`:
+No `NORMAL` rows means no local normal reference. One normal is rejected. Two or more normals are used to build the run-local qDNAseq reference, and corrected CNA outputs contain tumor samples only.
+
+## ONT Automatic Setup
+
+Point `--reads_folder` to the parent of the barcode directories:
+
+```text
+/home/student/oncotracer/project/input/fastq_pass/
+├── barcode01/
+│   └── reads_001.fastq.gz
+└── barcode02/
+    └── reads_001.fastq.gz
+```
+
+Create this table:
 
 ```csv
 barcode,sample_name,status
@@ -103,106 +93,82 @@ barcode01,Patient_A,TUMOR
 barcode02,Patient_B,NORMAL
 ```
 
-Then run:
-
 ```bash
+# Enter the cloned repository.
 cd /home/student/oncotracer
+
+# Generate the ONT YAML.
 nextflow run main.nf --auto_params \
   --mode ont \
   --reads_folder /home/student/oncotracer/project/input/fastq_pass \
   --sample_table /home/student/oncotracer/project/input/fastq_pass/samples.csv \
   --auto_config_dir /home/student/oncotracer/project/config/ont \
-  --auto_outdir /home/student/oncotracer/project/runs/ont_auto
+  --auto_outdir /home/student/oncotracer/project/results/ont
 ```
 
-See [Automatic Setup](auto_params.md) for exact filename detection and complete run commands.
+Each barcode value must match a directory name exactly. At least one row must be `TUMOR`.
 
 ## Manual Illumina samplesheet
 
-Use a manual samplesheet when filenames do not follow the supported automatic
-single-end or R1/R2 detection patterns. Create it with Nano:
+Use a manual samplesheet when filenames do not follow the supported automatic patterns.
 
 ```bash
-nano project/input/illumina.samplesheet.csv                            # create or edit the CSV
+# Create the manual Illumina samplesheet.
+nano /home/student/oncotracer/project/input/illumina.samplesheet.csv
 ```
 
-This example assumes the clone is `/home/student/oncotracer`; replace that prefix with the output of `pwd`:
+Paste exactly this paired-end example:
 
 ```csv
 sample,fastq_1,fastq_2,status
 Patient_A,/home/student/oncotracer/project/input/illumina_fastq/Patient_A_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor
 Patient_B,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor
-ctrl001,/home/student/oncotracer/project/input/illumina_fastq/ctrl001_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl001_R2.fastq.gz,normal
-ctrl002,/home/student/oncotracer/project/input/illumina_fastq/ctrl002_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl002_R2.fastq.gz,normal
-ctrl003,/home/student/oncotracer/project/input/illumina_fastq/ctrl003_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl003_R2.fastq.gz,normal
-ctrl004,/home/student/oncotracer/project/input/illumina_fastq/ctrl004_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/ctrl004_R2.fastq.gz,normal
+Control_1,/home/student/oncotracer/project/input/illumina_fastq/Control_1_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Control_1_R2.fastq.gz,normal
+Control_2,/home/student/oncotracer/project/input/illumina_fastq/Control_2_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Control_2_R2.fastq.gz,normal
 ```
 
-Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`.
-
-| Column | Required content |
-| --- | --- |
-| `sample` | Unique sample ID starting with a letter or digit; then use only letters, digits, `.`, `_`, or `-`. Pathology matching is exact and case-sensitive. |
-| `fastq_1` | Absolute path to this sample's R1 `.fastq.gz`. |
-| `fastq_2` | Absolute path to this sample's R2 `.fastq.gz`, or an empty cell when every library in the run is single-end. |
-| `status` | `tumor` or `normal`. Tumors are analyzed and reported; selected normals are reference-only inputs when the local PoN is enabled. |
-
-For single-end data, keep the header unchanged and leave the third field empty:
+For single-end data, keep the four-column header and leave `fastq_2` empty:
 
 ```csv
 sample,fastq_1,fastq_2,status
 Patient_SE,/home/student/oncotracer/project/input/illumina_fastq/Patient_SE.fastq.gz,,tumor
 ```
 
-Do not mix single-end and paired-end rows in one workflow invocation.
+| Column | Required value |
+| --- | --- |
+| `sample` | Unique identifier using letters, digits, `.`, `_`, or `-` |
+| `fastq_1` | Absolute R1 or single-end FASTQ path |
+| `fastq_2` | Absolute R2 path, or empty for every row in a single-end run |
+| `status` | `tumor` or `normal` |
 
-For a manually configured local panel, list the exact normal IDs and make the
-minimum agree with the intended control set:
+```bash
+# Inspect the saved samplesheet.
+sed -n '1,20p' /home/student/oncotracer/project/input/illumina.samplesheet.csv
+
+# Confirm that one R1 FASTQ exists and is not empty.
+ls -lh /home/student/oncotracer/project/input/illumina_fastq/Patient_A_R1.fastq.gz
+
+# Confirm that the matching R2 FASTQ exists and is not empty.
+ls -lh /home/student/oncotracer/project/input/illumina_fastq/Patient_A_R2.fastq.gz
+
+# Check R1 gzip integrity; success produces no output.
+gzip -t /home/student/oncotracer/project/input/illumina_fastq/Patient_A_R1.fastq.gz
+
+# Check R2 gzip integrity.
+gzip -t /home/student/oncotracer/project/input/illumina_fastq/Patient_A_R2.fastq.gz
+```
+
+For a manual local panel of normals, the YAML list must contain every and only the samplesheet rows marked `normal`:
 
 ```yaml
 illumina_build_pon: true
-illumina_pon_normal_samples: ctrl001,ctrl002,ctrl003,ctrl004
-illumina_pon_min_normals: 4
-```
-
-The list must contain every and only samplesheet ID with `status: normal`, once
-each. OncoTracer rejects missing, extra, or duplicate control IDs rather than
-silently substituting a different normal.
-
-Inspect every row and test both mates before running:
-
-```bash
-sed -n '1,20p' project/input/illumina.samplesheet.csv                 # inspect header and rows
-ls -lh project/input/illumina_fastq/Patient_A_R1.fastq.gz             # confirm R1 is present and non-empty
-ls -lh project/input/illumina_fastq/Patient_A_R2.fastq.gz             # confirm R2 is present and non-empty
-gzip -t project/input/illumina_fastq/Patient_A_R1.fastq.gz            # no output means the gzip is complete
-gzip -t project/input/illumina_fastq/Patient_A_R2.fastq.gz            # test the mate too
+illumina_pon_normal_samples: Control_1,Control_2
+illumina_pon_min_normals: 2
 ```
 
 ## Manual ONT barcode input
 
-`ont_folder` must be the parent of the barcode directories:
-
-```text
-project/input/fastq_pass/
-├── barcode01/
-│   ├── reads_001.fastq.gz
-│   └── reads_002.fastq.gz
-└── barcode02/
-    └── reads_001.fastq.gz
-```
-
-FASTQs may end in `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz`. Put them directly inside the barcode directory, not another nested directory.
-
-Inspect the input:
-
-```bash
-find project/input/fastq_pass -maxdepth 2 -type d -print | sort        # list barcode directories
-find project/input/fastq_pass -maxdepth 2 -type f -print | sort | head -20 # show FASTQs
-ls -lh project/input/fastq_pass/barcode01                             # confirm one barcode is populated
-```
-
-The YAML lists match by position:
+Manual ONT YAML lists are positional:
 
 ```yaml
 ont_folder: /home/student/oncotracer/project/input/fastq_pass
@@ -210,24 +176,21 @@ ont_barcodes: barcode01,barcode02
 ont_sample_names: Patient_A,Patient_B
 ```
 
-Here `barcode01` is `Patient_A` and `barcode02` is `Patient_B`. For normal inputs, `ont_normal_folder`, `ont_normal_barcodes`, and `ont_normal_sample_names` follow the same rule.
+The first barcode maps to the first sample name. Normal barcode lists follow the same rule.
+
+```bash
+# List barcode directories.
+find /home/student/oncotracer/project/input/fastq_pass \
+  -maxdepth 2 -type d -print | sort
+
+# List the first FASTQ files found below the barcode tree.
+find /home/student/oncotracer/project/input/fastq_pass \
+  -maxdepth 2 -type f -print | sort | sed -n '1,20p'
+```
 
 ## Optional pathology CSV
 
-Pathology concordance requires three concepts:
-
-1. a sample identifier that exactly matches an OncoTracer sample;
-2. a case/accession identifier; and
-3. diagnosis text.
-
-Start from the anonymized repository example:
-
-```bash
-cp examples/pathology/anonymized_pathology_example.csv project/input/pathology.csv # copy a safe format example
-nano project/input/pathology.csv                                                   # replace example rows
-```
-
-Save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`. A minimal file is:
+Create a table whose sample identifier exactly matches the sequencing sample name:
 
 ```csv
 illumina_sample_id,case_code,final_diagnosis
@@ -235,38 +198,31 @@ Patient_A,Case_001,Diffuse large B-cell lymphoma
 Patient_B,Case_002,Reactive lymphoid tissue
 ```
 
-The column headers can differ, but the YAML must name the real headers:
-
-```yaml
-run_cna_classifier: true
-pathology_csv: /home/student/oncotracer/project/input/pathology.csv
-pathology_sample_col: illumina_sample_id
-pathology_case_col: case_code
-pathology_diagnosis_col: final_diagnosis
-```
-
-`Patient_A` must appear exactly the same in the FASTQ samplesheet or generated ONT sample names. `Patient_A`, `patient_a`, and `Patient-A` are different identifiers.
-
-Do not commit identifiable clinical data. Export only the columns required for the analysis; remove names, national identifiers, birth dates, addresses, insurance identifiers, and unnecessary free text.
-
-Inspect the IDs before analysis:
-
 ```bash
-head -5 project/input/illumina.samplesheet.csv                         # inspect sequencing sample IDs
-head -5 project/input/pathology.csv                                    # inspect pathology sample IDs
+# Copy the anonymized repository format example.
+cp examples/pathology/anonymized_pathology_example.csv \
+  /home/student/oncotracer/project/input/pathology.csv
+
+# Edit the copied pathology table.
+nano /home/student/oncotracer/project/input/pathology.csv
+
+# Inspect sequencing sample identifiers.
+head -5 /home/student/oncotracer/project/input/illumina.samplesheet.csv
+
+# Inspect pathology sample identifiers.
+head -5 /home/student/oncotracer/project/input/pathology.csv
 ```
 
-Continue with the [Pathology and Classifier tutorial](configuration/pathology.md).
+Do not commit identifiable clinical data. See [Pathology and Classifier](configuration/pathology.md) for the complete matched example.
 
 ## Pre-run checklist
 
-Before the real command, confirm:
+Confirm that:
 
 - every configured path is absolute and below `lpwgs_root`;
 - FASTQs exist, are non-empty, and compressed files pass `gzip -t`;
 - Illumina R1 and R2 belong to the same sample;
-- all Illumina tumor and normal rows use one consistent single-end or paired-end layout;
-- an enabled Illumina PoN selects at least `max(2, illumina_pon_min_normals)` exact `normal` IDs;
-- ONT barcode and sample lists have the same length and order;
-- sample names are unique and match pathology exactly; and
-- `outdir` is a new directory for this experiment.
+- one Illumina run uses one consistent single-end or paired-end layout;
+- ONT barcode and sample-name lists have matching order and length;
+- sample names are unique and match pathology identifiers exactly; and
+- `outdir` is a new directory for the experiment.
