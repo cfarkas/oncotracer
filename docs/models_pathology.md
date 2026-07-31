@@ -1,38 +1,36 @@
-# Models and pathology
+# Models and Pathology
 
-This page explains what happens after `run_cna_classifier: true`. For the copy-and-paste setup, matched CSV files, and run commands, begin with [Pathology and classifier configuration](configuration/pathology.md).
+This page explains the optional stage enabled by `run_cna_classifier: true`. For a complete matched-file example, see [Pathology and Classifier Configuration](configuration/pathology.md).
 
-## What enters the optional stage
+## What enters the classifier
 
-The classifier does not read FASTQs directly. The core workflow first creates:
+The classifier reads the final CNA event table, not the FASTQs directly:
 
 ```text
 03_cna_codification/cna_events.tsv
 ```
 
-Each row describes a copy-number event derived from the refined low-pass WGS bins. The optional stage uses those events to summarize CNA burden, recurrent regions, affected cytobands, and context-associated patterns. A pathology CSV, when supplied, is joined by the exact sample identifier.
+It summarizes CNA burden, recurrent regions, cytobands, and context-associated patterns. A pathology CSV, when supplied, is joined by the exact sample identifier.
 
-## Choose the context before looking at results
+## Choose the context before examining results
 
-`cna_classifier_sample_set` limits the labels and knowledge catalog used during interpretation. Choose the narrowest context justified by specimen provenance or study design.
+`cna_classifier_sample_set` selects the biological context used for research interpretation.
 
-| Example context | Appropriate use |
+| Context | Use |
 | --- | --- |
-| `broad_cancer` | Exploratory pan-cancer cohort without a defensible narrower context. |
-| `lymphoma` | Cohort already established as lymphoma-focused. |
-| Organ/disease contexts such as `breast`, `brain`, `colon`, or `pancreas` | A study whose inclusion criteria already establish that context. |
+| `broad_cancer` | Exploratory pan-cancer cohort without a defensible narrower context |
+| `lymphoma` | Cohort established as lymphoma-focused |
+| `breast`, `brain_cns`, `colorectal`, `pancreas`, and other supported contexts | Study whose inclusion criteria already establish that context |
 
-Do not try several contexts and report only the one that gives the preferred classification.
+Do not try several contexts and report only the preferred result.
 
-## Minimal and model-assisted modes
-
-Start with deterministic, lightweight pathology comparison:
+## Start without language models
 
 ```yaml
 run_cna_classifier: true
 cna_classifier_sample_set: broad_cancer
 cna_classifier_profile: conda
-pathology_csv: /absolute/path/oncotracer/project/input/pathology.csv
+pathology_csv: /home/student/oncotracer/project/input/pathology.csv
 pathology_sample_col: illumina_sample_id
 pathology_case_col: case_code
 pathology_diagnosis_col: final_diagnosis
@@ -40,77 +38,74 @@ pathology_use_biomed_models: false
 pathology_biomed_local_files_only: true
 ```
 
-After that run succeeds, model assistance can be enabled:
+After the deterministic run succeeds, optional biomedical-model assistance can be enabled:
 
 ```yaml
-pathology_use_biomed_models: true                 # try the configured biomedical language models
-pathology_biomed_local_files_only: false          # allow missing model files to be downloaded
+pathology_use_biomed_models: true
+pathology_biomed_local_files_only: false
 ```
 
-The first model-assisted run may download several model packages and require substantial disk space. For an offline system, populate the model cache first, then set `pathology_biomed_local_files_only: true`. OncoTracer records model attempts in `07_pathology/pathology_model_trials.tsv`; it does not silently convert a failed model load into clinical evidence.
+The first model-assisted run may download several model packages. On an offline system, prepare the cache first and keep `pathology_biomed_local_files_only: true`.
 
-## What the classifier can use
+## What CNA data can and cannot show
 
-From CNA data it can use broad and focal gains/losses, amplifications, deep losses, altered-genome burden, aneuploidy, recurrent cytobands, and cataloged driver regions. These features may support a CNA-pattern class or flag compatibility with supplied pathology.
+The classifier can use broad and focal gains or losses, amplifications, deep losses, altered-genome burden, aneuploidy, recurrent cytobands, and cataloged driver regions.
 
-Low-pass read-depth CNA analysis does **not** reliably determine:
+Low-pass read-depth CNA analysis does not reliably determine SNVs, small indels, balanced translocations, most fusions, methylation class, RNA or protein expression, copy-neutral LOH, clonality, or biallelic inactivation.
 
-- single-nucleotide variants or small insertions/deletions;
-- balanced translocations or most gene fusions;
-- methylation class or RNA/protein expression;
-- copy-neutral loss of heterozygosity;
-- clonality or biallelic inactivation without other evidence.
-
-Absence from an OncoTracer report is therefore not evidence that one of these alterations is absent.
-
-## Read the outputs in this order
+## Read outputs in this order
 
 ```bash
-OUT="$PWD/project/runs/illumina_pathology/05_cna_classifier"
-sed -n '1,8p' "$OUT/01_prepared/sample_cna_summary.tsv"                 # CNA features supplied to classification
-sed -n '1,8p' "$OUT/02_classification/cna_patient_classification.tsv"  # CNA-pattern research classification
-sed -n '1,8p' "$OUT/07_pathology/pathology_concordance.tsv"            # comparison with supplied pathology
-sed -n '1,80p' "$OUT/07_pathology/pathology_status.txt"                # matching/model status and warnings
-```
+# Set the classifier result directory.
+OUT="$PWD/project/results/illumina_pathology/05_cna_classifier"
 
-Then open the cohort report:
+# Inspect the CNA features supplied to classification.
+sed -n '1,12p' "$OUT/01_prepared/sample_cna_summary.tsv"
+
+# Inspect the CNA-pattern research classifications.
+sed -n '1,12p' "$OUT/02_classification/cna_patient_classification.tsv"
+
+# Inspect the comparison with supplied pathology.
+sed -n '1,12p' "$OUT/07_pathology/pathology_concordance.tsv"
+
+# Inspect matching, model status, and warnings.
+sed -n '1,120p' "$OUT/07_pathology/pathology_status.txt"
+```
 
 ```bash
-xdg-open "$OUT/03_report/cna_classifier_report.html" # open locally when a desktop is available
+# Open the cohort HTML report on a graphical Linux workstation.
+xdg-open "$OUT/03_report/cna_classifier_report.html"
 ```
 
-On a remote server, copy the HTML/PDF report directory to your workstation instead of trying to open a browser on the server.
+On a remote server, copy the HTML/PDF report directory to a workstation.
 
-Important result groups are:
+| Directory | Contents |
+| --- | --- |
+| `01_prepared/` | Per-sample CNA features supplied to the classifier |
+| `02_classification/` | CNA-pattern classes and scores |
+| `03_report/` | Cohort and per-sample reports |
+| `04_gistic2/`, `05_gistic2_parsed/` | Optional cohort recurrence analysis |
+| `06_knowledge/` | Driver-region and literature-linked summaries |
+| `07_pathology/` | Matching, comparison, status, and model trials |
 
-| Location | Contents | Interpretation status |
-| --- | --- | --- |
-| `01_prepared/` | Normalized event and per-sample feature tables | Classifier input; derived from core CNA calls |
-| `02_classification/` | Probable CNA-pattern class and scores | Research interpretation, not diagnosis |
-| `03_report/` | Cohort HTML, per-sample HTML/PDF, and optional clinician summaries | Presentation layer; verify against tables |
-| `04_gistic2/`, `05_gistic2_parsed/` | Optional cohort recurrence analysis and parsed results | Cohort-level; small cohorts may be uninformative |
-| `06_knowledge/` | Driver-region and literature-linked summaries | Hypothesis-supporting evidence requiring review |
-| `07_pathology/` | Matched records, concordance table, metrics, status, and model trials | Compatibility assessment, not diagnostic agreement |
+## Interpreting pathology comparison
 
-## How to interpret concordance
+A compatible or incompatible result is a research review flag. It can be affected by tumor fraction, sequencing depth, CNA-flat biology, sample mismatch, an incomplete knowledge catalog, or alterations that LP-WGS cannot detect.
 
-An agreement call asks whether observed CNA features are compatible with the supplied diagnosis under the selected context. A disagreement or indeterminate result can reflect low tumor fraction, limited sequencing depth, a CNA-quiet tumor, sample mismatch, an incomplete knowledge catalog, or a diagnosis driven by alterations invisible to LP-WGS.
+Review it in this order:
 
-Use it as a review flag:
-
-1. confirm the samplesheet-to-pathology identifier match;
+1. confirm exact sequencing-to-pathology identifier matching;
 2. inspect coverage, segmentation, and tumor content;
-3. review the actual CNA events and supporting regions;
+3. review the primary CNA events and supporting regions;
 4. compare with morphology, IHC, cytogenetics, and clinical-grade molecular tests;
 5. document the final human interpretation separately.
 
-## Reproducibility and privacy checklist
+## Reproducibility and privacy
 
-- Record the OncoTracer commit, container tag or digest, sample-set context, and YAML.
-- Preserve the input pathology header mapping and a de-identified case key under appropriate governance.
-- Do not put names, national identifiers, dates of birth, or unnecessary free clinical text into the analysis table.
-- Do not enable network model retrieval unless the computing and data-governance policy permits it.
-- Manually verify literature references and model-produced summaries.
+- Record the OncoTracer commit, image identity, sample-set context, and YAML.
+- Preserve a de-identified case key under appropriate governance.
+- Do not include names, national identifiers, birth dates, or unnecessary clinical text.
+- Do not enable network model retrieval unless institutional policy permits it.
+- Verify literature references and model-produced summaries manually.
 
-!!! danger "Not a medical device"
-    Classifier scores, driver summaries, literature links, and pathology compatibility are research outputs. They do not replace a validated diagnostic assay or expert pathology review.
+Classifier scores, driver summaries, literature links, and pathology compatibility are research outputs. They do not replace a validated diagnostic assay or expert pathology review.
