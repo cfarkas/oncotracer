@@ -1,126 +1,141 @@
 # Containers and execution environments
 
-A container packages analysis software, but Nextflow still runs on the host and needs permission to launch that container. Choose one runtime for each command.
+Nextflow runs on the host and starts the selected container image. Use one runtime option per analysis command.
 
-!!! important "Start OncoTracer through Nextflow"
-    Every OncoTracer preparation, smoke test, stub validation, and analysis must begin with `nextflow run`. Do not launch the OncoTracer image with `docker run`, `apptainer exec`, or `singularity exec`; the `--docker` or `--singularity` flag tells Nextflow which runtime to manage.
-
-| Situation | Recommended flag | What must work on the host |
+| Environment | Option | Image |
 | --- | --- | --- |
-| Linux workstation/server with Docker | `--docker` | Java, Nextflow, Docker daemon; Nextflow launches the containers |
-| HPC where Docker is forbidden | `--singularity` | Java, Nextflow, Singularity/Apptainer configured by the cluster |
-| No container runtime | `--conda` | Java, Nextflow, Conda and enough space for environments |
+| Linux workstation or server with Docker | `--docker` | [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer) |
+| HPC with Singularity or Apptainer | `--singularity` | `docker://carlosfarkas/oncotracer:latest` |
+| No container runtime | `--conda` | Conda environments prepared by Nextflow |
 
-Do not combine runtime flags.
-
-## Docker: recommended first route
-
-From the cloned repository:
+## Docker
 
 ```bash
+# Enter the cloned repository and use it as the initial cache root.
+cd oncotracer
 ROOT="$(pwd)"
-nextflow run main.nf --install --docker --lpwgs_root "$ROOT"          # prepare and test the runtime
-nextflow run main.nf -stub-run --docker -params-file params/my_run.yml # validate workflow wiring
-nextflow run main.nf --docker -params-file params/my_run.yml -resume   # run the analysis
+
+# Pull or reuse the Docker image and test the installed software.
+nextflow run main.nf --install --docker \
+  --lpwgs_root "$ROOT"
+
+# Optionally check a YAML without running the scientific tools.
+nextflow run main.nf -stub-run --docker \
+  -params-file params/my_run.yml
+
+# Run or resume the analysis.
+nextflow run main.nf --docker \
+  -params-file params/my_run.yml \
+  -resume
 ```
 
-Nextflow pulls or reuses the maintained image when needed. `--docker` is an OncoTracer parameter. Do not replace it with `-profile docker` in the documented top-level commands.
+Nextflow pulls or reuses `carlosfarkas/oncotracer:latest` as needed. Use `--docker` on the OncoTracer command; do not replace it with `-profile docker`.
 
-### What is mounted
+## Singularity or Apptainer
 
-OncoTracer bind-mounts `lpwgs_root` at the identical path inside the container. Put the YAML's inputs, reference/cache, and `outdir` below that directory:
+Check which launcher is available on the HPC system:
+
+```bash
+# One of these commands should print a launcher path.
+command -v singularity
+command -v apptainer
+```
+
+Then use the `--singularity` option:
+
+```bash
+# Enter the cloned repository and use it as the initial cache root.
+cd oncotracer
+ROOT="$(pwd)"
+
+# Pull or reuse docker://carlosfarkas/oncotracer:latest and test the software.
+nextflow run main.nf --install --singularity \
+  --lpwgs_root "$ROOT"
+
+# Optionally check a YAML without running the scientific tools.
+nextflow run main.nf -stub-run --singularity \
+  -params-file params/my_run.yml
+
+# Run or resume the analysis on HPC.
+nextflow run main.nf --singularity \
+  -params-file params/my_run.yml \
+  -resume
+```
+
+Use a Singularity/Apptainer cache directory on a filesystem with enough quota. Cluster scheduler and bind-mount rules still apply.
+
+## Conda fallback
+
+```bash
+# Enter the cloned repository and select a cache root.
+cd oncotracer
+ROOT="$(pwd)"
+
+# Prepare the Conda environments.
+nextflow run main.nf --install --conda \
+  --lpwgs_root "$ROOT"
+
+# Run or resume the YAML without containers.
+nextflow run main.nf --conda \
+  -params-file params/my_run.yml \
+  -resume
+```
+
+Conda is less portable than a recorded container image and may take longer to solve on the first run.
+
+## Project paths and mounts
+
+Keep the YAML inputs, reference/cache, work directory, and results below a common project root that the container can access:
 
 ```yaml
 lpwgs_root: /data/oncotracer_project
-outdir: /data/oncotracer_project/runs/sample_a
+outdir: /data/oncotracer_project/results
 illumina_samplesheet: /data/oncotracer_project/input/illumina.samplesheet.csv
 ```
 
-A file at `/other_disk/sample.fastq.gz` is invisible when `/other_disk` is not below `lpwgs_root`, even if the host user can read it.
+A path outside `lpwgs_root` may not be visible inside the container.
 
-### File ownership
+## File ownership with Docker
 
-The default container user is `1000:1000`. On a system with different numeric IDs, add:
-
-```yaml
-docker_user: "1234:1234" # replace with your output from id -u and id -g
-```
+The default container user is `1000:1000`. When the host uses different numeric IDs, record them:
 
 ```bash
+# Print the host user and group IDs.
 id -u
 id -g
 ```
 
-### Reproducible image identity
+Then add the matching value to the YAML when required:
 
-`latest` is convenient for tutorials but can change. The Nextflow installation route records the selected runtime and image identity:
+```yaml
+docker_user: "1234:1234"
+```
+
+## Record the image identity
 
 ```bash
+# Read the runtime and image recorded by the installation check.
 cat .oncotracer/install/install_manifest.txt
 ```
 
-For a frozen analysis, use an approved immutable digest and record it with the OncoTracer commit/YAML. Nextflow reuses unchanged Docker layers.
-
-## Singularity or Apptainer on HPC
-
-Check which launcher name is present without invoking it:
-
-```bash
-command -v singularity  # some systems retain this command name
-command -v apptainer    # newer installations often use Apptainer
-```
-
-One of those checks should print a path. Then use OncoTracer's flag name for
-every preparation and run:
-
-```bash
-ROOT="$(pwd)"
-nextflow run main.nf --install --singularity --lpwgs_root "$ROOT"
-nextflow run main.nf -stub-run --singularity -params-file params/my_run.yml
-nextflow run main.nf --singularity -params-file params/my_run.yml -resume
-```
-
-The configured image is `docker://carlosfarkas/oncotracer:latest`, and `lpwgs_root` is bound into the container. Use a cache directory on a filesystem with sufficient quota, following your cluster's Nextflow/Apptainer instructions. A Docker success does not guarantee the cluster permits the same bind mounts or outbound image pulls; test with `-stub-run` and a public example on the target system.
-
-## Conda fallback
-
-Use Conda only when container execution is unavailable or when running the optional classifier profile:
-
-```bash
-ROOT="$(pwd)"
-nextflow run main.nf --install --conda --lpwgs_root "$ROOT"
-nextflow run main.nf -stub-run --conda -params-file params/my_run.yml
-nextflow run main.nf --conda -params-file params/my_run.yml -resume
-```
-
-Conda resolves/downloads packages on the first run and can be slower or less portable across platforms than an immutable image. Preserve `environment.yml`, the solved environment export, and the OncoTracer commit for reproducibility.
-
-## Understand the execution layers
-
-OncoTracer coordinates three layers:
-
-1. the host launches Java/Nextflow and validates/prepares paths and references;
-2. OncoTracer processes use the selected container/Conda environment;
-3. stage 01 starts the nested [SAMURAI](https://github.com/dincalcilab/samurai) workflow with the corresponding runtime.
-
-This is why `--docker` does not make a missing host Java installation disappear. Reference preparation and ONT launch helpers may also check host commands such as `python3`, `samtools`, `minimap2`, or `pigz`; the [Programs](programs.md) page explains where each tool is used.
+For a formal analysis, preserve the OncoTracer commit, YAML, generated samplesheet, installation manifest, and nested `pipeline_info` files. Use an approved immutable image digest when the study requires a frozen runtime.
 
 ## Cache and storage locations
 
-- `work/`: top-level Nextflow task cache used by `-resume`.
-- `<outdir>/01_samurai_*/work/`: nested SAMURAI task cache.
-- `.nextflow/` and stage-01 `.nextflow/`: workflow/runtime metadata.
-- `.singularity_cache/` below `lpwgs_root`: downloaded Singularity images.
-- Docker's system store: managed by the Docker daemon.
+- `work/`: top-level Nextflow cache used by `-resume`.
+- `<outdir>/01_samurai_*/work/`: nested SAMURAI cache.
+- `.nextflow/`: Nextflow metadata.
+- `.singularity_cache/` below `lpwgs_root`: Singularity/Apptainer images.
+- Docker system storage: managed by the Docker daemon.
 
-Do not clean these while the run is active. Verify and archive results before removing caches.
+Do not remove these while a run is active. Verify and archive the final results before cleaning caches.
 
 ## Security notes
 
 - Treat Docker access as privileged according to local policy.
-- Use trusted, recorded image names/digests.
-- Never embed registry credentials in a YAML or shell history.
-- Mount only the project root needed by the analysis.
-- Public examples are not a substitute for institutional governance of patient data.
+- Use trusted image names or recorded digests.
+- Do not place registry credentials in YAML files or shell history.
+- Mount only the project directories needed for the analysis.
+- Follow institutional rules for patient data.
 
-See [Troubleshooting](troubleshooting.md) for daemon permissions, bind-path errors, disk usage, and task logs.
+See [Troubleshooting](troubleshooting.md) for runtime permissions, bind paths, disk usage, and task logs.
