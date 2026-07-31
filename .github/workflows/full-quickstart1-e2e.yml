@@ -1,0 +1,144 @@
+name: Full QuickStart 1 end-to-end
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/full-quickstart1-e2e.yml"
+      - "main.nf"
+      - "nextflow.config"
+      - "environment.yml"
+      - "bin/**"
+      - "examples/quickstart/**"
+      - "params/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quickstart1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      NXF_ANSI_LOG: "false"
+      NXF_DISABLE_CHECK_LATEST: "true"
+      NXF_OPTS: "-Xms512m -Xmx4g"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune --all --force || true
+          df -h
+
+      - name: Install host prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            samtools bwa minimap2 pigz curl wget
+
+          curl -fsSL https://get.nextflow.io | bash
+          sudo install -m 0755 nextflow /usr/local/bin/nextflow
+
+      - name: Record runtime resources and versions
+        run: |
+          id
+          uname -a
+          nproc
+          free -h
+          df -h
+          java -version
+          nextflow -version
+          docker --version
+          docker info
+          samtools --version | sed -n '1,3p'
+          bwa 2>&1 | sed -n '1,3p'
+          minimap2 --version
+          pigz --version
+
+      - name: Prepare public QuickStart data and YAML files
+        run: |
+          umask 000
+          mkdir -p "$GITHUB_WORKSPACE/test/work/prepare" "$GITHUB_WORKSPACE/test/reports"
+
+          nextflow run "$GITHUB_WORKSPACE/main.nf" \
+            --make_test \
+            --test_root "$GITHUB_WORKSPACE/test" \
+            -work-dir "$GITHUB_WORKSPACE/test/work/prepare"
+
+          sed -n '1,160p' "$GITHUB_WORKSPACE/test/configs/illumina.quickstart.yml"
+          sed -n '1,160p' "$GITHUB_WORKSPACE/test/configs/ont.quickstart.yml"
+
+      - name: Run full Illumina QuickStart workflow
+        run: |
+          umask 000
+          USER_SPEC="$(id -u):$(id -g)"
+
+          nextflow run "$GITHUB_WORKSPACE/main.nf" \
+            --docker \
+            --docker_user "$USER_SPEC" \
+            -params-file "$GITHUB_WORKSPACE/test/configs/illumina.quickstart.yml" \
+            -work-dir "$GITHUB_WORKSPACE/test/work/illumina" \
+            -with-report "$GITHUB_WORKSPACE/test/reports/illumina.report.html" \
+            -with-timeline "$GITHUB_WORKSPACE/test/reports/illumina.timeline.html" \
+            -with-trace "$GITHUB_WORKSPACE/test/reports/illumina.trace.tsv" \
+            -resume
+
+          cat "$GITHUB_WORKSPACE/test/runs/illumina/06_workflow_summary/workflow_summary.txt"
+
+      - name: Run full ONT QuickStart workflow
+        run: |
+          umask 000
+          USER_SPEC="$(id -u):$(id -g)"
+
+          nextflow run "$GITHUB_WORKSPACE/main.nf" \
+            --docker \
+            --docker_user "$USER_SPEC" \
+            -params-file "$GITHUB_WORKSPACE/test/configs/ont.quickstart.yml" \
+            -work-dir "$GITHUB_WORKSPACE/test/work/ont" \
+            -with-report "$GITHUB_WORKSPACE/test/reports/ont.report.html" \
+            -with-timeline "$GITHUB_WORKSPACE/test/reports/ont.timeline.html" \
+            -with-trace "$GITHUB_WORKSPACE/test/reports/ont.trace.tsv" \
+            -resume
+
+          cat "$GITHUB_WORKSPACE/test/runs/ont/06_workflow_summary/workflow_summary.txt"
+
+      - name: Verify both QuickStart output sets
+        run: |
+          python3 "$GITHUB_WORKSPACE/examples/quickstart/verify_outputs.py" \
+            --test-root "$GITHUB_WORKSPACE/test" \
+            | tee "$GITHUB_WORKSPACE/test/reports/quickstart_verification.txt"
+
+          test -s "$GITHUB_WORKSPACE/test/runs/illumina/03_cna_codification/cna_events.tsv"
+          test -s "$GITHUB_WORKSPACE/test/runs/illumina/04_cna_custom_plots/cna_per_sample_pages.pdf"
+          test -s "$GITHUB_WORKSPACE/test/runs/ont/03_cna_codification/cna_events.tsv"
+          test -s "$GITHUB_WORKSPACE/test/runs/ont/04_cna_custom_plots/cna_per_sample_pages.pdf"
+
+          du -h -d 3 "$GITHUB_WORKSPACE/test" | sort -h | tail -40
+          df -h
+
+      - name: Upload QuickStart logs and summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-quickstart1-logs-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            .nextflow.log
+            test/configs/**
+            test/reports/**
+            test/runs/*/06_workflow_summary/**
+            test/runs/*/01_samurai_*/logs/**
+            test/runs/*/01_samurai_*/nextflow_launch/.nextflow.log
+            test/runs/*/01_samurai_*/pipeline_info/**
+            test/runs/*/01_samurai_*/results/pipeline_info/**
