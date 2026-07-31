@@ -1,14 +1,14 @@
 # Full tutorial: complete public PRJNA754199 archive
 
-This tutorial processes **all 12 Illumina plasma cfDNA libraries currently exposed by the public PRJNA754199 archive**. The main path is intentionally short: download validated reads, let OncoTracer generate the samplesheet and YAML, run the workflow, verify the outputs, and review the reports.
+This tutorial processes the **12 Illumina plasma cfDNA libraries currently available in the public PRJNA754199 read archive**. It downloads and validates the FASTQs, generates the configuration automatically, runs OncoTracer, verifies the required files, and reviews the research outputs.
 
-[![Roadmap for Full Tutorial sections 1 through 7: plan and prepare the software, download and validate 12 FASTQs, generate a samplesheet and YAML with Automatic Setup, run the real analysis, verify all required outputs, and review CNA plots and reports.](assets/tutorial/full_tutorial_flow.svg)](assets/tutorial/full_tutorial_flow.svg)
+[![Roadmap for the complete PRJNA754199 tutorial.](assets/tutorial/full_tutorial_flow.svg)](assets/tutorial/full_tutorial_flow.svg)
 
-*Follow the numbered sections in order. The YAML connects preparation to the real analysis by saving the checked inputs, selected settings, and result folder. Select a linked diagram or terminal image below to open it full size.*
+The commands below use Docker. On a configured HPC system, replace `--docker` with `--singularity`. See [Installation](installation.md) and the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer).
 
-## What this tutorial does—and does not—contain
+## What this tutorial contains
 
-The associated PLOS ONE article describes 41 plasma specimens from 15 patients: 10 longitudinal specimens from four DDLPS/WDLPS patients and 31 specimens from 11 patients with other soft-tissue tumors. On **15 July 2026**, the ENA read-run report returned only 12 read runs for the BioProject.
+The associated PLOS ONE article describes 41 plasma specimens from 15 patients. On **15 July 2026**, the ENA read-run report returned 12 public runs for the BioProject, so this tutorial processes those 12 runs rather than every specimen described in the article.
 
 | Public archive snapshot | Value |
 | --- | ---: |
@@ -17,74 +17,95 @@ The associated PLOS ONE article describes 41 plasma specimens from 15 patients: 
 | Instrument and read length | Illumina HiSeq 2500, 36 bp |
 | Deposited reads | 266,097,582 |
 | Deposited bases | 9,579,512,952 |
-| Compressed download | 6,171,900,300 bytes (5.75 GiB) |
-| Reference/caller | hg38, SAMURAI/qDNAseq, 100 kb |
+| Compressed download | 6,171,900,300 bytes, about 5.75 GiB |
+| Reference and caller | hg38, SAMURAI/qDNAseq, 100 kb |
 
-Ten archive aliases correspond to the article's primary serial-sampling set. The additional aliases `WDLPS_2` and `WDLPS_3` are not reconciled to rows in the article supplement. None of the 31 other-tumor specimens is currently present in the read archive. One deposited run, `DDLPS_2`, contains 8,351,915 reads and is therefore below the article's general 10-million-read description.
+`DDLPS_*` and `WDLPS_*` are submitter-provided archive aliases. They are retained for provenance and are not independently verified diagnoses. This is an independent hg38/qDNAseq reanalysis, not an exact reproduction of the publication's GRCh37 Plasma-Seq method.
 
-!!! warning "Archive aliases are not diagnoses"
-    `DDLPS_*` and `WDLPS_*` are sample names supplied with the public files. OncoTracer keeps those names but does not independently verify a diagnosis. The generated `tumor` status is a workflow label for this patient cohort, not proof of detectable ctDNA, active disease, or a CNA in any specimen.
+## Estimated time and resources
 
-This is an **independent reanalysis**, not an exact reproduction of the publication. The publication used GRCh37/hg19, a Plasma-Seq Z-score method, variable-mappability windows, and healthy-donor references. This tutorial uses OncoTracer's hg38 SAMURAI/qDNAseq route and has no matched tumor or healthy-donor controls.
+Use Linux with at least 150 GiB of free working space, 16 CPU cores, and at least 80 GiB of addressable RAM. The first uncached run downloads hg38 and creates a BWA index. Indexing commonly takes **30–60 minutes** before alignment begins, and the complete 12-library analysis can take several hours.
 
-## 1. Plan the run
+## 1. Clone the repository
 
-Use Linux with at least **150 GiB of free working space**, 16 CPU cores, and at
-least 80 GiB of addressable RAM. The pinned BWA task alone requests 72 GB. The
-first run also prepares hg38 and its BWA index; that one-time step adds several
-GiB and can take 30–60 minutes before alignment begins.
-
-Complete the [host installation requirements](installation.md#1-install-the-host-prerequisites), then clone OncoTracer. This tutorial uses `/home/student/oncotracer` as an example location. `student` is only an example Linux username; if `pwd` shows a different location, replace `/home/student/oncotracer` in the commands below with that location.
-
-If OncoTracer is already cloned, skip the first command and enter the existing repository.
+This tutorial uses `/home/student/oncotracer` as an example path.
 
 ```bash
+# Clone OncoTracer into the example directory.
 git clone https://github.com/cfarkas/oncotracer.git /home/student/oncotracer
+
+# Enter the repository and confirm the path.
 cd /home/student/oncotracer
 pwd
 ```
 
-The remaining commands use `/home/student/oncotracer/test` for the reads, generated setup files, temporary work, and final results. OncoTracer creates the required subdirectories automatically.
+Skip the `git clone` command when the repository already exists.
 
 <a id="2-prepare-software-only"></a>
 
 ## 2. Prepare the software
 
-Prepare and check Docker without starting an analysis:
+Docker:
 
 ```bash
+# Pull or reuse the Docker image and test the required software.
 nextflow run /home/student/oncotracer/main.nf --install --docker \
   --lpwgs_root /home/student/oncotracer/test \
   -work-dir /home/student/oncotracer/test/work/install
 ```
 
-This command pulls and checks the software, records the selected runtime and SAMURAI version, and then stops. It does not download hg38 or patient reads and does not create analysis stages `01`–`06`. See [Installation](installation.md#4-prepare-one-runtime-without-starting-an-analysis) for Singularity and Conda alternatives.
-
-## 3. Download and validate the complete public archive
-
-Download all 12 FASTQs with one resumable command:
+Singularity or Apptainer:
 
 ```bash
+# Prepare the same workflow image through the HPC container option.
+nextflow run /home/student/oncotracer/main.nf --install --singularity \
+  --lpwgs_root /home/student/oncotracer/test \
+  -work-dir /home/student/oncotracer/test/work/install
+```
+
+The installation route checks the software and stops. It does not download patient reads or hg38 and does not start the analysis.
+
+## 3. Download and validate the 12 public FASTQs
+
+```bash
+# Download or reuse all 12 FASTQs and verify their size, MD5, and gzip integrity.
 nextflow run /home/student/oncotracer/main.nf --make_prjna754199 \
   --test_root /home/student/oncotracer/test \
   -work-dir /home/student/oncotracer/test/work/prjna754199_download
 ```
 
-This command creates `/home/student/oncotracer/test/public/prjna754199`, downloads the 12 FASTQ files, and checks their file sizes, MD5 checksums, and gzip contents. It also places `samples.csv` in the same folder. A completed file is reused if the command is run again, and an interrupted download can continue. No analysis starts yet.
+The command creates `/home/student/oncotracer/test/public/prjna754199` and places `samples.csv` beside the FASTQs. A completed file is reused when the command is repeated.
 
-[![Example terminal showing successful validation of all 12 PRJNA754199 single-end FASTQs, including the final reads folder, samples.csv path, download size, and read count.](assets/tutorial/full_tutorial_download_checkpoint.svg)](assets/tutorial/full_tutorial_download_checkpoint.svg)
+[![Successful validation checkpoint for the 12 PRJNA754199 FASTQs.](assets/tutorial/full_tutorial_download_checkpoint.svg)](assets/tutorial/full_tutorial_download_checkpoint.svg)
 
-*A complete download ends with this summary. `DOWNLOAD` and `REUSE` lines above it are both normal. If the command stops before the summary, run the same Nextflow command again.*
+The exact generated sample table is:
 
-For the exact URLs, checksums, archive search, and download checks, see the [example README](https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199) and [archive details](https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md).
+```csv
+sample_name,status
+DDLPS_1a,TUMOR
+DDLPS_1b,TUMOR
+DDLPS_1c,TUMOR
+DDLPS_2,TUMOR
+DDLPS_3a,TUMOR
+DDLPS_3b,TUMOR
+WDLPS_1a,TUMOR
+WDLPS_1b,TUMOR
+WDLPS_1c,TUMOR
+WDLPS_1d,TUMOR
+WDLPS_2,TUMOR
+WDLPS_3,TUMOR
+```
+
+See [`examples/prjna754199/manifest.tsv`](https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/manifest.tsv) for the public files and checksums and [`PROVENANCE.md`](https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md) for the archive notes.
 
 <a id="4-generate-and-inspect-the-single-end-configuration"></a>
 
 ## 4. Generate the samplesheet and YAML automatically
 
-The download command created `samples.csv`. This small file lists each sample name and marks it as `TUMOR` for the workflow. You do not need to write the larger workflow samplesheet or YAML by hand. Run Automatic Setup:
+`--auto_params` matches the 12 sample names to the single-end FASTQs, validates the files, and writes the YAML and samplesheet. It does not start the analysis.
 
 ```bash
+# Generate the 12-sample Illumina configuration and enable CNA-only reports.
 nextflow run /home/student/oncotracer/main.nf --auto_params \
   --mode illumina \
   --reads_folder /home/student/oncotracer/test/public/prjna754199 \
@@ -97,38 +118,23 @@ nextflow run /home/student/oncotracer/main.nf --auto_params \
   -work-dir /home/student/oncotracer/test/work/prjna754199_auto_params
 ```
 
-This command prepares the run; it does not process the reads. OncoTracer:
-
-1. reads the 12 names in `samples.csv`;
-2. finds the matching FASTQ for each name;
-3. checks that every file uses the supported single-end name and that each gzip file can be read;
-4. creates the samplesheet, YAML, and checksum/count audit manifest required
-   to review the configuration; and
-5. records where the final results should be saved.
-
-List the three generated files:
+Inspect the generated files:
 
 ```bash
+# List the generated YAML, samplesheet, and manifest.
 ls -1 /home/student/oncotracer/test/configs/prjna754199
+
+# Inspect the generated analysis settings.
+sed -n '1,160p' /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml
+
+# Inspect the generated 12-row single-end samplesheet.
+sed -n '1,20p' /home/student/oncotracer/test/configs/prjna754199/illumina.samplesheet.csv
+
+# Inspect the sample counts and file hashes.
+cat /home/student/oncotracer/test/configs/prjna754199/auto_params_manifest.tsv
 ```
 
-[![Example terminal showing PRJNA754199 Automatic Setup completed and listing the YAML, samplesheet, and audit manifest.](assets/tutorial/full_tutorial_setup_checkpoint.svg)](assets/tutorial/full_tutorial_setup_checkpoint.svg)
-
-*Automatic Setup has prepared the 12-sample run but has not analyzed the
-reads. The samplesheet connects each sample to its FASTQ; the YAML stores the
-paths and analysis choices used in the next section; the manifest records
-sample counts and file hashes.*
-
-The four path options have distinct purposes:
-
-| Option | Meaning |
-| --- | --- |
-| `--reads_folder` | The existing folder that contains the downloaded FASTQ files. |
-| `--sample_table` | The existing `samples.csv` file that connects each sample name to its workflow status. |
-| `--auto_config_dir` | The folder where OncoTracer creates `illumina.samplesheet.csv`, `illumina.auto.yml`, and `auto_params_manifest.tsv`. |
-| `--auto_outdir` | The folder where the next, real analysis command will save BAMs, CNA tables, plots, and reports. Automatic Setup creates it if needed and records it in the YAML, but does not put analysis results in it yet. |
-
-The generated files are:
+The configuration directory contains:
 
 ```text
 /home/student/oncotracer/test/configs/prjna754199/
@@ -137,111 +143,109 @@ The generated files are:
 └── illumina.samplesheet.csv
 ```
 
-`illumina.samplesheet.csv` contains one row per sample and the full path to
-its FASTQ. Its `fastq_2` column is empty because these reads are single-end.
-`illumina.auto.yml` contains the settings and paths used by the next command,
-and `auto_params_manifest.tsv` records tumor/normal counts and SHA-256 values.
-The classifier is enabled, but no pathology file is supplied, so the reports
-contain CNA-only research interpretation rather than a pathology comparison.
-
 <a id="5-check-wiring-then-run-the-real-workflow"></a>
 
-## 5. Run the analysis
+## 5. Check the wiring and run the analysis
 
-Start the real 12-library analysis:
+Optional stub check:
 
 ```bash
+# Check the generated workflow connections without running the scientific tools.
+nextflow run /home/student/oncotracer/main.nf -stub-run --docker \
+  -params-file /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml \
+  -work-dir /home/student/oncotracer/test/work/prjna754199_stub
+```
+
+Real analysis:
+
+```bash
+# Run the complete 12-library workflow with Docker and resume support.
 nextflow run /home/student/oncotracer/main.nf --docker \
   -params-file /home/student/oncotracer/test/configs/prjna754199/illumina.auto.yml \
   -work-dir /home/student/oncotracer/test/work/prjna754199 \
   -resume
 ```
 
-Keep the terminal open while this command runs. It performs alignment, CNA analysis, boundary refinement, plotting, and report generation. The first run also prepares the hg38 reference, so it can take several hours. `-resume` lets the same command continue from completed steps after an interruption.
+Keep the terminal open until Nextflow returns to the prompt. To resume after an interruption, repeat the same command with the same YAML and work directory.
 
 ## 6. Verify the completed run
 
-Run the versioned verifier against the final output directory:
-
 ```bash
+# Verify the exact 12 samples and all required output groups.
 python3 /home/student/oncotracer/examples/prjna754199/verify_outputs.py \
   --outdir /home/student/oncotracer/test/runs/prjna754199
 ```
 
-[![Example terminal showing the PRJNA754199 output verifier's exact success message that the complete tutorial outputs are verified.](assets/tutorial/full_tutorial_verify_checkpoint.svg)](assets/tutorial/full_tutorial_verify_checkpoint.svg)
+A successful check ends with:
 
-*Continue to interpretation only after the verifier prints `SUCCESS: complete PRJNA754199 tutorial outputs are verified.`*
+```text
+SUCCESS: complete PRJNA754199 tutorial outputs are verified.
+```
 
-The verifier requires the exact 12 manifest aliases—not merely 12 arbitrary rows—across the BAMs, SAMURAI segments, refinement summary, and classifier table. It also requires the CNA tables, plots, clinician-report index, and workflow summary used by this tutorial.
+[![Successful output-verification checkpoint for the complete tutorial.](assets/tutorial/full_tutorial_verify_checkpoint.svg)](assets/tutorial/full_tutorial_verify_checkpoint.svg)
 
-Start reviewing the verified run from these locations:
+Start reviewing the run from:
 
-| Capability | Source output |
+| Output | Location |
 | --- | --- |
-| Workflow inventory | `/home/student/oncotracer/test/runs/prjna754199/06_workflow_summary/workflow_summary.txt` |
-| SAMURAI fitted CNA profiles | `/home/student/oncotracer/test/runs/prjna754199/01_samurai_illumina/qdnaseq/plots/` |
-| Boundary-refinement evidence | `/home/student/oncotracer/test/runs/prjna754199/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv` |
-| Final CNA event table | `/home/student/oncotracer/test/runs/prjna754199/03_cna_codification/cna_events.tsv` |
-| Cohort and per-sample plots | `/home/student/oncotracer/test/runs/prjna754199/04_cna_custom_plots/` |
-| Classifier report | `/home/student/oncotracer/test/runs/prjna754199/05_cna_classifier/03_report/cna_classifier_report.html` |
-| Per-sample research reports | `/home/student/oncotracer/test/runs/prjna754199/05_cna_classifier/03_report/clinician_reports/` |
+| Workflow summary | `06_workflow_summary/workflow_summary.txt` |
+| SAMURAI qDNAseq profiles | `01_samurai_illumina/qdnaseq/plots/` |
+| Boundary-refinement summary | `02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv` |
+| Final CNA events | `03_cna_codification/cna_events.tsv` |
+| Cohort and per-sample plots | `04_cna_custom_plots/` |
+| Classifier HTML | `05_cna_classifier/03_report/cna_classifier_report.html` |
+| Per-sample research PDFs | `05_cna_classifier/03_report/clinician_reports/` |
 
 <a id="7-interpret-without-overclaiming"></a>
 
-## 7. Review the CNA and pathology-facing reports carefully
+## 7. Review the results carefully
 
-Black qDNAseq points show normalized bin-level signal; fitted horizontal segment lines summarize the caller's piecewise CNA model. Boundary refinement asks whether local BAM coverage supports moving each coarse boundary and records refined, retained, and low-resolution outcomes.
+Black qDNAseq points show normalized bin-level signal; fitted horizontal lines show the caller's CNA segments. Boundary refinement evaluates whether local BAM coverage supports moving each coarse boundary.
 
-The classifier may flag a region such as 12q13–q15 or an MDM2/CDK4 overlap for research review. A flag is not confirmation of gene amplification, disease subtype, prognosis, or treatment actionability. Review coverage, segment size, focality, longitudinal consistency, and the original event table; confirm important findings with a validated orthogonal assay.
+The classifier may flag regions such as 12q13–q15 or overlaps with genes including `MDM2` and `CDK4`. These are research findings, not confirmed diagnoses or treatment recommendations. Review coverage, segment size, focality, longitudinal consistency, and the original CNA table. Confirm important findings with a validated orthogonal assay.
 
-The stage-05 HTML and per-sample PDFs are useful clinician-facing research summaries, but this archive supplies no pathology table. They must not be described as pathology-confirmed findings. To combine a future cohort with real pathology metadata, follow [Pathology and Classifier](configuration/pathology.md) and require exact sample-identifier matching.
-
-The article reported MDM2-associated signals for selected specimens under its own method. Do not use that statement to relabel a discordant OncoTracer result or choose parameters after seeing the answer. This reanalysis has no matched tissue or healthy-donor controls and is not a sensitivity/specificity validation set.
+No pathology table is supplied in this public archive example, so the generated reports are CNA-only research summaries.
 
 <a id="8-preserve-provenance"></a>
 
 ## 8. Keep the files that describe the run
 
-Keep these files with any result you share:
+Preserve:
 
-- `/home/student/oncotracer/examples/prjna754199/manifest.tsv`, which lists the downloaded public files and their checksums;
-- `/home/student/oncotracer/examples/prjna754199/samples.csv`, which lists the sample names and workflow status;
-- `/home/student/oncotracer/test/configs/prjna754199/illumina.samplesheet.csv` and `illumina.auto.yml`, which record the inputs and settings;
-- `/home/student/oncotracer/test/runs/prjna754199/06_workflow_summary/workflow_summary.txt`;
-- the CNA tables, plots, classifier report, and per-sample PDFs used in the interpretation.
-
-<a id="optional-automated-replay"></a>
-
-The [archive and checksum notes](https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md) describe the public files used here. The [example README](https://github.com/cfarkas/oncotracer/tree/main/examples/prjna754199) contains extra technical details for users who need them.
+- `examples/prjna754199/manifest.tsv` and `samples.csv`;
+- `test/configs/prjna754199/illumina.samplesheet.csv`, `illumina.auto.yml`, and `auto_params_manifest.tsv`;
+- `test/runs/prjna754199/06_workflow_summary/workflow_summary.txt`;
+- the CNA tables, plots, and reports used in any interpretation;
+- the OncoTracer commit and installation manifest.
 
 ## Verified result gallery
 
-The following images are static exports from the complete 12-run workflow described above. They demonstrate software output; they do not validate a diagnosis. [See the source files and checksums used for the gallery](assets/full_tutorial/gallery_provenance.tsv).
+These static exports come from the complete 12-run workflow. They demonstrate software output and do not validate a diagnosis.
 
 ### SAMURAI fitted copy-number profile
 
 [Open the source qDNAseq segment PDF](assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.pdf).
 
-![SAMURAI qDNAseq profile for the public DDLPS_1b archive alias, with bin-level signal and fitted horizontal CNA segments](assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.png)
+![SAMURAI qDNAseq profile for the public DDLPS_1b archive alias](assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.png)
 
-### BAM-supported boundary-refinement statistics
+### Boundary-refinement statistics
 
 [Open the source 12-sample refinement summary](assets/full_tutorial/prjna754199_refinement_summary.csv).
 
-![Counts of refined, retained, and poor-resolution boundaries for all 12 public PRJNA754199 libraries](assets/full_tutorial/prjna754199_refinement_summary.png)
+![Counts of refined, retained, and poor-resolution boundaries](assets/full_tutorial/prjna754199_refinement_summary.png)
 
-### CNA-only research interpretation (no pathology supplied)
+### CNA-only research interpretation
 
 [Open the source research-use classifier report](assets/full_tutorial/prjna754199_cna_interpretation.pdf).
 
-![CNA-only research interpretation for DDLPS_1b exported from the verified OncoTracer classifier output; no pathology was supplied](assets/full_tutorial/prjna754199_cna_interpretation.png)
-
-!!! warning "Research use only"
-    OncoTracer is not a standalone diagnostic system or medical device. The gallery is a reproducible software demonstration. It must not be used by itself to diagnose disease, choose treatment, establish prognosis, or report a clinical result.
+![CNA-only research interpretation for DDLPS_1b](assets/full_tutorial/prjna754199_cna_interpretation.png)
 
 ## Primary sources
 
 - [NCBI BioProject PRJNA754199](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA754199)
 - [ENA PRJNA754199 archive record](https://www.ebi.ac.uk/ena/browser/view/PRJNA754199)
 - [Przybyl et al., PLOS ONE (2022)](https://doi.org/10.1371/journal.pone.0262272)
-- [Publication supplementary table S1](https://doi.org/10.1371/journal.pone.0262272.s001)
+
+## Research use
+
+OncoTracer is not a standalone diagnostic system or medical device. This tutorial must not be used by itself to diagnose disease, choose treatment, establish prognosis, or report a clinical result.
