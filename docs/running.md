@@ -1,198 +1,183 @@
 # Run OncoTracer
 
-Run every command from the cloned repository directory—the directory that contains `main.nf`.
+Run commands from the cloned repository directory, where `main.nf` is located. Choose Docker on a workstation/server or Singularity/Apptainer on HPC.
 
-!!! important "Use container runtimes only through Nextflow"
-    Launch every OncoTracer preparation, test, and analysis with `nextflow run`.
-    Put `--docker` or `--singularity` on that command and let Nextflow manage the
-    image and container. Do not use `docker run` or `docker exec`,
-    `apptainer run` or `apptainer exec`, or `singularity run` or
-    `singularity exec` to launch OncoTracer.
+The Docker option uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
 
-## Choose the shortest correct route
+## Choose a route
 
-| Starting point | What to do |
+| Starting point | Route |
 | --- | --- |
-| You want to verify the installation with public data | Run `nextflow run main.nf --make_test`, then the two direct Nextflow analysis commands in [QuickStart Example 1](quick_start.md). |
-| You have uniformly single-end or paired Illumina FASTQs with supported names | Generate configuration with `--auto_params`, then run the generated YAML. |
-| You have six tumors and four normal controls | Follow [QuickStart Example 3](six_tumor_four_control.md) to generate and run a local-PoN configuration. |
-| You have ONT FASTQs in barcode directories | Generate configuration with `--auto_params`, then run the generated YAML. |
-| Automatic naming does not fit the study | Use the second option: a manual [Illumina YAML](configuration/illumina.md) or [ONT YAML](configuration/ont.md). |
-| You already have a checked YAML | Go directly to [Run a YAML](#run-a-yaml). |
+| Verify the installation with public data | [QuickStart Example 1](quick_start.md) |
+| Use standard Illumina or ONT FASTQ names | [Automatic Setup](auto_params.md) |
+| Run the three-sample public HCC1143 cohort | [QuickStart Example 2](public_cohort.md) |
+| Configure six tumors and four controls | [Other Example Run](six_tumor_four_control.md); the FASTQs are not included |
+| Use non-standard paths or settings | [Manual configuration](configuration.md) |
+| Run a checked YAML | [Run a YAML](#run-a-yaml) |
 
-## 1. Enter the repository and choose a runtime
+## 1. Enter the repository and check the runtime
 
 ```bash
-cd oncotracer                                                        # main.nf must be in the current directory
-pwd                                                                  # print the absolute repository path
-nextflow -version                                                     # verify Nextflow
-command -v docker                                                     # show the Docker launcher without starting a container
+# Enter the cloned repository.
+cd /home/student/oncotracer
+
+# Confirm the repository path and Nextflow installation.
+pwd
+nextflow -version
+
+# Confirm Docker on a workstation or server.
+command -v docker
+
+# Confirm Singularity or Apptainer on HPC.
+command -v singularity
+command -v apptainer
 ```
 
-Use exactly one runtime flag on a real run:
+Only one container runtime is required.
 
-| Flag | Use when |
-| --- | --- |
-| `--docker` | Docker is installed. Recommended for a Linux workstation. |
-| `--singularity` | Singularity or Apptainer is configured, usually on HPC. |
-| `--conda` | Containers are unavailable and the Conda environments are prepared. |
-
-The examples below use Docker. Replace only `--docker` with `--singularity`
-when appropriate. These options belong on `nextflow run`; never replace the
-Nextflow command with a direct container-runtime command.
-
-## 2. Recommended default: generate configuration from a reads folder
-
-`--auto_params` writes configuration files and stops. After Automatic Setup finishes, launch a second command for the real analysis.
+## 2. Generate a YAML automatically
 
 ### Illumina
 
-Required layout:
+Place paired reads and a sample table under one project directory:
 
 ```text
-project/input/illumina_fastq/
+/home/student/oncotracer/project/input/illumina_fastq/
 ├── Patient_A_R1.fastq.gz
 ├── Patient_A_R2.fastq.gz
 └── samples.csv
 ```
 
-`samples.csv`:
+Paste this sample table:
 
 ```csv
 sample_name,status
 Patient_A,TUMOR
 ```
 
-The example below assumes the repository is `/home/student/oncotracer`.
-OncoTracer creates the configuration and result folders; no `mkdir` command
-is needed.
-
-Generate and run:
-
 ```bash
+# Generate the Illumina YAML and samplesheet.
 nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder /home/student/oncotracer/project/input/illumina_fastq \
   --sample_table /home/student/oncotracer/project/input/illumina_fastq/samples.csv \
   --auto_config_dir /home/student/oncotracer/project/config/illumina \
   --auto_outdir /home/student/oncotracer/project/runs/illumina_auto
+
+# Run or resume the generated YAML with Docker.
 nextflow run main.nf --docker \
   -params-file /home/student/oncotracer/project/config/illumina/illumina.auto.yml \
+  -work-dir /home/student/oncotracer/project/work/illumina \
   -resume
 ```
 
 ### ONT
 
-Required layout:
+Place reads inside barcode directories and create an explicit barcode table:
 
 ```text
-project/input/fastq_pass/
+/home/student/oncotracer/project/input/fastq_pass/
 ├── barcode01/
 │   └── reads.fastq.gz
 └── samples.csv
 ```
 
-`samples.csv`:
+Paste this sample table:
 
 ```csv
 barcode,sample_name,status
 barcode01,Patient_A,TUMOR
 ```
 
-Generate and run:
-
 ```bash
+# Generate the ONT YAML.
 nextflow run main.nf --auto_params \
   --mode ont \
   --reads_folder /home/student/oncotracer/project/input/fastq_pass \
   --sample_table /home/student/oncotracer/project/input/fastq_pass/samples.csv \
   --auto_config_dir /home/student/oncotracer/project/config/ont \
   --auto_outdir /home/student/oncotracer/project/runs/ont_auto
+
+# Run or resume the generated YAML with Docker.
 nextflow run main.nf --docker \
   -params-file /home/student/oncotracer/project/config/ont/ont.auto.yml \
+  -work-dir /home/student/oncotracer/project/work/ont \
   -resume
 ```
 
-Automatic setup validates its supported file layout and compressed FASTQs. See
-[Automatic Setup](auto_params.md) for multiple samples, normal controls,
-filename rules, and optional destinations. For a complete ten-sample local-PoN
-pattern, use [QuickStart Example 3](six_tumor_four_control.md).
+On HPC, replace `--docker` with `--singularity` in the analysis command.
 
-## 3. Second option: manual configuration
-
-For Illumina:
+## 3. Manual configuration
 
 ```bash
-cp params/illumina.minimal.yml params/my_illumina.yml                  # create an editable copy
-nano params/my_illumina.yml                                           # replace every example path
+# Copy an Illumina template for editing.
+cp params/illumina.minimal.yml params/my_illumina.yml
+
+# Edit the copied file.
+nano params/my_illumina.yml
+
+# Copy an ONT template when configuring ONT manually.
+cp params/ont.minimal.yml params/my_ont.yml
+
+# Edit the copied ONT file.
+nano params/my_ont.yml
 ```
 
-For ONT:
+Keep all configured inputs and outputs below `lpwgs_root`.
 
-```bash
-cp params/ont.minimal.yml params/my_ont.yml                            # create an editable copy
-nano params/my_ont.yml                                                # replace paths, barcodes, and names
-```
-
-In Nano, save with `Ctrl+O`, press `Enter`, then exit with `Ctrl+X`. Print the saved file with `sed -n '1,160p' params/my_illumina.yml` or the ONT equivalent. All configured input, reference, and output paths must be absolute and below `lpwgs_root`.
-
-Do not add `illumina_samurai_outdir` or `ont_samurai_outdir`. OncoTracer derives stage `01` from `outdir`.
-
-<a id="check-wiring-then-run"></a>
+<a id="run-a-yaml"></a>
 
 ## Run a YAML
 
-After checking the input files described in [Input Files](inputs.md), start the
-real run:
-
 ```bash
-nextflow run main.nf --docker -params-file params/my_illumina.yml -resume # real Illumina analysis
+# Check workflow wiring without executing the analysis tools.
+nextflow run main.nf -stub-run --docker \
+  -params-file params/my_illumina.yml
+
+# Run or resume the Illumina YAML with Docker.
+nextflow run main.nf --docker \
+  -params-file params/my_illumina.yml \
+  -resume
 ```
 
-For ONT, substitute `params/my_ont.yml`.
+Use `params/my_ont.yml` for ONT or replace `--docker` with `--singularity` on HPC.
 
-## What the real workflow does
+## Workflow stages
 
-These stages run in order inside the configured `outdir`:
+| Stage | Purpose |
+| --- | --- |
+| `01_samurai_illumina` or `01_samurai_ont` | Alignment and initial CNA calling |
+| `02_bam_refinement` | BAM-supported boundary refinement |
+| `03_cna_codification` | CNA event and cytogenomic tables |
+| `04_cna_custom_plots` | Per-sample and cohort plots |
+| `05_cna_classifier` | Optional research classifier and pathology comparison |
+| `06_workflow_summary` | Important output locations |
 
-| Stage | Runs when | What it does |
-| --- | --- | --- |
-| `01_samurai_illumina` or `01_samurai_ont` | Always | Aligns FASTQs and calls initial broad CNAs with qDNAseq (Illumina) or ichorCNA (ONT). |
-| `02_bam_refinement` | Always | Uses BAM read depth to test and refine coarse CNA boundaries; keeps an original boundary when evidence for moving it is insufficient. |
-| `03_cna_codification` | Always | Converts final CNA segments into event tables and cytogenomic notation. |
-| `04_cna_custom_plots` | Always | Creates per-sample and combined copy-number PDF plots. |
-| `05_cna_classifier` | Only when `run_cna_classifier: true` | Runs optional CNA classification and, when pathology is supplied, concordance reporting. |
-| `06_workflow_summary` | Always | Records important output paths. |
+The outer SAMURAI task can remain at `0 of 1` while its nested Nextflow workflow is active. This alone does not indicate a stalled run.
 
-The `01` wrapper launches an upstream SAMURAI Nextflow workflow. Therefore
-the outer Nextflow display can remain at `RUN_*_SAMURAI (0 of 1)` while
-alignment and CNA tasks are active inside it. This alone does not mean the run
-is stalled. An uncached first Illumina run also downloads and indexes hg38;
-the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable
-RAM. Later runs reuse a valid index below `lpwgs_root`.
+## Estimated time for the first analysis
 
-## Watch and verify a run
+An uncached run downloads hg38 and builds its BWA index. Indexing commonly takes **30–60 minutes** and the pinned task requests 72 GB, so use at least **80 GiB RAM**. Later runs reuse a valid index.
 
-Keep the terminal open. A successful run ends with `Succeeded` and no `Failed` count. After completion, inspect the summary and key results:
+## Verify and resume
 
 ```bash
+# Read the workflow summary.
 cat /home/student/oncotracer/project/runs/illumina_auto/06_workflow_summary/workflow_summary.txt
+
+# Confirm the final CNA event table.
 ls -lh /home/student/oncotracer/project/runs/illumina_auto/03_cna_codification/cna_events.tsv
+
+# List the generated PDF plots.
 ls -lh /home/student/oncotracer/project/runs/illumina_auto/04_cna_custom_plots/*.pdf
 ```
 
-For a manual run or ONT run, replace `/home/student/oncotracer/project/runs/illumina_auto` with the exact `outdir` from that YAML.
-
-If the command stops, read the first `ERROR` message and see [Troubleshooting](troubleshooting.md). Do not delete `work/` before diagnosing the problem because it contains task logs needed by `-resume`.
-
-## Resume and rerun safely
-
-`-resume` tells Nextflow to reuse completed tasks when their inputs, command, and configuration are unchanged:
-
 ```bash
-nextflow run main.nf --docker -params-file params/my_illumina.yml -resume # continue or efficiently repeat
+# Resume the same run with the same YAML and work directory.
+nextflow run main.nf --docker \
+  -params-file /home/student/oncotracer/project/config/illumina/illumina.auto.yml \
+  -work-dir /home/student/oncotracer/project/work/illumina \
+  -resume
 ```
 
-Use the same command, repository, YAML, `outdir`, and `work/` directory. If you change inputs or settings, Nextflow reruns affected tasks.
-
-Keep `force: false` for real projects. For a different scientific configuration, copy the YAML and use a new `outdir`; this keeps the original results separate and easier to compare.
+Do not delete the work directory before diagnosing an error; it contains the task logs used by `-resume`.
