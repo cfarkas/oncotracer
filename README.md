@@ -66,6 +66,12 @@ The real analysis command uses `-resume`, which lets Nextflow continue from unch
 
 ### Illumina local panel of normals
 
+> [!IMPORTANT]
+> Current `main` fixes a fail-open path where Illumina `NORMAL` rows could
+> be accepted while PoN refinement was disabled, so controls were aligned but
+> not applied to tumor correction. That configuration now stops before
+> analysis instead of silently ignoring the controls.
+
 For Illumina cohorts, rows marked `NORMAL` can build a run-local qDNAseq panel
 of normals (PoN). Automatic Setup disables the local PoN when there are no
 normal rows, stops with a configuration error when there is exactly one, and
@@ -74,9 +80,24 @@ log2 signal across the selected controls, which is then used to correct the
 tumor profiles. Corrected CNA outputs contain `TUMOR` samples only; controls
 remain provenance inputs and are recorded in the manifest and QC files.
 
+Control handling is fail-closed: OncoTracer does not accept `NORMAL` rows
+while PoN construction is off, and an enabled panel must name every and only
+the normal rows. All tumor and normal BAMs use one coherent alignment stage,
+bin definition, paired-read setting, and MAPQ threshold. The normal-panel QC
+compares each control with the median of the other `N-1` controls
+(leave-one-out) in `qc/normal_panel_sample_qc.tsv`. The six explicit settings
+are `illumina_build_pon`, `illumina_pon_normal_samples`,
+`illumina_pon_min_normals`, `illumina_pon_name`,
+`illumina_pon_min_mapq`, and `illumina_pon_r_container`.
+
 PoN generation invalidates the prior completion marker before work starts and
-writes `qdnaseq_local_pon.done` last, after required outputs pass validation.
-An interrupted build therefore cannot be mistaken for a complete panel. See
+publishes `qdnaseq_local_pon.done` atomically and last, after required outputs
+pass validation. Its exact success value is `QDNASEQ_LOCAL_PON_SUCCESS`; a
+missing, empty, or different value means the panel is incomplete even if
+partial files remain. Automatic Setup similarly publishes the samplesheet and
+manifest before the YAML, making the YAML the final transactional commit point
+for a runnable configuration. An interrupted build therefore cannot be
+mistaken for a complete panel. See
 [Illumina configuration](https://cfarkas.github.io/oncotracer/configuration/illumina/)
 for the six settings and [output files](https://cfarkas.github.io/oncotracer/outputs/#illumina-local-panel-of-normals)
 for the audit artifacts.

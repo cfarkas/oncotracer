@@ -93,7 +93,7 @@ Normal alignments and key panel artifacts are kept under the Illumina stage:
 | `segments/<tumor>.calls.seg` | Per-tumor corrected segments with discrete qDNAseq calls. |
 | `all_segments.seg` | Combined corrected segments for tumors only. |
 | `all_calls.seg` | Combined tumor-only segments with discrete qDNAseq calls. |
-| `qdnaseq_local_pon.done` | Completion marker written last after the helper produces all required artifacts; the wrapper validates them afterward. |
+| `qdnaseq_local_pon.done` | Completion marker written last after validation; its exact successful content is `QDNASEQ_LOCAL_PON_SUCCESS`. |
 
 Inspect the panel before using its CNA calls:
 
@@ -102,7 +102,7 @@ PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
 test -s "$OUT/01_samurai_illumina/logs/normal_panel_manifest.tsv"
 test -s "$PON/pon/normal_panel_manifest.tsv"
 test -s "$PON/pon/illumina_local_PoN.reference_bins.tsv" # change name if configured
-test -s "$PON/qdnaseq_local_pon.done"
+test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = "QDNASEQ_LOCAL_PON_SUCCESS"
 sed -n '1,12p' "$PON/pon/normal_panel_manifest.tsv"
 sed -n '1,12p' "$PON/qc/normal_panel_sample_qc.tsv"
 sed -n '1,12p' "$PON/qdnaseq_local_pon_summary.tsv"
@@ -115,7 +115,8 @@ At the start of panel generation, OncoTracer invalidates any prior
 output directory and publishes that marker last; the wrapper then verifies the
 manifest and tumor-only outputs. A failed or interrupted run can leave partial
 files, but it cannot appear complete. Do not consume those files unless the
-new `.done` marker, manifest, reference, QC, and tumor outputs are all present.
+new `.done` marker contains exactly `QDNASEQ_LOCAL_PON_SUCCESS` and the
+manifest, reference, QC, and tumor outputs are all present.
 
 ### ONT
 

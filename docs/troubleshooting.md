@@ -151,6 +151,11 @@ run can leave partial files, but the old marker is invalidated before work
 starts. Fix the configuration or input error and rerun the same command with
 `-resume`; do not interpret partial PoN artifacts.
 
+```bash
+PON=/absolute/path/to/outdir/01_samurai_illumina/qdnaseq_local_pon
+test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = "QDNASEQ_LOCAL_PON_SUCCESS"
+```
+
 
 ## ONT barcode not found or skipped
 
