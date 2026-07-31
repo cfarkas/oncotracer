@@ -2,50 +2,54 @@
 
 ![OncoTracer sequencing-to-CNA workflow](assets/oncotracer-hero.png)
 
-OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-genome sequencing (LP-WGS)**. It turns Illumina single-end or paired-end and Oxford Nanopore Technologies (ONT) FASTQ reads into **copy-number alteration (CNA)** tables, plots, and reports. A CNA is a genomic region with a gain or loss of DNA.
+OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-genome sequencing (LP-WGS)**. It processes Illumina single-end or paired-end FASTQs and Oxford Nanopore Technologies (ONT) FASTQs, then produces copy-number alteration tables, plots, and reports.
 
-!!! important "Nextflow launches every container"
-    Start every OncoTracer preparation, test, and analysis with `nextflow run`.
-    `--docker` and `--singularity` are runtime options on that Nextflow command;
-    Nextflow selects and launches the container. Do not start OncoTracer with
-    `docker run`/`docker exec`, `apptainer run`/`apptainer exec`, or
-    `singularity run`/`singularity exec`.
+Run the workflow through Nextflow with either `--docker` or `--singularity`. The Docker option uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer); a configured Singularity/Apptainer installation can use the same image on HPC.
 
 ## Choose where to start
 
-| Your goal | Start here | What you will do |
+| Goal | Guide | Data |
 | --- | --- | --- |
-| Check that OncoTracer works | [QuickStart Example 1](quick_start.md) | Run one public Illumina sample and one public ONT sample. |
-| Analyze your own reads (recommended default) | [Automatic setup](auto_params.md) | Point to a FASTQ folder and let OncoTracer write the configuration. |
-| Run a realistic public cohort | [QuickStart Example 2](public_cohort.md) | Download and analyze three paired HCC1143 samples (six FASTQs). |
-| Build a four-control local PoN for six tumors | [QuickStart Example 3](six_tumor_four_control.md) | Configure `ONCO001`–`ONCO006` against `CTRL001`–`CTRL004`, then run the generated YAML. |
-| Reproduce the complete patient-cohort workflow | [Full Tutorial](full_tutorial.md) | Process all 12 public PRJNA754199 libraries and review CNA reports. |
-| Configure unusual inputs manually (second option) | [Manual YAML editing](configuration/yaml_basics.md) | Understand paths and edit a YAML example safely. |
-| Add pathology data | [Pathology and classifier](configuration/pathology.md) | Match a pathology CSV to Illumina sample names. |
+| Verify the installation | [QuickStart Example 1](quick_start.md) | One public Illumina and one public ONT sample |
+| Analyze your own reads | [Automatic Setup](auto_params.md) | Your Illumina FASTQ folder or ONT barcode folders |
+| Run a small public Illumina cohort | [QuickStart Example 2](public_cohort.md) | Three public HCC1143 libraries, six FASTQs |
+| Process the complete public PRJNA754199 archive | [Full Tutorial](full_tutorial.md) | Twelve public single-end plasma libraries |
+| Configure unusual inputs manually | [Manual YAML editing](configuration/yaml_basics.md) | Your own samplesheet and YAML |
+| Add pathology information | [Pathology and classifier](configuration/pathology.md) | Your own matched sequencing and pathology files |
 
-For your own standard Illumina or ONT layout, start with automatic setup. Edit a YAML manually only when automatic detection does not fit the study or you need advanced settings.
+## Other example runs
 
-!!! important "Illumina controls are never silently ignored"
-    Current `main` corrects an earlier fail-open path where `NORMAL` rows
-    could be accepted while PoN refinement was disabled, leaving controls
-    aligned but unapplied. Now, no normal rows disable the local PoN, exactly
-    one is rejected, and two or more enable a qDNAseq PoN whose explicit list
-    must contain every and only the normal rows. The per-bin median normal log2
-    signal corrects tumor profiles, and corrected CNA outputs contain tumors
-    only. Review the leave-one-out normal QC and require the exact
-    `QDNASEQ_LOCAL_PON_SUCCESS` completion marker.
-    Start with [Automatic Setup](auto_params.md#illumina-step-by-step), then
-    read [Illumina setup](configuration/illumina.md#how-the-local-pon-is-built)
-    and the [PoN output contract](outputs.md#illumina-local-panel-of-normals).
+[Six Illumina tumors and four normal controls](six_tumor_four_control.md) is a configuration example for user-provided data. `ONCO001`–`ONCO006` and `CTRL001`–`CTRL004` are placeholders; their FASTQs are not included in the repository, so that page will not run until all 20 files are supplied.
 
-!!! warning "First real analysis"
-    The first uncached analysis downloads the hg38 reference (about **3.16
-    GB**). BWA indexing is single-core, commonly takes **30–60 minutes**, and
-    the pinned task requests 72 GB; use at least 80 GiB of addressable RAM
-    unless a valid persistent index already exists. Later runs reuse the
-    prepared reference. The small public verification also downloads about
-    **225 MB of reads**; the optional three-sample cohort downloads **1.08
-    GiB**.
+## Basic run pattern
+
+```bash
+# Generate a YAML and samplesheet from supported FASTQ names.
+nextflow run main.nf --auto_params \
+  --mode illumina \
+  --reads_folder /path/to/project/input/fastq \
+  --sample_table /path/to/project/input/samples.csv \
+  --auto_config_dir /path/to/project/config \
+  --auto_outdir /path/to/project/results
+
+# Run the generated YAML with Docker.
+nextflow run main.nf --docker \
+  -params-file /path/to/project/config/illumina.auto.yml \
+  -work-dir /path/to/project/work \
+  -resume
+
+# Use this alternative on an HPC configured with Singularity or Apptainer.
+nextflow run main.nf --singularity \
+  -params-file /path/to/project/config/illumina.auto.yml \
+  -work-dir /path/to/project/work \
+  -resume
+```
+
+Automatic Setup only writes configuration files. The second command starts the analysis. `-resume` reuses unchanged completed tasks after an interruption.
+
+## Estimated time for the first analysis
+
+The first uncached analysis downloads the hg38 reference, approximately **3.16 GB**, and builds its BWA index. Indexing commonly takes **30–60 minutes**. The pinned BWA task requests 72 GB, so use at least **80 GiB of addressable RAM**. Later runs reuse a valid index.
 
 ## What the workflow does
 
@@ -63,23 +67,6 @@ FASTQ reads
                tables, plots, reports
 ```
 
-| Input | Main CNA route | Beginner guide |
-| --- | --- | --- |
-| Illumina single-end or paired-end FASTQ | SAMURAI + qDNAseq | [Illumina setup](configuration/illumina.md) |
-| ONT barcode FASTQ folders | SAMURAI + ichorCNA | [Automatic ONT setup](auto_params.md#ont-step-by-step) |
-| Illumina plus pathology CSV | Optional classifier and concordance reports | [Pathology tutorial](configuration/pathology.md) |
+## Research use
 
-## The basic run pattern
-
-Every analysis follows the same sequence:
-
-1. Install and check Java, Git, Nextflow, and a container runtime.
-2. Clone the repository and enter the `oncotracer` directory.
-3. Generate a YAML automatically (recommended), or edit one manually as the second option.
-4. Run the workflow with `nextflow run`, the generated YAML, one runtime option, and `-resume`.
-5. Open `06_workflow_summary/workflow_summary.txt` and inspect the plots.
-
-`-resume` tells Nextflow to reuse unchanged completed tasks, which is useful after interruption and on repeat commands.
-
-!!! warning "Research use"
-    OncoTracer is not a standalone diagnostic system. Results require expert interpretation, laboratory validation, and integration with pathology and orthogonal molecular tests.
+OncoTracer is not a standalone diagnostic system. Results require expert interpretation, laboratory validation, and integration with pathology and orthogonal molecular tests.
