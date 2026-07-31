@@ -1,289 +1,301 @@
 # Troubleshooting
 
-When a run fails, keep the terminal output and `.nextflow.log`. Most problems are caused by a missing host program, a path outside `lpwgs_root`, a corrupt/incomplete FASTQ, insufficient disk, or an interrupted container download.
+Keep the terminal output and `.nextflow.log` when a run fails. Common causes are missing host programs, paths outside `lpwgs_root`, incomplete FASTQs, insufficient disk or RAM, and container-runtime permissions.
 
-All OncoTracer preparation, testing, analysis, and resume commands must begin with `nextflow run`. Runtime commands shown only for version, daemon, or disk inspection are diagnostics; they do not launch OncoTracer. Do not start the image directly with a container-runtime run or exec command.
+## Collect the basic information
 
-## Collect the basics first
-
-Run these commands from the cloned `oncotracer/` directory:
+Run from the cloned repository:
 
 ```bash
-pwd                                                        # should end in /oncotracer
-git status --short                                         # record local changes
-git rev-parse --short HEAD                                 # record the exact OncoTracer revision
-java -version                                              # Nextflow requires a supported Java installation
-nextflow -version                                          # show workflow engine version
-command -v docker                                          # omit when using Singularity/Conda
-df -h .                                                    # check free space on the project filesystem
-df -h /tmp                                                 # check temporary space
-du -sh work .nextflow test 2>/dev/null                     # locate large caches
+# Record the repository path and exact revision.
+pwd
+git status --short
+git rev-parse --short HEAD
+
+# Record Java and Nextflow versions.
+java -version
+nextflow -version
+
+# Check the selected runtime launcher.
+command -v docker
+command -v singularity
+command -v apptainer
+
+# Check project and temporary-disk space.
+df -h .
+df -h /tmp
+
+# Locate large local caches.
+du -sh work .nextflow test 2>/dev/null
 ```
 
-The Docker launcher check above does not invoke Docker. Use the Nextflow
-installation command below to test OncoTracer's actual runtime path.
-
-Copy the first `ERROR` block from the log, not only the final `Execution cancelled` line.
+Copy the first complete `ERROR` block, not only the final `Execution cancelled` line.
 
 ## Java or Nextflow does not start
 
-Symptoms include `java: command not found`, `UnsupportedClassVersionError`, or a Nextflow launcher error.
-
 ```bash
+# Show the Java executable and version.
 command -v java
 java -version
+
+# Show the Nextflow executable and version.
 command -v nextflow
 nextflow -version
 ```
 
-Install a supported Java/Nextflow combination using the official links on [Installation](installation.md). If several Java installations exist, confirm `command -v java` points to the intended one. Opening a new shell after installation often fixes a stale `PATH`.
+Install a supported Java/Nextflow combination using [Installation](installation.md). Open a new shell after installation when `PATH` has not refreshed.
 
-## Docker permission denied
-
-First distinguish a missing daemon from a permission problem:
+## Docker permission or daemon errors
 
 ```bash
-command -v docker                                             # confirm a launcher is installed
-ROOT="$(pwd)"
-nextflow run main.nf --install --docker --lpwgs_root "$ROOT" # prepare/test through Nextflow
+# Confirm that Docker is installed.
+command -v docker
+
+# Enter the repository and test Docker through the OncoTracer installation route.
+cd /home/student/oncotracer
+nextflow run main.nf --install --docker \
+  --lpwgs_root /home/student/oncotracer/test
 ```
 
-- `Cannot connect to the Docker daemon` means Docker is stopped or the daemon socket is unavailable.
-- `permission denied` on `/var/run/docker.sock` means your account lacks access.
-- Ask the administrator to grant Docker access according to your institution's policy, then log out and back in. Docker-group membership is effectively privileged access; do not change it silently on a shared server.
+- `Cannot connect to the Docker daemon` means the daemon is stopped or unavailable.
+- `permission denied` on `/var/run/docker.sock` means the user lacks Docker access.
+- Ask the administrator to correct the service or permissions according to institutional policy.
 
-Do not substitute a direct container launch for the Nextflow installation check. Nextflow is responsible for retrieving the image and applying OncoTracer's mounts and runtime settings.
-
-If files created by containers have the wrong owner, pass your numeric user/group in the YAML:
-
-```yaml
-docker_user: "1000:1000" # replace with the output of id -u and id -g
-```
+When Docker-created files have the wrong owner, record the host IDs:
 
 ```bash
+# Print the host user ID.
 id -u
+
+# Print the host group ID.
 id -g
 ```
 
-## Docker cannot see an input file
+Then add the values to the YAML:
 
-All input, configuration, reference, and output paths should be below `lpwgs_root`.
+```yaml
+docker_user: "1000:1000"
+```
+
+## Singularity or Apptainer errors
 
 ```bash
+# Confirm the HPC runtime launcher.
+command -v singularity
+command -v apptainer
+
+# Test the configured HPC runtime through Nextflow.
+nextflow run main.nf --install --singularity \
+  --lpwgs_root /path/to/oncotracer_project
+```
+
+Ask the cluster administrator about image-pull, cache, quota, and bind-path restrictions.
+
+## Input path is not visible in the container
+
+Every configured input and output should be below `lpwgs_root`.
+
+```bash
+# Resolve the common project directory.
 realpath project
+
+# Resolve one input FASTQ.
 realpath project/input/Sample_A_R1.fastq.gz
 ```
 
-A safe YAML pattern is:
+Safe YAML pattern:
 
 ```yaml
-lpwgs_root: /home/user/oncotracer/project
-outdir: /home/user/oncotracer/project/runs/sample_a
-illumina_samplesheet: /home/user/oncotracer/project/input/illumina.samplesheet.csv
+lpwgs_root: /home/student/oncotracer/project
+outdir: /home/student/oncotracer/project/results/sample_a
+illumina_samplesheet: /home/student/oncotracer/project/config/illumina.samplesheet.csv
 ```
 
-Do not use `~`, relative paths such as `../reads`, or a samplesheet that points outside the mounted root. See [YAML examples and path rules](configuration/yaml_basics.md).
+Do not use `~`, relative paths, or samplesheet paths outside the mounted project root.
 
-## YAML parsing or missing-parameter errors
-
-YAML uses spaces, not tabs, and every setting needs a colon.
+## YAML parsing or missing parameters
 
 ```bash
-sed -n '1,160p' params/my_run.yml
-nextflow run main.nf -stub-run --docker -params-file params/my_run.yml
+# Inspect the YAML exactly as saved.
+sed -n '1,180p' params/my_run.yml
+
+# Check workflow wiring without running the scientific tools.
+nextflow run main.nf -stub-run --docker \
+  -params-file params/my_run.yml
 ```
 
-The stub run validates workflow wiring but cannot prove that real alignment/CNA tools will succeed. Check that `mode` is exactly `illumina` or `ont` and that the input key belongs to that mode.
+YAML uses spaces, not tabs. Confirm `mode: illumina` or `mode: ont` and use keys that belong to that route.
 
 ## Illumina samplesheet errors
 
-The required header is exactly:
+The required header is:
 
 ```csv
 sample,fastq_1,fastq_2,status
 ```
 
-Check it without Excel:
-
 ```bash
-sed -n '1,6p' project/input/illumina.samplesheet.csv
+# Inspect the samplesheet header and first rows.
+sed -n '1,12p' project/input/illumina.samplesheet.csv
 ```
 
-Each sample needs an existing `fastq_1` path. For paired-end data, `fastq_2` must also exist; for an all-single-end run, leave every `fastq_2` cell empty. Do not mix layouts in one invocation. Sample names should be unique and should not change between the samplesheet, pathology table, and outputs.
+Each sample needs an existing `fastq_1`. Paired-end runs also need `fastq_2`; single-end runs leave every `fastq_2` cell empty. Do not mix layouts. Sample names must be unique and must match pathology identifiers exactly.
 
-## Illumina NORMAL and local-PoN errors
+## Illumina normal-control errors
 
-Automatic Setup accepts either no normal controls or at least two. This error
-is deliberate:
+Automatic Setup accepts zero normal controls or at least two. This error means one control was supplied:
 
 ```text
 ERROR: Illumina PoN requires either zero NORMAL samples or at least two; found 1
 ```
 
-Provide a genuine second control, or use a tumor-only table if no local PoN is
-intended. Do not relabel a biological normal as a tumor merely to bypass the
-check. With zero `NORMAL` rows, the generated
-`illumina_build_pon: false` is expected; it is not a failed detection.
+Provide a genuine second control or use a tumor-only table when no local normal reference is intended.
 
-For a manual YAML, these settings must agree exactly with the samplesheet:
+For a manual YAML, these settings must match the samplesheet normal rows exactly:
 
 ```yaml
 illumina_build_pon: true
-illumina_pon_normal_samples: ctrl001,ctrl002
+illumina_pon_normal_samples: Control_1,Control_2
 illumina_pon_min_normals: 2
 ```
 
-Every and only samplesheet row marked `normal` must appear once in
-`illumina_pon_normal_samples`. IDs are exact: check case, spelling, commas, and
-duplicate entries. The selected count must be at least two and at least
-`illumina_pon_min_normals`. Common messages mean:
-
-- `samplesheet contains NORMAL rows but --build-pon is off` -- enable the PoN
-  and provide the exact list, or remove the normal rows when no PoN is intended;
-- `requested PoN normals ... do not exactly match samplesheet NORMAL rows` --
-  make the YAML list and `normal` rows identical; and
-- `--build-pon requires --pon-normal-samples` -- add the explicit list.
-
-Inspect both files together:
-
 ```bash
-sed -n '1,160p' params/my_run.yml
+# Inspect the YAML and samplesheet together.
+sed -n '1,180p' params/my_run.yml
 sed -n '1,40p' project/input/illumina.samplesheet.csv
 ```
 
-For a run that reached local-PoN processing, require a newly written
-`01_samurai_illumina/qdnaseq_local_pon/qdnaseq_local_pon.done`. An interrupted
-run can leave partial files, but the old marker is invalidated before work
-starts. Fix the configuration or input error and rerun the same command with
-`-resume`; do not interpret partial PoN artifacts.
+After a normal-reference run, check the final marker:
 
 ```bash
-PON=/absolute/path/to/outdir/01_samurai_illumina/qdnaseq_local_pon
-test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = "QDNASEQ_LOCAL_PON_SUCCESS"
+# Set the local-PoN result directory.
+PON=/path/to/outdir/01_samurai_illumina/qdnaseq_local_pon
+
+# Require the exact success marker.
+test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = QDNASEQ_LOCAL_PON_SUCCESS
 ```
 
+Do not interpret partial files when this check fails.
 
 ## ONT barcode not found or skipped
 
-`ont_folder` must contain barcode directories, usually under `fastq_pass/`:
-
 ```bash
-find /absolute/path/to/fastq_pass -maxdepth 2 -type f -name '*.fastq*' | sed -n '1,20p'
-```
+# List FASTQs inside the barcode tree.
+find /path/to/fastq_pass -maxdepth 2 -type f \
+  \( -name '*.fastq' -o -name '*.fastq.gz' -o -name '*.fq' -o -name '*.fq.gz' \) \
+  -print | sed -n '1,40p'
 
-After a run, inspect all selection logs:
+# Set the completed ONT result directory.
+OUT=/path/to/outdir
 
-```bash
-OUT=/absolute/path/to/run
+# Inspect the barcode summary and selection logs.
 sed -n '1,120p' "$OUT/01_samurai_ont/logs/run_summary.txt"
 sed -n '1,120p' "$OUT/01_samurai_ont/logs/used_fastq.tsv"
 sed -n '1,120p' "$OUT/01_samurai_ont/logs/skipped_fastq.tsv"
 sed -n '1,120p' "$OUT/01_samurai_ont/logs/skipped_samples.tsv"
 ```
 
-`ont_min_age_minutes` prevents files that may still be written from entering a live run. Use `0` only for a completed dataset.
+Use `ont_min_age_minutes: 0` only after sequencing files are complete.
 
-## Corrupt or partial FASTQ files
-
-Test every gzip before analysis:
+## Corrupt or incomplete FASTQs
 
 ```bash
-find project/input -type f -name '*.fastq.gz' -print0 | xargs -0 -r -n1 gzip -t
+# Test every compressed FASTQ below the project input directory.
+find project/input -type f -name '*.fastq.gz' -print0 \
+  | xargs -0 -r -n1 gzip -t
 ```
 
-No output means all tested files passed. `unexpected end of file`, `invalid compressed data`, or a nonzero exit means the download/copy is incomplete; replace that file rather than resuming from it.
+Success produces no output. Replace any file that reports `unexpected end of file` or invalid compressed data.
 
-For the six-FASTQ HCC1143 example, do not validate by filename alone. The exact ENA byte count and MD5 for every file are recorded in `examples/hcc1143_lpwgs/manifest.tsv`. Compare each downloaded file with that manifest and test its gzip stream. Use the same checks for another public dataset:
+For a public archive file, verify bytes and MD5 as well:
 
 ```bash
-wc -c path/to/sample.fastq.gz                         # exact compressed byte count
-md5sum path/to/sample.fastq.gz                        # checksum published by the archive
-gzip -t path/to/sample.fastq.gz && echo 'gzip: OK'   # compressed-stream integrity
+# Print the compressed byte count.
+wc -c path/to/sample.fastq.gz
+
+# Print the MD5 checksum.
+md5sum path/to/sample.fastq.gz
+
+# Confirm gzip integrity.
+gzip -t path/to/sample.fastq.gz && echo 'gzip: OK'
 ```
 
-## Not enough disk space
-
-Reference files, container layers, FASTQs, BAMs, nested SAMURAI work, and the top-level `work/` cache coexist during a run. BAMs and work files can be much larger than compressed FASTQs.
+## Insufficient disk or RAM
 
 ```bash
+# Check project and temporary-disk space.
 df -h . /tmp
+
+# List the largest directories below the project.
 du -h -d 2 . 2>/dev/null | sort -h | tail -30
 ```
 
-Do not delete `work/`, nested `01_samurai_*/work/`, `.nextflow/`, or container caches while a run is active. They are needed by `-resume`. After results are verified and archived, use Nextflow's documented cleanup commands deliberately; never run broad deletion commands on a shared project root.
-
-An exit code `137`, `Killed`, or an out-of-memory message usually indicates RAM pressure rather than a bad YAML. Reduce concurrent work, request more memory, or use a larger node.
+Do not delete active `work/`, stage-01 work directories, `.nextflow/`, or image caches. Exit code `137`, `Killed`, or an out-of-memory message usually indicates insufficient RAM or excessive task concurrency.
 
 ## SAMURAI remains at `0 of 1`
 
-The top-level process waits for a complete nested SAMURAI workflow. Therefore this display can remain unchanged while alignment, sorting, indexing, or CNA calling is active:
-
-```text
-RUN_ILLUMINA_SAMURAI | 0 of 1
-```
-
-In another terminal, inspect activity:
+The top-level process waits for a nested SAMURAI workflow, so its counter can remain unchanged while alignment and CNA calling continue.
 
 ```bash
+# Show active alignment and workflow processes.
 ps -ef | grep -E 'bwa|minimap2|samtools|nextflow' | grep -v grep
-tail -f /absolute/path/to/outdir/01_samurai_illumina/nextflow_launch/.nextflow.log
+
+# Follow the nested Illumina Nextflow log.
+tail -f /path/to/outdir/01_samurai_illumina/nextflow_launch/.nextflow.log
 ```
 
-For ONT, use `01_samurai_ont/nextflow_launch/.nextflow.log`. Large first runs may also download/index hg38. CPU activity and changing log timestamps indicate progress.
+For ONT, inspect `01_samurai_ont/nextflow_launch/.nextflow.log`.
 
-## Find the real task error
-
-The top-level run log is in the repository:
+## Find the failed task
 
 ```bash
-tail -n 120 .nextflow.log
+# Read the latest top-level Nextflow log lines.
+tail -n 160 .nextflow.log
+
+# Inspect the exact failed task command from the hash printed by Nextflow.
+sed -n '1,260p' work/ab/cdef123456789/.command.sh
+
+# Inspect task standard error.
+sed -n '1,260p' work/ab/cdef123456789/.command.err
+
+# Inspect task standard output.
+sed -n '1,260p' work/ab/cdef123456789/.command.out
+
+# Read the task exit code.
+cat work/ab/cdef123456789/.exitcode
 ```
 
-The console prints a work-directory hash for failed processes. Inspect that exact directory:
+Replace the example hash with the work-directory hash from the error message. Nested SAMURAI tasks have their own work directory and `.nextflow.log` below stage 01.
+
+## Stop and resume
+
+Press `Ctrl+C` once and allow Nextflow to stop active tasks. After fixing the cause, rerun the same command with the same YAML and work directory:
 
 ```bash
-sed -n '1,240p' work/ab/cdef123456789/.command.sh   # command Nextflow executed
-sed -n '1,240p' work/ab/cdef123456789/.command.err  # standard error
-sed -n '1,240p' work/ab/cdef123456789/.command.out  # standard output
-cat work/ab/cdef123456789/.exitcode                  # numeric exit status
+# Resume the same Docker analysis.
+nextflow run main.nf --docker \
+  -params-file params/my_run.yml \
+  -work-dir /path/to/project/work \
+  -resume
 ```
 
-Replace the example hash with the one in your error. Nested SAMURAI tasks have their own `work/` and `.nextflow.log` below stage 01.
+`-resume` does not repair a corrupt input file; replace the input first.
 
-## Stop safely with Ctrl+C
-
-Press `Ctrl+C` once in the terminal running Nextflow, then allow it to stop its active tasks. Repeated interrupts can force termination before cleanup. Completed task caches remain available.
-
-After fixing the cause, rerun the **same command**, with the same YAML and output/work locations, adding `-resume`:
+## Completed run with a missing result
 
 ```bash
-nextflow run main.nf --docker -params-file params/my_run.yml -resume
-```
+# Set the result directory from the YAML.
+OUT=/path/to/outdir
 
-Changing sample names, input paths, parameters, container runtime, or work directory can invalidate cached tasks. `-resume` does not repair a corrupt input file; replace the input first.
-
-## A run completed but an expected result is missing
-
-Start with:
-
-```bash
-OUT=/absolute/path/to/outdir
+# Read the workflow summary.
 cat "$OUT/06_workflow_summary/workflow_summary.txt"
-find "$OUT" -maxdepth 3 -type f | sort | sed -n '1,200p'
+
+# List result files near the top of the output tree.
+find "$OUT" -maxdepth 3 -type f -print | sort | sed -n '1,200p'
 ```
 
-`05_cna_classifier/` is absent by design when `run_cna_classifier: false`. A CNA event table with only a header can represent a CNA-flat sample. See [Output files](outputs.md) before treating either condition as a failure.
+`05_cna_classifier/` is absent when `run_cna_classifier: false`. A CNA event table containing only its header can represent a CNA-flat sample.
 
-## Ask for help with enough evidence
+## Ask for help
 
-Include:
-
-- the exact command (remove secrets);
-- `git rev-parse HEAD`;
-- Java, Nextflow, and runtime versions;
-- the YAML with private paths/identifiers redacted consistently;
-- the first complete error block from `.nextflow.log`;
-- the failed task's `.command.sh`, `.command.err`, and `.exitcode`;
-- available disk/RAM and whether `-resume` was used.
-
-Do not upload patient identifiers, raw clinical text, credentials, or private FASTQs to a public issue.
+Include the exact command, OncoTracer commit, Java/Nextflow/runtime versions, redacted YAML, first complete error block, failed task `.command.sh`, `.command.err`, `.exitcode`, available disk and RAM, and whether `-resume` was used. Do not upload patient identifiers, private FASTQs, credentials, or raw clinical text to a public issue.
