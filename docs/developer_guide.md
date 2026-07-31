@@ -1,6 +1,6 @@
-# Developer guide
+# Developer Guide
 
-This guide is for contributors changing code, tests, examples, or documentation. Users running their own FASTQs should start with [QuickStart Example 1](quick_start.md) or [Run your own FASTQs automatically](auto_params.md).
+This guide is for contributors changing code, tests, examples, or documentation. Users analyzing FASTQs should start with [QuickStart Example 1](quick_start.md) or [Automatic Setup](auto_params.md).
 
 ## Repository map
 
@@ -10,170 +10,170 @@ nextflow.config                 # defaults and runtime profiles
 params/                         # user-facing YAML templates
 bin/scripts/                    # launch, download, auto-config, and refinement helpers
 bin/cna_codification/           # event conversion and plotting code
-bin/cna_classifier_nf/          # optional nested classifier/report workflow
+bin/cna_classifier_nf/          # optional classifier/report workflow
 docs/                           # MkDocs source
-examples/                       # reproducible opt-in examples and manifests
-test/                           # downloaded fixtures, generated configs, and test outputs
-run_test.sh                     # legacy maintainer helper; tutorials use direct Nextflow commands
+examples/                       # public examples and manifests
+tests/                          # local unit and integration checks
+test/                           # downloaded fixtures and generated outputs
 ```
 
-Do not hand-edit generated FASTQs, test outputs, `work/`, `.nextflow/`, or `site/` and then treat those changes as source changes.
+Do not commit patient data, credentials, downloaded references, BAMs, or FASTQs.
 
-## Start from a fresh branch
+## Start a branch
 
 ```bash
+# Clone the repository.
 git clone https://github.com/cfarkas/oncotracer.git
+
+# Enter the repository.
 cd oncotracer
+
+# Create a focused branch.
 git switch -c your-change-name
+
+# Confirm the branch and worktree state.
+git status --short --branch
+```
+
+## Prepare the public QuickStart data
+
+```bash
+# Download and validate the public QuickStart reads and generate both YAML files.
+nextflow run main.nf --make_test
+
+# Inspect the generated Illumina YAML.
+sed -n '1,140p' test/configs/illumina.quickstart.yml
+
+# Inspect the generated ONT YAML.
+sed -n '1,140p' test/configs/ont.quickstart.yml
+```
+
+## Fast checks
+
+```bash
+# Check Bash syntax in versioned shell scripts.
+find bin examples tests -type f -name '*.sh' -print0 \
+  | xargs -0 -n1 bash -n
+
+# Run the Automatic Setup tests.
+bash tests/test_generate_auto_params.sh
+
+# Run the Illumina preflight tests.
+bash tests/test_illumina_pon_preflight.sh
+
+# Run the local qDNAseq PoN helper tests.
+bash tests/test_qdnaseq_local_pon.sh
+
+# Run the documentation style audit.
+python3 tests/test_documentation_examples.py
+
+# Check Illumina workflow wiring.
+nextflow run main.nf -stub-run --docker \
+  -params-file test/configs/illumina.quickstart.yml
+
+# Check ONT workflow wiring.
+nextflow run main.nf -stub-run --docker \
+  -params-file test/configs/ont.quickstart.yml
+
+# Check whitespace and conflict markers.
+git diff --check
+
+# Review the exact changed files.
 git status --short
 ```
 
-Keep unrelated changes out of the branch. Never commit patient data, credentials, container tokens, downloaded reference genomes, BAMs, or public FASTQs.
+A stub run checks workflow wiring but does not execute the scientific tools.
 
-## Prepare the public test data first
-
-The stub commands below require generated absolute-path YAMLs. Create them before testing:
+## Full QuickStart verification
 
 ```bash
-nextflow run main.nf --make_test                    # download/validate public FASTQs and write test/configs/*.yml
-sed -n '1,120p' test/configs/illumina.quickstart.yml
-sed -n '1,120p' test/configs/ont.quickstart.yml
-```
-
-The downloader reuses a file only when its validation checks pass. Keep the preparation step separate from code tests so a download error is not mistaken for a workflow error.
-
-## Fast checks for every change
-
-```bash
-find bin examples -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n # shell syntax
-nextflow run main.nf -stub-run --docker -params-file test/configs/illumina.quickstart.yml
-nextflow run main.nf -stub-run --docker -params-file test/configs/ont.quickstart.yml
-git diff --check                                          # whitespace/conflict-marker check
-git status --short                                        # review the exact change set
-```
-
-A stub run validates channels, parameters, and process wiring. It does not execute the scientific tools or prove that output files are valid.
-
-## Full end-to-end verification
-
-For a change that can affect execution, run:
-
-```bash
+# Run or resume the Illumina QuickStart.
 nextflow run main.nf --docker \
   -params-file test/configs/illumina.quickstart.yml \
-  -work-dir test/work/illumina -resume
+  -work-dir test/work/illumina \
+  -resume
+
+# Run or resume the ONT QuickStart after Illumina finishes.
 nextflow run main.nf --docker \
   -params-file test/configs/ont.quickstart.yml \
-  -work-dir test/work/ont -resume
-python3 examples/quickstart/verify_outputs.py --test-root test
+  -work-dir test/work/ont \
+  -resume
+
+# Verify required outputs from both workflows.
+python3 examples/quickstart/verify_outputs.py \
+  --test-root test
 ```
 
-Run the preparation and stub commands from the preceding sections first. The
-commands above then run Illumina and ONT with `-resume` and verify core
-outputs. A successful cached rerun is useful, but at least one uncached run is
-required when changing task commands, containers, callers, parsing, or output
-contracts.
+Run an uncached analysis when changing task commands, containers, callers, parsers, or result filenames.
 
-Verify results explicitly:
+## Test the three-sample public example
+
+Download the six FASTQs with [QuickStart Example 2](public_cohort.md), then run:
 
 ```bash
-test -s test/runs/illumina/03_cna_codification/cna_events.tsv
-test -s test/runs/illumina/04_cna_custom_plots/cna_per_sample_pages.pdf
-test -s test/runs/ont/03_cna_codification/cna_events.tsv
-test -s test/runs/ont/04_cna_custom_plots/cna_per_sample_pages.pdf
-cat test/runs/illumina/06_workflow_summary/workflow_summary.txt
-cat test/runs/ont/06_workflow_summary/workflow_summary.txt
-```
-
-Review plots and tables, not just file existence, after scientific or visualization changes.
-
-## Test the six-FASTQ example when it is affected
-
-The HCC1143 cohort is deliberately opt-in because it is larger:
-
-```bash
+# Generate the HCC1143 YAML and samplesheet.
 nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder test/public/hcc1143_lpwgs \
   --sample_table test/public/hcc1143_lpwgs/samples.csv \
   --auto_config_dir test/configs/hcc1143_lpwgs \
   --auto_outdir test/runs/hcc1143_lpwgs
+
+# Check the HCC1143 workflow wiring.
 nextflow run main.nf -stub-run --docker \
   -params-file test/configs/hcc1143_lpwgs/illumina.auto.yml \
   -work-dir test/work/hcc1143_lpwgs_stub
+
+# Run or resume the HCC1143 analysis.
 nextflow run main.nf --docker \
   -params-file test/configs/hcc1143_lpwgs/illumina.auto.yml \
-  -work-dir test/work/hcc1143_lpwgs -resume
+  -work-dir test/work/hcc1143_lpwgs \
+  -resume
 ```
 
-First download and validate the six FASTQs with the literal commands in
-[QuickStart Example 2](public_cohort.md#2-download-the-six-fastq-files).
+The six-tumor/four-control page is not a public test. Its 20 FASTQs are not included and cannot be tested without user-provided data.
 
-Record the commit, image digest, start/end time, reference, caller/bin size, and inspected outputs before adding its plots to the gallery. Do not replace a pending gallery notice with an unverified screenshot.
-
-## Build documentation locally
-
-Create an isolated documentation environment:
+## Build the documentation
 
 ```bash
+# Create an isolated Python environment.
 python3 -m venv .venv-docs
+
+# Activate the environment.
 source .venv-docs/bin/activate
+
+# Update pip.
 python -m pip install --upgrade pip
+
+# Install the documentation dependencies.
 python -m pip install -r docs/requirements.txt
+
+# Build the documentation and fail on broken links or warnings.
 mkdocs build --strict
+
+# Preview the documentation locally.
 mkdocs serve
 ```
 
-Open `http://127.0.0.1:8000/` while `mkdocs serve` is running. The strict build must pass: broken internal links, missing navigation pages, and Markdown mistakes should be fixed before review.
-
-Documentation examples are part of the interface. For every command box, check:
-
-- it begins from the repository directory or states its required working directory;
-- every placeholder is identified before the user copies it;
-- paths remain below `lpwgs_root`;
-- the YAML shown matches current parameter names;
-- validation and real-run commands are visibly different;
-- expected outputs and failure checks are stated;
-- a public accession/result claim has provenance.
-
-## Change discipline
-
-Changes to these contracts require deliberate review and migration notes:
-
-- sample/barcode matching rules;
-- genome build and coordinate conventions;
-- qDNAseq/ichorCNA caller behavior or default bin sizes;
-- boundary-refinement acceptance rules;
-- event/notation schemas;
-- numbered output directories and filenames;
-- classifier contexts, thresholds, or evidence wording;
-- research-use limitations.
-
-Do not hide a scientific behavior change inside a documentation, formatting, or dependency update. Add a focused test and describe the expected before/after result.
-
-## Adding a public example
-
-A reproducible public example should include:
-
-1. archive project/run accession and study citation;
-2. one immutable URL per file;
-3. compressed byte count and archive checksum;
-4. an automated `gzip -t` check;
-5. explicit inclusion/exclusion rules;
-6. sample/status metadata;
-7. resource expectations and opt-in behavior for large data;
-8. generated YAML plus stub and real-run checks;
-9. an output manifest and gallery provenance record.
-
-Do not commit large public reads to Git. Download them into ignored test/example storage.
+Every example command block should explain each command with a short `#` comment. Public examples should include accession, checksum validation, resource estimates, an exact sample table, and explicit output checks.
 
 ## Before requesting review
 
 ```bash
+# Summarize the changed files.
 git diff --stat
+
+# Check whitespace and conflict markers.
 git diff --check
-git status --short
+
+# Run the documentation audit.
+python3 tests/test_documentation_examples.py
+
+# Build MkDocs strictly.
 mkdocs build --strict
+
+# Review the final worktree state.
+git status --short
 ```
 
-Summarize which routes were tested, whether tests were cached or fresh, runtime/container identity, and any test not performed. Only maintainers should deploy GitHub Pages (`mkdocs gh-deploy`) after the source change has been reviewed and merged.
+Summarize which tests ran, which runtime and image were used, whether analyses were cached or fresh, and any test that could not be completed.
