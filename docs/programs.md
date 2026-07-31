@@ -23,7 +23,7 @@ Java is required to launch Nextflow. It is infrastructure, not a CNA analysis st
 | [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) | Per-FASTQ quality control | `01_samurai_illumina/fastqc/` |
 | [MultiQC](https://multiqc.info/) | Aggregates sample QC | `01_samurai_illumina/multiqc/` |
 | [Picard](https://broadinstitute.github.io/picard/) | Alignment and whole-genome metrics | `01_samurai_illumina/picard/` |
-| [qDNAseq](https://bioconductor.org/packages/QDNAseq/) | Read-depth binning/segmentation for Illumina LP-WGS | `01_samurai_illumina/qdnaseq/` |
+| [qDNAseq](https://bioconductor.org/packages/QDNAseq/) | Read-depth binning/segmentation; when enabled, run-local median-normal correction and tumor-only CNA calling | `01_samurai_illumina/qdnaseq/` without a local PoN; `01_samurai_illumina/qdnaseq_local_pon/` with one |
 
 The standard Illumina YAML selects `solid_biopsy`, `qdnaseq`, and 100 kb bins. Change these only for a scientifically justified analysis plan.
 
@@ -95,7 +95,11 @@ docker image inspect carlosfarkas/oncotracer:latest --format '{{index .RepoDiges
 nextflow -version
 ```
 
-The wrappers currently request the latest SAMURAI revision, so recording the nested `pipeline_info` and cache revision is essential. For a formal study, freeze and validate all workflow/tool revisions before production analysis.
+The current installers and Illumina wrappers pin SAMURAI `v1.4.0`; they do
+not request an unversioned latest revision. Still record the nested
+`pipeline_info`, OncoTracer commit, container identity, and cache revision.
+For a formal study, freeze and validate all workflow/tool revisions before
+production analysis.
 
 ## Scientific responsibility
 
