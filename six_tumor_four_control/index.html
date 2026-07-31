@@ -15,22 +15,25 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/six_tumor_four_control/">
       
       
-        <link rel="prev" href="../public_cohort/">
+        <link rel="prev" href="../full_tutorial/">
       
       
-        <link rel="next" href="../inputs/">
+        <link rel="next" href="../configuration/">
+      
+      
+        
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>5. QuickStart Example 3 (Six Tumors + Four Controls) - OncoTracer</title>
+        <title>Six Tumors + Four Controls (User Data Required) - OncoTracer</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.2a3383ac.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -57,7 +60,6 @@
 
     
     
-    
   </head>
   
   
@@ -70,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#quickstart-example-3-six-illumina-tumors-and-four-controls" class="md-skip">
+        <a href="#other-example-run-six-illumina-tumors-and-four-controls" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              5. QuickStart Example 3 (Six Tumors + Four Controls)
+              Six Tumors + Four Controls (User Data Required)
             
           </span>
         </div>
@@ -163,7 +165,7 @@
         <a href="https://github.com/cfarkas/oncotracer" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     cfarkas/oncotracer
@@ -208,12 +210,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../installation/" class="md-tabs__link">
           
   
@@ -242,6 +242,28 @@
 
       </a>
     </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Other Example Runs
+
+        </a>
+      </li>
+    
   
 
       
@@ -340,7 +362,7 @@
       <a href="https://github.com/cfarkas/oncotracer" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     cfarkas/oncotracer
@@ -362,9 +384,270 @@
   
   
   <span class="md-ellipsis">
+    
+  
     Home
+  
+
     
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Install Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. QuickStart Example 1 (Illumina + ONT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto_params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Automatic Setup for Your FASTQs (Recommended)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../public_cohort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. QuickStart Example 2 (Three-Sample Public)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../inputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Input Files and Folder Layouts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/yaml_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manual YAML Editing (Second Option)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../full_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Full Tutorial
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -397,120 +680,37 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
-    Getting Started
+    
+  
+    Other Example Runs
+  
+
     
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
-            Getting Started
+            
+  
+    Other Example Runs
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    1. Install Requirements
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../quick_start/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    2. QuickStart Example 1 (Illumina + ONT)
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../auto_params/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    3. Automatic Setup for Your FASTQs (Recommended)
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../public_cohort/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    4. QuickStart Example 2 (Three-Sample Public)
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -533,9 +733,14 @@
   
   
   <span class="md-ellipsis">
-    5. QuickStart Example 3 (Six Tumors + Four Controls)
+    
+  
+    Six Tumors + Four Controls (User Data Required)
+  
+
     
   </span>
+  
   
 
           <span class="md-nav__icon md-icon"></span>
@@ -546,9 +751,14 @@
   
   
   <span class="md-ellipsis">
-    5. QuickStart Example 3 (Six Tumors + Four Controls)
+    
+  
+    Six Tumors + Four Controls (User Data Required)
+  
+
     
   </span>
+  
   
 
       </a>
@@ -569,9 +779,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-check-the-required-programs" class="md-nav__link">
+  <a href="#estimated-resources" class="md-nav__link">
     <span class="md-ellipsis">
-      1. Check the required programs
+      
+        Estimated resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-set-the-paths-and-check-the-programs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Set the paths and check the programs
+      
     </span>
   </a>
   
@@ -580,7 +803,9 @@
         <li class="md-nav__item">
   <a href="#2-arrange-the-20-fastq-files" class="md-nav__link">
     <span class="md-ellipsis">
-      2. Arrange the 20 FASTQ files
+      
+        2. Arrange the 20 FASTQ files
+      
     </span>
   </a>
   
@@ -589,44 +814,65 @@
         <li class="md-nav__item">
   <a href="#3-create-the-tumornormal-table" class="md-nav__link">
     <span class="md-ellipsis">
-      3. Create the tumor/normal table
+      
+        3. Create the tumor/normal table
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-enter-a-screen-session-and-set-the-cpugpu-environment" class="md-nav__link">
+  <a href="#4-set-the-cpu-and-gpu-environment" class="md-nav__link">
     <span class="md-ellipsis">
-      4. Enter a screen session and set the CPU/GPU environment
+      
+        4. Set the CPU and GPU environment
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-generate-the-yaml-and-illumina-samplesheet" class="md-nav__link">
+  <a href="#5-generate-the-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
-      5. Generate the YAML and Illumina samplesheet
+      
+        5. Generate the YAML automatically
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-run-the-analysis-with-20-cpus-and-no-gpu" class="md-nav__link">
+  <a href="#6-run-the-analysis" class="md-nav__link">
     <span class="md-ellipsis">
-      6. Run the analysis with 20 CPUs and no GPU
+      
+        6. Run the analysis
+      
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="6. Run the analysis with 20 CPUs and no GPU">
+    <nav class="md-nav" aria-label="6. Run the analysis">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hpc-with-singularity-or-apptainer" class="md-nav__link">
+  <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
-      HPC with Singularity or Apptainer
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
     </span>
   </a>
   
@@ -638,18 +884,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-detach-reconnect-or-resume" class="md-nav__link">
+  <a href="#7-resume-an-interrupted-run" class="md-nav__link">
     <span class="md-ellipsis">
-      7. Detach, reconnect, or resume
+      
+        7. Resume an interrupted run
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-verify-success-and-the-pon-sample-roles" class="md-nav__link">
+  <a href="#8-verify-the-panel-and-tumor-outputs" class="md-nav__link">
     <span class="md-ellipsis">
-      8. Verify success and the PoN sample roles
+      
+        8. Verify the panel and tumor outputs
+      
     </span>
   </a>
   
@@ -659,333 +909,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../inputs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Input Files and Folder Layouts
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../configuration/yaml_basics/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Manual YAML Editing (Second Option)
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../full_tutorial/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Full Tutorial
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    Run and Configure
-    
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            Run and Configure
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Choose a Configuration Route
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../running/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Workflow Overview
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../configuration/illumina/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Illumina Setup
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../configuration/ont/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    ONT Setup
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../configuration/pathology/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Pathology and Classifier
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../configuration/refinement/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Advanced Refinement
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../configuration/parameter_reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    All Parameters
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../containers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Containers and Execution
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../programs/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Programs and Provenance
-    
-  </span>
-  
-
-      </a>
     </li>
   
 
@@ -1028,9 +951,14 @@
   
   
   <span class="md-ellipsis">
-    Understand Results
+    
+  
+    Run and Configure
+  
+
     
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
@@ -1039,7 +967,11 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
-            Understand Results
+            
+  
+    Run and Configure
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1050,14 +982,19 @@
   
   
     <li class="md-nav__item">
-      <a href="../outputs/" class="md-nav__link">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Output Files
+    
+  
+    Choose a Configuration Route
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1073,14 +1010,19 @@
   
   
     <li class="md-nav__item">
-      <a href="../models_pathology/" class="md-nav__link">
+      <a href="../running/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Models and Pathology
+    
+  
+    Workflow Overview
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1096,14 +1038,187 @@
   
   
     <li class="md-nav__item">
-      <a href="../gallery/" class="md-nav__link">
+      <a href="../configuration/illumina/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Results Gallery
+    
+  
+    Illumina Setup
+  
+
     
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/ont/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/pathology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pathology and Classifier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/refinement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Refinement
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/parameter_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    All Parameters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../containers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Containers and Execution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../programs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Programs and Provenance
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -1149,9 +1264,14 @@
   
   
   <span class="md-ellipsis">
-    Help and About
+    
+  
+    Understand Results
+  
+
     
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
@@ -1160,7 +1280,156 @@
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
-            Help and About
+            
+  
+    Understand Results
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models_pathology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models and Pathology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gallery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Results Gallery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Help and About
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1176,9 +1445,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     Troubleshooting
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1199,9 +1473,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     Citation and Research Use
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1222,9 +1501,14 @@
   
   
   <span class="md-ellipsis">
+    
+  
     Developer Guide
+  
+
     
   </span>
+  
   
 
       </a>
@@ -1267,9 +1551,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-check-the-required-programs" class="md-nav__link">
+  <a href="#estimated-resources" class="md-nav__link">
     <span class="md-ellipsis">
-      1. Check the required programs
+      
+        Estimated resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-set-the-paths-and-check-the-programs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Set the paths and check the programs
+      
     </span>
   </a>
   
@@ -1278,7 +1575,9 @@
         <li class="md-nav__item">
   <a href="#2-arrange-the-20-fastq-files" class="md-nav__link">
     <span class="md-ellipsis">
-      2. Arrange the 20 FASTQ files
+      
+        2. Arrange the 20 FASTQ files
+      
     </span>
   </a>
   
@@ -1287,44 +1586,65 @@
         <li class="md-nav__item">
   <a href="#3-create-the-tumornormal-table" class="md-nav__link">
     <span class="md-ellipsis">
-      3. Create the tumor/normal table
+      
+        3. Create the tumor/normal table
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-enter-a-screen-session-and-set-the-cpugpu-environment" class="md-nav__link">
+  <a href="#4-set-the-cpu-and-gpu-environment" class="md-nav__link">
     <span class="md-ellipsis">
-      4. Enter a screen session and set the CPU/GPU environment
+      
+        4. Set the CPU and GPU environment
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-generate-the-yaml-and-illumina-samplesheet" class="md-nav__link">
+  <a href="#5-generate-the-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
-      5. Generate the YAML and Illumina samplesheet
+      
+        5. Generate the YAML automatically
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-run-the-analysis-with-20-cpus-and-no-gpu" class="md-nav__link">
+  <a href="#6-run-the-analysis" class="md-nav__link">
     <span class="md-ellipsis">
-      6. Run the analysis with 20 CPUs and no GPU
+      
+        6. Run the analysis
+      
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="6. Run the analysis with 20 CPUs and no GPU">
+    <nav class="md-nav" aria-label="6. Run the analysis">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hpc-with-singularity-or-apptainer" class="md-nav__link">
+  <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
-      HPC with Singularity or Apptainer
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
     </span>
   </a>
   
@@ -1336,18 +1656,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-detach-reconnect-or-resume" class="md-nav__link">
+  <a href="#7-resume-an-interrupted-run" class="md-nav__link">
     <span class="md-ellipsis">
-      7. Detach, reconnect, or resume
+      
+        7. Resume an interrupted run
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-verify-success-and-the-pon-sample-roles" class="md-nav__link">
+  <a href="#8-verify-the-panel-and-tumor-outputs" class="md-nav__link">
     <span class="md-ellipsis">
-      8. Verify success and the PoN sample roles
+      
+        8. Verify the panel and tumor outputs
+      
     </span>
   </a>
   
@@ -1363,6 +1687,7 @@
           
           
             <div class="md-content" data-md-component="content">
+              
               <article class="md-content__inner md-typeset">
                 
                   
@@ -1377,73 +1702,41 @@
   
 
 
-<h1 id="quickstart-example-3-six-illumina-tumors-and-four-controls">QuickStart Example 3: Six Illumina Tumors and Four Controls<a class="headerlink" href="#quickstart-example-3-six-illumina-tumors-and-four-controls" title="Permanent link">&para;</a></h1>
-<p>This example analyzes six paired-end Illumina tumor samples, <code>ONCO001</code>
-through <code>ONCO006</code>, against a run-local qDNAseq panel of normals (PoN) built
-from four PBMC controls, <code>CTRL001</code> through <code>CTRL004</code>. The corrected CNA
-outputs contain the six tumors; the four controls remain PoN provenance and
-quality-control inputs.</p>
-<p>The commands below give Nextflow a 20-logical-CPU view, do not request a GPU,
-and run in <code>screen</code>. They do not use a wrapper script, <code>tmux</code>, or <code>nohup</code>.</p>
-<div class="admonition important">
-<p class="admonition-title">Start containers only through Nextflow</p>
-<p>The supported user entry point is always <code>nextflow run .../main.nf</code>.
-Configuration-only commands do not need a runtime option. For the real
-analysis, <code>--docker</code> tells Nextflow to manage Docker. Do not type
-<code>docker run</code>, <code>docker exec</code>, <code>apptainer run</code>, <code>apptainer exec</code>,
-<code>singularity run</code>, or <code>singularity exec</code> yourself.</p>
-<p>A generated value beginning with <code>docker://</code>, such as the pinned qDNAseq
-image, is an OCI image address used by the workflow. It is not a command
-to run Docker directly.</p>
-</div>
-<div class="admonition note">
-<p class="admonition-title">What the 20-CPU guard means</p>
-<p><code>taskset --cpu-list 0-19</code> pins host processes and Singularity/Apptainer
-children to logical CPUs 0 through 19. <code>ActiveProcessorCount=20</code> gives
-the top-level and nested Nextflow controllers the same 20-CPU scheduling
-view. Individual steps may use fewer CPUs. Docker containers are created
-by the Docker daemon and do not inherit the client process's <code>taskset</code>
-affinity, so this is not a hard Docker cpuset. Ask the administrator for
-an executor-level 20-CPU limit when a hard system-wide cap is required.</p>
-</div>
-<div class="admonition warning">
-<p class="admonition-title">The 8 GiB value is not a total RAM limit</p>
-<p><code>-Xmx8g</code> limits each Nextflow controller JVM only. Alignment, qDNAseq,
-the local PoN, and concurrent tasks use additional RAM. The pinned BWA task
-requests 72 GB by itself, so use a machine or scheduler allocation with at
-least 80 GiB of addressable RAM; more may be needed for concurrent tasks.
-Check available memory and disk with your administrator before starting.</p>
-</div>
-<h2 id="1-check-the-required-programs">1. Check the required programs<a class="headerlink" href="#1-check-the-required-programs" title="Permanent link">&para;</a></h2>
-<p>This guide assumes that OncoTracer is cloned at
-<code>/home/student/oncotracer</code> and that Nextflow and Docker are already installed.
-These commands check the required launchers without invoking Docker:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/home/student/oncotracer
+<h1 id="other-example-run-six-illumina-tumors-and-four-controls">Other Example Run: Six Illumina Tumors and Four Controls<a class="headerlink" href="#other-example-run-six-illumina-tumors-and-four-controls" title="Permanent link">&para;</a></h1>
+<p>This page is a <strong>command template</strong>, not a QuickStart. The repository does <strong>not</strong> include or download the <code>ONCO001</code>–<code>ONCO006</code> and <code>CTRL001</code>–<code>CTRL004</code> FASTQs. Nothing on this page can run until you provide all 20 paired-end files.</p>
+<p>The example shows how Automatic Setup generates a local qDNAseq panel of normals from four controls and applies it to six tumors. Corrected CNA outputs contain the six tumors; controls remain reference and quality-control inputs.</p>
+<p>The Docker commands use <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a>. On an HPC system configured with Singularity or Apptainer, use <code>--singularity</code> instead of <code>--docker</code>.</p>
+<h2 id="estimated-resources">Estimated resources<a class="headerlink" href="#estimated-resources" title="Permanent link">&para;</a></h2>
+<p>The first uncached run downloads hg38 and creates a BWA index. The pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. This example gives Nextflow a 20-logical-CPU view and does not request a GPU. Actual time and storage depend on the size of your FASTQs.</p>
+<h2 id="1-set-the-paths-and-check-the-programs">1. Set the paths and check the programs<a class="headerlink" href="#1-set-the-paths-and-check-the-programs" title="Permanent link">&para;</a></h2>
+<p>Use <code>/path/to/my/directory/oncotracer</code> for the repository. Keep the local sequencing project outside the Git clone.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+<span class="c1"># Enter the cloned repository.</span>
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+
+<span class="c1"># Confirm the required launchers.</span>
 nextflow<span class="w"> </span>-version
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>docker
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>taskset
-<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>screen
+
+<span class="c1"># Display the logical CPUs currently allowed for this shell.</span>
 taskset<span class="w"> </span>-pc<span class="w"> </span><span class="nv">$$</span>
 </code></pre></div>
-<p>Do not continue if any command is missing. See <a href="../installation/">Install
-requirements</a> before using this example. The final command
-prints the logical CPUs already allowed for the current shell. Continue with
-the documented <code>0-19</code> list only if all CPU IDs 0 through 19 are allowed. If
-they are not, ask the administrator or scheduler for a 20-CPU allocation and
-replace every <code>0-19</code> below with 20 CPU IDs from that allocation.</p>
-<p>GNU Screen provides the <code>screen</code> command, and the Linux <code>util-linux</code> package
-provides <code>taskset</code>. Ask your administrator to install them if either launcher
-check is empty.</p>
+<p>Continue with CPU IDs <code>0-19</code> only when those IDs belong to your allocation. Otherwise replace every <code>0-19</code> below with 20 CPUs assigned by your scheduler or administrator.</p>
 <h2 id="2-arrange-the-20-fastq-files">2. Arrange the 20 FASTQ files<a class="headerlink" href="#2-arrange-the-20-fastq-files" title="Permanent link">&para;</a></h2>
-<p>Create one project directory <strong>outside</strong> the cloned Git repository. This keeps
-large or private sequencing files away from accidental Git staging:</p>
-<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/input/fastq
-mkdir<span class="w"> </span>-p<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config
-mkdir<span class="w"> </span>-p<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/results
-mkdir<span class="w"> </span>-p<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/work
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path and create its directories.</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work&quot;</span>
 </code></pre></div>
 <p>Place exactly one R1/R2 pair for each sample directly in <code>input/fastq</code>:</p>
-<div class="highlight"><pre><span></span><code>/home/student/oncotracer_projects/onco6_ctrl4/
+<div class="highlight"><pre><span></span><code>/path/to/my/directory/oncotracer_projects/onco6_ctrl4/
 ├── input/
 │   ├── samples.csv
 │   └── fastq/
@@ -1467,78 +1760,88 @@ mkdir<span class="w"> </span>-p<span class="w"> </span>/home/student/oncotracer_
 │       ├── CTRL003_R2.fastq.gz
 │       ├── CTRL004_R1.fastq.gz
 │       └── CTRL004_R2.fastq.gz
-├── config/                         # generated configuration goes here
-├── results/                        # final results go here
-└── work/                           # Nextflow resume cache goes here
+├── config/
+├── results/
+└── work/
 </code></pre></div>
-<p>The sample name is the filename text before <code>_R1</code> or <code>_R2</code>. Automatic Setup
-does not recursively combine lane files. If a sample was delivered in
-multiple lanes, consolidate each read direction first so that the folder has
-one R1 and one R2 for that sample. Do not mix single-end and paired-end
-libraries in one run.</p>
-<p>Confirm the file count without searching outside this one directory:</p>
-<div class="highlight"><pre><span></span><code>find<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/input/fastq<span class="w"> </span><span class="se">\</span>
+<p>Automatic Setup expects one pair per sample in the top level of the FASTQ directory. It does not combine lane files recursively.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path.</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+<span class="c1"># Confirm that the input directory contains exactly 20 compressed FASTQs.</span>
+find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq.gz&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
 </code></pre></div>
 <p>The command must print <code>20</code>.</p>
 <h2 id="3-create-the-tumornormal-table">3. Create the tumor/normal table<a class="headerlink" href="#3-create-the-tumornormal-table" title="Permanent link">&para;</a></h2>
-<p>Open the metadata file:</p>
-<div class="highlight"><pre><span></span><code>nano<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/input/samples.csv
-</code></pre></div>
-<p>Paste exactly this content:</p>
-<div class="highlight"><pre><span></span><code>sample_name,status
-ONCO001,TUMOR
-ONCO002,TUMOR
-ONCO003,TUMOR
-ONCO004,TUMOR
-ONCO005,TUMOR
-ONCO006,TUMOR
-CTRL001,NORMAL
-CTRL002,NORMAL
-CTRL003,NORMAL
-CTRL004,NORMAL
-</code></pre></div>
-<p>Save with <code>Ctrl+O</code>, press Enter, and exit Nano with <code>Ctrl+X</code>.</p>
-<p>This two-column table is the input to Automatic Setup. It is not the final
-Illumina samplesheet. Automatic Setup creates the required four-column
-<code>sample,fastq_1,fastq_2,status</code> samplesheet from it. Sample IDs are
-case-sensitive and must match the FASTQ prefixes exactly.</p>
-<h2 id="4-enter-a-screen-session-and-set-the-cpugpu-environment">4. Enter a screen session and set the CPU/GPU environment<a class="headerlink" href="#4-enter-a-screen-session-and-set-the-cpugpu-environment" title="Permanent link">&para;</a></h2>
-<p>Start <code>screen</code>:</p>
-<div class="highlight"><pre><span></span><code>screen<span class="w"> </span>-S<span class="w"> </span>oncotracer_onco6_ctrl4
-</code></pre></div>
-<p>Run the following commands inside that screen:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/home/student/oncotracer
+<p>Use this copy/paste-ready command. It creates or replaces the table instead of appending duplicate rows.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path.</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
 
+<span class="c1"># Create the exact six-tumor/four-control table.</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+<span class="s">sample_name,status</span>
+<span class="s">ONCO001,TUMOR</span>
+<span class="s">ONCO002,TUMOR</span>
+<span class="s">ONCO003,TUMOR</span>
+<span class="s">ONCO004,TUMOR</span>
+<span class="s">ONCO005,TUMOR</span>
+<span class="s">ONCO006,TUMOR</span>
+<span class="s">CTRL001,NORMAL</span>
+<span class="s">CTRL002,NORMAL</span>
+<span class="s">CTRL003,NORMAL</span>
+<span class="s">CTRL004,NORMAL</span>
+<span class="s">CSV</span>
+
+<span class="c1"># Display the saved table.</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span>
+</code></pre></div>
+<p><code>sample_name</code> must match the text before <code>_R1</code> and <code>_R2</code>. Automatic Setup uses the four <code>NORMAL</code> rows to generate the local panel settings.</p>
+<h2 id="4-set-the-cpu-and-gpu-environment">4. Set the CPU and GPU environment<a class="headerlink" href="#4-set-the-cpu-and-gpu-environment" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+
+<span class="c1"># Hide GPU devices because this example does not request a GPU.</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">NVIDIA_VISIBLE_DEVICES</span><span class="o">=</span>none
 <span class="nb">export</span><span class="w"> </span><span class="nv">SINGULARITYENV_CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">APPTAINERENV_CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+
+<span class="c1"># Give each Nextflow controller a 20-CPU view and an 8 GiB JVM heap limit.</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">NXF_OPTS</span><span class="o">=</span><span class="s2">&quot;-XX:ActiveProcessorCount=20 -Xms512m -Xmx8g&quot;</span>
 </code></pre></div>
-<p>The Nextflow commands below do not request GPUs. The Singularity alternative
-also does not use <code>--nv</code>. The environment variables hide visible GPU devices
-from child processes, but a hard GPU exclusion on a shared system requires an
-administrator-enforced scheduler or cgroup allocation.</p>
-<h2 id="5-generate-the-yaml-and-illumina-samplesheet">5. Generate the YAML and Illumina samplesheet<a class="headerlink" href="#5-generate-the-yaml-and-illumina-samplesheet" title="Permanent link">&para;</a></h2>
-<p>Still inside <code>screen</code>, run Automatic Setup through Nextflow:</p>
-<div class="highlight"><pre><span></span><code>taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span><span class="se">\</span>
+<p><code>-Xmx8g</code> limits the Nextflow controller JVM, not the total analysis memory. Alignment and qDNAseq use additional RAM.</p>
+<h2 id="5-generate-the-yaml-automatically">5. Generate the YAML automatically<a class="headerlink" href="#5-generate-the-yaml-automatically" title="Permanent link">&para;</a></h2>
+<p><code>--auto_params</code> checks the 20 FASTQs, matches them to the sample table, writes <code>illumina.samplesheet.csv</code>, and writes <code>illumina.auto.yml</code>. It does not align reads or call CNAs.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+<span class="c1"># Validate the FASTQs and generate the Illumina YAML and samplesheet.</span>
+taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/input/fastq<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/input/samples.csv<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/results<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/work/auto_params
+<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/auto_params&quot;</span>
 </code></pre></div>
-<p>This preparation step validates all 20 gzip files and then stops. It does not
-align reads or call CNAs. Wait for <code>AUTO_PARAMS SUCCESS</code> before continuing.</p>
-<p>Inspect the generated files:</p>
-<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config/illumina.auto.yml
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config/illumina.samplesheet.csv
-cat<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config/auto_params_manifest.tsv
+<p>Continue only after <code>AUTO_PARAMS SUCCESS</code> appears.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path.</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+<span class="c1"># Inspect the generated YAML.</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+
+<span class="c1"># Inspect the generated FASTQ-to-sample mapping.</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
+
+<span class="c1"># Inspect sample counts and file hashes.</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/auto_params_manifest.tsv&quot;</span>
 </code></pre></div>
-<p>The YAML must include this exact PoN block:</p>
+<p>The YAML must include:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;CTRL001,CTRL002,CTRL003,CTRL004&quot;</span>
 <span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
@@ -1546,71 +1849,77 @@ cat<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config/
 <span class="nt">illumina_pon_min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
 <span class="nt">illumina_pon_r_container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1</span>
 </code></pre></div>
-<p>Check the generated role counts:</p>
-<div class="highlight"><pre><span></span><code>grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,tumor$&#39;</span><span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config/illumina.samplesheet.csv
-grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,normal$&#39;</span><span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config/illumina.samplesheet.csv
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path.</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+<span class="c1"># Count the generated tumor rows.</span>
+grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,tumor$&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
+
+<span class="c1"># Count the generated normal rows.</span>
+grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,normal$&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
 </code></pre></div>
-<p>The two commands must print <code>6</code> and <code>4</code>, respectively. Do not start the
-analysis if the counts or the four control IDs differ.</p>
-<h2 id="6-run-the-analysis-with-20-cpus-and-no-gpu">6. Run the analysis with 20 CPUs and no GPU<a class="headerlink" href="#6-run-the-analysis-with-20-cpus-and-no-gpu" title="Permanent link">&para;</a></h2>
-<p>Still inside the same <code>screen</code>, run the generated YAML through Nextflow:</p>
-<div class="highlight"><pre><span></span><code>taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span><span class="se">\</span>
+<p>The commands must print <code>6</code> and <code>4</code>.</p>
+<h2 id="6-run-the-analysis">6. Run the analysis<a class="headerlink" href="#6-run-the-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+<span class="c1"># Run the generated configuration with Docker and resume support.</span>
+taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config/illumina.auto.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/work/analysis<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>This is the analysis command. Nextflow launches and manages the selected
-container runtime; do not open another terminal and start a second copy.
-<code>-resume</code> is harmless on the first run and reuses unchanged completed tasks
-after an interruption.</p>
-<h3 id="hpc-with-singularity-or-apptainer">HPC with Singularity or Apptainer<a class="headerlink" href="#hpc-with-singularity-or-apptainer" title="Permanent link">&para;</a></h3>
-<p>On an HPC system configured with Singularity or Apptainer, replace <code>--docker</code>
-with <code>--singularity</code> in the analysis command above. Automatic Setup remains
-unchanged because it does not launch an analysis container. The HPC analysis
-command is:</p>
-<div class="highlight"><pre><span></span><code>taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span>/home/student/oncotracer/main.nf<span class="w"> </span><span class="se">\</span>
+<h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+<span class="c1"># Run the same configuration through the HPC container option.</span>
+taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/config/illumina.auto.yml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span>/home/student/oncotracer_projects/onco6_ctrl4/work/analysis<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Do not type an <code>apptainer</code>, <code>singularity</code>, or Docker execution command, and do
-not add <code>--nv</code>; Nextflow remains the only user-facing launcher.</p>
-<h2 id="7-detach-reconnect-or-resume">7. Detach, reconnect, or resume<a class="headerlink" href="#7-detach-reconnect-or-resume" title="Permanent link">&para;</a></h2>
-<p>To leave the analysis running, press <code>Ctrl+A</code>, release both keys, and then
-press <code>D</code>. Reconnect later with:</p>
-<div class="highlight"><pre><span></span><code>screen<span class="w"> </span>-r<span class="w"> </span>oncotracer_onco6_ctrl4
+<p>Keep the terminal open until Nextflow returns to the prompt. Do not start a second copy of the same analysis while it is active.</p>
+<h2 id="7-resume-an-interrupted-run">7. Resume an interrupted run<a class="headerlink" href="#7-resume-an-interrupted-run" title="Permanent link">&para;</a></h2>
+<p>Restore the environment variables from step 4, then use the same YAML and work directory:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+<span class="c1"># Resume the existing Docker analysis.</span>
+taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
 </code></pre></div>
-<p>Detaching does not stop Nextflow. Do not launch the command again while the
-existing screen is running.</p>
-<p>If the analysis itself was interrupted, reconnect or create the screen again,
-repeat the environment exports from step 4, and rerun the exact analysis
-command from step 6. Keep the same YAML, inputs, and <code>work/analysis</code> directory
-so that <code>-resume</code> can reuse completed tasks.</p>
-<h2 id="8-verify-success-and-the-pon-sample-roles">8. Verify success and the PoN sample roles<a class="headerlink" href="#8-verify-success-and-the-pon-sample-roles" title="Permanent link">&para;</a></h2>
-<p>After Nextflow completes successfully, set the output paths:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span>/home/student/oncotracer_projects/onco6_ctrl4/results
-<span class="nv">PON</span><span class="o">=</span><span class="nv">$OUT</span>/01_samurai_illumina/qdnaseq_local_pon
-</code></pre></div>
-<p>Require the atomic PoN completion marker:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>QDNASEQ_LOCAL_PON_SUCCESS<span class="w"> </span><span class="se">\</span>
+<h2 id="8-verify-the-panel-and-tumor-outputs">8. Verify the panel and tumor outputs<a class="headerlink" href="#8-verify-the-panel-and-tumor-outputs" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project and result paths.</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
+<span class="nv">PON</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq_local_pon&quot;</span>
+
+<span class="c1"># Require the successful panel completion marker.</span>
+<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>QDNASEQ_LOCAL_PON_SUCCESS<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;PoN completed successfully&quot;</span>
-</code></pre></div>
-<p>Inspect the four-control manifest, leave-one-out normal QC, corrected tumor
-profiles, and workflow summary:</p>
-<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,10p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
+
+<span class="c1"># Inspect the four-control manifest and leave-one-out control QC.</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,10p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,10p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qc/normal_panel_sample_qc.tsv&quot;</span>
+
+<span class="c1"># List the corrected tumor bin files.</span>
 find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/bins&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*_markdup_bins.bed&#39;</span><span class="w"> </span>-printf<span class="w"> </span><span class="s1">&#39;%f\n&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+
+<span class="c1"># Read the final workflow summary.</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
 </code></pre></div>
-<p>The manifest and normal QC must contain exactly <code>CTRL001</code> through <code>CTRL004</code>.
-The corrected bin files must contain exactly <code>ONCO001</code> through <code>ONCO006</code> and
-no controls. A missing or different <code>.done</code> value means that the PoN is not
-complete, even if partial files are present.</p>
-<p>Four controls form a small, run-specific reference. Review the leave-one-out
-QC before interpreting CNA calls. OncoTracer is for research use and is not a
-standalone diagnostic system.</p>
+<p>The control files must contain <code>CTRL001</code> through <code>CTRL004</code>. Corrected tumor files must contain <code>ONCO001</code> through <code>ONCO006</code> and no controls.</p>
+<p>Four controls form a small, run-specific reference. Review the control QC before interpreting CNA calls. OncoTracer is for research use and is not a standalone diagnostic system.</p>
 
 
 
@@ -1665,10 +1974,11 @@ standalone diagnostic system.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit", "navigation.tabs", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit", "navigation.tabs", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
