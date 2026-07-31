@@ -12,15 +12,27 @@ A YAML file is a small plain-text run configuration. It tells OncoTracer which s
 
 ## Recommended default: generate it automatically
 
-Automatic setup checks the supported FASTQ layout, writes the YAML, and—for Illumina—writes the four-column samplesheet. It stops after creating these files; it does not run the analysis.
+Automatic setup checks the supported FASTQ layout and writes a YAML plus a
+checksum/count manifest; for Illumina it also writes the four-column
+samplesheet. It stops after creating these files; it does not run the analysis.
 
 From the repository root, first create a sample table. For Illumina:
 
 ```csv
 sample_name,status
 Sample_A,TUMOR
-Sample_B,NORMAL
+ctrl001,NORMAL
+ctrl002,NORMAL
 ```
+
+For Illumina, Automatic Setup treats normal counts deliberately: zero normal
+rows writes `illumina_build_pon: false`, exactly one stops with a configuration
+error, and two or more enable the local qDNAseq panel. With two controls, the
+generated YAML contains their exact IDs in table order, requires both, and
+derives a reproducible panel name. `NORMAL` rows build the reference only;
+corrected CNA outputs contain `TUMOR` samples. Do not label a biological sample
+incorrectly just to satisfy the minimum--either provide a genuine second
+control or run without a local PoN.
 
 Then generate configuration files. This example uses
 `/home/student/oncotracer`; replace that prefix with your repository location.
@@ -36,7 +48,8 @@ nextflow run /home/student/oncotracer/main.nf --auto_params \
   --auto_outdir /home/student/oncotracer/project/runs/illumina_auto
 ```
 
-`--auto_config_dir` receives the generated YAML and samplesheet.
+`--auto_config_dir` receives the generated YAML, audit manifest, and Illumina
+samplesheet.
 `--auto_outdir` is the folder where the later real run saves its results; no
 reads are analyzed by the command above.
 

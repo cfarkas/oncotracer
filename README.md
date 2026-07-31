@@ -64,8 +64,26 @@ The recommended default is to point `--auto_params` at a reads folder and a smal
 
 The real analysis command uses `-resume`, which lets Nextflow continue from unchanged completed steps after an interruption.
 
+### Illumina local panel of normals
+
+For Illumina cohorts, rows marked `NORMAL` can build a run-local qDNAseq panel
+of normals (PoN). Automatic Setup disables the local PoN when there are no
+normal rows, stops with a configuration error when there is exactly one, and
+enables it when there are at least two. The reference is the per-bin median
+log2 signal across the selected controls, which is then used to correct the
+tumor profiles. Corrected CNA outputs contain `TUMOR` samples only; controls
+remain provenance inputs and are recorded in the manifest and QC files.
+
+PoN generation invalidates the prior completion marker before work starts and
+writes `qdnaseq_local_pon.done` last, after required outputs pass validation.
+An interrupted build therefore cannot be mistaken for a complete panel. See
+[Illumina configuration](https://cfarkas.github.io/oncotracer/configuration/illumina/)
+for the six settings and [output files](https://cfarkas.github.io/oncotracer/outputs/#illumina-local-panel-of-normals)
+for the audit artifacts.
+
 ## Main outputs
 
+- `01_samurai_illumina/qdnaseq_local_pon/`: local-PoN manifest, QC, reference bins, and tumor-only corrected CNA outputs when enabled
 - `06_workflow_summary/workflow_summary.txt`: start here after a run
 - `03_cna_codification/cna_events.tsv`: CNA event table
 - `03_cna_codification/cna_cytogenomic_notation.tsv`: cytogenomic notation
