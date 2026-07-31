@@ -269,7 +269,7 @@ complete. Require the new marker and the audit artifacts after the real run:
 
 ```bash
 PON=project/runs/my_first_illumina_run/01_samurai_illumina/qdnaseq_local_pon
-test -s "$PON/qdnaseq_local_pon.done"
+test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = "QDNASEQ_LOCAL_PON_SUCCESS"
 sed -n '1,12p' "$PON/pon/normal_panel_manifest.tsv"
 sed -n '1,12p' "$PON/qc/normal_panel_sample_qc.tsv"
 sed -n '1,12p' "$PON/qdnaseq_local_pon_summary.tsv"

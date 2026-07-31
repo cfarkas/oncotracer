@@ -33,12 +33,15 @@ nav:
       - Manual YAML Editing (Second Option): configuration/yaml_basics.md
   - Full Tutorial: full_tutorial.md
   - Run and Configure:
+      - Choose a Configuration Route: configuration.md
       - Workflow Overview: running.md
       - Illumina Setup: configuration/illumina.md
       - ONT Setup: configuration/ont.md
       - Pathology and Classifier: configuration/pathology.md
       - Advanced Refinement: configuration/refinement.md
       - All Parameters: configuration/parameter_reference.md
+      - Containers and Execution: containers.md
+      - Programs and Provenance: programs.md
   - Understand Results:
       - Output Files: outputs.md
       - Models and Pathology: models_pathology.md

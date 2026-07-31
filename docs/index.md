@@ -17,6 +17,19 @@ OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-gen
 
 For your own standard Illumina or ONT layout, start with automatic setup. Edit a YAML manually only when automatic detection does not fit the study or you need advanced settings.
 
+!!! important "Illumina controls are never silently ignored"
+    Current `main` corrects an earlier fail-open path where `NORMAL` rows
+    could be accepted while PoN refinement was disabled, leaving controls
+    aligned but unapplied. Now, no normal rows disable the local PoN, exactly
+    one is rejected, and two or more enable a qDNAseq PoN whose explicit list
+    must contain every and only the normal rows. The per-bin median normal log2
+    signal corrects tumor profiles, and corrected CNA outputs contain tumors
+    only. Review the leave-one-out normal QC and require the exact
+    `QDNASEQ_LOCAL_PON_SUCCESS` completion marker.
+    Start with [Automatic Setup](auto_params.md#illumina-step-by-step), then
+    read [Illumina setup](configuration/illumina.md#how-the-local-pon-is-built)
+    and the [PoN output contract](outputs.md#illumina-local-panel-of-normals).
+
 !!! warning "First real analysis"
     The first analysis downloads the hg38 reference (about **3.16 GB**). BWA indexing is single-core and commonly takes **30–60 minutes**. Later runs reuse the prepared reference. The small public verification also downloads about **225 MB of reads**; the optional three-sample cohort downloads **1.08 GiB**.
 
