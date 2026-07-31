@@ -285,7 +285,7 @@ The default verification uses small, single-sample inputs. After it succeeds, th
 
 ## Next: build a four-control panel of normals
 
-[QuickStart Example 3](six_tumor_four_control.md) shows a complete command for six tumors (`ONCO001`–`ONCO006`) and four normal controls (`CTRL001`–`CTRL004`). It includes a 20-CPU Nextflow setup that does not request a GPU, GNU Screen instructions, automatic PoN configuration, and the exact resumable command.
+[QuickStart Example 3](six_tumor_four_control.md) shows a complete command for six tumors (`ONCO001`–`ONCO006`) and four normal controls (`CTRL001`–`CTRL004`). It includes a 20-CPU Nextflow setup that does not request a GPU, automatic PoN configuration, direct terminal execution, and the exact resumable command.
 
 ## Next: run your own data
 
