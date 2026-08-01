@@ -1,15 +1,6 @@
 name: Full QuickStart 1 end-to-end
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/full-quickstart1-e2e.yml"
-      - "main.nf"
-      - "nextflow.config"
-      - "environment.yml"
-      - "bin/**"
-      - "examples/quickstart/**"
-      - "params/**"
   workflow_dispatch:
 
 permissions:
