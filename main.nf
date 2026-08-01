@@ -348,6 +348,7 @@ process RUN_ONT_SAMURAI {
     --barcodes '${params.ont_barcodes}' \\
     ${sampleNamesOpt} \\
     --outdir '${samuraiOutdir}' \\
+    --lpwgs-root '${params.lpwgs_root}' \\
     --analysis_type '${params.ont_analysis_type}' \\
     --caller '${params.ont_caller}' \\
     --binsize '${params.ont_binsize_kb}' \\
