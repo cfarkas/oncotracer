@@ -27,14 +27,34 @@ jobs:
 
           path = Path('main.nf')
           text = path.read_text(encoding='utf-8')
-          old = """    --outdir '${samuraiOutdir}' \\\\\n    --analysis_type '${params.ont_analysis_type}' \\\\\n"""
-          new = """    --outdir '${samuraiOutdir}' \\\\\n    --lpwgs-root '${params.lpwgs_root}' \\\\\n    --analysis_type '${params.ont_analysis_type}' \\\\\n"""
-          if old not in text:
-              raise SystemExit('expected RUN_ONT_SAMURAI argument block was not found')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          if "--lpwgs-root '${params.lpwgs_root}'" in text[text.index('process RUN_ONT_SAMURAI {'):]:
+              raise SystemExit('ONT lpwgs_root forwarding is already present')
+
+          lines = text.splitlines(keepends=True)
+          inside_ont = False
+          inserted = False
+          for index, line in enumerate(lines):
+              if line.startswith('process RUN_ONT_SAMURAI {'):
+                  inside_ont = True
+              elif inside_ont and line.startswith('process ') and not line.startswith('process RUN_ONT_SAMURAI {'):
+                  break
+              elif inside_ont and "--outdir '${samuraiOutdir}'" in line:
+                  indent = line[: len(line) - len(line.lstrip())]
+                  continuation = line.rstrip('\n').split()[-1]
+                  lines.insert(
+                      index + 1,
+                      f"{indent}--lpwgs-root '${{params.lpwgs_root}}' {continuation}\n",
+                  )
+                  inserted = True
+                  break
+
+          if not inserted:
+              raise SystemExit('RUN_ONT_SAMURAI --outdir line was not found')
+          path.write_text(''.join(lines), encoding='utf-8')
           PY
 
-          grep -A4 -F "--outdir '${samuraiOutdir}'" main.nf | grep -F -- "--lpwgs-root '${params.lpwgs_root}'"
+          grep -A4 -F -- "--outdir '${samuraiOutdir}'" main.nf \
+            | grep -F -- "--lpwgs-root '${params.lpwgs_root}'"
 
       - name: Commit the source fix
         run: |
