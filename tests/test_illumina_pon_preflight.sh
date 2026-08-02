@@ -40,7 +40,37 @@ printf '%s\n' \
   'echo "ERROR: preflight test unexpectedly invoked samtools: $*" >&2' \
   'exit 97' \
   > "$MOCK_BIN/samtools"
-chmod +x "$MOCK_BIN/nextflow" "$MOCK_BIN/samtools"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -Eeuo pipefail' \
+  'if [[ "${1:-}" == "--vanilla" && "${2:-}" == "-" && $# -ge 4 ]]; then' \
+  '  printf "mock qDNAseq annotation\n" > "${4:?missing mock RDS output}"' \
+  'fi' \
+  'exit 0' \
+  > "$MOCK_BIN/Rscript"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'exit 0' \
+  > "$MOCK_BIN/qpdf"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -Eeuo pipefail' \
+  'output=""' \
+  'while [[ $# -gt 0 ]]; do' \
+  '  case "$1" in' \
+  '    --output) output="${2:-}"; shift 2 ;;' \
+  '    *) shift ;;' \
+  '  esac' \
+  'done' \
+  '[[ -n "$output" ]] || { echo "ERROR: mock curl did not receive --output" >&2; exit 98; }' \
+  'printf "mock QDNAseq.hg38 source\n" > "$output"' \
+  > "$MOCK_BIN/curl"
+chmod +x \
+  "$MOCK_BIN/nextflow" \
+  "$MOCK_BIN/samtools" \
+  "$MOCK_BIN/Rscript" \
+  "$MOCK_BIN/qpdf" \
+  "$MOCK_BIN/curl"
 
 LPWGS_ROOT="$TEST_TMP/lpwgs"
 REF_FA="$LPWGS_ROOT/reference/genome.fa"
@@ -163,8 +193,10 @@ test_valid_preflight_reaches_mock_nextflow_only() {
   [[ $status -eq $MOCK_NEXTFLOW_EXIT ]] || fail "valid preflight returned $status instead of controlled mock exit $MOCK_NEXTFLOW_EXIT"
   assert_contains "$case_dir/run.log" 'Validated 1 TUMOR and 2 NORMAL Illumina sample(s)'
   assert_contains "$case_dir/run.log" 'Detected Illumina read layout: single-end'
+  assert_contains "$case_dir/run.log" 'Using qDNAseq hg38 annotation:'
   assert_contains "$case_dir/nextflow.log" 'run dincalcilab/samurai -r v1.4.0'
   assert_contains "$case_dir/nextflow.log" "--input $case_dir/out/input/samplesheet.csv"
+  assert_contains "$case_dir/nextflow.log" '--qdnaseq_bin_data'
   [[ "$(wc -l < "$case_dir/nextflow.log")" -eq 1 ]] || fail "valid preflight invoked Nextflow more than once"
   [[ -s "$case_dir/out/input/samplesheet.csv" ]] || fail "validated samplesheet was not published"
   [[ ! -d "$case_dir/out/alignment" ]] || fail "mocked preflight unexpectedly created alignment output"
