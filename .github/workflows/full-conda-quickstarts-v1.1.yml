@@ -66,6 +66,18 @@ jobs:
             examples/hcc1143_lpwgs/verify_outputs.py \
             tests/test_qdnaseq_conda_compat.sh
 
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('README.md')
+          text = path.read_text(encoding='utf-8')
+          old = 'Nextflow creates and reuses the required native Conda environments automatically'
+          new = 'Nextflow can create and reuse the required native Conda environments automatically'
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one Conda reuse sentence, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
       - name: Generate and test the Poetry lock file
         run: |
           python3 -m pip install --upgrade pip
