@@ -1,9 +1,7 @@
 name: Validate ONT QuickStart and release v1.0
 
 on:
-  push:
-    branches:
-      - agent/ont-v1-release-validation
+  pull_request:
     paths:
       - ".github/workflows/validate-ont-and-release-v1.yml"
   workflow_dispatch:
@@ -178,8 +176,17 @@ jobs:
           MAIN_SHA="$(git rev-parse HEAD)"
 
           if gh release view v1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "ERROR: release v1.0 already exists; refusing to replace it." >&2
-            exit 1
+            git fetch --force --tags origin
+            TAG_SHA="$(git rev-list -n 1 v1.0)"
+            if [[ "$TAG_SHA" != "$MAIN_SHA" ]]; then
+              echo "ERROR: existing v1.0 points to $TAG_SHA, not validated main commit $MAIN_SHA." >&2
+              exit 1
+            fi
+            echo "Stable v1.0 is already published for the validated main commit."
+            gh release view v1.0 \
+              --repo "$GITHUB_REPOSITORY" \
+              --json tagName,name,isDraft,isPrerelease,targetCommitish,publishedAt,url
+            exit 0
           fi
 
           cat > release-notes-v1.0.md <<EOF_NOTES
