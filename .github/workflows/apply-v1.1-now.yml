@@ -1,17 +1,20 @@
-name: Apply v1.1 runtime changes now
+name: Build v1.1 runtime patch artifact
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/conda-docs-v1.1
-    paths:
-      - ".github/workflows/apply-v1.1-now.yml"
+      - main
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: build-v1.1-runtime-patch-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  apply:
+  build:
+    if: github.head_ref == 'agent/conda-docs-v1.1'
     runs-on: ubuntu-24.04
     steps:
       - name: Check out the feature branch
@@ -89,16 +92,24 @@ QDNASEQ_BIN_ARGS=()"""
           mkdocs build --strict
           git diff --check
 
-      - name: Commit the repaired runtimes and install smoke tests
+      - name: Prepare the reviewed patch artifact
         run: |
           cp .github/templates/runtime-smoke-v1.1.yml \
             .github/workflows/full-conda-quickstarts-v1.1.yml
-          git rm -f \
+          rm -f \
             .github/workflows/apply-v1.1-now.yml \
             .github/workflows/apply-runtime-v1.1.yml \
             .github/scripts/patch_runtime_v1_1.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Add Poetry launcher and repair Conda qDNAseq compatibility"
-          git push origin HEAD:agent/conda-docs-v1.1
+          mkdir -p "$RUNNER_TEMP/v1.1-runtime-patch"
+          git diff --binary -- . ':!site' > "$RUNNER_TEMP/v1.1-runtime-patch/changes.patch"
+          git diff --name-status -- . ':!site' > "$RUNNER_TEMP/v1.1-runtime-patch/name-status.tsv"
+          tar --exclude=.git --exclude=site --exclude=test --exclude='__pycache__' \
+            -czf "$RUNNER_TEMP/v1.1-runtime-patch/repository-files.tar.gz" .
+
+      - name: Upload the reviewed patch artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v1.1-runtime-patch-${{ github.run_id }}
+          retention-days: 14
+          include-hidden-files: true
+          path: ${{ runner.temp }}/v1.1-runtime-patch/
