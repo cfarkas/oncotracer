@@ -1,40 +1,67 @@
-name: Export v1.1 branch tree metadata
+name: Runtime compatibility smoke for v1.1
 
 on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: export-v1.1-tree-${{ github.event.pull_request.number || github.ref }}
+  group: runtime-smoke-v1.1-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  export:
-    if: github.head_ref == 'agent/conda-docs-v1.1'
+  poetry-smoke:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out the feature branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          ref: agent/conda-docs-v1.1
-          fetch-depth: 0
-
-      - name: Record the exact commit and tree objects
+          python-version: "3.11"
+      - name: Install and test the Poetry launcher
         run: |
-          mkdir -p "$RUNNER_TEMP/v1.1-tree-metadata"
-          git rev-parse HEAD > "$RUNNER_TEMP/v1.1-tree-metadata/head.txt"
-          git rev-parse 'HEAD^{tree}' > "$RUNNER_TEMP/v1.1-tree-metadata/tree.txt"
-          git ls-tree -r HEAD > "$RUNNER_TEMP/v1.1-tree-metadata/ls-tree.txt"
-          cat "$RUNNER_TEMP/v1.1-tree-metadata/head.txt"
-          cat "$RUNNER_TEMP/v1.1-tree-metadata/tree.txt"
+          python -m pip install --upgrade pip
+          python -m pip install "poetry>=2,<3"
+          poetry check --lock
+          poetry install --no-interaction
+          poetry run python tests/test_poetry_cli.py
+          poetry run oncotracer --repo-dir "$GITHUB_WORKSPACE" --print-command --make_test \
+            --test_root "$GITHUB_WORKSPACE/test/poetry-smoke"
 
-      - name: Upload tree metadata
-        uses: actions/upload-artifact@v4
+  conda-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
         with:
-          name: v1.1-tree-metadata-${{ github.run_id }}
-          retention-days: 7
-          path: ${{ runner.temp }}/v1.1-tree-metadata/
+          miniforge-version: latest
+          activate-environment: base
+          auto-activate: true
+          conda-remove-defaults: true
+      - name: Solve and create the complete OncoTracer environment
+        run: |
+          conda config --set channel_priority strict
+          conda env create --prefix "$RUNNER_TEMP/oncotracer-v1.1" --file environment.yml
+      - name: Verify qDNAseq, helper modules, and hg38 annotations
+        run: |
+          ENV_PREFIX="$RUNNER_TEMP/oncotracer-v1.1"
+          conda run --prefix "$ENV_PREFIX" Rscript --vanilla -e '
+            required <- c("Biobase","QDNAseq","argparser","future","R.cache","readr","dplyr","ggplot2","scales","yaml");
+            missing <- required[!vapply(required, requireNamespace, logical(1), quietly=TRUE)];
+            if (length(missing)) stop(paste(missing, collapse=","));
+            cat("R_CONDA_COMPAT_OK\n")'
+          conda run --prefix "$ENV_PREFIX" python -c 'import janitor,natsort,openpyxl,pandas,pandera,polars,typer; print("PYTHON_CONDA_COMPAT_OK")'
+          conda run --prefix "$ENV_PREFIX" bash tests/test_qdnaseq_conda_compat.sh
+          BIN_RDS="$(conda run --prefix "$ENV_PREFIX" bash bin/scripts/prepare_qdnaseq_bin_data.sh \
+            --binsize 100 --cache-dir "$RUNNER_TEMP/qdnaseq-bin-data" | tail -n 1)"
+          test -s "$BIN_RDS"
+          conda run --prefix "$ENV_PREFIX" Rscript --vanilla -e \
+            'x <- readRDS(commandArgs(TRUE)[1]); stopifnot(nrow(x) > 0); cat(nrow(x), "bins\n")' \
+            "$BIN_RDS"
