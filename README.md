@@ -2,6 +2,7 @@
 
 ![OncoTracer: sequencing reads to copy-number alterations](docs/assets/oncotracer-hero.png)
 
+[![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://cfarkas.github.io/oncotracer/)
 [![Docker](https://img.shields.io/badge/docker-carlosfarkas%2Foncotracer-blue)](https://hub.docker.com/r/carlosfarkas/oncotracer)
 [![Nextflow](https://img.shields.io/badge/nextflow-%E2%89%A525.04-green)](https://www.nextflow.io/)
@@ -12,8 +13,9 @@ OncoTracer is a Nextflow research workflow for **low-pass whole-genome sequencin
 FASTQ -> SAMURAI qDNAseq/ichorCNA -> boundary refinement -> CNA tables -> plots and reports
 ```
 
-Run OncoTracer through Nextflow with one container option:
+Run OncoTracer through Nextflow with one execution option:
 
+- `--conda` makes Nextflow create and reuse the required Conda environments automatically from the versioned environment definitions. Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) first; no container runtime is required.
 - `--docker` uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
 - `--singularity` uses the same image as `docker://carlosfarkas/oncotracer:latest` on an HPC system configured with Singularity or Apptainer.
 
@@ -21,7 +23,7 @@ Read the [complete documentation](https://cfarkas.github.io/oncotracer/) for ins
 
 ## Requirements
 
-Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), [Java 17](https://adoptium.net/temurin/releases/?version=17) or newer, [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Python 3](https://www.python.org/downloads/), [samtools](https://www.htslib.org/download/), [BWA](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2), [pigz](https://zlib.net/pigz/), [curl](https://curl.se/download.html) or [wget](https://www.gnu.org/software/wget/), and either [Docker Engine](https://docs.docker.com/engine/install/) or [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html)/[Apptainer](https://apptainer.org/docs/admin/main/installation.html).
+Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), [Java 17](https://adoptium.net/temurin/releases/?version=17) or newer, [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Python 3](https://www.python.org/downloads/), [samtools](https://www.htslib.org/download/), [BWA](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2), [pigz](https://zlib.net/pigz/), and [curl](https://curl.se/download.html) or [wget](https://www.gnu.org/software/wget/). Choose one execution environment: [Miniforge/Conda](https://github.com/conda-forge/miniforge), [Docker Engine](https://docs.docker.com/engine/install/), or [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html)/[Apptainer](https://apptainer.org/docs/admin/main/installation.html).
 
 The first uncached analysis downloads the hg38 reference (about **3.16 GB**) and creates a BWA index. This commonly takes **30–60 minutes**, and the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.
 
@@ -56,8 +58,8 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   --auto_config_dir "$PROJECT_DIR/config" \
   --auto_outdir "$PROJECT_DIR/results"
 
-# Run the generated configuration with Docker and retain resumable work files.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run with Conda; Nextflow creates and reuses the required environments.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work" \
   -resume
@@ -66,11 +68,11 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 cat "$PROJECT_DIR/results/06_workflow_summary/workflow_summary.txt"
 ```
 
-`--auto_params` checks the supported FASTQ layout and writes the YAML used by the second command. For ONT barcode folders, use `--mode ont`. See [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) for complete Illumina and ONT examples.
+Replace `--conda` with `--docker` for the maintained Docker image or with `--singularity` on a configured HPC system. `--auto_params` checks the supported FASTQ layout and writes the YAML used by the analysis command. For ONT barcode folders, use `--mode ont`. See [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) for complete Illumina and ONT examples.
 
 ## QuickStart Example 1: one public Illumina and one public ONT sample
 
-This verification downloads about **225 MB** of public reads and runs both branches.
+This verification downloads about **225 MB** of public reads and runs both branches. The commands below use Docker; replace `--docker` with `--conda` to let Nextflow create and reuse Conda environments automatically.
 
 ```bash
 # Choose a generic clone location and test directory.
@@ -106,7 +108,7 @@ See [QuickStart Example 1](https://cfarkas.github.io/oncotracer/quick_start/) fo
 
 ## QuickStart Example 2: three public HCC1143 libraries
 
-The HCC1143 example downloads six public paired-end FASTQs. The following block exposes the complete `wget` download, file naming, sample-table creation, Automatic Setup, and analysis commands.
+The HCC1143 example downloads six public paired-end FASTQs. The following block exposes the complete `wget` download, file naming, sample-table creation, Automatic Setup, and analysis commands. Replace `--docker` with `--conda` for automatic Conda environment creation.
 
 ```bash
 # Set the standard repository and HCC1143 data paths.
@@ -193,7 +195,7 @@ Each `wget --continue` command can resume an accession-named partial download. A
 
 ## Other Example Runs
 
-[Six tumors and four controls](https://cfarkas.github.io/oncotracer/six_tumor_four_control/) is a command template for a local qDNAseq panel of normals. The repository does **not** include or download the `ONCO001`–`ONCO006` and `CTRL001`–`CTRL004` FASTQs. That page will not run until you provide the 20 files and the sample table shown there.
+[Six tumors and four normal controls](https://cfarkas.github.io/oncotracer/six_tumor_four_control/) is a mock example that illustrates how four `NORMAL` samples are used to build a local qDNAseq panel of normals and correct CNA profiles for six `TUMOR` samples.
 
 The [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/) downloads and processes all 12 public PRJNA754199 libraries currently available from the archive.
 
