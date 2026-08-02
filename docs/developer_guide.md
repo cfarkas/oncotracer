@@ -8,7 +8,7 @@ The examples use `/path/to/my/directory/oncotracer` as the repository path.
 
 ```text
 main.nf                         # top-level DSL2 workflow
-nextflow.config                 # defaults and runtime profiles
+nextflow.config                 # defaults and execution profiles
 params/                         # user-facing YAML templates
 bin/scripts/                    # launch, download, setup, and refinement helpers
 bin/cna_codification/           # event conversion and plotting code
@@ -19,7 +19,7 @@ tests/                          # focused source and behavior tests
 test/                           # downloaded fixtures, generated configs, work, and outputs
 ```
 
-Do not commit patient data, credentials, container tokens, downloaded references, BAMs, FASTQs, `work/`, `.nextflow/`, or generated `site/` content.
+Do not commit patient data, credentials, registry tokens, downloaded references, BAMs, FASTQs, `work/`, `.nextflow/`, Conda caches, or generated `site/` content.
 
 ## Start from a fresh branch
 
@@ -43,8 +43,9 @@ git status --short
 REPO_DIR=/path/to/my/directory/oncotracer
 cd "$REPO_DIR"
 
-# Download and validate the public Illumina and ONT reads and generate their YAML files.
-nextflow run "$REPO_DIR/main.nf" --make_test \
+# Create or reuse the Conda environment, download the public reads, and generate both YAML files.
+nextflow run "$REPO_DIR/main.nf" --make_test --conda \
+  --lpwgs_root "$REPO_DIR/test" \
   --test_root "$REPO_DIR/test"
 
 # Inspect both generated run plans.
@@ -73,10 +74,10 @@ bash "$REPO_DIR/tests/test_qdnaseq_local_pon.sh"
 # Check documentation wording, paths, and command blocks.
 python3 "$REPO_DIR/tests/test_docs_style.py"
 
-# Check the generated Illumina and ONT workflow connections.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+# Check the generated Illumina and ONT workflow connections with Conda.
+nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
   -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml"
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
   -params-file "$REPO_DIR/test/configs/ont.quickstart.yml"
 
 # Check whitespace and review the exact source changes.
@@ -92,14 +93,14 @@ A stub run validates parameters, channels, and process connections. It does not 
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Run or resume the public Illumina example.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run or resume the public Illumina example with Conda.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
   -work-dir "$REPO_DIR/test/work/illumina" \
   -resume
 
 # Run or resume the public ONT example after Illumina finishes.
-nextflow run "$REPO_DIR/main.nf" --docker \
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
   -work-dir "$REPO_DIR/test/work/ont" \
   -resume
@@ -109,7 +110,7 @@ python3 "$REPO_DIR/examples/quickstart/verify_outputs.py" \
   --test-root "$REPO_DIR/test"
 ```
 
-At least one uncached run is required when changing task commands, images, callers, parsing, or expected output files.
+At least one uncached run is required when changing task commands, environments, images, callers, parsing, or expected output files.
 
 ```bash
 # Set the standard repository path.
@@ -148,8 +149,9 @@ CSV
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Generate the HCC1143 YAML and samplesheet.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+# Create or reuse the Conda environment, then generate the HCC1143 YAML and samplesheet.
+nextflow run "$REPO_DIR/main.nf" --auto_params --conda \
+  --lpwgs_root "$REPO_DIR/test" \
   --mode illumina \
   --reads_folder "$REPO_DIR/test/public/hcc1143_lpwgs" \
   --sample_table "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" \
@@ -157,18 +159,18 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs"
 
 # Check the generated workflow connections.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
   -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs_stub"
 
-# Run or resume the three-library analysis.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run or resume the three-library analysis with Conda.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
   -resume
 ```
 
-The six-tumor/four-control page is not a runnable repository test. Its FASTQs are not included or downloaded; it is a user-data command template.
+The six-tumor/four-normal page is a mock configuration example used to test and explain how normal controls enable a local qDNAseq panel of normals.
 
 ## Build the documentation
 
@@ -207,11 +209,11 @@ Document and test changes to:
 
 Do not hide a scientific behavior change inside a formatting or dependency update.
 
-## Adding a public example
+## Adding an example
 
 A runnable public example should include accessions, stable URLs, byte counts, checksums, `gzip -t`, exact sample metadata, resource expectations, generated YAML, validation commands, and output verification. Do not commit large public FASTQs.
 
-A local-data template must state prominently that the data are not included and that the commands cannot run until the user supplies the files.
+A mock example should clearly state its teaching purpose and use obvious placeholder sample names.
 
 ## Before requesting review
 
@@ -228,4 +230,4 @@ python3 "$REPO_DIR/tests/test_docs_style.py"
 mkdocs build --strict
 ```
 
-Summarize the routes tested, whether runs were fresh or resumed, the selected runtime/image, and any test not performed. Deploy GitHub Pages only after source changes are reviewed and merged.
+Summarize the routes tested, whether runs were fresh or resumed, the selected execution environment, and any test not performed. Deploy GitHub Pages only after source changes are reviewed and merged.
