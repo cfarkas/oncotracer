@@ -3,8 +3,22 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
+  # Workflow launcher and host-side sequence tools.
   - nextflow=26.04.2
   - openjdk=17
+  - samtools
+  - bwa
+  - minimap2
+  - pigz
+  - qpdf
+  - procps-ng
+  - git
+  - curl
+  - wget
+  - unzip
+
+  # Python tools used by OncoTracer and container-only SAMURAI helper modules
+  # when the nested workflow is executed with its Conda profile.
   - python=3.11
   - pandas>=2.0
   - numpy>=1.24
@@ -17,14 +31,27 @@ dependencies:
   - requests>=2.31
   - reportlab>=4.0
   - pypdf>=4.0
-  - samtools
-  - bwa
-  - minimap2
-  - pigz
-  - git
-  - curl
-  - wget
-  - unzip
+  - polars
+  - typer
+  - typing_extensions
+  - pandera
+  - pyjanitor
+  - natsort
+
+  # R/qDNAseq and plotting tools required by SAMURAI modules that provide a
+  # container image but no module-level Conda recipe in SAMURAI v1.4.0.
+  - r-base=4.1
+  - bioconductor-qdnaseq=1.30.0
+  - bioconductor-biobase
+  - r-argparser
+  - r-future
+  - r-r.cache
+  - r-readr
+  - r-dplyr
+  - r-ggplot2
+  - r-scales
+  - r-yaml
+
   - pip
   - pip:
       - transformers>=4.42
