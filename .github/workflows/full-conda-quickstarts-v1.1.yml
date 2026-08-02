@@ -39,19 +39,21 @@ jobs:
           text = text[:start] + text[end:]
 
           old = "        '''echo \"Detected Illumina read layout: $READ_LAYOUT-end\"\n\nQDNASEQ_BIN_ARGS=()"
-          new = """        '''echo \"Detected Illumina read layout: $READ_LAYOUT-end\"
-
-if [[ \"$SAMURAI_PROFILE\" == \"conda\" ]]; then
-  command -v Rscript >/dev/null 2>&1 || { echo \"ERROR: the OncoTracer Conda environment is missing Rscript\" >&2; exit 1; }
-  Rscript --vanilla - <<'RS_CONDA_CHECK'
-required <- c(\"Biobase\", \"QDNAseq\", \"argparser\", \"future\", \"R.cache\")
-missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
-if (length(missing)) stop(\"Missing Conda R package(s): \", paste(missing, collapse = \", \"))
-RS_CONDA_CHECK
-  command -v qpdf >/dev/null 2>&1 || { echo \"ERROR: the OncoTracer Conda environment is missing qpdf\" >&2; exit 1; }
-fi
-
-QDNASEQ_BIN_ARGS=()"""
+          new = "\n".join([
+              "        '''echo \"Detected Illumina read layout: $READ_LAYOUT-end\"",
+              "",
+              "if [[ \"$SAMURAI_PROFILE\" == \"conda\" ]]; then",
+              "  command -v Rscript >/dev/null 2>&1 || { echo \"ERROR: the OncoTracer Conda environment is missing Rscript\" >&2; exit 1; }",
+              "  Rscript --vanilla - <<'RS_CONDA_CHECK'",
+              "required <- c(\"Biobase\", \"QDNAseq\", \"argparser\", \"future\", \"R.cache\")",
+              "missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]",
+              "if (length(missing)) stop(\"Missing Conda R package(s): \", paste(missing, collapse = \", \"))",
+              "RS_CONDA_CHECK",
+              "  command -v qpdf >/dev/null 2>&1 || { echo \"ERROR: the OncoTracer Conda environment is missing qpdf\" >&2; exit 1; }",
+              "fi",
+              "",
+              "QDNASEQ_BIN_ARGS=()",
+          ])
           if text.count(old) != 1:
               raise SystemExit(f'Expected one post-validation insertion point, found {text.count(old)}')
           path.write_text(text.replace(old, new, 1), encoding='utf-8')
