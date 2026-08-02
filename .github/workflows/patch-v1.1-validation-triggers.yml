@@ -131,6 +131,7 @@ jobs:
 
       - name: Validate and commit the workflow changes
         run: |
+          python3 -m pip install --quiet pyyaml
           python3 - <<'PY'
           from pathlib import Path
           import yaml
