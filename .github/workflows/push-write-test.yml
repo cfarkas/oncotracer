@@ -1,0 +1,28 @@
+name: Test branch push write permission
+
+on:
+  push:
+    branches:
+      - agent/conda-docs-v1.1
+    paths:
+      - ".github/workflows/push-write-test.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  test-write:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/conda-docs-v1.1
+          fetch-depth: 0
+      - name: Commit a temporary write marker
+        run: |
+          printf 'branch write permission confirmed\n' > .github/branch-write-confirmed.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/branch-write-confirmed.txt
+          git commit -m "CI: confirm branch write permission"
+          git push origin HEAD:agent/conda-docs-v1.1
