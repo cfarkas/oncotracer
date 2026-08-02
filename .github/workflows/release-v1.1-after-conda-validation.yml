@@ -1,51 +1,53 @@
 name: Release v1.1 after Conda validation
 
 on:
-  workflow_run:
-    workflows:
-      - Full Conda QuickStarts for v1.1
-    types:
-      - completed
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out the exact validated commit
+      - name: Check out the current main commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - name: Confirm the validated commit is current main
+      - name: Require successful full Conda validation for this exact commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
-          TESTED_SHA='${{ github.event.workflow_run.head_sha }}'
-          MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          SHA="$GITHUB_SHA"
 
-          if [[ "$TESTED_SHA" != "$MAIN_SHA" ]]; then
-            echo "ERROR: validated commit $TESTED_SHA is no longer current main $MAIN_SHA" >&2
+          MATCHES="$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&per_page=100" \
+            --jq '[.workflow_runs[] | select(.name == "Full Conda QuickStarts for v1.1" and .status == "completed" and .conclusion == "success" and .head_sha == "'"$SHA"'")] | length')"
+
+          if [[ "$MATCHES" -lt 1 ]]; then
+            echo "ERROR: no successful full Conda QuickStart validation exists for exact main commit $SHA" >&2
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&per_page=100" \
+              --jq '.workflow_runs[] | [.name, .event, .status, .conclusion, .head_branch, .head_sha, .html_url] | @tsv' || true
             exit 1
           fi
 
-          echo "Validated current main commit: $MAIN_SHA"
+          echo "Found $MATCHES successful full Conda validation run(s) for $SHA."
 
       - name: Publish stable OncoTracer v1.1
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
-          SHA='${{ github.event.workflow_run.head_sha }}'
+          SHA="$GITHUB_SHA"
 
           if gh release view v1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             git fetch --force --tags origin
