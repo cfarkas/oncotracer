@@ -1,0 +1,152 @@
+name: Patch v1.1 validation triggers
+
+on:
+  push:
+    branches:
+      - agent/conda-docs-v1.1
+    paths:
+      - ".github/workflows/patch-v1.1-validation-triggers.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/conda-docs-v1.1
+          fetch-depth: 0
+
+      - name: Update the validation and release workflow triggers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          validation = Path('.github/workflows/full-conda-quickstarts-v1.1.yml')
+          text = validation.read_text(encoding='utf-8')
+          start = text.index('on:\n')
+          end = text.index('\npermissions:\n', start)
+          trigger = '''on:
+          pull_request:
+            branches:
+              - main
+          push:
+            branches:
+              - main
+          workflow_dispatch:
+          '''
+          validation.write_text(text[:start] + trigger + text[end:], encoding='utf-8')
+
+          release = Path('.github/workflows/release-v1.1-after-conda-validation.yml')
+          release.write_text('''name: Release v1.1 after Conda validation
+
+          on:
+            workflow_run:
+              workflows:
+                - Full Conda QuickStarts for v1.1
+              types:
+                - completed
+
+          permissions:
+            contents: write
+
+          jobs:
+            release:
+              if: >-
+                github.event.workflow_run.conclusion == 'success' &&
+                github.event.workflow_run.head_branch == 'main'
+              runs-on: ubuntu-latest
+              steps:
+                - name: Check out the exact validated main commit
+                  uses: actions/checkout@v4
+                  with:
+                    ref: ${{ github.event.workflow_run.head_sha }}
+                    fetch-depth: 0
+
+                - name: Confirm that the tested commit is still current main
+                  env:
+                    GH_TOKEN: ${{ github.token }}
+                  run: |
+                    set -Eeuo pipefail
+                    TESTED_SHA='${{ github.event.workflow_run.head_sha }}'
+                    MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+                    if [[ "$TESTED_SHA" != "$MAIN_SHA" ]]; then
+                      echo "ERROR: validated commit $TESTED_SHA is no longer current main $MAIN_SHA" >&2
+                      exit 1
+                    fi
+                    echo "Validated current main commit: $MAIN_SHA"
+
+                - name: Publish the stable v1.1 release
+                  env:
+                    GH_TOKEN: ${{ github.token }}
+                  run: |
+                    set -Eeuo pipefail
+                    SHA='${{ github.event.workflow_run.head_sha }}'
+
+                    if gh release view v1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                      git fetch --force --tags origin
+                      TAG_SHA="$(git rev-list -n 1 v1.1)"
+                      if [[ "$TAG_SHA" != "$SHA" ]]; then
+                        echo "ERROR: existing v1.1 points to $TAG_SHA, not validated main commit $SHA" >&2
+                        exit 1
+                      fi
+                      echo "Stable v1.1 is already published for this validated commit."
+                      gh release view v1.1 \
+                        --repo "$GITHUB_REPOSITORY" \
+                        --json tagName,name,isDraft,isPrerelease,targetCommitish,publishedAt,url
+                      exit 0
+                    fi
+
+                    cat > release-notes-v1.1.md <<EOF_NOTES
+                    # OncoTracer v1.1
+
+                    Stable research release adding first-class Conda execution and clearer normal-control examples.
+
+                    Validated on commit \`$SHA\` with both public QuickStarts using \`--conda\`:
+
+                    - QuickStart Example 1: public Illumina \`ERR12341627\` and ONT \`DRR165691\`, including SAMURAI, qDNAseq/ichorCNA, BAM refinement, CNA tables, plots, summaries, and the repository verifier.
+                    - QuickStart Example 2: all three paired HCC1143 libraries, including Automatic Setup, three BAMs, qDNAseq segments, BAM refinement, CNA tables, plots, and summary checks.
+
+                    With \`--conda\`, Nextflow creates and reuses the required environments automatically. Docker and Singularity/Apptainer remain supported execution options.
+
+                    OncoTracer is for research use and is not a standalone diagnostic system.
+                    EOF_NOTES
+
+                    gh release create v1.1 \
+                      --repo "$GITHUB_REPOSITORY" \
+                      --target "$SHA" \
+                      --title "OncoTracer v1.1" \
+                      --notes-file release-notes-v1.1.md
+
+                    gh release view v1.1 \
+                      --repo "$GITHUB_REPOSITORY" \
+                      --json tagName,name,isDraft,isPrerelease,targetCommitish,publishedAt,url
+          ''', encoding='utf-8')
+          PY
+
+          git rm .github/workflows/patch-v1.1-validation-triggers.yml
+
+      - name: Validate and commit the workflow changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          for name in (
+              '.github/workflows/full-conda-quickstarts-v1.1.yml',
+              '.github/workflows/release-v1.1-after-conda-validation.yml',
+          ):
+              with Path(name).open(encoding='utf-8') as handle:
+                  yaml.safe_load(handle)
+              print(f'YAML OK: {name}')
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/full-conda-quickstarts-v1.1.yml \
+                  .github/workflows/release-v1.1-after-conda-validation.yml
+          git commit -m "CI: run Conda validation on PR and main before v1.1"
+          git push origin HEAD:agent/conda-docs-v1.1
