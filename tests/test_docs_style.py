@@ -30,6 +30,12 @@ FORBIDDEN_PHRASES = (
     "Start OncoTracer through Nextflow",
     "Start containers only through Nextflow",
     "Use container runtimes only through Nextflow",
+    "does **not** include or download",
+    "Nothing on this page can run until you provide all 20 paired-end files",
+    "**Not included**; the user must provide all 20 FASTQs",
+    "the user must provide all 20 FASTQs",
+    "User Data Required",
+    "FASTQs are not included or downloaded",
 )
 
 FORBIDDEN_PATHS = (
@@ -94,10 +100,13 @@ GENERIC_PATH_FILES = (
 
 REQUIRED_TEXT = {
     "README.md": (
+        "--conda",
+        "create and reuse the required Conda environments automatically",
+        "https://github.com/conda-forge/miniforge",
         "https://hub.docker.com/r/carlosfarkas/oncotracer",
         STANDARD_REPOSITORY_PATH,
         "## Other Example Runs",
-        "does **not** include or download",
+        "is a mock example",
         "cat > \"$READS_DIR/samples.csv\" <<'CSV'",
         "wget --continue --directory-prefix=\"$READS_DIR\"",
         "https://www.htslib.org/download/",
@@ -105,13 +114,16 @@ REQUIRED_TEXT = {
         "https://github.com/lh3/minimap2",
     ),
     "docs/index.md": (
+        "--conda",
         "Other Example Run: six tumors and four controls",
-        "**Not included**; the user must provide all 20 FASTQs",
+        "Mock six-tumor/four-normal example",
         "## Estimated time for the first analysis",
     ),
     "docs/installation.md": (
+        "--conda",
         "--docker",
         "--singularity",
+        "https://github.com/conda-forge/miniforge",
         "https://hub.docker.com/r/carlosfarkas/oncotracer",
         "Other Example Run: six tumors and four controls",
         "https://adoptium.net/temurin/releases/?version=17",
@@ -119,11 +131,13 @@ REQUIRED_TEXT = {
         "https://zlib.net/pigz/",
     ),
     "docs/quick_start.md": (
+        "--make_test --conda",
         "sample_name,status\nERR12341627,TUMOR",
         "barcode,sample_name,status\nbarcode01,DRR165691,TUMOR",
         "## Estimated time for this analysis",
     ),
     "docs/public_cohort.md": (
+        "--auto_params --conda",
         "sample_name,status\nHCC1143_DMSO,TUMOR",
         "HCC1143_BEZ235,TUMOR",
         "HCC1143_TRAMETINIB,TUMOR",
@@ -136,9 +150,9 @@ REQUIRED_TEXT = {
         "## Estimated time and resources",
     ),
     "docs/six_tumor_four_control.md": (
-        "# Other Example Run: Six Illumina Tumors and Four Controls",
-        "does **not** include or download",
-        "Nothing on this page can run until you provide all 20 paired-end files",
+        "# Other Example Run: Mock Six-Tumor/Four-Normal Study",
+        "This mock example illustrates",
+        "--conda",
         "ONCO001,TUMOR",
         "CTRL004,NORMAL",
     ),
@@ -147,9 +161,13 @@ REQUIRED_TEXT = {
         "CONTROL_02,NORMAL",
         "barcode,sample_name,status\nbarcode01,TUMOR_01,TUMOR",
     ),
+    "docs/containers.md": (
+        "Nextflow creates and reuses Conda environments automatically",
+        "lpwgs_root/.oncotracer/conda",
+    ),
     "mkdocs.yml": (
         "Other Example Runs:",
-        "Six Tumors + Four Controls (User Data Required)",
+        "Mock Six Tumors + Four Normal Controls",
     ),
 }
 
@@ -253,7 +271,7 @@ def main() -> None:
     check_hcc1143_wget_downloads()
     check_commented_bash_blocks()
     check_bash_block_syntax()
-    print("PASS: streamlined documentation, generic paths, wget downloads, and example syntax")
+    print("PASS: Conda-first documentation, generic paths, mock normal example, downloads, and Bash syntax")
 
 
 if __name__ == "__main__":
