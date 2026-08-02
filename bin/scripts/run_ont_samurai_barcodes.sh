@@ -2,6 +2,8 @@
 set -Eeuo pipefail
 trap 'echo "ERROR at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
 ###############################################################################
 # ONT LP-WGS barcodes -> merged FASTQ.gz -> minimap2 BAM -> SAMURAI.
 # Supports local panels-of-normals (PoNs) for both:
@@ -220,6 +222,25 @@ done
 [[ "$QDNASEQ_LOCAL_PON" == "auto" || "$QDNASEQ_LOCAL_PON" == "true" || "$QDNASEQ_LOCAL_PON" == "false" ]] || { echo "ERROR: --qdnaseq-local-pon mode must be auto, true, or false" >&2; exit 1; }
 [[ "$NFX_SYNTAX_PARSER" == "v1" || "$NFX_SYNTAX_PARSER" == "v2" ]] || { echo "ERROR: Nextflow syntax parser must be v1 or v2" >&2; exit 1; }
 [[ "$SAMURAI_PROFILE" == "docker" || "$SAMURAI_PROFILE" == "singularity" || "$SAMURAI_PROFILE" == "conda" ]] || { echo "ERROR: --profile must be docker, singularity, or conda" >&2; exit 1; }
+
+if [[ "$SAMURAI_PROFILE" == "conda" ]]; then
+  command -v Rscript >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing Rscript" >&2; exit 1; }
+  Rscript --vanilla - <<'RS_CONDA_CHECK'
+required <- c("argparser", "readr", "dplyr", "ggplot2", "scales", "yaml")
+missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing)) stop("Missing Conda R package(s): ", paste(missing, collapse = ", "))
+RS_CONDA_CHECK
+  python3 - <<'PY_CONDA_CHECK'
+import janitor
+import natsort
+import openpyxl
+import pandas
+import pandera
+import polars
+import typer
+PY_CONDA_CHECK
+  command -v qpdf >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing qpdf" >&2; exit 1; }
+fi
 
 if (( ${#NORMAL_FOLDERS[@]} > 0 )); then
   (( ${#NORMAL_BARCODES_CSVS[@]} == ${#NORMAL_FOLDERS[@]} )) || {
@@ -557,6 +578,14 @@ PY
 fi
 
 resolve_ichorcna_refs
+
+if [[ "$SAMURAI_PROFILE" == "conda" && "$CALLER" == "qdnaseq" && -z "$QDNASEQ_BIN_DATA" ]]; then
+  QDNASEQ_BIN_HELPER="$SCRIPT_DIR/prepare_qdnaseq_bin_data.sh"
+  [[ -s "$QDNASEQ_BIN_HELPER" ]] || { echo "ERROR: qDNAseq annotation helper not found: $QDNASEQ_BIN_HELPER" >&2; exit 1; }
+  QDNASEQ_BIN_DATA="$(bash "$QDNASEQ_BIN_HELPER"     --binsize "$BINSIZE"     --cache-dir "$LPWGS_ROOT/.oncotracer/qdnaseq-bin-data")"
+  [[ -s "$QDNASEQ_BIN_DATA" ]] || { echo "ERROR: qDNAseq annotation was not prepared: $QDNASEQ_BIN_DATA" >&2; exit 1; }
+  echo "Using qDNAseq hg38 annotation: $QDNASEQ_BIN_DATA"
+fi
 
 if [[ ! -s "$REF_MMI" ]]; then
   echo "Building minimap2 index: $REF_MMI"
@@ -1102,7 +1131,10 @@ NF_CMD=(
   --aligner false
 )
 
-[[ "$CALLER" == "qdnaseq" ]] && NF_CMD+=( --qdnaseq_paired_ends false )
+if [[ "$CALLER" == "qdnaseq" ]]; then
+  NF_CMD+=( --qdnaseq_paired_ends false )
+  [[ -n "$QDNASEQ_BIN_DATA" ]] && NF_CMD+=( --qdnaseq_bin_data "$QDNASEQ_BIN_DATA" )
+fi
 
 if [[ "$BUILD_PON" == "true" && "$CALLER" != "qdnaseq" ]]; then
   NF_CMD+=( --build_pon --pon_name "$PON_NAME" )

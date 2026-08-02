@@ -205,3 +205,18 @@ python3 "$REPO_DIR/examples/quickstart/verify_outputs.py" \
 - [QuickStart Example 2](public_cohort.md) runs three public HCC1143 libraries.
 - [Full Tutorial](full_tutorial.md) runs the 12 public PRJNA754199 libraries.
 - [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a mock example illustrating how four normal controls are used to correct six tumor profiles.
+
+## Poetry alternative
+
+```bash
+# Install the launcher and run the same QuickStart configurations with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/poetry-illumina" -resume
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/poetry-ont" -resume
+```

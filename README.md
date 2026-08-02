@@ -13,19 +13,33 @@ OncoTracer is a Nextflow research workflow for **low-pass whole-genome sequencin
 FASTQ -> SAMURAI qDNAseq/ichorCNA -> boundary refinement -> CNA tables -> plots and reports
 ```
 
-Run OncoTracer through Nextflow with one execution option:
+Run OncoTracer by one of three routes:
 
-- `--conda` makes Nextflow create and reuse the required Conda environments automatically from the versioned environment definitions. Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) first; no container runtime is required.
-- `--docker` uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
-- `--singularity` uses the same image as `docker://carlosfarkas/oncotracer:latest` on an HPC system configured with Singularity or Apptainer.
+1. **Docker or Singularity/Apptainer:** call `nextflow run` with `--docker` or `--singularity`. Docker uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer); Singularity/Apptainer uses the same image as `docker://carlosfarkas/oncotracer:latest`.
+2. **Poetry launcher:** run `poetry install`, then use `poetry run oncotracer --backend docker ...`. Poetry manages the Python launcher and forwards the analysis to Nextflow and the selected scientific backend.
+3. **Conda:** call `nextflow run` with `--conda`. Nextflow can create and reuse the required Conda environments automatically from the versioned native definitions from the versioned definitions.
 
 Read the [complete documentation](https://cfarkas.github.io/oncotracer/) for installation, tutorials, input formats, configuration, outputs, and troubleshooting.
 
 ## Requirements
 
-Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), [Java 17](https://adoptium.net/temurin/releases/?version=17) or newer, [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Python 3](https://www.python.org/downloads/), [samtools](https://www.htslib.org/download/), [BWA](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2), [pigz](https://zlib.net/pigz/), and [curl](https://curl.se/download.html) or [wget](https://www.gnu.org/software/wget/). Choose one execution environment: [Miniforge/Conda](https://github.com/conda-forge/miniforge), [Docker Engine](https://docs.docker.com/engine/install/), or [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html)/[Apptainer](https://apptainer.org/docs/admin/main/installation.html).
+Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), [Java 17](https://adoptium.net/temurin/releases/?version=17) or newer, [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Python 3](https://www.python.org/downloads/), [samtools](https://www.htslib.org/download/), [BWA](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2), [pigz](https://zlib.net/pigz/), and [curl](https://curl.se/download.html) or [wget](https://www.gnu.org/software/wget/). Choose a direct execution environment: [Miniforge/Conda](https://github.com/conda-forge/miniforge), [Docker Engine](https://docs.docker.com/engine/install/), or [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html)/[Apptainer](https://apptainer.org/docs/admin/main/installation.html). Install [Poetry](https://python-poetry.org/docs/#installation) for the Poetry launcher route.
 
 The first uncached analysis downloads the hg38 reference (about **3.16 GB**) and creates a BWA index. This commonly takes **30–60 minutes**, and the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.
+
+## Poetry launcher
+
+```bash
+# Install the locked Poetry launcher in the repository clone.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+
+# Launch OncoTracer through Poetry with Docker as the scientific backend.
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker   -params-file /path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml   -work-dir /path/to/my/directory/my_oncotracer_project/work   -resume
+```
+
+The Poetry launcher also accepts `--backend singularity` and `--backend conda`. See the [Poetry Launcher guide](https://cfarkas.github.io/oncotracer/poetry/).
 
 ## Run your own FASTQs
 

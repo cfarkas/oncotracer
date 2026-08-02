@@ -242,3 +242,14 @@ nextflow run "$REPO_DIR/main.nf" --conda \
 This example verifies multi-sample execution. It is not a matched tumor/normal design, does not establish treatment causality, and is not a clinical validation study.
 
 The [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a mock example illustrating how four normal controls are used to build a local qDNAseq reference for six tumors.
+
+## Poetry alternative
+
+```bash
+# Run the generated HCC1143 configuration through Poetry and Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/poetry-hcc1143" -resume
+```

@@ -101,6 +101,8 @@ GENERIC_PATH_FILES = (
 REQUIRED_TEXT = {
     "README.md": (
         "--conda",
+        "Poetry launcher",
+        "poetry run oncotracer",
         "create and reuse the required Conda environments automatically",
         "https://github.com/conda-forge/miniforge",
         "https://hub.docker.com/r/carlosfarkas/oncotracer",
@@ -114,6 +116,7 @@ REQUIRED_TEXT = {
         "https://github.com/lh3/minimap2",
     ),
     "docs/index.md": (
+        "Poetry launcher",
         "--conda",
         "Other Example Run: six tumors and four controls",
         "Mock six-tumor/four-normal example",
@@ -166,6 +169,7 @@ REQUIRED_TEXT = {
         "lpwgs_root/.oncotracer/conda",
     ),
     "mkdocs.yml": (
+        "Poetry Launcher: poetry.md",
         "Other Example Runs:",
         "Mock Six Tumors + Four Normal Controls",
     ),
@@ -271,7 +275,7 @@ def main() -> None:
     check_hcc1143_wget_downloads()
     check_commented_bash_blocks()
     check_bash_block_syntax()
-    print("PASS: Conda-first documentation, generic paths, mock normal example, downloads, and Bash syntax")
+    print("PASS: Docker/Singularity, Poetry, and Conda documentation, generic paths, examples, downloads, and Bash syntax")
 
 
 if __name__ == "__main__":

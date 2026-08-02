@@ -152,3 +152,15 @@ The outer Nextflow display can remain at `RUN_*_SAMURAI (0 of 1)` while nested S
 - [Other Example Run: six tumors and four controls](six_tumor_four_control.md): a mock example illustrating how four normal controls are used to correct six tumor profiles.
 
 QuickStart Example 1 is the recommended installation check.
+
+## Poetry launcher installation
+
+```bash
+# Install Poetry, enter the standard repository clone, and create its locked launcher environment.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --help
+```
+
+Poetry manages the Python launcher. Select `--backend docker`, `--backend singularity`, or `--backend conda` for the scientific runtime.

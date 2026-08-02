@@ -149,3 +149,15 @@ Do not remove these while a run is active. Verify and archive the final results 
 - Follow institutional rules for patient data.
 
 See [Troubleshooting](troubleshooting.md) for runtime permissions, paths, disk usage, environment solving, and task logs.
+
+## Poetry as a launcher
+
+```bash
+# Run a configuration through the Poetry launcher and Docker backend.
+REPO_DIR=/path/to/my/directory/oncotracer
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file /path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml \
+  -work-dir /path/to/my/directory/my_oncotracer_project/work -resume
+```
+
+Poetry isolates the Python launcher; Docker, Singularity/Apptainer, or Conda supplies the scientific programs selected by `--backend`.

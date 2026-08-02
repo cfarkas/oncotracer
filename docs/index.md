@@ -4,11 +4,11 @@
 
 OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-genome sequencing (LP-WGS)**. It converts Illumina or Oxford Nanopore Technologies (ONT) FASTQ reads into **copy-number alteration (CNA)** tables, plots, and reports.
 
-Run OncoTracer through Nextflow with one execution option:
+Choose one of three execution routes:
 
-- `--conda` makes Nextflow create and reuse the required Conda environments automatically from the versioned environment definitions. Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) first.
-- `--docker` uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
-- `--singularity` uses the same image as `docker://carlosfarkas/oncotracer:latest` on a configured HPC system.
+1. Run Nextflow directly with `--docker` or `--singularity`.
+2. Use the [Poetry launcher](poetry.md), which forwards commands to Nextflow and uses Docker by default.
+3. Run Nextflow directly with `--conda`; Nextflow creates and reuses the native environments automatically.
 
 ## Choose where to start
 

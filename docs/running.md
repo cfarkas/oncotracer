@@ -259,3 +259,13 @@ nextflow run "$REPO_DIR/main.nf" --conda \
 ```
 
 Do not delete the work directory or Conda cache before diagnosing an error. They contain the task logs and reusable environments used by `-resume`.
+
+## Launch through Poetry
+
+```bash
+# Forward an existing run configuration through Poetry to Nextflow.
+REPO_DIR=/path/to/my/directory/oncotracer
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file /path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml \
+  -work-dir /path/to/my/directory/my_oncotracer_project/work -resume
+```
