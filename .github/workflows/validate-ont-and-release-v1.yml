@@ -57,12 +57,13 @@ jobs:
       - name: Add virtual-memory headroom
         run: |
           if [[ ! -e /swapfile.oncotracer-v1 ]]; then
-            sudo fallocate -l 8G /swapfile.oncotracer-v1
+            sudo fallocate -l 32G /swapfile.oncotracer-v1
             sudo chmod 600 /swapfile.oncotracer-v1
             sudo mkswap /swapfile.oncotracer-v1
             sudo swapon /swapfile.oncotracer-v1 || true
           fi
 
+          sudo sysctl -w vm.swappiness=100 || true
           nproc
           free -h
           swapon --show || true
@@ -114,7 +115,7 @@ jobs:
           process {
             resourceLimits = [
               cpus: 4,
-              memory: '15.GB',
+              memory: '14.GB',
               time: '6.h'
             ]
           }
@@ -128,6 +129,24 @@ jobs:
           umask 000
           TEST_ROOT="$GITHUB_WORKSPACE/test/ont-v1-validation"
           USER_SPEC="$(id -u):$(id -g)"
+          MONITOR_LOG="$TEST_ROOT/reports/host-resource-monitor.log"
+
+          (
+            while true; do
+              printf '\n[ONT heartbeat] %s\n' "$(date --iso-8601=seconds)"
+              free -h
+              swapon --show || true
+              df -h /
+              ps -eo pid,ppid,pcpu,pmem,rss,vsz,comm --sort=-rss | head -15 || true
+              sleep 45
+            done
+          ) 2>&1 | tee -a "$MONITOR_LOG" &
+          MONITOR_PID=$!
+          cleanup_monitor() {
+            kill "$MONITOR_PID" 2>/dev/null || true
+            wait "$MONITOR_PID" 2>/dev/null || true
+          }
+          trap cleanup_monitor EXIT
 
           nextflow run "$GITHUB_WORKSPACE/main.nf" \
             --docker \
