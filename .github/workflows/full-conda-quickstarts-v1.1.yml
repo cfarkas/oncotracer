@@ -1,21 +1,20 @@
-name: Apply pending runtime compatibility patch
+name: Build v1.1 runtime patch artifact
 
 on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: apply-runtime-v1.1-${{ github.event.pull_request.number || github.ref }}
+  group: build-v1.1-runtime-patch-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  apply:
-    if: github.head_ref == 'agent/conda-docs-v1.1' || github.ref_name == 'agent/conda-docs-v1.1'
+  build:
+    if: github.head_ref == 'agent/conda-docs-v1.1'
     runs-on: ubuntu-24.04
     steps:
       - name: Check out the feature branch
@@ -24,50 +23,40 @@ jobs:
           ref: agent/conda-docs-v1.1
           fetch-depth: 0
 
-      - name: Move the Conda dependency check after samplesheet validation
+      - name: Fix Conda preflight ordering and apply source patches
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
           path = Path('.github/scripts/patch_runtime_v1_1.py')
           text = path.read_text(encoding='utf-8')
-          start_marker = '''    replace_once(
-              path,
-              'command -v samtools >/dev/null 2>&1 || { echo "ERROR: samtools is required to prepare the hg38 reference index" >&2; exit 1; }\\n\\nLPWGS_ROOT=',
-          '''
-          next_marker = '''    replace_once(
-              path,
-              'echo "Detected Illumina read layout: $READ_LAYOUT-end"\\n\\nif [[ ! -s "$REF_FA" ]]; then',
-          '''
-          start = text.find(start_marker)
-          end = text.find(next_marker, start)
+          start_token = "    replace_once(\n        path,\n        'command -v samtools"
+          next_token = "    replace_once(\n        path,\n        'echo \"Detected Illumina read layout"
+          start = text.find(start_token)
+          end = text.find(next_token, start)
           if start < 0 or end < 0:
-              raise SystemExit('Could not locate the early Conda preflight patch block')
+              raise SystemExit('Could not locate the early Illumina Conda preflight patch block')
           text = text[:start] + text[end:]
 
-          old = ''''''echo "Detected Illumina read layout: $READ_LAYOUT-end"
+          old = "        '''echo \"Detected Illumina read layout: $READ_LAYOUT-end\"\n\nQDNASEQ_BIN_ARGS=()"
+          new = """        '''echo \"Detected Illumina read layout: $READ_LAYOUT-end\"
 
-QDNASEQ_BIN_ARGS=()'''
-          new = ''''''echo "Detected Illumina read layout: $READ_LAYOUT-end"
-
-if [[ "$SAMURAI_PROFILE" == "conda" ]]; then
-  command -v Rscript >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing Rscript" >&2; exit 1; }
+if [[ \"$SAMURAI_PROFILE\" == \"conda\" ]]; then
+  command -v Rscript >/dev/null 2>&1 || { echo \"ERROR: the OncoTracer Conda environment is missing Rscript\" >&2; exit 1; }
   Rscript --vanilla - <<'RS_CONDA_CHECK'
-required <- c("Biobase", "QDNAseq", "argparser", "future", "R.cache")
+required <- c(\"Biobase\", \"QDNAseq\", \"argparser\", \"future\", \"R.cache\")
 missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
-if (length(missing)) stop("Missing Conda R package(s): ", paste(missing, collapse = ", "))
+if (length(missing)) stop(\"Missing Conda R package(s): \", paste(missing, collapse = \", \"))
 RS_CONDA_CHECK
-  command -v qpdf >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing qpdf" >&2; exit 1; }
+  command -v qpdf >/dev/null 2>&1 || { echo \"ERROR: the OncoTracer Conda environment is missing qpdf\" >&2; exit 1; }
 fi
 
-QDNASEQ_BIN_ARGS=()'''
+QDNASEQ_BIN_ARGS=()"""
           if text.count(old) != 1:
               raise SystemExit(f'Expected one post-validation insertion point, found {text.count(old)}')
           path.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
 
-      - name: Apply source and documentation patches
-        run: |
           python3 .github/scripts/patch_runtime_v1_1.py
           chmod +x \
             bin/scripts/prepare_qdnaseq_bin_data.sh \
@@ -103,15 +92,24 @@ QDNASEQ_BIN_ARGS=()'''
           mkdocs build --strict
           git diff --check
 
-      - name: Install the runtime smoke workflow and commit all changes
+      - name: Prepare the reviewed patch artifact
         run: |
           cp .github/templates/runtime-smoke-v1.1.yml \
             .github/workflows/full-conda-quickstarts-v1.1.yml
-          git rm \
+          rm -f \
+            .github/workflows/apply-v1.1-now.yml \
             .github/workflows/apply-runtime-v1.1.yml \
             .github/scripts/patch_runtime_v1_1.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Add Poetry launcher and repair Conda qDNAseq compatibility"
-          git push origin HEAD:agent/conda-docs-v1.1
+          mkdir -p "$RUNNER_TEMP/v1.1-runtime-patch"
+          git diff --binary -- . ':!site' > "$RUNNER_TEMP/v1.1-runtime-patch/changes.patch"
+          git diff --name-status -- . ':!site' > "$RUNNER_TEMP/v1.1-runtime-patch/name-status.tsv"
+          tar --exclude=.git --exclude=site --exclude=test --exclude='__pycache__' \
+            -czf "$RUNNER_TEMP/v1.1-runtime-patch/repository-files.tar.gz" .
+
+      - name: Upload the reviewed patch artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v1.1-runtime-patch-${{ github.run_id }}
+          retention-days: 14
+          include-hidden-files: true
+          path: ${{ runner.temp }}/v1.1-runtime-patch/
