@@ -1,0 +1,58 @@
+name: Stop active Conda validation
+
+on:
+  push:
+    branches:
+      - agent/conda-docs-v1.1
+    paths:
+      - ".github/workflows/stop-conda-jobs.yml"
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  stop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/conda-docs-v1.1
+          fetch-depth: 0
+
+      - name: Cancel every active full Conda validation run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          mapfile -t RUN_IDS < <(
+            gh api "/repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" \
+              --jq '.workflow_runs[] | select(.name == "Full Conda QuickStarts for v1.1") | select(.status != "completed") | .id'
+          )
+
+          for run_id in "${RUN_IDS[@]}"; do
+            echo "Cancelling Conda validation run $run_id"
+            gh api --method POST "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/cancel" || true
+          done
+
+      - name: Disable automatic full Conda runs during repairs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/full-conda-quickstarts-v1.1.yml')
+          text = path.read_text(encoding='utf-8')
+          start = text.index('on:\n')
+          end = text.index('\npermissions:\n', start)
+          replacement = 'on:\n  workflow_dispatch:\n'
+          path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
+          PY
+
+          git rm .github/workflows/stop-conda-jobs.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/full-conda-quickstarts-v1.1.yml
+          git commit -m "CI: pause full Conda validation during runtime repairs"
+          git push origin HEAD:agent/conda-docs-v1.1
