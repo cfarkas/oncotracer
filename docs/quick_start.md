@@ -4,13 +4,13 @@
 
 This tutorial downloads about **225 MB** of public reads, creates one Illumina YAML and one ONT YAML, runs both workflows, and verifies the main outputs.
 
-The commands use Docker. On an HPC system configured with Singularity or Apptainer, replace `--docker` with `--singularity`. See [Installation](installation.md) and the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer).
+The commands use `--conda`. Nextflow creates and reuses the required Conda environments automatically. Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) first. Replace `--conda` with `--docker` for the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer), or with `--singularity` on a configured HPC system.
 
 [![Six-step OncoTracer QuickStart flow](assets/tutorial/quickstart_flow.svg)](assets/tutorial/quickstart_flow.svg)
 
 ## Estimated time for this analysis
 
-The example reads are small, but an uncached first analysis also downloads hg38 and creates a BWA index. Indexing commonly takes **30–60 minutes**, and the pinned task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later `-resume` runs reuse a valid index.
+The first Conda run also creates the software environments. The example reads are small, but an uncached analysis downloads hg38 and creates the alignment indexes. Indexing can take tens of minutes and requires substantial memory, so provide at least 80 GiB of addressable RAM. Later `-resume` runs reuse the environments, reference, indexes, and unchanged completed tasks.
 
 ## 1. Clone OncoTracer
 
@@ -36,8 +36,8 @@ Skip the clone command when the repository already exists.
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Download and validate the public Illumina and ONT reads, then create both YAML files.
-nextflow run "$REPO_DIR/main.nf" --make_test \
+# Create or reuse the Conda environment, download the reads, validate them, and create both YAML files.
+nextflow run "$REPO_DIR/main.nf" --make_test --conda \
   --test_root "$REPO_DIR/test"
 ```
 
@@ -94,8 +94,8 @@ A YAML is a saved run plan containing paths and analysis settings. It does not c
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Run the generated Illumina YAML with Docker and a reusable work directory.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run the generated Illumina YAML with Conda and a reusable work directory.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
   -work-dir "$REPO_DIR/test/work/illumina" \
   -resume
@@ -119,8 +119,8 @@ The summary should begin with `mode=illumina` and `dataset=illumina_qdnaseq_100k
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Run the generated ONT YAML after the Illumina run finishes.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run the generated ONT YAML with Conda after the Illumina run finishes.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
   -work-dir "$REPO_DIR/test/work/ont" \
   -resume
@@ -178,18 +178,18 @@ These public outputs are also shown in the [Results Gallery](gallery.md).
 REPO_DIR=/path/to/my/directory/oncotracer
 cd "$REPO_DIR"
 
-# Prepare or revalidate the public reads and YAML files.
-nextflow run "$REPO_DIR/main.nf" --make_test \
+# Prepare or revalidate the public reads and YAML files through Conda.
+nextflow run "$REPO_DIR/main.nf" --make_test --conda \
   --test_root "$REPO_DIR/test"
 
-# Run or resume the Illumina example.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run or resume the Illumina example with Conda.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
   -work-dir "$REPO_DIR/test/work/illumina" \
   -resume
 
 # Run or resume the ONT example after Illumina finishes.
-nextflow run "$REPO_DIR/main.nf" --docker \
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
   -work-dir "$REPO_DIR/test/work/ont" \
   -resume
@@ -204,4 +204,4 @@ python3 "$REPO_DIR/examples/quickstart/verify_outputs.py" \
 - [Automatic Setup](auto_params.md) generates a YAML for your own Illumina or ONT FASTQs.
 - [QuickStart Example 2](public_cohort.md) runs three public HCC1143 libraries.
 - [Full Tutorial](full_tutorial.md) runs the 12 public PRJNA754199 libraries.
-- [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a command template only. The `ONCO001`–`ONCO006` and `CTRL001`–`CTRL004` FASTQs are not included or downloaded.
+- [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a mock example illustrating how four normal controls are used to correct six tumor profiles.
