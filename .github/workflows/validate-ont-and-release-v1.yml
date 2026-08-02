@@ -1,0 +1,224 @@
+name: Validate ONT QuickStart and release v1.0
+
+on:
+  push:
+    branches:
+      - agent/ont-v1-release-validation
+    paths:
+      - ".github/workflows/validate-ont-and-release-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      NXF_ANSI_LOG: "false"
+      NXF_DISABLE_CHECK_LATEST: "true"
+      NXF_OPTS: "-Xms256m -Xmx1g"
+
+    steps:
+      - name: Check out the current main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune --all --force || true
+          df -h
+
+      - name: Install host prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            samtools bwa minimap2 pigz curl wget
+
+          curl -fsSL https://get.nextflow.io | bash
+          sudo install -m 0755 nextflow /usr/local/bin/nextflow
+
+          git --version
+          java -version
+          nextflow -version
+          docker --version
+          samtools --version | sed -n '1,3p'
+          minimap2 --version
+          gh --version
+
+      - name: Add virtual-memory headroom
+        run: |
+          if [[ ! -e /swapfile.oncotracer-v1 ]]; then
+            sudo fallocate -l 8G /swapfile.oncotracer-v1
+            sudo chmod 600 /swapfile.oncotracer-v1
+            sudo mkswap /swapfile.oncotracer-v1
+            sudo swapon /swapfile.oncotracer-v1 || true
+          fi
+
+          nproc
+          free -h
+          swapon --show || true
+          df -h
+
+      - name: Download and validate only the public ONT QuickStart read
+        run: |
+          set -Eeuo pipefail
+          TEST_ROOT="$GITHUB_WORKSPACE/test/ont-v1-validation"
+          ONT_DIR="$TEST_ROOT/public/ont_DRR165691/fastq_pass/barcode01"
+          CONFIG_DIR="$TEST_ROOT/configs"
+          FASTQ="$ONT_DIR/DRR165691_1.fastq.gz"
+
+          mkdir -p "$ONT_DIR" "$CONFIG_DIR" "$TEST_ROOT/runs/ont" "$TEST_ROOT/reports"
+
+          curl --fail --location --retry 5 --retry-all-errors --continue-at - \
+            --output "$FASTQ" \
+            https://ftp.sra.ebi.ac.uk/vol1/fastq/DRR165/DRR165691/DRR165691_1.fastq.gz
+
+          test "$(stat -c '%s' "$FASTQ")" = "101734666"
+          echo "55a3984cb0334aa4cb0a38255cb71c06  $FASTQ" | md5sum -c -
+          gzip -t "$FASTQ"
+
+          cat > "$CONFIG_DIR/ont.quickstart.yml" <<EOF_YAML
+          # ONT public test: DRR165691 FASTQ assigned to barcode01.
+          mode: ont
+          lpwgs_root: $TEST_ROOT
+          outdir: $TEST_ROOT/runs/ont
+          ont_folder: $TEST_ROOT/public/ont_DRR165691/fastq_pass
+          ont_barcodes: barcode01
+          ont_sample_names: DRR165691
+          ont_analysis_type: liquid_biopsy
+          ont_caller: ichorcna
+          ont_binsize_kb: 500
+          ont_min_age_minutes: 0
+          run_cna_classifier: false
+          force: true
+          EOF_YAML
+
+          cat "$CONFIG_DIR/ont.quickstart.yml"
+
+      - name: Limit nested SAMURAI resources for the hosted runner
+        run: |
+          TEST_ROOT="$GITHUB_WORKSPACE/test/ont-v1-validation"
+          NESTED_HOME="$TEST_ROOT/runs/ont/01_samurai_ont/.nextflow"
+          mkdir -p "$NESTED_HOME"
+
+          cat > "$NESTED_HOME/config" <<'EOF_CONFIG'
+          process {
+            resourceLimits = [
+              cpus: 4,
+              memory: '15.GB',
+              time: '6.h'
+            ]
+          }
+          EOF_CONFIG
+
+          cat "$NESTED_HOME/config"
+
+      - name: Run only the complete ONT QuickStart workflow
+        run: |
+          set -Eeuo pipefail
+          umask 000
+          TEST_ROOT="$GITHUB_WORKSPACE/test/ont-v1-validation"
+          USER_SPEC="$(id -u):$(id -g)"
+
+          nextflow run "$GITHUB_WORKSPACE/main.nf" \
+            --docker \
+            --docker_user "$USER_SPEC" \
+            -params-file "$TEST_ROOT/configs/ont.quickstart.yml" \
+            -work-dir "$TEST_ROOT/work/ont" \
+            -with-report "$TEST_ROOT/reports/ont.report.html" \
+            -with-timeline "$TEST_ROOT/reports/ont.timeline.html" \
+            -with-trace "$TEST_ROOT/reports/ont.trace.tsv" \
+            -resume
+
+      - name: Verify all ONT outputs
+        run: |
+          set -Eeuo pipefail
+          TEST_ROOT="$GITHUB_WORKSPACE/test/ont-v1-validation"
+          OUT="$TEST_ROOT/runs/ont"
+          SUMMARY="$OUT/06_workflow_summary/workflow_summary.txt"
+          EVENTS="$OUT/03_cna_codification/cna_events.tsv"
+          NOTATION="$OUT/03_cna_codification/cna_cytogenomic_notation.tsv"
+          SAMPLE_PDF="$OUT/04_cna_custom_plots/cna_per_sample_pages.pdf"
+          COHORT_PDF="$OUT/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf"
+          BAM="$OUT/01_samurai_ont/bam/DRR165691.sorted.bam"
+          SEGMENTS="$OUT/01_samurai_ont/results/ichorcna/segments_logR_corrected_gistic.seg"
+
+          for required in \
+            "$SUMMARY" "$EVENTS" "$NOTATION" "$SAMPLE_PDF" \
+            "$COHORT_PDF" "$BAM" "$SEGMENTS"; do
+            test -s "$required"
+          done
+
+          samtools quickcheck -v "$BAM"
+          grep -Fx 'mode=ont' "$SUMMARY"
+          grep -Fx 'dataset=ONT_ichorcna_500kb' "$SUMMARY"
+          grep -Fq 'DRR165691' "$SEGMENTS"
+
+          cat "$SUMMARY"
+          printf 'PASS: ONT QuickStart 1 completed from public FASTQ through ichorCNA, refinement, CNA tables, plots, and summary.\n'
+          du -h -d 3 "$TEST_ROOT" | sort -h | tail -40
+          df -h
+
+      - name: Publish stable OncoTracer v1.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          MAIN_SHA="$(git rev-parse HEAD)"
+
+          if gh release view v1.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "ERROR: release v1.0 already exists; refusing to replace it." >&2
+            exit 1
+          fi
+
+          cat > release-notes-v1.0.md <<EOF_NOTES
+          # OncoTracer v1.0
+
+          First stable research release of OncoTracer.
+
+          Validated on commit \`$MAIN_SHA\` with the public ONT QuickStart 1 sample \`DRR165691\` using Nextflow and Docker. The validation completed read preparation, minimap2 alignment, SAMURAI/ichorCNA, BAM-based boundary refinement, CNA tables, cytogenomic notation, plots, and the workflow summary.
+
+          The public three-library HCC1143 Illumina QuickStart 2 had also completed successfully before this release.
+
+          OncoTracer is for research use and is not a standalone diagnostic system.
+          EOF_NOTES
+
+          gh release create v1.0 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$MAIN_SHA" \
+            --title "OncoTracer v1.0" \
+            --notes-file release-notes-v1.0.md
+
+          gh release view v1.0 \
+            --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,isDraft,isPrerelease,targetCommitish,publishedAt,url
+
+      - name: Upload ONT validation records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oncotracer-v1-ont-validation-${{ github.run_id }}
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
+          path: |
+            .nextflow.log
+            release-notes-v1.0.md
+            test/ont-v1-validation/configs/**
+            test/ont-v1-validation/reports/**
+            test/ont-v1-validation/runs/ont/06_workflow_summary/**
+            test/ont-v1-validation/runs/ont/03_cna_codification/**
+            test/ont-v1-validation/runs/ont/01_samurai_ont/logs/**
+            test/ont-v1-validation/runs/ont/01_samurai_ont/nextflow_launch/.nextflow.log
+            test/ont-v1-validation/runs/ont/01_samurai_ont/results/pipeline_info/**
