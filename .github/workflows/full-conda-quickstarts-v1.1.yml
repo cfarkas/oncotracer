@@ -41,8 +41,12 @@ jobs:
           poetry check --lock
           poetry install --no-interaction
           poetry run python tests/test_poetry_cli.py
-          poetry run oncotracer --repo-dir "$GITHUB_WORKSPACE" --print-command --make_test \
-            --test_root "$GITHUB_WORKSPACE/test/poetry-command-check"
+          mkdir -p "$RUNNER_TEMP/fake-bin"
+          printf '#!/usr/bin/env bash\nexit 0\n' > "$RUNNER_TEMP/fake-bin/nextflow"
+          chmod +x "$RUNNER_TEMP/fake-bin/nextflow"
+          PATH="$RUNNER_TEMP/fake-bin:$PATH" \
+            poetry run oncotracer --repo-dir "$GITHUB_WORKSPACE" --print-command --make_test \
+              --test_root "$GITHUB_WORKSPACE/test/poetry-command-check"
 
       - name: Run fast source and documentation tests
         run: |
