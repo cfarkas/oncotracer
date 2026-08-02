@@ -33,7 +33,7 @@ nextflow run "$REPO_DIR/main.nf" --conda \
   -resume
 ```
 
-The first command causes Nextflow to solve and create the environment automatically. Environments are cached below `lpwgs_root/.oncotracer/conda` and reused by later runs. The nested SAMURAI workflow also creates and reuses its required Conda environments.
+Nextflow creates and reuses Conda environments automatically. The first command solves and creates the top-level environment, which is cached below `lpwgs_root/.oncotracer/conda`; the nested SAMURAI workflow also creates and reuses its required Conda environments.
 
 ## Docker
 
