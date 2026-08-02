@@ -73,7 +73,7 @@ jobs:
           conda --version
           conda info
           samtools --version | sed -n '1,3p'
-          bwa 2>&1 | sed -n '1,3p'
+          (bwa 2>&1 || true) | sed -n '1,3p'
           minimap2 --version
           pigz --version
 
