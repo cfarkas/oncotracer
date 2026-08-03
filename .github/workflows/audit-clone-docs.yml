@@ -1,17 +1,20 @@
 name: Audit documentation clone commands
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/simplify-clone-command-all-docs
-    paths:
-      - .github/workflows/audit-clone-docs.yml
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: read
 
 jobs:
   audit:
+    if: github.head_ref == 'agent/simplify-clone-command-all-docs'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
