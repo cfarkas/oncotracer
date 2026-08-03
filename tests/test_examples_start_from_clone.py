@@ -51,6 +51,9 @@ def check_file(relative_path: str) -> None:
     if not blocks:
         fail(f"no Bash command blocks found in {relative_path}")
 
+    # The first executable block must be sufficient to create a fresh clone.
+    # Explanatory prose may mention `nextflow run` before this block; only
+    # command boxes are relevant to copy/paste ordering.
     first_block = blocks[0]
     for snippet in (REPO_ASSIGNMENT, CLONE_COMMAND, CD_COMMAND):
         if snippet not in first_block:
@@ -58,16 +61,15 @@ def check_file(relative_path: str) -> None:
                 f"the first Bash block in {relative_path} must start from a fresh clone: {snippet}"
             )
 
-    clone_index = text.find(CLONE_COMMAND)
-    run_indices = [
-        position
-        for position in (
-            text.find("nextflow run"),
-            text.find("poetry run oncotracer"),
-        )
-        if position >= 0
-    ]
-    if run_indices and clone_index > min(run_indices):
+    first_pipeline_block = next(
+        (
+            block_number
+            for block_number, block in enumerate(blocks, start=1)
+            if "nextflow run" in block or "poetry run oncotracer" in block
+        ),
+        None,
+    )
+    if first_pipeline_block == 1 and CLONE_COMMAND not in first_block:
         fail(f"a pipeline command appears before git clone in {relative_path}")
 
     for placeholder in PLACEHOLDER_PATH_RE.findall(text):
