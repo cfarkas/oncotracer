@@ -22,22 +22,61 @@ HCC1143_BEZ235,TUMOR
 HCC1143_TRAMETINIB,TUMOR
 CSV
 
-# Create or reuse the Conda environment, then generate the Illumina YAML and R1/R2 samplesheet.
-nextflow run "$REPO_DIR/main.nf" --auto_params --conda \
+# Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
   --reads_folder "$READS_DIR" \
   --sample_table "$READS_DIR/samples.csv" \
   --auto_config_dir "$REPO_DIR/test/configs/hcc1143_lpwgs" \
   --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs"
 
-# Run or resume the generated configuration with Conda.
-nextflow run "$REPO_DIR/main.nf" --conda \
+Choose one analysis method after Automatic Setup.
+
+### Docker
+
+```bash
+# Run or resume HCC1143 with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --docker \
   -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-docker" \
   -resume
 ```
 
-With `--conda`, Nextflow creates and reuses the required environments automatically. Replace `--conda` with `--docker` to use [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer), or with `--singularity` on a configured HPC system.
+### Singularity or Apptainer
+
+```bash
+# Run or resume HCC1143 through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-singularity" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the launcher and run HCC1143 through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run or resume HCC1143 with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-conda" \
+  -resume
+```
 
 Plan for about 1.08 GiB of compressed reads, at least 40 GiB of free working space, 16 CPU cores, and at least 80 GiB of addressable RAM. The first uncached run also downloads hg38 and creates a BWA index.
 

@@ -4,7 +4,7 @@
 
 This example downloads and analyzes three paired-end HCC1143 low-pass whole-genome sequencing libraries: six public FASTQ files totaling about **1.08 GiB**. Complete [QuickStart Example 1](quick_start.md) first.
 
-The commands use `--conda`. Nextflow creates and reuses the required Conda environments automatically. Replace `--conda` with `--docker` for [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer), or with `--singularity` on a configured HPC system.
+Preparation and Automatic Setup are backend-independent. The analysis section provides explicit Docker, Singularity/Apptainer, Poetry, and Conda commands; choose one method.
 
 This cohort is a software example. It is not a matched tumor/normal study and should not be used to infer treatment effects.
 
@@ -137,8 +137,8 @@ Paste the same four lines, save with `Ctrl+O`, press Enter, and exit with `Ctrl+
 REPO_DIR=/path/to/my/directory/oncotracer
 cd "$REPO_DIR"
 
-# Create or reuse the Conda environment, then generate the Illumina YAML and R1/R2 samplesheet.
-nextflow run "$REPO_DIR/main.nf" --auto_params --conda \
+# Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.
+nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
   --reads_folder "$REPO_DIR/test/public/hcc1143_lpwgs" \
   --sample_table "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" \
@@ -176,18 +176,55 @@ nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
 
 ## 6. Run the analysis
 
-```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+Choose exactly one method. Each method reads the same generated YAML and writes the same result directory; route-specific work directories prevent cross-runtime cache mixing.
 
-# Run the generated HCC1143 configuration with Conda and resume support.
-nextflow run "$REPO_DIR/main.nf" --conda \
+### Docker
+
+```bash
+# Run the generated HCC1143 configuration with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --docker \
   -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-docker" \
   -resume
 ```
 
-Keep the terminal open until Nextflow returns to the prompt. Replace `--conda` with `--docker` or `--singularity` for a container run.
+### Singularity or Apptainer
+
+```bash
+# Run the generated HCC1143 configuration through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-singularity" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the launcher and run HCC1143 through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run the generated HCC1143 configuration with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-conda" \
+  -resume
+```
+
+Keep the terminal open until Nextflow returns to the prompt. To resume, repeat the command for the selected method with the same YAML, work directory, and `-resume`.
 
 ## 7. Check the outputs
 
@@ -223,19 +260,7 @@ Important outputs include:
 
 ## Resume an interrupted run
 
-Use the same YAML and work directory:
-
-```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
-
-# Resume the existing HCC1143 analysis with the same Conda environments.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
-  -resume
-```
+Repeat the command for the method you selected in [Run the analysis](#6-run-the-analysis), using the same YAML, route-specific work directory, and `-resume`.
 
 ## Limitations
 
@@ -243,13 +268,3 @@ This example verifies multi-sample execution. It is not a matched tumor/normal d
 
 The [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a mock example illustrating how four normal controls are used to build a local qDNAseq reference for six tumors.
 
-## Poetry alternative
-
-```bash
-# Run the generated HCC1143 configuration through Poetry and Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-poetry install --no-interaction
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/poetry-hcc1143" -resume
-```

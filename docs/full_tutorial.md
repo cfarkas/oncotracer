@@ -4,7 +4,7 @@ This tutorial processes the **12 Illumina plasma cfDNA libraries currently avail
 
 [![Roadmap for the complete PRJNA754199 tutorial.](assets/tutorial/full_tutorial_flow.svg)](assets/tutorial/full_tutorial_flow.svg)
 
-The commands use Docker. On a configured HPC system, replace `--docker` with `--singularity`. See [Installation](installation.md) and the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer).
+Download and Automatic Setup commands are backend-independent. The analysis section provides explicit Docker, Singularity/Apptainer, Poetry, and Conda commands. See [Installation](installation.md) for the required software.
 
 ## What this tutorial contains
 
@@ -70,6 +70,29 @@ REPO_DIR=/path/to/my/directory/oncotracer
 nextflow run "$REPO_DIR/main.nf" --install --singularity \
   --lpwgs_root "$REPO_DIR/test" \
   -work-dir "$REPO_DIR/test/work/install_singularity"
+```
+
+### Poetry launcher
+
+```bash
+# Install the locked Poetry launcher and prepare the Docker scientific backend.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  --install \
+  --lpwgs_root "$REPO_DIR/test" \
+  -work-dir "$REPO_DIR/test/work/install_poetry"
+```
+
+### Conda
+
+```bash
+# Create or reuse the native Conda environments and test the required software.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --install --conda \
+  --lpwgs_root "$REPO_DIR/test" \
+  -work-dir "$REPO_DIR/test/work/install_conda"
 ```
 
 The installation route checks the software and stops. It does not download patient reads or hg38 and does not start the analysis.
@@ -174,32 +197,65 @@ The configuration directory contains:
 
 ## 5. Check the wiring and run the analysis
 
-Optional stub check:
+Optional Docker stub check:
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
-
 # Check the generated workflow connections without running the scientific tools.
+REPO_DIR=/path/to/my/directory/oncotracer
 nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
   -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
   -work-dir "$REPO_DIR/test/work/prjna754199_stub"
 ```
 
-Real analysis:
+Choose exactly one method for the real analysis.
+
+### Docker
 
 ```bash
-# Set the standard repository path.
+# Run or resume the complete 12-library workflow with Docker.
 REPO_DIR=/path/to/my/directory/oncotracer
-
-# Run the complete 12-library workflow with Docker and resume support.
 nextflow run "$REPO_DIR/main.nf" --docker \
   -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/prjna754199" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-docker" \
   -resume
 ```
 
-Keep the terminal open until Nextflow returns to the prompt. To resume after an interruption, repeat the same command with the same YAML and work directory.
+### Singularity or Apptainer
+
+```bash
+# Run or resume the complete workflow through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-singularity" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the launcher and run the complete workflow through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run or resume the complete workflow with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-conda" \
+  -resume
+```
+
+Keep the terminal open until Nextflow returns to the prompt. To resume, repeat the selected command with the same route-specific work directory.
 
 ## 6. Verify the completed run
 

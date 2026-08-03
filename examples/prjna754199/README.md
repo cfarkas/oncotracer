@@ -12,7 +12,7 @@ The publication describes 41 plasma specimens, but the ENA read-run report retur
 
 ## Requirements
 
-Use Linux with Git, Java 17 or newer, Nextflow, Python 3, samtools, BWA, minimap2, pigz, curl or wget, and Docker or Singularity/Apptainer. See the linked installation table in the [Installation guide](https://cfarkas.github.io/oncotracer/installation/). Plan for at least 150 GiB of free working space, 16 CPU cores, and 80 GiB of addressable RAM.
+Use Linux with Git, Java 17 or newer, Nextflow, Python 3, samtools, BWA, minimap2, pigz, curl or wget, and one launch method: Docker, Singularity/Apptainer, Poetry, or Conda. See the linked installation table in the [Installation guide](https://cfarkas.github.io/oncotracer/installation/). Plan for at least 150 GiB of free working space, 16 CPU cores, and 80 GiB of addressable RAM.
 
 Docker uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer). Singularity/Apptainer uses `docker://carlosfarkas/oncotracer:latest`.
 
@@ -62,23 +62,66 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   --pathology_use_biomed_models false \
   -work-dir "$REPO_DIR/test/work/prjna754199_auto_params"
 
-# Optionally check the generated workflow connections.
+# Optionally check the generated workflow connections with Docker.
 nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
   -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
   -work-dir "$REPO_DIR/test/work/prjna754199_stub"
+```
 
-# Run or resume the complete 12-library analysis.
+Choose one analysis method.
+
+### Docker
+
+```bash
+# Run or resume the complete archive with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
 nextflow run "$REPO_DIR/main.nf" --docker \
   -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/prjna754199" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-docker" \
   -resume
+```
 
+### Singularity or Apptainer
+
+```bash
+# Run or resume the complete archive through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-singularity" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the launcher and run the archive through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run or resume the complete archive with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-conda" \
+  -resume
+```
+
+```bash
 # Verify the exact 12 samples and required output groups.
+REPO_DIR=/path/to/my/directory/oncotracer
 python3 "$REPO_DIR/examples/prjna754199/verify_outputs.py" \
   --outdir "$REPO_DIR/test/runs/prjna754199"
 ```
-
-For HPC, replace `--docker` with `--singularity` in the stub and analysis commands.
 
 A successful verifier ends with:
 

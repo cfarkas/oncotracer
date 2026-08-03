@@ -108,49 +108,59 @@ The final two commands should print `6` and `4`.
 
 ## Run the mock configuration
 
-### Conda
-
-```bash
-# Set the repository and mock-project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-# Create or reuse the required Conda environments and run the analysis.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work/analysis" \
-  -resume
-```
+Choose exactly one of the four methods below. All methods read the same generated YAML and illustrate the same four-control local qDNAseq reference.
 
 ### Docker
 
 ```bash
-# Set the repository and mock-project paths.
+# Run the mock configuration with the maintained Docker image.
 REPO_DIR=/path/to/my/directory/oncotracer
 PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-# Run the same configuration with the maintained Docker image.
 nextflow run "$REPO_DIR/main.nf" --docker \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work/analysis" \
+  -work-dir "$PROJECT_DIR/work/docker" \
   -resume
 ```
 
 ### Singularity or Apptainer
 
 ```bash
-# Set the repository and mock-project paths.
+# Run the mock configuration through Singularity or Apptainer.
 REPO_DIR=/path/to/my/directory/oncotracer
 PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-# Run the same configuration through Singularity or Apptainer.
 nextflow run "$REPO_DIR/main.nf" --singularity \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work/analysis" \
+  -work-dir "$PROJECT_DIR/work/singularity" \
   -resume
 ```
 
-Use one execution option. With `--conda`, Nextflow creates and reuses the required environments automatically.
+### Poetry launcher
+
+```bash
+# Install the launcher and run the mock configuration through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Create or reuse the native environments and run the mock configuration.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/conda" \
+  -resume
+```
+
+Use one method. The Poetry example uses Docker as its scientific backend; `--backend singularity` and `--backend conda` are also accepted by the launcher.
 
 ## Check the panel and corrected tumor outputs
 

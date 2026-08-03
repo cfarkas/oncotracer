@@ -134,13 +134,21 @@ REQUIRED_TEXT = {
         "https://zlib.net/pigz/",
     ),
     "docs/quick_start.md": (
-        "--make_test --conda",
+        "## Choose one of four execution methods",
+        "### Docker",
+        "### Singularity or Apptainer",
+        "### Poetry launcher",
+        "### Conda",
         "sample_name,status\nERR12341627,TUMOR",
         "barcode,sample_name,status\nbarcode01,DRR165691,TUMOR",
         "## Estimated time for this analysis",
     ),
     "docs/public_cohort.md": (
-        "--auto_params --conda",
+        "## 6. Run the analysis",
+        "### Docker",
+        "### Singularity or Apptainer",
+        "### Poetry launcher",
+        "### Conda",
         "sample_name,status\nHCC1143_DMSO,TUMOR",
         "HCC1143_BEZ235,TUMOR",
         "HCC1143_TRAMETINIB,TUMOR",
@@ -151,6 +159,10 @@ REQUIRED_TEXT = {
         "sample_name,status\nDDLPS_1a,TUMOR",
         "WDLPS_3,TUMOR",
         "## Estimated time and resources",
+        "### Docker",
+        "### Singularity or Apptainer",
+        "### Poetry launcher",
+        "### Conda",
     ),
     "docs/six_tumor_four_control.md": (
         "# Other Example Run: Mock Six-Tumor/Four-Normal Study",
@@ -158,11 +170,19 @@ REQUIRED_TEXT = {
         "--conda",
         "ONCO001,TUMOR",
         "CTRL004,NORMAL",
+        "### Docker",
+        "### Singularity or Apptainer",
+        "### Poetry launcher",
+        "### Conda",
     ),
     "docs/auto_params.md": (
         "sample_name,status\nTUMOR_01,TUMOR",
         "CONTROL_02,NORMAL",
         "barcode,sample_name,status\nbarcode01,TUMOR_01,TUMOR",
+        "#### Docker",
+        "#### Singularity or Apptainer",
+        "#### Poetry launcher",
+        "#### Conda",
     ),
     "docs/containers.md": (
         "Nextflow creates and reuses Conda environments automatically",
@@ -174,6 +194,23 @@ REQUIRED_TEXT = {
         "Mock Six Tumors + Four Normal Controls",
     ),
 }
+
+ROUTE_EXAMPLE_FILES = (
+    "docs/quick_start.md",
+    "docs/public_cohort.md",
+    "docs/full_tutorial.md",
+    "docs/six_tumor_four_control.md",
+    "docs/auto_params.md",
+    "examples/hcc1143_lpwgs/README.md",
+    "examples/prjna754199/README.md",
+)
+
+ROUTE_SNIPPETS = (
+    "--docker",
+    "--singularity",
+    "poetry run oncotracer",
+    "--conda",
+)
 
 BASH_BLOCK_RE = re.compile(r"```bash[ \t]*\n(.*?)```", re.DOTALL)
 
@@ -233,6 +270,14 @@ def check_hcc1143_wget_downloads() -> None:
             fail(f"README.md is missing HCC1143 target filename: {target}")
 
 
+def check_all_example_routes() -> None:
+    for relative_path in ROUTE_EXAMPLE_FILES:
+        text = read(relative_path)
+        for snippet in ROUTE_SNIPPETS:
+            if snippet not in text:
+                fail(f"missing execution route in {relative_path}: {snippet}")
+
+
 def check_commented_bash_blocks() -> None:
     for relative_path in COMMENTED_BASH_FILES:
         text = read(relative_path)
@@ -273,6 +318,7 @@ def main() -> None:
     check_generic_paths()
     check_required_text()
     check_hcc1143_wget_downloads()
+    check_all_example_routes()
     check_commented_bash_blocks()
     check_bash_block_syntax()
     print("PASS: Docker/Singularity, Poetry, and Conda documentation, generic paths, examples, downloads, and Bash syntax")
