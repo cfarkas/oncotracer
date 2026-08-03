@@ -1,8 +1,12 @@
-# Minimal Illumina template for a real run.
-# Copy this file, then replace /home/student/oncotracer with the value printed
-# by `pwd` in your clone. Keep every input and output below lpwgs_root.
+# Minimal Illumina YAML example.
+# Replace /path/to/my/directory/oncotracer with the absolute path used
+# for REPO_DIR. Keep every input and output below lpwgs_root.
 mode: illumina
-lpwgs_root: /home/student/oncotracer
-outdir: /home/student/oncotracer/project/runs/my_first_illumina_run
-illumina_samplesheet: /home/student/oncotracer/project/input/illumina.samplesheet.csv
+lpwgs_root: /path/to/my/directory/oncotracer/project
+outdir: /path/to/my/directory/oncotracer/project/results/my_first_illumina_run
+illumina_samplesheet: /path/to/my/directory/oncotracer/project/input/illumina.samplesheet.csv
+illumina_analysis_type: solid_biopsy
+illumina_caller: qdnaseq
+illumina_binsize_kb: 100
+run_cna_classifier: false
 force: false

@@ -1,10 +1,15 @@
-# Minimal ONT template for a real run.
-# Copy this file, then replace /home/student/oncotracer with the value printed
-# by `pwd` in your clone. Keep every input and output below lpwgs_root.
+# Minimal ONT YAML example.
+# Replace /path/to/my/directory/oncotracer with the absolute path used
+# for REPO_DIR. Keep every input and output below lpwgs_root.
 mode: ont
-lpwgs_root: /home/student/oncotracer
-outdir: /home/student/oncotracer/project/runs/my_first_ont_run
-ont_folder: /home/student/oncotracer/project/input/fastq_pass
+lpwgs_root: /path/to/my/directory/oncotracer/project
+outdir: /path/to/my/directory/oncotracer/project/results/my_first_ont_run
+ont_folder: /path/to/my/directory/oncotracer/project/input/fastq_pass
 ont_barcodes: barcode01
 ont_sample_names: Sample_ONT_1
+ont_analysis_type: liquid_biopsy
+ont_caller: ichorcna
+ont_binsize_kb: 500
+ont_min_age_minutes: 0
+run_cna_classifier: false
 force: false
