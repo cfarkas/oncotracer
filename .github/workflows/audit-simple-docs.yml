@@ -1,17 +1,20 @@
 name: Audit simplified documentation commands
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/simplify-all-doc-commands
-    paths:
-      - .github/workflows/audit-simple-docs.yml
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: read
 
 jobs:
   audit:
+    if: github.head_ref == 'agent/simplify-all-doc-commands'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
