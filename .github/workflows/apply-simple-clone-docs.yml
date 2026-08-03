@@ -1,20 +1,17 @@
 name: Apply simple clone commands across documentation
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
-    types:
-      - opened
-      - synchronize
-      - reopened
+      - agent/simplify-clone-command-all-docs
+    paths:
+      - .github/workflows/apply-simple-clone-docs.yml
 
 permissions:
   contents: write
 
 jobs:
   patch-test-commit:
-    if: github.head_ref == 'agent/simplify-clone-command-all-docs'
     runs-on: ubuntu-latest
     steps:
       - name: Check out documentation branch
@@ -298,10 +295,6 @@ if __name__ == "__main__":
           style = style.replace(
               '''    for relative_path in GENERIC_PATH_FILES:\n        if STANDARD_REPOSITORY_PATH not in read(relative_path):\n            fail(\n                f"missing standard repository path in {relative_path}: "\n                f"{STANDARD_REPOSITORY_PATH}"\n            )\n''',
               '''    for path in DOC_TEXT_FILES:\n        text = path.read_text(encoding="utf-8")\n        if "REPO_DIR=" in text or "$REPO_DIR" in text:\n            fail(f"verbose REPO_DIR usage in {path.relative_to(ROOT)}")\n        if 'git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"' in text:\n            fail(f"target-path clone in {path.relative_to(ROOT)}")\n''',
-          )
-          style = style.replace(
-              '    check_generic_paths()\n',
-              '    check_generic_paths()\n',
           )
           style_test.write_text(style, encoding="utf-8")
           PY
