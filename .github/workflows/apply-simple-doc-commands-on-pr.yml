@@ -69,6 +69,43 @@ jobs:
               path.write_text(pattern.sub(fix_block, text), encoding='utf-8')
           PY
 
+      - name: Simplify paths in static tutorial assets and YAML examples
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          files = list(Path('docs/assets').rglob('*.svg'))
+          files.extend(Path('params').glob('*.yml'))
+          files.extend(Path('params').glob('*.yaml'))
+
+          for path in files:
+              text = path.read_text(encoding='utf-8')
+
+              # Replace the old example project before replacing its shorter prefix.
+              text = text.replace('/home/student/oncotracer_project/', 'project/')
+              text = text.replace('/home/student/oncotracer_project', 'project')
+
+              # Keep tutorial terminal examples relative to the cloned repository.
+              text = text.replace('cd /home/student/oncotracer', 'cd oncotracer')
+              text = text.replace('/home/student/oncotracer/', '')
+              text = text.replace('/home/student/oncotracer', '.')
+              text = text.replace('/path/to/my/directory/oncotracer/', '')
+              text = text.replace('/path/to/my/directory/oncotracer', '.')
+
+              # Remove instructions that ask beginners to resolve an absolute path.
+              text = text.replace(
+                  '# Replace . with the absolute path printed by `pwd`.',
+                  '# Run Nextflow from the cloned oncotracer directory.',
+              )
+              text = text.replace(
+                  '# Replace project with an absolute project path.',
+                  '# Keep this example project inside the cloned oncotracer directory.',
+              )
+              text = text.replace('student@workstation:~/oncotracer$', 'user@workstation:~/oncotracer$')
+
+              path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Remove temporary files
         run: |
           rm -f .github/workflows/apply-simple-doc-commands.yml
