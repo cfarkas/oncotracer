@@ -45,6 +45,7 @@ jobs:
         run: |
           python3 tests/test_docs_style.py
           python3 tests/test_examples_start_from_clone.py
+          python3 tests/test_copy_paste_paths.py
 
       - name: Install documentation dependencies
         run: python3 -m pip install -r docs/requirements.txt

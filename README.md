@@ -13,89 +13,72 @@ OncoTracer is a Nextflow research workflow for **low-pass whole-genome sequencin
 FASTQ -> SAMURAI qDNAseq/ichorCNA -> boundary refinement -> CNA tables -> plots and reports
 ```
 
-Run OncoTracer in one of four supported ways:
-
-1. **Docker:** call `nextflow run` with `--docker`; this uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
-2. **Singularity or Apptainer:** call `nextflow run` with `--singularity`; this uses `docker://carlosfarkas/oncotracer:latest` on a configured HPC system.
-3. **Poetry launcher:** run `poetry install`, then call `poetry run oncotracer --backend docker ...`. Poetry manages the isolated Python launcher and forwards the workflow arguments to Nextflow.
-4. **Conda:** call `nextflow run` with `--conda`; Nextflow can create and reuse the required Conda environments automatically from the versioned definitions.
-
 Read the [complete documentation](https://cfarkas.github.io/oncotracer/) for installation, tutorials, input formats, configuration, outputs, and troubleshooting.
 
 ## Requirements
 
-Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), [Java 17](https://adoptium.net/temurin/releases/?version=17) or newer, [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Python 3](https://www.python.org/downloads/), [samtools](https://www.htslib.org/download/), [BWA](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2), [pigz](https://zlib.net/pigz/), and [curl](https://curl.se/download.html) or [wget](https://www.gnu.org/software/wget/). Choose a direct execution environment: [Miniforge/Conda](https://github.com/conda-forge/miniforge), [Docker Engine](https://docs.docker.com/engine/install/), or [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html)/[Apptainer](https://apptainer.org/docs/admin/main/installation.html). Install [Poetry](https://python-poetry.org/docs/#installation) for the Poetry launcher route.
+Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), [Java 17](https://adoptium.net/temurin/releases/?version=17) or newer, [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Python 3](https://www.python.org/downloads/), [samtools](https://www.htslib.org/download/), [BWA](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2), [pigz](https://zlib.net/pigz/), and [curl](https://curl.se/download.html) or [wget](https://www.gnu.org/software/wget/).
 
-The first uncached analysis downloads the hg38 reference (about **3.16 GB**) and creates a BWA index. This commonly takes **30–60 minutes**, and the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.
+Choose one execution environment: [Docker Engine](https://docs.docker.com/engine/install/), [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html)/[Apptainer](https://apptainer.org/docs/admin/main/installation.html), or [Miniforge/Conda](https://github.com/conda-forge/miniforge). Install [Poetry](https://python-poetry.org/docs/#installation) only for the Poetry launcher route.
+
+The first uncached analysis downloads the hg38 reference, about **3.16 GB**, and creates a BWA index. This commonly takes **30–60 minutes** and requires substantial memory; provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.
+
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer and enter the repository.
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
 
 <a id="four-equivalent-analysis-commands"></a>
 
 ## Four installation and execution methods
 
-OncoTracer reads each analysis from a YAML configuration file. A YAML is a plain-text file containing the input, output, and analysis settings. Open the [minimal Illumina YAML example](params/illumina.minimal.yml) or the [minimal ONT YAML example](params/ont.minimal.yml) to see the format. For your own FASTQs, [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) creates the YAML and samplesheet for you.
+OncoTracer reads an analysis from a YAML configuration file. A YAML is a plain-text file containing input, output, and analysis settings. Open the [minimal Illumina YAML example](params/illumina.minimal.yml) or [minimal ONT YAML example](params/ont.minimal.yml) to see the format. [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) creates the YAML and samplesheet for your FASTQs.
 
-In each command below, `CONFIG` points to the generated YAML. Choose **one** method; do not run all four. Every method launches the same Nextflow workflow and produces the same result structure.
+In the commands below, `CONFIG` points to a generated YAML. Choose **one** method; do not run all four.
 
 ### Installation and execution through Docker
 
-Install [Docker Engine](https://docs.docker.com/engine/install/) once. On the first analysis, Nextflow downloads [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer); later analyses reuse the cached image.
+Install [Docker Engine](https://docs.docker.com/engine/install/) once. Nextflow downloads and reuses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
 
 ```bash
-# Set the repository, project, generated YAML, and Docker work directory.
+# Run a generated Illumina YAML through Docker.
 PROJECT_DIR="$(pwd)/project"
 CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
-WORK_DIR="$PROJECT_DIR/work/docker"
-
-# Confirm that Automatic Setup created the YAML.
-test -s "$CONFIG"
-
-# Run or resume OncoTracer through Docker.
 nextflow run main.nf --docker \
   -params-file "$CONFIG" \
-  -work-dir "$WORK_DIR" \
+  -work-dir "$PROJECT_DIR/work/docker" \
   -resume
 ```
 
 ### Installation and execution through Singularity or Apptainer
 
-Install [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html) or [Apptainer](https://apptainer.org/docs/admin/main/installation.html) once. Nextflow obtains the same maintained container image used by Docker and stores it in the local container cache.
+Install [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html) or [Apptainer](https://apptainer.org/docs/admin/main/installation.html) once. Nextflow obtains the same maintained image used by Docker.
 
 ```bash
-# Set the repository, project, generated YAML, and HPC work directory.
+# Run the same generated YAML through Singularity or Apptainer.
 PROJECT_DIR="$(pwd)/project"
 CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
-WORK_DIR="$PROJECT_DIR/work/singularity"
-
-# Confirm that Automatic Setup created the YAML.
-test -s "$CONFIG"
-
-# Run or resume OncoTracer through Singularity or Apptainer.
 nextflow run main.nf --singularity \
   -params-file "$CONFIG" \
-  -work-dir "$WORK_DIR" \
+  -work-dir "$PROJECT_DIR/work/singularity" \
   -resume
 ```
 
 ### Installation and execution through Poetry
 
-Install [Poetry](https://python-poetry.org/docs/#installation) and one scientific backend. The example below uses Docker. `poetry install` creates the isolated OncoTracer launcher environment; the launcher then passes the analysis to Nextflow and Docker.
+Install [Poetry](https://python-poetry.org/docs/#installation) and one scientific backend. `poetry install` creates the isolated launcher environment. The example below uses Docker.
 
 ```bash
-# Set the repository, project, generated YAML, and Poetry work directory.
+# Install the Poetry launcher and run the generated YAML with Docker.
 PROJECT_DIR="$(pwd)/project"
 CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
-WORK_DIR="$PROJECT_DIR/work/poetry"
-
-# Install or reuse the locked Poetry launcher environment.
 poetry install --no-interaction
-
-# Confirm that Automatic Setup created the YAML.
-test -s "$CONFIG"
-
-# Run or resume OncoTracer through Poetry with Docker.
 poetry run oncotracer --repo-dir . --backend docker \
   -params-file "$CONFIG" \
-  -work-dir "$WORK_DIR" \
+  -work-dir "$PROJECT_DIR/work/poetry" \
   -resume
 ```
 
@@ -103,29 +86,23 @@ The Poetry launcher also accepts `--backend singularity` and `--backend conda`.
 
 ### Installation and execution through Conda
 
-Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) once. On the first analysis, Nextflow creates the required native environments from the versioned definitions; later analyses reuse those environments automatically.
+Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) once. Nextflow can create and reuse the required Conda environments automatically from the versioned definitions.
 
 ```bash
-# Set the repository, project, generated YAML, and Conda work directory.
+# Run the generated YAML through native Conda environments.
 PROJECT_DIR="$(pwd)/project"
 CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
-WORK_DIR="$PROJECT_DIR/work/conda"
-
-# Confirm that Automatic Setup created the YAML.
-test -s "$CONFIG"
-
-# Run or resume OncoTracer through Conda.
 nextflow run main.nf --conda \
   -params-file "$CONFIG" \
-  -work-dir "$WORK_DIR" \
+  -work-dir "$PROJECT_DIR/work/conda" \
   -resume
 ```
 
-For an ONT analysis, set `CONFIG` to the generated `ont.auto.yml`; the installation and execution method does not otherwise change.
+For ONT, point `CONFIG` to the generated `ont.auto.yml`.
 
 ## Run your own FASTQs
 
-Keep sequencing data and results outside the Git clone. For Illumina, create a small sample table whose names match the FASTQ filenames:
+Create a small Illumina sample table whose names match the FASTQ filenames:
 
 ```csv
 sample_name,status
@@ -135,16 +112,23 @@ CONTROL_01,NORMAL
 CONTROL_02,NORMAL
 ```
 
-Generate the configuration and run it:
-
 ```bash
 # Clone OncoTracer and enter the repository.
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
 
+# Create the project folders and sample table.
 PROJECT_DIR="$(pwd)/project"
+mkdir -p "$PROJECT_DIR/input/fastq"
+cat > "$PROJECT_DIR/input/samples.csv" <<'CSV'
+sample_name,status
+TUMOR_01,TUMOR
+TUMOR_02,TUMOR
+CONTROL_01,NORMAL
+CONTROL_02,NORMAL
+CSV
 
-# Generate an Illumina YAML and samplesheet from the FASTQ folder and sample table.
+# Generate the Illumina YAML and samplesheet.
 nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
@@ -152,62 +136,65 @@ nextflow run main.nf --auto_params \
   --auto_config_dir "$PROJECT_DIR/config" \
   --auto_outdir "$PROJECT_DIR/results"
 
-# Run with Conda; Nextflow creates and reuses the required environments.
+# Run with Conda; use --docker or --singularity for another method.
 nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work" \
+  -work-dir "$PROJECT_DIR/work/conda" \
   -resume
 
-# Read the workflow summary after the analysis finishes.
+# Read the workflow summary.
 cat "$PROJECT_DIR/results/06_workflow_summary/workflow_summary.txt"
 ```
 
-The example above uses Conda. The preceding four-route section gives the equivalent Docker, Singularity/Apptainer, and Poetry commands. `--auto_params` checks the supported FASTQ layout and writes the YAML used by the analysis command. For ONT barcode folders, use `--mode ont`. See [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) for complete Illumina and ONT examples.
+For ONT barcode folders, use `--mode ont`. See [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) for complete Illumina and ONT examples.
 
 ## QuickStart Example 1: one public Illumina and one public ONT sample
 
-This verification downloads about **225 MB** of public reads and runs both branches. The compact commands below use Docker. The complete QuickStart page provides explicit Docker, Singularity/Apptainer, Poetry, and Conda command sets.
+This example downloads about **225 MB** of public reads, creates both YAML files, runs both workflows, and verifies the outputs.
 
 ```bash
 # Clone OncoTracer and enter the repository.
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
 
+# Download the public reads and create both YAML files.
 TEST_ROOT="$(pwd)/test"
-
-# Download and validate the public reads, then create both YAML files.
 nextflow run main.nf --make_test \
   --test_root "$TEST_ROOT"
 
-# Run the Illumina example first.
+# Run Illumina first.
 nextflow run main.nf --docker \
   -params-file "$TEST_ROOT/configs/illumina.quickstart.yml" \
   -work-dir "$TEST_ROOT/work/illumina" \
   -resume
 
-# Run the ONT example after the Illumina run finishes.
+# Run ONT after Illumina finishes.
 nextflow run main.nf --docker \
   -params-file "$TEST_ROOT/configs/ont.quickstart.yml" \
   -work-dir "$TEST_ROOT/work/ont" \
   -resume
 
-# Verify the required outputs from both runs.
-python3 "examples/quickstart/verify_outputs.py" \
+# Verify both output sets.
+python3 examples/quickstart/verify_outputs.py \
   --test-root "$TEST_ROOT"
 ```
 
-See [QuickStart Example 1](https://cfarkas.github.io/oncotracer/quick_start/) for the generated sample mappings, YAML files, expected time, and output folders.
+See [QuickStart Example 1](https://cfarkas.github.io/oncotracer/quick_start/) for Docker, Singularity/Apptainer, Poetry, and Conda alternatives.
 
 ## QuickStart Example 2: three public HCC1143 libraries
 
-The HCC1143 example downloads six public paired-end FASTQs. The block below exposes the complete `wget` download, file naming, sample-table creation, Automatic Setup, and a Docker analysis command. The complete QuickStart page provides explicit Docker, Singularity/Apptainer, Poetry, and Conda commands.
+This example downloads six public paired-end FASTQs and demonstrates Automatic Setup for three libraries.
 
 ```bash
-# Set the standard repository and HCC1143 data paths.
+# Clone OncoTracer and enter the repository.
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+
+# Create the HCC1143 reads directory.
 READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
 
-# Download HCC1143_DMSO read 1 and rename it for Automatic Setup.
+# Download HCC1143_DMSO read 1.
 if [[ ! -s "$READS_DIR/HCC1143_DMSO_R1.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_1.fastq.gz
@@ -215,7 +202,7 @@ if [[ ! -s "$READS_DIR/HCC1143_DMSO_R1.fastq.gz" ]]; then
     "$READS_DIR/HCC1143_DMSO_R1.fastq.gz"
 fi
 
-# Download HCC1143_DMSO read 2 and rename it for Automatic Setup.
+# Download HCC1143_DMSO read 2.
 if [[ ! -s "$READS_DIR/HCC1143_DMSO_R2.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_2.fastq.gz
@@ -223,7 +210,7 @@ if [[ ! -s "$READS_DIR/HCC1143_DMSO_R2.fastq.gz" ]]; then
     "$READS_DIR/HCC1143_DMSO_R2.fastq.gz"
 fi
 
-# Download HCC1143_BEZ235 read 1 and rename it for Automatic Setup.
+# Download HCC1143_BEZ235 read 1.
 if [[ ! -s "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_1.fastq.gz
@@ -231,7 +218,7 @@ if [[ ! -s "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz" ]]; then
     "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz"
 fi
 
-# Download HCC1143_BEZ235 read 2 and rename it for Automatic Setup.
+# Download HCC1143_BEZ235 read 2.
 if [[ ! -s "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_2.fastq.gz
@@ -239,7 +226,7 @@ if [[ ! -s "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz" ]]; then
     "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz"
 fi
 
-# Download HCC1143_TRAMETINIB read 1 and rename it for Automatic Setup.
+# Download HCC1143_TRAMETINIB read 1.
 if [[ ! -s "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_1.fastq.gz
@@ -247,7 +234,7 @@ if [[ ! -s "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz" ]]; then
     "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz"
 fi
 
-# Download HCC1143_TRAMETINIB read 2 and rename it for Automatic Setup.
+# Download HCC1143_TRAMETINIB read 2.
 if [[ ! -s "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_2.fastq.gz
@@ -255,7 +242,7 @@ if [[ ! -s "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz" ]]; then
     "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz"
 fi
 
-# Create or replace the exact HCC1143 sample table.
+# Create the exact sample table.
 cat > "$READS_DIR/samples.csv" <<'CSV'
 sample_name,status
 HCC1143_DMSO,TUMOR
@@ -263,10 +250,7 @@ HCC1143_BEZ235,TUMOR
 HCC1143_TRAMETINIB,TUMOR
 CSV
 
-# Display the saved sample table before continuing.
-cat "$READS_DIR/samples.csv"
-
-# Generate the Illumina YAML and R1/R2 samplesheet automatically.
+# Generate the YAML and R1/R2 samplesheet.
 nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$READS_DIR" \
@@ -274,24 +258,24 @@ nextflow run main.nf --auto_params \
   --auto_config_dir "test/configs/hcc1143_lpwgs" \
   --auto_outdir "test/runs/hcc1143_lpwgs"
 
-# Run the generated HCC1143 configuration with Docker.
+# Run the generated configuration with Docker.
 nextflow run main.nf --docker \
   -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "test/work/hcc1143_lpwgs" \
+  -work-dir "test/work/hcc1143_lpwgs-docker" \
   -resume
 ```
 
-Each `wget --continue` command can resume an accession-named partial download. After completion, the file is renamed to the sample prefix expected by Automatic Setup. The detailed [QuickStart Example 2](https://cfarkas.github.io/oncotracer/public_cohort/) also shows MD5, gzip, output, and resume checks.
+See [QuickStart Example 2](https://cfarkas.github.io/oncotracer/public_cohort/) for MD5, gzip, output, resume, Singularity/Apptainer, Poetry, and Conda commands.
 
 ## Other Example Runs
 
-[Six tumors and four normal controls](https://cfarkas.github.io/oncotracer/six_tumor_four_control/) is a mock example that illustrates how four `NORMAL` samples are used to build a local qDNAseq panel of normals and correct CNA profiles for six `TUMOR` samples. Its run section shows Docker, Singularity/Apptainer, Poetry, and Conda alternatives.
+[Six tumors and four normal controls](https://cfarkas.github.io/oncotracer/six_tumor_four_control/) is a mock example illustrating how four `NORMAL` samples build a local qDNAseq panel of normals for six `TUMOR` samples.
 
 The [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/) downloads and processes all 12 public PRJNA754199 libraries currently available from the archive.
 
 ## Normal controls
 
-For Illumina, Automatic Setup disables the local panel of normals when there are no `NORMAL` rows, rejects exactly one normal, and enables the panel when there are at least two controls. Corrected CNA outputs contain tumor samples; controls remain reference and quality-control inputs. See [Illumina setup](https://cfarkas.github.io/oncotracer/configuration/illumina/) and [output files](https://cfarkas.github.io/oncotracer/outputs/#illumina-local-panel-of-normals).
+For Illumina, Automatic Setup disables the local panel when there are no `NORMAL` rows, rejects exactly one normal, and enables the panel with at least two controls. Corrected CNA outputs contain tumor samples; controls remain reference and quality-control inputs.
 
 ## Main outputs
 
@@ -300,7 +284,7 @@ For Illumina, Automatic Setup disables the local panel of normals when there are
 - `03_cna_codification/cna_cytogenomic_notation.tsv`: cytogenomic notation
 - `04_cna_custom_plots/cna_per_sample_pages.pdf`: per-sample plots
 - `04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf`: cohort plot
-- `01_samurai_illumina/qdnaseq_local_pon/`: local-PoN files when two or more Illumina normal controls are used
+- `01_samurai_illumina/qdnaseq_local_pon/`: local-PoN files when two or more normal controls are used
 
 ## Research-use limitation
 
