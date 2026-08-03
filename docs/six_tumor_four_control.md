@@ -6,10 +6,9 @@ Corrected CNA outputs contain the six tumors. The four controls remain reference
 
 ## 1. Clone OncoTracer
 
-Start from a fresh clone and run the remaining commands from the `oncotracer` directory.
-
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
 ```
@@ -31,10 +30,8 @@ CTRL003_R1.fastq.gz       CTRL003_R2.fastq.gz
 CTRL004_R1.fastq.gz       CTRL004_R2.fastq.gz
 ```
 
-The project is kept inside the clone so no second path needs to be edited:
-
 ```text
-/path/to/my/directory/oncotracer/test/examples/onco6_ctrl4/
+test/examples/onco6_ctrl4/
 ├── input/
 │   ├── samples.csv
 │   └── fastq/
@@ -44,11 +41,10 @@ The project is kept inside the clone so no second path needs to be edited:
 ```
 
 ```bash
-# Derive the mock-project path from the repository clone.
+# Create the mock project and sample table.
 PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 mkdir -p "$PROJECT_DIR/input/fastq"
 
-# Create or replace the exact six-tumor/four-normal sample table.
 cat > "$PROJECT_DIR/input/samples.csv" <<'CSV'
 sample_name,status
 ONCO001,TUMOR
@@ -63,7 +59,6 @@ CTRL003,NORMAL
 CTRL004,NORMAL
 CSV
 
-# Display the saved table and the expected FASTQ folder.
 cat "$PROJECT_DIR/input/samples.csv"
 printf 'Place the paired FASTQs in: %s\n' "$PROJECT_DIR/input/fastq"
 ```
@@ -73,10 +68,8 @@ printf 'Place the paired FASTQs in: %s\n' "$PROJECT_DIR/input/fastq"
 ## 3. Generate the YAML automatically
 
 ```bash
-# Set the repository and mock-project paths and enter the clone.
+# Generate the YAML and samplesheet.
 PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
-
-# Validate the paired FASTQs and generate the YAML and samplesheet.
 nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
@@ -99,15 +92,11 @@ illumina_pon_min_mapq: 37
 ## 4. Inspect the generated files
 
 ```bash
-# Set the repository and mock-project paths.
+# Inspect the generated configuration and sample counts.
 PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
-
-# Review the generated run configuration and sample mapping.
 sed -n '1,140p' "$PROJECT_DIR/config/illumina.auto.yml"
 sed -n '1,20p' "$PROJECT_DIR/config/illumina.samplesheet.csv"
 cat "$PROJECT_DIR/config/auto_params_manifest.tsv"
-
-# Confirm the generated tumor and normal row counts.
 grep -c ',tumor$' "$PROJECT_DIR/config/illumina.samplesheet.csv"
 grep -c ',normal$' "$PROJECT_DIR/config/illumina.samplesheet.csv"
 ```
@@ -121,7 +110,7 @@ Choose exactly one method. Each command reads the same generated YAML; route-spe
 ### Docker
 
 ```bash
-# Run the mock configuration with the maintained Docker image.
+# Run the mock configuration with Docker.
 PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 nextflow run main.nf --docker \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
@@ -143,7 +132,7 @@ nextflow run main.nf --singularity \
 ### Poetry launcher
 
 ```bash
-# Install the launcher and run the mock configuration through Poetry with Docker.
+# Install Poetry and run the mock configuration with Docker.
 PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 poetry install --no-interaction
 poetry run oncotracer --repo-dir . --backend docker \
@@ -155,7 +144,7 @@ poetry run oncotracer --repo-dir . --backend docker \
 ### Conda
 
 ```bash
-# Create or reuse the native environments and run the mock configuration.
+# Run the mock configuration with native Conda environments.
 PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
@@ -168,20 +157,16 @@ The Poetry launcher also accepts `--backend singularity` and `--backend conda`.
 ## 6. Check the panel and corrected tumor outputs
 
 ```bash
-# Set the repository, mock-project, and result paths.
+# Inspect the panel and corrected tumor outputs.
 PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 OUT="$PROJECT_DIR/results"
 PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
 
-# Require the successful local-panel completion marker.
 test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = QDNASEQ_LOCAL_PON_SUCCESS \
   && echo "PoN completed successfully"
 
-# Review the four-control manifest and leave-one-out control QC.
 sed -n '1,10p' "$PON/pon/normal_panel_manifest.tsv"
 sed -n '1,10p' "$PON/qc/normal_panel_sample_qc.tsv"
-
-# List corrected tumor bins and read the workflow summary.
 find "$PON/bins" -maxdepth 1 -type f -name '*_markdup_bins.bed' -printf '%f\n' | sort
 cat "$OUT/06_workflow_summary/workflow_summary.txt"
 ```
