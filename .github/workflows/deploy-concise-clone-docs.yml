@@ -1,0 +1,57 @@
+name: Deploy concise clone documentation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-deploy:
+    if: github.head_ref == 'agent/deploy-concise-clone-docs'
+    runs-on: ubuntu-latest
+    env:
+      TARGET_SHA: ec941b1f88609e007fa46d35e1d738286e9aa792
+
+    steps:
+      - name: Check out the exact main documentation
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate every public command example
+        run: |
+          python3 tests/test_docs_style.py
+          python3 tests/test_examples_start_from_clone.py
+          python3 tests/test_copy_paste_paths.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+
+          grep -F 'git clone https://github.com/cfarkas/oncotracer.git' \
+            site/quick_start/index.html >/dev/null
+          grep -F 'cd oncotracer' site/quick_start/index.html >/dev/null
+          grep -F 'git clone https://github.com/cfarkas/oncotracer.git' \
+            site/public_cohort/index.html >/dev/null
+          grep -F 'cd oncotracer' site/public_cohort/index.html >/dev/null
+          grep -F 'git clone https://github.com/cfarkas/oncotracer.git' \
+            site/six_tumor_four_control/index.html >/dev/null
+          grep -F 'cd oncotracer' site/six_tumor_four_control/index.html >/dev/null
+          ! grep -R -F 'REPO_DIR=' site >/dev/null
+
+      - name: Deploy exact main documentation to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdocs gh-deploy --force --clean --remote-name origin --remote-branch gh-pages
