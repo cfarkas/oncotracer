@@ -32,7 +32,6 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import textwrap
 
           workflow = Path('.github/workflows/apply-runtime-docs-v1.1.yml').read_text(encoding='utf-8')
           marker_start = "          python3 - <<'PY'\n"
@@ -40,7 +39,10 @@ jobs:
           if marker_start not in workflow or marker_end not in workflow:
               raise SystemExit('Unable to locate the embedded documentation patch script')
           embedded = workflow.split(marker_start, 1)[1].split(marker_end, 1)[0]
-          script = textwrap.dedent(embedded)
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in embedded.splitlines()
+          )
           exec(compile(script, 'apply-runtime-docs-v1.1.py', 'exec'), {})
           PY
 
