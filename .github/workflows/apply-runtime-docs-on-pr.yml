@@ -32,6 +32,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           workflow = Path('.github/workflows/apply-runtime-docs-v1.1.yml').read_text(encoding='utf-8')
           marker_start = "          python3 - <<'PY'\n"
@@ -43,6 +44,15 @@ jobs:
               line[10:] if line.startswith("          ") else line
               for line in embedded.splitlines()
           )
+          script, removed = re.subn(
+              r'\nreplace_once\(\n\s+"README\.md",\n\s+"Nextflow can create and reuse the required Conda environments automatically.*?\n\s*\)\n',
+              '\n',
+              script,
+              count=1,
+              flags=re.S,
+          )
+          if removed != 1:
+              raise SystemExit('Unable to remove the redundant README Conda sentence replacement')
           exec(compile(script, 'apply-runtime-docs-v1.1.py', 'exec'), {})
           PY
 
