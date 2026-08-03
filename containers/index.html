@@ -29,7 +29,7 @@
     
     
       
-        <title>Containers and Execution - OncoTracer</title>
+        <title>Execution Environments - OncoTracer</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#containers-and-execution-environments" class="md-skip">
+        <a href="#execution-environments" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Containers and Execution
+              Execution Environments
             
           </span>
         </div>
@@ -488,6 +488,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../poetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Poetry Launcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../quick_start/" class="md-nav__link">
         
   
@@ -723,7 +751,7 @@
   <span class="md-ellipsis">
     
   
-    Six Tumors + Four Controls (User Data Required)
+    Mock Six Tumors + Four Normal Controls
   
 
     
@@ -1020,7 +1048,7 @@
   <span class="md-ellipsis">
     
   
-    Containers and Execution
+    Execution Environments
   
 
     
@@ -1038,7 +1066,7 @@
   <span class="md-ellipsis">
     
   
-    Containers and Execution
+    Execution Environments
   
 
     
@@ -1064,6 +1092,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1086,21 +1125,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#conda-fallback" class="md-nav__link">
+  <a href="#project-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Conda fallback
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#project-paths-and-mounts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Project paths and mounts
+        Project paths
       
     </span>
   </a>
@@ -1119,10 +1147,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#record-the-image-identity" class="md-nav__link">
+  <a href="#record-the-environment-identity" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Record the image identity
+        Record the environment identity
       
     </span>
   </a>
@@ -1145,6 +1173,17 @@
     <span class="md-ellipsis">
       
         Security notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#poetry-as-a-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry as a launcher
       
     </span>
   </a>
@@ -1512,6 +1551,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1534,21 +1584,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#conda-fallback" class="md-nav__link">
+  <a href="#project-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Conda fallback
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#project-paths-and-mounts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Project paths and mounts
+        Project paths
       
     </span>
   </a>
@@ -1567,10 +1606,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#record-the-image-identity" class="md-nav__link">
+  <a href="#record-the-environment-identity" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Record the image identity
+        Record the environment identity
       
     </span>
   </a>
@@ -1593,6 +1632,17 @@
     <span class="md-ellipsis">
       
         Security notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#poetry-as-a-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry as a launcher
       
     </span>
   </a>
@@ -1624,17 +1674,22 @@
   
 
 
-<h1 id="containers-and-execution-environments">Containers and execution environments<a class="headerlink" href="#containers-and-execution-environments" title="Permanent link">&para;</a></h1>
-<p>Nextflow runs on the host and starts the selected container image. Use one runtime option per analysis command.</p>
+<h1 id="execution-environments">Execution environments<a class="headerlink" href="#execution-environments" title="Permanent link">&para;</a></h1>
+<p>Nextflow runs OncoTracer with one execution option per analysis command.</p>
 <table>
 <thead>
 <tr>
 <th>Environment</th>
 <th>Option</th>
-<th>Image</th>
+<th>What Nextflow uses</th>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>Linux with Miniforge or Conda</td>
+<td><code>--conda</code></td>
+<td>Conda environments created automatically from the versioned environment definitions</td>
+</tr>
 <tr>
 <td>Linux workstation or server with Docker</td>
 <td><code>--docker</code></td>
@@ -1645,14 +1700,29 @@
 <td><code>--singularity</code></td>
 <td><code>docker://carlosfarkas/oncotracer:latest</code></td>
 </tr>
-<tr>
-<td>No container runtime</td>
-<td><code>--conda</code></td>
-<td>Conda environments prepared by Nextflow</td>
-</tr>
 </tbody>
 </table>
 <p>Use <code>/path/to/my/directory/oncotracer</code> as the repository path in these examples.</p>
+<h2 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h2>
+<p>Install <a href="https://github.com/conda-forge/miniforge">Miniforge</a> or another compatible Conda distribution, then run:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+
+<span class="c1"># Create or reuse the required Conda environments and test the software.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+
+<span class="c1"># Optionally check a YAML without running the scientific tools.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span>
+
+<span class="c1"># Run or resume the analysis with Conda.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<p>Nextflow creates and reuses Conda environments automatically. The first command solves and creates the top-level environment, which is cached below <code>lpwgs_root/.oncotracer/conda</code>; the nested SAMURAI workflow also creates and reuses its required Conda environments.</p>
 <h2 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
@@ -1696,28 +1766,13 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Use a Singularity/Apptainer cache directory on a filesystem with enough quota. Cluster scheduler and bind-mount rules still apply.</p>
-<h2 id="conda-fallback">Conda fallback<a class="headerlink" href="#conda-fallback" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
-
-<span class="c1"># Prepare the Conda environments.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
-
-<span class="c1"># Run or resume the YAML without containers.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<p>Conda is less portable than a recorded container image and may take longer to solve on the first run.</p>
-<h2 id="project-paths-and-mounts">Project paths and mounts<a class="headerlink" href="#project-paths-and-mounts" title="Permanent link">&para;</a></h2>
-<p>Keep the YAML inputs, reference/cache, work directory, and results below a common project root that the container can access:</p>
+<h2 id="project-paths">Project paths<a class="headerlink" href="#project-paths" title="Permanent link">&para;</a></h2>
+<p>Keep the YAML inputs, reference/cache, work directory, and results below a common project root:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project</span>
 <span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/results</span>
 <span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv</span>
 </code></pre></div>
-<p>A path outside <code>lpwgs_root</code> may not be visible inside the container.</p>
+<p>For container runs, a path outside <code>lpwgs_root</code> may not be visible inside the container. For Conda runs, a common project root keeps environments, references, work files, and outputs together.</p>
 <h2 id="file-ownership-with-docker">File ownership with Docker<a class="headerlink" href="#file-ownership-with-docker" title="Permanent link">&para;</a></h2>
 <p>The default container user is <code>1000:1000</code>. When the host uses different numeric IDs, record them:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Print the host user and group IDs.</span>
@@ -1727,18 +1782,19 @@ id<span class="w"> </span>-g
 <p>Then add the matching value to the YAML when required:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">docker_user</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1234:1234&quot;</span>
 </code></pre></div>
-<h2 id="record-the-image-identity">Record the image identity<a class="headerlink" href="#record-the-image-identity" title="Permanent link">&para;</a></h2>
+<h2 id="record-the-environment-identity">Record the environment identity<a class="headerlink" href="#record-the-environment-identity" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 
-<span class="c1"># Read the runtime and image recorded by the installation check.</span>
+<span class="c1"># Read the environment or image identity recorded by the installation check.</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/.oncotracer/install/install_manifest.txt&quot;</span>
 </code></pre></div>
-<p>For a formal analysis, preserve the OncoTracer commit, YAML, generated samplesheet, installation manifest, and nested <code>pipeline_info</code> files. Use an approved immutable image digest when the study requires a frozen runtime.</p>
+<p>For a formal analysis, preserve the OncoTracer commit, YAML, generated samplesheet, installation manifest, and nested <code>pipeline_info</code> files. Use an approved immutable image digest or explicit Conda package specification when the study requires a frozen runtime.</p>
 <h2 id="cache-and-storage-locations">Cache and storage locations<a class="headerlink" href="#cache-and-storage-locations" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>work/</code>: top-level Nextflow cache used by <code>-resume</code>.</li>
 <li><code>&lt;outdir&gt;/01_samurai_*/work/</code>: nested SAMURAI cache.</li>
+<li><code>lpwgs_root/.oncotracer/conda/</code>: top-level Conda environment cache.</li>
 <li><code>.nextflow/</code>: Nextflow metadata.</li>
 <li><code>.singularity_cache/</code> below <code>lpwgs_root</code>: Singularity/Apptainer images.</li>
 <li>Docker system storage: managed by the Docker daemon.</li>
@@ -1747,12 +1803,20 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_
 <h2 id="security-notes">Security notes<a class="headerlink" href="#security-notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Treat Docker access as privileged according to local policy.</li>
-<li>Use trusted image names or recorded digests.</li>
+<li>Use trusted image names, recorded digests, and trusted Conda channels.</li>
 <li>Do not place registry credentials in YAML files or shell history.</li>
 <li>Mount only the project directories needed for the analysis.</li>
 <li>Follow institutional rules for patient data.</li>
 </ul>
-<p>See <a href="../troubleshooting/">Troubleshooting</a> for runtime permissions, bind paths, disk usage, and task logs.</p>
+<p>See <a href="../troubleshooting/">Troubleshooting</a> for runtime permissions, paths, disk usage, environment solving, and task logs.</p>
+<h2 id="poetry-as-a-launcher">Poetry as a launcher<a class="headerlink" href="#poetry-as-a-launcher" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run a configuration through the Poetry launcher and Docker backend.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span>/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span>/path/to/my/directory/my_oncotracer_project/work<span class="w"> </span>-resume
+</code></pre></div>
+<p>Poetry isolates the Python launcher; Docker, Singularity/Apptainer, or Conda supplies the scientific programs selected by <code>--backend</code>.</p>
 
 
 

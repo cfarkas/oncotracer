@@ -29,7 +29,7 @@
     
     
       
-        <title>Six Tumors + Four Controls (User Data Required) - OncoTracer</title>
+        <title>Mock Six Tumors + Four Normal Controls - OncoTracer</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#other-example-run-six-illumina-tumors-and-four-controls" class="md-skip">
+        <a href="#other-example-run-mock-six-tumorfour-normal-study" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Six Tumors + Four Controls (User Data Required)
+              Mock Six Tumors + Four Normal Controls
             
           </span>
         </div>
@@ -488,6 +488,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../poetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Poetry Launcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../quick_start/" class="md-nav__link">
         
   
@@ -735,7 +763,7 @@
   <span class="md-ellipsis">
     
   
-    Six Tumors + Four Controls (User Data Required)
+    Mock Six Tumors + Four Normal Controls
   
 
     
@@ -753,7 +781,7 @@
   <span class="md-ellipsis">
     
   
-    Six Tumors + Four Controls (User Data Required)
+    Mock Six Tumors + Four Normal Controls
   
 
     
@@ -779,10 +807,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#estimated-resources" class="md-nav__link">
+  <a href="#example-fastq-names" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Estimated resources
+        Example FASTQ names
       
     </span>
   </a>
@@ -790,10 +818,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-set-the-paths-and-check-the-programs" class="md-nav__link">
+  <a href="#create-the-mock-tumornormal-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Set the paths and check the programs
+        Create the mock tumor/normal table
       
     </span>
   </a>
@@ -801,10 +829,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-arrange-the-20-fastq-files" class="md-nav__link">
+  <a href="#generate-the-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Arrange the 20 FASTQ files
+        Generate the YAML automatically
       
     </span>
   </a>
@@ -812,49 +840,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-create-the-tumornormal-table" class="md-nav__link">
+  <a href="#run-the-mock-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Create the tumor/normal table
+        Run the mock configuration
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-set-the-cpu-and-gpu-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Set the CPU and GPU environment
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-generate-the-yaml-automatically" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Generate the YAML automatically
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-run-the-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Run the analysis
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="6. Run the analysis">
+    <nav class="md-nav" aria-label="Run the mock configuration">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#docker" class="md-nav__link">
@@ -884,21 +890,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-resume-an-interrupted-run" class="md-nav__link">
+  <a href="#check-the-panel-and-corrected-tumor-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Resume an interrupted run
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-verify-the-panel-and-tumor-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Verify the panel and tumor outputs
+        Check the panel and corrected tumor outputs
       
     </span>
   </a>
@@ -1185,7 +1180,7 @@
   <span class="md-ellipsis">
     
   
-    Containers and Execution
+    Execution Environments
   
 
     
@@ -1551,10 +1546,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#estimated-resources" class="md-nav__link">
+  <a href="#example-fastq-names" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Estimated resources
+        Example FASTQ names
       
     </span>
   </a>
@@ -1562,10 +1557,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-set-the-paths-and-check-the-programs" class="md-nav__link">
+  <a href="#create-the-mock-tumornormal-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Set the paths and check the programs
+        Create the mock tumor/normal table
       
     </span>
   </a>
@@ -1573,10 +1568,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-arrange-the-20-fastq-files" class="md-nav__link">
+  <a href="#generate-the-yaml-automatically" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Arrange the 20 FASTQ files
+        Generate the YAML automatically
       
     </span>
   </a>
@@ -1584,49 +1579,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-create-the-tumornormal-table" class="md-nav__link">
+  <a href="#run-the-mock-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Create the tumor/normal table
+        Run the mock configuration
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-set-the-cpu-and-gpu-environment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Set the CPU and GPU environment
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-generate-the-yaml-automatically" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Generate the YAML automatically
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-run-the-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Run the analysis
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="6. Run the analysis">
+    <nav class="md-nav" aria-label="Run the mock configuration">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#docker" class="md-nav__link">
@@ -1656,21 +1629,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-resume-an-interrupted-run" class="md-nav__link">
+  <a href="#check-the-panel-and-corrected-tumor-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Resume an interrupted run
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-verify-the-panel-and-tumor-outputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Verify the panel and tumor outputs
+        Check the panel and corrected tumor outputs
       
     </span>
   </a>
@@ -1702,83 +1664,37 @@
   
 
 
-<h1 id="other-example-run-six-illumina-tumors-and-four-controls">Other Example Run: Six Illumina Tumors and Four Controls<a class="headerlink" href="#other-example-run-six-illumina-tumors-and-four-controls" title="Permanent link">&para;</a></h1>
-<p>This page is a <strong>command template</strong>, not a QuickStart. The repository does <strong>not</strong> include or download the <code>ONCO001</code>–<code>ONCO006</code> and <code>CTRL001</code>–<code>CTRL004</code> FASTQs. Nothing on this page can run until you provide all 20 paired-end files.</p>
-<p>The example shows how Automatic Setup generates a local qDNAseq panel of normals from four controls and applies it to six tumors. Corrected CNA outputs contain the six tumors; controls remain reference and quality-control inputs.</p>
-<p>The Docker commands use <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a>. On an HPC system configured with Singularity or Apptainer, use <code>--singularity</code> instead of <code>--docker</code>.</p>
-<h2 id="estimated-resources">Estimated resources<a class="headerlink" href="#estimated-resources" title="Permanent link">&para;</a></h2>
-<p>The first uncached run downloads hg38 and creates a BWA index. The pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. This example gives Nextflow a 20-logical-CPU view and does not request a GPU. Actual time and storage depend on the size of your FASTQs.</p>
-<h2 id="1-set-the-paths-and-check-the-programs">1. Set the paths and check the programs<a class="headerlink" href="#1-set-the-paths-and-check-the-programs" title="Permanent link">&para;</a></h2>
-<p>Use <code>/path/to/my/directory/oncotracer</code> for the repository. Keep the local sequencing project outside the Git clone.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-<span class="c1"># Enter the cloned repository.</span>
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
-
-<span class="c1"># Confirm the required launchers.</span>
-nextflow<span class="w"> </span>-version
-<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>docker
-<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>taskset
-
-<span class="c1"># Display the logical CPUs currently allowed for this shell.</span>
-taskset<span class="w"> </span>-pc<span class="w"> </span><span class="nv">$$</span>
+<h1 id="other-example-run-mock-six-tumorfour-normal-study">Other Example Run: Mock Six-Tumor/Four-Normal Study<a class="headerlink" href="#other-example-run-mock-six-tumorfour-normal-study" title="Permanent link">&para;</a></h1>
+<p>This mock example illustrates how OncoTracer uses four <code>NORMAL</code> samples to build a local qDNAseq panel of normals and applies that reference to six <code>TUMOR</code> samples. The names <code>ONCO001</code>–<code>ONCO006</code> and <code>CTRL001</code>–<code>CTRL004</code> are placeholders used to demonstrate the configuration.</p>
+<p>Corrected CNA outputs contain the six tumors. The four controls remain reference and quality-control inputs.</p>
+<h2 id="example-fastq-names">Example FASTQ names<a class="headerlink" href="#example-fastq-names" title="Permanent link">&para;</a></h2>
+<p>Automatic Setup matches each sample name to one R1/R2 pair:</p>
+<div class="highlight"><pre><span></span><code>ONCO001_R1.fastq.gz       ONCO001_R2.fastq.gz
+ONCO002_R1.fastq.gz       ONCO002_R2.fastq.gz
+ONCO003_R1.fastq.gz       ONCO003_R2.fastq.gz
+ONCO004_R1.fastq.gz       ONCO004_R2.fastq.gz
+ONCO005_R1.fastq.gz       ONCO005_R2.fastq.gz
+ONCO006_R1.fastq.gz       ONCO006_R2.fastq.gz
+CTRL001_R1.fastq.gz       CTRL001_R2.fastq.gz
+CTRL002_R1.fastq.gz       CTRL002_R2.fastq.gz
+CTRL003_R1.fastq.gz       CTRL003_R2.fastq.gz
+CTRL004_R1.fastq.gz       CTRL004_R2.fastq.gz
 </code></pre></div>
-<p>Continue with CPU IDs <code>0-19</code> only when those IDs belong to your allocation. Otherwise replace every <code>0-19</code> below with 20 CPUs assigned by your scheduler or administrator.</p>
-<h2 id="2-arrange-the-20-fastq-files">2. Arrange the 20 FASTQ files<a class="headerlink" href="#2-arrange-the-20-fastq-files" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path and create its directories.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work&quot;</span>
-</code></pre></div>
-<p>Place exactly one R1/R2 pair for each sample directly in <code>input/fastq</code>:</p>
+<p>A possible project layout is:</p>
 <div class="highlight"><pre><span></span><code>/path/to/my/directory/oncotracer_projects/onco6_ctrl4/
 ├── input/
 │   ├── samples.csv
 │   └── fastq/
-│       ├── ONCO001_R1.fastq.gz
-│       ├── ONCO001_R2.fastq.gz
-│       ├── ONCO002_R1.fastq.gz
-│       ├── ONCO002_R2.fastq.gz
-│       ├── ONCO003_R1.fastq.gz
-│       ├── ONCO003_R2.fastq.gz
-│       ├── ONCO004_R1.fastq.gz
-│       ├── ONCO004_R2.fastq.gz
-│       ├── ONCO005_R1.fastq.gz
-│       ├── ONCO005_R2.fastq.gz
-│       ├── ONCO006_R1.fastq.gz
-│       ├── ONCO006_R2.fastq.gz
-│       ├── CTRL001_R1.fastq.gz
-│       ├── CTRL001_R2.fastq.gz
-│       ├── CTRL002_R1.fastq.gz
-│       ├── CTRL002_R2.fastq.gz
-│       ├── CTRL003_R1.fastq.gz
-│       ├── CTRL003_R2.fastq.gz
-│       ├── CTRL004_R1.fastq.gz
-│       └── CTRL004_R2.fastq.gz
 ├── config/
 ├── results/
 └── work/
 </code></pre></div>
-<p>Automatic Setup expects one pair per sample in the top level of the FASTQ directory. It does not combine lane files recursively.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path.</span>
+<h2 id="create-the-mock-tumornormal-table">Create the mock tumor/normal table<a class="headerlink" href="#create-the-mock-tumornormal-table" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the mock-project path and create its input directory.</span>
 <span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span>
 
-<span class="c1"># Confirm that the input directory contains exactly 20 compressed FASTQs.</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq.gz&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
-</code></pre></div>
-<p>The command must print <code>20</code>.</p>
-<h2 id="3-create-the-tumornormal-table">3. Create the tumor/normal table<a class="headerlink" href="#3-create-the-tumornormal-table" title="Permanent link">&para;</a></h2>
-<p>Use this copy/paste-ready command. It creates or replaces the table instead of appending duplicate rows.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-<span class="c1"># Create the exact six-tumor/four-control table.</span>
+<span class="c1"># Create the exact six-tumor/four-normal sample table.</span>
 cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
 <span class="s">sample_name,status</span>
 <span class="s">ONCO001,TUMOR</span>
@@ -1796,31 +1712,14 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 <span class="c1"># Display the saved table.</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span>
 </code></pre></div>
-<p><code>sample_name</code> must match the text before <code>_R1</code> and <code>_R2</code>. Automatic Setup uses the four <code>NORMAL</code> rows to generate the local panel settings.</p>
-<h2 id="4-set-the-cpu-and-gpu-environment">4. Set the CPU and GPU environment<a class="headerlink" href="#4-set-the-cpu-and-gpu-environment" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
-
-<span class="c1"># Hide GPU devices because this example does not request a GPU.</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">NVIDIA_VISIBLE_DEVICES</span><span class="o">=</span>none
-<span class="nb">export</span><span class="w"> </span><span class="nv">SINGULARITYENV_CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">APPTAINERENV_CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
-
-<span class="c1"># Give each Nextflow controller a 20-CPU view and an 8 GiB JVM heap limit.</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">NXF_OPTS</span><span class="o">=</span><span class="s2">&quot;-XX:ActiveProcessorCount=20 -Xms512m -Xmx8g&quot;</span>
-</code></pre></div>
-<p><code>-Xmx8g</code> limits the Nextflow controller JVM, not the total analysis memory. Alignment and qDNAseq use additional RAM.</p>
-<h2 id="5-generate-the-yaml-automatically">5. Generate the YAML automatically<a class="headerlink" href="#5-generate-the-yaml-automatically" title="Permanent link">&para;</a></h2>
-<p><code>--auto_params</code> checks the 20 FASTQs, matches them to the sample table, writes <code>illumina.samplesheet.csv</code>, and writes <code>illumina.auto.yml</code>. It does not align reads or call CNAs.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
+<p><code>sample_name</code> must match the text before <code>_R1</code> and <code>_R2</code>. The four <code>NORMAL</code> rows tell Automatic Setup to enable the local qDNAseq reference.</p>
+<h2 id="generate-the-yaml-automatically">Generate the YAML automatically<a class="headerlink" href="#generate-the-yaml-automatically" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the repository and mock-project paths.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
 
-<span class="c1"># Validate the FASTQs and generate the Illumina YAML and samplesheet.</span>
-taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Validate the paired FASTQ mapping and generate the YAML and samplesheet.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1828,98 +1727,82 @@ taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m"
 <span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/auto_params&quot;</span>
 </code></pre></div>
-<p>Continue only after <code>AUTO_PARAMS SUCCESS</code> appears.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-<span class="c1"># Inspect the generated YAML.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
-
-<span class="c1"># Inspect the generated FASTQ-to-sample mapping.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
-
-<span class="c1"># Inspect sample counts and file hashes.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/auto_params_manifest.tsv&quot;</span>
-</code></pre></div>
-<p>The YAML must include:</p>
+<p>Automatic Setup writes ten sample rows and enables the local panel with settings equivalent to:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;CTRL001,CTRL002,CTRL003,CTRL004&quot;</span>
 <span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
 <span class="nt">illumina_pon_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CTRL001_CTRL002_CTRL003_CTRL004_PoN</span>
 <span class="nt">illumina_pon_min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
-<span class="nt">illumina_pon_r_container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project path.</span>
+<p>Inspect the generated files:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the mock-project path.</span>
 <span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
 
-<span class="c1"># Count the generated tumor rows.</span>
-grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,tumor$&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
+<span class="c1"># Review the generated run configuration and sample mapping.</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/auto_params_manifest.tsv&quot;</span>
 
-<span class="c1"># Count the generated normal rows.</span>
+<span class="c1"># Confirm the generated tumor and normal row counts.</span>
+grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,tumor$&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
 grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,normal$&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
 </code></pre></div>
-<p>The commands must print <code>6</code> and <code>4</code>.</p>
-<h2 id="6-run-the-analysis">6. Run the analysis<a class="headerlink" href="#6-run-the-analysis" title="Permanent link">&para;</a></h2>
-<h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
+<p>The final two commands should print <code>6</code> and <code>4</code>.</p>
+<h2 id="run-the-mock-configuration">Run the mock configuration<a class="headerlink" href="#run-the-mock-configuration" title="Permanent link">&para;</a></h2>
+<h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the repository and mock-project paths.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
 
-<span class="c1"># Run the generated configuration with Docker and resume support.</span>
-taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Create or reuse the required Conda environments and run the analysis.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the repository and mock-project paths.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+
+<span class="c1"># Run the same configuration with the maintained Docker image.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the repository and mock-project paths.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
 
-<span class="c1"># Run the same configuration through the HPC container option.</span>
-taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Run the same configuration through Singularity or Apptainer.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Keep the terminal open until Nextflow returns to the prompt. Do not start a second copy of the same analysis while it is active.</p>
-<h2 id="7-resume-an-interrupted-run">7. Resume an interrupted run<a class="headerlink" href="#7-resume-an-interrupted-run" title="Permanent link">&para;</a></h2>
-<p>Restore the environment variables from step 4, then use the same YAML and work directory:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and local-project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-<span class="c1"># Resume the existing Docker analysis.</span>
-taskset<span class="w"> </span>--cpu-list<span class="w"> </span><span class="m">0</span>-19<span class="w"> </span>nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<h2 id="8-verify-the-panel-and-tumor-outputs">8. Verify the panel and tumor outputs<a class="headerlink" href="#8-verify-the-panel-and-tumor-outputs" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the local-project and result paths.</span>
+<p>Use one execution option. With <code>--conda</code>, Nextflow creates and reuses the required environments automatically.</p>
+<h2 id="check-the-panel-and-corrected-tumor-outputs">Check the panel and corrected tumor outputs<a class="headerlink" href="#check-the-panel-and-corrected-tumor-outputs" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the mock-project result paths.</span>
 <span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
 <span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
 <span class="nv">PON</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq_local_pon&quot;</span>
 
-<span class="c1"># Require the successful panel completion marker.</span>
+<span class="c1"># Require the successful local-panel completion marker.</span>
 <span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>QDNASEQ_LOCAL_PON_SUCCESS<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;PoN completed successfully&quot;</span>
 
-<span class="c1"># Inspect the four-control manifest and leave-one-out control QC.</span>
+<span class="c1"># Review the four-control manifest and leave-one-out control QC.</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,10p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,10p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qc/normal_panel_sample_qc.tsv&quot;</span>
 
-<span class="c1"># List the corrected tumor bin files.</span>
+<span class="c1"># List the corrected tumor bin files and read the workflow summary.</span>
 find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/bins&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*_markdup_bins.bed&#39;</span><span class="w"> </span>-printf<span class="w"> </span><span class="s1">&#39;%f\n&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
-
-<span class="c1"># Read the final workflow summary.</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
 </code></pre></div>
-<p>The control files must contain <code>CTRL001</code> through <code>CTRL004</code>. Corrected tumor files must contain <code>ONCO001</code> through <code>ONCO006</code> and no controls.</p>
-<p>Four controls form a small, run-specific reference. Review the control QC before interpreting CNA calls. OncoTracer is for research use and is not a standalone diagnostic system.</p>
+<p>The control manifest and QC contain <code>CTRL001</code> through <code>CTRL004</code>. Corrected tumor outputs contain <code>ONCO001</code> through <code>ONCO006</code>.</p>
+<p>Four controls form a small, run-specific reference, so review the control QC before interpreting CNA calls. OncoTracer is for research use and is not a standalone diagnostic system.</p>
 
 
 

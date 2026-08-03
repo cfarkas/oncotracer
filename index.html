@@ -599,6 +599,34 @@
   
   
     <li class="md-nav__item">
+      <a href="poetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Poetry Launcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="quick_start/" class="md-nav__link">
         
   
@@ -834,7 +862,7 @@
   <span class="md-ellipsis">
     
   
-    Six Tumors + Four Controls (User Data Required)
+    Mock Six Tumors + Four Normal Controls
   
 
     
@@ -1119,7 +1147,7 @@
   <span class="md-ellipsis">
     
   
-    Containers and Execution
+    Execution Environments
   
 
     
@@ -1578,11 +1606,12 @@
 <h1 id="oncotracer">OncoTracer<a class="headerlink" href="#oncotracer" title="Permanent link">&para;</a></h1>
 <p><img alt="OncoTracer sequencing-to-CNA workflow" src="assets/oncotracer-hero.png" /></p>
 <p>OncoTracer is a reproducible Nextflow research workflow for <strong>low-pass whole-genome sequencing (LP-WGS)</strong>. It converts Illumina or Oxford Nanopore Technologies (ONT) FASTQ reads into <strong>copy-number alteration (CNA)</strong> tables, plots, and reports.</p>
-<p>Run OncoTracer through Nextflow with one container option:</p>
-<ul>
-<li><code>--docker</code> uses <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a>.</li>
-<li><code>--singularity</code> uses the same image as <code>docker://carlosfarkas/oncotracer:latest</code> on a configured HPC system.</li>
-</ul>
+<p>Choose one of three execution routes:</p>
+<ol>
+<li>Run Nextflow directly with <code>--docker</code> or <code>--singularity</code>.</li>
+<li>Use the <a href="poetry/">Poetry launcher</a>, which forwards commands to Nextflow and uses Docker by default.</li>
+<li>Run Nextflow directly with <code>--conda</code>; Nextflow creates and reuses the native environments automatically.</li>
+</ol>
 <h2 id="choose-where-to-start">Choose where to start<a class="headerlink" href="#choose-where-to-start" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1614,9 +1643,9 @@
 <td>Twelve public PRJNA754199 libraries</td>
 </tr>
 <tr>
-<td>See a tumor/control command template</td>
+<td>See how normal controls are used</td>
 <td><a href="six_tumor_four_control/">Other Example Run: six tumors and four controls</a></td>
-<td><strong>Not included</strong>; the user must provide all 20 FASTQs</td>
+<td>Mock six-tumor/four-normal example illustrating a local qDNAseq panel of normals</td>
 </tr>
 <tr>
 <td>Configure unusual paths or options</td>
@@ -1635,7 +1664,7 @@
 <p>For Illumina, zero <code>NORMAL</code> rows run without a local panel of normals, one normal is rejected, and two or more normals enable the local qDNAseq reference. Corrected CNA outputs contain tumor samples; controls remain reference and quality-control inputs. See <a href="auto_params/#illumina-step-by-step">Automatic Setup</a>, <a href="configuration/illumina/">Illumina setup</a>, and <a href="outputs/#illumina-local-panel-of-normals">output files</a>.</p>
 <h2 id="estimated-time-for-the-first-analysis">Estimated time for the first analysis<a class="headerlink" href="#estimated-time-for-the-first-analysis" title="Permanent link">&para;</a></h2>
 <p>The first uncached analysis downloads the hg38 reference (about <strong>3.16 GB</strong>) and creates a BWA index. This commonly takes <strong>30–60 minutes</strong>, and the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.</p>
-<p>QuickStart Example 1 additionally downloads about <strong>225 MB</strong> of reads. QuickStart Example 2 downloads about <strong>1.08 GiB</strong>.</p>
+<p>QuickStart Example 1 additionally downloads about <strong>225 MB</strong> of reads. QuickStart Example 2 downloads about <strong>1.08 GiB</strong>. A first Conda run also needs time and disk space to create its software environments; later runs reuse them.</p>
 <h2 id="what-the-workflow-does">What the workflow does<a class="headerlink" href="#what-the-workflow-does" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>FASTQ reads
     |
@@ -1677,13 +1706,13 @@
 </table>
 <h2 id="basic-run-pattern">Basic run pattern<a class="headerlink" href="#basic-run-pattern" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Install Java, Nextflow, and Docker or Singularity/Apptainer.</li>
+<li>Install Java, Nextflow, and Conda, Docker, or Singularity/Apptainer.</li>
 <li>Clone the repository.</li>
 <li>Generate a YAML with <code>--auto_params</code>, or edit one manually for an unusual layout.</li>
-<li>Run the YAML with <code>--docker</code> or <code>--singularity</code> and <code>-resume</code>.</li>
+<li>Run the YAML with <code>--conda</code>, <code>--docker</code>, or <code>--singularity</code> and <code>-resume</code>.</li>
 <li>Open <code>06_workflow_summary/workflow_summary.txt</code> and inspect the plots and tables.</li>
 </ol>
-<p><code>-resume</code> reuses unchanged completed tasks after an interruption or on a repeated command.</p>
+<p>With <code>--conda</code>, Nextflow creates the required environments automatically and reuses them on later runs. <code>-resume</code> reuses unchanged completed tasks after an interruption or on a repeated command.</p>
 <h2 id="research-use">Research use<a class="headerlink" href="#research-use" title="Permanent link">&para;</a></h2>
 <p>OncoTracer is not a standalone diagnostic system. Results require expert interpretation, laboratory validation, and integration with pathology and orthogonal molecular tests.</p>
 

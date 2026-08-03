@@ -486,6 +486,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../poetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Poetry Launcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../quick_start/" class="md-nav__link">
         
   
@@ -721,7 +749,7 @@
   <span class="md-ellipsis">
     
   
-    Six Tumors + Four Controls (User Data Required)
+    Mock Six Tumors + Four Normal Controls
   
 
     
@@ -1006,7 +1034,7 @@
   <span class="md-ellipsis">
     
   
-    Containers and Execution
+    Execution Environments
   
 
     
@@ -1468,10 +1496,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#adding-a-public-example" class="md-nav__link">
+  <a href="#adding-an-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adding a public example
+        Adding an example
       
     </span>
   </a>
@@ -1620,10 +1648,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#adding-a-public-example" class="md-nav__link">
+  <a href="#adding-an-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adding a public example
+        Adding an example
       
     </span>
   </a>
@@ -1671,7 +1699,7 @@
 <p>The examples use <code>/path/to/my/directory/oncotracer</code> as the repository path.</p>
 <h2 id="repository-map">Repository map<a class="headerlink" href="#repository-map" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>main.nf                         # top-level DSL2 workflow
-nextflow.config                 # defaults and runtime profiles
+nextflow.config                 # defaults and execution profiles
 params/                         # user-facing YAML templates
 bin/scripts/                    # launch, download, setup, and refinement helpers
 bin/cna_codification/           # event conversion and plotting code
@@ -1681,7 +1709,7 @@ examples/                       # public examples and provenance files
 tests/                          # focused source and behavior tests
 test/                           # downloaded fixtures, generated configs, work, and outputs
 </code></pre></div>
-<p>Do not commit patient data, credentials, container tokens, downloaded references, BAMs, FASTQs, <code>work/</code>, <code>.nextflow/</code>, or generated <code>site/</code> content.</p>
+<p>Do not commit patient data, credentials, registry tokens, downloaded references, BAMs, FASTQs, <code>work/</code>, <code>.nextflow/</code>, Conda caches, or generated <code>site/</code> content.</p>
 <h2 id="start-from-a-fresh-branch">Start from a fresh branch<a class="headerlink" href="#start-from-a-fresh-branch" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
@@ -1699,8 +1727,9 @@ git<span class="w"> </span>status<span class="w"> </span>--short
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
 
-<span class="c1"># Download and validate the public Illumina and ONT reads and generate their YAML files.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--make_test<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Create or reuse the Conda environment, download the public reads, and generate both YAML files.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--make_test<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span>
 
 <span class="c1"># Inspect both generated run plans.</span>
@@ -1725,10 +1754,10 @@ bash<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO
 <span class="c1"># Check documentation wording, paths, and command blocks.</span>
 python3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/tests/test_docs_style.py&quot;</span>
 
-<span class="c1"># Check the generated Illumina and ONT workflow connections.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Check the generated Illumina and ONT workflow connections with Conda.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/illumina.quickstart.yml&quot;</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/ont.quickstart.yml&quot;</span>
 
 <span class="c1"># Check whitespace and review the exact source changes.</span>
@@ -1740,14 +1769,14 @@ git<span class="w"> </span>status<span class="w"> </span>--short
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 
-<span class="c1"># Run or resume the public Illumina example.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Run or resume the public Illumina example with Conda.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/illumina.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 
 <span class="c1"># Run or resume the public ONT example after Illumina finishes.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/ont.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/ont&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
@@ -1756,7 +1785,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 python3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/examples/quickstart/verify_outputs.py&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span>
 </code></pre></div>
-<p>At least one uncached run is required when changing task commands, images, callers, parsing, or expected output files.</p>
+<p>At least one uncached run is required when changing task commands, environments, images, callers, parsing, or expected output files.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 
@@ -1787,8 +1816,9 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 
-<span class="c1"># Generate the HCC1143 YAML and samplesheet.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Create or reuse the Conda environment, then generate the HCC1143 YAML and samplesheet.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/public/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/public/hcc1143_lpwgs/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1796,17 +1826,17 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/runs/hcc1143_lpwgs&quot;</span>
 
 <span class="c1"># Check the generated workflow connections.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs_stub&quot;</span>
 
-<span class="c1"># Run or resume the three-library analysis.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Run or resume the three-library analysis with Conda.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>The six-tumor/four-control page is not a runnable repository test. Its FASTQs are not included or downloaded; it is a user-data command template.</p>
+<p>The six-tumor/four-normal page is a mock configuration example used to test and explain how normal controls enable a local qDNAseq panel of normals.</p>
 <h2 id="build-the-documentation">Build the documentation<a class="headerlink" href="#build-the-documentation" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
@@ -1838,9 +1868,9 @@ mkdocs<span class="w"> </span>serve
 <li>research-use limitations.</li>
 </ul>
 <p>Do not hide a scientific behavior change inside a formatting or dependency update.</p>
-<h2 id="adding-a-public-example">Adding a public example<a class="headerlink" href="#adding-a-public-example" title="Permanent link">&para;</a></h2>
+<h2 id="adding-an-example">Adding an example<a class="headerlink" href="#adding-an-example" title="Permanent link">&para;</a></h2>
 <p>A runnable public example should include accessions, stable URLs, byte counts, checksums, <code>gzip -t</code>, exact sample metadata, resource expectations, generated YAML, validation commands, and output verification. Do not commit large public FASTQs.</p>
-<p>A local-data template must state prominently that the data are not included and that the commands cannot run until the user supplies the files.</p>
+<p>A mock example should clearly state its teaching purpose and use obvious placeholder sample names.</p>
 <h2 id="before-requesting-review">Before requesting review<a class="headerlink" href="#before-requesting-review" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
@@ -1853,7 +1883,7 @@ git<span class="w"> </span>status<span class="w"> </span>--short
 python3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/tests/test_docs_style.py&quot;</span>
 mkdocs<span class="w"> </span>build<span class="w"> </span>--strict
 </code></pre></div>
-<p>Summarize the routes tested, whether runs were fresh or resumed, the selected runtime/image, and any test not performed. Deploy GitHub Pages only after source changes are reviewed and merged.</p>
+<p>Summarize the routes tested, whether runs were fresh or resumed, the selected execution environment, and any test not performed. Deploy GitHub Pages only after source changes are reviewed and merged.</p>
 
 
 

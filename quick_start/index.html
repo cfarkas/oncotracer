@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/quick_start/">
       
       
-        <link rel="prev" href="../installation/">
+        <link rel="prev" href="../poetry/">
       
       
         <link rel="next" href="../auto_params/">
@@ -488,6 +488,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../poetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Poetry Launcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -660,6 +688,17 @@
     <span class="md-ellipsis">
       
         Continue from here
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#poetry-alternative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry alternative
       
     </span>
   </a>
@@ -889,7 +928,7 @@
   <span class="md-ellipsis">
     
   
-    Six Tumors + Four Controls (User Data Required)
+    Mock Six Tumors + Four Normal Controls
   
 
     
@@ -1174,7 +1213,7 @@
   <span class="md-ellipsis">
     
   
-    Containers and Execution
+    Execution Environments
   
 
     
@@ -1655,6 +1694,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#poetry-alternative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry alternative
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1683,10 +1733,10 @@
 <p><a id="quick-start"></a></p>
 <h1 id="quickstart-example-1-one-illumina-and-one-ont-sample">QuickStart Example 1: one Illumina and one ONT sample<a class="headerlink" href="#quickstart-example-1-one-illumina-and-one-ont-sample" title="Permanent link">&para;</a></h1>
 <p>This tutorial downloads about <strong>225 MB</strong> of public reads, creates one Illumina YAML and one ONT YAML, runs both workflows, and verifies the main outputs.</p>
-<p>The commands use Docker. On an HPC system configured with Singularity or Apptainer, replace <code>--docker</code> with <code>--singularity</code>. See <a href="../installation/">Installation</a> and the maintained <a href="https://hub.docker.com/r/carlosfarkas/oncotracer">Docker image</a>.</p>
+<p>The commands use <code>--conda</code>. Nextflow creates and reuses the required Conda environments automatically. Install <a href="https://github.com/conda-forge/miniforge">Miniforge or Conda</a> first. Replace <code>--conda</code> with <code>--docker</code> for the maintained <a href="https://hub.docker.com/r/carlosfarkas/oncotracer">Docker image</a>, or with <code>--singularity</code> on a configured HPC system.</p>
 <p><a href="../assets/tutorial/quickstart_flow.svg"><img alt="Six-step OncoTracer QuickStart flow" src="../assets/tutorial/quickstart_flow.svg" /></a></p>
 <h2 id="estimated-time-for-this-analysis">Estimated time for this analysis<a class="headerlink" href="#estimated-time-for-this-analysis" title="Permanent link">&para;</a></h2>
-<p>The example reads are small, but an uncached first analysis also downloads hg38 and creates a BWA index. Indexing commonly takes <strong>30–60 minutes</strong>, and the pinned task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later <code>-resume</code> runs reuse a valid index.</p>
+<p>The first Conda run also creates the software environments. The example reads are small, but an uncached analysis downloads hg38 and creates the alignment indexes. Indexing can take tens of minutes and requires substantial memory, so provide at least 80 GiB of addressable RAM. Later <code>-resume</code> runs reuse the environments, reference, indexes, and unchanged completed tasks.</p>
 <h2 id="1-clone-oncotracer">1. Clone OncoTracer<a class="headerlink" href="#1-clone-oncotracer" title="Permanent link">&para;</a></h2>
 <p>Use <code>/path/to/my/directory/oncotracer</code> as the repository path throughout this tutorial.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
@@ -1704,8 +1754,8 @@ git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfark
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 
-<span class="c1"># Download and validate the public Illumina and ONT reads, then create both YAML files.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--make_test<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Create or reuse the Conda environment, download the reads, validate them, and create both YAML files.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--make_test<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span>
 </code></pre></div>
 <p>This step checks file size, MD5, and gzip integrity. It does not align reads or call CNAs.</p>
@@ -1745,8 +1795,8 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 
-<span class="c1"># Run the generated Illumina YAML with Docker and a reusable work directory.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Run the generated Illumina YAML with Conda and a reusable work directory.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/illumina.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
@@ -1763,8 +1813,8 @@ head<span class="w"> </span>-n<span class="w"> </span><span class="m">3</span><s
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 
-<span class="c1"># Run the generated ONT YAML after the Illumina run finishes.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Run the generated ONT YAML with Conda after the Illumina run finishes.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/ont.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/ont&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
@@ -1806,18 +1856,18 @@ python3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$R
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
 
-<span class="c1"># Prepare or revalidate the public reads and YAML files.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--make_test<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Prepare or revalidate the public reads and YAML files through Conda.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--make_test<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span>
 
-<span class="c1"># Run or resume the Illumina example.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Run or resume the Illumina example with Conda.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/illumina.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 
 <span class="c1"># Run or resume the ONT example after Illumina finishes.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/ont.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/ont&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
@@ -1831,8 +1881,20 @@ python3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$R
 <li><a href="../auto_params/">Automatic Setup</a> generates a YAML for your own Illumina or ONT FASTQs.</li>
 <li><a href="../public_cohort/">QuickStart Example 2</a> runs three public HCC1143 libraries.</li>
 <li><a href="../full_tutorial/">Full Tutorial</a> runs the 12 public PRJNA754199 libraries.</li>
-<li><a href="../six_tumor_four_control/">Other Example Run: six tumors and four controls</a> is a command template only. The <code>ONCO001</code>–<code>ONCO006</code> and <code>CTRL001</code>–<code>CTRL004</code> FASTQs are not included or downloaded.</li>
+<li><a href="../six_tumor_four_control/">Other Example Run: six tumors and four controls</a> is a mock example illustrating how four normal controls are used to correct six tumor profiles.</li>
 </ul>
+<h2 id="poetry-alternative">Poetry alternative<a class="headerlink" href="#poetry-alternative" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the launcher and run the same QuickStart configurations with Docker.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/illumina.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/poetry-illumina&quot;</span><span class="w"> </span>-resume
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/ont.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/poetry-ont&quot;</span><span class="w"> </span>-resume
+</code></pre></div>
 
 
 

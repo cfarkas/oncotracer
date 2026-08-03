@@ -491,6 +491,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../poetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Poetry Launcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../quick_start/" class="md-nav__link">
         
   
@@ -727,6 +755,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#poetry-alternative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry alternative
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -894,7 +933,7 @@
   <span class="md-ellipsis">
     
   
-    Six Tumors + Four Controls (User Data Required)
+    Mock Six Tumors + Four Normal Controls
   
 
     
@@ -1179,7 +1218,7 @@
   <span class="md-ellipsis">
     
   
-    Containers and Execution
+    Execution Environments
   
 
     
@@ -1665,6 +1704,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#poetry-alternative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry alternative
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1693,11 +1743,11 @@
 <p><a id="three-sample-hcc1143-public-cohort"></a></p>
 <h1 id="quickstart-example-2-three-sample-hcc1143-public-cohort">QuickStart Example 2: three-sample HCC1143 public cohort<a class="headerlink" href="#quickstart-example-2-three-sample-hcc1143-public-cohort" title="Permanent link">&para;</a></h1>
 <p>This example downloads and analyzes three paired-end HCC1143 low-pass whole-genome sequencing libraries: six public FASTQ files totaling about <strong>1.08 GiB</strong>. Complete <a href="../quick_start/">QuickStart Example 1</a> first.</p>
-<p>The commands use Docker. On an HPC system configured with Singularity or Apptainer, replace <code>--docker</code> with <code>--singularity</code>. The maintained image is <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a>.</p>
+<p>The commands use <code>--conda</code>. Nextflow creates and reuses the required Conda environments automatically. Replace <code>--conda</code> with <code>--docker</code> for <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a>, or with <code>--singularity</code> on a configured HPC system.</p>
 <p>This cohort is a software example. It is not a matched tumor/normal study and should not be used to infer treatment effects.</p>
 <h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
-<p>Use Linux with <a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">Git</a>, <a href="https://adoptium.net/temurin/releases/?version=17">Java 17</a> or newer, <a href="https://www.nextflow.io/docs/latest/install.html">Nextflow</a>, <a href="https://www.python.org/downloads/">Python 3</a>, <a href="https://www.htslib.org/download/">samtools</a>, <a href="https://github.com/lh3/bwa">BWA</a>, <a href="https://github.com/lh3/minimap2">minimap2</a>, <a href="https://zlib.net/pigz/">pigz</a>, <a href="https://curl.se/download.html">curl</a> or <a href="https://www.gnu.org/software/wget/">wget</a>, and either <a href="https://docs.docker.com/engine/install/">Docker Engine</a> or <a href="https://docs.sylabs.io/guides/latest/admin-guide/installation.html">SingularityCE</a>/<a href="https://apptainer.org/docs/admin/main/installation.html">Apptainer</a>.</p>
-<p>Plan for at least 40 GiB of free working space, 16 CPU cores, and 80 GiB of addressable RAM. The first uncached run downloads hg38 and creates a BWA index, which commonly takes <strong>30–60 minutes</strong> before alignment begins.</p>
+<p>Use Linux with <a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">Git</a>, <a href="https://adoptium.net/temurin/releases/?version=17">Java 17</a> or newer, <a href="https://www.nextflow.io/docs/latest/install.html">Nextflow</a>, <a href="https://github.com/conda-forge/miniforge">Miniforge or Conda</a>, <a href="https://www.python.org/downloads/">Python 3</a>, <a href="https://www.htslib.org/download/">samtools</a>, <a href="https://github.com/lh3/bwa">BWA</a>, <a href="https://github.com/lh3/minimap2">minimap2</a>, <a href="https://zlib.net/pigz/">pigz</a>, and <a href="https://curl.se/download.html">curl</a> or <a href="https://www.gnu.org/software/wget/">wget</a>.</p>
+<p>Plan for at least 40 GiB of free working space, 16 CPU cores, and 80 GiB of addressable RAM. The first Conda run creates the environments. The first uncached analysis also downloads hg38 and creates a BWA index, which can take tens of minutes before alignment begins.</p>
 <h2 id="public-data">Public data<a class="headerlink" href="#public-data" title="Permanent link">&para;</a></h2>
 <p>The libraries come from public project <a href="https://www.ebi.ac.uk/ena/browser/view/PRJNA454331">PRJNA454331</a>, associated with <a href="https://doi.org/10.1038/s41467-018-05729-w">Ben-David et al., <em>Nature Communications</em> (2018)</a>.</p>
 <table>
@@ -1820,8 +1870,8 @@ nano<span class="w"> </span>/path/to/my/directory/oncotracer/test/public/hcc1143
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
 
-<span class="c1"># Generate the Illumina YAML and R1/R2 samplesheet.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Create or reuse the Conda environment, then generate the Illumina YAML and R1/R2 samplesheet.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/public/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/public/hcc1143_lpwgs/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1846,7 +1896,7 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 
 <span class="c1"># Check the generated workflow connections without running the analysis tools.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs_stub&quot;</span>
 </code></pre></div>
@@ -1854,13 +1904,13 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 
-<span class="c1"># Run the generated HCC1143 configuration with Docker and resume support.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Run the generated HCC1143 configuration with Conda and resume support.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Keep the terminal open until Nextflow returns to the prompt. On HPC, replace only <code>--docker</code> with <code>--singularity</code>.</p>
+<p>Keep the terminal open until Nextflow returns to the prompt. Replace <code>--conda</code> with <code>--docker</code> or <code>--singularity</code> for a container run.</p>
 <h2 id="7-check-the-outputs">7. Check the outputs<a class="headerlink" href="#7-check-the-outputs" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and result paths.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
@@ -1896,15 +1946,23 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,40p
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
 
-<span class="c1"># Resume the existing HCC1143 analysis.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Resume the existing HCC1143 analysis with the same Conda environments.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
 <p>This example verifies multi-sample execution. It is not a matched tumor/normal design, does not establish treatment causality, and is not a clinical validation study.</p>
-<p>The <a href="../six_tumor_four_control/">Other Example Run: six tumors and four controls</a> shows a local panel-of-normals command pattern. Its <code>ONCO001</code>–<code>ONCO006</code> and <code>CTRL001</code>–<code>CTRL004</code> FASTQs are not included or downloaded; that page requires the user to supply all 20 files.</p>
+<p>The <a href="../six_tumor_four_control/">Other Example Run: six tumors and four controls</a> is a mock example illustrating how four normal controls are used to build a local qDNAseq reference for six tumors.</p>
+<h2 id="poetry-alternative">Poetry alternative<a class="headerlink" href="#poetry-alternative" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the generated HCC1143 configuration through Poetry and Docker.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/poetry-hcc1143&quot;</span><span class="w"> </span>-resume
+</code></pre></div>
 
 
 
