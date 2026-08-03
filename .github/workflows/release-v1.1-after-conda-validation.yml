@@ -1,7 +1,11 @@
-name: Release v1.1 after Conda validation
+name: Release v1.1 after full runtime validation
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Full v1.1 QuickStarts across Docker, Poetry, and Conda
+    types:
+      - completed
     branches:
       - main
 
@@ -11,49 +15,43 @@ permissions:
 
 jobs:
   release:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out the current main commit
+      - name: Check out the validated main commit
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - name: Require successful full Conda validation for this exact commit
+      - name: Confirm that the validated commit is current main
         env:
           GH_TOKEN: ${{ github.token }}
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -Eeuo pipefail
-          SHA="$GITHUB_SHA"
+          MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
 
-          MATCHES="$(gh api \
-            -H 'Accept: application/vnd.github+json' \
-            "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&per_page=100" \
-            --jq '[.workflow_runs[] | select(.name == "Full Conda QuickStarts for v1.1" and .status == "completed" and .conclusion == "success" and .head_sha == "'"$SHA"'")] | length')"
-
-          if [[ "$MATCHES" -lt 1 ]]; then
-            echo "ERROR: no successful full Conda QuickStart validation exists for exact main commit $SHA" >&2
-            gh api \
-              -H 'Accept: application/vnd.github+json' \
-              "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&per_page=100" \
-              --jq '.workflow_runs[] | [.name, .event, .status, .conclusion, .head_branch, .head_sha, .html_url] | @tsv' || true
+          if [[ "$VALIDATED_SHA" != "$MAIN_SHA" ]]; then
+            echo "ERROR: validated commit $VALIDATED_SHA is not current main $MAIN_SHA" >&2
             exit 1
           fi
 
-          echo "Found $MATCHES successful full Conda validation run(s) for $SHA."
+          echo "Validated current main commit: $VALIDATED_SHA"
 
       - name: Publish stable OncoTracer v1.1
         env:
           GH_TOKEN: ${{ github.token }}
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -Eeuo pipefail
-          SHA="$GITHUB_SHA"
 
           if gh release view v1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             git fetch --force --tags origin
             TAG_SHA="$(git rev-list -n 1 v1.1)"
-            if [[ "$TAG_SHA" != "$SHA" ]]; then
-              echo "ERROR: existing v1.1 points to $TAG_SHA, not validated main commit $SHA" >&2
+            if [[ "$TAG_SHA" != "$VALIDATED_SHA" ]]; then
+              echo "ERROR: existing v1.1 points to $TAG_SHA, not validated main commit $VALIDATED_SHA" >&2
               exit 1
             fi
 
@@ -67,21 +65,22 @@ jobs:
           cat > release-notes-v1.1.md <<EOF_NOTES
           # OncoTracer v1.1
 
-          Stable research release adding first-class Conda execution and clearer normal-control examples.
+          Stable research release adding first-class Conda execution and a Poetry-managed launcher while retaining Docker and Singularity/Apptainer support.
 
-          Validated on commit \`$SHA\` with both public QuickStarts using \`--conda\`:
+          Validated on commit \`$VALIDATED_SHA\` with both public QuickStarts across the release routes:
 
-          - QuickStart Example 1: public Illumina \`ERR12341627\` and ONT \`DRR165691\`, including SAMURAI, qDNAseq/ichorCNA, BAM refinement, CNA tables, plots, summaries, and the repository verifier.
-          - QuickStart Example 2: all three paired HCC1143 libraries, including Automatic Setup, three BAMs, qDNAseq segments, BAM refinement, CNA tables, plots, and summary checks.
+          - Docker: QuickStart 1 and the three-library HCC1143 QuickStart 2.
+          - Poetry with the Docker backend: QuickStart 1 and QuickStart 2.
+          - Conda: QuickStart 1 and QuickStart 2, with Nextflow creating and reusing the required environments.
 
-          With \`--conda\`, Nextflow creates and reuses the required environments automatically. Docker and Singularity/Apptainer remain supported execution options.
+          The validation includes public-read integrity checks, Automatic Setup, SAMURAI, qDNAseq/ichorCNA, BAM refinement, CNA tables, plots, summaries, and the repository output verifiers.
 
           OncoTracer is for research use and is not a standalone diagnostic system.
           EOF_NOTES
 
           gh release create v1.1 \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$SHA" \
+            --target "$VALIDATED_SHA" \
             --title "OncoTracer v1.1" \
             --notes-file release-notes-v1.1.md
 
