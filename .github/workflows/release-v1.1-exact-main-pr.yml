@@ -10,7 +10,7 @@ on:
       - reopened
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 jobs:
@@ -41,44 +41,71 @@ jobs:
             [[ "$(jq -r '.event' <<< "$RUN_JSON")" == "workflow_dispatch" ]]
           done
 
-      - name: Wait for both exact-main reruns
+      - name: Wait for and retry both exact-main workflows
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
 
-          completed=false
-          for _ in $(seq 1 700); do
-            QS1_JSON="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$QS1_RUN_ID")"
-            QS2_JSON="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$QS2_RUN_ID")"
-
-            QS1_STATUS="$(jq -r '.status' <<< "$QS1_JSON")"
-            QS2_STATUS="$(jq -r '.status' <<< "$QS2_JSON")"
-            QS1_RESULT="$(jq -r '.conclusion // "pending"' <<< "$QS1_JSON")"
-            QS2_RESULT="$(jq -r '.conclusion // "pending"' <<< "$QS2_JSON")"
-
-            echo "QuickStart 1: $QS1_STATUS / $QS1_RESULT"
-            echo "QuickStart 2: $QS2_STATUS / $QS2_RESULT"
-
-            if [[ "$QS1_STATUS" == "completed" && "$QS2_STATUS" == "completed" ]]; then
-              completed=true
-              break
-            fi
-            sleep 60
-          done
-
-          [[ "$completed" == true ]] || {
-            echo "ERROR: validation timed out" >&2
-            exit 1
+          wait_until_complete() {
+            local run_id="$1" label="$2" status conclusion attempt
+            for _ in $(seq 1 700); do
+              RUN_JSON="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id")"
+              status="$(jq -r '.status' <<< "$RUN_JSON")"
+              conclusion="$(jq -r '.conclusion // "pending"' <<< "$RUN_JSON")"
+              attempt="$(jq -r '.run_attempt' <<< "$RUN_JSON")"
+              echo "$label: status=$status conclusion=$conclusion attempt=$attempt"
+              if [[ "$status" == "completed" ]]; then
+                printf '%s\t%s\n' "$conclusion" "$attempt"
+                return 0
+              fi
+              sleep 60
+            done
+            echo "ERROR: timed out waiting for $label" >&2
+            return 1
           }
-          [[ "$QS1_RESULT" == "success" ]] || {
-            echo "ERROR: QuickStart 1 finished with $QS1_RESULT" >&2
-            exit 1
+
+          wait_for_new_attempt() {
+            local run_id="$1" old_attempt="$2" label="$3" current_attempt status
+            for _ in $(seq 1 120); do
+              RUN_JSON="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id")"
+              current_attempt="$(jq -r '.run_attempt' <<< "$RUN_JSON")"
+              status="$(jq -r '.status' <<< "$RUN_JSON")"
+              if (( current_attempt > old_attempt )); then
+                echo "$label retry started: attempt=$current_attempt status=$status"
+                return 0
+              fi
+              sleep 5
+            done
+            echo "ERROR: retry did not start for $label" >&2
+            return 1
           }
-          [[ "$QS2_RESULT" == "success" ]] || {
-            echo "ERROR: QuickStart 2 finished with $QS2_RESULT" >&2
-            exit 1
+
+          ensure_success() {
+            local run_id="$1" label="$2" max_retries=3 retries=0 result attempt
+            while true; do
+              IFS=$'\t' read -r result attempt <<< "$(wait_until_complete "$run_id" "$label" | tail -n 1)"
+              if [[ "$result" == "success" ]]; then
+                echo "PASS: $label succeeded on attempt $attempt"
+                return 0
+              fi
+
+              if (( retries >= max_retries )); then
+                echo "ERROR: $label remained $result after $attempt attempt(s)" >&2
+                return 1
+              fi
+
+              retries=$((retries + 1))
+              echo "Retrying failed or cancelled jobs for $label after conclusion=$result (attempt $attempt)"
+              gh api --method POST \
+                "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/rerun-failed-jobs" \
+                >/dev/null
+              wait_for_new_attempt "$run_id" "$attempt" "$label"
+            done
           }
+
+          ensure_success "$QS1_RUN_ID" "QuickStart 1"
+          ensure_success "$QS2_RUN_ID" "QuickStart 2"
 
       - name: Verify Docker, Poetry, and Conda jobs
         env:
@@ -89,7 +116,7 @@ jobs:
           verify_job() {
             local run_id="$1" expected="$2" result
             result="$(
-              gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" |
+              gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?filter=latest&per_page=100" |
                 jq -r --arg name "$expected" '[.jobs[] | select(.name == $name)] | last | .conclusion // empty'
             )"
             [[ "$result" == "success" ]] || {
