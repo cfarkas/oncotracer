@@ -1,0 +1,176 @@
+name: Apply v1.1 runtime fixes v2
+
+on:
+  push:
+    branches:
+      - agent/conda-docs-v1.1
+    paths:
+      - ".github/workflows/apply-v1.1-runtime-fixes-v2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/conda-docs-v1.1
+          fetch-depth: 0
+
+      - name: Apply final runtime and release fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          config = Path('nextflow.config')
+          text = config.read_text(encoding='utf-8')
+          old = "  docker_user = '1000:1000'"
+          new = (
+              "  // Evaluate the host UID/GID when Docker starts, preventing root-owned or unwritable work files.\n"
+              "  docker_user = '$(id -u):$(id -g)'"
+          )
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif "docker_user = '$(id -u):$(id -g)'" not in text:
+              raise SystemExit('Unexpected docker_user setting')
+          config.write_text(text, encoding='utf-8')
+
+          matrix = Path('.github/workflows/full-conda-quickstarts-v1.1.yml')
+          text = matrix.read_text(encoding='utf-8')
+          token = '  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n'
+          if token not in text:
+              marker = '  PIP_NO_CACHE_DIR: "1"\n'
+              if marker not in text:
+                  raise SystemExit('Full-validation env marker not found')
+              text = text.replace(marker, marker + token, 1)
+          matrix.write_text(text, encoding='utf-8')
+
+          ci = Path('.github/workflows/ci.yml')
+          text = ci.read_text(encoding='utf-8')
+          line = '          bash tests/test_runtime_release_config.sh\n'
+          if line not in text:
+              marker = '          bash tests/test_qdnaseq_conda_compat.sh\n'
+              if marker not in text:
+                  raise SystemExit('CI focused-test marker not found')
+              text = text.replace(marker, marker + line, 1)
+          ci.write_text(text, encoding='utf-8')
+
+          test = Path('tests/test_runtime_release_config.sh')
+          test.write_text('''#!/usr/bin/env bash
+set -Eeuo pipefail
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$ROOT"
+grep -F "docker_user = '\$(id -u):\$(id -g)'" nextflow.config >/dev/null
+grep -F 'GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}' .github/workflows/full-conda-quickstarts-v1.1.yml >/dev/null
+grep -F 'workflow_run:' .github/workflows/release-v1.1-after-conda-validation.yml >/dev/null
+grep -F 'Full v1.1 QuickStarts across Docker, Poetry, and Conda' .github/workflows/release-v1.1-after-conda-validation.yml >/dev/null
+echo "PASS: runtime and v1.1 release configuration"
+''', encoding='utf-8')
+
+          docs = Path('docs/containers.md')
+          text = docs.read_text(encoding='utf-8')
+          sentence = 'OncoTracer runs Docker processes with the current host UID and GID, so work and result files remain writable by the user who launched Nextflow.\n\n'
+          if sentence not in text:
+              heading = '# Execution environments\n\n'
+              text = text.replace(heading, heading + sentence, 1) if heading in text else sentence + text
+          docs.write_text(text, encoding='utf-8')
+          PY
+
+          cat > .github/workflows/release-v1.1-after-conda-validation.yml <<'EOF_RELEASE'
+          name: Release v1.1 after full runtime validation
+
+          on:
+            workflow_run:
+              workflows:
+                - Full v1.1 QuickStarts across Docker, Poetry, and Conda
+              types:
+                - completed
+              branches:
+                - main
+
+          permissions:
+            contents: write
+            actions: read
+
+          jobs:
+            release:
+              if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+              runs-on: ubuntu-latest
+
+              steps:
+                - name: Check out the validated main commit
+                  uses: actions/checkout@v4
+                  with:
+                    ref: ${{ github.event.workflow_run.head_sha }}
+                    fetch-depth: 0
+
+                - name: Require the successful matrix run to match current main
+                  env:
+                    GH_TOKEN: ${{ github.token }}
+                    VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+                  run: |
+                    set -Eeuo pipefail
+                    MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+                    if [[ "$VALIDATED_SHA" != "$MAIN_SHA" ]]; then
+                      echo "ERROR: validated commit $VALIDATED_SHA is not current main $MAIN_SHA" >&2
+                      exit 1
+                    fi
+                    echo "Validated current main commit: $VALIDATED_SHA"
+
+                - name: Publish stable OncoTracer v1.1
+                  env:
+                    GH_TOKEN: ${{ github.token }}
+                    VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+                  run: |
+                    set -Eeuo pipefail
+                    if gh release view v1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                      git fetch --force --tags origin
+                      TAG_SHA="$(git rev-list -n 1 v1.1)"
+                      if [[ "$TAG_SHA" != "$VALIDATED_SHA" ]]; then
+                        echo "ERROR: existing v1.1 points to $TAG_SHA, not validated main commit $VALIDATED_SHA" >&2
+                        exit 1
+                      fi
+                      echo "Stable v1.1 is already published for this validated commit."
+                      exit 0
+                    fi
+
+                    cat > release-notes-v1.1.md <<EOF_NOTES
+                    # OncoTracer v1.1
+
+                    Stable research release adding first-class Conda execution and a Poetry-managed launcher while retaining Docker and Singularity/Apptainer support.
+
+                    Validated on commit \`$VALIDATED_SHA\` with QuickStart 1 and QuickStart 2 through Docker, Poetry with the Docker backend, and Conda. The matrix covers public-read integrity checks, Automatic Setup, SAMURAI, qDNAseq/ichorCNA, BAM refinement, CNA tables, plots, summaries, and repository output verifiers.
+
+                    OncoTracer is for research use and is not a standalone diagnostic system.
+                    EOF_NOTES
+
+                    gh release create v1.1 \
+                      --repo "$GITHUB_REPOSITORY" \
+                      --target "$VALIDATED_SHA" \
+                      --title "OncoTracer v1.1" \
+                      --notes-file release-notes-v1.1.md
+          EOF_RELEASE
+
+          chmod +x tests/test_runtime_release_config.sh
+          bash -n tests/test_runtime_release_config.sh
+          bash tests/test_runtime_release_config.sh
+          grep -F "docker_user = '\$(id -u):\$(id -g)'" nextflow.config
+          grep -F 'GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}' .github/workflows/full-conda-quickstarts-v1.1.yml
+
+      - name: Commit the fixes to PR 12
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            nextflow.config \
+            .github/workflows/full-conda-quickstarts-v1.1.yml \
+            .github/workflows/release-v1.1-after-conda-validation.yml \
+            .github/workflows/ci.yml \
+            tests/test_runtime_release_config.sh \
+            docs/containers.md
+          git commit -m "Fix Docker ownership and authenticated v1.1 validation"
+          git push origin HEAD:agent/conda-docs-v1.1
