@@ -1,20 +1,17 @@
 name: Apply final concise clone documentation
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
-    types:
-      - opened
-      - synchronize
-      - reopened
+      - agent/final-simple-clone-docs
+    paths:
+      - .github/workflows/apply-final-simple-clone-docs.yml
 
 permissions:
   contents: write
 
 jobs:
   update-test-commit:
-    if: github.head_ref == 'agent/final-simple-clone-docs'
     runs-on: ubuntu-latest
     steps:
       - name: Check out documentation branch
