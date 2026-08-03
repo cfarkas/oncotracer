@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Require concise, copy/paste-ready repository examples."""
+"""Validate concise, copy/paste-ready repository examples."""
 
 from __future__ import annotations
 
