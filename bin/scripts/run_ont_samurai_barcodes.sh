@@ -317,6 +317,11 @@ command -v minimap2 >/dev/null 2>&1 || { echo "ERROR: minimap2 not found" >&2; e
 command -v samtools >/dev/null 2>&1 || { echo "ERROR: samtools not found" >&2; exit 1; }
 command -v nextflow >/dev/null 2>&1 || { echo "ERROR: nextflow not found" >&2; exit 1; }
 export NXF_SYNTAX_PARSER="$NFX_SYNTAX_PARSER"
+SAMURAI_REVISION="v1.4.0"
+SAMURAI_SOURCE_HELPER="$SCRIPT_DIR/prepare_samurai_source.sh"
+[[ -s "$SAMURAI_SOURCE_HELPER" ]] || { echo "ERROR: SAMURAI source helper not found: $SAMURAI_SOURCE_HELPER" >&2; exit 1; }
+SAMURAI_SOURCE="$(bash "$SAMURAI_SOURCE_HELPER" --lpwgs-root "$LPWGS_ROOT" --revision "$SAMURAI_REVISION")"
+[[ -s "$SAMURAI_SOURCE/main.nf" ]] || { echo "ERROR: prepared SAMURAI source is invalid: $SAMURAI_SOURCE" >&2; exit 1; }
 
 trim_ws() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"; printf '%s' "$s"; }
 sanitize_id() { local s; s="$(trim_ws "$1")"; s="${s// /_}"; printf '%s' "$s" | sed 's/[^A-Za-z0-9_.-]/_/g'; }
@@ -340,6 +345,10 @@ fi
 
 find_samurai_ichorcna_asset() {
   local filename="$1" root hit
+  if [[ -s "$SAMURAI_SOURCE/assets/ichorcna/$filename" ]]; then
+    echo "$SAMURAI_SOURCE/assets/ichorcna/$filename"
+    return 0
+  fi
   for root in \
     "$HOME/.nextflow/assets/.repos/dincalcilab/samurai/clones" \
     "$HOME/.nextflow/assets/dincalcilab/samurai" \
@@ -535,46 +544,23 @@ EOF
 
 echo "Created SAMURAI hg38 config: $LOCAL_CONFIG"
 
-NEED_SAMURAI_PULL=false
-[[ "$PATCH_SAMURAI" == "true" ]] && NEED_SAMURAI_PULL=true
-[[ "$CALLER" == "ichorcna" && ( "$AUTO_ICHORCNA_REFS" == "true" || "$AUTO_ICHORCNA_PON" == "true" || "$BUILD_PON" == "true" ) ]] && NEED_SAMURAI_PULL=true
-[[ "$QDNASEQ_BUILD_LOCAL_PON" == "true" ]] && NEED_SAMURAI_PULL=true
-if [[ "$NEED_SAMURAI_PULL" == "true" ]]; then
-  nextflow pull dincalcilab/samurai -r v1.4.0 || echo "WARNING: nextflow pull failed; using cached copy if present" >&2
-fi
-
 if [[ "$PATCH_SAMURAI" == "true" ]]; then
-  python - <<'PY'
+  python3 - "$SAMURAI_SOURCE/main.nf" <<'PY_PATCH_SAMURAI'
 from pathlib import Path
-roots = [
-    Path.home()/'.nextflow/assets/.repos/dincalcilab/samurai/clones',
-    Path.home()/'.nextflow/assets/dincalcilab/samurai',
-    Path.home()/'.nextflow-2510/assets/dincalcilab/samurai',
-]
+import sys
+
+path = Path(sys.argv[1])
 old = "dict = params.dict ? channel.fromPath(params.fai).map { it -> [[id: it.baseName], it] }.collect() : channel.empty()"
 new = "dict = params.dict ? channel.fromPath(params.dict).map { it -> [[id: it.baseName], it] }.collect() : channel.empty()"
-patched = False
-for root in roots:
-    if not root.exists():
-        continue
-    for p in root.rglob('main.nf'):
-        try:
-            txt = p.read_text()
-        except Exception:
-            continue
-        if new in txt:
-            print(f'No patch needed: {p}')
-            patched = True
-        elif old in txt:
-            bak = p.with_suffix('.nf.bak')
-            bak.write_text(txt)
-            p.write_text(txt.replace(old, new, 1))
-            print(f'Patched: {p}')
-            print(f'Backup : {bak}')
-            patched = True
-if not patched:
-    print('WARNING: could not find cached SAMURAI main.nf to patch')
-PY
+text = path.read_text(encoding="utf-8")
+if new in text:
+    print(f"No SAMURAI patch needed: {path}")
+elif old in text:
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    print(f"Patched SAMURAI dict input: {path}")
+else:
+    print(f"WARNING: SAMURAI dict typo pattern was not found: {path}")
+PY_PATCH_SAMURAI
 fi
 
 resolve_ichorcna_refs
@@ -1118,7 +1104,7 @@ echo "Prepared $n_samples sample(s): tumor=$TUMOR_COUNT normal=$NORMAL_COUNT"
 cat "$SAMPLESHEET"
 
 NF_CMD=(
-  nextflow run dincalcilab/samurai -r v1.4.0
+  nextflow run "$SAMURAI_SOURCE"
   -c "$LOCAL_CONFIG"
   -profile "$SAMURAI_PROFILE"
   -work-dir "$NXF_WORK"

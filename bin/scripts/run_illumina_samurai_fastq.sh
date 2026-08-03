@@ -99,6 +99,11 @@ DICT="${REF_FA%.fa}.dict"
 LOCAL_CONFIG="$RUN_ROOT/samurai_hg38.config"
 RUN_SAMPLESHEET="$RUN_ROOT/input/samplesheet.csv"
 BWA_INDEX_DIR="$(dirname "$REF_FA")/bwa"
+SAMURAI_REVISION="v1.4.0"
+SAMURAI_SOURCE_HELPER="$SCRIPT_DIR/prepare_samurai_source.sh"
+[[ -s "$SAMURAI_SOURCE_HELPER" ]] || { echo "ERROR: SAMURAI source helper not found: $SAMURAI_SOURCE_HELPER" >&2; exit 1; }
+SAMURAI_SOURCE="$(bash "$SAMURAI_SOURCE_HELPER" --lpwgs-root "$LPWGS_ROOT" --revision "$SAMURAI_REVISION")"
+[[ -s "$SAMURAI_SOURCE/main.nf" ]] || { echo "ERROR: prepared SAMURAI source is invalid: $SAMURAI_SOURCE" >&2; exit 1; }
 
 bwa_index_valid() {
   local index_dir="$1" extension
@@ -323,7 +328,7 @@ if [[ "$FORCE" == "true" ]]; then
 fi
 
 cd "$RUN_ROOT/nextflow_launch"
-nextflow run dincalcilab/samurai -r v1.4.0 \
+nextflow run "$SAMURAI_SOURCE" \
   -c "$LOCAL_CONFIG" \
   -profile "$SAMURAI_PROFILE" \
   -work-dir "$NXF_WORK" \
@@ -410,7 +415,7 @@ with open(bam_sheet, 'w', newline='') as handle:
 print(f'Prepared {len(rows)} BAM sample(s): {bam_sheet}')
 PY_BAM_FALLBACK
 
-  nextflow run dincalcilab/samurai -r v1.4.0 \
+  nextflow run "$SAMURAI_SOURCE" \
     -c "$LOCAL_CONFIG" \
     -profile "$SAMURAI_PROFILE" \
     -work-dir "$NXF_WORK" \
