@@ -1,0 +1,30 @@
+name: Audit documentation working directories
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: github.head_ref == 'agent/fix-copy-paste-relative-paths'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Report directory-changing commands and relative pipeline paths
+        run: |
+          echo '=== cd commands in public Markdown ==='
+          grep -R -n -E '^[[:space:]]*cd ' README.md docs examples --include='*.md' || true
+          echo '=== md5 commands in public Markdown ==='
+          grep -R -n -F 'md5sum -c' README.md docs examples --include='*.md' || true
+          echo '=== commands that derive paths from pwd ==='
+          grep -R -n -F '$(pwd)' README.md docs examples --include='*.md' || true
