@@ -4,9 +4,22 @@ This mock example illustrates how OncoTracer uses four `NORMAL` samples to build
 
 Corrected CNA outputs contain the six tumors. The four controls remain reference and quality-control inputs.
 
-## Example FASTQ names
+## 1. Clone OncoTracer
 
-Automatic Setup matches each sample name to one R1/R2 pair:
+Start from a fresh clone. In the commands below, the only path that needs to be edited is `/path/to/my/directory/oncotracer`; every other path is derived from `REPO_DIR`.
+
+```bash
+# Set the standard repository path.
+REPO_DIR=/path/to/my/directory/oncotracer
+
+# Clone OncoTracer and enter the repository.
+git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
+cd "$REPO_DIR"
+```
+
+## 2. Prepare the mock project
+
+Automatic Setup expects one R1/R2 pair for each sample:
 
 ```text
 ONCO001_R1.fastq.gz       ONCO001_R2.fastq.gz
@@ -21,10 +34,10 @@ CTRL003_R1.fastq.gz       CTRL003_R2.fastq.gz
 CTRL004_R1.fastq.gz       CTRL004_R2.fastq.gz
 ```
 
-A possible project layout is:
+The project is kept inside the clone so no second path needs to be edited:
 
 ```text
-/path/to/my/directory/oncotracer_projects/onco6_ctrl4/
+/path/to/my/directory/oncotracer/test/examples/onco6_ctrl4/
 ├── input/
 │   ├── samples.csv
 │   └── fastq/
@@ -33,14 +46,13 @@ A possible project layout is:
 └── work/
 ```
 
-## Create the mock tumor/normal table
-
 ```bash
-# Set the mock-project path and create its input directory.
-PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+# Derive the mock-project path from the repository clone.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
 mkdir -p "$PROJECT_DIR/input/fastq"
 
-# Create the exact six-tumor/four-normal sample table.
+# Create or replace the exact six-tumor/four-normal sample table.
 cat > "$PROJECT_DIR/input/samples.csv" <<'CSV'
 sample_name,status
 ONCO001,TUMOR
@@ -55,20 +67,22 @@ CTRL003,NORMAL
 CTRL004,NORMAL
 CSV
 
-# Display the saved table.
+# Display the saved table and the expected FASTQ folder.
 cat "$PROJECT_DIR/input/samples.csv"
+printf 'Place the paired FASTQs in: %s\n' "$PROJECT_DIR/input/fastq"
 ```
 
-`sample_name` must match the text before `_R1` and `_R2`. The four `NORMAL` rows tell Automatic Setup to enable the local qDNAseq reference.
+`sample_name` must match the filename text before `_R1` and `_R2`. The four `NORMAL` rows tell Automatic Setup to enable the local qDNAseq reference.
 
-## Generate the YAML automatically
+## 3. Generate the YAML automatically
 
 ```bash
-# Set the repository and mock-project paths.
+# Set the repository and mock-project paths and enter the clone.
 REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
+cd "$REPO_DIR"
 
-# Validate the paired FASTQ mapping and generate the YAML and samplesheet.
+# Validate the paired FASTQs and generate the YAML and samplesheet.
 nextflow run "$REPO_DIR/main.nf" --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
@@ -88,14 +102,15 @@ illumina_pon_name: CTRL001_CTRL002_CTRL003_CTRL004_PoN
 illumina_pon_min_mapq: 37
 ```
 
-Inspect the generated files:
+## 4. Inspect the generated files
 
 ```bash
-# Set the mock-project path.
-PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+# Set the repository and mock-project paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
 
 # Review the generated run configuration and sample mapping.
-sed -n '1,120p' "$PROJECT_DIR/config/illumina.auto.yml"
+sed -n '1,140p' "$PROJECT_DIR/config/illumina.auto.yml"
 sed -n '1,20p' "$PROJECT_DIR/config/illumina.samplesheet.csv"
 cat "$PROJECT_DIR/config/auto_params_manifest.tsv"
 
@@ -106,16 +121,16 @@ grep -c ',normal$' "$PROJECT_DIR/config/illumina.samplesheet.csv"
 
 The final two commands should print `6` and `4`.
 
-## Run the mock configuration
+## 5. Run the mock configuration
 
-Choose exactly one of the four methods below. All methods read the same generated YAML and illustrate the same four-control local qDNAseq reference.
+Choose exactly one method. Each command reads the same generated YAML; route-specific work directories prevent cache mixing.
 
 ### Docker
 
 ```bash
 # Run the mock configuration with the maintained Docker image.
 REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
 nextflow run "$REPO_DIR/main.nf" --docker \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/docker" \
@@ -127,7 +142,7 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 ```bash
 # Run the mock configuration through Singularity or Apptainer.
 REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
 nextflow run "$REPO_DIR/main.nf" --singularity \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/singularity" \
@@ -139,7 +154,7 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 ```bash
 # Install the launcher and run the mock configuration through Poetry with Docker.
 REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
 cd "$REPO_DIR"
 poetry install --no-interaction
 poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
@@ -153,20 +168,21 @@ poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
 ```bash
 # Create or reuse the native environments and run the mock configuration.
 REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
 nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/conda" \
   -resume
 ```
 
-Use one method. The Poetry example uses Docker as its scientific backend; `--backend singularity` and `--backend conda` are also accepted by the launcher.
+The Poetry launcher also accepts `--backend singularity` and `--backend conda`.
 
-## Check the panel and corrected tumor outputs
+## 6. Check the panel and corrected tumor outputs
 
 ```bash
-# Set the mock-project result paths.
-PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+# Set the repository, mock-project, and result paths.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
 OUT="$PROJECT_DIR/results"
 PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
 
@@ -178,7 +194,7 @@ test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = QDNASEQ_LOCAL_PON_SUCCE
 sed -n '1,10p' "$PON/pon/normal_panel_manifest.tsv"
 sed -n '1,10p' "$PON/qc/normal_panel_sample_qc.tsv"
 
-# List the corrected tumor bin files and read the workflow summary.
+# List corrected tumor bins and read the workflow summary.
 find "$PON/bins" -maxdepth 1 -type f -name '*_markdup_bins.bed' -printf '%f\n' | sort
 cat "$OUT/06_workflow_summary/workflow_summary.txt"
 ```
