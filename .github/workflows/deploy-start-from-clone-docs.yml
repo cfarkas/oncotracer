@@ -1,0 +1,49 @@
+name: Deploy start-from-clone documentation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-deploy:
+    if: github.head_ref == 'agent/deploy-start-from-clone-docs'
+    runs-on: ubuntu-latest
+    env:
+      TARGET_SHA: 1dc21f9d8b5aa7e50977487853ade96026cc40c2
+
+    steps:
+      - name: Check out the exact main documentation
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 0
+
+      - name: Validate all copy-paste examples
+        run: |
+          python3 tests/test_docs_style.py
+          python3 tests/test_examples_start_from_clone.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+
+          grep -F 'git clone https://github.com/cfarkas/oncotracer.git' \
+            site/six_tumor_four_control/index.html >/dev/null
+          grep -F 'test/examples/onco6_ctrl4' \
+            site/six_tumor_four_control/index.html >/dev/null
+          grep -F -- '--docker' site/six_tumor_four_control/index.html >/dev/null
+          grep -F -- '--singularity' site/six_tumor_four_control/index.html >/dev/null
+          grep -F 'poetry run oncotracer' site/six_tumor_four_control/index.html >/dev/null
+          grep -F -- '--conda' site/six_tumor_four_control/index.html >/dev/null
+
+      - name: Deploy the exact main documentation to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdocs gh-deploy --force --clean --remote-name origin --remote-branch gh-pages
