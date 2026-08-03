@@ -1,0 +1,20 @@
+name: Cancel obsolete PR25 QuickStart 2 runs
+
+on:
+  pull_request:
+    types: [synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-v1.1-quickstart2-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cancel:
+    if: github.event.pull_request.number == 25
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel the obsolete matrix through the shared concurrency group
+        run: echo 'Obsolete PR25 QuickStart 2 matrix cancelled.'
