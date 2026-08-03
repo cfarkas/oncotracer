@@ -63,10 +63,9 @@ Either `curl` or `wget` is sufficient. Confirm only the execution environment th
 
 ## 3. Clone OncoTracer
 
-Run the commands from the cloned `oncotracer` directory.
-
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
 ```
@@ -78,8 +77,6 @@ Choose one option.
 ### Conda
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Create or reuse the versioned Conda environment and test the software.
 nextflow run main.nf --install --conda \
   --lpwgs_root "test" \
@@ -94,8 +91,6 @@ On the first `--conda` run, Nextflow solves and creates the required environment
 ### Docker
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Pull or reuse the Docker image and test the installed software.
 nextflow run main.nf --install --docker \
   --lpwgs_root "test" \
@@ -108,8 +103,6 @@ cat ".oncotracer/install/install_manifest.txt"
 ### Singularity or Apptainer
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Pull or reuse the Singularity/Apptainer image and test the software.
 nextflow run main.nf --install --singularity \
   --lpwgs_root "test" \
@@ -144,7 +137,7 @@ QuickStart Example 1 is the recommended installation check.
 ## Poetry launcher installation
 
 ```bash
-# Install Poetry, enter the standard repository clone, and create its locked launcher environment.
+# Install the locked Poetry launcher environment.
 poetry install --no-interaction
 poetry run oncotracer --help
 ```
