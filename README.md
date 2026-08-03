@@ -96,19 +96,6 @@ nextflow run "$REPO_DIR/main.nf" --conda \
 
 The Poetry launcher also accepts `--backend singularity` and `--backend conda`; the example above uses Docker so that Poetry remains a distinct invocation method.
 
-## Poetry launcher
-
-```bash
-# Install the locked Poetry launcher in the repository clone.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
-poetry install --no-interaction
-
-# Launch OncoTracer through Poetry with Docker as the scientific backend.
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker   -params-file /path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml   -work-dir /path/to/my/directory/my_oncotracer_project/work   -resume
-```
-
-The Poetry launcher also accepts `--backend singularity` and `--backend conda`. See the [Poetry Launcher guide](https://cfarkas.github.io/oncotracer/poetry/).
 
 ## Run your own FASTQs
 
@@ -151,7 +138,7 @@ nextflow run "$REPO_DIR/main.nf" --conda \
 cat "$PROJECT_DIR/results/06_workflow_summary/workflow_summary.txt"
 ```
 
-Replace `--conda` with `--docker` for the maintained Docker image or with `--singularity` on a configured HPC system. `--auto_params` checks the supported FASTQ layout and writes the YAML used by the analysis command. For ONT barcode folders, use `--mode ont`. See [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) for complete Illumina and ONT examples.
+The example above uses Conda. The preceding four-route section gives the equivalent Docker, Singularity/Apptainer, and Poetry commands. `--auto_params` checks the supported FASTQ layout and writes the YAML used by the analysis command. For ONT barcode folders, use `--mode ont`. See [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) for complete Illumina and ONT examples.
 
 ## QuickStart Example 1: one public Illumina and one public ONT sample
 
