@@ -15,6 +15,7 @@ EOF
 LPWGS_ROOT=""
 REVISION="v1.4.0"
 REPOSITORY_URL="https://github.com/DIncalciLab/samurai.git"
+CACHE_FORMAT="2"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -28,6 +29,7 @@ done
 [[ -n "$LPWGS_ROOT" ]] || { echo "ERROR: --lpwgs-root is required" >&2; exit 2; }
 [[ "$REVISION" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "ERROR: invalid SAMURAI revision: $REVISION" >&2; exit 2; }
 command -v git >/dev/null 2>&1 || { echo "ERROR: git is required to prepare SAMURAI" >&2; exit 1; }
+command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 is required to prepare SAMURAI" >&2; exit 1; }
 
 LPWGS_ROOT="$(readlink -m "$LPWGS_ROOT")"
 CACHE_ROOT="$LPWGS_ROOT/.oncotracer/samurai"
@@ -36,7 +38,8 @@ LOCK_FILE="$CACHE_ROOT/.${REVISION}.lock"
 mkdir -p "$CACHE_ROOT"
 
 target_valid() {
-  [[ -s "$TARGET/main.nf" && -d "$TARGET/.git" ]]
+  [[ -s "$TARGET/main.nf" && -d "$TARGET/.git" && -s "$TARGET/.oncotracer-source" ]] || return 1
+  grep -qx "cache_format=$CACHE_FORMAT" "$TARGET/.oncotracer-source"
 }
 
 if target_valid; then
@@ -56,7 +59,7 @@ if target_valid; then
 fi
 
 if [[ -e "$TARGET" ]]; then
-  echo "Removing incomplete SAMURAI cache: $TARGET" >&2
+  echo "Removing incompatible or incomplete SAMURAI cache: $TARGET" >&2
   rm -rf -- "$TARGET"
 fi
 
@@ -77,9 +80,29 @@ GIT_TERMINAL_PROMPT=0 git clone \
   "$TMP" >&2
 
 [[ -s "$TMP/main.nf" ]] || { echo "ERROR: cloned SAMURAI source has no main.nf" >&2; exit 1; }
+
+# Apply the pinned v1.4.0 sequence-dictionary typo correction before the cache
+# is published, so every concurrent Docker, Poetry, Conda, or Singularity run
+# sees the same immutable prepared source tree.
+python3 - "$TMP/main.nf" <<'PY_PATCH'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+old = "dict = params.dict ? channel.fromPath(params.fai).map { it -> [[id: it.baseName], it] }.collect() : channel.empty()"
+new = "dict = params.dict ? channel.fromPath(params.dict).map { it -> [[id: it.baseName], it] }.collect() : channel.empty()"
+text = path.read_text(encoding="utf-8")
+if new in text:
+    pass
+elif old in text:
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+else:
+    raise SystemExit(f"ERROR: expected SAMURAI dictionary pattern was not found in {path}")
+PY_PATCH
+
 RESOLVED_COMMIT="$(git -C "$TMP" rev-parse HEAD)"
-printf 'revision=%s\ncommit=%s\nrepository=%s\n' \
-  "$REVISION" "$RESOLVED_COMMIT" "$REPOSITORY_URL" \
+printf 'cache_format=%s\nrevision=%s\ncommit=%s\nrepository=%s\n' \
+  "$CACHE_FORMAT" "$REVISION" "$RESOLVED_COMMIT" "$REPOSITORY_URL" \
   > "$TMP/.oncotracer-source"
 
 if mv -T "$TMP" "$TARGET" 2>/dev/null; then
