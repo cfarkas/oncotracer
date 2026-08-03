@@ -30,17 +30,18 @@ jobs:
         run: |
           python3 tests/test_docs_style.py
           python3 tests/test_examples_start_from_clone.py
+
+          grep -F 'git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"' \
+            docs/six_tumor_four_control.md >/dev/null
+          grep -F 'PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"' \
+            docs/six_tumor_four_control.md >/dev/null
+          grep -F -- '--docker' docs/six_tumor_four_control.md >/dev/null
+          grep -F -- '--singularity' docs/six_tumor_four_control.md >/dev/null
+          grep -F 'poetry run oncotracer' docs/six_tumor_four_control.md >/dev/null
+          grep -F -- '--conda' docs/six_tumor_four_control.md >/dev/null
+
           python3 -m pip install -r docs/requirements.txt
           mkdocs build --strict
-
-          grep -F 'git clone https://github.com/cfarkas/oncotracer.git' \
-            site/six_tumor_four_control/index.html >/dev/null
-          grep -F 'test/examples/onco6_ctrl4' \
-            site/six_tumor_four_control/index.html >/dev/null
-          grep -F -- '--docker' site/six_tumor_four_control/index.html >/dev/null
-          grep -F -- '--singularity' site/six_tumor_four_control/index.html >/dev/null
-          grep -F 'poetry run oncotracer' site/six_tumor_four_control/index.html >/dev/null
-          grep -F -- '--conda' site/six_tumor_four_control/index.html >/dev/null
 
       - name: Deploy the exact main documentation to gh-pages
         run: |
