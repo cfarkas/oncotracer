@@ -54,6 +54,14 @@ jobs:
           if removed != 1:
               raise SystemExit('Unable to remove the redundant README Conda sentence replacement')
           exec(compile(script, 'apply-runtime-docs-v1.1.py', 'exec'), {})
+
+          readme_path = Path('README.md')
+          readme = readme_path.read_text(encoding='utf-8')
+          readme = readme.replace(
+              'Nextflow creates and reuses the required native environments automatically from the versioned definitions.',
+              'Nextflow can create and reuse the required Conda environments automatically from the versioned definitions.',
+          )
+          readme_path.write_text(readme, encoding='utf-8')
           PY
 
       - name: Remove temporary patch workflows
