@@ -22,6 +22,7 @@ jobs:
 
       - name: Report clone commands, repository variables, and path placeholders
         run: |
+          # This audit is removed after the documentation transformation passes.
           echo '=== git clone occurrences ==='
           grep -R -n -F 'git clone https://github.com/cfarkas/oncotracer.git' \
             README.md docs examples params 2>/dev/null || true
