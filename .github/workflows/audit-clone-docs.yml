@@ -1,0 +1,29 @@
+name: Audit documentation clone commands
+
+on:
+  push:
+    branches:
+      - agent/simplify-clone-command-all-docs
+    paths:
+      - .github/workflows/audit-clone-docs.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Report clone commands, repository variables, and path placeholders
+        run: |
+          echo '=== git clone occurrences ==='
+          grep -R -n -F 'git clone https://github.com/cfarkas/oncotracer.git' \
+            README.md docs examples params 2>/dev/null || true
+          echo '=== REPO_DIR occurrences ==='
+          grep -R -n -F 'REPO_DIR=' README.md docs examples params 2>/dev/null || true
+          echo '=== standard path occurrences ==='
+          grep -R -n -F '/path/to/my/directory/oncotracer' \
+            README.md docs examples params 2>/dev/null || true
