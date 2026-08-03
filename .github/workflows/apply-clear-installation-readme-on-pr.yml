@@ -1,0 +1,73 @@
+name: Apply clearer README documentation on PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    if: github.head_ref == 'agent/clarify-installation-execution-readme'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out documentation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/clarify-installation-execution-readme
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Execute the versioned documentation patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/apply-clear-installation-readme.yml').read_text(encoding='utf-8')
+          marker_start = "          python3 - <<'PY'\n"
+          marker_end = "\n          PY\n"
+          if marker_start not in workflow or marker_end not in workflow:
+              raise SystemExit('Unable to locate the embedded README patch')
+          embedded = workflow.split(marker_start, 1)[1].split(marker_end, 1)[0]
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in embedded.splitlines()
+          )
+          exec(compile(script, 'apply-clear-installation-readme.py', 'exec'), {})
+          PY
+
+      - name: Remove temporary workflows
+        run: |
+          rm -f .github/workflows/apply-clear-installation-readme.yml
+          rm -f .github/workflows/apply-clear-installation-readme-on-pr.yml
+
+      - name: Validate documentation and examples
+        run: |
+          python3 tests/test_docs_style.py
+          python3 tests/test_examples_start_from_clone.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+          grep -F '[minimal Illumina YAML example](params/illumina.minimal.yml)' README.md >/dev/null
+          grep -F '### Installation and execution through Docker' README.md >/dev/null
+          grep -F '### Installation and execution through Singularity or Apptainer' README.md >/dev/null
+          grep -F '### Installation and execution through Poetry' README.md >/dev/null
+          grep -F '### Installation and execution through Conda' README.md >/dev/null
+          ! grep -R -F '/home/student/oncotracer' params README.md docs examples
+
+      - name: Commit and push documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md params tests .github/workflows
+          git commit -m "Docs: clarify installation and execution methods"
+          git push origin HEAD:agent/clarify-installation-execution-readme
