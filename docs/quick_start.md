@@ -4,7 +4,7 @@
 
 This tutorial downloads about **225 MB** of public reads, creates one Illumina YAML and one ONT YAML, runs both workflows, and verifies the main outputs.
 
-The commands use `--conda`. Nextflow creates and reuses the required Conda environments automatically. Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) first. Replace `--conda` with `--docker` for the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer), or with `--singularity` on a configured HPC system.
+Preparation is independent of the analysis backend. The walkthrough first demonstrates Conda, and [Choose one of four execution methods](#choose-one-of-four-execution-methods) provides complete Docker, Singularity/Apptainer, Poetry, and Conda command sets. Use only one method for a normal run.
 
 [![Six-step OncoTracer QuickStart flow](assets/tutorial/quickstart_flow.svg)](assets/tutorial/quickstart_flow.svg)
 
@@ -36,8 +36,8 @@ Skip the clone command when the repository already exists.
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Create or reuse the Conda environment, download the reads, validate them, and create both YAML files.
-nextflow run "$REPO_DIR/main.nf" --make_test --conda \
+# Download the reads, validate them, and create both YAML files.
+nextflow run "$REPO_DIR/main.nf" --make_test \
   --test_root "$REPO_DIR/test"
 ```
 
@@ -171,52 +171,104 @@ Important result folders are:
 
 These public outputs are also shown in the [Results Gallery](gallery.md).
 
-## Exact commands to repeat or resume
+## Choose one of four execution methods
+
+Run the common preparation command once, then choose exactly one analysis method below. Illumina must finish before ONT.
 
 ```bash
-# Set the standard repository path and enter it.
+# Set the repository path and prepare or revalidate the public reads and YAML files.
 REPO_DIR=/path/to/my/directory/oncotracer
 cd "$REPO_DIR"
-
-# Prepare or revalidate the public reads and YAML files through Conda.
-nextflow run "$REPO_DIR/main.nf" --make_test --conda \
+nextflow run "$REPO_DIR/main.nf" --make_test \
   --test_root "$REPO_DIR/test"
+```
 
-# Run or resume the Illumina example with Conda.
+### Docker
+
+```bash
+# Run or resume the Illumina example with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/docker-illumina" \
+  -resume
+
+# Run or resume the ONT example with Docker after Illumina finishes.
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/docker-ont" \
+  -resume
+```
+
+### Singularity or Apptainer
+
+```bash
+# Run or resume the Illumina example through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/singularity-illumina" \
+  -resume
+
+# Run or resume the ONT example through Singularity or Apptainer.
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/singularity-ont" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the locked Poetry launcher once.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+
+# Run or resume the Illumina example through Poetry with Docker.
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/poetry-illumina" \
+  -resume
+
+# Run or resume the ONT example through Poetry with Docker.
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/poetry-ont" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run or resume the Illumina example with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
 nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/illumina" \
+  -work-dir "$REPO_DIR/test/work/conda-illumina" \
   -resume
 
-# Run or resume the ONT example after Illumina finishes.
+# Run or resume the ONT example with native Conda environments.
 nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/ont" \
+  -work-dir "$REPO_DIR/test/work/conda-ont" \
   -resume
+```
 
-# Verify both completed runs.
+After both analyses finish, run the same verifier regardless of the selected method:
+
+```bash
+# Verify both completed QuickStart runs.
+REPO_DIR=/path/to/my/directory/oncotracer
 python3 "$REPO_DIR/examples/quickstart/verify_outputs.py" \
   --test-root "$REPO_DIR/test"
 ```
 
+The Poetry example uses Docker as its scientific backend. The launcher also accepts `--backend singularity` and `--backend conda`.
+
 ## Continue from here
 
-- [Automatic Setup](auto_params.md) generates a YAML for your own Illumina or ONT FASTQs.
+- [Automatic Setup](auto_params.md) generates a YAML for your own Illumina or ONT FASTQs and shows the same four execution methods.
 - [QuickStart Example 2](public_cohort.md) runs three public HCC1143 libraries.
 - [Full Tutorial](full_tutorial.md) runs the 12 public PRJNA754199 libraries.
 - [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a mock example illustrating how four normal controls are used to correct six tumor profiles.
-
-## Poetry alternative
-
-```bash
-# Install the launcher and run the same QuickStart configurations with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
-poetry install --no-interaction
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
-  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/poetry-illumina" -resume
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
-  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/poetry-ont" -resume
-```

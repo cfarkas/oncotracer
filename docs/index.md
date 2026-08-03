@@ -4,11 +4,14 @@
 
 OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-genome sequencing (LP-WGS)**. It converts Illumina or Oxford Nanopore Technologies (ONT) FASTQ reads into **copy-number alteration (CNA)** tables, plots, and reports.
 
-Choose one of three execution routes:
+Choose one of four supported ways to launch an analysis:
 
-1. Run Nextflow directly with `--docker` or `--singularity`.
-2. Use the [Poetry launcher](poetry.md), which forwards commands to Nextflow and uses Docker by default.
-3. Run Nextflow directly with `--conda`; Nextflow creates and reuses the native environments automatically.
+1. **Docker:** `nextflow run ... --docker`.
+2. **Singularity or Apptainer:** `nextflow run ... --singularity`.
+3. **Poetry launcher:** `poetry run oncotracer --backend docker ...`.
+4. **Conda:** `nextflow run ... --conda`; Nextflow creates and reuses the native environments automatically.
+
+Every QuickStart, the Full Tutorial, Automatic Setup, and the mock tumor/normal example provide explicit commands for all four methods.
 
 ## Choose where to start
 
@@ -61,7 +64,7 @@ FASTQ reads
 1. Install Java, Nextflow, and Conda, Docker, or Singularity/Apptainer.
 2. Clone the repository.
 3. Generate a YAML with `--auto_params`, or edit one manually for an unusual layout.
-4. Run the YAML with `--conda`, `--docker`, or `--singularity` and `-resume`.
+4. Run the YAML with Docker, Singularity/Apptainer, the Poetry launcher, or Conda and keep `-resume` enabled.
 5. Open `06_workflow_summary/workflow_summary.txt` and inspect the plots and tables.
 
 With `--conda`, Nextflow creates the required environments automatically and reuses them on later runs. `-resume` reuses unchanged completed tasks after an interruption or on a repeated command.

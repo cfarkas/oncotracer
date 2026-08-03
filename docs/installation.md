@@ -2,11 +2,12 @@
 
 OncoTracer runs on Linux. Nextflow can create the required Conda environments automatically or run the workflow with Docker or Singularity/Apptainer.
 
-Use one execution option:
+Use one launch method:
 
-- `--conda`: Nextflow creates and reuses the required environments from the versioned environment definitions.
-- `--docker`: uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
-- `--singularity`: uses `docker://carlosfarkas/oncotracer:latest` through Singularity or Apptainer.
+- **Docker:** `nextflow run ... --docker` uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
+- **Singularity or Apptainer:** `nextflow run ... --singularity` uses `docker://carlosfarkas/oncotracer:latest`.
+- **Poetry launcher:** `poetry run oncotracer --backend docker ...` manages the Python launcher and delegates the scientific execution to the selected backend.
+- **Conda:** `nextflow run ... --conda` creates and reuses the required environments from the versioned definitions.
 
 ## 1. Install the host prerequisites
 
