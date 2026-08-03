@@ -1,0 +1,106 @@
+name: Publish final OncoTracer v1.1
+
+on:
+  pull_request:
+    branches:
+      - agent/v1.1-release-base-docs
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_SHA: 032c1268fa7fdcadc48087055066d7a9fc59bd89
+      VALIDATED_CODE_SHA: 0f1a3d86521afcb5eac3ce6e65fd45d455e8c843
+    steps:
+      - name: Check out the final documented main commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 0
+
+      - name: Verify the final main commit and documentation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          [[ "$MAIN_SHA" == "$TARGET_SHA" ]] || {
+            echo "ERROR: current main is $MAIN_SHA, expected $TARGET_SHA" >&2
+            exit 1
+          }
+
+          git diff --quiet "$VALIDATED_CODE_SHA" "$TARGET_SHA" -- \
+            ':!README.md' ':!docs/**' ':!examples/**/README.md' ':!tests/test_docs_style.py' || {
+            echo "ERROR: final commit contains changes outside documentation and its regression test" >&2
+            git diff --name-only "$VALIDATED_CODE_SHA" "$TARGET_SHA" >&2
+            exit 1
+          }
+
+          python3 tests/test_docs_style.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+
+          grep -F '### Docker' docs/quick_start.md >/dev/null
+          grep -F '### Singularity or Apptainer' docs/quick_start.md >/dev/null
+          grep -F '### Poetry launcher' docs/quick_start.md >/dev/null
+          grep -F '### Conda' docs/quick_start.md >/dev/null
+          grep -F '### Docker' docs/six_tumor_four_control.md >/dev/null
+          grep -F '### Singularity or Apptainer' docs/six_tumor_four_control.md >/dev/null
+          grep -F '### Poetry launcher' docs/six_tumor_four_control.md >/dev/null
+          grep -F '### Conda' docs/six_tumor_four_control.md >/dev/null
+
+      - name: Publish stable v1.1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+
+          if gh release view v1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/v1.1" --jq '.sha')"
+            [[ "$TAG_SHA" == "$TARGET_SHA" ]] || {
+              echo "ERROR: existing v1.1 points to $TAG_SHA instead of $TARGET_SHA" >&2
+              exit 1
+            }
+            echo "OncoTracer v1.1 is already published for the final main commit."
+            exit 0
+          fi
+
+          cat > release-notes-v1.1.md <<EOF_NOTES
+          # OncoTracer v1.1
+
+          Stable research release with four clearly documented launch methods:
+
+          1. Nextflow with Docker (`--docker`)
+          2. Nextflow with Singularity or Apptainer (`--singularity`)
+          3. The Poetry-managed launcher (`poetry run oncotracer`)
+          4. Nextflow with native Conda environments (`--conda`)
+
+          QuickStart 1 and QuickStart 2 passed complete public-data validation through Docker, Poetry with Docker, and Conda on scientific-code commit \`$VALIDATED_CODE_SHA\`. Final commit \`$TARGET_SHA\` adds documentation and documentation-regression coverage only; it does not change the scientific workflow code.
+
+          The documentation now gives explicit Docker, Singularity/Apptainer, Poetry, and Conda commands in QuickStart 1, QuickStart 2, Automatic Setup, the complete PRJNA754199 tutorial, and the mock six-tumor/four-normal example.
+
+          Validation covered public-read integrity, Automatic Setup, SAMURAI, qDNAseq/ichorCNA, BAM refinement, CNA tables, plots, workflow summaries, BAM integrity, final output verifiers, portable Docker ownership, the Poetry launcher, native Conda environments, and the pinned local SAMURAI source cache.
+
+          Singularity/Apptainer uses the same maintained container image as Docker and is documented for configured HPC systems.
+
+          OncoTracer is for research use and is not a standalone diagnostic system.
+          EOF_NOTES
+
+          gh release create v1.1 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$TARGET_SHA" \
+            --title "OncoTracer v1.1" \
+            --notes-file release-notes-v1.1.md
+
+          TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/v1.1" --jq '.sha')"
+          [[ "$TAG_SHA" == "$TARGET_SHA" ]]
+          gh release view v1.1 \
+            --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,isDraft,isPrerelease,targetCommitish,publishedAt,url
