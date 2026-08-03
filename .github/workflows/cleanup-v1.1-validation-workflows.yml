@@ -1,0 +1,45 @@
+name: Clean up redundant v1.1 validation workflows
+
+on:
+  push:
+    branches:
+      - agent/conda-docs-v1.1
+    paths:
+      - ".github/workflows/cleanup-v1.1-validation-workflows.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the v1.1 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/conda-docs-v1.1
+          fetch-depth: 0
+
+      - name: Remove the superseded ONT-only workflow and this helper
+        run: |
+          set -Eeuo pipefail
+          mapfile -t matches < <(grep -l '^name: ONT QuickStart 1 fix$' .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null || true)
+          if (( ${#matches[@]} > 1 )); then
+            printf 'ERROR: multiple ONT-only workflows found:\n' >&2
+            printf '  %s\n' "${matches[@]}" >&2
+            exit 1
+          fi
+          if (( ${#matches[@]} == 1 )); then
+            echo "Removing redundant workflow: ${matches[0]}"
+            git rm -- "${matches[0]}"
+          else
+            echo "No redundant ONT-only workflow was found."
+          fi
+          git rm -- .github/workflows/cleanup-v1.1-validation-workflows.yml
+
+      - name: Commit workflow cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Consolidate v1.1 validation in the three-route QuickStart workflow"
+          git push origin HEAD:agent/conda-docs-v1.1
