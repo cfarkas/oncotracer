@@ -24,10 +24,14 @@ Do not commit patient data, credentials, registry tokens, downloaded references,
 ## Start from a fresh branch
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
+```bash
+# Run this command.
 git switch -c your-change-name
 
 # Confirm that the working tree contains only intended changes.
@@ -37,8 +41,6 @@ git status --short
 ## Prepare the small public test data
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Create or reuse the Conda environment, download the public reads, and generate both YAML files.
 nextflow run main.nf --make_test --conda \
   --lpwgs_root "test" \
@@ -54,8 +56,6 @@ Keep download preparation separate from workflow testing so a network or checksu
 ## Fast checks for every change
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Check Bash syntax in versioned shell scripts.
 find "bin" "examples" "tests" \
   -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
@@ -84,8 +84,6 @@ A stub run validates parameters, channels, and process connections. It does not 
 ## Full QuickStart verification
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Run or resume the public Illumina example with Conda.
 nextflow run main.nf --conda \
   -params-file "test/configs/illumina.quickstart.yml" \
@@ -106,8 +104,6 @@ python3 "examples/quickstart/verify_outputs.py" \
 At least one uncached run is required when changing task commands, environments, images, callers, parsing, or expected output files.
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Require representative Illumina and ONT outputs.
 test -s "test/runs/illumina/03_cna_codification/cna_events.tsv"
 test -s "test/runs/illumina/04_cna_custom_plots/cna_per_sample_pages.pdf"
@@ -137,8 +133,6 @@ CSV
 ```
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Create or reuse the Conda environment, then generate the HCC1143 YAML and samplesheet.
 nextflow run main.nf --auto_params --conda \
   --lpwgs_root "test" \
@@ -165,8 +159,6 @@ The six-tumor/four-normal page is a mock configuration example used to test and 
 ## Build the documentation
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Create and activate an isolated documentation environment.
 python3 -m venv ".venv-docs"
 source ".venv-docs/bin/activate"
@@ -206,8 +198,6 @@ A mock example should clearly state its teaching purpose and use obvious placeho
 ## Before requesting review
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Review changes and run the documentation checks.
 git diff --stat
 git diff --check

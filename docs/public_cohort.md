@@ -26,20 +26,19 @@ The libraries come from public project [PRJNA454331](https://www.ebi.ac.uk/ena/b
 
 All rows are labeled `TUMOR`. DMSO is a treatment control, not a normal genome. Exact URLs, byte counts, and checksums are stored in [`examples/hcc1143_lpwgs/manifest.tsv`](https://github.com/cfarkas/oncotracer/blob/main/examples/hcc1143_lpwgs/manifest.tsv).
 
-## 1. Clone the repository and create the data folder
-
-Run the commands from the cloned `oncotracer` directory.
+## 1. Clone OncoTracer
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
-
-# Enter the repository and create the HCC1143 data folder.
-mkdir -p "test/public/hcc1143_lpwgs"
 ```
 
-Skip the clone command when the repository already exists.
+```bash
+# Prepare the input files.
+mkdir -p "test/public/hcc1143_lpwgs"
+```
 
 <a id="2-download-the-six-fastq-files"></a>
 
@@ -85,20 +84,21 @@ curl --fail --location --continue-at - \
 
 ## 3. Verify the FASTQs and create `samples.csv`
 
-Use the copy/paste-ready `cat` block below. The single `>` replaces an existing table instead of appending duplicate rows.
+Use the copy/paste-ready block below. The validation runs in a subshell, so the terminal remains inside the cloned `oncotracer` directory afterward.
 
 ```bash
-# Set the standard repository and data paths.
+# Validate the six FASTQs and create the sample table.
 READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
+CHECKSUMS="$(pwd)/examples/hcc1143_lpwgs/checksums.md5"
 
-# Check all six MD5 values.
-cd "$READS_DIR"
-md5sum -c "examples/hcc1143_lpwgs/checksums.md5"
-
-# Check that all six gzip files are complete.
-gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
-  HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
-  HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
+# Check the MD5 values and compressed files without changing the current shell directory.
+(
+  cd "$READS_DIR"
+  md5sum -c "$CHECKSUMS"
+  gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
+    HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
+    HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
+)
 
 # Create or replace the exact HCC1143 sample table.
 cat > "$READS_DIR/samples.csv" <<'CSV'
@@ -128,8 +128,6 @@ Paste the same four lines, save with `Ctrl+O`, press Enter, and exit with `Ctrl+
 `--auto_params` matches the three sample names to their R1/R2 files, validates the FASTQs, writes `illumina.samplesheet.csv`, and writes `illumina.auto.yml`. It does not start alignment or CNA calling.
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.
 nextflow run main.nf --auto_params \
   --mode illumina \
@@ -140,8 +138,6 @@ nextflow run main.nf --auto_params \
 ```
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Display the generated YAML.
 sed -n '1,120p' "test/configs/hcc1143_lpwgs/illumina.auto.yml"
 
@@ -157,8 +153,6 @@ The generated samplesheet must contain three data rows, each with one R1 and one
 ## 5. Optional wiring check
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Check the generated workflow connections without running the analysis tools.
 nextflow run main.nf -stub-run --conda \
   -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
@@ -252,4 +246,3 @@ Repeat the command for the method you selected in [Run the analysis](#6-run-the-
 This example verifies multi-sample execution. It is not a matched tumor/normal design, does not establish treatment causality, and is not a clinical validation study.
 
 The [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a mock example illustrating how four normal controls are used to build a local qDNAseq reference for six tumors.
-

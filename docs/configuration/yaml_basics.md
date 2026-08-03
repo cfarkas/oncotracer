@@ -106,8 +106,6 @@ On Linux, an absolute path begins with `/`. In WSL, use Linux paths such as `/mn
 Use manual setup only when Automatic Setup does not fit the study.
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Copy the minimal Illumina template and edit the copy.
 cp "params/illumina.minimal.yml" "params/my_illumina.yml"
 nano "params/my_illumina.yml"
@@ -130,8 +128,6 @@ force: false
 Save Nano with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Inspect and run the copied YAML.
 sed -n '1,120p' "params/my_illumina.yml"
 nextflow run main.nf --docker \

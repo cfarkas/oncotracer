@@ -151,8 +151,6 @@ Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
 ## 6. Check and run
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Check parameters and workflow connections.
 nextflow run main.nf -stub-run --docker \
   -params-file "params/my_illumina_pathology.yml"

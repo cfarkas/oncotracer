@@ -21,10 +21,13 @@ Docker uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfa
 The [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/) explains each step and output.
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
+```bash
 # Download or reuse all 12 FASTQs and verify size, MD5, and gzip integrity.
 nextflow run main.nf --make_prjna754199 \
   --test_root "test" \
@@ -123,7 +126,7 @@ SUCCESS: complete PRJNA754199 tutorial outputs are verified.
 ## Generated layout
 
 ```text
-/path/to/my/directory/oncotracer/test/
+test/
 ├── public/prjna754199/
 │   ├── DDLPS_1a.fastq.gz
 │   ├── ...

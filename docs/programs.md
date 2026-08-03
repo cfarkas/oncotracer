@@ -63,7 +63,7 @@ pigz --version
 For Docker:
 
 ```bash
-# Run this command from the oncotracer directory.
+# Run OncoTracer through Docker.
 command -v docker
 
 # Let Nextflow prepare and test the maintained Docker image.
@@ -74,7 +74,7 @@ nextflow run main.nf --install --docker \
 For Singularity or Apptainer:
 
 ```bash
-# Run this command from the oncotracer directory.
+# Run OncoTracer through Singularity or Apptainer.
 command -v singularity
 command -v apptainer
 

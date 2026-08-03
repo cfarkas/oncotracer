@@ -16,7 +16,7 @@ Do not mix single-end and paired-end libraries in one run.
 ### 1. Arrange the FASTQs
 
 ```text
-/path/to/my/directory/oncotracer/project/input/illumina_fastq/
+project/input/illumina_fastq/
 ├── Patient_A_R1.fastq.gz
 ├── Patient_A_R2.fastq.gz
 ├── Patient_B_R1.fastq.gz
@@ -68,7 +68,7 @@ nextflow run main.nf --auto_params \
 Automatic Setup validates every gzip file and writes:
 
 ```text
-/path/to/my/directory/oncotracer/project/config/illumina/
+project/config/illumina/
 ├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
@@ -128,8 +128,6 @@ For a single-end run, keep the four-column header and leave `fastq_2` empty for 
 ### 2. Copy and edit the YAML
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Copy the minimal template and edit the copy.
 cp "params/illumina.minimal.yml" "params/my_illumina.yml"
 nano "params/my_illumina.yml"
@@ -163,8 +161,6 @@ The normal list must contain every and only samplesheet row marked `normal`. At 
 ### 3. Check and run the manual YAML
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Check workflow connections without running the scientific tools.
 nextflow run main.nf -stub-run --docker \
   -params-file "params/my_illumina.yml"

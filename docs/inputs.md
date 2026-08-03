@@ -8,8 +8,6 @@ Choose the route that matches your data. The optional pathology file does not re
 | ONT | One or more FASTQs inside each selected barcode directory | Automatic `barcode,sample_name,status` table, or manual barcode/sample lists in YAML |
 | Classifier plus pathology | Illumina or ONT input above | Pathology CSV with matching sample, case, and diagnosis columns |
 
-Run the commands from the cloned `oncotracer` directory.
-
 ## Recommended project tree
 
 ```text
@@ -179,7 +177,7 @@ gzip -t "$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz"
 `ont_folder` must be the parent of the barcode directories:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq_pass/
+project/input/fastq_pass/
 ├── barcode01/
 │   ├── reads_001.fastq.gz
 │   └── reads_002.fastq.gz

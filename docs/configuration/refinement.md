@@ -92,8 +92,6 @@ accept_rule: p_and_bic
 First prepare the public Illumina test and copy its generated YAML:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Download and validate the small public test data.
 nextflow run main.nf --make_test \
   --test_root "test"
@@ -120,8 +118,6 @@ accept_rule: p_and_bic
 ```
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Inspect, check, and run the conservative comparison.
 sed -n '1,180p' "params/illumina.conservative.yml"
 nextflow run main.nf -stub-run --docker \

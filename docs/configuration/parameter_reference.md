@@ -12,7 +12,7 @@ force: false
 ```
 
 ```bash
-# Run this command from the oncotracer directory.
+# Run OncoTracer through Docker.
 nextflow run main.nf --docker \
   -params-file "params/my_illumina.yml" \
   -resume

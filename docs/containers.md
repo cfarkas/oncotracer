@@ -8,15 +8,11 @@ Nextflow runs OncoTracer with one execution option per analysis command.
 | Linux workstation or server with Docker | `--docker` | [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer) |
 | HPC with Singularity or Apptainer | `--singularity` | `docker://carlosfarkas/oncotracer:latest` |
 
-Run the commands from the cloned `oncotracer` directory.
-
 ## Conda
 
 Install [Miniforge](https://github.com/conda-forge/miniforge) or another compatible Conda distribution, then run:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Create or reuse the required Conda environments and test the software.
 nextflow run main.nf --install --conda \
   --lpwgs_root "project"
@@ -36,8 +32,6 @@ Nextflow creates and reuses Conda environments automatically. The first command 
 ## Docker
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Pull or reuse the Docker image and test the installed software.
 nextflow run main.nf --install --docker \
   --lpwgs_root "project"
@@ -65,8 +59,6 @@ command -v apptainer
 Then use `--singularity`:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Pull or reuse docker://carlosfarkas/oncotracer:latest and test the software.
 nextflow run main.nf --install --singularity \
   --lpwgs_root "project"
@@ -114,8 +106,6 @@ docker_user: "1234:1234"
 ## Record the environment identity
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Read the environment or image identity recorded by the installation check.
 cat ".oncotracer/install/install_manifest.txt"
 ```

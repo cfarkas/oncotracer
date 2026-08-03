@@ -5,7 +5,7 @@ Poetry provides a managed Python launcher for OncoTracer. It does not replace th
 ## Install Poetry and the launcher
 
 ```bash
-# Run this command from the oncotracer directory.
+# Install or run OncoTracer through Poetry.
 poetry install --no-interaction
 poetry run oncotracer --help
 ```

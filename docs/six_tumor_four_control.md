@@ -9,7 +9,8 @@ Corrected CNA outputs contain the six tumors. The four controls remain reference
 Start from a fresh clone and run the remaining commands from the `oncotracer` directory.
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
 ```
@@ -34,7 +35,7 @@ CTRL004_R1.fastq.gz       CTRL004_R2.fastq.gz
 The project is kept inside the clone so no second path needs to be edited:
 
 ```text
-/path/to/my/directory/oncotracer/test/examples/onco6_ctrl4/
+test/examples/onco6_ctrl4/
 ├── input/
 │   ├── samples.csv
 │   └── fastq/

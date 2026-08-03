@@ -24,8 +24,6 @@ Choose one execution option:
 ## 1. Enter the repository and select an execution environment
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Confirm Nextflow and Conda for a --conda run.
 nextflow -version
 conda --version
@@ -42,7 +40,7 @@ For Docker, check `command -v docker`. For HPC, check `command -v singularity` o
 Input layout:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq/
+project/input/fastq/
 ├── Patient_A_R1.fastq.gz
 ├── Patient_A_R2.fastq.gz
 ├── Control_A_R1.fastq.gz
@@ -100,7 +98,7 @@ On the first `--conda` run, Nextflow creates the required environments. Replace 
 Input layout:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq_pass/
+project/input/fastq_pass/
 ├── barcode01/
 │   └── reads.fastq.gz
 ├── barcode02/
@@ -157,8 +155,6 @@ Use a manual YAML when Automatic Setup does not support the file naming or when 
 Illumina:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Copy the Illumina template and edit the copied YAML.
 cp "params/illumina.minimal.yml" "params/my_illumina.yml"
 nano "params/my_illumina.yml"
@@ -167,8 +163,6 @@ nano "params/my_illumina.yml"
 ONT:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Copy the ONT template and edit the copied YAML.
 cp "params/ont.minimal.yml" "params/my_ont.yml"
 nano "params/my_ont.yml"
@@ -183,8 +177,6 @@ Use absolute paths under `lpwgs_root` and do not add internal SAMURAI output pat
 Optional stub check:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Check parameters and workflow connections without running the analysis tools.
 nextflow run main.nf -stub-run --conda \
   -params-file "params/my_illumina.yml"
@@ -193,8 +185,6 @@ nextflow run main.nf -stub-run --conda \
 Real run:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Run or resume the checked Illumina YAML with Conda.
 nextflow run main.nf --conda \
   -params-file "params/my_illumina.yml" \

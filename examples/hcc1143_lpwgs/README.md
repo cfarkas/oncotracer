@@ -7,10 +7,14 @@ All rows use `TUMOR`. DMSO is a treatment control, not a normal genome.
 ## 1. Clone OncoTracer
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
+```bash
+# Prepare the input files.
 READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
 ```
@@ -56,15 +60,18 @@ curl --fail --location --continue-at - \
 ## 3. Validate the files and create the sample table
 
 ```bash
-# Set the repository and HCC1143 reads paths.
+# Validate the six FASTQs and create the sample table.
 READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
-cd "$READS_DIR"
+CHECKSUMS="$(pwd)/examples/hcc1143_lpwgs/checksums.md5"
 
-# Verify all six checksums and compressed FASTQs.
-md5sum -c "examples/hcc1143_lpwgs/checksums.md5"
-gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
-  HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
-  HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
+# Check the MD5 values and compressed files without changing the current shell directory.
+(
+  cd "$READS_DIR"
+  md5sum -c "$CHECKSUMS"
+  gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
+    HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
+    HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
+)
 
 # Create or replace the exact HCC1143 sample table.
 cat > "$READS_DIR/samples.csv" <<'CSV'

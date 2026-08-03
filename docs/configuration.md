@@ -64,8 +64,6 @@ Replace `--conda` with `--docker` or `--singularity` for the corresponding conta
 ### 1. Copy a template
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Copy the Illumina template to an editable file.
 cp "params/illumina.minimal.yml" "params/my_illumina.yml"
 
@@ -78,8 +76,6 @@ Do not edit the versioned template directly.
 ### 2. Resolve the project paths
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Print the absolute repository and project paths.
 realpath .
 realpath "project"
@@ -100,8 +96,6 @@ Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`. Do not use tabs.
 ### 4. Check the workflow wiring
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Validate parameters and workflow connections without running the analysis tools.
 nextflow run main.nf -stub-run --conda \
   -params-file "params/my_illumina.yml"
@@ -110,8 +104,6 @@ nextflow run main.nf -stub-run --conda \
 ### 5. Run the analysis
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Run or resume the manual Illumina YAML with Conda.
 nextflow run main.nf --conda \
   -params-file "params/my_illumina.yml" \

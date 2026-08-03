@@ -7,8 +7,6 @@ The examples use paths relative to the cloned `oncotracer` directory.
 ## Collect the basics
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Record versions, revision, storage, and local changes.
 git status --short
 git rev-parse --short HEAD
@@ -38,8 +36,6 @@ Install supported versions using [Installation](installation.md). Open a new she
 Docker:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Confirm Docker and test it through the OncoTracer installation route.
 command -v docker
 nextflow run main.nf --install --docker \
@@ -49,8 +45,6 @@ nextflow run main.nf --install --docker \
 Singularity or Apptainer:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Confirm the HPC launcher and test the runtime through Nextflow.
 command -v singularity
 command -v apptainer
@@ -82,8 +76,6 @@ Do not use `~`, unresolved relative paths, or samplesheet paths outside `lpwgs_r
 ## YAML parsing or missing parameters
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Inspect and check the YAML without running scientific tools.
 sed -n '1,160p' "params/my_run.yml"
 nextflow run main.nf -stub-run --docker \
@@ -179,7 +171,7 @@ gzip -t /path/to/sample.fastq.gz && echo 'gzip: OK'
 ## Not enough disk or memory
 
 ```bash
-# Run this command from the oncotracer directory.
+# Run this command.
 df -h . /tmp
 du -h -d 2 . 2>/dev/null | sort -h | tail -30
 ```
@@ -202,7 +194,7 @@ Changing log timestamps and CPU activity indicate progress.
 ## Find the real task error
 
 ```bash
-# Run this command from the oncotracer directory.
+# Inspect the generated files.
 tail -n 120 ".nextflow.log"
 
 # Replace the example task hash with the failed work directory shown by Nextflow.

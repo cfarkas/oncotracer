@@ -28,6 +28,15 @@ Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-G
 
 The first uncached analysis downloads the hg38 reference (about **3.16 GB**) and creates a BWA index. This commonly takes **30–60 minutes**, and the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 <a id="four-equivalent-analysis-commands"></a>
 
 ## Four installation and execution methods
@@ -138,10 +147,14 @@ CONTROL_02,NORMAL
 Generate the configuration and run it:
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
+```bash
+# Generate the OncoTracer configuration.
 PROJECT_DIR="$(pwd)/project"
 
 # Generate an Illumina YAML and samplesheet from the FASTQ folder and sample table.
@@ -169,10 +182,14 @@ The example above uses Conda. The preceding four-route section gives the equival
 This verification downloads about **225 MB** of public reads and runs both branches. The compact commands below use Docker. The complete QuickStart page provides explicit Docker, Singularity/Apptainer, Poetry, and Conda command sets.
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
+```bash
+# Download and validate the QuickStart reads.
 TEST_ROOT="$(pwd)/test"
 
 # Download and validate the public reads, then create both YAML files.

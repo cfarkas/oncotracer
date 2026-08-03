@@ -11,7 +11,7 @@ The examples use paths relative to the cloned `oncotracer` directory.
 Point `--reads_folder` at the parent `fastq_pass` directory:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq_pass/
+project/input/fastq_pass/
 ├── barcode01/
 │   ├── reads_001.fastq.gz
 │   └── reads_002.fastq.gz
@@ -110,8 +110,6 @@ Use a manual YAML when selecting only some barcodes, using a custom reference, o
 ### 1. Copy and edit the template
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Copy the ONT template and edit the copy.
 cp "params/ont.minimal.yml" "params/my_ont.yml"
 nano "params/my_ont.yml"
@@ -140,8 +138,6 @@ ont_normal_sample_names: Patient_Normal
 ### 2. Check and run
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Check workflow connections without running the analysis tools.
 nextflow run main.nf -stub-run --docker \
   -params-file "params/my_ont.yml"

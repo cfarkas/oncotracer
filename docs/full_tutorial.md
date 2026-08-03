@@ -26,17 +26,14 @@ The associated PLOS ONE article describes 41 plasma specimens from 15 patients. 
 
 Use Linux with at least 150 GiB of free working space, 16 CPU cores, and at least 80 GiB of addressable RAM. The first uncached run downloads hg38 and creates a BWA index. Indexing commonly takes **30–60 minutes** before alignment begins, and the complete 12-library analysis can take several hours.
 
-## 1. Clone the repository
-
-Use `/path/to/my/directory/oncotracer` throughout this tutorial.
+## 1. Clone OncoTracer
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
 ```
-
-Skip the clone command when the repository already exists.
 
 <a id="2-prepare-software-only"></a>
 
@@ -45,8 +42,6 @@ Skip the clone command when the repository already exists.
 Docker:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Pull or reuse the Docker image and test the required software.
 nextflow run main.nf --install --docker \
   --lpwgs_root "test" \
@@ -56,8 +51,6 @@ nextflow run main.nf --install --docker \
 Singularity or Apptainer:
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Prepare the same workflow image through the HPC container option.
 nextflow run main.nf --install --singularity \
   --lpwgs_root "test" \
@@ -89,8 +82,6 @@ The installation route checks the software and stops. It does not download patie
 ## 3. Download and validate the 12 public FASTQs
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Download or reuse all 12 FASTQs and verify size, MD5, and gzip integrity.
 nextflow run main.nf --make_prjna754199 \
   --test_root "test" \
@@ -137,8 +128,6 @@ See [`examples/prjna754199/manifest.tsv`](https://github.com/cfarkas/oncotracer/
 `--auto_params` matches the 12 sample names to the single-end FASTQs, validates the files, and writes the YAML and samplesheet. It does not start the analysis.
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Generate the 12-sample Illumina configuration and enable CNA-only reports.
 nextflow run main.nf --auto_params \
   --mode illumina \
@@ -153,8 +142,6 @@ nextflow run main.nf --auto_params \
 ```
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # List the generated YAML, samplesheet, and manifest.
 ls -1 "test/configs/prjna754199"
 
@@ -171,7 +158,7 @@ cat "test/configs/prjna754199/auto_params_manifest.tsv"
 The configuration directory contains:
 
 ```text
-/path/to/my/directory/oncotracer/test/configs/prjna754199/
+test/configs/prjna754199/
 ├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
@@ -238,8 +225,6 @@ Keep the terminal open until Nextflow returns to the prompt. To resume, repeat t
 ## 6. Verify the completed run
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Verify the exact 12 samples and all required output groups.
 python3 "examples/prjna754199/verify_outputs.py" \
   --outdir "test/runs/prjna754199"

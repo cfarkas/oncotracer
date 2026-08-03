@@ -18,14 +18,15 @@ The generated YAML can be run in four ways:
 
 ## Before you begin
 
-Run the commands from the cloned `oncotracer` directory.
-
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
-# Enter the repository and confirm Nextflow is available.
+```bash
+# Run this command.
 nextflow -version
 ```
 
@@ -55,7 +56,7 @@ nextflow run main.nf --docker|--singularity|--conda -params-file generated.yml -
 For paired-end data, keep one R1 and one R2 file per sample directly inside one folder:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq/
+project/input/fastq/
 ├── TUMOR_01_R1.fastq.gz
 ├── TUMOR_01_R2.fastq.gz
 ├── TUMOR_02_R1.fastq.gz
@@ -121,7 +122,7 @@ Automatic Setup runs `gzip -t` on every compressed FASTQ. It stops when a file i
 The generated directory contains:
 
 ```text
-/path/to/my/directory/oncotracer/project/config/
+project/config/
 ├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
@@ -251,7 +252,7 @@ See [Output files](outputs.md#illumina-local-panel-of-normals) for the complete 
 Point `--reads_folder` at the `fastq_pass` directory. Each barcode folder must contain at least one FASTQ:
 
 ```text
-/path/to/my/directory/oncotracer/project/fastq_pass/
+project/fastq_pass/
 ├── barcode01/
 │   └── reads_001.fastq.gz
 ├── barcode02/
