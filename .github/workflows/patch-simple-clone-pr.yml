@@ -1,0 +1,71 @@
+name: Apply simplified clone documentation on PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    if: github.head_ref == 'agent/simplify-clone-command-all-docs'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out documentation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/simplify-clone-command-all-docs
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Execute the versioned documentation transformation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/apply-simple-clone-docs.yml').read_text(encoding='utf-8')
+          marker_start = "          python3 - <<'PY'\n"
+          marker_end = "\n          PY\n"
+          if marker_start not in workflow or marker_end not in workflow:
+              raise SystemExit('Unable to locate the embedded documentation transformation')
+          embedded = workflow.split(marker_start, 1)[1].split(marker_end, 1)[0]
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in embedded.splitlines()
+          )
+          exec(compile(script, 'simplify-clone-docs.py', 'exec'), {})
+          PY
+
+      - name: Remove temporary branch workflows
+        run: |
+          rm -f .github/workflows/audit-clone-docs.yml
+          rm -f .github/workflows/apply-simple-clone-docs.yml
+
+      - name: Validate every documented command
+        run: |
+          python3 tests/test_docs_style.py
+          python3 tests/test_examples_start_from_clone.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+          ! grep -R -n -E 'REPO_DIR=|\$REPO_DIR' README.md docs examples
+          ! grep -R -n -F 'git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"' README.md docs examples
+          grep -R -n -F 'git clone https://github.com/cfarkas/oncotracer.git' README.md docs examples >/dev/null
+          grep -R -n -F 'cd oncotracer' README.md docs examples >/dev/null
+
+      - name: Commit and push the simplified documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs examples tests .github/workflows
+          git commit -m "Docs: simplify clone commands across all examples"
+          git push origin HEAD:agent/simplify-clone-command-all-docs
