@@ -18,7 +18,7 @@ mkdir -p "$READS_DIR"
 ## 2. Download the six FASTQs
 
 ```bash
-# Set the repository and HCC1143 reads paths.
+# Set the HCC1143 reads path.
 READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
 
@@ -56,15 +56,18 @@ curl --fail --location --continue-at - \
 ## 3. Validate the files and create the sample table
 
 ```bash
-# Set the repository and HCC1143 reads paths.
-READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
-cd "$READS_DIR"
+# Set the repository root and HCC1143 reads directory.
+ROOT="$(pwd)"
+READS_DIR="$ROOT/test/public/hcc1143_lpwgs"
 
-# Verify all six checksums and compressed FASTQs.
-md5sum -c "examples/hcc1143_lpwgs/checksums.md5"
-gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
-  HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
-  HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
+# Verify checksums and gzip integrity without changing the parent shell.
+(
+  cd "$READS_DIR"
+  md5sum -c "$ROOT/examples/hcc1143_lpwgs/checksums.md5"
+  gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
+    HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
+    HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
+)
 
 # Create or replace the exact HCC1143 sample table.
 cat > "$READS_DIR/samples.csv" <<'CSV'
@@ -78,12 +81,12 @@ CSV
 cat "$READS_DIR/samples.csv"
 ```
 
-`md5sum` should print `OK` six times. `gzip -t` is silent when every file is valid.
+`md5sum` should print `OK` six times. `gzip -t` is silent when every file is valid. The subshell returns to the `oncotracer` directory automatically.
 
 ## 4. Generate the configuration
 
 ```bash
-# Set the repository and reads paths and enter the clone.
+# Set the HCC1143 reads path.
 READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 
 # Generate the paired-end samplesheet and YAML without starting analysis.
@@ -141,7 +144,7 @@ nextflow run main.nf --conda \
 ## 6. Check the completed outputs
 
 ```bash
-# Set the repository and result paths.
+# Set the result path.
 OUT="$(pwd)/test/runs/hcc1143_lpwgs"
 
 # List the aligned BAMs and confirm all three samples in qDNAseq output.
