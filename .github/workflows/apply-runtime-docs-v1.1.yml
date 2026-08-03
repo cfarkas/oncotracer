@@ -1,0 +1,893 @@
+name: Apply four-route documentation updates
+
+on:
+  push:
+    branches:
+      - agent/docs-all-runtime-routes-v1.1
+    paths:
+      - .github/workflows/apply-runtime-docs-v1.1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out documentation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/docs-all-runtime-routes-v1.1
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Apply consistent Docker, Singularity, Poetry, and Conda examples
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          ROOT = Path.cwd()
+
+          def read(path: str) -> str:
+              return (ROOT / path).read_text(encoding="utf-8")
+
+          def write(path: str, text: str) -> None:
+              (ROOT / path).write_text(text, encoding="utf-8")
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              text = read(path)
+              if old not in text:
+                  raise SystemExit(f"Missing exact text in {path}: {old[:100]!r}")
+              write(path, text.replace(old, new, 1))
+
+          def replace_regex(path: str, pattern: str, replacement: str) -> None:
+              text = read(path)
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f"Pattern matched {count} times in {path}: {pattern}")
+              write(path, updated)
+
+          # ------------------------------------------------------------------
+          # Repository front page
+          # ------------------------------------------------------------------
+          replace_regex(
+              "README.md",
+              r"Run OncoTracer by one of three routes:\n\n1\. \*\*Docker or Singularity/Apptainer:\*\*.*?3\. \*\*Conda:\*\*.*?\n\n",
+              """Run OncoTracer in one of four supported ways:\n\n1. **Docker:** call `nextflow run` with `--docker`; this uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).\n2. **Singularity or Apptainer:** call `nextflow run` with `--singularity`; this uses `docker://carlosfarkas/oncotracer:latest` on a configured HPC system.\n3. **Poetry launcher:** run `poetry install`, then call `poetry run oncotracer --backend docker ...`. Poetry manages the isolated Python launcher and forwards the workflow arguments to Nextflow.\n4. **Conda:** call `nextflow run` with `--conda`; Nextflow creates and reuses the required native environments automatically from the versioned definitions.\n\n""",
+          )
+          replace_once(
+              "README.md",
+              "Nextflow can create and reuse the required Conda environments automatically from the versioned native definitions from the versioned definitions.",
+              "Nextflow creates and reuses the required Conda environments automatically from the versioned native definitions.",
+          )
+          replace_once(
+              "README.md",
+              "The commands below use Docker; replace `--docker` with `--conda` to let Nextflow create and reuse Conda environments automatically.",
+              "The compact commands below use Docker. The complete QuickStart page provides explicit Docker, Singularity/Apptainer, Poetry, and Conda command sets.",
+          )
+          replace_once(
+              "README.md",
+              "The HCC1143 example downloads six public paired-end FASTQs. The following block exposes the complete `wget` download, file naming, sample-table creation, Automatic Setup, and analysis commands. Replace `--docker` with `--conda` for automatic Conda environment creation.",
+              "The HCC1143 example downloads six public paired-end FASTQs. The block below exposes the complete `wget` download, file naming, sample-table creation, Automatic Setup, and a Docker analysis command. The complete QuickStart page provides explicit Docker, Singularity/Apptainer, Poetry, and Conda commands.",
+          )
+          replace_once(
+              "README.md",
+              "[Six tumors and four normal controls](https://cfarkas.github.io/oncotracer/six_tumor_four_control/) is a mock example that illustrates how four `NORMAL` samples are used to build a local qDNAseq panel of normals and correct CNA profiles for six `TUMOR` samples.",
+              "[Six tumors and four normal controls](https://cfarkas.github.io/oncotracer/six_tumor_four_control/) is a mock example that illustrates how four `NORMAL` samples are used to build a local qDNAseq panel of normals and correct CNA profiles for six `TUMOR` samples. Its run section shows Docker, Singularity/Apptainer, Poetry, and Conda alternatives.",
+          )
+
+          route_overview = r'''## Four equivalent analysis commands
+
+After a YAML has been generated, choose **one** of the following methods. Keep the same YAML and work directory when using `-resume`; use a separate work directory when comparing different execution methods.
+
+### Docker
+
+```bash
+# Set the repository, generated YAML, and Docker work directory.
+REPO_DIR=/path/to/my/directory/oncotracer
+CONFIG=/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml
+WORK_DIR=/path/to/my/directory/my_oncotracer_project/work/docker
+
+# Run through Nextflow with the maintained Docker image.
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$CONFIG" \
+  -work-dir "$WORK_DIR" \
+  -resume
+```
+
+### Singularity or Apptainer
+
+```bash
+# Set the repository, generated YAML, and HPC work directory.
+REPO_DIR=/path/to/my/directory/oncotracer
+CONFIG=/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml
+WORK_DIR=/path/to/my/directory/my_oncotracer_project/work/singularity
+
+# Run through Nextflow with Singularity or Apptainer.
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$CONFIG" \
+  -work-dir "$WORK_DIR" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the locked launcher and set the generated YAML and work directory.
+REPO_DIR=/path/to/my/directory/oncotracer
+CONFIG=/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml
+WORK_DIR=/path/to/my/directory/my_oncotracer_project/work/poetry
+cd "$REPO_DIR"
+poetry install --no-interaction
+
+# Launch OncoTracer through Poetry with Docker as the scientific backend.
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$CONFIG" \
+  -work-dir "$WORK_DIR" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Set the repository, generated YAML, and Conda work directory.
+REPO_DIR=/path/to/my/directory/oncotracer
+CONFIG=/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml
+WORK_DIR=/path/to/my/directory/my_oncotracer_project/work/conda
+
+# Let Nextflow create or reuse the required Conda environments.
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$CONFIG" \
+  -work-dir "$WORK_DIR" \
+  -resume
+```
+
+The Poetry launcher also accepts `--backend singularity` and `--backend conda`; the example above uses Docker so that Poetry remains a distinct invocation method.
+
+'''
+          replace_once("README.md", "## Poetry launcher\n", route_overview + "## Poetry launcher\n")
+
+          # ------------------------------------------------------------------
+          # Documentation home and installation
+          # ------------------------------------------------------------------
+          replace_regex(
+              "docs/index.md",
+              r"Choose one of three execution routes:\n\n1\. .*?3\. .*?\n\n",
+              """Choose one of four supported ways to launch an analysis:\n\n1. **Docker:** `nextflow run ... --docker`.\n2. **Singularity or Apptainer:** `nextflow run ... --singularity`.\n3. **Poetry launcher:** `poetry run oncotracer --backend docker ...`.\n4. **Conda:** `nextflow run ... --conda`; Nextflow creates and reuses the native environments automatically.\n\nEvery QuickStart, the Full Tutorial, Automatic Setup, and the mock tumor/normal example provide explicit commands for all four methods.\n\n""",
+          )
+          replace_once(
+              "docs/index.md",
+              "4. Run the YAML with `--conda`, `--docker`, or `--singularity` and `-resume`.",
+              "4. Run the YAML with Docker, Singularity/Apptainer, the Poetry launcher, or Conda and keep `-resume` enabled.",
+          )
+          replace_once(
+              "docs/installation.md",
+              "Use one execution option:\n\n- `--conda`: Nextflow creates and reuses the required environments from the versioned environment definitions.\n- `--docker`: uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).\n- `--singularity`: uses `docker://carlosfarkas/oncotracer:latest` through Singularity or Apptainer.\n",
+              "Use one launch method:\n\n- **Docker:** `nextflow run ... --docker` uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).\n- **Singularity or Apptainer:** `nextflow run ... --singularity` uses `docker://carlosfarkas/oncotracer:latest`.\n- **Poetry launcher:** `poetry run oncotracer --backend docker ...` manages the Python launcher and delegates the scientific execution to the selected backend.\n- **Conda:** `nextflow run ... --conda` creates and reuses the required environments from the versioned definitions.\n",
+          )
+
+          # ------------------------------------------------------------------
+          # QuickStart Example 1
+          # ------------------------------------------------------------------
+          replace_once(
+              "docs/quick_start.md",
+              "The commands use `--conda`. Nextflow creates and reuses the required Conda environments automatically. Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) first. Replace `--conda` with `--docker` for the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer), or with `--singularity` on a configured HPC system.",
+              "Preparation is independent of the analysis backend. The walkthrough first demonstrates Conda, and [Choose one of four execution methods](#choose-one-of-four-execution-methods) provides complete Docker, Singularity/Apptainer, Poetry, and Conda command sets. Use only one method for a normal run.",
+          )
+          replace_once(
+              "docs/quick_start.md",
+              "# Create or reuse the Conda environment, download the reads, validate them, and create both YAML files.\nnextflow run \"$REPO_DIR/main.nf\" --make_test --conda \\",
+              "# Download the reads, validate them, and create both YAML files.\nnextflow run \"$REPO_DIR/main.nf\" --make_test \\",
+          )
+
+          quickstart_tail = r'''## Choose one of four execution methods
+
+Run the common preparation command once, then choose exactly one analysis method below. Illumina must finish before ONT.
+
+```bash
+# Set the repository path and prepare or revalidate the public reads and YAML files.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+nextflow run "$REPO_DIR/main.nf" --make_test \
+  --test_root "$REPO_DIR/test"
+```
+
+### Docker
+
+```bash
+# Run or resume the Illumina example with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/docker-illumina" \
+  -resume
+
+# Run or resume the ONT example with Docker after Illumina finishes.
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/docker-ont" \
+  -resume
+```
+
+### Singularity or Apptainer
+
+```bash
+# Run or resume the Illumina example through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/singularity-illumina" \
+  -resume
+
+# Run or resume the ONT example through Singularity or Apptainer.
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/singularity-ont" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the locked Poetry launcher once.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+
+# Run or resume the Illumina example through Poetry with Docker.
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/poetry-illumina" \
+  -resume
+
+# Run or resume the ONT example through Poetry with Docker.
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/poetry-ont" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run or resume the Illumina example with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/conda-illumina" \
+  -resume
+
+# Run or resume the ONT example with native Conda environments.
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
+  -work-dir "$REPO_DIR/test/work/conda-ont" \
+  -resume
+```
+
+After both analyses finish, run the same verifier regardless of the selected method:
+
+```bash
+# Verify both completed QuickStart runs.
+REPO_DIR=/path/to/my/directory/oncotracer
+python3 "$REPO_DIR/examples/quickstart/verify_outputs.py" \
+  --test-root "$REPO_DIR/test"
+```
+
+The Poetry example uses Docker as its scientific backend. The launcher also accepts `--backend singularity` and `--backend conda`.
+
+## Continue from here
+
+- [Automatic Setup](auto_params.md) generates a YAML for your own Illumina or ONT FASTQs and shows the same four execution methods.
+- [QuickStart Example 2](public_cohort.md) runs three public HCC1143 libraries.
+- [Full Tutorial](full_tutorial.md) runs the 12 public PRJNA754199 libraries.
+- [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a mock example illustrating how four normal controls are used to correct six tumor profiles.
+'''
+          replace_regex(
+              "docs/quick_start.md",
+              r"## Exact commands to repeat or resume\n.*\Z",
+              quickstart_tail,
+          )
+
+          # ------------------------------------------------------------------
+          # QuickStart Example 2
+          # ------------------------------------------------------------------
+          replace_once(
+              "docs/public_cohort.md",
+              "The commands use `--conda`. Nextflow creates and reuses the required Conda environments automatically. Replace `--conda` with `--docker` for [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer), or with `--singularity` on a configured HPC system.",
+              "Preparation and Automatic Setup are backend-independent. The analysis section provides explicit Docker, Singularity/Apptainer, Poetry, and Conda commands; choose one method.",
+          )
+          replace_once(
+              "docs/public_cohort.md",
+              "# Create or reuse the Conda environment, then generate the Illumina YAML and R1/R2 samplesheet.\nnextflow run \"$REPO_DIR/main.nf\" --auto_params --conda \\",
+              "# Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.\nnextflow run \"$REPO_DIR/main.nf\" --auto_params \\",
+          )
+
+          cohort_run = r'''## 6. Run the analysis
+
+Choose exactly one method. Each method reads the same generated YAML and writes the same result directory; route-specific work directories prevent cross-runtime cache mixing.
+
+### Docker
+
+```bash
+# Run the generated HCC1143 configuration with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-docker" \
+  -resume
+```
+
+### Singularity or Apptainer
+
+```bash
+# Run the generated HCC1143 configuration through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-singularity" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the launcher and run HCC1143 through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run the generated HCC1143 configuration with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-conda" \
+  -resume
+```
+
+Keep the terminal open until Nextflow returns to the prompt. To resume, repeat the command for the selected method with the same YAML, work directory, and `-resume`.
+
+'''
+          replace_regex(
+              "docs/public_cohort.md",
+              r"## 6\. Run the analysis\n.*?(?=## 7\. Check the outputs)",
+              cohort_run,
+          )
+          replace_regex(
+              "docs/public_cohort.md",
+              r"## Resume an interrupted run\n.*?(?=## Limitations)",
+              """## Resume an interrupted run\n\nRepeat the command for the method you selected in [Run the analysis](#6-run-the-analysis), using the same YAML, route-specific work directory, and `-resume`.\n\n""",
+          )
+          replace_regex(
+              "docs/public_cohort.md",
+              r"\n## Poetry alternative\n.*\Z",
+              "\n",
+          )
+
+          # ------------------------------------------------------------------
+          # Full public tutorial
+          # ------------------------------------------------------------------
+          replace_once(
+              "docs/full_tutorial.md",
+              "The commands use Docker. On a configured HPC system, replace `--docker` with `--singularity`. See [Installation](installation.md) and the maintained [Docker image](https://hub.docker.com/r/carlosfarkas/oncotracer).",
+              "Download and Automatic Setup commands are backend-independent. The analysis section provides explicit Docker, Singularity/Apptainer, Poetry, and Conda commands. See [Installation](installation.md) for the required software.",
+          )
+          prep_insert = r'''### Poetry launcher
+
+```bash
+# Install the locked Poetry launcher and prepare the Docker scientific backend.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  --install \
+  --lpwgs_root "$REPO_DIR/test" \
+  -work-dir "$REPO_DIR/test/work/install_poetry"
+```
+
+### Conda
+
+```bash
+# Create or reuse the native Conda environments and test the required software.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --install --conda \
+  --lpwgs_root "$REPO_DIR/test" \
+  -work-dir "$REPO_DIR/test/work/install_conda"
+```
+
+'''
+          replace_once(
+              "docs/full_tutorial.md",
+              "The installation route checks the software and stops. It does not download patient reads or hg38 and does not start the analysis.",
+              prep_insert + "The installation route checks the software and stops. It does not download patient reads or hg38 and does not start the analysis.",
+          )
+
+          full_run = r'''## 5. Check the wiring and run the analysis
+
+Optional Docker stub check:
+
+```bash
+# Check the generated workflow connections without running the scientific tools.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199_stub"
+```
+
+Choose exactly one method for the real analysis.
+
+### Docker
+
+```bash
+# Run or resume the complete 12-library workflow with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-docker" \
+  -resume
+```
+
+### Singularity or Apptainer
+
+```bash
+# Run or resume the complete workflow through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-singularity" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the launcher and run the complete workflow through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run or resume the complete workflow with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-conda" \
+  -resume
+```
+
+Keep the terminal open until Nextflow returns to the prompt. To resume, repeat the selected command with the same route-specific work directory.
+
+'''
+          replace_regex(
+              "docs/full_tutorial.md",
+              r"## 5\. Check the wiring and run the analysis\n.*?(?=## 6\. Verify the completed run)",
+              full_run,
+          )
+
+          # ------------------------------------------------------------------
+          # Mock six-tumor/four-normal example
+          # ------------------------------------------------------------------
+          mock_run = r'''## Run the mock configuration
+
+Choose exactly one of the four methods below. All methods read the same generated YAML and illustrate the same four-control local qDNAseq reference.
+
+### Docker
+
+```bash
+# Run the mock configuration with the maintained Docker image.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/docker" \
+  -resume
+```
+
+### Singularity or Apptainer
+
+```bash
+# Run the mock configuration through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/singularity" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the launcher and run the mock configuration through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Create or reuse the native environments and run the mock configuration.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR=/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/conda" \
+  -resume
+```
+
+Use one method. The Poetry example uses Docker as its scientific backend; `--backend singularity` and `--backend conda` are also accepted by the launcher.
+
+'''
+          replace_regex(
+              "docs/six_tumor_four_control.md",
+              r"## Run the mock configuration\n.*?(?=## Check the panel and corrected tumor outputs)",
+              mock_run,
+          )
+
+          # ------------------------------------------------------------------
+          # Automatic Setup examples
+          # ------------------------------------------------------------------
+          replace_once(
+              "docs/auto_params.md",
+              "The analysis can use:\n\n- `--docker` with [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer); or\n- `--singularity` with `docker://carlosfarkas/oncotracer:latest` on a configured HPC system.",
+              "The generated YAML can be run in four ways:\n\n- Docker with `nextflow run ... --docker`;\n- Singularity or Apptainer with `nextflow run ... --singularity`;\n- the Poetry launcher with `poetry run oncotracer --backend docker ...`; or\n- native Conda environments with `nextflow run ... --conda`.",
+          )
+          replace_once(
+              "docs/auto_params.md",
+              "nextflow run main.nf --docker|--singularity -params-file generated.yml -resume",
+              "nextflow run main.nf --docker|--singularity|--conda -params-file generated.yml -resume\n        or poetry run oncotracer --backend docker -params-file generated.yml -resume",
+          )
+
+          auto_illumina_run = r'''### 5. Run the Illumina analysis
+
+Choose exactly one method.
+
+#### Docker
+
+```bash
+# Run the generated Illumina YAML with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/docker" \
+  -resume
+```
+
+#### Singularity or Apptainer
+
+```bash
+# Run the same YAML through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/singularity" \
+  -resume
+```
+
+#### Poetry launcher
+
+```bash
+# Install the launcher and run the same YAML through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/poetry" \
+  -resume
+```
+
+#### Conda
+
+```bash
+# Create or reuse the native environments and run the same YAML.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/conda" \
+  -resume
+```
+
+'''
+          replace_regex(
+              "docs/auto_params.md",
+              r"### 5\. Run the Illumina analysis\n.*?(?=### 6\. Check a local panel of normals)",
+              auto_illumina_run,
+          )
+
+          auto_ont_run = r'''### 4. Inspect and run the ONT YAML
+
+```bash
+# Inspect the generated ONT settings and manifest.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+sed -n '1,140p' "$PROJECT_DIR/config_ont/ont.auto.yml"
+cat "$PROJECT_DIR/config_ont/auto_params_manifest.tsv"
+```
+
+Choose exactly one method.
+
+#### Docker
+
+```bash
+# Run the generated ONT YAML with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$PROJECT_DIR/config_ont/ont.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/ont-docker" \
+  -resume
+```
+
+#### Singularity or Apptainer
+
+```bash
+# Run the generated ONT YAML through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$PROJECT_DIR/config_ont/ont.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/ont-singularity" \
+  -resume
+```
+
+#### Poetry launcher
+
+```bash
+# Install the launcher and run the ONT YAML through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$PROJECT_DIR/config_ont/ont.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/ont-poetry" \
+  -resume
+```
+
+#### Conda
+
+```bash
+# Create or reuse the native environments and run the ONT YAML.
+REPO_DIR=/path/to/my/directory/oncotracer
+PROJECT_DIR="$REPO_DIR/project"
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$PROJECT_DIR/config_ont/ont.auto.yml" \
+  -work-dir "$PROJECT_DIR/work/ont-conda" \
+  -resume
+```
+
+'''
+          replace_regex(
+              "docs/auto_params.md",
+              r"### 4\. Inspect and run the ONT YAML\n.*?(?=## Common setup errors)",
+              auto_ont_run,
+          )
+
+          # ------------------------------------------------------------------
+          # Repository example READMEs
+          # ------------------------------------------------------------------
+          replace_once(
+              "examples/hcc1143_lpwgs/README.md",
+              "# Create or reuse the Conda environment, then generate the Illumina YAML and R1/R2 samplesheet.\nnextflow run \"$REPO_DIR/main.nf\" --auto_params --conda \\",
+              "# Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.\nnextflow run \"$REPO_DIR/main.nf\" --auto_params \\",
+          )
+          hcc_routes = r'''Choose one analysis method after Automatic Setup.
+
+### Docker
+
+```bash
+# Run or resume HCC1143 with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-docker" \
+  -resume
+```
+
+### Singularity or Apptainer
+
+```bash
+# Run or resume HCC1143 through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-singularity" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the launcher and run HCC1143 through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run or resume HCC1143 with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-conda" \
+  -resume
+```
+
+'''
+          replace_regex(
+              "examples/hcc1143_lpwgs/README.md",
+              r"# Run or resume the generated configuration with Conda\..*?With `--conda`, Nextflow creates and reuses the required environments automatically\. Replace `--conda` with `--docker` to use .*?configured HPC system\.\n\n",
+              hcc_routes,
+          )
+
+          prjna_routes = r'''# Optionally check the generated workflow connections with Docker.
+nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199_stub"
+```
+
+Choose one analysis method.
+
+### Docker
+
+```bash
+# Run or resume the complete archive with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-docker" \
+  -resume
+```
+
+### Singularity or Apptainer
+
+```bash
+# Run or resume the complete archive through Singularity or Apptainer.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --singularity \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-singularity" \
+  -resume
+```
+
+### Poetry launcher
+
+```bash
+# Install the launcher and run the archive through Poetry with Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-poetry" \
+  -resume
+```
+
+### Conda
+
+```bash
+# Run or resume the complete archive with native Conda environments.
+REPO_DIR=/path/to/my/directory/oncotracer
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/prjna754199-conda" \
+  -resume
+```
+
+```bash
+# Verify the exact 12 samples and required output groups.
+REPO_DIR=/path/to/my/directory/oncotracer
+python3 "$REPO_DIR/examples/prjna754199/verify_outputs.py" \
+  --outdir "$REPO_DIR/test/runs/prjna754199"
+```
+'''
+          replace_regex(
+              "examples/prjna754199/README.md",
+              r"# Optionally check the generated workflow connections\..*?# Verify the exact 12 samples and required output groups\.\npython3 .*?--outdir \"\$REPO_DIR/test/runs/prjna754199\"\n```\n\nFor HPC, replace `--docker` with `--singularity` in the stub and analysis commands\.\n",
+              prjna_routes,
+          )
+          replace_once(
+              "examples/prjna754199/README.md",
+              "Use Linux with Git, Java 17 or newer, Nextflow, Python 3, samtools, BWA, minimap2, pigz, curl or wget, and Docker or Singularity/Apptainer.",
+              "Use Linux with Git, Java 17 or newer, Nextflow, Python 3, samtools, BWA, minimap2, pigz, curl or wget, and one launch method: Docker, Singularity/Apptainer, Poetry, or Conda.",
+          )
+
+          # ------------------------------------------------------------------
+          # Documentation regression tests
+          # ------------------------------------------------------------------
+          tests = read("tests/test_docs_style.py")
+          tests = tests.replace(
+              '"--make_test --conda",',
+              '"## Choose one of four execution methods",\n        "### Docker",\n        "### Singularity or Apptainer",\n        "### Poetry launcher",\n        "### Conda",',
+              1,
+          )
+          tests = tests.replace(
+              '"--auto_params --conda",',
+              '"## 6. Run the analysis",\n        "### Docker",\n        "### Singularity or Apptainer",\n        "### Poetry launcher",\n        "### Conda",',
+              1,
+          )
+          tests = tests.replace(
+              '"## Estimated time and resources",\n    ),',
+              '"## Estimated time and resources",\n        "### Docker",\n        "### Singularity or Apptainer",\n        "### Poetry launcher",\n        "### Conda",\n    ),',
+              1,
+          )
+          tests = tests.replace(
+              '"CTRL004,NORMAL",\n    ),',
+              '"CTRL004,NORMAL",\n        "### Docker",\n        "### Singularity or Apptainer",\n        "### Poetry launcher",\n        "### Conda",\n    ),',
+              1,
+          )
+          tests = tests.replace(
+              '"barcode,sample_name,status\\nbarcode01,TUMOR_01,TUMOR",\n    ),',
+              '"barcode,sample_name,status\\nbarcode01,TUMOR_01,TUMOR",\n        "#### Docker",\n        "#### Singularity or Apptainer",\n        "#### Poetry launcher",\n        "#### Conda",\n    ),',
+              1,
+          )
+          marker = "BASH_BLOCK_RE = re.compile"
+          route_check = '''ROUTE_EXAMPLE_FILES = (\n    "docs/quick_start.md",\n    "docs/public_cohort.md",\n    "docs/full_tutorial.md",\n    "docs/six_tumor_four_control.md",\n    "docs/auto_params.md",\n    "examples/hcc1143_lpwgs/README.md",\n    "examples/prjna754199/README.md",\n)\n\nROUTE_SNIPPETS = (\n    "--docker",\n    "--singularity",\n    "poetry run oncotracer",\n    "--conda",\n)\n\n'''
+          if route_check not in tests:
+              tests = tests.replace(marker, route_check + marker, 1)
+          function_marker = "def check_commented_bash_blocks() -> None:\n"
+          route_function = '''def check_all_example_routes() -> None:\n    for relative_path in ROUTE_EXAMPLE_FILES:\n        text = read(relative_path)\n        for snippet in ROUTE_SNIPPETS:\n            if snippet not in text:\n                fail(f"missing execution route in {relative_path}: {snippet}")\n\n\n'''
+          if route_function not in tests:
+              tests = tests.replace(function_marker, route_function + function_marker, 1)
+          tests = tests.replace(
+              "    check_hcc1143_wget_downloads()\n    check_commented_bash_blocks()",
+              "    check_hcc1143_wget_downloads()\n    check_all_example_routes()\n    check_commented_bash_blocks()",
+              1,
+          )
+          write("tests/test_docs_style.py", tests)
+          PY
+
+      - name: Remove the temporary patch workflow
+        run: rm -f .github/workflows/apply-runtime-docs-v1.1.yml
+
+      - name: Check documentation examples
+        run: python3 tests/test_docs_style.py
+
+      - name: Build GitHub Pages documentation strictly
+        run: |
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+
+      - name: Commit and push the documentation update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs examples tests .github/workflows/apply-runtime-docs-v1.1.yml
+          git commit -m "Docs: show all four execution methods in every example"
+          git push origin HEAD:agent/docs-all-runtime-routes-v1.1
