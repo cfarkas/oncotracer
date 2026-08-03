@@ -28,74 +28,108 @@ Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-G
 
 The first uncached analysis downloads the hg38 reference (about **3.16 GB**) and creates a BWA index. This commonly takes **30–60 minutes**, and the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.
 
-## Four equivalent analysis commands
+<a id="four-equivalent-analysis-commands"></a>
 
-After a YAML has been generated, choose **one** of the following methods. Keep the same YAML and work directory when using `-resume`; use a separate work directory when comparing different execution methods.
+## Four installation and execution methods
 
-### Docker
+OncoTracer reads each analysis from a YAML configuration file. A YAML is a plain-text file containing the input, output, and analysis settings. Open the [minimal Illumina YAML example](params/illumina.minimal.yml) or the [minimal ONT YAML example](params/ont.minimal.yml) to see the format. For your own FASTQs, [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) creates the YAML and samplesheet for you.
+
+In each command below, `CONFIG` points to the generated YAML. Choose **one** method; do not run all four. Every method launches the same Nextflow workflow and produces the same result structure.
+
+### Installation and execution through Docker
+
+Install [Docker Engine](https://docs.docker.com/engine/install/) once. On the first analysis, Nextflow downloads [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer); later analyses reuse the cached image.
 
 ```bash
-# Set the repository, generated YAML, and Docker work directory.
+# Set the repository, project, generated YAML, and Docker work directory.
 REPO_DIR=/path/to/my/directory/oncotracer
-CONFIG=/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml
-WORK_DIR=/path/to/my/directory/my_oncotracer_project/work/docker
+PROJECT_DIR="$REPO_DIR/project"
+CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
+WORK_DIR="$PROJECT_DIR/work/docker"
+cd "$REPO_DIR"
 
-# Run through Nextflow with the maintained Docker image.
+# Confirm that Automatic Setup created the YAML.
+test -s "$CONFIG"
+
+# Run or resume OncoTracer through Docker.
 nextflow run "$REPO_DIR/main.nf" --docker \
   -params-file "$CONFIG" \
   -work-dir "$WORK_DIR" \
   -resume
 ```
 
-### Singularity or Apptainer
+### Installation and execution through Singularity or Apptainer
+
+Install [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html) or [Apptainer](https://apptainer.org/docs/admin/main/installation.html) once. Nextflow obtains the same maintained container image used by Docker and stores it in the local container cache.
 
 ```bash
-# Set the repository, generated YAML, and HPC work directory.
+# Set the repository, project, generated YAML, and HPC work directory.
 REPO_DIR=/path/to/my/directory/oncotracer
-CONFIG=/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml
-WORK_DIR=/path/to/my/directory/my_oncotracer_project/work/singularity
+PROJECT_DIR="$REPO_DIR/project"
+CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
+WORK_DIR="$PROJECT_DIR/work/singularity"
+cd "$REPO_DIR"
 
-# Run through Nextflow with Singularity or Apptainer.
+# Confirm that Automatic Setup created the YAML.
+test -s "$CONFIG"
+
+# Run or resume OncoTracer through Singularity or Apptainer.
 nextflow run "$REPO_DIR/main.nf" --singularity \
   -params-file "$CONFIG" \
   -work-dir "$WORK_DIR" \
   -resume
 ```
 
-### Poetry launcher
+### Installation and execution through Poetry
+
+Install [Poetry](https://python-poetry.org/docs/#installation) and one scientific backend. The example below uses Docker. `poetry install` creates the isolated OncoTracer launcher environment; the launcher then passes the analysis to Nextflow and Docker.
 
 ```bash
-# Install the locked launcher and set the generated YAML and work directory.
+# Set the repository, project, generated YAML, and Poetry work directory.
 REPO_DIR=/path/to/my/directory/oncotracer
-CONFIG=/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml
-WORK_DIR=/path/to/my/directory/my_oncotracer_project/work/poetry
+PROJECT_DIR="$REPO_DIR/project"
+CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
+WORK_DIR="$PROJECT_DIR/work/poetry"
 cd "$REPO_DIR"
+
+# Install or reuse the locked Poetry launcher environment.
 poetry install --no-interaction
 
-# Launch OncoTracer through Poetry with Docker as the scientific backend.
+# Confirm that Automatic Setup created the YAML.
+test -s "$CONFIG"
+
+# Run or resume OncoTracer through Poetry with Docker.
 poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
   -params-file "$CONFIG" \
   -work-dir "$WORK_DIR" \
   -resume
 ```
 
-### Conda
+The Poetry launcher also accepts `--backend singularity` and `--backend conda`.
+
+### Installation and execution through Conda
+
+Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) once. On the first analysis, Nextflow creates the required native environments from the versioned definitions; later analyses reuse those environments automatically.
 
 ```bash
-# Set the repository, generated YAML, and Conda work directory.
+# Set the repository, project, generated YAML, and Conda work directory.
 REPO_DIR=/path/to/my/directory/oncotracer
-CONFIG=/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml
-WORK_DIR=/path/to/my/directory/my_oncotracer_project/work/conda
+PROJECT_DIR="$REPO_DIR/project"
+CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
+WORK_DIR="$PROJECT_DIR/work/conda"
+cd "$REPO_DIR"
 
-# Let Nextflow create or reuse the required Conda environments.
+# Confirm that Automatic Setup created the YAML.
+test -s "$CONFIG"
+
+# Run or resume OncoTracer through Conda.
 nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$CONFIG" \
   -work-dir "$WORK_DIR" \
   -resume
 ```
 
-The Poetry launcher also accepts `--backend singularity` and `--backend conda`; the example above uses Docker so that Poetry remains a distinct invocation method.
-
+For an ONT analysis, set `CONFIG` to the generated `ont.auto.yml`; the installation and execution method does not otherwise change.
 
 ## Run your own FASTQs
 
@@ -114,7 +148,7 @@ Generate the configuration and run it:
 ```bash
 # Choose generic locations for the repository and analysis project.
 REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR=/path/to/my/directory/my_oncotracer_project
+PROJECT_DIR="$REPO_DIR/project"
 
 # Clone OncoTracer and enter the repository.
 git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
