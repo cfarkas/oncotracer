@@ -1,3 +1,4 @@
+# Publish only after both public QuickStarts pass through Docker, Poetry, and Conda on current main.
 name: Release v1.1 after full runtime validation
 
 on:
