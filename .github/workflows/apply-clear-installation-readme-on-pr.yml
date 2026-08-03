@@ -46,6 +46,41 @@ jobs:
           exec(compile(script, 'apply-clear-installation-readme.py', 'exec'), {})
           PY
 
+      - name: Write clean minimal YAML examples
+        run: |
+          cat > params/illumina.minimal.yml <<'YAML'
+          # Minimal Illumina YAML example.
+          # Replace /path/to/my/directory/oncotracer with the absolute path used
+          # for REPO_DIR. Keep every input and output below lpwgs_root.
+          mode: illumina
+          lpwgs_root: /path/to/my/directory/oncotracer/project
+          outdir: /path/to/my/directory/oncotracer/project/results/my_first_illumina_run
+          illumina_samplesheet: /path/to/my/directory/oncotracer/project/input/illumina.samplesheet.csv
+          illumina_analysis_type: solid_biopsy
+          illumina_caller: qdnaseq
+          illumina_binsize_kb: 100
+          run_cna_classifier: false
+          force: false
+          YAML
+
+          cat > params/ont.minimal.yml <<'YAML'
+          # Minimal ONT YAML example.
+          # Replace /path/to/my/directory/oncotracer with the absolute path used
+          # for REPO_DIR. Keep every input and output below lpwgs_root.
+          mode: ont
+          lpwgs_root: /path/to/my/directory/oncotracer/project
+          outdir: /path/to/my/directory/oncotracer/project/results/my_first_ont_run
+          ont_folder: /path/to/my/directory/oncotracer/project/input/fastq_pass
+          ont_barcodes: barcode01
+          ont_sample_names: Sample_ONT_1
+          ont_analysis_type: liquid_biopsy
+          ont_caller: ichorcna
+          ont_binsize_kb: 500
+          ont_min_age_minutes: 0
+          run_cna_classifier: false
+          force: false
+          YAML
+
       - name: Remove temporary workflows
         run: |
           rm -f .github/workflows/apply-clear-installation-readme.yml
@@ -62,6 +97,8 @@ jobs:
           grep -F '### Installation and execution through Singularity or Apptainer' README.md >/dev/null
           grep -F '### Installation and execution through Poetry' README.md >/dev/null
           grep -F '### Installation and execution through Conda' README.md >/dev/null
+          grep -F 'lpwgs_root: /path/to/my/directory/oncotracer/project' params/illumina.minimal.yml >/dev/null
+          grep -F 'lpwgs_root: /path/to/my/directory/oncotracer/project' params/ont.minimal.yml >/dev/null
           ! grep -R -F '/home/student/oncotracer' params README.md docs examples
 
       - name: Commit and push documentation
