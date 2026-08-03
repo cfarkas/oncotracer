@@ -24,18 +24,11 @@ jobs:
           ref: ${{ env.TARGET_SHA }}
           fetch-depth: 0
 
-      - name: Build and verify the published pages
+      - name: Validate and build the final documentation
         run: |
+          python3 tests/test_docs_style.py
           python3 -m pip install -r docs/requirements.txt
           mkdocs build --strict
-          grep -F -- '--docker' site/quick_start/index.html >/dev/null
-          grep -F -- '--singularity' site/quick_start/index.html >/dev/null
-          grep -F 'poetry run oncotracer' site/quick_start/index.html >/dev/null
-          grep -F -- '--conda' site/quick_start/index.html >/dev/null
-          grep -F -- '--docker' site/six_tumor_four_control/index.html >/dev/null
-          grep -F -- '--singularity' site/six_tumor_four_control/index.html >/dev/null
-          grep -F 'poetry run oncotracer' site/six_tumor_four_control/index.html >/dev/null
-          grep -F -- '--conda' site/six_tumor_four_control/index.html >/dev/null
 
       - name: Deploy to gh-pages
         run: |
