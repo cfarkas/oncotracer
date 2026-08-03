@@ -42,7 +42,9 @@ jobs:
           python3 tests/test_poetry_cli.py
 
       - name: Check documentation style and examples
-        run: python3 tests/test_docs_style.py
+        run: |
+          python3 tests/test_docs_style.py
+          python3 tests/test_examples_start_from_clone.py
 
       - name: Install documentation dependencies
         run: python3 -m pip install -r docs/requirements.txt
