@@ -1,4 +1,4 @@
-name: Exact-main QuickStart reruns and v1.1 release
+name: Finish exact-main QuickStart reruns and release v1.1
 
 on:
   pull_request:
@@ -10,67 +10,40 @@ on:
       - reopened
 
 permissions:
-  actions: write
+  actions: read
   contents: write
-  issues: write
 
 jobs:
-  rerun-and-release:
+  wait-verify-release:
     runs-on: ubuntu-latest
     timeout-minutes: 720
     env:
       TARGET_SHA: 0f1a3d86521afcb5eac3ce6e65fd45d455e8c843
-      QS1_WORKFLOW: full-conda-quickstarts-v1.1.yml
-      QS2_WORKFLOW: full-v1.1-quickstart2.yml
+      QS1_RUN_ID: 30807793560
+      QS2_RUN_ID: 30807795513
 
     steps:
-      - name: Verify exact main and dispatch both workflows
-        id: dispatch
+      - name: Confirm exact main and validation-run metadata
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
-
           MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           [[ "$MAIN_SHA" == "$TARGET_SHA" ]] || {
             echo "ERROR: main is $MAIN_SHA, expected $TARGET_SHA" >&2
             exit 1
           }
 
-          STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          gh workflow run "$QS1_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref main
-          gh workflow run "$QS2_WORKFLOW" --repo "$GITHUB_REPOSITORY" --ref main
+          for run_id in "$QS1_RUN_ID" "$QS2_RUN_ID"; do
+            RUN_JSON="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id")"
+            [[ "$(jq -r '.head_sha' <<< "$RUN_JSON")" == "$TARGET_SHA" ]]
+            [[ "$(jq -r '.head_branch' <<< "$RUN_JSON")" == "main" ]]
+            [[ "$(jq -r '.event' <<< "$RUN_JSON")" == "workflow_dispatch" ]]
+          done
 
-          find_run() {
-            local workflow="$1" run_id=""
-            for _ in $(seq 1 120); do
-              run_id="$(
-                gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?event=workflow_dispatch&branch=main&per_page=30" |
-                  jq -r --arg sha "$TARGET_SHA" --arg start "$STARTED_AT" \
-                    '[.workflow_runs[] | select(.head_sha == $sha and .created_at >= $start)] | sort_by(.created_at) | last | .id // empty'
-              )"
-              if [[ -n "$run_id" ]]; then
-                printf '%s\n' "$run_id"
-                return 0
-              fi
-              sleep 5
-            done
-            echo "ERROR: no dispatched run appeared for $workflow" >&2
-            return 1
-          }
-
-          QS1_RUN_ID="$(find_run "$QS1_WORKFLOW")"
-          QS2_RUN_ID="$(find_run "$QS2_WORKFLOW")"
-          echo "qs1_run_id=$QS1_RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "qs2_run_id=$QS2_RUN_ID" >> "$GITHUB_OUTPUT"
-
-          gh issue comment 12 --repo "$GITHUB_REPOSITORY" --body "Exact-main QuickStart reruns started for \`$TARGET_SHA\`:\n\n- QuickStart 1: https://github.com/$GITHUB_REPOSITORY/actions/runs/$QS1_RUN_ID\n- QuickStart 2: https://github.com/$GITHUB_REPOSITORY/actions/runs/$QS2_RUN_ID"
-
-      - name: Wait for both reruns to pass
+      - name: Wait for both exact-main reruns
         env:
           GH_TOKEN: ${{ github.token }}
-          QS1_RUN_ID: ${{ steps.dispatch.outputs.qs1_run_id }}
-          QS2_RUN_ID: ${{ steps.dispatch.outputs.qs2_run_id }}
         run: |
           set -Eeuo pipefail
 
@@ -84,11 +57,6 @@ jobs:
             QS1_RESULT="$(jq -r '.conclusion // "pending"' <<< "$QS1_JSON")"
             QS2_RESULT="$(jq -r '.conclusion // "pending"' <<< "$QS2_JSON")"
 
-            [[ "$(jq -r '.head_sha' <<< "$QS1_JSON")" == "$TARGET_SHA" ]]
-            [[ "$(jq -r '.head_sha' <<< "$QS2_JSON")" == "$TARGET_SHA" ]]
-            [[ "$(jq -r '.head_branch' <<< "$QS1_JSON")" == "main" ]]
-            [[ "$(jq -r '.head_branch' <<< "$QS2_JSON")" == "main" ]]
-
             echo "QuickStart 1: $QS1_STATUS / $QS1_RESULT"
             echo "QuickStart 2: $QS2_STATUS / $QS2_RESULT"
 
@@ -99,15 +67,22 @@ jobs:
             sleep 60
           done
 
-          [[ "$completed" == true ]]
-          [[ "$QS1_RESULT" == "success" ]]
-          [[ "$QS2_RESULT" == "success" ]]
+          [[ "$completed" == true ]] || {
+            echo "ERROR: validation timed out" >&2
+            exit 1
+          }
+          [[ "$QS1_RESULT" == "success" ]] || {
+            echo "ERROR: QuickStart 1 finished with $QS1_RESULT" >&2
+            exit 1
+          }
+          [[ "$QS2_RESULT" == "success" ]] || {
+            echo "ERROR: QuickStart 2 finished with $QS2_RESULT" >&2
+            exit 1
+          }
 
-      - name: Verify all six route jobs
+      - name: Verify Docker, Poetry, and Conda jobs
         env:
           GH_TOKEN: ${{ github.token }}
-          QS1_RUN_ID: ${{ steps.dispatch.outputs.qs1_run_id }}
-          QS2_RUN_ID: ${{ steps.dispatch.outputs.qs2_run_id }}
         run: |
           set -Eeuo pipefail
 
@@ -131,17 +106,18 @@ jobs:
           verify_job "$QS2_RUN_ID" "poetry / QuickStart 2"
           verify_job "$QS2_RUN_ID" "conda / QuickStart 2"
 
-      - name: Publish stable v1.1
+      - name: Publish stable OncoTracer v1.1
         env:
           GH_TOKEN: ${{ github.token }}
-          QS1_RUN_ID: ${{ steps.dispatch.outputs.qs1_run_id }}
-          QS2_RUN_ID: ${{ steps.dispatch.outputs.qs2_run_id }}
         run: |
           set -Eeuo pipefail
 
           if gh release view v1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             EXISTING_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/v1.1" --jq '.sha')"
-            [[ "$EXISTING_SHA" == "$TARGET_SHA" ]]
+            [[ "$EXISTING_SHA" == "$TARGET_SHA" ]] || {
+              echo "ERROR: existing v1.1 points to $EXISTING_SHA" >&2
+              exit 1
+            }
           else
             cat > release-notes-v1.1.md <<EOF_NOTES
           # OncoTracer v1.1
@@ -165,13 +141,5 @@ jobs:
 
           TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/v1.1" --jq '.sha')"
           [[ "$TAG_SHA" == "$TARGET_SHA" ]]
-          RELEASE_URL="$(gh release view v1.1 --repo "$GITHUB_REPOSITORY" --json url --jq '.url')"
-
-          gh issue comment 12 --repo "$GITHUB_REPOSITORY" --body "Stable OncoTracer v1.1 released from exact merged main commit \`$TARGET_SHA\`.\n\n- QuickStart 1: https://github.com/$GITHUB_REPOSITORY/actions/runs/$QS1_RUN_ID\n- QuickStart 2: https://github.com/$GITHUB_REPOSITORY/actions/runs/$QS2_RUN_ID\n- Release: $RELEASE_URL"
-
-      - name: Report failure
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh issue comment 12 --repo "$GITHUB_REPOSITORY" --body "Exact-main QuickStart rerun or v1.1 release failed: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
+          gh release view v1.1 --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,isDraft,isPrerelease,targetCommitish,publishedAt,url
