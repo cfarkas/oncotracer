@@ -1702,43 +1702,39 @@
 </tr>
 </tbody>
 </table>
-<p>Use <code>/path/to/my/directory/oncotracer</code> as the repository path in these examples.</p>
+<p>Run the commands from the cloned <code>oncotracer</code> directory.</p>
 <h2 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h2>
 <p>Install <a href="https://github.com/conda-forge/miniforge">Miniforge</a> or another compatible Conda distribution, then run:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Create or reuse the required Conda environments and test the software.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;project&quot;</span>
 
 <span class="c1"># Optionally check a YAML without running the scientific tools.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_run.yml&quot;</span>
 
 <span class="c1"># Run or resume the analysis with Conda.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_run.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Nextflow creates and reuses Conda environments automatically. The first command solves and creates the top-level environment, which is cached below <code>lpwgs_root/.oncotracer/conda</code>; the nested SAMURAI workflow also creates and reuses its required Conda environments.</p>
 <h2 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Pull or reuse the Docker image and test the installed software.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;project&quot;</span>
 
 <span class="c1"># Optionally check a YAML without running the scientific tools.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_run.yml&quot;</span>
 
 <span class="c1"># Run or resume the analysis.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_run.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Nextflow pulls or reuses <code>carlosfarkas/oncotracer:latest</code> as needed. Use <code>--docker</code> on the OncoTracer command; do not replace it with <code>-profile docker</code>.</p>
@@ -1748,21 +1744,19 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>apptainer
 </code></pre></div>
 <p>Then use <code>--singularity</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Pull or reuse docker://carlosfarkas/oncotracer:latest and test the software.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;project&quot;</span>
 
 <span class="c1"># Optionally check a YAML without running the scientific tools.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_run.yml&quot;</span>
 
 <span class="c1"># Run or resume the analysis on HPC.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_run.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Use a Singularity/Apptainer cache directory on a filesystem with enough quota. Cluster scheduler and bind-mount rules still apply.</p>
@@ -1783,11 +1777,10 @@ id<span class="w"> </span>-g
 <div class="highlight"><pre><span></span><code><span class="nt">docker_user</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1234:1234&quot;</span>
 </code></pre></div>
 <h2 id="record-the-environment-identity">Record the environment identity<a class="headerlink" href="#record-the-environment-identity" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Read the environment or image identity recorded by the installation check.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/.oncotracer/install/install_manifest.txt&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;.oncotracer/install/install_manifest.txt&quot;</span>
 </code></pre></div>
 <p>For a formal analysis, preserve the OncoTracer commit, YAML, generated samplesheet, installation manifest, and nested <code>pipeline_info</code> files. Use an approved immutable image digest or explicit Conda package specification when the study requires a frozen runtime.</p>
 <h2 id="cache-and-storage-locations">Cache and storage locations<a class="headerlink" href="#cache-and-storage-locations" title="Permanent link">&para;</a></h2>
@@ -1811,8 +1804,7 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_
 <p>See <a href="../troubleshooting/">Troubleshooting</a> for runtime permissions, paths, disk usage, environment solving, and task logs.</p>
 <h2 id="poetry-as-a-launcher">Poetry as a launcher<a class="headerlink" href="#poetry-as-a-launcher" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run a configuration through the Poetry launcher and Docker backend.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span>.<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span>/path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span>/path/to/my/directory/my_oncotracer_project/work<span class="w"> </span>-resume
 </code></pre></div>

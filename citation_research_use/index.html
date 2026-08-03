@@ -1638,7 +1638,8 @@
 <p>Farkas, Carlos. (2026). <em>OncoTracer: reproducible LP-WGS CNA analysis for ONT and Illumina data</em> (version 0.1.0) [Computer software]. https://github.com/cfarkas/oncotracer</p>
 </blockquote>
 <p>Add the exact commit used in your analysis, for example:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>rev-parse<span class="w"> </span>HEAD
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+git<span class="w"> </span>rev-parse<span class="w"> </span>HEAD
 </code></pre></div>
 <p>Suggested methods text:</p>
 <blockquote>
@@ -1666,7 +1667,8 @@
 <p>For any other public data, record archive, project, sample/run accessions, retrieval date, checksums, and the associated study.</p>
 <h2 id="minimum-reproducibility-record">Minimum reproducibility record<a class="headerlink" href="#minimum-reproducibility-record" title="Permanent link">&para;</a></h2>
 <p>Archive with the result:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>rev-parse<span class="w"> </span>HEAD
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+git<span class="w"> </span>rev-parse<span class="w"> </span>HEAD
 nextflow<span class="w"> </span>-version
 cat<span class="w"> </span>.oncotracer/install/install_manifest.txt
 </code></pre></div>

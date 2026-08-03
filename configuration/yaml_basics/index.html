@@ -1633,12 +1633,11 @@
 </tr>
 </tbody>
 </table>
-<p>The examples use <code>/path/to/my/directory/oncotracer</code> as the repository path.</p>
+<p>The examples use paths relative to the cloned <code>oncotracer</code> directory.</p>
 <h2 id="recommended-automatic-setup">Recommended: Automatic Setup<a class="headerlink" href="#recommended-automatic-setup" title="Permanent link">&para;</a></h2>
 <p>For Illumina, first create a sample table:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span>
 
 <span class="c1"># Create or replace the sample table.</span>
@@ -1654,12 +1653,10 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJE
 </code></pre></div>
 <p>Then generate the YAML and Illumina samplesheet:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Generate configuration files without starting the analysis.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1699,11 +1696,10 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <p>Keep every configured input, output, reference, and cache below <code>lpwgs_root</code>.</p>
 <h2 id="check-absolute-paths">Check absolute paths<a class="headerlink" href="#check-absolute-paths" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Print and validate example paths.</span>
-realpath<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+realpath<span class="w"> </span>.
 realpath<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq/Sample_A_R1.fastq.gz&quot;</span>
 ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq/Sample_A_R1.fastq.gz&quot;</span>
 gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq/Sample_A_R1.fastq.gz&quot;</span>
@@ -1711,13 +1707,11 @@ gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</s
 <p>On Linux, an absolute path begins with <code>/</code>. In WSL, use Linux paths such as <code>/mnt/c/Users/Name/oncotracer</code>, not Windows <code>C:\...</code> paths.</p>
 <h2 id="manual-yaml-editing">Manual YAML editing<a class="headerlink" href="#manual-yaml-editing" title="Permanent link">&para;</a></h2>
 <p>Use manual setup only when Automatic Setup does not fit the study.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Copy the minimal Illumina template and edit the copy.</span>
-cp<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/illumina.minimal.yml&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span>
-nano<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span>
+cp<span class="w"> </span><span class="s2">&quot;params/illumina.minimal.yml&quot;</span><span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
+nano<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
 </code></pre></div>
 <p>A minimal file is:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
@@ -1731,13 +1725,12 @@ nano<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
 <p>Save Nano with <code>Ctrl+O</code>, press Enter, and exit with <code>Ctrl+X</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Inspect and run the copied YAML.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Continue with <a href="../illumina/">Illumina configuration</a>, <a href="../ont/">ONT configuration</a>, or <a href="../parameter_reference/">All parameters</a>.</p>

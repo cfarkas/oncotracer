@@ -1808,21 +1808,18 @@
 
 <h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
 <p>Keep the terminal output and <code>.nextflow.log</code> when a run fails. Common causes are a missing host program, an inaccessible path, a corrupt FASTQ, insufficient disk or RAM, or an interrupted image download.</p>
-<p>The examples use <code>/path/to/my/directory/oncotracer</code> as the repository path.</p>
+<p>The examples use paths relative to the cloned <code>oncotracer</code> directory.</p>
 <h2 id="collect-the-basics">Collect the basics<a class="headerlink" href="#collect-the-basics" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Record versions, revision, storage, and local changes.</span>
-<span class="nb">pwd</span>
 git<span class="w"> </span>status<span class="w"> </span>--short
 git<span class="w"> </span>rev-parse<span class="w"> </span>--short<span class="w"> </span>HEAD
 java<span class="w"> </span>-version
 nextflow<span class="w"> </span>-version
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>docker
-df<span class="w"> </span>-h<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>/tmp
-du<span class="w"> </span>-sh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/work&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/.nextflow&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null
+df<span class="w"> </span>-h<span class="w"> </span>.<span class="w"> </span>/tmp
+du<span class="w"> </span>-sh<span class="w"> </span><span class="s2">&quot;work&quot;</span><span class="w"> </span><span class="s2">&quot;.nextflow&quot;</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null
 </code></pre></div>
 <p>Copy the first complete <code>ERROR</code> block, not only the final cancellation line.</p>
 <h2 id="java-or-nextflow-does-not-start">Java or Nextflow does not start<a class="headerlink" href="#java-or-nextflow-does-not-start" title="Permanent link">&para;</a></h2>
@@ -1835,23 +1832,21 @@ nextflow<span class="w"> </span>-version
 <p>Install supported versions using <a href="../installation/">Installation</a>. Open a new shell after changing <code>PATH</code> or Java.</p>
 <h2 id="docker-or-singularity-cannot-start">Docker or Singularity cannot start<a class="headerlink" href="#docker-or-singularity-cannot-start" title="Permanent link">&para;</a></h2>
 <p>Docker:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Confirm Docker and test it through the OncoTracer installation route.</span>
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>docker
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;project&quot;</span>
 </code></pre></div>
 <p>Singularity or Apptainer:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Confirm the HPC launcher and test the runtime through Nextflow.</span>
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>singularity
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>apptainer
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;project&quot;</span>
 </code></pre></div>
 <p>A Docker daemon error means the service is stopped or unavailable. A socket permission error means the account lacks Docker access. Ask the administrator rather than changing shared-server permissions without approval.</p>
 <h2 id="the-container-cannot-see-an-input-file">The container cannot see an input file<a class="headerlink" href="#the-container-cannot-see-an-input-file" title="Permanent link">&para;</a></h2>
@@ -1861,20 +1856,18 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard project path and resolve representative files.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 realpath<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">&quot;</span>
 realpath<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/Sample_A_R1.fastq.gz&quot;</span>
 </code></pre></div>
 <p>Do not use <code>~</code>, unresolved relative paths, or samplesheet paths outside <code>lpwgs_root</code>.</p>
 <h2 id="yaml-parsing-or-missing-parameters">YAML parsing or missing parameters<a class="headerlink" href="#yaml-parsing-or-missing-parameters" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Inspect and check the YAML without running scientific tools.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_run.yml&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span><span class="s2">&quot;params/my_run.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_run.yml&quot;</span>
 </code></pre></div>
 <p>YAML uses spaces, one colon per setting, and exact parameter names. <code>mode</code> must be <code>illumina</code> or <code>ont</code>.</p>
 <h2 id="illumina-samplesheet-errors">Illumina samplesheet errors<a class="headerlink" href="#illumina-samplesheet-errors" title="Permanent link">&para;</a></h2>
@@ -1882,8 +1875,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <div class="highlight"><pre><span></span><code>sample,fastq_1,fastq_2,status
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard project path and inspect the samplesheet.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/input/illumina.samplesheet.csv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;project/input/illumina.samplesheet.csv&quot;</span>
 </code></pre></div>
 <p>Every row needs an existing <code>fastq_1</code>. Paired-end rows also need <code>fastq_2</code>; all-single-end rows leave every <code>fastq_2</code> cell empty. Do not mix layouts.</p>
 <h2 id="illumina-normal-control-errors">Illumina normal-control errors<a class="headerlink" href="#illumina-normal-control-errors" title="Permanent link">&para;</a></h2>
@@ -1897,8 +1889,7 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p
 </code></pre></div>
 <p>After local-panel processing, require the completion marker:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard result path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PON</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/results/01_samurai_illumina/qdnaseq_local_pon&quot;</span>
+<span class="nv">PON</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/01_samurai_illumina/qdnaseq_local_pon&quot;</span>
 
 <span class="c1"># Require the exact successful marker.</span>
 <span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>QDNASEQ_LOCAL_PON_SUCCESS
@@ -1906,15 +1897,13 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p
 <p>Do not interpret partial files when the marker is missing or different.</p>
 <h2 id="ont-barcode-not-found-or-skipped">ONT barcode not found or skipped<a class="headerlink" href="#ont-barcode-not-found-or-skipped" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard project path and inspect the barcode tree.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq*&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span>
 </code></pre></div>
 <p>After a run, inspect:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard ONT result path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/results/ont&quot;</span>
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/ont&quot;</span>
 
 <span class="c1"># Review used, skipped, and warning logs.</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/logs/run_summary.txt&quot;</span>
@@ -1924,8 +1913,7 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120
 </code></pre></div>
 <h2 id="corrupt-or-partial-fastqs">Corrupt or partial FASTQs<a class="headerlink" href="#corrupt-or-partial-fastqs" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard project path and test every compressed FASTQ.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/input&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq.gz&#39;</span><span class="w"> </span>-print0<span class="w"> </span><span class="se">\</span>
+find<span class="w"> </span><span class="s2">&quot;project/input&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.fastq.gz&#39;</span><span class="w"> </span>-print0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-0<span class="w"> </span>-r<span class="w"> </span>-n1<span class="w"> </span>gzip<span class="w"> </span>-t
 </code></pre></div>
 <p>No output means the tested gzip files are valid. Replace any incomplete file before resuming.</p>
@@ -1936,40 +1924,36 @@ md5sum<span class="w"> </span>/path/to/sample.fastq.gz
 gzip<span class="w"> </span>-t<span class="w"> </span>/path/to/sample.fastq.gz<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;gzip: OK&#39;</span>
 </code></pre></div>
 <h2 id="not-enough-disk-or-memory">Not enough disk or memory<a class="headerlink" href="#not-enough-disk-or-memory" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and inspect storage use.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-df<span class="w"> </span>-h<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>/tmp
-du<span class="w"> </span>-h<span class="w"> </span>-d<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-h<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-30
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+df<span class="w"> </span>-h<span class="w"> </span>.<span class="w"> </span>/tmp
+du<span class="w"> </span>-h<span class="w"> </span>-d<span class="w"> </span><span class="m">2</span><span class="w"> </span>.<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-h<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-30
 </code></pre></div>
 <p>Do not delete active <code>work/</code>, stage-01 work, <code>.nextflow/</code>, or image caches. Exit code <code>137</code>, <code>Killed</code>, or an out-of-memory message usually indicates RAM pressure.</p>
 <h2 id="samurai-remains-at-0-of-1">SAMURAI remains at <code>0 of 1</code><a class="headerlink" href="#samurai-remains-at-0-of-1" title="Permanent link">&para;</a></h2>
 <p>The top-level process waits for the nested SAMURAI workflow, so <code>0 of 1</code> can remain visible while alignment or CNA calling is active.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard result path and inspect active tools and the nested log.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/results/illumina&quot;</span>
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/illumina&quot;</span>
 ps<span class="w"> </span>-ef<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;bwa|minimap2|samtools|nextflow&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span>grep
 tail<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/nextflow_launch/.nextflow.log&quot;</span>
 </code></pre></div>
 <p>Changing log timestamps and CPU activity indicate progress.</p>
 <h2 id="find-the-real-task-error">Find the real task error<a class="headerlink" href="#find-the-real-task-error" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and inspect the top-level log.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-tail<span class="w"> </span>-n<span class="w"> </span><span class="m">120</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/.nextflow.log&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+tail<span class="w"> </span>-n<span class="w"> </span><span class="m">120</span><span class="w"> </span><span class="s2">&quot;.nextflow.log&quot;</span>
 
 <span class="c1"># Replace the example task hash with the failed work directory shown by Nextflow.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,240p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/work/ab/cdef123456789/.command.sh&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,240p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/work/ab/cdef123456789/.command.err&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,240p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/work/ab/cdef123456789/.command.out&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/work/ab/cdef123456789/.exitcode&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,240p&#39;</span><span class="w"> </span><span class="s2">&quot;work/ab/cdef123456789/.command.sh&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,240p&#39;</span><span class="w"> </span><span class="s2">&quot;work/ab/cdef123456789/.command.err&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,240p&#39;</span><span class="w"> </span><span class="s2">&quot;work/ab/cdef123456789/.command.out&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;work/ab/cdef123456789/.exitcode&quot;</span>
 </code></pre></div>
 <h2 id="resume-after-fixing-the-cause">Resume after fixing the cause<a class="headerlink" href="#resume-after-fixing-the-cause" title="Permanent link">&para;</a></h2>
 <p>Use the same YAML and work directory:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Resume the existing analysis.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
@@ -1977,8 +1961,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <p><code>-resume</code> cannot repair a corrupt input file. Replace the file first.</p>
 <h2 id="a-run-completed-but-a-result-is-missing">A run completed but a result is missing<a class="headerlink" href="#a-run-completed-but-a-result-is-missing" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard output path and inventory the run.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/results/illumina&quot;</span>
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/illumina&quot;</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
 find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,200p&#39;</span>
 </code></pre></div>

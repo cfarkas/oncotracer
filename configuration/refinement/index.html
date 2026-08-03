@@ -1835,20 +1835,18 @@
 </table>
 <h2 id="reproducible-public-data-comparison">Reproducible public-data comparison<a class="headerlink" href="#reproducible-public-data-comparison" title="Permanent link">&para;</a></h2>
 <p>First prepare the public Illumina test and copy its generated YAML:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Download and validate the small public test data.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--make_test<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--make_test<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test_root<span class="w"> </span><span class="s2">&quot;test&quot;</span>
 
 <span class="c1"># Copy the generated Illumina YAML to a new methods-comparison file.</span>
-cp<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/illumina.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/illumina.conservative.yml&quot;</span>
+cp<span class="w"> </span><span class="s2">&quot;test/configs/illumina.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span>
 
 <span class="c1"># Edit only the copied YAML.</span>
-nano<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/illumina.conservative.yml&quot;</span>
+nano<span class="w"> </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span>
 </code></pre></div>
 <p>Change <code>outdir</code> to <code>/path/to/my/directory/oncotracer/test/runs/illumina_conservative</code>, then add:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">fine_bin_kb_illumina</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
@@ -1860,23 +1858,21 @@ nano<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO
 <span class="nt">permutation_p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
 <span class="nt">accept_rule</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p_and_bic</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Inspect, check, and run the conservative comparison.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,180p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/illumina.conservative.yml&quot;</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/illumina.conservative.yml&quot;</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/illumina.conservative.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/illumina_conservative&quot;</span><span class="w"> </span><span class="se">\</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,180p&#39;</span><span class="w"> </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/illumina_conservative&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Compare the final tables:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and result paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">DEFAULT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
-<span class="nv">EXPERIMENT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
+<span class="nv">DEFAULT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/test/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
+<span class="nv">EXPERIMENT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/test/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
 
 <span class="c1"># Confirm and compare both outputs.</span>
 ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEFAULT</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$EXPERIMENT</span><span class="s2">&quot;</span>

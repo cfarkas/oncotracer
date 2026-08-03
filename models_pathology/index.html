@@ -1690,8 +1690,7 @@
 </ul>
 <h2 id="read-the-outputs">Read the outputs<a class="headerlink" href="#read-the-outputs" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard classifier output path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/results/illumina_pathology/05_cna_classifier&quot;</span>
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/illumina_pathology/05_cna_classifier&quot;</span>
 
 <span class="c1"># Inspect prepared features, classification, pathology comparison, and status.</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_prepared/sample_cna_summary.tsv&quot;</span>
@@ -1700,8 +1699,7 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,80p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/07_pathology/pathology_status.txt&quot;</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="c1"># Open the cohort report on a workstation with a graphical desktop.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/results/illumina_pathology/05_cna_classifier&quot;</span>
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/illumina_pathology/05_cna_classifier&quot;</span>
 xdg-open<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_report/cna_classifier_report.html&quot;</span>
 </code></pre></div>
 <p>On a remote server, copy the report directory to a workstation.</p>

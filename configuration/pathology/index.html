@@ -1699,7 +1699,7 @@
 <h1 id="pathology-and-classifier-configuration">Pathology and Classifier Configuration<a class="headerlink" href="#pathology-and-classifier-configuration" title="Permanent link">&para;</a></h1>
 <p>Pathology is an optional section in the same Illumina run YAML. OncoTracer first completes the CNA workflow, then the optional classifier compares CNA-derived results with a supplied pathology table.</p>
 <p>Start without this feature when only CNA calls and plots are needed. Enable it after a standard Illumina run works.</p>
-<p>The examples use <code>/path/to/my/directory/oncotracer</code> as the repository path. The example FASTQs are not distributed with the repository; replace them with your own research data.</p>
+<p>The examples use paths relative to the cloned <code>oncotracer</code> directory.</p>
 <h2 id="files-that-must-match">Files that must match<a class="headerlink" href="#files-that-must-match" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1745,19 +1745,17 @@
 </code></pre></div>
 <h2 id="1-create-the-directories-and-copy-the-template">1. Create the directories and copy the template<a class="headerlink" href="#1-create-the-directories-and-copy-the-template" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
 
 <span class="c1"># Copy the pathology-enabled YAML template.</span>
-cp<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/illumina.pathology.example.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina_pathology.yml&quot;</span>
+cp<span class="w"> </span><span class="s2">&quot;params/illumina.pathology.example.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;params/my_illumina_pathology.yml&quot;</span>
 </code></pre></div>
 <p>Place the four example-named FASTQs, or your own equivalently named FASTQs, under <code>project/input/</code> before continuing.</p>
 <h2 id="2-create-the-illumina-samplesheet">2. Create the Illumina samplesheet<a class="headerlink" href="#2-create-the-illumina-samplesheet" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Create or replace the paired-end samplesheet.</span>
 cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;CSV</span>
@@ -1771,8 +1769,7 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJE
 </code></pre></div>
 <h2 id="3-create-the-matching-pathology-csv">3. Create the matching pathology CSV<a class="headerlink" href="#3-create-the-matching-pathology-csv" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Create or replace the matched pathology table.</span>
 cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
@@ -1787,8 +1784,7 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJE
 <p>Quotes protect diagnosis text containing commas. Use anonymized case identifiers and include only the fields required for the analysis.</p>
 <h2 id="4-verify-sample-matching">4. Verify sample matching<a class="headerlink" href="#4-verify-sample-matching" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard project path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Confirm that sequencing and pathology sample IDs match exactly.</span>
 python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
@@ -1815,7 +1811,7 @@ python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;<
 </code></pre></div>
 <h2 id="5-edit-the-copied-yaml">5. Edit the copied YAML<a class="headerlink" href="#5-edit-the-copied-yaml" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Open the copied pathology-enabled YAML.</span>
-nano<span class="w"> </span>/path/to/my/directory/oncotracer/params/my_illumina_pathology.yml
+nano<span class="w"> </span>params/my_illumina_pathology.yml
 </code></pre></div>
 <p>Use:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
@@ -1841,23 +1837,21 @@ nano<span class="w"> </span>/path/to/my/directory/oncotracer/params/my_illumina_
 </code></pre></div>
 <p>Save with <code>Ctrl+O</code>, press Enter, and exit with <code>Ctrl+X</code>.</p>
 <h2 id="6-check-and-run">6. Check and run<a class="headerlink" href="#6-check-and-run" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Check parameters and workflow connections.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina_pathology.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina_pathology.yml&quot;</span>
 
 <span class="c1"># Run the CNA analysis and optional pathology comparison.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina_pathology.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina_pathology.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>On HPC, replace <code>--docker</code> with <code>--singularity</code>.</p>
 <h2 id="7-inspect-the-result">7. Inspect the result<a class="headerlink" href="#7-inspect-the-result" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard output path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/results/illumina_pathology&quot;</span>
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/illumina_pathology&quot;</span>
 
 <span class="c1"># Read the workflow summary and optional classifier tables.</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>

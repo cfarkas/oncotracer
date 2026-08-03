@@ -1765,29 +1765,26 @@ minimap2<span class="w"> </span>--version
 pigz<span class="w"> </span>--version
 </code></pre></div>
 <p>For Docker:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and confirm Docker.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>docker
 
 <span class="c1"># Let Nextflow prepare and test the maintained Docker image.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;project&quot;</span>
 </code></pre></div>
 <p>For Singularity or Apptainer:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and confirm the HPC launcher.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>singularity
 <span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>apptainer
 
 <span class="c1"># Test docker://carlosfarkas/oncotracer:latest through Nextflow.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;project&quot;</span>
 </code></pre></div>
 <p>Ask the system administrator to install missing host programs on managed systems.</p>
 <h2 id="record-versions-from-a-completed-run">Record versions from a completed run<a class="headerlink" href="#record-versions-from-a-completed-run" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and output paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/results&quot;</span>
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results&quot;</span>
 
 <span class="c1"># List the Illumina or ONT pipeline provenance files.</span>
 find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/pipeline_info&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1796,10 +1793,9 @@ find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT<
 <span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 
 <span class="c1"># Record the OncoTracer commit, Nextflow version, and selected image.</span>
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
 git<span class="w"> </span>rev-parse<span class="w"> </span>HEAD
 nextflow<span class="w"> </span>-version
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/.oncotracer/install/install_manifest.txt&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;.oncotracer/install/install_manifest.txt&quot;</span>
 </code></pre></div>
 <p>The installer and Illumina wrapper pin SAMURAI <code>v1.4.0</code>. Preserve the nested <code>pipeline_info</code>, generated YAML and samplesheet, OncoTracer commit, and installation manifest with formal study outputs.</p>
 <h2 id="scientific-responsibility">Scientific responsibility<a class="headerlink" href="#scientific-responsibility" title="Permanent link">&para;</a></h2>

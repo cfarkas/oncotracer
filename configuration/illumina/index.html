@@ -1744,7 +1744,7 @@
 
 <h1 id="illumina-configuration">Illumina Configuration<a class="headerlink" href="#illumina-configuration" title="Permanent link">&para;</a></h1>
 <p>Use this route for single-end or paired-end Illumina FASTQs. OncoTracer aligns the reads, runs SAMURAI/qDNAseq, refines CNA boundaries, and creates tables, plots, and a workflow summary.</p>
-<p>The examples use <code>/path/to/my/directory/oncotracer</code> as the repository path.</p>
+<p>The examples use paths relative to the cloned <code>oncotracer</code> directory.</p>
 <h2 id="recommended-create-the-yaml-automatically">Recommended: create the YAML automatically<a class="headerlink" href="#recommended-create-the-yaml-automatically" title="Permanent link">&para;</a></h2>
 <p>Automatic Setup supports either:</p>
 <ul>
@@ -1765,8 +1765,7 @@
 </code></pre></div>
 <h3 id="2-create-the-sample-table">2. Create the sample table<a class="headerlink" href="#2-create-the-sample-table" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span>
 
 <span class="c1"># Create or replace the Illumina sample table.</span>
@@ -1784,12 +1783,10 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJE
 <p><code>sample_name</code> must match the FASTQ filename prefix exactly. Zero normal rows run without a local panel, one normal is rejected, and two or more normals enable the local qDNAseq reference.</p>
 <h3 id="3-generate-the-configuration">3. Generate the configuration<a class="headerlink" href="#3-generate-the-configuration" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Generate the Illumina YAML and FASTQ samplesheet.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1806,8 +1803,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <p>It does not start the analysis.</p>
 <h3 id="4-inspect-and-run">4. Inspect and run<a class="headerlink" href="#4-inspect-and-run" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Inspect the generated files.</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,140p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml&quot;</span>
@@ -1815,7 +1811,7 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,30p
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/auto_params_manifest.tsv&quot;</span>
 
 <span class="c1"># Run the generated YAML with Docker.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
@@ -1828,8 +1824,7 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJE
 <p>Use manual setup when the filenames do not match the supported automatic patterns or when advanced settings are required.</p>
 <h3 id="1-create-the-samplesheet">1. Create the samplesheet<a class="headerlink" href="#1-create-the-samplesheet" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input&quot;</span>
 
 <span class="c1"># Create or replace a paired-end Illumina samplesheet.</span>
@@ -1846,13 +1841,11 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJE
 </code></pre></div>
 <p>For a single-end run, keep the four-column header and leave <code>fastq_2</code> empty for every row.</p>
 <h3 id="2-copy-and-edit-the-yaml">2. Copy and edit the YAML<a class="headerlink" href="#2-copy-and-edit-the-yaml" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Copy the minimal template and edit the copy.</span>
-cp<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/illumina.minimal.yml&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span>
-nano<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span>
+cp<span class="w"> </span><span class="s2">&quot;params/illumina.minimal.yml&quot;</span><span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
+nano<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
 </code></pre></div>
 <p>A tumor-plus-controls YAML can contain:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
@@ -1874,16 +1867,15 @@ nano<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO
 <p>All tumor and normal BAMs use the same alignment stage, bin definition, paired-read setting, and MAPQ threshold. qDNAseq computes the per-bin median signal across the selected controls and subtracts that reference from each tumor profile. Corrected bins, segments, and plots contain tumors only.</p>
 <p>The normal list must contain every and only samplesheet row marked <code>normal</code>. At least two controls are required. Review <code>qc/normal_panel_sample_qc.tsv</code> before interpreting corrected calls.</p>
 <h3 id="3-check-and-run-the-manual-yaml">3. Check and run the manual YAML<a class="headerlink" href="#3-check-and-run-the-manual-yaml" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Check workflow connections without running the scientific tools.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
 
 <span class="c1"># Run or resume the manual configuration.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h2 id="main-illumina-settings">Main Illumina settings<a class="headerlink" href="#main-illumina-settings" title="Permanent link">&para;</a></h2>

@@ -1807,11 +1807,10 @@
 <h2 id="recommended-route-automatic-setup">Recommended route: Automatic Setup<a class="headerlink" href="#recommended-route-automatic-setup" title="Permanent link">&para;</a></h2>
 <p>Create a sample table and point <code>--auto_params</code> at the reads folder. Automatic Setup writes the YAML and, for Illumina, the FASTQ samplesheet.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Generate an Illumina YAML and samplesheet from a standard FASTQ folder.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1819,7 +1818,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
 
 <span class="c1"># Run with Conda; Nextflow creates and reuses the required environments.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
@@ -1827,47 +1826,42 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <p>Replace <code>--conda</code> with <code>--docker</code> or <code>--singularity</code> for the corresponding container runtime. See <a href="../auto_params/">Automatic Setup</a> for exact Illumina and ONT sample tables.</p>
 <h2 id="second-option-manual-yaml">Second option: manual YAML<a class="headerlink" href="#second-option-manual-yaml" title="Permanent link">&para;</a></h2>
 <h3 id="1-copy-a-template">1. Copy a template<a class="headerlink" href="#1-copy-a-template" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Copy the Illumina template to an editable file.</span>
-cp<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/illumina.minimal.yml&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span>
+cp<span class="w"> </span><span class="s2">&quot;params/illumina.minimal.yml&quot;</span><span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
 
 <span class="c1"># For ONT, copy the ONT template instead.</span>
-<span class="c1"># cp &quot;$REPO_DIR/params/ont.minimal.yml&quot; &quot;$REPO_DIR/params/my_ont.yml&quot;</span>
+<span class="c1"># cp &quot;params/ont.minimal.yml&quot; &quot;params/my_ont.yml&quot;</span>
 </code></pre></div>
 <p>Do not edit the versioned template directly.</p>
 <h3 id="2-resolve-the-project-paths">2. Resolve the project paths<a class="headerlink" href="#2-resolve-the-project-paths" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Print the absolute repository and project paths.</span>
-realpath<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
-realpath<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
-realpath<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project/input&quot;</span>
+realpath<span class="w"> </span>.
+realpath<span class="w"> </span><span class="s2">&quot;project&quot;</span>
+realpath<span class="w"> </span><span class="s2">&quot;project/input&quot;</span>
 </code></pre></div>
 <p>Use absolute paths in the YAML.</p>
 <h3 id="3-edit-the-yaml">3. Edit the YAML<a class="headerlink" href="#3-edit-the-yaml" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Open the copied Illumina YAML.</span>
-nano<span class="w"> </span>/path/to/my/directory/oncotracer/params/my_illumina.yml
+nano<span class="w"> </span>params/my_illumina.yml
 </code></pre></div>
 <p>Save with <code>Ctrl+O</code>, press Enter, and exit with <code>Ctrl+X</code>. Do not use tabs.</p>
 <h3 id="4-check-the-workflow-wiring">4. Check the workflow wiring<a class="headerlink" href="#4-check-the-workflow-wiring" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Validate parameters and workflow connections without running the analysis tools.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
 </code></pre></div>
 <h3 id="5-run-the-analysis">5. Run the analysis<a class="headerlink" href="#5-run-the-analysis" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Run or resume the manual Illumina YAML with Conda.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/params/my_illumina.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <p>Replace <code>--conda</code> with <code>--docker</code> or <code>--singularity</code> when using a container runtime.</p>

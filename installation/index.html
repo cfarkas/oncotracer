@@ -1819,59 +1819,46 @@ conda<span class="w"> </span>--version
 </code></pre></div>
 <p>Either <code>curl</code> or <code>wget</code> is sufficient. Confirm only the execution environment that you plan to use.</p>
 <h2 id="3-clone-oncotracer">3. Clone OncoTracer<a class="headerlink" href="#3-clone-oncotracer" title="Permanent link">&para;</a></h2>
-<p>Use <code>/path/to/my/directory/oncotracer</code> as the repository path in the documentation.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-
-<span class="c1"># Clone OncoTracer into that directory.</span>
-git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
-
-<span class="c1"># Enter the repository and confirm that main.nf is present.</span>
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
-<span class="nb">pwd</span>
-ls<span class="w"> </span>main.nf
+<p>Run the commands from the cloned <code>oncotracer</code> directory.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Clone OncoTracer and enter the repository.</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git
+<span class="nb">cd</span><span class="w"> </span>oncotracer
 </code></pre></div>
 <h2 id="4-prepare-one-execution-environment-without-starting-an-analysis">4. Prepare one execution environment without starting an analysis<a class="headerlink" href="#4-prepare-one-execution-environment-without-starting-an-analysis" title="Permanent link">&para;</a></h2>
 <p>Choose one option.</p>
 <h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Create or reuse the versioned Conda environment and test the software.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/install_conda&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/install_conda&quot;</span>
 
 <span class="c1"># Record the selected environment and its explicit package specification hash.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/.oncotracer/install/install_manifest.txt&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;.oncotracer/install/install_manifest.txt&quot;</span>
 </code></pre></div>
 <p>On the first <code>--conda</code> run, Nextflow solves and creates the required environment automatically. It stores reusable environments below <code>lpwgs_root/.oncotracer/conda</code>.</p>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Pull or reuse the Docker image and test the installed software.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/install_docker&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/install_docker&quot;</span>
 
 <span class="c1"># Record the selected runtime and image identity.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/.oncotracer/install/install_manifest.txt&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;.oncotracer/install/install_manifest.txt&quot;</span>
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
 
 <span class="c1"># Pull or reuse the Singularity/Apptainer image and test the software.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/install_singularity&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/install_singularity&quot;</span>
 
 <span class="c1"># Record the selected runtime and image identity.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/.oncotracer/install/install_manifest.txt&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;.oncotracer/install/install_manifest.txt&quot;</span>
 </code></pre></div>
 <p>The <code>--install</code> route checks the host tools, prepares the selected environment, caches SAMURAI v1.4.0, writes the manifest, and stops. It does not start an analysis.</p>
 <h2 id="5-estimated-time-and-resources">5. Estimated time and resources<a class="headerlink" href="#5-estimated-time-and-resources" title="Permanent link">&para;</a></h2>
@@ -1890,8 +1877,6 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_
 <p>QuickStart Example 1 is the recommended installation check.</p>
 <h2 id="poetry-launcher-installation">Poetry launcher installation<a class="headerlink" href="#poetry-launcher-installation" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Install Poetry, enter the standard repository clone, and create its locked launcher environment.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
 poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
 poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--help
 </code></pre></div>

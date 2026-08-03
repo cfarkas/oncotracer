@@ -1692,7 +1692,7 @@
 </tr>
 </tbody>
 </table>
-<p>Use <code>/path/to/my/directory/oncotracer</code> as the repository path in these examples.</p>
+<p>Run the commands from the cloned <code>oncotracer</code> directory.</p>
 <h2 id="recommended-project-tree">Recommended project tree<a class="headerlink" href="#recommended-project-tree" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>/path/to/my/directory/oncotracer/
 ├── main.nf
@@ -1751,8 +1751,7 @@
 <p>Automatic Setup creates configuration files and stops. It does not align reads or call CNAs.</p>
 <h3 id="illumina-sample-table">Illumina sample table<a class="headerlink" href="#illumina-sample-table" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span>
 
 <span class="c1"># Create or replace the Illumina sample table.</span>
@@ -1769,11 +1768,10 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJE
 </code></pre></div>
 <p>The sample name must match the single-end filename or the text before <code>_R1</code>/<code>_R2</code>. Zero normal rows run without a local panel, one normal is rejected, and two or more normals enable the local qDNAseq reference.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Generate the Illumina YAML and samplesheet.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1783,8 +1781,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 </code></pre></div>
 <h3 id="ont-barcode-table">ONT barcode table<a class="headerlink" href="#ont-barcode-table" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span>
 
 <span class="c1"># Create or replace the explicit ONT barcode table.</span>
@@ -1798,11 +1795,10 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass/samples.csv&quot;</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Generate the ONT YAML.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1814,8 +1810,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <h2 id="manual-illumina-samplesheet">Manual Illumina samplesheet<a class="headerlink" href="#manual-illumina-samplesheet" title="Permanent link">&para;</a></h2>
 <p>Use a manual samplesheet when filenames do not follow the supported automatic patterns.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input&quot;</span>
 
 <span class="c1"># Create or replace a paired-end samplesheet.</span>
@@ -1863,8 +1858,7 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJE
 <span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Inspect the table and validate a representative read pair.</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span>
@@ -1884,8 +1878,7 @@ gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</s
 </code></pre></div>
 <p>FASTQs may end in <code>.fastq</code>, <code>.fq</code>, <code>.fastq.gz</code>, or <code>.fq.gz</code> and must be placed directly inside each barcode directory.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Inspect barcode directories and FASTQs.</span>
 find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
@@ -1899,11 +1892,10 @@ find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJ
 <h2 id="optional-pathology-csv">Optional pathology CSV<a class="headerlink" href="#optional-pathology-csv" title="Permanent link">&para;</a></h2>
 <p>A pathology table needs a sequencing sample identifier, case identifier, and diagnosis text. The sample identifier must match exactly.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
 
 <span class="c1"># Copy the anonymized format example and edit it.</span>
-cp<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/examples/pathology/anonymized_pathology_example.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+cp<span class="w"> </span><span class="s2">&quot;examples/pathology/anonymized_pathology_example.csv&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span>
 nano<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span>
 </code></pre></div>
