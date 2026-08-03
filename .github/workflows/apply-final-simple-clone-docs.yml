@@ -31,6 +31,34 @@ jobs:
       - name: Apply the concise clone cleanup
         run: python3 tools/finalize_simple_clone_docs.py
 
+      - name: Remove prose that repeats the clone commands
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          files = [Path('README.md')]
+          files.extend(sorted(Path('docs').rglob('*.md')))
+          files.extend(sorted(Path('examples').rglob('README.md')))
+
+          standalone = (
+              'Run commands inside the cloned `oncotracer` directory.\n\n',
+              'Start from a fresh clone and run the remaining commands from the `oncotracer` directory.\n\n',
+              'Run the commands from the cloned `oncotracer` directory.\n\n',
+          )
+          inline = (
+              ' It starts from a fresh OncoTracer clone and uses paths relative to the clone.',
+              ' It starts from a fresh OncoTracer clone and uses paths relative to the cloned `oncotracer` directory.',
+          )
+
+          for path in files:
+              text = path.read_text(encoding='utf-8')
+              for phrase in standalone:
+                  text = text.replace(phrase, '')
+              for phrase in inline:
+                  text = text.replace(phrase, '')
+              path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Remove the temporary update files
         run: |
           rm -f tools/finalize_simple_clone_docs.py
