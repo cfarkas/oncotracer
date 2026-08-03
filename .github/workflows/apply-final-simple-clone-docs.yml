@@ -28,6 +28,27 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Keep the single Automatic Setup clone introduction
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('tools/finalize_simple_clone_docs.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    # Automatic Setup had two adjacent clone introductions. Keep only the first.
+    if path == ROOT / "docs/auto_params.md":
+        duplicate = (
+            "## Before you begin\\n\\n"
+            f"```bash\\n{EXACT_CLONE}\\n```\\n\\n"
+        )
+        text = text.replace(duplicate, "## Before you begin\\n\\n", 1)
+
+'''
+          if old not in text:
+              raise SystemExit('Unable to locate the obsolete Automatic Setup deduplication block')
+          path.write_text(text.replace(old, '', 1), encoding='utf-8')
+          PY
+
       - name: Apply the concise clone cleanup
         run: python3 tools/finalize_simple_clone_docs.py
 
