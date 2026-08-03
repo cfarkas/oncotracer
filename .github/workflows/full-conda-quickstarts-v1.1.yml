@@ -1,4 +1,4 @@
-name: Full v1.1 QuickStarts across Docker, Poetry, and Conda
+name: Full v1.1 QuickStart 1 across Docker, Poetry, and Conda
 
 on:
   pull_request:
@@ -13,18 +13,19 @@ permissions:
   contents: read
 
 concurrency:
-  group: full-v1.1-${{ github.event.pull_request.number || github.ref }}
+  group: full-v1.1-quickstart1-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
   NXF_ANSI_LOG: "false"
   NXF_DISABLE_CHECK_LATEST: "true"
   NXF_OPTS: "-Xms256m -Xmx1g"
+  NXF_GITHUB_TOKEN: ${{ github.token }}
   PIP_NO_CACHE_DIR: "1"
 
 jobs:
   validate:
-    name: ${{ matrix.route }} / ${{ matrix.example }}
+    name: ${{ matrix.route }} / QuickStart 1
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     strategy:
@@ -34,9 +35,6 @@ jobs:
           - docker
           - poetry
           - conda
-        example:
-          - quickstart1
-          - quickstart2
     defaults:
       run:
         shell: bash -el {0}
@@ -71,24 +69,25 @@ jobs:
           auto-activate: true
           conda-remove-defaults: true
 
-      - name: Install host launchers and sequence tools
+      - name: Install host prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            samtools bwa minimap2 pigz curl wget
+            samtools bwa minimap2 pigz curl wget git
           curl -fsSL https://get.nextflow.io | bash
           sudo install -m 0755 nextflow /usr/local/bin/nextflow
+
           git --version
           java -version
           python3 --version
           nextflow -version
-          docker --version
           samtools --version | sed -n '1,3p'
           (bwa 2>&1 || true) | sed -n '1,3p'
           minimap2 --version
           pigz --version
+          echo "Host Docker identity: $(id -u):$(id -g)"
 
-      - name: Configure the selected launcher
+      - name: Configure the selected route
         run: |
           if [[ '${{ matrix.route }}' == 'conda' ]]; then
             conda config --set channel_priority strict
@@ -102,6 +101,11 @@ jobs:
             poetry install --no-interaction
             poetry run python tests/test_poetry_cli.py
             poetry run oncotracer --help
+            docker info
+            docker pull carlosfarkas/oncotracer:latest
+          else
+            docker info
+            docker pull carlosfarkas/oncotracer:latest
           fi
 
       - name: Add memory headroom for hg38 indexing
@@ -120,16 +124,14 @@ jobs:
 
       - name: Define isolated test paths
         run: |
-          TEST_ROOT="$GITHUB_WORKSPACE/test/v1.1-${{ matrix.route }}-${{ matrix.example }}"
+          TEST_ROOT="$GITHUB_WORKSPACE/test/v1.1-${{ matrix.route }}-quickstart1"
           mkdir -p "$TEST_ROOT/work" "$TEST_ROOT/reports"
           {
             echo "TEST_ROOT=$TEST_ROOT"
             echo "ROUTE=${{ matrix.route }}"
-            echo "EXAMPLE=${{ matrix.example }}"
           } >> "$GITHUB_ENV"
 
-      - name: Prepare QuickStart 1 public reads and configurations
-        if: matrix.example == 'quickstart1'
+      - name: Prepare public reads and QuickStart configurations
         run: |
           set -Eeuo pipefail
           if [[ "$ROUTE" == 'poetry' ]]; then
@@ -161,85 +163,11 @@ jobs:
           sed -n '1,160p' "$TEST_ROOT/configs/illumina.quickstart.yml"
           sed -n '1,160p' "$TEST_ROOT/configs/ont.quickstart.yml"
 
-      - name: Download and configure QuickStart 2 HCC1143 data
-        if: matrix.example == 'quickstart2'
-        run: |
-          set -Eeuo pipefail
-          READS_DIR="$TEST_ROOT/public/hcc1143_lpwgs"
-          mkdir -p "$READS_DIR"
-
-          while IFS=$'\t' read -r sample treatment accession read_number filename bytes md5 url; do
-            [[ "$sample" == 'sample_name' ]] && continue
-            curl --fail --location --retry 5 --retry-all-errors --continue-at - \
-              --output "$READS_DIR/$filename" \
-              "$url"
-          done < "$GITHUB_WORKSPACE/examples/hcc1143_lpwgs/manifest.tsv"
-
-          cd "$READS_DIR"
-          md5sum -c "$GITHUB_WORKSPACE/examples/hcc1143_lpwgs/checksums.md5"
-          gzip -t \
-            HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
-            HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
-            HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
-
-          cat > "$READS_DIR/samples.csv" <<'CSV'
-          sample_name,status
-          HCC1143_DMSO,TUMOR
-          HCC1143_BEZ235,TUMOR
-          HCC1143_TRAMETINIB,TUMOR
-          CSV
-          cat "$READS_DIR/samples.csv"
-
-          if [[ "$ROUTE" == 'poetry' ]]; then
-            poetry run oncotracer --repo-dir "$GITHUB_WORKSPACE" --backend docker \
-              --auto_params \
-              --lpwgs_root "$TEST_ROOT" \
-              --mode illumina \
-              --reads_folder "$READS_DIR" \
-              --sample_table "$READS_DIR/samples.csv" \
-              --auto_config_dir "$TEST_ROOT/configs/hcc1143_lpwgs" \
-              --auto_outdir "$TEST_ROOT/runs/hcc1143_lpwgs" \
-              -work-dir "$TEST_ROOT/work/hcc1143-auto"
-          elif [[ "$ROUTE" == 'conda' ]]; then
-            nextflow run "$GITHUB_WORKSPACE/main.nf" --conda \
-              --auto_params \
-              --lpwgs_root "$TEST_ROOT" \
-              --mode illumina \
-              --reads_folder "$READS_DIR" \
-              --sample_table "$READS_DIR/samples.csv" \
-              --auto_config_dir "$TEST_ROOT/configs/hcc1143_lpwgs" \
-              --auto_outdir "$TEST_ROOT/runs/hcc1143_lpwgs" \
-              -work-dir "$TEST_ROOT/work/hcc1143-auto"
-          else
-            nextflow run "$GITHUB_WORKSPACE/main.nf" --docker \
-              --auto_params \
-              --lpwgs_root "$TEST_ROOT" \
-              --mode illumina \
-              --reads_folder "$READS_DIR" \
-              --sample_table "$READS_DIR/samples.csv" \
-              --auto_config_dir "$TEST_ROOT/configs/hcc1143_lpwgs" \
-              --auto_outdir "$TEST_ROOT/runs/hcc1143_lpwgs" \
-              -work-dir "$TEST_ROOT/work/hcc1143-auto"
-          fi
-
-          test -s "$TEST_ROOT/configs/hcc1143_lpwgs/illumina.auto.yml"
-          test -s "$TEST_ROOT/configs/hcc1143_lpwgs/illumina.samplesheet.csv"
-          cat "$TEST_ROOT/configs/hcc1143_lpwgs/illumina.samplesheet.csv"
-
       - name: Limit nested SAMURAI resources to the hosted runner
         run: |
-          if [[ "$EXAMPLE" == 'quickstart1' ]]; then
-            HOMES=(
-              "$TEST_ROOT/runs/illumina/01_samurai_illumina/.nextflow"
-              "$TEST_ROOT/runs/ont/01_samurai_ont/.nextflow"
-            )
-          else
-            HOMES=(
-              "$TEST_ROOT/runs/hcc1143_lpwgs/01_samurai_illumina/.nextflow"
-            )
-          fi
-
-          for nested_home in "${HOMES[@]}"; do
+          for nested_home in \
+            "$TEST_ROOT/runs/illumina/01_samurai_illumina/.nextflow" \
+            "$TEST_ROOT/runs/ont/01_samurai_ont/.nextflow"; do
             mkdir -p "$nested_home"
             cat > "$nested_home/config" <<'EOF_CONFIG'
           process {
@@ -256,9 +184,9 @@ jobs:
           done
 
       - name: Run complete QuickStart 1
-        if: matrix.example == 'quickstart1'
         run: |
           set -Eeuo pipefail
+
           run_config() {
             local config="$1" work="$2" label="$3"
             if [[ "$ROUTE" == 'poetry' ]]; then
@@ -297,69 +225,41 @@ jobs:
             "$TEST_ROOT/work/ont" \
             ont
 
-      - name: Run complete QuickStart 2 HCC1143 cohort
-        if: matrix.example == 'quickstart2'
-        run: |
-          set -Eeuo pipefail
-          CONFIG="$TEST_ROOT/configs/hcc1143_lpwgs/illumina.auto.yml"
-          WORK="$TEST_ROOT/work/hcc1143-lpwgs"
-          if [[ "$ROUTE" == 'poetry' ]]; then
-            poetry run oncotracer --repo-dir "$GITHUB_WORKSPACE" --backend docker \
-              -params-file "$CONFIG" \
-              -work-dir "$WORK" \
-              -with-report "$TEST_ROOT/reports/hcc1143.report.html" \
-              -with-timeline "$TEST_ROOT/reports/hcc1143.timeline.html" \
-              -with-trace "$TEST_ROOT/reports/hcc1143.trace.tsv" \
-              -resume
-          elif [[ "$ROUTE" == 'conda' ]]; then
-            nextflow run "$GITHUB_WORKSPACE/main.nf" --conda \
-              -params-file "$CONFIG" \
-              -work-dir "$WORK" \
-              -with-report "$TEST_ROOT/reports/hcc1143.report.html" \
-              -with-timeline "$TEST_ROOT/reports/hcc1143.timeline.html" \
-              -with-trace "$TEST_ROOT/reports/hcc1143.trace.tsv" \
-              -resume
-          else
-            nextflow run "$GITHUB_WORKSPACE/main.nf" --docker \
-              -params-file "$CONFIG" \
-              -work-dir "$WORK" \
-              -with-report "$TEST_ROOT/reports/hcc1143.report.html" \
-              -with-timeline "$TEST_ROOT/reports/hcc1143.timeline.html" \
-              -with-trace "$TEST_ROOT/reports/hcc1143.trace.tsv" \
-              -resume
-          fi
-
       - name: Verify QuickStart 1 outputs
-        if: matrix.example == 'quickstart1'
         run: |
           python3 "$GITHUB_WORKSPACE/examples/quickstart/verify_outputs.py" \
             --test-root "$TEST_ROOT"
+
           samtools quickcheck -v \
             "$TEST_ROOT/runs/illumina/01_samurai_illumina/alignment/ERR12341627.bam" \
             "$TEST_ROOT/runs/ont/01_samurai_ont/bam/DRR165691.sorted.bam"
+
+          test -s "$TEST_ROOT/runs/illumina/03_cna_codification/cna_events.tsv"
+          test -s "$TEST_ROOT/runs/illumina/04_cna_custom_plots/cna_per_sample_pages.pdf"
+          test -s "$TEST_ROOT/runs/ont/03_cna_codification/cna_events.tsv"
+          test -s "$TEST_ROOT/runs/ont/04_cna_custom_plots/cna_per_sample_pages.pdf"
+
           cat "$TEST_ROOT/runs/illumina/06_workflow_summary/workflow_summary.txt"
           cat "$TEST_ROOT/runs/ont/06_workflow_summary/workflow_summary.txt"
 
-      - name: Verify QuickStart 2 outputs
-        if: matrix.example == 'quickstart2'
+      - name: Verify route and source-cache state
         run: |
-          OUT="$TEST_ROOT/runs/hcc1143_lpwgs"
-          python3 "$GITHUB_WORKSPACE/examples/hcc1143_lpwgs/verify_outputs.py" \
-            --outdir "$OUT"
-          samtools quickcheck -v "$OUT/01_samurai_illumina/alignment/"*.bam
-          cat "$OUT/06_workflow_summary/workflow_summary.txt"
+          SAMURAI_SOURCE="$TEST_ROOT/.oncotracer/samurai/v1.4.0"
+          test -s "$SAMURAI_SOURCE/main.nf"
+          grep -qx 'cache_format=2' "$SAMURAI_SOURCE/.oncotracer-source"
+          grep -F 'channel.fromPath(params.dict)' "$SAMURAI_SOURCE/main.nf"
 
-      - name: Verify route-specific state
-        run: |
           if [[ "$ROUTE" == 'conda' ]]; then
             test -d "$TEST_ROOT/.oncotracer/conda"
             find "$TEST_ROOT/.oncotracer/conda" \
               -mindepth 1 -maxdepth 1 -type d -print -quit | grep -q .
           elif [[ "$ROUTE" == 'poetry' ]]; then
             poetry run oncotracer --help >/dev/null
+            docker info >/dev/null
           else
             docker info >/dev/null
           fi
+
           du -h -d 3 "$TEST_ROOT" | sort -h | tail -50
           df -h
 
@@ -367,15 +267,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v1.1-${{ matrix.route }}-${{ matrix.example }}-${{ github.run_id }}
+          name: v1.1-${{ matrix.route }}-quickstart1-${{ github.run_id }}
           if-no-files-found: warn
           include-hidden-files: true
           retention-days: 30
           path: |
             .nextflow.log*
-            test/v1.1-${{ matrix.route }}-${{ matrix.example }}/configs/**
-            test/v1.1-${{ matrix.route }}-${{ matrix.example }}/reports/**
-            test/v1.1-${{ matrix.route }}-${{ matrix.example }}/runs/**/06_workflow_summary/**
-            test/v1.1-${{ matrix.route }}-${{ matrix.example }}/runs/**/03_cna_codification/cna_events.tsv
-            test/v1.1-${{ matrix.route }}-${{ matrix.example }}/runs/**/01_samurai_*/logs/**
-            test/v1.1-${{ matrix.route }}-${{ matrix.example }}/runs/**/01_samurai_*/nextflow_launch/.nextflow.log
+            test/v1.1-${{ matrix.route }}-quickstart1/configs/**
+            test/v1.1-${{ matrix.route }}-quickstart1/reports/**
+            test/v1.1-${{ matrix.route }}-quickstart1/.oncotracer/samurai/**/.oncotracer-source
+            test/v1.1-${{ matrix.route }}-quickstart1/runs/**/06_workflow_summary/**
+            test/v1.1-${{ matrix.route }}-quickstart1/runs/**/03_cna_codification/cna_events.tsv
+            test/v1.1-${{ matrix.route }}-quickstart1/runs/**/01_samurai_*/logs/**
+            test/v1.1-${{ matrix.route }}-quickstart1/runs/**/01_samurai_*/nextflow_launch/.nextflow.log
