@@ -8,6 +8,15 @@ Choose one execution option:
 - `--docker` uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
 - `--singularity` uses the same image as `docker://carlosfarkas/oncotracer:latest` on a configured HPC system.
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 ## Choose the shortest route
 
 | Starting point | Route |
@@ -24,12 +33,8 @@ Choose one execution option:
 ## 1. Enter the repository and select an execution environment
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 
 # Confirm Nextflow and Conda for a --conda run.
-pwd
 nextflow -version
 conda --version
 ```
@@ -45,7 +50,7 @@ For Docker, check `command -v docker`. For HPC, check `command -v singularity` o
 Input layout:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq/
+project/input/fastq/
 ├── Patient_A_R1.fastq.gz
 ├── Patient_A_R2.fastq.gz
 ├── Control_A_R1.fastq.gz
@@ -59,8 +64,7 @@ Create the exact sample table:
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 mkdir -p "$PROJECT_DIR/input/fastq"
 
 # Create or replace the Illumina sample table.
@@ -79,11 +83,10 @@ Generate and run:
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Generate the Illumina YAML and samplesheet.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
   --sample_table "$PROJECT_DIR/input/fastq/samples.csv" \
@@ -92,7 +95,7 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   -work-dir "$PROJECT_DIR/work/auto_params_illumina"
 
 # Run the generated Illumina YAML with Conda.
-nextflow run "$REPO_DIR/main.nf" --conda \
+nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/illumina/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/illumina" \
   -resume
@@ -105,7 +108,7 @@ On the first `--conda` run, Nextflow creates the required environments. Replace 
 Input layout:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq_pass/
+project/input/fastq_pass/
 ├── barcode01/
 │   └── reads.fastq.gz
 ├── barcode02/
@@ -117,8 +120,7 @@ Create the exact barcode table:
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 mkdir -p "$PROJECT_DIR/input/fastq_pass"
 
 # Create or replace the ONT barcode table.
@@ -136,11 +138,10 @@ Generate and run:
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Generate the ONT YAML from the barcode folders and sample table.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode ont \
   --reads_folder "$PROJECT_DIR/input/fastq_pass" \
   --sample_table "$PROJECT_DIR/input/fastq_pass/samples.csv" \
@@ -149,7 +150,7 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   -work-dir "$PROJECT_DIR/work/auto_params_ont"
 
 # Run the generated ONT YAML with Conda.
-nextflow run "$REPO_DIR/main.nf" --conda \
+nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/ont/ont.auto.yml" \
   -work-dir "$PROJECT_DIR/work/ont" \
   -resume
@@ -164,23 +165,19 @@ Use a manual YAML when Automatic Setup does not support the file naming or when 
 Illumina:
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Copy the Illumina template and edit the copied YAML.
-cp "$REPO_DIR/params/illumina.minimal.yml" "$REPO_DIR/params/my_illumina.yml"
-nano "$REPO_DIR/params/my_illumina.yml"
+cp "params/illumina.minimal.yml" "params/my_illumina.yml"
+nano "params/my_illumina.yml"
 ```
 
 ONT:
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Copy the ONT template and edit the copied YAML.
-cp "$REPO_DIR/params/ont.minimal.yml" "$REPO_DIR/params/my_ont.yml"
-nano "$REPO_DIR/params/my_ont.yml"
+cp "params/ont.minimal.yml" "params/my_ont.yml"
+nano "params/my_ont.yml"
 ```
 
 Use absolute paths under `lpwgs_root` and do not add internal SAMURAI output paths.
@@ -192,23 +189,19 @@ Use absolute paths under `lpwgs_root` and do not add internal SAMURAI output pat
 Optional stub check:
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Check parameters and workflow connections without running the analysis tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
-  -params-file "$REPO_DIR/params/my_illumina.yml"
+nextflow run main.nf -stub-run --conda \
+  -params-file "params/my_illumina.yml"
 ```
 
 Real run:
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Run or resume the checked Illumina YAML with Conda.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/params/my_illumina.yml" \
+nextflow run main.nf --conda \
+  -params-file "params/my_illumina.yml" \
   -resume
 ```
 
@@ -231,8 +224,7 @@ The outer display can remain at `RUN_*_SAMURAI (0 of 1)` while nested SAMURAI ta
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/project/results/illumina"
+OUT="project/results/illumina"
 
 # Read the workflow summary.
 cat "$OUT/06_workflow_summary/workflow_summary.txt"
@@ -248,11 +240,10 @@ Use the same YAML, `outdir`, and work directory:
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Resume the existing Illumina run with the same Conda environments.
-nextflow run "$REPO_DIR/main.nf" --conda \
+nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/illumina/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/illumina" \
   -resume
@@ -264,8 +255,7 @@ Do not delete the work directory or Conda cache before diagnosing an error. They
 
 ```bash
 # Forward an existing run configuration through Poetry to Nextflow.
-REPO_DIR=/path/to/my/directory/oncotracer
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+poetry run oncotracer --repo-dir . --backend docker \
   -params-file /path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml \
   -work-dir /path/to/my/directory/my_oncotracer_project/work -resume
 ```

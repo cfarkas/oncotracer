@@ -2,10 +2,10 @@
 # Copy before editing: cp params/illumina.pathology.example.yml params/my_illumina_pathology.yml
 
 mode: illumina
-lpwgs_root: /home/student/oncotracer_project
-outdir: /home/student/oncotracer_project/runs/illumina_pathology_example
+lpwgs_root: project
+outdir: project/runs/illumina_pathology_example
 
-illumina_samplesheet: /home/student/oncotracer_project/input/illumina_samplesheet.csv
+illumina_samplesheet: project/input/illumina_samplesheet.csv
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -15,7 +15,7 @@ cna_classifier_sample_set: broad_cancer
 cna_classifier_profile: conda
 
 # Pathology CSV and column names. Sample IDs must match OncoTracer sample names.
-pathology_csv: /home/student/oncotracer_project/input/pathology.csv
+pathology_csv: project/input/pathology.csv
 pathology_sample_col: illumina_sample_id
 pathology_case_col: case_code
 pathology_diagnosis_col: final_diagnosis

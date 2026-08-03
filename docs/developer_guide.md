@@ -2,7 +2,7 @@
 
 This guide is for contributors changing code, tests, examples, or documentation. Users running FASTQs should start with [QuickStart Example 1](quick_start.md) or [Automatic Setup](auto_params.md).
 
-The examples use `/path/to/my/directory/oncotracer` as the repository path.
+The examples use `.` as the repository path.
 
 ## Repository map
 
@@ -24,12 +24,11 @@ Do not commit patient data, credentials, registry tokens, downloaded references,
 ## Start from a fresh branch
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
-# Clone the repository and create a focused working branch.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
-cd "$REPO_DIR"
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
 git switch -c your-change-name
 
 # Confirm that the working tree contains only intended changes.
@@ -39,18 +38,15 @@ git status --short
 ## Prepare the small public test data
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 
 # Create or reuse the Conda environment, download the public reads, and generate both YAML files.
-nextflow run "$REPO_DIR/main.nf" --make_test --conda \
-  --lpwgs_root "$REPO_DIR/test" \
-  --test_root "$REPO_DIR/test"
+nextflow run main.nf --make_test --conda \
+  --lpwgs_root "test" \
+  --test_root "test"
 
 # Inspect both generated run plans.
-sed -n '1,120p' "$REPO_DIR/test/configs/illumina.quickstart.yml"
-sed -n '1,120p' "$REPO_DIR/test/configs/ont.quickstart.yml"
+sed -n '1,120p' "test/configs/illumina.quickstart.yml"
+sed -n '1,120p' "test/configs/ont.quickstart.yml"
 ```
 
 Keep download preparation separate from workflow testing so a network or checksum error is not mistaken for a pipeline error.
@@ -58,27 +54,24 @@ Keep download preparation separate from workflow testing so a network or checksu
 ## Fast checks for every change
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 
 # Check Bash syntax in versioned shell scripts.
-find "$REPO_DIR/bin" "$REPO_DIR/examples" "$REPO_DIR/tests" \
+find "bin" "examples" "tests" \
   -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
 
 # Run the focused setup and panel-of-normals tests.
-bash "$REPO_DIR/tests/test_generate_auto_params.sh"
-bash "$REPO_DIR/tests/test_illumina_pon_preflight.sh"
-bash "$REPO_DIR/tests/test_qdnaseq_local_pon.sh"
+bash "tests/test_generate_auto_params.sh"
+bash "tests/test_illumina_pon_preflight.sh"
+bash "tests/test_qdnaseq_local_pon.sh"
 
 # Check documentation wording, paths, and command blocks.
-python3 "$REPO_DIR/tests/test_docs_style.py"
+python3 "tests/test_docs_style.py"
 
 # Check the generated Illumina and ONT workflow connections with Conda.
-nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
-  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml"
-nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
-  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml"
+nextflow run main.nf -stub-run --conda \
+  -params-file "test/configs/illumina.quickstart.yml"
+nextflow run main.nf -stub-run --conda \
+  -params-file "test/configs/ont.quickstart.yml"
 
 # Check whitespace and review the exact source changes.
 git diff --check
@@ -90,41 +83,37 @@ A stub run validates parameters, channels, and process connections. It does not 
 ## Full QuickStart verification
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Run or resume the public Illumina example with Conda.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/illumina" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/illumina.quickstart.yml" \
+  -work-dir "test/work/illumina" \
   -resume
 
 # Run or resume the public ONT example after Illumina finishes.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/ont" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/ont.quickstart.yml" \
+  -work-dir "test/work/ont" \
   -resume
 
 # Verify the required output groups from both workflows.
-python3 "$REPO_DIR/examples/quickstart/verify_outputs.py" \
-  --test-root "$REPO_DIR/test"
+python3 "examples/quickstart/verify_outputs.py" \
+  --test-root "test"
 ```
 
 At least one uncached run is required when changing task commands, environments, images, callers, parsing, or expected output files.
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Require representative Illumina and ONT outputs.
-test -s "$REPO_DIR/test/runs/illumina/03_cna_codification/cna_events.tsv"
-test -s "$REPO_DIR/test/runs/illumina/04_cna_custom_plots/cna_per_sample_pages.pdf"
-test -s "$REPO_DIR/test/runs/ont/03_cna_codification/cna_events.tsv"
-test -s "$REPO_DIR/test/runs/ont/04_cna_custom_plots/cna_per_sample_pages.pdf"
+test -s "test/runs/illumina/03_cna_codification/cna_events.tsv"
+test -s "test/runs/illumina/04_cna_custom_plots/cna_per_sample_pages.pdf"
+test -s "test/runs/ont/03_cna_codification/cna_events.tsv"
+test -s "test/runs/ont/04_cna_custom_plots/cna_per_sample_pages.pdf"
 
 # Read both workflow summaries.
-cat "$REPO_DIR/test/runs/illumina/06_workflow_summary/workflow_summary.txt"
-cat "$REPO_DIR/test/runs/ont/06_workflow_summary/workflow_summary.txt"
+cat "test/runs/illumina/06_workflow_summary/workflow_summary.txt"
+cat "test/runs/ont/06_workflow_summary/workflow_summary.txt"
 ```
 
 ## Test the HCC1143 public example when affected
@@ -133,8 +122,7 @@ Download the six FASTQs using [QuickStart Example 2](public_cohort.md#2-download
 
 ```bash
 # Set the standard repository and HCC1143 paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+READS_DIR="test/public/hcc1143_lpwgs"
 
 # Create or replace the exact HCC1143 table.
 cat > "$READS_DIR/samples.csv" <<'CSV'
@@ -146,27 +134,25 @@ CSV
 ```
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Create or reuse the Conda environment, then generate the HCC1143 YAML and samplesheet.
-nextflow run "$REPO_DIR/main.nf" --auto_params --conda \
-  --lpwgs_root "$REPO_DIR/test" \
+nextflow run main.nf --auto_params --conda \
+  --lpwgs_root "test" \
   --mode illumina \
-  --reads_folder "$REPO_DIR/test/public/hcc1143_lpwgs" \
-  --sample_table "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" \
-  --auto_config_dir "$REPO_DIR/test/configs/hcc1143_lpwgs" \
-  --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs"
+  --reads_folder "test/public/hcc1143_lpwgs" \
+  --sample_table "test/public/hcc1143_lpwgs/samples.csv" \
+  --auto_config_dir "test/configs/hcc1143_lpwgs" \
+  --auto_outdir "test/runs/hcc1143_lpwgs"
 
 # Check the generated workflow connections.
-nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs_stub"
+nextflow run main.nf -stub-run --conda \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs_stub"
 
 # Run or resume the three-library analysis with Conda.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs" \
   -resume
 ```
 
@@ -175,17 +161,14 @@ The six-tumor/four-normal page is a mock configuration example used to test and 
 ## Build the documentation
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 
 # Create and activate an isolated documentation environment.
-python3 -m venv "$REPO_DIR/.venv-docs"
-source "$REPO_DIR/.venv-docs/bin/activate"
+python3 -m venv ".venv-docs"
+source ".venv-docs/bin/activate"
 
 # Install dependencies and build with strict checks.
 python -m pip install --upgrade pip
-python -m pip install -r "$REPO_DIR/docs/requirements.txt"
+python -m pip install -r "docs/requirements.txt"
 mkdocs build --strict
 
 # Optionally preview the site locally.
@@ -218,15 +201,12 @@ A mock example should clearly state its teaching purpose and use obvious placeho
 ## Before requesting review
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 
 # Review changes and run the documentation checks.
 git diff --stat
 git diff --check
 git status --short
-python3 "$REPO_DIR/tests/test_docs_style.py"
+python3 "tests/test_docs_style.py"
 mkdocs build --strict
 ```
 

@@ -16,19 +16,24 @@ The generated YAML can be run in four ways:
 
 ![Example OncoTracer input layouts](assets/tutorial/auto_params_folder_layout.svg)
 
-## Before you begin
-
-Use `/path/to/my/directory/oncotracer` as the repository path in these examples.
+## Clone OncoTracer
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Clone OncoTracer into a given directory.
 
-# Clone OncoTracer when it is not already installed.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
 
-# Enter the repository and confirm Nextflow is available.
-cd "$REPO_DIR"
+## Before you begin
+
+```bash
+
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+
 nextflow -version
 ```
 
@@ -58,7 +63,7 @@ nextflow run main.nf --docker|--singularity|--conda -params-file generated.yml -
 For paired-end data, keep one R1 and one R2 file per sample directly inside one folder:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq/
+project/input/fastq/
 ├── TUMOR_01_R1.fastq.gz
 ├── TUMOR_01_R2.fastq.gz
 ├── TUMOR_02_R1.fastq.gz
@@ -79,8 +84,7 @@ Use this copy/paste-ready command. It creates or replaces the CSV instead of app
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 mkdir -p "$PROJECT_DIR/input/fastq"
 
 # Create the Illumina sample table.
@@ -108,12 +112,10 @@ Normal-control behavior is:
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-cd "$REPO_DIR"
+PROJECT_DIR="project"
 
 # Generate the Illumina configuration without starting the analysis.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
   --sample_table "$PROJECT_DIR/input/samples.csv" \
@@ -127,7 +129,7 @@ Automatic Setup runs `gzip -t` on every compressed FASTQ. It stops when a file i
 The generated directory contains:
 
 ```text
-/path/to/my/directory/oncotracer/project/config/
+project/config/
 ├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
@@ -137,8 +139,7 @@ The generated directory contains:
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Inspect the analysis settings.
 sed -n '1,140p' "$PROJECT_DIR/config/illumina.auto.yml"
@@ -154,9 +155,9 @@ For the table above, the generated YAML includes:
 
 ```yaml
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
+lpwgs_root: project
+outdir: project/results
+illumina_samplesheet: project/config/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -174,10 +175,10 @@ The generated samplesheet contains absolute FASTQ paths:
 
 ```csv
 sample,fastq_1,fastq_2,status
-TUMOR_01,/path/to/my/directory/oncotracer/project/input/fastq/TUMOR_01_R1.fastq.gz,/path/to/my/directory/oncotracer/project/input/fastq/TUMOR_01_R2.fastq.gz,tumor
-TUMOR_02,/path/to/my/directory/oncotracer/project/input/fastq/TUMOR_02_R1.fastq.gz,/path/to/my/directory/oncotracer/project/input/fastq/TUMOR_02_R2.fastq.gz,tumor
-CONTROL_01,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_01_R1.fastq.gz,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_01_R2.fastq.gz,normal
-CONTROL_02,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_02_R1.fastq.gz,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_02_R2.fastq.gz,normal
+TUMOR_01,project/input/fastq/TUMOR_01_R1.fastq.gz,project/input/fastq/TUMOR_01_R2.fastq.gz,tumor
+TUMOR_02,project/input/fastq/TUMOR_02_R1.fastq.gz,project/input/fastq/TUMOR_02_R2.fastq.gz,tumor
+CONTROL_01,project/input/fastq/CONTROL_01_R1.fastq.gz,project/input/fastq/CONTROL_01_R2.fastq.gz,normal
+CONTROL_02,project/input/fastq/CONTROL_02_R1.fastq.gz,project/input/fastq/CONTROL_02_R2.fastq.gz,normal
 ```
 
 ### 5. Run the Illumina analysis
@@ -188,9 +189,8 @@ Choose exactly one method.
 
 ```bash
 # Run the generated Illumina YAML with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-nextflow run "$REPO_DIR/main.nf" --docker \
+PROJECT_DIR="project"
+nextflow run main.nf --docker \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/docker" \
   -resume
@@ -200,9 +200,8 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 
 ```bash
 # Run the same YAML through Singularity or Apptainer.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-nextflow run "$REPO_DIR/main.nf" --singularity \
+PROJECT_DIR="project"
+nextflow run main.nf --singularity \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/singularity" \
   -resume
@@ -212,11 +211,9 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 
 ```bash
 # Install the launcher and run the same YAML through Poetry with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-cd "$REPO_DIR"
+PROJECT_DIR="project"
 poetry install --no-interaction
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+poetry run oncotracer --repo-dir . --backend docker \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/poetry" \
   -resume
@@ -226,9 +223,8 @@ poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
 
 ```bash
 # Create or reuse the native environments and run the same YAML.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-nextflow run "$REPO_DIR/main.nf" --conda \
+PROJECT_DIR="project"
+nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/conda" \
   -resume
@@ -240,8 +236,7 @@ When two or more controls are used, verify the control list, control QC, tumor-o
 
 ```bash
 # Set the standard project and result paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/project/results"
+OUT="project/results"
 PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
 
 # Require the successful panel completion marker.
@@ -264,7 +259,7 @@ See [Output files](outputs.md#illumina-local-panel-of-normals) for the complete 
 Point `--reads_folder` at the `fastq_pass` directory. Each barcode folder must contain at least one FASTQ:
 
 ```text
-/path/to/my/directory/oncotracer/project/fastq_pass/
+project/fastq_pass/
 ├── barcode01/
 │   └── reads_001.fastq.gz
 ├── barcode02/
@@ -277,8 +272,7 @@ Point `--reads_folder` at the `fastq_pass` directory. Each barcode folder must c
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 mkdir -p "$PROJECT_DIR/fastq_pass"
 
 # Create the explicit barcode-to-sample table.
@@ -299,12 +293,10 @@ The barcode value must match the directory name exactly. The explicit three-colu
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-cd "$REPO_DIR"
+PROJECT_DIR="project"
 
 # Generate the ONT configuration without starting the analysis.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode ont \
   --reads_folder "$PROJECT_DIR/fastq_pass" \
   --sample_table "$PROJECT_DIR/fastq_pass/samples.csv" \
@@ -317,8 +309,7 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
 
 ```bash
 # Inspect the generated ONT settings and manifest.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 sed -n '1,140p' "$PROJECT_DIR/config_ont/ont.auto.yml"
 cat "$PROJECT_DIR/config_ont/auto_params_manifest.tsv"
 ```
@@ -329,9 +320,8 @@ Choose exactly one method.
 
 ```bash
 # Run the generated ONT YAML with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-nextflow run "$REPO_DIR/main.nf" --docker \
+PROJECT_DIR="project"
+nextflow run main.nf --docker \
   -params-file "$PROJECT_DIR/config_ont/ont.auto.yml" \
   -work-dir "$PROJECT_DIR/work/ont-docker" \
   -resume
@@ -341,9 +331,8 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 
 ```bash
 # Run the generated ONT YAML through Singularity or Apptainer.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-nextflow run "$REPO_DIR/main.nf" --singularity \
+PROJECT_DIR="project"
+nextflow run main.nf --singularity \
   -params-file "$PROJECT_DIR/config_ont/ont.auto.yml" \
   -work-dir "$PROJECT_DIR/work/ont-singularity" \
   -resume
@@ -353,11 +342,9 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 
 ```bash
 # Install the launcher and run the ONT YAML through Poetry with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-cd "$REPO_DIR"
+PROJECT_DIR="project"
 poetry install --no-interaction
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+poetry run oncotracer --repo-dir . --backend docker \
   -params-file "$PROJECT_DIR/config_ont/ont.auto.yml" \
   -work-dir "$PROJECT_DIR/work/ont-poetry" \
   -resume
@@ -367,9 +354,8 @@ poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
 
 ```bash
 # Create or reuse the native environments and run the ONT YAML.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-nextflow run "$REPO_DIR/main.nf" --conda \
+PROJECT_DIR="project"
+nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config_ont/ont.auto.yml" \
   -work-dir "$PROJECT_DIR/work/ont-conda" \
   -resume

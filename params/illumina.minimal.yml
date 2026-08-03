@@ -1,10 +1,8 @@
-# Minimal Illumina YAML example.
-# Replace /path/to/my/directory/oncotracer with the absolute path used
-# for REPO_DIR. Keep every input and output below lpwgs_root.
+# Minimal Illumina YAML example. Run Nextflow from the cloned oncotracer directory.
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/my_first_illumina_run
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/input/illumina.samplesheet.csv
+lpwgs_root: .
+outdir: project/results/my_first_illumina_run
+illumina_samplesheet: project/input/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100

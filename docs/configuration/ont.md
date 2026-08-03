@@ -2,7 +2,16 @@
 
 Use this route for Oxford Nanopore FASTQs organized in barcode directories. OncoTracer merges selected reads, aligns them with minimap2, runs SAMURAI/ichorCNA, refines CNA boundaries, and creates tables, plots, and a workflow summary.
 
-The examples use `/path/to/my/directory/oncotracer` as the repository path.
+The examples use `.` as the repository path.
+
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
 
 ## Recommended: create the YAML automatically
 
@@ -11,7 +20,7 @@ The examples use `/path/to/my/directory/oncotracer` as the repository path.
 Point `--reads_folder` at the parent `fastq_pass` directory:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq_pass/
+project/input/fastq_pass/
 ├── barcode01/
 │   ├── reads_001.fastq.gz
 │   └── reads_002.fastq.gz
@@ -25,8 +34,7 @@ Each barcode can contain one or more `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz` f
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 mkdir -p "$PROJECT_DIR/input/fastq_pass"
 
 # Create or replace the explicit barcode-to-sample table.
@@ -46,12 +54,10 @@ cat "$PROJECT_DIR/input/fastq_pass/samples.csv"
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-cd "$REPO_DIR"
+PROJECT_DIR="project"
 
 # Generate the ONT YAML without starting the analysis.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode ont \
   --reads_folder "$PROJECT_DIR/input/fastq_pass" \
   --sample_table "$PROJECT_DIR/input/fastq_pass/samples.csv" \
@@ -66,15 +72,14 @@ Automatic Setup verifies each listed barcode and compressed FASTQ and writes `on
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Inspect the generated settings and audit manifest.
 sed -n '1,160p' "$PROJECT_DIR/config/ont/ont.auto.yml"
 cat "$PROJECT_DIR/config/ont/auto_params_manifest.tsv"
 
 # Run the generated ONT YAML with Docker.
-nextflow run "$REPO_DIR/main.nf" --docker \
+nextflow run main.nf --docker \
   -params-file "$PROJECT_DIR/config/ont/ont.auto.yml" \
   -work-dir "$PROJECT_DIR/work/ont" \
   -resume
@@ -89,16 +94,16 @@ The generated YAML resembles:
 
 ```yaml
 mode: ont
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/ont
-ont_folder: /path/to/my/directory/oncotracer/project/input/fastq_pass
+lpwgs_root: project
+outdir: project/results/ont
+ont_folder: project/input/fastq_pass
 ont_barcodes: barcode01
 ont_sample_names: Patient_A
 ont_analysis_type: liquid_biopsy
 ont_caller: ichorcna
 ont_binsize_kb: 500
 ont_min_age_minutes: 0
-ont_normal_folder: /path/to/my/directory/oncotracer/project/input/fastq_pass
+ont_normal_folder: project/input/fastq_pass
 ont_normal_barcodes: barcode02
 ont_normal_sample_names: Patient_B
 run_cna_classifier: false
@@ -114,22 +119,19 @@ Use a manual YAML when selecting only some barcodes, using a custom reference, o
 ### 1. Copy and edit the template
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 
 # Copy the ONT template and edit the copy.
-cp "$REPO_DIR/params/ont.minimal.yml" "$REPO_DIR/params/my_ont.yml"
-nano "$REPO_DIR/params/my_ont.yml"
+cp "params/ont.minimal.yml" "params/my_ont.yml"
+nano "params/my_ont.yml"
 ```
 
 A minimal two-tumor file is:
 
 ```yaml
 mode: ont
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/manual_ont
-ont_folder: /path/to/my/directory/oncotracer/project/input/fastq_pass
+lpwgs_root: project
+outdir: project/results/manual_ont
+ont_folder: project/input/fastq_pass
 ont_barcodes: barcode01,barcode02
 ont_sample_names: Patient_A,Patient_B
 force: false
@@ -138,7 +140,7 @@ force: false
 For a control barcode, add:
 
 ```yaml
-ont_normal_folder: /path/to/my/directory/oncotracer/project/input/fastq_pass
+ont_normal_folder: project/input/fastq_pass
 ont_normal_barcodes: barcode03
 ont_normal_sample_names: Patient_Normal
 ```
@@ -146,16 +148,14 @@ ont_normal_sample_names: Patient_Normal
 ### 2. Check and run
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Check workflow connections without running the analysis tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
-  -params-file "$REPO_DIR/params/my_ont.yml"
+nextflow run main.nf -stub-run --docker \
+  -params-file "params/my_ont.yml"
 
 # Run or resume the manual ONT YAML.
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/params/my_ont.yml" \
+nextflow run main.nf --docker \
+  -params-file "params/my_ont.yml" \
   -resume
 ```
 

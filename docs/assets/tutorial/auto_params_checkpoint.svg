@@ -8,12 +8,12 @@
   <g filter="url(#shadow)"><rect x="54" y="145" width="925" height="440" rx="15" fill="#0b1220"/></g>
   <rect x="54" y="145" width="925" height="48" rx="15" fill="#1e293b"/><rect x="54" y="178" width="925" height="15" fill="#1e293b"/>
   <circle cx="83" cy="169" r="7" fill="#fb7185"/><circle cx="107" cy="169" r="7" fill="#fbbf24"/><circle cx="131" cy="169" r="7" fill="#4ade80"/><text x="412" y="176" font-family="system-ui,sans-serif" font-size="15" fill="#cbd5e1">student — Terminal</text>
-  <text class="term prompt" x="82" y="226">student@workstation:~/oncotracer$</text><text class="term" x="390" y="226">nextflow run main.nf --auto_params \</text>
+  <text class="term prompt" x="82" y="226">user@workstation:~/oncotracer$</text><text class="term" x="390" y="226">nextflow run main.nf --auto_params \</text>
   <text class="term" x="110" y="258">--mode illumina \</text><text class="term" x="110" y="290">--reads_folder /data/study42/illumina_fastq \</text>
   <text class="term" x="110" y="322">--sample_table /data/study42/illumina_fastq/samples.csv</text>
   <text class="term dim" x="82" y="371">executor &gt; local (1)</text>
   <text class="term success" x="82" y="407">[36/047b27] process &gt; AUTO_PARAMS (auto_params) [100%] 1 of 1 ✔</text>
-  <text class="term prompt" x="82" y="456">student@workstation:~/oncotracer$</text><text class="term" x="390" y="456">ls -1 /data/study42/illumina_fastq/oncotracer_config</text>
+  <text class="term prompt" x="82" y="456">user@workstation:~/oncotracer$</text><text class="term" x="390" y="456">ls -1 /data/study42/illumina_fastq/oncotracer_config</text>
   <text class="term success" x="82" y="494">illumina.auto.yml</text><text class="term success" x="82" y="527">illumina.samplesheet.csv</text>
   <text x="82" y="563" font-family="system-ui,sans-serif" font-size="14" fill="#94a3b8">The characters in brackets and progress layout can differ between Nextflow versions.</text>
   <g filter="url(#shadow)"><rect x="1015" y="145" width="331" height="440" rx="15" fill="#fff"/></g>

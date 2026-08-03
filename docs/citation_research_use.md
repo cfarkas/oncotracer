@@ -1,5 +1,14 @@
 # Citation and research-use limitations
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 ## Cite the exact version you used
 
 OncoTracer does not yet have a formal article DOI. The repository's `CITATION.cff` is therefore the authoritative current citation metadata and explicitly marks itself as a placeholder until a formal citation is available.
@@ -11,6 +20,7 @@ A current software citation is:
 Add the exact commit used in your analysis, for example:
 
 ```bash
+# Run this step from the cloned oncotracer directory.
 git rev-parse HEAD
 ```
 
@@ -49,6 +59,7 @@ For any other public data, record archive, project, sample/run accessions, retri
 Archive with the result:
 
 ```bash
+# Run this step from the cloned oncotracer directory.
 git rev-parse HEAD
 nextflow -version
 cat .oncotracer/install/install_manifest.txt

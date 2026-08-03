@@ -13,6 +13,15 @@ Choose one of four supported ways to launch an analysis:
 
 Every QuickStart, the Full Tutorial, Automatic Setup, and the mock tumor/normal example provide explicit commands for all four methods.
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 ## Choose where to start
 
 | Your goal | Start here | Data used |

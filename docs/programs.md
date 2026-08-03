@@ -2,6 +2,15 @@
 
 OncoTracer connects established alignment, quality-control, CNA-calling, refinement, plotting, and reporting programs. Most users should run the workflow rather than invoke these programs separately.
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 ## Workflow and runtime layer
 
 | Program | Role | Source |
@@ -63,26 +72,24 @@ pigz --version
 For Docker:
 
 ```bash
-# Set the standard repository path and confirm Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this step from the cloned oncotracer directory.
 command -v docker
 
 # Let Nextflow prepare and test the maintained Docker image.
-nextflow run "$REPO_DIR/main.nf" --install --docker \
-  --lpwgs_root "$REPO_DIR/project"
+nextflow run main.nf --install --docker \
+  --lpwgs_root "project"
 ```
 
 For Singularity or Apptainer:
 
 ```bash
-# Set the standard repository path and confirm the HPC launcher.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this step from the cloned oncotracer directory.
 command -v singularity
 command -v apptainer
 
 # Test docker://carlosfarkas/oncotracer:latest through Nextflow.
-nextflow run "$REPO_DIR/main.nf" --install --singularity \
-  --lpwgs_root "$REPO_DIR/project"
+nextflow run main.nf --install --singularity \
+  --lpwgs_root "project"
 ```
 
 Ask the system administrator to install missing host programs on managed systems.
@@ -91,8 +98,7 @@ Ask the system administrator to install missing host programs on managed systems
 
 ```bash
 # Set the standard repository and output paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/project/results"
+OUT="project/results"
 
 # List the Illumina or ONT pipeline provenance files.
 find "$OUT/01_samurai_illumina/pipeline_info" \
@@ -101,10 +107,9 @@ find "$OUT/01_samurai_ont/results/pipeline_info" \
   -maxdepth 1 -type f | sort
 
 # Record the OncoTracer commit, Nextflow version, and selected image.
-cd "$REPO_DIR"
 git rev-parse HEAD
 nextflow -version
-cat "$REPO_DIR/.oncotracer/install/install_manifest.txt"
+cat ".oncotracer/install/install_manifest.txt"
 ```
 
 The installer and Illumina wrapper pin SAMURAI `v1.4.0`. Preserve the nested `pipeline_info`, generated YAML and samplesheet, OncoTracer commit, and installation manifest with formal study outputs.

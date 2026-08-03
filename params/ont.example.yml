@@ -3,19 +3,19 @@
 # Manual use: cp params/ont.example.yml params/my_ont.yml
 #
 # YAML uses `setting: value`, one setting per line. Use spaces, never tabs.
-# Replace /home/student/oncotracer with the absolute path printed by `pwd`.
+# Run Nextflow from the cloned oncotracer directory.
 # Keep every input, reference, and output below lpwgs_root.
 
 mode: ont
 
 # Absolute common parent mounted into Docker or Singularity.
-lpwgs_root: /home/student/oncotracer
+lpwgs_root: .
 
 # Results are written here. OncoTracer creates 01_ through 06_ subdirectories.
-outdir: /home/student/oncotracer/project/runs/ont_example
+outdir: project/runs/ont_example
 
 # Parent directory containing one subdirectory per barcode.
-ont_folder: /home/student/oncotracer/project/input/fastq_pass
+ont_folder: project/input/fastq_pass
 
 # Comma-separated lists are positional: barcode07 is Sample_ONT_1.
 ont_barcodes: barcode07,barcode08

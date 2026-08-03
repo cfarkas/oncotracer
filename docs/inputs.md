@@ -8,12 +8,19 @@ Choose the route that matches your data. The optional pathology file does not re
 | ONT | One or more FASTQs inside each selected barcode directory | Automatic `barcode,sample_name,status` table, or manual barcode/sample lists in YAML |
 | Classifier plus pathology | Illumina or ONT input above | Pathology CSV with matching sample, case, and diagnosis columns |
 
-Use `/path/to/my/directory/oncotracer` as the repository path in these examples.
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
 
 ## Recommended project tree
 
 ```text
-/path/to/my/directory/oncotracer/
+
 ├── main.nf
 ├── params/
 └── project/
@@ -57,8 +64,7 @@ Automatic Setup creates configuration files and stops. It does not align reads o
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 mkdir -p "$PROJECT_DIR/input/illumina_fastq"
 
 # Create or replace the Illumina sample table.
@@ -78,11 +84,10 @@ The sample name must match the single-end filename or the text before `_R1`/`_R2
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Generate the Illumina YAML and samplesheet.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/illumina_fastq" \
   --sample_table "$PROJECT_DIR/input/illumina_fastq/samples.csv" \
@@ -95,8 +100,7 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 mkdir -p "$PROJECT_DIR/input/fastq_pass"
 
 # Create or replace the explicit ONT barcode table.
@@ -112,11 +116,10 @@ cat "$PROJECT_DIR/input/fastq_pass/samples.csv"
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Generate the ONT YAML.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode ont \
   --reads_folder "$PROJECT_DIR/input/fastq_pass" \
   --sample_table "$PROJECT_DIR/input/fastq_pass/samples.csv" \
@@ -133,8 +136,7 @@ Use a manual samplesheet when filenames do not follow the supported automatic pa
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 mkdir -p "$PROJECT_DIR/input"
 
 # Create or replace a paired-end samplesheet.
@@ -169,8 +171,7 @@ illumina_pon_min_normals: 2
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Inspect the table and validate a representative read pair.
 sed -n '1,20p' "$PROJECT_DIR/input/illumina.samplesheet.csv"
@@ -185,7 +186,7 @@ gzip -t "$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz"
 `ont_folder` must be the parent of the barcode directories:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/fastq_pass/
+project/input/fastq_pass/
 ├── barcode01/
 │   ├── reads_001.fastq.gz
 │   └── reads_002.fastq.gz
@@ -197,8 +198,7 @@ FASTQs may end in `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz` and must be placed d
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Inspect barcode directories and FASTQs.
 find "$PROJECT_DIR/input/fastq_pass" -maxdepth 2 -type d -print | sort
@@ -208,7 +208,7 @@ find "$PROJECT_DIR/input/fastq_pass" -maxdepth 2 -type f -print | sort | head -2
 The YAML lists map by position:
 
 ```yaml
-ont_folder: /path/to/my/directory/oncotracer/project/input/fastq_pass
+ont_folder: project/input/fastq_pass
 ont_barcodes: barcode01,barcode02
 ont_sample_names: Patient_A,Patient_B
 ```
@@ -219,11 +219,10 @@ A pathology table needs a sequencing sample identifier, case identifier, and dia
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Copy the anonymized format example and edit it.
-cp "$REPO_DIR/examples/pathology/anonymized_pathology_example.csv" \
+cp "examples/pathology/anonymized_pathology_example.csv" \
   "$PROJECT_DIR/input/pathology.csv"
 nano "$PROJECT_DIR/input/pathology.csv"
 ```
@@ -238,7 +237,7 @@ Patient_B,Case_002,Reactive lymphoid tissue
 
 ```yaml
 run_cna_classifier: true
-pathology_csv: /path/to/my/directory/oncotracer/project/input/pathology.csv
+pathology_csv: project/input/pathology.csv
 pathology_sample_col: illumina_sample_id
 pathology_case_col: case_code
 pathology_diagnosis_col: final_diagnosis

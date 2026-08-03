@@ -28,31 +28,38 @@ Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-G
 
 The first uncached analysis downloads the hg38 reference (about **3.16 GB**) and creates a BWA index. This commonly takes **30–60 minutes**, and the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 <a id="four-equivalent-analysis-commands"></a>
 
 ## Four installation and execution methods
 
 OncoTracer reads each analysis from a YAML configuration file. A YAML is a plain-text file containing the input, output, and analysis settings. Open the [minimal Illumina YAML example](params/illumina.minimal.yml) or the [minimal ONT YAML example](params/ont.minimal.yml) to see the format. For your own FASTQs, [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/) creates the YAML and samplesheet for you.
 
-In each command below, `CONFIG` points to the generated YAML. Choose **one** method; do not run all four. Every method launches the same Nextflow workflow and produces the same result structure.
+In each command below, `CONFIG` points to the generated YAML inside the cloned repository. Choose **one** method; do not run all four. Every method launches the same Nextflow workflow and produces the same result structure.
 
 ### Installation and execution through Docker
 
 Install [Docker Engine](https://docs.docker.com/engine/install/) once. On the first analysis, Nextflow downloads [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer); later analyses reuse the cached image.
 
 ```bash
-# Set the repository, project, generated YAML, and Docker work directory.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+# Run this step from the cloned oncotracer directory.
+PROJECT_DIR="project"
 CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
 WORK_DIR="$PROJECT_DIR/work/docker"
-cd "$REPO_DIR"
 
 # Confirm that Automatic Setup created the YAML.
 test -s "$CONFIG"
 
 # Run or resume OncoTracer through Docker.
-nextflow run "$REPO_DIR/main.nf" --docker \
+nextflow run main.nf --docker \
   -params-file "$CONFIG" \
   -work-dir "$WORK_DIR" \
   -resume
@@ -63,18 +70,16 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 Install [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html) or [Apptainer](https://apptainer.org/docs/admin/main/installation.html) once. Nextflow obtains the same maintained container image used by Docker and stores it in the local container cache.
 
 ```bash
-# Set the repository, project, generated YAML, and HPC work directory.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+# Run this step from the cloned oncotracer directory.
+PROJECT_DIR="project"
 CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
 WORK_DIR="$PROJECT_DIR/work/singularity"
-cd "$REPO_DIR"
 
 # Confirm that Automatic Setup created the YAML.
 test -s "$CONFIG"
 
 # Run or resume OncoTracer through Singularity or Apptainer.
-nextflow run "$REPO_DIR/main.nf" --singularity \
+nextflow run main.nf --singularity \
   -params-file "$CONFIG" \
   -work-dir "$WORK_DIR" \
   -resume
@@ -85,12 +90,10 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 Install [Poetry](https://python-poetry.org/docs/#installation) and one scientific backend. The example below uses Docker. `poetry install` creates the isolated OncoTracer launcher environment; the launcher then passes the analysis to Nextflow and Docker.
 
 ```bash
-# Set the repository, project, generated YAML, and Poetry work directory.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+# Run this step from the cloned oncotracer directory.
+PROJECT_DIR="project"
 CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
 WORK_DIR="$PROJECT_DIR/work/poetry"
-cd "$REPO_DIR"
 
 # Install or reuse the locked Poetry launcher environment.
 poetry install --no-interaction
@@ -99,7 +102,7 @@ poetry install --no-interaction
 test -s "$CONFIG"
 
 # Run or resume OncoTracer through Poetry with Docker.
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+poetry run oncotracer --repo-dir . --backend docker \
   -params-file "$CONFIG" \
   -work-dir "$WORK_DIR" \
   -resume
@@ -112,18 +115,16 @@ The Poetry launcher also accepts `--backend singularity` and `--backend conda`.
 Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) once. On the first analysis, Nextflow creates the required native environments from the versioned definitions; later analyses reuse those environments automatically.
 
 ```bash
-# Set the repository, project, generated YAML, and Conda work directory.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+# Run this step from the cloned oncotracer directory.
+PROJECT_DIR="project"
 CONFIG="$PROJECT_DIR/config/illumina.auto.yml"
 WORK_DIR="$PROJECT_DIR/work/conda"
-cd "$REPO_DIR"
 
 # Confirm that Automatic Setup created the YAML.
 test -s "$CONFIG"
 
 # Run or resume OncoTracer through Conda.
-nextflow run "$REPO_DIR/main.nf" --conda \
+nextflow run main.nf --conda \
   -params-file "$CONFIG" \
   -work-dir "$WORK_DIR" \
   -resume
@@ -147,15 +148,15 @@ Generate the configuration and run it:
 
 ```bash
 # Choose generic locations for the repository and analysis project.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
-# Clone OncoTracer and enter the repository.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
-cd "$REPO_DIR"
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
 
 # Generate an Illumina YAML and samplesheet from the FASTQ folder and sample table.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
   --sample_table "$PROJECT_DIR/input/samples.csv" \
@@ -163,7 +164,7 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   --auto_outdir "$PROJECT_DIR/results"
 
 # Run with Conda; Nextflow creates and reuses the required environments.
-nextflow run "$REPO_DIR/main.nf" --conda \
+nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work" \
   -resume
@@ -179,32 +180,31 @@ The example above uses Conda. The preceding four-route section gives the equival
 This verification downloads about **225 MB** of public reads and runs both branches. The compact commands below use Docker. The complete QuickStart page provides explicit Docker, Singularity/Apptainer, Poetry, and Conda command sets.
 
 ```bash
-# Choose a generic clone location and test directory.
-REPO_DIR=/path/to/my/directory/oncotracer
-TEST_ROOT="$REPO_DIR/test"
+# Run this step from the cloned oncotracer directory.
+TEST_ROOT="test"
+# Clone OncoTracer into a given directory.
 
-# Clone the repository and enter it.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
-cd "$REPO_DIR"
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
 
 # Download and validate the public reads, then create both YAML files.
-nextflow run "$REPO_DIR/main.nf" --make_test \
+nextflow run main.nf --make_test \
   --test_root "$TEST_ROOT"
 
 # Run the Illumina example first.
-nextflow run "$REPO_DIR/main.nf" --docker \
+nextflow run main.nf --docker \
   -params-file "$TEST_ROOT/configs/illumina.quickstart.yml" \
   -work-dir "$TEST_ROOT/work/illumina" \
   -resume
 
 # Run the ONT example after the Illumina run finishes.
-nextflow run "$REPO_DIR/main.nf" --docker \
+nextflow run main.nf --docker \
   -params-file "$TEST_ROOT/configs/ont.quickstart.yml" \
   -work-dir "$TEST_ROOT/work/ont" \
   -resume
 
 # Verify the required outputs from both runs.
-python3 "$REPO_DIR/examples/quickstart/verify_outputs.py" \
+python3 "examples/quickstart/verify_outputs.py" \
   --test-root "$TEST_ROOT"
 ```
 
@@ -216,10 +216,8 @@ The HCC1143 example downloads six public paired-end FASTQs. The block below expo
 
 ```bash
 # Set the standard repository and HCC1143 data paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+READS_DIR="test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
-cd "$REPO_DIR"
 
 # Download HCC1143_DMSO read 1 and rename it for Automatic Setup.
 if [[ ! -s "$READS_DIR/HCC1143_DMSO_R1.fastq.gz" ]]; then
@@ -281,17 +279,17 @@ CSV
 cat "$READS_DIR/samples.csv"
 
 # Generate the Illumina YAML and R1/R2 samplesheet automatically.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$READS_DIR" \
   --sample_table "$READS_DIR/samples.csv" \
-  --auto_config_dir "$REPO_DIR/test/configs/hcc1143_lpwgs" \
-  --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs"
+  --auto_config_dir "test/configs/hcc1143_lpwgs" \
+  --auto_outdir "test/runs/hcc1143_lpwgs"
 
 # Run the generated HCC1143 configuration with Docker.
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
+nextflow run main.nf --docker \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs" \
   -resume
 ```
 

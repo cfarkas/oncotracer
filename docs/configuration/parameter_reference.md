@@ -2,20 +2,28 @@
 
 This page documents the top-level parameters declared in `nextflow.config`. For a first run, use Automatic Setup or a minimal YAML and keep the remaining defaults.
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 ## How parameters are supplied
 
 ```yaml
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a
+lpwgs_root: project
+outdir: project/results/sample_a
 force: false
 ```
 
 ```bash
-# Set the standard repository path and run a YAML with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/params/my_illumina.yml" \
+# Run this step from the cloned oncotracer directory.
+nextflow run main.nf --docker \
+  -params-file "params/my_illumina.yml" \
   -resume
 ```
 

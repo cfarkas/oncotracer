@@ -21,20 +21,19 @@ Docker uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfa
 The [Full Tutorial](https://cfarkas.github.io/oncotracer/full_tutorial/) explains each step and output.
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
-# Clone OncoTracer and enter the repository.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
-cd "$REPO_DIR"
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
 
 # Download or reuse all 12 FASTQs and verify size, MD5, and gzip integrity.
-nextflow run "$REPO_DIR/main.nf" --make_prjna754199 \
-  --test_root "$REPO_DIR/test" \
-  -work-dir "$REPO_DIR/test/work/prjna754199_download"
+nextflow run main.nf --make_prjna754199 \
+  --test_root "test" \
+  -work-dir "test/work/prjna754199_download"
 
 # Create or replace the exact 12-sample table.
-cat > "$REPO_DIR/test/public/prjna754199/samples.csv" <<'CSV'
+cat > "test/public/prjna754199/samples.csv" <<'CSV'
 sample_name,status
 DDLPS_1a,TUMOR
 DDLPS_1b,TUMOR
@@ -51,21 +50,21 @@ WDLPS_3,TUMOR
 CSV
 
 # Generate the 12-sample YAML, samplesheet, and manifest automatically.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
-  --reads_folder "$REPO_DIR/test/public/prjna754199" \
-  --sample_table "$REPO_DIR/test/public/prjna754199/samples.csv" \
-  --auto_config_dir "$REPO_DIR/test/configs/prjna754199" \
-  --auto_outdir "$REPO_DIR/test/runs/prjna754199" \
+  --reads_folder "test/public/prjna754199" \
+  --sample_table "test/public/prjna754199/samples.csv" \
+  --auto_config_dir "test/configs/prjna754199" \
+  --auto_outdir "test/runs/prjna754199" \
   --run_cna_classifier true \
   --cna_classifier_sample_set sarcoma \
   --pathology_use_biomed_models false \
-  -work-dir "$REPO_DIR/test/work/prjna754199_auto_params"
+  -work-dir "test/work/prjna754199_auto_params"
 
 # Optionally check the generated workflow connections with Docker.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
-  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/prjna754199_stub"
+nextflow run main.nf -stub-run --docker \
+  -params-file "test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "test/work/prjna754199_stub"
 ```
 
 Choose one analysis method.
@@ -74,10 +73,9 @@ Choose one analysis method.
 
 ```bash
 # Run or resume the complete archive with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/prjna754199-docker" \
+nextflow run main.nf --docker \
+  -params-file "test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "test/work/prjna754199-docker" \
   -resume
 ```
 
@@ -85,10 +83,9 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 
 ```bash
 # Run or resume the complete archive through Singularity or Apptainer.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --singularity \
-  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/prjna754199-singularity" \
+nextflow run main.nf --singularity \
+  -params-file "test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "test/work/prjna754199-singularity" \
   -resume
 ```
 
@@ -96,12 +93,10 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 
 ```bash
 # Install the launcher and run the archive through Poetry with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 poetry install --no-interaction
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
-  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/prjna754199-poetry" \
+poetry run oncotracer --repo-dir . --backend docker \
+  -params-file "test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "test/work/prjna754199-poetry" \
   -resume
 ```
 
@@ -109,18 +104,16 @@ poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
 
 ```bash
 # Run or resume the complete archive with native Conda environments.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/prjna754199/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/prjna754199-conda" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/prjna754199/illumina.auto.yml" \
+  -work-dir "test/work/prjna754199-conda" \
   -resume
 ```
 
 ```bash
 # Verify the exact 12 samples and required output groups.
-REPO_DIR=/path/to/my/directory/oncotracer
-python3 "$REPO_DIR/examples/prjna754199/verify_outputs.py" \
-  --outdir "$REPO_DIR/test/runs/prjna754199"
+python3 "examples/prjna754199/verify_outputs.py" \
+  --outdir "test/runs/prjna754199"
 ```
 
 A successful verifier ends with:
@@ -132,7 +125,7 @@ SUCCESS: complete PRJNA754199 tutorial outputs are verified.
 ## Generated layout
 
 ```text
-/path/to/my/directory/oncotracer/test/
+test/
 ├── public/prjna754199/
 │   ├── DDLPS_1a.fastq.gz
 │   ├── ...

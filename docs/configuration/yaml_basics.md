@@ -2,6 +2,15 @@
 
 A YAML file is a small plain-text run configuration. It tells OncoTracer which sequencing route to use, where the inputs are, and where results belong. FASTQ reads are not stored in YAML.
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 ## Choose how to create the YAML
 
 | Situation | Route |
@@ -10,7 +19,7 @@ A YAML file is a small plain-text run configuration. It tells OncoTracer which s
 | Custom samplesheet, custom reference, or advanced settings | Manual YAML editing |
 | Public installation test | `--make_test`; see [QuickStart Example 1](../quick_start.md) |
 
-The examples use `/path/to/my/directory/oncotracer` as the repository path.
+The examples use `.` as the repository path.
 
 ## Recommended: Automatic Setup
 
@@ -18,8 +27,7 @@ For Illumina, first create a sample table:
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 mkdir -p "$PROJECT_DIR/input/fastq"
 
 # Create or replace the sample table.
@@ -38,12 +46,10 @@ Then generate the YAML and Illumina samplesheet:
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-cd "$REPO_DIR"
+PROJECT_DIR="project"
 
 # Generate configuration files without starting the analysis.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
   --sample_table "$PROJECT_DIR/input/samples.csv" \
@@ -77,9 +83,9 @@ Rules:
 
 ```yaml
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
+lpwgs_root: project
+outdir: project/results/sample_a
+illumina_samplesheet: project/config/illumina.samplesheet.csv
 ```
 
 - `mode` selects `illumina` or `ont`.
@@ -93,11 +99,10 @@ Keep every configured input, output, reference, and cache below `lpwgs_root`.
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="project"
 
 # Print and validate example paths.
-realpath "$REPO_DIR"
+realpath .
 realpath "$PROJECT_DIR/input/fastq/Sample_A_R1.fastq.gz"
 ls -lh "$PROJECT_DIR/input/fastq/Sample_A_R1.fastq.gz"
 gzip -t "$PROJECT_DIR/input/fastq/Sample_A_R1.fastq.gz"
@@ -110,22 +115,19 @@ On Linux, an absolute path begins with `/`. In WSL, use Linux paths such as `/mn
 Use manual setup only when Automatic Setup does not fit the study.
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 
 # Copy the minimal Illumina template and edit the copy.
-cp "$REPO_DIR/params/illumina.minimal.yml" "$REPO_DIR/params/my_illumina.yml"
-nano "$REPO_DIR/params/my_illumina.yml"
+cp "params/illumina.minimal.yml" "params/my_illumina.yml"
+nano "params/my_illumina.yml"
 ```
 
 A minimal file is:
 
 ```yaml
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/input/illumina.samplesheet.csv
+lpwgs_root: project
+outdir: project/results/sample_a
+illumina_samplesheet: project/input/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -136,13 +138,11 @@ force: false
 Save Nano with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Inspect and run the copied YAML.
-sed -n '1,120p' "$REPO_DIR/params/my_illumina.yml"
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/params/my_illumina.yml" \
+sed -n '1,120p' "params/my_illumina.yml"
+nextflow run main.nf --docker \
+  -params-file "params/my_illumina.yml" \
   -resume
 ```
 

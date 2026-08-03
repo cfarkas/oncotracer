@@ -1,10 +1,8 @@
-# Minimal ONT YAML example.
-# Replace /path/to/my/directory/oncotracer with the absolute path used
-# for REPO_DIR. Keep every input and output below lpwgs_root.
+# Minimal ONT YAML example. Run Nextflow from the cloned oncotracer directory.
 mode: ont
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/my_first_ont_run
-ont_folder: /path/to/my/directory/oncotracer/project/input/fastq_pass
+lpwgs_root: .
+outdir: project/results/my_first_ont_run
+ont_folder: project/input/fastq_pass
 ont_barcodes: barcode01
 ont_sample_names: Sample_ONT_1
 ont_analysis_type: liquid_biopsy

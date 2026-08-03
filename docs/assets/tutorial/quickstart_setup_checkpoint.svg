@@ -22,9 +22,9 @@
   <circle cx="83" cy="169" r="7" fill="#fb7185"/><circle cx="107" cy="169" r="7" fill="#fbbf24"/><circle cx="131" cy="169" r="7" fill="#4ade80"/>
   <text x="345" y="176" font-family="system-ui,sans-serif" font-size="15" fill="#cbd5e1">student — Terminal</text>
 
-  <text class="term prompt" x="82" y="238">student@workstation:~/oncotracer$</text>
+  <text class="term prompt" x="82" y="238">user@workstation:~/oncotracer$</text>
   <text class="term" x="410" y="238">ls -1 \</text>
-  <text class="term" x="110" y="271">/home/student/oncotracer/test/configs</text>
+  <text class="term" x="110" y="271">test/configs</text>
   <text class="term success" x="82" y="329">illumina.quickstart.yml</text>
   <text class="term success" x="82" y="383">ont.quickstart.yml</text>
   <rect x="82" y="438" width="734" height="83" rx="10" fill="#3f2f0b" stroke="#fbbf24"/>

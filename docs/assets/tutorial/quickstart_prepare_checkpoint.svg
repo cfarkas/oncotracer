@@ -21,15 +21,15 @@
   <circle cx="83" cy="169" r="7" fill="#fb7185"/><circle cx="107" cy="169" r="7" fill="#fbbf24"/><circle cx="131" cy="169" r="7" fill="#4ade80"/>
   <text x="417" y="176" font-family="system-ui,sans-serif" font-size="15" fill="#cbd5e1">student — Terminal</text>
 
-  <text class="term prompt" x="82" y="226">student@workstation:~/oncotracer$</text>
-  <text class="term" x="410" y="226">nextflow run /home/student/oncotracer/main.nf \</text>
-  <text class="term" x="110" y="256">--make_test --test_root /home/student/oncotracer/test</text>
+  <text class="term prompt" x="82" y="226">user@workstation:~/oncotracer$</text>
+  <text class="term" x="410" y="226">nextflow run main.nf \</text>
+  <text class="term" x="110" y="256">--make_test --test_root test</text>
   <text class="term" x="82" y="310">N E X T F L O W  ~  version 26.x</text>
-  <text class="term" x="82" y="350">Launching `/home/student/oncotracer/main.nf`</text>
+  <text class="term" x="82" y="350">Launching `main.nf`</text>
   <rect x="82" y="382" width="879" height="72" rx="10" fill="#123527" stroke="#4ade80"/>
   <circle cx="111" cy="418" r="16" fill="#16a34a"/><path d="M103 418l6 6 12-15" fill="none" stroke="#fff" stroke-width="3"/>
   <text class="term success" x="140" y="424">[34/4c7024] process &gt; MAKE_TEST_DATA (public_quickstart_data) [100%] 1 of 1 ✔</text>
-  <text class="term prompt" x="82" y="505">student@workstation:~/oncotracer$</text>
+  <text class="term prompt" x="82" y="505">user@workstation:~/oncotracer$</text>
   <text x="82" y="548" font-family="system-ui,sans-serif" font-size="14" fill="#94a3b8">The prompt returns after preparation completes.</text>
 
   <g filter="url(#shadow)"><rect x="1025" y="145" width="321" height="440" rx="15" fill="#fff"/></g>

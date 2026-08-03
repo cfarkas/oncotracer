@@ -2,6 +2,15 @@
 
 The images below are rendered from OncoTracer output files. A plot demonstrates that a workflow completed and shows the CNA profile produced under that configuration; it does not validate a diagnosis.
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 ## One-sample Illumina public test
 
 **Provenance:** ENA run `ERR12341627`, processed by the public Illumina branch in QuickStart Example 1 with qDNAseq at 100 kb. See [QuickStart Example 1](quick_start.md) for the reproducible command and generated YAML.

@@ -3,21 +3,21 @@
 # Manual use: cp params/illumina.example.yml params/my_illumina.yml
 #
 # YAML uses `setting: value`, one setting per line. Use spaces, never tabs.
-# Replace /home/student/oncotracer with the absolute path printed by `pwd`.
+# Run Nextflow from the cloned oncotracer directory.
 # Keep the samplesheet and output directory below lpwgs_root.
 
 mode: illumina
 
 # Absolute common parent mounted into Docker or Singularity.
-lpwgs_root: /home/student/oncotracer
+lpwgs_root: .
 
 # Results are written here. OncoTracer creates 01_ through 06_ subdirectories.
-outdir: /home/student/oncotracer/project/runs/illumina_example
+outdir: project/runs/illumina_example
 
 # CSV columns: sample,fastq_1,fastq_2,status
 # Example row (the paths must exist):
-# Sample_A,/home/student/oncotracer/project/input/illumina_fastq/Sample_A_R1.fastq.gz,/home/student/oncotracer/project/input/illumina_fastq/Sample_A_R2.fastq.gz,tumor
-illumina_samplesheet: /home/student/oncotracer/project/input/illumina.samplesheet.csv
+# Sample_A,project/input/illumina_fastq/Sample_A_R1.fastq.gz,project/input/illumina_fastq/Sample_A_R2.fastq.gz,tumor
+illumina_samplesheet: project/input/illumina.samplesheet.csv
 
 # Standard Illumina scientific settings. Omit these lines to use the same defaults.
 illumina_analysis_type: solid_biopsy

@@ -4,15 +4,24 @@ Boundary refinement is stage `02_bam_refinement` of every standard Illumina and 
 
 When the evidence is insufficient, OncoTracer keeps the original boundary. Refinement does not by itself prove that a CNA is biologically real.
 
+## Clone OncoTracer
+
+```bash
+# Clone OncoTracer into a given directory.
+
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+```
+
 ## Most users: keep the defaults
 
 A minimal Illumina YAML still runs refinement:
 
 ```yaml
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
+lpwgs_root: project
+outdir: project/results/sample_a
+illumina_samplesheet: project/config/illumina.samplesheet.csv
 force: false
 ```
 
@@ -34,9 +43,9 @@ Add refinement settings to the same run YAML:
 
 ```yaml
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a_conservative
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
+lpwgs_root: project
+outdir: project/results/sample_a_conservative
+illumina_samplesheet: project/config/illumina.samplesheet.csv
 force: false
 
 fine_bin_kb_illumina: 20
@@ -92,23 +101,20 @@ accept_rule: p_and_bic
 First prepare the public Illumina test and copy its generated YAML:
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 
 # Download and validate the small public test data.
-nextflow run "$REPO_DIR/main.nf" --make_test \
-  --test_root "$REPO_DIR/test"
+nextflow run main.nf --make_test \
+  --test_root "test"
 
 # Copy the generated Illumina YAML to a new methods-comparison file.
-cp "$REPO_DIR/test/configs/illumina.quickstart.yml" \
-  "$REPO_DIR/params/illumina.conservative.yml"
+cp "test/configs/illumina.quickstart.yml" \
+  "params/illumina.conservative.yml"
 
 # Edit only the copied YAML.
-nano "$REPO_DIR/params/illumina.conservative.yml"
+nano "params/illumina.conservative.yml"
 ```
 
-Change `outdir` to `/path/to/my/directory/oncotracer/test/runs/illumina_conservative`, then add:
+Change `outdir` to `test/runs/illumina_conservative`, then add:
 
 ```yaml
 fine_bin_kb_illumina: 20
@@ -122,16 +128,14 @@ accept_rule: p_and_bic
 ```
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
 
 # Inspect, check, and run the conservative comparison.
-sed -n '1,180p' "$REPO_DIR/params/illumina.conservative.yml"
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
-  -params-file "$REPO_DIR/params/illumina.conservative.yml"
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/params/illumina.conservative.yml" \
-  -work-dir "$REPO_DIR/test/work/illumina_conservative" \
+sed -n '1,180p' "params/illumina.conservative.yml"
+nextflow run main.nf -stub-run --docker \
+  -params-file "params/illumina.conservative.yml"
+nextflow run main.nf --docker \
+  -params-file "params/illumina.conservative.yml" \
+  -work-dir "test/work/illumina_conservative" \
   -resume
 ```
 
@@ -139,9 +143,8 @@ Compare the final tables:
 
 ```bash
 # Set the standard repository and result paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-DEFAULT="$REPO_DIR/test/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
-EXPERIMENT="$REPO_DIR/test/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
+DEFAULT="test/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
+EXPERIMENT="test/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
 
 # Confirm and compare both outputs.
 ls -lh "$DEFAULT" "$EXPERIMENT"

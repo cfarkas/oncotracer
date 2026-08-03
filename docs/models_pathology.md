@@ -30,7 +30,7 @@ Start with deterministic pathology comparison:
 run_cna_classifier: true
 cna_classifier_sample_set: broad_cancer
 cna_classifier_profile: conda
-pathology_csv: /path/to/my/directory/oncotracer/project/input/pathology.csv
+pathology_csv: project/input/pathology.csv
 pathology_sample_col: illumina_sample_id
 pathology_case_col: case_code
 pathology_diagnosis_col: final_diagnosis
@@ -63,8 +63,7 @@ Low-pass read-depth CNA analysis does not reliably determine:
 
 ```bash
 # Set the standard classifier output path.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/project/results/illumina_pathology/05_cna_classifier"
+OUT="project/results/illumina_pathology/05_cna_classifier"
 
 # Inspect prepared features, classification, pathology comparison, and status.
 sed -n '1,8p' "$OUT/01_prepared/sample_cna_summary.tsv"
@@ -75,8 +74,7 @@ sed -n '1,80p' "$OUT/07_pathology/pathology_status.txt"
 
 ```bash
 # Open the cohort report on a workstation with a graphical desktop.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/project/results/illumina_pathology/05_cna_classifier"
+OUT="project/results/illumina_pathology/05_cna_classifier"
 xdg-open "$OUT/03_report/cna_classifier_report.html"
 ```
 
