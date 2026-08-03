@@ -1,4 +1,4 @@
-name: Apply v1.1 source portability fixes
+name: Apply v1.1 nested Docker ownership fixes
 
 on:
   push:
@@ -20,11 +20,10 @@ jobs:
           ref: agent/conda-docs-v1.1
           fetch-depth: 0
 
-      - name: Patch SAMURAI launchers and installer
+      - name: Add host UID:GID to nested SAMURAI Docker runs
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           def replace_once(text: str, old: str, new: str, label: str) -> str:
               count = text.count(old)
@@ -32,125 +31,64 @@ jobs:
                   raise SystemExit(f"{label}: expected one occurrence, found {count}")
               return text.replace(old, new, 1)
 
-          # Illumina launcher: prepare one pinned local checkout and run it directly.
-          path = Path("bin/scripts/run_illumina_samurai_fastq.sh")
-          text = path.read_text(encoding="utf-8")
-          anchor = 'BWA_INDEX_DIR="$(dirname "$REF_FA")/bwa"\n'
-          addition = '''BWA_INDEX_DIR="$(dirname "$REF_FA")/bwa"
-          SAMURAI_REVISION="v1.4.0"
-          SAMURAI_SOURCE_HELPER="$SCRIPT_DIR/prepare_samurai_source.sh"
-          [[ -s "$SAMURAI_SOURCE_HELPER" ]] || { echo "ERROR: SAMURAI source helper not found: $SAMURAI_SOURCE_HELPER" >&2; exit 1; }
-          SAMURAI_SOURCE="$(bash "$SAMURAI_SOURCE_HELPER" --lpwgs-root "$LPWGS_ROOT" --revision "$SAMURAI_REVISION")"
-          [[ -s "$SAMURAI_SOURCE/main.nf" ]] || { echo "ERROR: prepared SAMURAI source is invalid: $SAMURAI_SOURCE" >&2; exit 1; }
+          illumina = Path("bin/scripts/run_illumina_samurai_fastq.sh")
+          text = illumina.read_text(encoding="utf-8")
+          anchor = 'cat > "$LOCAL_CONFIG" <<EOF_CONFIG\n'
+          replacement = '''HOST_UID="$(id -u)"
+          HOST_GID="$(id -g)"
+          cat > "$LOCAL_CONFIG" <<EOF_CONFIG
           '''
-          text = replace_once(text, anchor, addition, "Illumina helper insertion")
-          old_launch = 'nextflow run dincalcilab/samurai -r v1.4.0 \\\n'
-          launch_count = text.count(old_launch)
-          if launch_count != 2:
-              raise SystemExit(f"Illumina launch replacement: expected two occurrences, found {launch_count}")
-          text = text.replace(old_launch, 'nextflow run "$SAMURAI_SOURCE" \\\n')
-          path.write_text(text, encoding="utf-8")
-
-          # ONT launcher: use the same local checkout for assets, patching, and execution.
-          path = Path("bin/scripts/run_ont_samurai_barcodes.sh")
-          text = path.read_text(encoding="utf-8")
-          anchor = 'export NXF_SYNTAX_PARSER="$NFX_SYNTAX_PARSER"\n'
-          addition = '''export NXF_SYNTAX_PARSER="$NFX_SYNTAX_PARSER"
-          SAMURAI_REVISION="v1.4.0"
-          SAMURAI_SOURCE_HELPER="$SCRIPT_DIR/prepare_samurai_source.sh"
-          [[ -s "$SAMURAI_SOURCE_HELPER" ]] || { echo "ERROR: SAMURAI source helper not found: $SAMURAI_SOURCE_HELPER" >&2; exit 1; }
-          SAMURAI_SOURCE="$(bash "$SAMURAI_SOURCE_HELPER" --lpwgs-root "$LPWGS_ROOT" --revision "$SAMURAI_REVISION")"
-          [[ -s "$SAMURAI_SOURCE/main.nf" ]] || { echo "ERROR: prepared SAMURAI source is invalid: $SAMURAI_SOURCE" >&2; exit 1; }
+          text = replace_once(text, anchor, replacement, "Illumina UID insertion")
+          config_tail = '''report { overwrite = true }
+          timeline { overwrite = true }
+          EOF_CONFIG
           '''
-          text = replace_once(text, anchor, addition, "ONT helper insertion")
-
-          asset_anchor = '''find_samurai_ichorcna_asset() {
-            local filename="$1" root hit
+          new_tail = '''report { overwrite = true }
+          timeline { overwrite = true }
+          docker {
+            runOptions = "-u ${HOST_UID}:${HOST_GID} -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache"
+          }
+          EOF_CONFIG
           '''
-          asset_replacement = '''find_samurai_ichorcna_asset() {
-            local filename="$1" root hit
-            if [[ -s "$SAMURAI_SOURCE/assets/ichorcna/$filename" ]]; then
-              echo "$SAMURAI_SOURCE/assets/ichorcna/$filename"
-              return 0
-            fi
+          text = replace_once(text, config_tail, new_tail, "Illumina Docker config")
+          illumina.write_text(text, encoding="utf-8")
+
+          ont = Path("bin/scripts/run_ont_samurai_barcodes.sh")
+          text = ont.read_text(encoding="utf-8")
+          anchor = 'cat > "$LOCAL_CONFIG" <<EOF\n'
+          replacement = '''HOST_UID="$(id -u)"
+          HOST_GID="$(id -g)"
+          cat > "$LOCAL_CONFIG" <<EOF
           '''
-          text = replace_once(text, asset_anchor, asset_replacement, "ONT asset lookup")
-
-          pattern = re.compile(
-              r'NEED_SAMURAI_PULL=false\n.*?\nfi\n\nresolve_ichorcna_refs',
-              re.DOTALL,
-          )
-          patch_block = '''if [[ "$PATCH_SAMURAI" == "true" ]]; then
-            python3 - "$SAMURAI_SOURCE/main.nf" <<'PY_PATCH_SAMURAI'
-          from pathlib import Path
-          import sys
-
-          path = Path(sys.argv[1])
-          old = "dict = params.dict ? channel.fromPath(params.fai).map { it -> [[id: it.baseName], it] }.collect() : channel.empty()"
-          new = "dict = params.dict ? channel.fromPath(params.dict).map { it -> [[id: it.baseName], it] }.collect() : channel.empty()"
-          text = path.read_text(encoding="utf-8")
-          if new in text:
-              print(f"No SAMURAI patch needed: {path}")
-          elif old in text:
-              path.write_text(text.replace(old, new, 1), encoding="utf-8")
-              print(f"Patched SAMURAI dict input: {path}")
-          else:
-              print(f"WARNING: SAMURAI dict typo pattern was not found: {path}")
-          PY_PATCH_SAMURAI
-          fi
-
-          resolve_ichorcna_refs'''
-          text, count = pattern.subn(patch_block, text, count=1)
-          if count != 1:
-              raise SystemExit(f"ONT cached-project block replacement: expected one occurrence, found {count}")
-
-          old_nf = '  nextflow run dincalcilab/samurai -r v1.4.0\n'
-          text = replace_once(text, old_nf, '  nextflow run "$SAMURAI_SOURCE"\n', "ONT launch replacement")
-          path.write_text(text, encoding="utf-8")
-
-          # Installation check: prepare the same source cache without Nextflow's API client.
-          path = Path("bin/scripts/install_oncotracer.sh")
-          text = path.read_text(encoding="utf-8")
-          pattern = re.compile(
-              r'echo "Caching SAMURAI \$SAMURAI_REVISION under: \$NXF_ASSETS"\n.*?\[\[ -n "\$samurai_commit" \]\] \|\|\n  die "could not resolve cached SAMURAI revision: \$SAMURAI_REVISION"\n',
-              re.DOTALL,
-          )
-          replacement = '''echo "Caching SAMURAI $SAMURAI_REVISION under: $INSTALL_ROOT/samurai"
-          SAMURAI_HELPER="$PROJECT_DIR/bin/scripts/prepare_samurai_source.sh"
-          [[ -s "$SAMURAI_HELPER" ]] || die "missing SAMURAI source helper: $SAMURAI_HELPER"
-          SAMURAI_DIR="$(bash "$SAMURAI_HELPER" --lpwgs-root "$LPWGS_ROOT" --revision "$SAMURAI_REVISION")"
-          [[ -s "$SAMURAI_DIR/main.nf" ]] || die "SAMURAI cache is invalid: $SAMURAI_DIR"
-          samurai_commit="$(git -C "$SAMURAI_DIR" rev-parse HEAD)"
-          samurai_cache_repository="$SAMURAI_DIR"
-          [[ -n "$samurai_commit" ]] || die "could not resolve cached SAMURAI revision: $SAMURAI_REVISION"
+          text = replace_once(text, anchor, replacement, "ONT UID insertion")
+          config_tail = '''report { overwrite = true }
+          timeline { overwrite = true }
+          EOF
           '''
-          text, count = pattern.subn(replacement, text, count=1)
-          if count != 1:
-              raise SystemExit(f"Installer SAMURAI cache replacement: expected one occurrence, found {count}")
-          text = text.replace('echo "samurai_assets=$NXF_ASSETS"', 'echo "samurai_assets=$INSTALL_ROOT/samurai"', 1)
-          path.write_text(text, encoding="utf-8")
+          new_tail = '''report { overwrite = true }
+          timeline { overwrite = true }
+          docker {
+            runOptions = "-u ${HOST_UID}:${HOST_GID} -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache"
+          }
+          EOF
+          '''
+          text = replace_once(text, config_tail, new_tail, "ONT Docker config")
+          ont.write_text(text, encoding="utf-8")
           PY
 
-      - name: Validate patched source files
+      - name: Validate patched launchers
         run: |
-          bash -n bin/scripts/prepare_samurai_source.sh
           bash -n bin/scripts/run_illumina_samurai_fastq.sh
           bash -n bin/scripts/run_ont_samurai_barcodes.sh
-          bash -n bin/scripts/install_oncotracer.sh
+          grep -F 'runOptions = "-u ${HOST_UID}:${HOST_GID}' bin/scripts/run_illumina_samurai_fastq.sh
+          grep -F 'runOptions = "-u ${HOST_UID}:${HOST_GID}' bin/scripts/run_ont_samurai_barcodes.sh
 
-          grep -F 'nextflow run "$SAMURAI_SOURCE"' bin/scripts/run_illumina_samurai_fastq.sh
-          grep -F 'nextflow run "$SAMURAI_SOURCE"' bin/scripts/run_ont_samurai_barcodes.sh
-          ! grep -F 'nextflow run dincalcilab/samurai' bin/scripts/run_illumina_samurai_fastq.sh
-          ! grep -F 'nextflow run dincalcilab/samurai' bin/scripts/run_ont_samurai_barcodes.sh
-          ! grep -F 'nextflow pull dincalcilab/samurai' bin/scripts/install_oncotracer.sh
-
-      - name: Commit the runtime fixes
+      - name: Commit the nested Docker fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             bin/scripts/run_illumina_samurai_fastq.sh \
-            bin/scripts/run_ont_samurai_barcodes.sh \
-            bin/scripts/install_oncotracer.sh
-          git commit -m "Fix runtime permissions and SAMURAI source retrieval"
+            bin/scripts/run_ont_samurai_barcodes.sh
+          git commit -m "Match host ownership in nested SAMURAI Docker runs"
           git push origin HEAD:agent/conda-docs-v1.1
