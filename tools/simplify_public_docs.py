@@ -1,0 +1,427 @@
+#!/usr/bin/env python3
+"""Rewrite all public documentation to use simple clone-and-cd commands."""
+
+from __future__ import annotations
+
+import re
+import textwrap
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_URL = "https://github.com/cfarkas/oncotracer.git"
+CLONE_COMMENT = "# Clone OncoTracer into a given directory."
+CLONE_COMMAND = f"git clone {REPOSITORY_URL}"
+CD_COMMAND = "cd oncotracer"
+
+PUBLIC_FILES = [ROOT / "README.md"]
+PUBLIC_FILES.extend(sorted((ROOT / "docs").rglob("*.md")))
+PUBLIC_FILES.extend(sorted((ROOT / "examples").rglob("README.md")))
+
+OBSOLETE_COMMENT_PATTERNS = (
+    "# Set the standard repository path",
+    "# Set the repository path",
+    "# Choose a generic clone location",
+    "# Clone OncoTracer into that directory",
+    "# Clone the repository and enter it",
+    "# Enter the repository and confirm",
+    "# Enter the repository and confirm that main.nf is present",
+)
+
+
+def simplify_markdown(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+
+    text = re.sub(
+        r"(?m)^.*(?:Use|uses) `/path/to/my/directory/oncotracer` as the repository path.*\n?",
+        "",
+        text,
+    )
+    text = re.sub(
+        r"(?m)^.*only path that needs to be (?:changed|edited).*REPO_DIR.*\n?",
+        "Run the commands from the cloned `oncotracer` directory.\n",
+        text,
+    )
+    text = text.replace(
+        "every other path is derived from `REPO_DIR`",
+        "all paths are relative to the cloned `oncotracer` directory",
+    )
+    text = text.replace(
+        "In each command below, `CONFIG` points to the generated YAML.",
+        "In each command below, `CONFIG` points to the generated YAML inside the cloned repository.",
+    )
+
+    lines = text.splitlines()
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if re.fullmatch(r"REPO_DIR=/path/to/my/directory/oncotracer", stripped):
+            i += 1
+            continue
+        if stripped in {'cd "$REPO_DIR"', "cd '$REPO_DIR'", "pwd", "ls main.nf"}:
+            i += 1
+            continue
+        if any(stripped.startswith(pattern) for pattern in OBSOLETE_COMMENT_PATTERNS):
+            i += 1
+            continue
+
+        if stripped.startswith(CLONE_COMMAND):
+            while out and not out[-1].strip():
+                out.pop()
+            if out and out[-1].lstrip().startswith("#") and "clone" in out[-1].casefold():
+                out.pop()
+            out.extend([CLONE_COMMENT, "", CLONE_COMMAND, CD_COMMAND])
+            i += 1
+            while i < len(lines) and lines[i].strip() in {
+                'cd "$REPO_DIR"',
+                "cd '$REPO_DIR'",
+                "cd oncotracer",
+                "pwd",
+                "ls main.nf",
+            }:
+                i += 1
+            continue
+
+        line = line.replace('--repo-dir "$REPO_DIR"', '--repo-dir .')
+        line = line.replace("--repo-dir '$REPO_DIR'", "--repo-dir .")
+        line = line.replace('"$REPO_DIR/main.nf"', 'main.nf')
+        line = line.replace("'$REPO_DIR/main.nf'", 'main.nf')
+        line = line.replace('$REPO_DIR/main.nf', 'main.nf')
+        line = line.replace('${REPO_DIR}/main.nf', 'main.nf')
+        line = line.replace('"$REPO_DIR/', '"')
+        line = line.replace("'$REPO_DIR/", "'")
+        line = line.replace('${REPO_DIR}/', '')
+        line = line.replace('$REPO_DIR/', '')
+        line = line.replace('"$REPO_DIR"', '.')
+        line = line.replace("'$REPO_DIR'", '.')
+        line = line.replace('`REPO_DIR`', 'the cloned repository')
+        line = line.replace('REPO_DIR', '.')
+
+        out.append(line)
+        i += 1
+
+    text = "\n".join(out).rstrip() + "\n"
+    text = text.replace("/path/to/my/directory/oncotracer/", "")
+    text = text.replace("/path/to/my/directory/oncotracer", ".")
+
+    text = text.replace('PROJECT_DIR="./project"', 'PROJECT_DIR="project"')
+    text = text.replace('PROJECT_DIR="./test/', 'PROJECT_DIR="test/')
+    text = text.replace('READS_DIR="./test/', 'READS_DIR="test/')
+    text = text.replace('TEST_ROOT="./test"', 'TEST_ROOT="test"')
+    text = text.replace('OUT="./test/', 'OUT="test/')
+    text = text.replace('CONFIG="./', 'CONFIG="')
+    text = text.replace('WORK_DIR="./', 'WORK_DIR="')
+    text = re.sub(r"(?m)^\s*# Set the repository(?:,| and| path).*\n", "", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    run_positions = [
+        position
+        for token in ("nextflow run", "poetry run oncotracer")
+        if (position := text.find(token)) >= 0
+    ]
+    first_run = min(run_positions) if run_positions else -1
+    first_clone = text.find(CLONE_COMMAND)
+    if first_run >= 0 and (first_clone < 0 or first_clone > first_run):
+        clone_section = (
+            "## Clone OncoTracer\n\n"
+            "```bash\n"
+            f"{CLONE_COMMENT}\n\n"
+            f"{CLONE_COMMAND}\n"
+            f"{CD_COMMAND}\n"
+            "```\n\n"
+        )
+        if path == ROOT / "README.md":
+            marker = '<a id="four-equivalent-analysis-commands"></a>\n'
+            text = text.replace(marker, clone_section + marker, 1) if marker in text else clone_section + text
+        else:
+            match = re.search(r"(?m)^## ", text)
+            if match:
+                text = text[: match.start()] + clone_section + text[match.start() :]
+            else:
+                text += "\n" + clone_section
+
+    path.write_text(text, encoding="utf-8")
+
+
+for public_file in PUBLIC_FILES:
+    simplify_markdown(public_file)
+
+(ROOT / "params/illumina.minimal.yml").write_text(
+    textwrap.dedent(
+        """\
+        # Minimal Illumina YAML example. Run Nextflow from the cloned oncotracer directory.
+        mode: illumina
+        lpwgs_root: .
+        outdir: project/results/my_first_illumina_run
+        illumina_samplesheet: project/input/illumina.samplesheet.csv
+        illumina_analysis_type: solid_biopsy
+        illumina_caller: qdnaseq
+        illumina_binsize_kb: 100
+        run_cna_classifier: false
+        force: false
+        """
+    ),
+    encoding="utf-8",
+)
+
+(ROOT / "params/ont.minimal.yml").write_text(
+    textwrap.dedent(
+        """\
+        # Minimal ONT YAML example. Run Nextflow from the cloned oncotracer directory.
+        mode: ont
+        lpwgs_root: .
+        outdir: project/results/my_first_ont_run
+        ont_folder: project/input/fastq_pass
+        ont_barcodes: barcode01
+        ont_sample_names: Sample_ONT_1
+        ont_analysis_type: liquid_biopsy
+        ont_caller: ichorcna
+        ont_binsize_kb: 500
+        ont_min_age_minutes: 0
+        run_cna_classifier: false
+        force: false
+        """
+    ),
+    encoding="utf-8",
+)
+
+(ROOT / "tests/test_examples_start_from_clone.py").write_text(
+    textwrap.dedent(
+        r'''\
+        #!/usr/bin/env python3
+        """Require simple, relative, copy/paste-ready documentation commands."""
+
+        from __future__ import annotations
+
+        import re
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        ROOT = Path(__file__).resolve().parents[1]
+        REPOSITORY_URL = "https://github.com/cfarkas/oncotracer.git"
+        CLONE_COMMENT = "# Clone OncoTracer into a given directory."
+        CLONE_COMMAND = f"git clone {REPOSITORY_URL}"
+        CD_COMMAND = "cd oncotracer"
+
+        PUBLIC_FILES = [ROOT / "README.md"]
+        PUBLIC_FILES.extend(sorted((ROOT / "docs").rglob("*.md")))
+        PUBLIC_FILES.extend(sorted((ROOT / "examples").rglob("README.md")))
+        PUBLIC_FILES.extend([ROOT / "params/illumina.minimal.yml", ROOT / "params/ont.minimal.yml"])
+
+        END_TO_END_FILES = (
+            "README.md",
+            "docs/quick_start.md",
+            "docs/public_cohort.md",
+            "docs/full_tutorial.md",
+            "docs/six_tumor_four_control.md",
+            "docs/auto_params.md",
+            "examples/hcc1143_lpwgs/README.md",
+            "examples/prjna754199/README.md",
+        )
+
+        BASH_BLOCK_RE = re.compile(r"```bash[ \t]*\n(.*?)```", re.DOTALL)
+
+
+        def fail(message: str) -> None:
+            print(f"FAIL: {message}", file=sys.stderr)
+            raise SystemExit(1)
+
+
+        def read(relative_path: str) -> str:
+            return (ROOT / relative_path).read_text(encoding="utf-8")
+
+
+        def check_public_paths() -> None:
+            forbidden = (
+                "REPO_DIR",
+                "/path/to/my/directory/oncotracer",
+                "/home/student/oncotracer",
+                'git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"',
+            )
+            for path in PUBLIC_FILES:
+                text = path.read_text(encoding="utf-8")
+                for value in forbidden:
+                    if value in text:
+                        fail(f"obsolete path convention in {path.relative_to(ROOT)}: {value}")
+
+
+        def check_clone_blocks() -> None:
+            for relative_path in END_TO_END_FILES:
+                text = read(relative_path)
+                blocks = BASH_BLOCK_RE.findall(text)
+                if not blocks:
+                    fail(f"no Bash blocks in {relative_path}")
+                executable = "\n".join(blocks)
+                clone_index = executable.find(CLONE_COMMAND)
+                run_positions = [
+                    position
+                    for token in ("nextflow run", "poetry run oncotracer")
+                    if (position := executable.find(token)) >= 0
+                ]
+                if clone_index < 0:
+                    fail(f"missing simple clone command in {relative_path}")
+                if run_positions and clone_index > min(run_positions):
+                    fail(f"pipeline command appears before clone in {relative_path}")
+                clone_block = next(block for block in blocks if CLONE_COMMAND in block)
+                expected = f"{CLONE_COMMENT}\n\n{CLONE_COMMAND}\n{CD_COMMAND}"
+                if expected not in clone_block:
+                    fail(f"clone block is not the simple two-command form in {relative_path}")
+
+
+        def check_bash_blocks() -> None:
+            for path in PUBLIC_FILES:
+                if path.suffix != ".md":
+                    continue
+                text = path.read_text(encoding="utf-8")
+                if text.count("```") % 2:
+                    fail(f"unbalanced code fences in {path.relative_to(ROOT)}")
+                for number, block in enumerate(BASH_BLOCK_RE.findall(text), start=1):
+                    first_line = next((line.strip() for line in block.splitlines() if line.strip()), "")
+                    if not first_line.startswith("#"):
+                        fail(f"Bash block {number} in {path.relative_to(ROOT)} must begin with #")
+                    completed = subprocess.run(
+                        ["bash", "-n"], input=block, text=True, capture_output=True, check=False
+                    )
+                    if completed.returncode:
+                        detail = completed.stderr.strip() or "unknown Bash parse error"
+                        fail(f"invalid Bash block {number} in {path.relative_to(ROOT)}: {detail}")
+
+
+        def main() -> None:
+            check_public_paths()
+            check_clone_blocks()
+            check_bash_blocks()
+            print("PASS: public examples use git clone, cd oncotracer, and relative paths")
+
+
+        if __name__ == "__main__":
+            main()
+        '''
+    ),
+    encoding="utf-8",
+)
+
+(ROOT / "tests/test_docs_style.py").write_text(
+    textwrap.dedent(
+        r'''\
+        #!/usr/bin/env python3
+        """Regression checks for the public documentation and example commands."""
+
+        from __future__ import annotations
+
+        import re
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        ROOT = Path(__file__).resolve().parents[1]
+        DOC_FILES = [ROOT / "README.md", ROOT / "mkdocs.yml"]
+        DOC_FILES.extend(sorted((ROOT / "docs").rglob("*.md")))
+        DOC_FILES.extend(sorted((ROOT / "examples").rglob("README.md")))
+
+        FORBIDDEN_PHRASES = (
+            "Every OncoTracer command starts with Nextflow",
+            "Illumina controls are never silently ignored",
+            "PoN output contract",
+            "Current main fixes a fail-open",
+            "The first analysis is much larger than the example reads",
+            "QuickStart Example 3",
+            "GNU Screen",
+            "screen -S",
+            "screen -r",
+        )
+
+        ROUTE_FILES = (
+            "docs/quick_start.md",
+            "docs/public_cohort.md",
+            "docs/full_tutorial.md",
+            "docs/six_tumor_four_control.md",
+            "docs/auto_params.md",
+            "examples/hcc1143_lpwgs/README.md",
+            "examples/prjna754199/README.md",
+        )
+        ROUTES = ("--docker", "--singularity", "poetry run oncotracer", "--conda")
+        BASH_BLOCK_RE = re.compile(r"```bash[ \t]*\n(.*?)```", re.DOTALL)
+
+        HCC_URLS = (
+            "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_1.fastq.gz",
+            "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_2.fastq.gz",
+            "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_1.fastq.gz",
+            "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_2.fastq.gz",
+            "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_1.fastq.gz",
+            "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_2.fastq.gz",
+        )
+
+
+        def fail(message: str) -> None:
+            print(f"FAIL: {message}", file=sys.stderr)
+            raise SystemExit(1)
+
+
+        def read(path: str) -> str:
+            return (ROOT / path).read_text(encoding="utf-8")
+
+
+        def main() -> None:
+            for path in DOC_FILES:
+                text = path.read_text(encoding="utf-8")
+                for phrase in FORBIDDEN_PHRASES:
+                    if phrase.casefold() in text.casefold():
+                        fail(f"obsolete phrase in {path.relative_to(ROOT)}: {phrase}")
+
+            readme = read("README.md")
+            for required in (
+                "## Four installation and execution methods",
+                "params/illumina.minimal.yml",
+                "params/ont.minimal.yml",
+                "### Installation and execution through Docker",
+                "### Installation and execution through Singularity or Apptainer",
+                "### Installation and execution through Poetry",
+                "### Installation and execution through Conda",
+                "git clone https://github.com/cfarkas/oncotracer.git",
+                "cd oncotracer",
+            ):
+                if required not in readme:
+                    fail(f"README.md is missing: {required}")
+
+            for path in ROUTE_FILES:
+                text = read(path)
+                for route in ROUTES:
+                    if route not in text:
+                        fail(f"missing execution route in {path}: {route}")
+
+            hcc_text = read("docs/public_cohort.md") + read("examples/hcc1143_lpwgs/README.md")
+            for url in HCC_URLS:
+                if url not in hcc_text:
+                    fail(f"missing HCC1143 URL: {url}")
+
+            for path in DOC_FILES:
+                if path.suffix != ".md":
+                    continue
+                for number, block in enumerate(
+                    BASH_BLOCK_RE.findall(path.read_text(encoding="utf-8")), start=1
+                ):
+                    first = next((line.strip() for line in block.splitlines() if line.strip()), "")
+                    if not first.startswith("#"):
+                        fail(f"Bash block {number} in {path.relative_to(ROOT)} must begin with #")
+                    checked = subprocess.run(
+                        ["bash", "-n"], input=block, text=True, capture_output=True, check=False
+                    )
+                    if checked.returncode:
+                        fail(
+                            f"invalid Bash block {number} in {path.relative_to(ROOT)}: "
+                            f"{checked.stderr.strip()}"
+                        )
+
+            print("PASS: simplified documentation, execution routes, downloads, and Bash syntax")
+
+
+        if __name__ == "__main__":
+            main()
+        '''
+    ),
+    encoding="utf-8",
+)
