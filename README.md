@@ -26,7 +26,8 @@ The first uncached analysis downloads the hg38 reference, about **3.16 GB**, and
 ## Clone OncoTracer
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
 ```
@@ -86,7 +87,7 @@ The Poetry launcher also accepts `--backend singularity` and `--backend conda`.
 
 ### Installation and execution through Conda
 
-Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) once. Nextflow can create and reuse the required Conda environments automatically from the versioned definitions.
+Install [Miniforge or Conda](https://github.com/conda-forge/miniforge) once. Nextflow creates and reuses the required Conda environments automatically from the versioned definitions.
 
 ```bash
 # Run the generated YAML through native Conda environments.
@@ -113,11 +114,14 @@ CONTROL_02,NORMAL
 ```
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
-# Create the project folders and sample table.
+```bash
+# Create the project, generate the configuration, and run it with Conda.
 PROJECT_DIR="$(pwd)/project"
 mkdir -p "$PROJECT_DIR/input/fastq"
 cat > "$PROJECT_DIR/input/samples.csv" <<'CSV'
@@ -128,7 +132,6 @@ CONTROL_01,NORMAL
 CONTROL_02,NORMAL
 CSV
 
-# Generate the Illumina YAML and samplesheet.
 nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
@@ -136,13 +139,11 @@ nextflow run main.nf --auto_params \
   --auto_config_dir "$PROJECT_DIR/config" \
   --auto_outdir "$PROJECT_DIR/results"
 
-# Run with Conda; use --docker or --singularity for another method.
 nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/conda" \
   -resume
 
-# Read the workflow summary.
 cat "$PROJECT_DIR/results/06_workflow_summary/workflow_summary.txt"
 ```
 
@@ -153,28 +154,28 @@ For ONT barcode folders, use `--mode ont`. See [Automatic Setup](https://cfarkas
 This example downloads about **225 MB** of public reads, creates both YAML files, runs both workflows, and verifies the outputs.
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
-# Download the public reads and create both YAML files.
+```bash
+# Prepare, run, and verify QuickStart Example 1 with Docker.
 TEST_ROOT="$(pwd)/test"
 nextflow run main.nf --make_test \
   --test_root "$TEST_ROOT"
 
-# Run Illumina first.
 nextflow run main.nf --docker \
   -params-file "$TEST_ROOT/configs/illumina.quickstart.yml" \
   -work-dir "$TEST_ROOT/work/illumina" \
   -resume
 
-# Run ONT after Illumina finishes.
 nextflow run main.nf --docker \
   -params-file "$TEST_ROOT/configs/ont.quickstart.yml" \
   -work-dir "$TEST_ROOT/work/ont" \
   -resume
 
-# Verify both output sets.
 python3 examples/quickstart/verify_outputs.py \
   --test-root "$TEST_ROOT"
 ```
@@ -186,63 +187,53 @@ See [QuickStart Example 1](https://cfarkas.github.io/oncotracer/quick_start/) fo
 This example downloads six public paired-end FASTQs and demonstrates Automatic Setup for three libraries.
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
-# Create the HCC1143 reads directory.
+```bash
+# Download the HCC1143 reads, create the configuration, and run it with Docker.
 READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
 
-# Download HCC1143_DMSO read 1.
 if [[ ! -s "$READS_DIR/HCC1143_DMSO_R1.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_1.fastq.gz
-  mv "$READS_DIR/SRR7085656_1.fastq.gz" \
-    "$READS_DIR/HCC1143_DMSO_R1.fastq.gz"
+  mv "$READS_DIR/SRR7085656_1.fastq.gz" "$READS_DIR/HCC1143_DMSO_R1.fastq.gz"
 fi
 
-# Download HCC1143_DMSO read 2.
 if [[ ! -s "$READS_DIR/HCC1143_DMSO_R2.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_2.fastq.gz
-  mv "$READS_DIR/SRR7085656_2.fastq.gz" \
-    "$READS_DIR/HCC1143_DMSO_R2.fastq.gz"
+  mv "$READS_DIR/SRR7085656_2.fastq.gz" "$READS_DIR/HCC1143_DMSO_R2.fastq.gz"
 fi
 
-# Download HCC1143_BEZ235 read 1.
 if [[ ! -s "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_1.fastq.gz
-  mv "$READS_DIR/SRR7085655_1.fastq.gz" \
-    "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz"
+  mv "$READS_DIR/SRR7085655_1.fastq.gz" "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz"
 fi
 
-# Download HCC1143_BEZ235 read 2.
 if [[ ! -s "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_2.fastq.gz
-  mv "$READS_DIR/SRR7085655_2.fastq.gz" \
-    "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz"
+  mv "$READS_DIR/SRR7085655_2.fastq.gz" "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz"
 fi
 
-# Download HCC1143_TRAMETINIB read 1.
 if [[ ! -s "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_1.fastq.gz
-  mv "$READS_DIR/SRR7085657_1.fastq.gz" \
-    "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz"
+  mv "$READS_DIR/SRR7085657_1.fastq.gz" "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz"
 fi
 
-# Download HCC1143_TRAMETINIB read 2.
 if [[ ! -s "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz" ]]; then
   wget --continue --directory-prefix="$READS_DIR" \
     https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_2.fastq.gz
-  mv "$READS_DIR/SRR7085657_2.fastq.gz" \
-    "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz"
+  mv "$READS_DIR/SRR7085657_2.fastq.gz" "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz"
 fi
 
-# Create the exact sample table.
 cat > "$READS_DIR/samples.csv" <<'CSV'
 sample_name,status
 HCC1143_DMSO,TUMOR
@@ -250,7 +241,6 @@ HCC1143_BEZ235,TUMOR
 HCC1143_TRAMETINIB,TUMOR
 CSV
 
-# Generate the YAML and R1/R2 samplesheet.
 nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$READS_DIR" \
@@ -258,7 +248,6 @@ nextflow run main.nf --auto_params \
   --auto_config_dir "test/configs/hcc1143_lpwgs" \
   --auto_outdir "test/runs/hcc1143_lpwgs"
 
-# Run the generated configuration with Docker.
 nextflow run main.nf --docker \
   -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "test/work/hcc1143_lpwgs-docker" \
