@@ -1860,19 +1860,17 @@
 </table>
 <p>All rows are labeled <code>TUMOR</code>. DMSO is a treatment control, not a normal genome. Exact URLs, byte counts, and checksums are stored in <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/hcc1143_lpwgs/manifest.tsv"><code>examples/hcc1143_lpwgs/manifest.tsv</code></a>.</p>
 <h2 id="1-clone-the-repository-and-create-the-data-folder">1. Clone the repository and create the data folder<a class="headerlink" href="#1-clone-the-repository-and-create-the-data-folder" title="Permanent link">&para;</a></h2>
-<p>Run the commands from the cloned <code>oncotracer</code> directory.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Clone OncoTracer and enter the repository.</span>
 git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git
 <span class="nb">cd</span><span class="w"> </span>oncotracer
 
-<span class="c1"># Enter the repository and create the HCC1143 data folder.</span>
+<span class="c1"># Create the HCC1143 data folder.</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;test/public/hcc1143_lpwgs&quot;</span>
 </code></pre></div>
-<p>Skip the clone command when the repository already exists.</p>
 <p><a id="2-download-the-six-fastq-files"></a></p>
 <h2 id="2-download-the-six-fastq-files">2. Download the six FASTQ files<a class="headerlink" href="#2-download-the-six-fastq-files" title="Permanent link">&para;</a></h2>
 <p>Each command can continue a partial download because it uses <code>--continue-at -</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and data paths.</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the HCC1143 data path.</span>
 <span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/test/public/hcc1143_lpwgs&quot;</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span>
 
@@ -1908,17 +1906,18 @@ curl<span class="w"> </span>--fail<span class="w"> </span>--location<span class=
 </code></pre></div>
 <h2 id="3-verify-the-fastqs-and-create-samplescsv">3. Verify the FASTQs and create <code>samples.csv</code><a class="headerlink" href="#3-verify-the-fastqs-and-create-samplescsv" title="Permanent link">&para;</a></h2>
 <p>Use the copy/paste-ready <code>cat</code> block below. The single <code>&gt;</code> replaces an existing table instead of appending duplicate rows.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and data paths.</span>
-<span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/test/public/hcc1143_lpwgs&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the repository root and HCC1143 reads directory.</span>
+<span class="nv">ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/test/public/hcc1143_lpwgs&quot;</span>
 
-<span class="c1"># Check all six MD5 values.</span>
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span>
-md5sum<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;examples/hcc1143_lpwgs/checksums.md5&quot;</span>
-
-<span class="c1"># Check that all six gzip files are complete.</span>
-gzip<span class="w"> </span>-t<span class="w"> </span>HCC1143_DMSO_R1.fastq.gz<span class="w"> </span>HCC1143_DMSO_R2.fastq.gz<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>HCC1143_BEZ235_R1.fastq.gz<span class="w"> </span>HCC1143_BEZ235_R2.fastq.gz<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>HCC1143_TRAMETINIB_R1.fastq.gz<span class="w"> </span>HCC1143_TRAMETINIB_R2.fastq.gz
+<span class="c1"># Validate the six FASTQs without leaving the oncotracer directory.</span>
+<span class="o">(</span>
+<span class="w">  </span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span>
+<span class="w">  </span>md5sum<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$ROOT</span><span class="s2">/examples/hcc1143_lpwgs/checksums.md5&quot;</span>
+<span class="w">  </span>gzip<span class="w"> </span>-t<span class="w"> </span>HCC1143_DMSO_R1.fastq.gz<span class="w"> </span>HCC1143_DMSO_R2.fastq.gz<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>HCC1143_BEZ235_R1.fastq.gz<span class="w"> </span>HCC1143_BEZ235_R2.fastq.gz<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>HCC1143_TRAMETINIB_R1.fastq.gz<span class="w"> </span>HCC1143_TRAMETINIB_R2.fastq.gz
+<span class="o">)</span>
 
 <span class="c1"># Create or replace the exact HCC1143 sample table.</span>
 cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
@@ -1931,7 +1930,7 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 <span class="c1"># Display the saved table.</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">/samples.csv&quot;</span>
 </code></pre></div>
-<p><code>md5sum</code> should print <code>OK</code> six times. <code>gzip -t</code> is silent when the FASTQs are valid.</p>
+<p><code>md5sum</code> should print <code>OK</code> six times. <code>gzip -t</code> is silent when the FASTQs are valid. The parentheses keep the parent shell in the <code>oncotracer</code> directory.</p>
 <p>To edit manually instead, run:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Open the sample table in Nano.</span>
 nano<span class="w"> </span>test/public/hcc1143_lpwgs/samples.csv
@@ -1939,9 +1938,7 @@ nano<span class="w"> </span>test/public/hcc1143_lpwgs/samples.csv
 <p>Paste the same four lines, save with <code>Ctrl+O</code>, press Enter, and exit with <code>Ctrl+X</code>.</p>
 <h2 id="4-generate-the-yaml-automatically">4. Generate the YAML automatically<a class="headerlink" href="#4-generate-the-yaml-automatically" title="Permanent link">&para;</a></h2>
 <p><code>--auto_params</code> matches the three sample names to their R1/R2 files, validates the FASTQs, writes <code>illumina.samplesheet.csv</code>, and writes <code>illumina.auto.yml</code>. It does not start alignment or CNA calling.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-
-<span class="c1"># Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.</span>
 nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;test/public/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1949,22 +1946,14 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;test/configs/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;test/runs/hcc1143_lpwgs&quot;</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-
-<span class="c1"># Display the generated YAML.</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Display the generated files.</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span>
-
-<span class="c1"># Display the generated R1/R2 samplesheet.</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,10p&#39;</span><span class="w"> </span><span class="s2">&quot;test/configs/hcc1143_lpwgs/illumina.samplesheet.csv&quot;</span>
-
-<span class="c1"># Display sample counts and file hashes.</span>
 cat<span class="w"> </span><span class="s2">&quot;test/configs/hcc1143_lpwgs/auto_params_manifest.tsv&quot;</span>
 </code></pre></div>
 <p>The generated samplesheet must contain three data rows, each with one R1 and one R2 path.</p>
 <h2 id="5-optional-wiring-check">5. Optional wiring check<a class="headerlink" href="#5-optional-wiring-check" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-
-<span class="c1"># Check the generated workflow connections without running the analysis tools.</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check the generated workflow connections without running the analysis tools.</span>
 nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/hcc1143_lpwgs_stub&quot;</span>
@@ -2002,7 +1991,7 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 </code></pre></div>
 <p>Keep the terminal open until Nextflow returns to the prompt. To resume, repeat the command for the selected method with the same YAML, work directory, and <code>-resume</code>.</p>
 <h2 id="7-check-the-outputs">7. Check the outputs<a class="headerlink" href="#7-check-the-outputs" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and result paths.</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set the result path.</span>
 <span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/test/runs/hcc1143_lpwgs&quot;</span>
 
 <span class="c1"># List the three aligned BAM files.</span>
