@@ -34,9 +34,13 @@ jobs:
           from pathlib import Path
 
           path = Path('tools/simplify_public_docs.py')
-          text = path.read_text(encoding='utf-8')
-          text = text.replace("r'''\\\\\n", "r'''\n")
-          path.write_text(text, encoding='utf-8')
+          lines = path.read_text(encoding='utf-8').splitlines()
+          normalized = []
+          for line in lines:
+              if line.lstrip().startswith("r'''") and line.rstrip().endswith('\\'):
+                  line = line.rstrip('\\')
+              normalized.append(line)
+          path.write_text('\n'.join(normalized) + '\n', encoding='utf-8')
           PY
 
       - name: Simplify all public documentation
