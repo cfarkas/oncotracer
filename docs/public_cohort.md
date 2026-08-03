@@ -26,13 +26,16 @@ The libraries come from public project [PRJNA454331](https://www.ebi.ac.uk/ena/b
 
 All rows are labeled `TUMOR`. DMSO is a treatment control, not a normal genome. Exact URLs, byte counts, and checksums are stored in [`examples/hcc1143_lpwgs/manifest.tsv`](https://github.com/cfarkas/oncotracer/blob/main/examples/hcc1143_lpwgs/manifest.tsv).
 
-## 1. Clone the repository and create the data folder
+## 1. Clone OncoTracer
 
 ```bash
-# Clone OncoTracer and enter the repository.
+# Clone OncoTracer into a given directory.
+
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
+```
 
+```bash
 # Create the HCC1143 data folder.
 mkdir -p "test/public/hcc1143_lpwgs"
 ```
@@ -44,36 +47,30 @@ mkdir -p "test/public/hcc1143_lpwgs"
 Each command can continue a partial download because it uses `--continue-at -`.
 
 ```bash
-# Set the HCC1143 data path.
+# Download all six HCC1143 FASTQs.
 READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
 
-# Download HCC1143_DMSO read 1.
 curl --fail --location --continue-at - \
   --output "$READS_DIR/HCC1143_DMSO_R1.fastq.gz" \
   https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_1.fastq.gz
 
-# Download HCC1143_DMSO read 2.
 curl --fail --location --continue-at - \
   --output "$READS_DIR/HCC1143_DMSO_R2.fastq.gz" \
   https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_2.fastq.gz
 
-# Download HCC1143_BEZ235 read 1.
 curl --fail --location --continue-at - \
   --output "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz" \
   https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_1.fastq.gz
 
-# Download HCC1143_BEZ235 read 2.
 curl --fail --location --continue-at - \
   --output "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz" \
   https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_2.fastq.gz
 
-# Download HCC1143_TRAMETINIB read 1.
 curl --fail --location --continue-at - \
   --output "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz" \
   https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_1.fastq.gz
 
-# Download HCC1143_TRAMETINIB read 2.
 curl --fail --location --continue-at - \
   --output "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz" \
   https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_2.fastq.gz
@@ -81,14 +78,11 @@ curl --fail --location --continue-at - \
 
 ## 3. Verify the FASTQs and create `samples.csv`
 
-Use the copy/paste-ready `cat` block below. The single `>` replaces an existing table instead of appending duplicate rows.
-
 ```bash
-# Set the repository root and HCC1143 reads directory.
+# Validate the six FASTQs and create the sample table.
 ROOT="$(pwd)"
 READS_DIR="$ROOT/test/public/hcc1143_lpwgs"
 
-# Validate the six FASTQs without leaving the oncotracer directory.
 (
   cd "$READS_DIR"
   md5sum -c "$ROOT/examples/hcc1143_lpwgs/checksums.md5"
@@ -97,7 +91,6 @@ READS_DIR="$ROOT/test/public/hcc1143_lpwgs"
     HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
 )
 
-# Create or replace the exact HCC1143 sample table.
 cat > "$READS_DIR/samples.csv" <<'CSV'
 sample_name,status
 HCC1143_DMSO,TUMOR
@@ -105,7 +98,6 @@ HCC1143_BEZ235,TUMOR
 HCC1143_TRAMETINIB,TUMOR
 CSV
 
-# Display the saved table.
 cat "$READS_DIR/samples.csv"
 ```
 
@@ -125,7 +117,7 @@ Paste the same four lines, save with `Ctrl+O`, press Enter, and exit with `Ctrl+
 `--auto_params` matches the three sample names to their R1/R2 files, validates the FASTQs, writes `illumina.samplesheet.csv`, and writes `illumina.auto.yml`. It does not start alignment or CNA calling.
 
 ```bash
-# Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.
+# Generate the Illumina YAML and R1/R2 samplesheet.
 nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "test/public/hcc1143_lpwgs" \
@@ -135,7 +127,7 @@ nextflow run main.nf --auto_params \
 ```
 
 ```bash
-# Display the generated files.
+# Inspect the generated files.
 sed -n '1,120p' "test/configs/hcc1143_lpwgs/illumina.auto.yml"
 sed -n '1,10p' "test/configs/hcc1143_lpwgs/illumina.samplesheet.csv"
 cat "test/configs/hcc1143_lpwgs/auto_params_manifest.tsv"
@@ -146,7 +138,7 @@ The generated samplesheet must contain three data rows, each with one R1 and one
 ## 5. Optional wiring check
 
 ```bash
-# Check the generated workflow connections without running the analysis tools.
+# Check the workflow connections without running the analysis tools.
 nextflow run main.nf -stub-run --conda \
   -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "test/work/hcc1143_lpwgs_stub"
@@ -159,7 +151,7 @@ Choose exactly one method. Each method reads the same generated YAML and writes 
 ### Docker
 
 ```bash
-# Run the generated HCC1143 configuration with Docker.
+# Run the HCC1143 analysis with Docker.
 nextflow run main.nf --docker \
   -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "test/work/hcc1143_lpwgs-docker" \
@@ -169,7 +161,7 @@ nextflow run main.nf --docker \
 ### Singularity or Apptainer
 
 ```bash
-# Run the generated HCC1143 configuration through Singularity or Apptainer.
+# Run the HCC1143 analysis through Singularity or Apptainer.
 nextflow run main.nf --singularity \
   -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "test/work/hcc1143_lpwgs-singularity" \
@@ -179,7 +171,7 @@ nextflow run main.nf --singularity \
 ### Poetry launcher
 
 ```bash
-# Install the launcher and run HCC1143 through Poetry with Docker.
+# Install Poetry and run HCC1143 with the Docker backend.
 poetry install --no-interaction
 poetry run oncotracer --repo-dir . --backend docker \
   -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
@@ -190,7 +182,7 @@ poetry run oncotracer --repo-dir . --backend docker \
 ### Conda
 
 ```bash
-# Run the generated HCC1143 configuration with native Conda environments.
+# Run the HCC1143 analysis with native Conda environments.
 nextflow run main.nf --conda \
   -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "test/work/hcc1143_lpwgs-conda" \
@@ -202,14 +194,12 @@ Keep the terminal open until Nextflow returns to the prompt. To resume, repeat t
 ## 7. Check the outputs
 
 ```bash
-# Set the result path.
+# Inspect the completed HCC1143 outputs.
 OUT="$(pwd)/test/runs/hcc1143_lpwgs"
 
-# List the three aligned BAM files.
 find "$OUT/01_samurai_illumina/alignment" \
   -maxdepth 1 -type f -name '*.bam' -print
 
-# Confirm that each sample appears in the qDNAseq segment table.
 grep -Fq HCC1143_DMSO "$OUT/01_samurai_illumina/qdnaseq/all_segments.seg" \
   && echo 'HCC1143_DMSO: found'
 grep -Fq HCC1143_BEZ235 "$OUT/01_samurai_illumina/qdnaseq/all_segments.seg" \
@@ -217,7 +207,6 @@ grep -Fq HCC1143_BEZ235 "$OUT/01_samurai_illumina/qdnaseq/all_segments.seg" \
 grep -Fq HCC1143_TRAMETINIB "$OUT/01_samurai_illumina/qdnaseq/all_segments.seg" \
   && echo 'HCC1143_TRAMETINIB: found'
 
-# Display the workflow summary.
 sed -n '1,40p' "$OUT/06_workflow_summary/workflow_summary.txt"
 ```
 
