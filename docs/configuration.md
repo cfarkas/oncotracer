@@ -10,7 +10,7 @@ Most analyses need one YAML file. Use this page to choose the shortest setup rou
 | Run the three-library HCC1143 example | [QuickStart Example 2](public_cohort.md) | Six public FASTQs downloaded from ENA |
 | Run the complete public archive tutorial | [Full Tutorial](full_tutorial.md) | Twelve public PRJNA754199 FASTQs |
 | Configure your own standard FASTQ folder | [Automatic Setup](auto_params.md) | Your own Illumina files or ONT barcode folders |
-| See a six-tumor/four-control template | [Other Example Run](six_tumor_four_control.md) | **Not included**; the user must provide all 20 FASTQs |
+| See how four normal controls are used | [Other Example Run](six_tumor_four_control.md) | Mock example with six tumors and four normal controls |
 | Write an Illumina YAML manually | [Illumina manual setup](configuration/illumina.md#second-option-manual-setup) | Your own samplesheet and FASTQs |
 | Write an ONT YAML manually | [ONT manual setup](configuration/ont.md) | Your own barcode folders and mapping table |
 | Add pathology or classifier settings | [Pathology and classifier](configuration/pathology.md) | Your own matched sequencing and pathology tables |
@@ -32,7 +32,7 @@ outdir: /path/to/my/directory/oncotracer/project/results
 illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
 ```
 
-Keep the input, output, work, reference, and cache paths under a project root that the selected container can access.
+Keep the input, output, work, reference, and cache paths under a common project root.
 
 ## Recommended route: Automatic Setup
 
@@ -51,14 +51,14 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   --auto_config_dir "$PROJECT_DIR/config" \
   --auto_outdir "$PROJECT_DIR/results"
 
-# Run the generated configuration with Docker.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run with Conda; Nextflow creates and reuses the required environments.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work" \
   -resume
 ```
 
-See [Automatic Setup](auto_params.md) for exact Illumina and ONT sample tables.
+Replace `--conda` with `--docker` or `--singularity` for the corresponding container runtime. See [Automatic Setup](auto_params.md) for exact Illumina and ONT sample tables.
 
 ## Second option: manual YAML
 
@@ -108,7 +108,7 @@ Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`. Do not use tabs.
 REPO_DIR=/path/to/my/directory/oncotracer
 
 # Validate parameters and workflow connections without running the analysis tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
   -params-file "$REPO_DIR/params/my_illumina.yml"
 ```
 
@@ -118,23 +118,23 @@ nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Run or resume the manual Illumina YAML with Docker.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run or resume the manual Illumina YAML with Conda.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/params/my_illumina.yml" \
   -resume
 ```
 
-For HPC, replace `--docker` with `--singularity`.
+Replace `--conda` with `--docker` or `--singularity` when using a container runtime.
 
-## Runtime options
+## Execution options
 
-| Option | Use when | Image |
+| Option | Use when | Environment |
 | --- | --- | --- |
+| `--conda` | Miniforge or Conda is installed | Nextflow creates and reuses Conda environments automatically |
 | `--docker` | Docker is installed on a Linux workstation or server | [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer) |
 | `--singularity` | Singularity or Apptainer is configured on HPC | `docker://carlosfarkas/oncotracer:latest` |
-| `--conda` | No container runtime is available | Conda environments prepared by Nextflow |
 
-Use exactly one runtime option on an analysis command.
+Use exactly one execution option on an analysis command.
 
 ## Settings to leave unchanged for a first run
 

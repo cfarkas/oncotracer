@@ -1,0 +1,19 @@
+[project]
+name = "oncotracer"
+version = "1.1.0"
+description = "Poetry-managed launcher for the OncoTracer Nextflow workflow"
+authors = [{ name = "OncoTracer developers" }]
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10,<3.14"
+dependencies = []
+
+[project.scripts]
+oncotracer = "oncotracer_cli.cli:main"
+
+[tool.poetry]
+packages = [{ include = "oncotracer_cli" }]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

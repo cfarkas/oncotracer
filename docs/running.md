@@ -2,8 +2,9 @@
 
 Run commands from the cloned repository directory containing `main.nf`.
 
-Choose one container option:
+Choose one execution option:
 
+- `--conda` makes Nextflow create and reuse the required Conda environments automatically.
 - `--docker` uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
 - `--singularity` uses the same image as `docker://carlosfarkas/oncotracer:latest` on a configured HPC system.
 
@@ -16,24 +17,24 @@ Choose one container option:
 | ONT barcode folders | [Automatic Setup](auto_params.md#ont-step-by-step) |
 | Three public HCC1143 libraries | [QuickStart Example 2](public_cohort.md) |
 | Twelve public PRJNA754199 libraries | [Full Tutorial](full_tutorial.md) |
-| Six tumors and four controls | [Other Example Run](six_tumor_four_control.md); the user must provide all 20 FASTQs |
+| Mock six-tumor/four-normal analysis | [Other Example Run](six_tumor_four_control.md), illustrating a local qDNAseq panel of normals |
 | Unsupported naming or advanced settings | Manual [Illumina YAML](configuration/illumina.md) or [ONT YAML](configuration/ont.md) |
 | An existing checked YAML | [Run a YAML](#run-a-yaml) |
 
-## 1. Enter the repository and select a runtime
+## 1. Enter the repository and select an execution environment
 
 ```bash
 # Set the standard repository path and enter it.
 REPO_DIR=/path/to/my/directory/oncotracer
 cd "$REPO_DIR"
 
-# Confirm Nextflow and the Docker launcher.
+# Confirm Nextflow and Conda for a --conda run.
 pwd
 nextflow -version
-command -v docker
+conda --version
 ```
 
-For HPC, check `command -v singularity` or `command -v apptainer` instead of Docker.
+For Docker, check `command -v docker`. For HPC, check `command -v singularity` or `command -v apptainer`.
 
 ## 2. Recommended route: Automatic Setup
 
@@ -90,12 +91,14 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   --auto_outdir "$PROJECT_DIR/results/illumina" \
   -work-dir "$PROJECT_DIR/work/auto_params_illumina"
 
-# Run the generated Illumina YAML with Docker.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run the generated Illumina YAML with Conda.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$PROJECT_DIR/config/illumina/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/illumina" \
   -resume
 ```
+
+On the first `--conda` run, Nextflow creates the required environments. Replace `--conda` with `--docker` or `--singularity` to use a container runtime.
 
 ### ONT example
 
@@ -145,14 +148,14 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   --auto_outdir "$PROJECT_DIR/results/ont" \
   -work-dir "$PROJECT_DIR/work/auto_params_ont"
 
-# Run the generated ONT YAML with Docker.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run the generated ONT YAML with Conda.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$PROJECT_DIR/config/ont/ont.auto.yml" \
   -work-dir "$PROJECT_DIR/work/ont" \
   -resume
 ```
 
-For HPC, replace `--docker` with `--singularity` in the analysis command.
+Replace `--conda` with `--docker` or `--singularity` when using a container runtime.
 
 ## 3. Manual configuration
 
@@ -193,7 +196,7 @@ Optional stub check:
 REPO_DIR=/path/to/my/directory/oncotracer
 
 # Check parameters and workflow connections without running the analysis tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
   -params-file "$REPO_DIR/params/my_illumina.yml"
 ```
 
@@ -203,13 +206,13 @@ Real run:
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Run or resume the checked Illumina YAML.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run or resume the checked Illumina YAML with Conda.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/params/my_illumina.yml" \
   -resume
 ```
 
-For ONT, replace the YAML path. For HPC, replace `--docker` with `--singularity`.
+For ONT, replace the YAML path. Replace `--conda` with `--docker` or `--singularity` for the corresponding runtime.
 
 ## Workflow stages
 
@@ -248,11 +251,21 @@ Use the same YAML, `outdir`, and work directory:
 REPO_DIR=/path/to/my/directory/oncotracer
 PROJECT_DIR="$REPO_DIR/project"
 
-# Resume the existing Illumina run from unchanged completed tasks.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Resume the existing Illumina run with the same Conda environments.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$PROJECT_DIR/config/illumina/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/illumina" \
   -resume
 ```
 
-Do not delete the work directory before diagnosing an error. It contains the task logs and cache used by `-resume`.
+Do not delete the work directory or Conda cache before diagnosing an error. They contain the task logs and reusable environments used by `-resume`.
+
+## Launch through Poetry
+
+```bash
+# Forward an existing run configuration through Poetry to Nextflow.
+REPO_DIR=/path/to/my/directory/oncotracer
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file /path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml \
+  -work-dir /path/to/my/directory/my_oncotracer_project/work -resume
+```

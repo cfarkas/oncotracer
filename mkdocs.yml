@@ -26,6 +26,7 @@ nav:
   - Home: index.md
   - Getting Started:
       - 1. Install Requirements: installation.md
+      - Poetry Launcher: poetry.md
       - 2. QuickStart Example 1 (Illumina + ONT): quick_start.md
       - 3. Automatic Setup for Your FASTQs (Recommended): auto_params.md
       - 4. QuickStart Example 2 (Three-Sample Public): public_cohort.md
@@ -33,7 +34,7 @@ nav:
       - Manual YAML Editing (Second Option): configuration/yaml_basics.md
   - Full Tutorial: full_tutorial.md
   - Other Example Runs:
-      - Six Tumors + Four Controls (User Data Required): six_tumor_four_control.md
+      - Mock Six Tumors + Four Normal Controls: six_tumor_four_control.md
   - Run and Configure:
       - Choose a Configuration Route: configuration.md
       - Workflow Overview: running.md
@@ -42,7 +43,7 @@ nav:
       - Pathology and Classifier: configuration/pathology.md
       - Advanced Refinement: configuration/refinement.md
       - All Parameters: configuration/parameter_reference.md
-      - Containers and Execution: containers.md
+      - Execution Environments: containers.md
       - Programs and Provenance: programs.md
   - Understand Results:
       - Output Files: outputs.md

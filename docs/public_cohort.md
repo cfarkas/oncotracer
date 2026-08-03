@@ -4,15 +4,15 @@
 
 This example downloads and analyzes three paired-end HCC1143 low-pass whole-genome sequencing libraries: six public FASTQ files totaling about **1.08 GiB**. Complete [QuickStart Example 1](quick_start.md) first.
 
-The commands use Docker. On an HPC system configured with Singularity or Apptainer, replace `--docker` with `--singularity`. The maintained image is [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
+The commands use `--conda`. Nextflow creates and reuses the required Conda environments automatically. Replace `--conda` with `--docker` for [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer), or with `--singularity` on a configured HPC system.
 
 This cohort is a software example. It is not a matched tumor/normal study and should not be used to infer treatment effects.
 
 ## Requirements
 
-Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), [Java 17](https://adoptium.net/temurin/releases/?version=17) or newer, [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Python 3](https://www.python.org/downloads/), [samtools](https://www.htslib.org/download/), [BWA](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2), [pigz](https://zlib.net/pigz/), [curl](https://curl.se/download.html) or [wget](https://www.gnu.org/software/wget/), and either [Docker Engine](https://docs.docker.com/engine/install/) or [SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html)/[Apptainer](https://apptainer.org/docs/admin/main/installation.html).
+Use Linux with [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), [Java 17](https://adoptium.net/temurin/releases/?version=17) or newer, [Nextflow](https://www.nextflow.io/docs/latest/install.html), [Miniforge or Conda](https://github.com/conda-forge/miniforge), [Python 3](https://www.python.org/downloads/), [samtools](https://www.htslib.org/download/), [BWA](https://github.com/lh3/bwa), [minimap2](https://github.com/lh3/minimap2), [pigz](https://zlib.net/pigz/), and [curl](https://curl.se/download.html) or [wget](https://www.gnu.org/software/wget/).
 
-Plan for at least 40 GiB of free working space, 16 CPU cores, and 80 GiB of addressable RAM. The first uncached run downloads hg38 and creates a BWA index, which commonly takes **30–60 minutes** before alignment begins.
+Plan for at least 40 GiB of free working space, 16 CPU cores, and 80 GiB of addressable RAM. The first Conda run creates the environments. The first uncached analysis also downloads hg38 and creates a BWA index, which can take tens of minutes before alignment begins.
 
 ## Public data
 
@@ -137,8 +137,8 @@ Paste the same four lines, save with `Ctrl+O`, press Enter, and exit with `Ctrl+
 REPO_DIR=/path/to/my/directory/oncotracer
 cd "$REPO_DIR"
 
-# Generate the Illumina YAML and R1/R2 samplesheet.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+# Create or reuse the Conda environment, then generate the Illumina YAML and R1/R2 samplesheet.
+nextflow run "$REPO_DIR/main.nf" --auto_params --conda \
   --mode illumina \
   --reads_folder "$REPO_DIR/test/public/hcc1143_lpwgs" \
   --sample_table "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" \
@@ -169,7 +169,7 @@ The generated samplesheet must contain three data rows, each with one R1 and one
 REPO_DIR=/path/to/my/directory/oncotracer
 
 # Check the generated workflow connections without running the analysis tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
+nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
   -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs_stub"
 ```
@@ -180,14 +180,14 @@ nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Run the generated HCC1143 configuration with Docker and resume support.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Run the generated HCC1143 configuration with Conda and resume support.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
   -resume
 ```
 
-Keep the terminal open until Nextflow returns to the prompt. On HPC, replace only `--docker` with `--singularity`.
+Keep the terminal open until Nextflow returns to the prompt. Replace `--conda` with `--docker` or `--singularity` for a container run.
 
 ## 7. Check the outputs
 
@@ -230,8 +230,8 @@ Use the same YAML and work directory:
 REPO_DIR=/path/to/my/directory/oncotracer
 cd "$REPO_DIR"
 
-# Resume the existing HCC1143 analysis.
-nextflow run "$REPO_DIR/main.nf" --docker \
+# Resume the existing HCC1143 analysis with the same Conda environments.
+nextflow run "$REPO_DIR/main.nf" --conda \
   -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
   -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
   -resume
@@ -241,4 +241,15 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 
 This example verifies multi-sample execution. It is not a matched tumor/normal design, does not establish treatment causality, and is not a clinical validation study.
 
-The [Other Example Run: six tumors and four controls](six_tumor_four_control.md) shows a local panel-of-normals command pattern. Its `ONCO001`–`ONCO006` and `CTRL001`–`CTRL004` FASTQs are not included or downloaded; that page requires the user to supply all 20 files.
+The [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a mock example illustrating how four normal controls are used to build a local qDNAseq reference for six tumors.
+
+## Poetry alternative
+
+```bash
+# Run the generated HCC1143 configuration through Poetry and Docker.
+REPO_DIR=/path/to/my/directory/oncotracer
+poetry install --no-interaction
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "$REPO_DIR/test/work/poetry-hcc1143" -resume
+```

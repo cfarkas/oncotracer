@@ -4,10 +4,11 @@
 
 OncoTracer is a reproducible Nextflow research workflow for **low-pass whole-genome sequencing (LP-WGS)**. It converts Illumina or Oxford Nanopore Technologies (ONT) FASTQ reads into **copy-number alteration (CNA)** tables, plots, and reports.
 
-Run OncoTracer through Nextflow with one container option:
+Choose one of three execution routes:
 
-- `--docker` uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
-- `--singularity` uses the same image as `docker://carlosfarkas/oncotracer:latest` on a configured HPC system.
+1. Run Nextflow directly with `--docker` or `--singularity`.
+2. Use the [Poetry launcher](poetry.md), which forwards commands to Nextflow and uses Docker by default.
+3. Run Nextflow directly with `--conda`; Nextflow creates and reuses the native environments automatically.
 
 ## Choose where to start
 
@@ -17,7 +18,7 @@ Run OncoTracer through Nextflow with one container option:
 | Analyze your own FASTQs | [Automatic Setup](auto_params.md) | Your Illumina files or ONT barcode folders |
 | Run a larger public example | [QuickStart Example 2](public_cohort.md) | Three public HCC1143 libraries, six FASTQs |
 | Process the complete public archive example | [Full Tutorial](full_tutorial.md) | Twelve public PRJNA754199 libraries |
-| See a tumor/control command template | [Other Example Run: six tumors and four controls](six_tumor_four_control.md) | **Not included**; the user must provide all 20 FASTQs |
+| See how normal controls are used | [Other Example Run: six tumors and four controls](six_tumor_four_control.md) | Mock six-tumor/four-normal example illustrating a local qDNAseq panel of normals |
 | Configure unusual paths or options | [Manual YAML editing](configuration/yaml_basics.md) | Your own data |
 | Add pathology data | [Pathology and classifier](configuration/pathology.md) | Your own matched sequencing and pathology tables |
 
@@ -31,7 +32,7 @@ For Illumina, zero `NORMAL` rows run without a local panel of normals, one norma
 
 The first uncached analysis downloads the hg38 reference (about **3.16 GB**) and creates a BWA index. This commonly takes **30–60 minutes**, and the pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM. Later runs reuse a valid index.
 
-QuickStart Example 1 additionally downloads about **225 MB** of reads. QuickStart Example 2 downloads about **1.08 GiB**.
+QuickStart Example 1 additionally downloads about **225 MB** of reads. QuickStart Example 2 downloads about **1.08 GiB**. A first Conda run also needs time and disk space to create its software environments; later runs reuse them.
 
 ## What the workflow does
 
@@ -57,13 +58,13 @@ FASTQ reads
 
 ## Basic run pattern
 
-1. Install Java, Nextflow, and Docker or Singularity/Apptainer.
+1. Install Java, Nextflow, and Conda, Docker, or Singularity/Apptainer.
 2. Clone the repository.
 3. Generate a YAML with `--auto_params`, or edit one manually for an unusual layout.
-4. Run the YAML with `--docker` or `--singularity` and `-resume`.
+4. Run the YAML with `--conda`, `--docker`, or `--singularity` and `-resume`.
 5. Open `06_workflow_summary/workflow_summary.txt` and inspect the plots and tables.
 
-`-resume` reuses unchanged completed tasks after an interruption or on a repeated command.
+With `--conda`, Nextflow creates the required environments automatically and reuses them on later runs. `-resume` reuses unchanged completed tasks after an interruption or on a repeated command.
 
 ## Research use
 

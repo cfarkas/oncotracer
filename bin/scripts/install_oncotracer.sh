@@ -194,23 +194,14 @@ case "$RUNTIME" in
     ;;
 esac
 
-echo "Caching SAMURAI $SAMURAI_REVISION under: $NXF_ASSETS"
-export NXF_ASSETS NXF_HOME
-nextflow pull dincalcilab/samurai -r "$SAMURAI_REVISION"
-SAMURAI_DIR="$NXF_ASSETS/dincalcilab/samurai"
-SAMURAI_BARE_REPO="$NXF_ASSETS/.repos/dincalcilab/samurai/bare"
-if [[ -d "$SAMURAI_DIR/.git" ]]; then
-  samurai_commit="$(git -C "$SAMURAI_DIR" rev-list -n 1 "$SAMURAI_REVISION")"
-  samurai_cache_repository="$SAMURAI_DIR"
-elif [[ -f "$SAMURAI_BARE_REPO/HEAD" ]]; then
-  samurai_commit="$(git --git-dir "$SAMURAI_BARE_REPO" \
-    rev-list -n 1 "$SAMURAI_REVISION")"
-  samurai_cache_repository="$SAMURAI_BARE_REPO"
-else
-  die "SAMURAI cache was not created below: $NXF_ASSETS"
-fi
-[[ -n "$samurai_commit" ]] ||
-  die "could not resolve cached SAMURAI revision: $SAMURAI_REVISION"
+echo "Caching SAMURAI $SAMURAI_REVISION under: $INSTALL_ROOT/samurai"
+SAMURAI_HELPER="$PROJECT_DIR/bin/scripts/prepare_samurai_source.sh"
+[[ -s "$SAMURAI_HELPER" ]] || die "missing SAMURAI source helper: $SAMURAI_HELPER"
+SAMURAI_DIR="$(bash "$SAMURAI_HELPER" --lpwgs-root "$LPWGS_ROOT" --revision "$SAMURAI_REVISION")"
+[[ -s "$SAMURAI_DIR/main.nf" ]] || die "SAMURAI cache is invalid: $SAMURAI_DIR"
+samurai_commit="$(git -C "$SAMURAI_DIR" rev-parse HEAD)"
+samurai_cache_repository="$SAMURAI_DIR"
+[[ -n "$samurai_commit" ]] || die "could not resolve cached SAMURAI revision: $SAMURAI_REVISION"
 nextflow_banner="$(nextflow -version 2>&1 |
   awk '/version [0-9]/ && !seen { print; seen=1 }')"
 [[ -n "$nextflow_banner" ]] || nextflow_banner="$(first_line nextflow -version)"
@@ -228,7 +219,7 @@ trap 'rm -f -- "$manifest_tmp"' EXIT
   echo "samtools=$(first_line samtools --version)"
   echo "samurai_revision=$SAMURAI_REVISION"
   echo "samurai_commit=$samurai_commit"
-  echo "samurai_assets=$NXF_ASSETS"
+  echo "samurai_assets=$INSTALL_ROOT/samurai"
   echo "samurai_cache_repository=$samurai_cache_repository"
   echo "hg38_prepared=false"
   echo "reads_downloaded=false"

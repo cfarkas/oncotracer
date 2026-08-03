@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
 usage() {
   cat <<'EOF_USAGE'
 Usage: run_illumina_samurai_fastq.sh --samplesheet FILE --outdir DIR [options]
@@ -97,6 +99,11 @@ DICT="${REF_FA%.fa}.dict"
 LOCAL_CONFIG="$RUN_ROOT/samurai_hg38.config"
 RUN_SAMPLESHEET="$RUN_ROOT/input/samplesheet.csv"
 BWA_INDEX_DIR="$(dirname "$REF_FA")/bwa"
+SAMURAI_REVISION="v1.4.0"
+SAMURAI_SOURCE_HELPER="$SCRIPT_DIR/prepare_samurai_source.sh"
+[[ -s "$SAMURAI_SOURCE_HELPER" ]] || { echo "ERROR: SAMURAI source helper not found: $SAMURAI_SOURCE_HELPER" >&2; exit 1; }
+SAMURAI_SOURCE="$(bash "$SAMURAI_SOURCE_HELPER" --lpwgs-root "$LPWGS_ROOT" --revision "$SAMURAI_REVISION")"
+[[ -s "$SAMURAI_SOURCE/main.nf" ]] || { echo "ERROR: prepared SAMURAI source is invalid: $SAMURAI_SOURCE" >&2; exit 1; }
 
 bwa_index_valid() {
   local index_dir="$1" extension
@@ -248,6 +255,26 @@ else
 fi
 echo "Detected Illumina read layout: $READ_LAYOUT-end"
 
+if [[ "$SAMURAI_PROFILE" == "conda" ]]; then
+  command -v Rscript >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing Rscript" >&2; exit 1; }
+  Rscript --vanilla - <<'RS_CONDA_CHECK'
+required <- c("Biobase", "QDNAseq", "argparser", "future", "R.cache")
+missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing)) stop("Missing Conda R package(s): ", paste(missing, collapse = ", "))
+RS_CONDA_CHECK
+  command -v qpdf >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing qpdf" >&2; exit 1; }
+fi
+
+QDNASEQ_BIN_ARGS=()
+if [[ "$SAMURAI_PROFILE" == "conda" && "$CALLER" == "qdnaseq" ]]; then
+  QDNASEQ_BIN_HELPER="$SCRIPT_DIR/prepare_qdnaseq_bin_data.sh"
+  [[ -s "$QDNASEQ_BIN_HELPER" ]] || { echo "ERROR: qDNAseq annotation helper not found: $QDNASEQ_BIN_HELPER" >&2; exit 1; }
+  QDNASEQ_BIN_RDS="$(bash "$QDNASEQ_BIN_HELPER"     --binsize "$BINSIZE"     --cache-dir "$LPWGS_ROOT/.oncotracer/qdnaseq-bin-data")"
+  [[ -s "$QDNASEQ_BIN_RDS" ]] || { echo "ERROR: qDNAseq annotation was not prepared: $QDNASEQ_BIN_RDS" >&2; exit 1; }
+  QDNASEQ_BIN_ARGS=(--qdnaseq_bin_data "$QDNASEQ_BIN_RDS")
+  echo "Using qDNAseq hg38 annotation: $QDNASEQ_BIN_RDS"
+fi
+
 if [[ ! -s "$REF_FA" ]]; then
   echo "ERROR: missing reference FASTA: $REF_FA" >&2
   echo "       Install the SAMURAI hg38 reference or pass --ref /path/to/genome.fa" >&2
@@ -271,6 +298,8 @@ else
   echo "No persistent BWA index found; SAMURAI will build it once."
 fi
 
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
 cat > "$LOCAL_CONFIG" <<EOF_CONFIG
 params {
   genomes {
@@ -284,6 +313,9 @@ params {
 }
 report { overwrite = true }
 timeline { overwrite = true }
+docker {
+  runOptions = "-u ${HOST_UID}:${HOST_GID} -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache"
+}
 EOF_CONFIG
 
 export NXF_SYNTAX_PARSER="v1"
@@ -301,7 +333,7 @@ if [[ "$FORCE" == "true" ]]; then
 fi
 
 cd "$RUN_ROOT/nextflow_launch"
-nextflow run dincalcilab/samurai -r v1.4.0 \
+nextflow run "$SAMURAI_SOURCE" \
   -c "$LOCAL_CONFIG" \
   -profile "$SAMURAI_PROFILE" \
   -work-dir "$NXF_WORK" \
@@ -314,6 +346,7 @@ nextflow run dincalcilab/samurai -r v1.4.0 \
   --aligner "$ALIGNER" \
   "${INDEX_ARGS[@]}" \
   "${QDNASEQ_LAYOUT_ARGS[@]}" \
+  "${QDNASEQ_BIN_ARGS[@]}" \
   --run_fastp false \
   -resume
 
@@ -387,7 +420,7 @@ with open(bam_sheet, 'w', newline='') as handle:
 print(f'Prepared {len(rows)} BAM sample(s): {bam_sheet}')
 PY_BAM_FALLBACK
 
-  nextflow run dincalcilab/samurai -r v1.4.0 \
+  nextflow run "$SAMURAI_SOURCE" \
     -c "$LOCAL_CONFIG" \
     -profile "$SAMURAI_PROFILE" \
     -work-dir "$NXF_WORK" \
@@ -398,6 +431,7 @@ PY_BAM_FALLBACK
     --caller "$CALLER" \
     --binsize "$BINSIZE" \
     "${QDNASEQ_LAYOUT_ARGS[@]}" \
+    "${QDNASEQ_BIN_ARGS[@]}" \
     --index_genome false \
     -resume
 fi

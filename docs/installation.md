@@ -1,8 +1,12 @@
 # Installation
 
-OncoTracer runs on Linux. Nextflow runs on the host and starts the selected Docker or Singularity/Apptainer image.
+OncoTracer runs on Linux. Nextflow can create the required Conda environments automatically or run the workflow with Docker or Singularity/Apptainer.
 
-The maintained image is [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer). With Singularity or Apptainer, the same image is referenced as `docker://carlosfarkas/oncotracer:latest`.
+Use one execution option:
+
+- `--conda`: Nextflow creates and reuses the required environments from the versioned environment definitions.
+- `--docker`: uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
+- `--singularity`: uses `docker://carlosfarkas/oncotracer:latest` through Singularity or Apptainer.
 
 ## 1. Install the host prerequisites
 
@@ -19,10 +23,11 @@ Use Linux with the following programs:
 | minimap2 | ONT alignment | [Install minimap2](https://github.com/lh3/minimap2) |
 | pigz | Parallel gzip support | [Install pigz](https://zlib.net/pigz/) |
 | curl or wget | Download public reads and references | [Install curl](https://curl.se/download.html) or [install wget](https://www.gnu.org/software/wget/) |
-| Docker Engine | Container runtime for a Linux workstation or server | [Install Docker Engine](https://docs.docker.com/engine/install/) |
-| SingularityCE or Apptainer | Container runtime commonly provided on HPC | [Install SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html) or [install Apptainer](https://apptainer.org/docs/admin/main/installation.html) |
+| Miniforge or Conda | Native environment manager used by `--conda` | [Install Miniforge](https://github.com/conda-forge/miniforge) |
+| Docker Engine | Container runtime used by `--docker` | [Install Docker Engine](https://docs.docker.com/engine/install/) |
+| SingularityCE or Apptainer | HPC runtime used by `--singularity` | [Install SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html) or [install Apptainer](https://apptainer.org/docs/admin/main/installation.html) |
 
-Only one container runtime is required: normally Docker on a workstation/server or Singularity/Apptainer on HPC. Ask the system administrator when installation or permissions require elevated access.
+Choose Miniforge/Conda, Docker, or Singularity/Apptainer. Only one of these execution environments is required. Ask the system administrator when installation or permissions require elevated access.
 
 ## 2. Verify the installation
 
@@ -41,15 +46,19 @@ pigz --version
 command -v curl
 command -v wget
 
-# Confirm Docker on a workstation or server.
+# Confirm Conda for --conda.
+command -v conda
+conda --version
+
+# Confirm Docker for --docker.
 command -v docker
 
-# Confirm Singularity or Apptainer on HPC.
+# Confirm Singularity or Apptainer for --singularity.
 command -v singularity
 command -v apptainer
 ```
 
-Either `curl` or `wget` is sufficient. Either Docker or Singularity/Apptainer is sufficient.
+Either `curl` or `wget` is sufficient. Confirm only the execution environment that you plan to use.
 
 ## 3. Clone OncoTracer
 
@@ -68,9 +77,27 @@ pwd
 ls main.nf
 ```
 
-## 4. Prepare one runtime without starting an analysis
+## 4. Prepare one execution environment without starting an analysis
 
-Choose Docker or Singularity/Apptainer.
+Choose one option.
+
+### Conda
+
+```bash
+# Set the standard repository path and enter it.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+
+# Create or reuse the versioned Conda environment and test the software.
+nextflow run "$REPO_DIR/main.nf" --install --conda \
+  --lpwgs_root "$REPO_DIR/test" \
+  -work-dir "$REPO_DIR/test/work/install_conda"
+
+# Record the selected environment and its explicit package specification hash.
+cat "$REPO_DIR/.oncotracer/install/install_manifest.txt"
+```
+
+On the first `--conda` run, Nextflow solves and creates the required environment automatically. It stores reusable environments below `lpwgs_root/.oncotracer/conda`.
 
 ### Docker
 
@@ -104,13 +131,15 @@ nextflow run "$REPO_DIR/main.nf" --install --singularity \
 cat "$REPO_DIR/.oncotracer/install/install_manifest.txt"
 ```
 
-The `--install` route checks the host tools, prepares the selected image, caches SAMURAI v1.4.0, writes the manifest, and stops. It does not download sequencing reads or hg38 and does not start an analysis.
+The `--install` route checks the host tools, prepares the selected environment, caches SAMURAI v1.4.0, writes the manifest, and stops. It does not start an analysis.
 
 ## 5. Estimated time and resources
 
-The first uncached Illumina or ONT analysis downloads the hg38 reference, approximately **3.16 GB**, and creates a BWA index. Indexing commonly takes **30–60 minutes**. The pinned BWA task requests 72 GB, so provide at least 80 GiB of addressable RAM.
+A first Conda run needs additional time and storage to solve and download the software environments. Later runs reuse the environments in the Conda cache.
 
-Also allow space for the container image, compressed and uncompressed reads, the Nextflow `work/` directory, and final results. Later `-resume` runs reuse a valid reference index and unchanged completed tasks.
+The first uncached Illumina or ONT analysis also downloads the hg38 reference, approximately **3.16 GB**, and creates the required alignment index. Indexing commonly takes **30–60 minutes**. The pinned BWA task requests 72 GB, so provide at least **80 GiB of addressable RAM**.
+
+Also allow space for Conda environments or container images, compressed and uncompressed reads, the Nextflow `work/` directory, and final results. Later `-resume` runs reuse a valid reference index and unchanged completed tasks.
 
 The outer Nextflow display can remain at `RUN_*_SAMURAI (0 of 1)` while nested SAMURAI tasks are active. This counter alone does not indicate a stalled run.
 
@@ -120,6 +149,18 @@ The outer Nextflow display can remain at `RUN_*_SAMURAI (0 of 1)` while nested S
 - [Automatic Setup](auto_params.md): generate a YAML for your own FASTQ folder.
 - [QuickStart Example 2](public_cohort.md): three public HCC1143 libraries, about **1.08 GiB** of reads.
 - [Full Tutorial](full_tutorial.md): all 12 public PRJNA754199 libraries currently available from the archive.
-- [Other Example Run: six tumors and four controls](six_tumor_four_control.md): a command template that requires the user to provide all 20 FASTQs; no data are included or downloaded.
+- [Other Example Run: six tumors and four controls](six_tumor_four_control.md): a mock example illustrating how four normal controls are used to correct six tumor profiles.
 
 QuickStart Example 1 is the recommended installation check.
+
+## Poetry launcher installation
+
+```bash
+# Install Poetry, enter the standard repository clone, and create its locked launcher environment.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+poetry install --no-interaction
+poetry run oncotracer --help
+```
+
+Poetry manages the Python launcher. Select `--backend docker`, `--backend singularity`, or `--backend conda` for the scientific runtime.

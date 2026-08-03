@@ -1,14 +1,39 @@
-# Containers and execution environments
+# Execution environments
 
-Nextflow runs on the host and starts the selected container image. Use one runtime option per analysis command.
+Nextflow runs OncoTracer with one execution option per analysis command.
 
-| Environment | Option | Image |
+| Environment | Option | What Nextflow uses |
 | --- | --- | --- |
+| Linux with Miniforge or Conda | `--conda` | Conda environments created automatically from the versioned environment definitions |
 | Linux workstation or server with Docker | `--docker` | [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer) |
 | HPC with Singularity or Apptainer | `--singularity` | `docker://carlosfarkas/oncotracer:latest` |
-| No container runtime | `--conda` | Conda environments prepared by Nextflow |
 
 Use `/path/to/my/directory/oncotracer` as the repository path in these examples.
+
+## Conda
+
+Install [Miniforge](https://github.com/conda-forge/miniforge) or another compatible Conda distribution, then run:
+
+```bash
+# Set the standard repository path and enter it.
+REPO_DIR=/path/to/my/directory/oncotracer
+cd "$REPO_DIR"
+
+# Create or reuse the required Conda environments and test the software.
+nextflow run "$REPO_DIR/main.nf" --install --conda \
+  --lpwgs_root "$REPO_DIR/project"
+
+# Optionally check a YAML without running the scientific tools.
+nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
+  -params-file "$REPO_DIR/params/my_run.yml"
+
+# Run or resume the analysis with Conda.
+nextflow run "$REPO_DIR/main.nf" --conda \
+  -params-file "$REPO_DIR/params/my_run.yml" \
+  -resume
+```
+
+Nextflow creates and reuses Conda environments automatically. The first command solves and creates the top-level environment, which is cached below `lpwgs_root/.oncotracer/conda`; the nested SAMURAI workflow also creates and reuses its required Conda environments.
 
 ## Docker
 
@@ -64,28 +89,9 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 
 Use a Singularity/Apptainer cache directory on a filesystem with enough quota. Cluster scheduler and bind-mount rules still apply.
 
-## Conda fallback
+## Project paths
 
-```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
-
-# Prepare the Conda environments.
-nextflow run "$REPO_DIR/main.nf" --install --conda \
-  --lpwgs_root "$REPO_DIR/project"
-
-# Run or resume the YAML without containers.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/params/my_run.yml" \
-  -resume
-```
-
-Conda is less portable than a recorded container image and may take longer to solve on the first run.
-
-## Project paths and mounts
-
-Keep the YAML inputs, reference/cache, work directory, and results below a common project root that the container can access:
+Keep the YAML inputs, reference/cache, work directory, and results below a common project root:
 
 ```yaml
 lpwgs_root: /path/to/my/directory/oncotracer/project
@@ -93,7 +99,7 @@ outdir: /path/to/my/directory/oncotracer/project/results
 illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
 ```
 
-A path outside `lpwgs_root` may not be visible inside the container.
+For container runs, a path outside `lpwgs_root` may not be visible inside the container. For Conda runs, a common project root keeps environments, references, work files, and outputs together.
 
 ## File ownership with Docker
 
@@ -111,22 +117,23 @@ Then add the matching value to the YAML when required:
 docker_user: "1234:1234"
 ```
 
-## Record the image identity
+## Record the environment identity
 
 ```bash
 # Set the standard repository path.
 REPO_DIR=/path/to/my/directory/oncotracer
 
-# Read the runtime and image recorded by the installation check.
+# Read the environment or image identity recorded by the installation check.
 cat "$REPO_DIR/.oncotracer/install/install_manifest.txt"
 ```
 
-For a formal analysis, preserve the OncoTracer commit, YAML, generated samplesheet, installation manifest, and nested `pipeline_info` files. Use an approved immutable image digest when the study requires a frozen runtime.
+For a formal analysis, preserve the OncoTracer commit, YAML, generated samplesheet, installation manifest, and nested `pipeline_info` files. Use an approved immutable image digest or explicit Conda package specification when the study requires a frozen runtime.
 
 ## Cache and storage locations
 
 - `work/`: top-level Nextflow cache used by `-resume`.
 - `<outdir>/01_samurai_*/work/`: nested SAMURAI cache.
+- `lpwgs_root/.oncotracer/conda/`: top-level Conda environment cache.
 - `.nextflow/`: Nextflow metadata.
 - `.singularity_cache/` below `lpwgs_root`: Singularity/Apptainer images.
 - Docker system storage: managed by the Docker daemon.
@@ -136,9 +143,21 @@ Do not remove these while a run is active. Verify and archive the final results 
 ## Security notes
 
 - Treat Docker access as privileged according to local policy.
-- Use trusted image names or recorded digests.
+- Use trusted image names, recorded digests, and trusted Conda channels.
 - Do not place registry credentials in YAML files or shell history.
 - Mount only the project directories needed for the analysis.
 - Follow institutional rules for patient data.
 
-See [Troubleshooting](troubleshooting.md) for runtime permissions, bind paths, disk usage, and task logs.
+See [Troubleshooting](troubleshooting.md) for runtime permissions, paths, disk usage, environment solving, and task logs.
+
+## Poetry as a launcher
+
+```bash
+# Run a configuration through the Poetry launcher and Docker backend.
+REPO_DIR=/path/to/my/directory/oncotracer
+poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+  -params-file /path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml \
+  -work-dir /path/to/my/directory/my_oncotracer_project/work -resume
+```
+
+Poetry isolates the Python launcher; Docker, Singularity/Apptainer, or Conda supplies the scientific programs selected by `--backend`.

@@ -2,6 +2,8 @@
 set -Eeuo pipefail
 trap 'echo "ERROR at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
 ###############################################################################
 # ONT LP-WGS barcodes -> merged FASTQ.gz -> minimap2 BAM -> SAMURAI.
 # Supports local panels-of-normals (PoNs) for both:
@@ -221,6 +223,25 @@ done
 [[ "$NFX_SYNTAX_PARSER" == "v1" || "$NFX_SYNTAX_PARSER" == "v2" ]] || { echo "ERROR: Nextflow syntax parser must be v1 or v2" >&2; exit 1; }
 [[ "$SAMURAI_PROFILE" == "docker" || "$SAMURAI_PROFILE" == "singularity" || "$SAMURAI_PROFILE" == "conda" ]] || { echo "ERROR: --profile must be docker, singularity, or conda" >&2; exit 1; }
 
+if [[ "$SAMURAI_PROFILE" == "conda" ]]; then
+  command -v Rscript >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing Rscript" >&2; exit 1; }
+  Rscript --vanilla - <<'RS_CONDA_CHECK'
+required <- c("argparser", "readr", "dplyr", "ggplot2", "scales", "yaml")
+missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing)) stop("Missing Conda R package(s): ", paste(missing, collapse = ", "))
+RS_CONDA_CHECK
+  python3 - <<'PY_CONDA_CHECK'
+import janitor
+import natsort
+import openpyxl
+import pandas
+import pandera
+import polars
+import typer
+PY_CONDA_CHECK
+  command -v qpdf >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing qpdf" >&2; exit 1; }
+fi
+
 if (( ${#NORMAL_FOLDERS[@]} > 0 )); then
   (( ${#NORMAL_BARCODES_CSVS[@]} == ${#NORMAL_FOLDERS[@]} )) || {
     echo "ERROR: provide exactly one --normal-barcodes list for each --normal-folder" >&2
@@ -296,6 +317,11 @@ command -v minimap2 >/dev/null 2>&1 || { echo "ERROR: minimap2 not found" >&2; e
 command -v samtools >/dev/null 2>&1 || { echo "ERROR: samtools not found" >&2; exit 1; }
 command -v nextflow >/dev/null 2>&1 || { echo "ERROR: nextflow not found" >&2; exit 1; }
 export NXF_SYNTAX_PARSER="$NFX_SYNTAX_PARSER"
+SAMURAI_REVISION="v1.4.0"
+SAMURAI_SOURCE_HELPER="$SCRIPT_DIR/prepare_samurai_source.sh"
+[[ -s "$SAMURAI_SOURCE_HELPER" ]] || { echo "ERROR: SAMURAI source helper not found: $SAMURAI_SOURCE_HELPER" >&2; exit 1; }
+SAMURAI_SOURCE="$(bash "$SAMURAI_SOURCE_HELPER" --lpwgs-root "$LPWGS_ROOT" --revision "$SAMURAI_REVISION")"
+[[ -s "$SAMURAI_SOURCE/main.nf" ]] || { echo "ERROR: prepared SAMURAI source is invalid: $SAMURAI_SOURCE" >&2; exit 1; }
 
 trim_ws() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"; printf '%s' "$s"; }
 sanitize_id() { local s; s="$(trim_ws "$1")"; s="${s// /_}"; printf '%s' "$s" | sed 's/[^A-Za-z0-9_.-]/_/g'; }
@@ -319,6 +345,10 @@ fi
 
 find_samurai_ichorcna_asset() {
   local filename="$1" root hit
+  if [[ -s "$SAMURAI_SOURCE/assets/ichorcna/$filename" ]]; then
+    echo "$SAMURAI_SOURCE/assets/ichorcna/$filename"
+    return 0
+  fi
   for root in \
     "$HOME/.nextflow/assets/.repos/dincalcilab/samurai/clones" \
     "$HOME/.nextflow/assets/dincalcilab/samurai" \
@@ -498,6 +528,8 @@ fi
 first_contig="$(first_fasta_contig "$REF_FA")"
 [[ "$first_contig" == chr* ]] || { echo "ERROR: first FASTA contig is '$first_contig', not UCSC chr* style." >&2; exit 1; }
 
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
 cat > "$LOCAL_CONFIG" <<EOF
 params {
   genomes {
@@ -510,53 +542,41 @@ params {
 }
 report { overwrite = true }
 timeline { overwrite = true }
+docker {
+  runOptions = "-u ${HOST_UID}:${HOST_GID} -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache"
+}
 EOF
 
 echo "Created SAMURAI hg38 config: $LOCAL_CONFIG"
 
-NEED_SAMURAI_PULL=false
-[[ "$PATCH_SAMURAI" == "true" ]] && NEED_SAMURAI_PULL=true
-[[ "$CALLER" == "ichorcna" && ( "$AUTO_ICHORCNA_REFS" == "true" || "$AUTO_ICHORCNA_PON" == "true" || "$BUILD_PON" == "true" ) ]] && NEED_SAMURAI_PULL=true
-[[ "$QDNASEQ_BUILD_LOCAL_PON" == "true" ]] && NEED_SAMURAI_PULL=true
-if [[ "$NEED_SAMURAI_PULL" == "true" ]]; then
-  nextflow pull dincalcilab/samurai -r v1.4.0 || echo "WARNING: nextflow pull failed; using cached copy if present" >&2
-fi
-
 if [[ "$PATCH_SAMURAI" == "true" ]]; then
-  python - <<'PY'
+  python3 - "$SAMURAI_SOURCE/main.nf" <<'PY_PATCH_SAMURAI'
 from pathlib import Path
-roots = [
-    Path.home()/'.nextflow/assets/.repos/dincalcilab/samurai/clones',
-    Path.home()/'.nextflow/assets/dincalcilab/samurai',
-    Path.home()/'.nextflow-2510/assets/dincalcilab/samurai',
-]
+import sys
+
+path = Path(sys.argv[1])
 old = "dict = params.dict ? channel.fromPath(params.fai).map { it -> [[id: it.baseName], it] }.collect() : channel.empty()"
 new = "dict = params.dict ? channel.fromPath(params.dict).map { it -> [[id: it.baseName], it] }.collect() : channel.empty()"
-patched = False
-for root in roots:
-    if not root.exists():
-        continue
-    for p in root.rglob('main.nf'):
-        try:
-            txt = p.read_text()
-        except Exception:
-            continue
-        if new in txt:
-            print(f'No patch needed: {p}')
-            patched = True
-        elif old in txt:
-            bak = p.with_suffix('.nf.bak')
-            bak.write_text(txt)
-            p.write_text(txt.replace(old, new, 1))
-            print(f'Patched: {p}')
-            print(f'Backup : {bak}')
-            patched = True
-if not patched:
-    print('WARNING: could not find cached SAMURAI main.nf to patch')
-PY
+text = path.read_text(encoding="utf-8")
+if new in text:
+    print(f"No SAMURAI patch needed: {path}")
+elif old in text:
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    print(f"Patched SAMURAI dict input: {path}")
+else:
+    print(f"WARNING: SAMURAI dict typo pattern was not found: {path}")
+PY_PATCH_SAMURAI
 fi
 
 resolve_ichorcna_refs
+
+if [[ "$SAMURAI_PROFILE" == "conda" && "$CALLER" == "qdnaseq" && -z "$QDNASEQ_BIN_DATA" ]]; then
+  QDNASEQ_BIN_HELPER="$SCRIPT_DIR/prepare_qdnaseq_bin_data.sh"
+  [[ -s "$QDNASEQ_BIN_HELPER" ]] || { echo "ERROR: qDNAseq annotation helper not found: $QDNASEQ_BIN_HELPER" >&2; exit 1; }
+  QDNASEQ_BIN_DATA="$(bash "$QDNASEQ_BIN_HELPER"     --binsize "$BINSIZE"     --cache-dir "$LPWGS_ROOT/.oncotracer/qdnaseq-bin-data")"
+  [[ -s "$QDNASEQ_BIN_DATA" ]] || { echo "ERROR: qDNAseq annotation was not prepared: $QDNASEQ_BIN_DATA" >&2; exit 1; }
+  echo "Using qDNAseq hg38 annotation: $QDNASEQ_BIN_DATA"
+fi
 
 if [[ ! -s "$REF_MMI" ]]; then
   echo "Building minimap2 index: $REF_MMI"
@@ -1089,7 +1109,7 @@ echo "Prepared $n_samples sample(s): tumor=$TUMOR_COUNT normal=$NORMAL_COUNT"
 cat "$SAMPLESHEET"
 
 NF_CMD=(
-  nextflow run dincalcilab/samurai -r v1.4.0
+  nextflow run "$SAMURAI_SOURCE"
   -c "$LOCAL_CONFIG"
   -profile "$SAMURAI_PROFILE"
   -work-dir "$NXF_WORK"
@@ -1102,7 +1122,10 @@ NF_CMD=(
   --aligner false
 )
 
-[[ "$CALLER" == "qdnaseq" ]] && NF_CMD+=( --qdnaseq_paired_ends false )
+if [[ "$CALLER" == "qdnaseq" ]]; then
+  NF_CMD+=( --qdnaseq_paired_ends false )
+  [[ -n "$QDNASEQ_BIN_DATA" ]] && NF_CMD+=( --qdnaseq_bin_data "$QDNASEQ_BIN_DATA" )
+fi
 
 if [[ "$BUILD_PON" == "true" && "$CALLER" != "qdnaseq" ]]; then
   NF_CMD+=( --build_pon --pon_name "$PON_NAME" )
