@@ -528,6 +528,8 @@ fi
 first_contig="$(first_fasta_contig "$REF_FA")"
 [[ "$first_contig" == chr* ]] || { echo "ERROR: first FASTA contig is '$first_contig', not UCSC chr* style." >&2; exit 1; }
 
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
 cat > "$LOCAL_CONFIG" <<EOF
 params {
   genomes {
@@ -540,6 +542,9 @@ params {
 }
 report { overwrite = true }
 timeline { overwrite = true }
+docker {
+  runOptions = "-u ${HOST_UID}:${HOST_GID} -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache"
+}
 EOF
 
 echo "Created SAMURAI hg38 config: $LOCAL_CONFIG"

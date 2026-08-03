@@ -298,6 +298,8 @@ else
   echo "No persistent BWA index found; SAMURAI will build it once."
 fi
 
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
 cat > "$LOCAL_CONFIG" <<EOF_CONFIG
 params {
   genomes {
@@ -311,6 +313,9 @@ params {
 }
 report { overwrite = true }
 timeline { overwrite = true }
+docker {
+  runOptions = "-u ${HOST_UID}:${HOST_GID} -e HOME=/tmp -e MPLCONFIGDIR=/tmp/matplotlib -e XDG_CACHE_HOME=/tmp/cache"
+}
 EOF_CONFIG
 
 export NXF_SYNTAX_PARSER="v1"
