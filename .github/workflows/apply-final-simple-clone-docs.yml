@@ -1,0 +1,61 @@
+name: Apply final concise clone documentation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  update-test-commit:
+    if: github.head_ref == 'agent/final-simple-clone-docs'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out documentation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/final-simple-clone-docs
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Apply the concise clone cleanup
+        run: python3 tools/finalize_simple_clone_docs.py
+
+      - name: Remove the temporary update files
+        run: |
+          rm -f tools/finalize_simple_clone_docs.py
+          rm -f .github/workflows/apply-final-simple-clone-docs.yml
+
+      - name: Validate all documentation commands
+        run: |
+          python3 tests/test_docs_style.py
+          python3 tests/test_examples_start_from_clone.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+
+          ! grep -R -n -F 'Skip the clone command when the repository already exists.' \
+            README.md docs examples
+          ! grep -R -n -F '# Run this command from the oncotracer directory.' \
+            README.md docs examples
+          ! grep -R -n -F '# Run this step from the cloned oncotracer directory.' \
+            README.md docs examples
+          ! grep -R -n -E 'REPO_DIR=|\$REPO_DIR|pwd[[:space:]]*$|ls main\.nf' \
+            README.md docs examples
+
+      - name: Commit and push the final documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs examples tests .github/workflows tools
+          git commit -m "Docs: use the minimal clone block everywhere"
+          git push origin HEAD:agent/final-simple-clone-docs
