@@ -693,6 +693,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="5. Run the Illumina analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -764,6 +814,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="4. Inspect and run the ONT YAML">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1715,6 +1815,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="5. Run the Illumina analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1787,6 +1937,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="4. Inspect and run the ONT YAML">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -1837,10 +2037,12 @@
 <li>a small CSV that maps each sample to <code>TUMOR</code> or <code>NORMAL</code>.</li>
 </ol>
 <p>OncoTracer validates the supported layout and writes a YAML file. For Illumina, it also writes the FASTQ samplesheet. Automatic Setup stops after creating those files; the second Nextflow command starts the analysis.</p>
-<p>The analysis can use:</p>
+<p>The generated YAML can be run in four ways:</p>
 <ul>
-<li><code>--docker</code> with <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a>; or</li>
-<li><code>--singularity</code> with <code>docker://carlosfarkas/oncotracer:latest</code> on a configured HPC system.</li>
+<li>Docker with <code>nextflow run ... --docker</code>;</li>
+<li>Singularity or Apptainer with <code>nextflow run ... --singularity</code>;</li>
+<li>the Poetry launcher with <code>poetry run oncotracer --backend docker ...</code>; or</li>
+<li>native Conda environments with <code>nextflow run ... --conda</code>.</li>
 </ul>
 <p><img alt="Example OncoTracer input layouts" src="../assets/tutorial/auto_params_folder_layout.svg" /></p>
 <h2 id="before-you-begin">Before you begin<a class="headerlink" href="#before-you-begin" title="Permanent link">&para;</a></h2>
@@ -1867,7 +2069,8 @@ nextflow run main.nf --auto_params
         +-- sample-count and checksum manifest
         |
         v
-nextflow run main.nf --docker|--singularity -params-file generated.yml -resume
+nextflow run main.nf --docker|--singularity|--conda -params-file generated.yml -resume
+        or poetry run oncotracer --backend docker -params-file generated.yml -resume
 </code></pre></div>
 <h2 id="illumina-step-by-step">Illumina step by step<a class="headerlink" href="#illumina-step-by-step" title="Permanent link">&para;</a></h2>
 <h3 id="1-organize-the-fastqs">1. Organize the FASTQs<a class="headerlink" href="#1-organize-the-fastqs" title="Permanent link">&para;</a></h3>
@@ -1971,26 +2174,43 @@ CONTROL_01,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_01_R1.fa
 CONTROL_02,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_02_R1.fastq.gz,/path/to/my/directory/oncotracer/project/input/fastq/CONTROL_02_R2.fastq.gz,normal
 </code></pre></div>
 <h3 id="5-run-the-illumina-analysis">5. Run the Illumina analysis<a class="headerlink" href="#5-run-the-illumina-analysis" title="Permanent link">&para;</a></h3>
-<p>Docker:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
+<p>Choose exactly one method.</p>
+<h4 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the generated Illumina YAML with Docker.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
-
-<span class="c1"># Run the generated Illumina YAML with Docker and resume support.</span>
 nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/docker&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Singularity or Apptainer:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
+<h4 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the same YAML through Singularity or Apptainer.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
-
-<span class="c1"># Run the same YAML through the HPC container option.</span>
 nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/singularity&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h4 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the launcher and run the same YAML through Poetry with Docker.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/poetry&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h4 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create or reuse the native environments and run the same YAML.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/conda&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h3 id="6-check-a-local-panel-of-normals">6. Check a local panel of normals<a class="headerlink" href="#6-check-a-local-panel-of-normals" title="Permanent link">&para;</a></h3>
@@ -2056,21 +2276,51 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/auto_params_ont&quot;</span>
 </code></pre></div>
 <h3 id="4-inspect-and-run-the-ont-yaml">4. Inspect and run the ONT YAML<a class="headerlink" href="#4-inspect-and-run-the-ont-yaml" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Inspect the generated ONT settings and manifest.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
-
-<span class="c1"># Inspect the generated ONT settings and manifest.</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,140p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config_ont/ont.auto.yml&quot;</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config_ont/auto_params_manifest.tsv&quot;</span>
-
-<span class="c1"># Run the generated ONT YAML with Docker.</span>
+</code></pre></div>
+<p>Choose exactly one method.</p>
+<h4 id="docker_1">Docker<a class="headerlink" href="#docker_1" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the generated ONT YAML with Docker.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
 nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config_ont/ont.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis_ont&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/ont-docker&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>For HPC, replace <code>--docker</code> with <code>--singularity</code> in the final command.</p>
+<h4 id="singularity-or-apptainer_1">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer_1" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the generated ONT YAML through Singularity or Apptainer.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config_ont/ont.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/ont-singularity&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h4 id="poetry-launcher_1">Poetry launcher<a class="headerlink" href="#poetry-launcher_1" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the launcher and run the ONT YAML through Poetry with Docker.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config_ont/ont.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/ont-poetry&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h4 id="conda_1">Conda<a class="headerlink" href="#conda_1" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create or reuse the native environments and run the ONT YAML.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/project&quot;</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config_ont/ont.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/ont-conda&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
 <h2 id="common-setup-errors">Common setup errors<a class="headerlink" href="#common-setup-errors" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The sample name does not match the FASTQ prefix.</li>

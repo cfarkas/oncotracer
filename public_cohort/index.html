@@ -720,6 +720,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6. Run the analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -749,17 +799,6 @@
     <span class="md-ellipsis">
       
         Limitations
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#poetry-alternative" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Poetry alternative
       
     </span>
   </a>
@@ -1669,6 +1708,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6. Run the analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1704,17 +1793,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#poetry-alternative" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Poetry alternative
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1743,7 +1821,7 @@
 <p><a id="three-sample-hcc1143-public-cohort"></a></p>
 <h1 id="quickstart-example-2-three-sample-hcc1143-public-cohort">QuickStart Example 2: three-sample HCC1143 public cohort<a class="headerlink" href="#quickstart-example-2-three-sample-hcc1143-public-cohort" title="Permanent link">&para;</a></h1>
 <p>This example downloads and analyzes three paired-end HCC1143 low-pass whole-genome sequencing libraries: six public FASTQ files totaling about <strong>1.08 GiB</strong>. Complete <a href="../quick_start/">QuickStart Example 1</a> first.</p>
-<p>The commands use <code>--conda</code>. Nextflow creates and reuses the required Conda environments automatically. Replace <code>--conda</code> with <code>--docker</code> for <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a>, or with <code>--singularity</code> on a configured HPC system.</p>
+<p>Preparation and Automatic Setup are backend-independent. The analysis section provides explicit Docker, Singularity/Apptainer, Poetry, and Conda commands; choose one method.</p>
 <p>This cohort is a software example. It is not a matched tumor/normal study and should not be used to infer treatment effects.</p>
 <h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h2>
 <p>Use Linux with <a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">Git</a>, <a href="https://adoptium.net/temurin/releases/?version=17">Java 17</a> or newer, <a href="https://www.nextflow.io/docs/latest/install.html">Nextflow</a>, <a href="https://github.com/conda-forge/miniforge">Miniforge or Conda</a>, <a href="https://www.python.org/downloads/">Python 3</a>, <a href="https://www.htslib.org/download/">samtools</a>, <a href="https://github.com/lh3/bwa">BWA</a>, <a href="https://github.com/lh3/minimap2">minimap2</a>, <a href="https://zlib.net/pigz/">pigz</a>, and <a href="https://curl.se/download.html">curl</a> or <a href="https://www.gnu.org/software/wget/">wget</a>.</p>
@@ -1870,8 +1948,8 @@ nano<span class="w"> </span>/path/to/my/directory/oncotracer/test/public/hcc1143
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
 
-<span class="c1"># Create or reuse the Conda environment, then generate the Illumina YAML and R1/R2 samplesheet.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/public/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/public/hcc1143_lpwgs/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1901,16 +1979,42 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs_stub&quot;</span>
 </code></pre></div>
 <h2 id="6-run-the-analysis">6. Run the analysis<a class="headerlink" href="#6-run-the-analysis" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
+<p>Choose exactly one method. Each method reads the same generated YAML and writes the same result directory; route-specific work directories prevent cross-runtime cache mixing.</p>
+<h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the generated HCC1143 configuration with Docker.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-
-<span class="c1"># Run the generated HCC1143 configuration with Conda and resume support.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs-docker&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Keep the terminal open until Nextflow returns to the prompt. Replace <code>--conda</code> with <code>--docker</code> or <code>--singularity</code> for a container run.</p>
+<h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the generated HCC1143 configuration through Singularity or Apptainer.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs-singularity&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h3 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the launcher and run HCC1143 through Poetry with Docker.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs-poetry&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the generated HCC1143 configuration with native Conda environments.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs-conda&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<p>Keep the terminal open until Nextflow returns to the prompt. To resume, repeat the command for the selected method with the same YAML, work directory, and <code>-resume</code>.</p>
 <h2 id="7-check-the-outputs">7. Check the outputs<a class="headerlink" href="#7-check-the-outputs" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and result paths.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
@@ -1941,28 +2045,10 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,40p
 <li><code>06_workflow_summary/workflow_summary.txt</code>.</li>
 </ul>
 <h2 id="resume-an-interrupted-run">Resume an interrupted run<a class="headerlink" href="#resume-an-interrupted-run" title="Permanent link">&para;</a></h2>
-<p>Use the same YAML and work directory:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path and enter it.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
-
-<span class="c1"># Resume the existing HCC1143 analysis with the same Conda environments.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/hcc1143_lpwgs&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
+<p>Repeat the command for the method you selected in <a href="#6-run-the-analysis">Run the analysis</a>, using the same YAML, route-specific work directory, and <code>-resume</code>.</p>
 <h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
 <p>This example verifies multi-sample execution. It is not a matched tumor/normal design, does not establish treatment causality, and is not a clinical validation study.</p>
 <p>The <a href="../six_tumor_four_control/">Other Example Run: six tumors and four controls</a> is a mock example illustrating how four normal controls are used to build a local qDNAseq reference for six tumors.</p>
-<h2 id="poetry-alternative">Poetry alternative<a class="headerlink" href="#poetry-alternative" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run the generated HCC1143 configuration through Poetry and Docker.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/poetry-hcc1143&quot;</span><span class="w"> </span>-resume
-</code></pre></div>
 
 
 

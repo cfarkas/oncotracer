@@ -764,6 +764,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Prepare the software">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -796,6 +824,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="5. Check the wiring and run the analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1672,6 +1750,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Prepare the software">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1704,6 +1810,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="5. Check the wiring and run the analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#singularity-or-apptainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1840,7 +1996,7 @@
 <h1 id="full-tutorial-complete-public-prjna754199-archive">Full tutorial: complete public PRJNA754199 archive<a class="headerlink" href="#full-tutorial-complete-public-prjna754199-archive" title="Permanent link">&para;</a></h1>
 <p>This tutorial processes the <strong>12 Illumina plasma cfDNA libraries currently available in the public PRJNA754199 read archive</strong>. It downloads and validates the FASTQs, creates the sample table, generates the configuration automatically, runs OncoTracer, verifies the required files, and reviews the research outputs.</p>
 <p><a href="../assets/tutorial/full_tutorial_flow.svg"><img alt="Roadmap for the complete PRJNA754199 tutorial." src="../assets/tutorial/full_tutorial_flow.svg" /></a></p>
-<p>The commands use Docker. On a configured HPC system, replace <code>--docker</code> with <code>--singularity</code>. See <a href="../installation/">Installation</a> and the maintained <a href="https://hub.docker.com/r/carlosfarkas/oncotracer">Docker image</a>.</p>
+<p>Download and Automatic Setup commands are backend-independent. The analysis section provides explicit Docker, Singularity/Apptainer, Poetry, and Conda commands. See <a href="../installation/">Installation</a> for the required software.</p>
 <h2 id="what-this-tutorial-contains">What this tutorial contains<a class="headerlink" href="#what-this-tutorial-contains" title="Permanent link">&para;</a></h2>
 <p>The associated PLOS ONE article describes 41 plasma specimens from 15 patients. On <strong>15 July 2026</strong>, the ENA read-run report returned 12 public runs for the BioProject, so this tutorial processes those 12 runs rather than every specimen described in the article.</p>
 <table>
@@ -1916,6 +2072,23 @@ nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quo
 nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/install_singularity&quot;</span>
+</code></pre></div>
+<h3 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the locked Poetry launcher and prepare the Docker scientific backend.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--install<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/install_poetry&quot;</span>
+</code></pre></div>
+<h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create or reuse the native Conda environments and test the required software.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--install<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/install_conda&quot;</span>
 </code></pre></div>
 <p>The installation route checks the software and stops. It does not download patient reads or hg38 and does not start the analysis.</p>
 <h2 id="3-download-and-validate-the-12-public-fastqs">3. Download and validate the 12 public FASTQs<a class="headerlink" href="#3-download-and-validate-the-12-public-fastqs" title="Permanent link">&para;</a></h2>
@@ -1997,26 +2170,49 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_
 </code></pre></div>
 <p><a id="5-check-wiring-then-run-the-real-workflow"></a></p>
 <h2 id="5-check-the-wiring-and-run-the-analysis">5. Check the wiring and run the analysis<a class="headerlink" href="#5-check-the-wiring-and-run-the-analysis" title="Permanent link">&para;</a></h2>
-<p>Optional stub check:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
+<p>Optional Docker stub check:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check the generated workflow connections without running the scientific tools.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-
-<span class="c1"># Check the generated workflow connections without running the scientific tools.</span>
 nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/prjna754199_stub&quot;</span>
 </code></pre></div>
-<p>Real analysis:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
+<p>Choose exactly one method for the real analysis.</p>
+<h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run or resume the complete 12-library workflow with Docker.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-
-<span class="c1"># Run the complete 12-library workflow with Docker and resume support.</span>
 nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/prjna754199&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/prjna754199-docker&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Keep the terminal open until Nextflow returns to the prompt. To resume after an interruption, repeat the same command with the same YAML and work directory.</p>
+<h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run or resume the complete workflow through Singularity or Apptainer.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/prjna754199-singularity&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h3 id="poetry-launcher_1">Poetry launcher<a class="headerlink" href="#poetry-launcher_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the launcher and run the complete workflow through Poetry with Docker.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/prjna754199-poetry&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h3 id="conda_1">Conda<a class="headerlink" href="#conda_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run or resume the complete workflow with native Conda environments.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/test/work/prjna754199-conda&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<p>Keep the terminal open until Nextflow returns to the prompt. To resume, repeat the selected command with the same route-specific work directory.</p>
 <h2 id="6-verify-the-completed-run">6. Verify the completed run<a class="headerlink" href="#6-verify-the-completed-run" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository path.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer

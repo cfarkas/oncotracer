@@ -852,17 +852,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#conda" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Conda
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -878,6 +867,28 @@
     <span class="md-ellipsis">
       
         Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
       
     </span>
   </a>
@@ -1591,17 +1602,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#conda" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Conda
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1617,6 +1617,28 @@
     <span class="md-ellipsis">
       
         Singularity or Apptainer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poetry-launcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poetry launcher
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conda
       
     </span>
   </a>
@@ -1749,40 +1771,46 @@ grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,nor
 </code></pre></div>
 <p>The final two commands should print <code>6</code> and <code>4</code>.</p>
 <h2 id="run-the-mock-configuration">Run the mock configuration<a class="headerlink" href="#run-the-mock-configuration" title="Permanent link">&para;</a></h2>
-<h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the repository and mock-project paths.</span>
-<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
-<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-<span class="c1"># Create or reuse the required Conda environments and run the analysis.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
+<p>Choose exactly one of the four methods below. All methods read the same generated YAML and illustrate the same four-control local qDNAseq reference.</p>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the repository and mock-project paths.</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the mock configuration with the maintained Docker image.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-<span class="c1"># Run the same configuration with the maintained Docker image.</span>
 nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/docker&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the repository and mock-project paths.</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run the mock configuration through Singularity or Apptainer.</span>
 <span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
 <span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
-
-<span class="c1"># Run the same configuration through Singularity or Apptainer.</span>
 nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/analysis&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/singularity&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-resume
 </code></pre></div>
-<p>Use one execution option. With <code>--conda</code>, Nextflow creates and reuses the required environments automatically.</p>
+<h3 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the launcher and run the mock configuration through Poetry with Docker.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span>
+poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">&quot;</span><span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/poetry&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create or reuse the native environments and run the mock configuration.</span>
+<span class="nv">REPO_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer
+<span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4
+nextflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$REPO_DIR</span><span class="s2">/main.nf&quot;</span><span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/conda&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-resume
+</code></pre></div>
+<p>Use one method. The Poetry example uses Docker as its scientific backend; <code>--backend singularity</code> and <code>--backend conda</code> are also accepted by the launcher.</p>
 <h2 id="check-the-panel-and-corrected-tumor-outputs">Check the panel and corrected tumor outputs<a class="headerlink" href="#check-the-panel-and-corrected-tumor-outputs" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Set the mock-project result paths.</span>
 <span class="nv">PROJECT_DIR</span><span class="o">=</span>/path/to/my/directory/oncotracer_projects/onco6_ctrl4

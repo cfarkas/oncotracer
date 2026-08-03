@@ -1606,12 +1606,14 @@
 <h1 id="oncotracer">OncoTracer<a class="headerlink" href="#oncotracer" title="Permanent link">&para;</a></h1>
 <p><img alt="OncoTracer sequencing-to-CNA workflow" src="assets/oncotracer-hero.png" /></p>
 <p>OncoTracer is a reproducible Nextflow research workflow for <strong>low-pass whole-genome sequencing (LP-WGS)</strong>. It converts Illumina or Oxford Nanopore Technologies (ONT) FASTQ reads into <strong>copy-number alteration (CNA)</strong> tables, plots, and reports.</p>
-<p>Choose one of three execution routes:</p>
+<p>Choose one of four supported ways to launch an analysis:</p>
 <ol>
-<li>Run Nextflow directly with <code>--docker</code> or <code>--singularity</code>.</li>
-<li>Use the <a href="poetry/">Poetry launcher</a>, which forwards commands to Nextflow and uses Docker by default.</li>
-<li>Run Nextflow directly with <code>--conda</code>; Nextflow creates and reuses the native environments automatically.</li>
+<li><strong>Docker:</strong> <code>nextflow run ... --docker</code>.</li>
+<li><strong>Singularity or Apptainer:</strong> <code>nextflow run ... --singularity</code>.</li>
+<li><strong>Poetry launcher:</strong> <code>poetry run oncotracer --backend docker ...</code>.</li>
+<li><strong>Conda:</strong> <code>nextflow run ... --conda</code>; Nextflow creates and reuses the native environments automatically.</li>
 </ol>
+<p>Every QuickStart, the Full Tutorial, Automatic Setup, and the mock tumor/normal example provide explicit commands for all four methods.</p>
 <h2 id="choose-where-to-start">Choose where to start<a class="headerlink" href="#choose-where-to-start" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1709,7 +1711,7 @@
 <li>Install Java, Nextflow, and Conda, Docker, or Singularity/Apptainer.</li>
 <li>Clone the repository.</li>
 <li>Generate a YAML with <code>--auto_params</code>, or edit one manually for an unusual layout.</li>
-<li>Run the YAML with <code>--conda</code>, <code>--docker</code>, or <code>--singularity</code> and <code>-resume</code>.</li>
+<li>Run the YAML with Docker, Singularity/Apptainer, the Poetry launcher, or Conda and keep <code>-resume</code> enabled.</li>
 <li>Open <code>06_workflow_summary/workflow_summary.txt</code> and inspect the plots and tables.</li>
 </ol>
 <p>With <code>--conda</code>, Nextflow creates the required environments automatically and reuses them on later runs. <code>-resume</code> reuses unchanged completed tasks after an interruption or on a repeated command.</p>

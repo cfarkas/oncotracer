@@ -1710,11 +1710,12 @@
 
 <h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
 <p>OncoTracer runs on Linux. Nextflow can create the required Conda environments automatically or run the workflow with Docker or Singularity/Apptainer.</p>
-<p>Use one execution option:</p>
+<p>Use one launch method:</p>
 <ul>
-<li><code>--conda</code>: Nextflow creates and reuses the required environments from the versioned environment definitions.</li>
-<li><code>--docker</code>: uses <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a>.</li>
-<li><code>--singularity</code>: uses <code>docker://carlosfarkas/oncotracer:latest</code> through Singularity or Apptainer.</li>
+<li><strong>Docker:</strong> <code>nextflow run ... --docker</code> uses <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a>.</li>
+<li><strong>Singularity or Apptainer:</strong> <code>nextflow run ... --singularity</code> uses <code>docker://carlosfarkas/oncotracer:latest</code>.</li>
+<li><strong>Poetry launcher:</strong> <code>poetry run oncotracer --backend docker ...</code> manages the Python launcher and delegates the scientific execution to the selected backend.</li>
+<li><strong>Conda:</strong> <code>nextflow run ... --conda</code> creates and reuses the required environments from the versioned definitions.</li>
 </ul>
 <h2 id="1-install-the-host-prerequisites">1. Install the host prerequisites<a class="headerlink" href="#1-install-the-host-prerequisites" title="Permanent link">&para;</a></h2>
 <p>Use Linux with the following programs:</p>
