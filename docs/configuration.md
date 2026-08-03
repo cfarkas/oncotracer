@@ -40,11 +40,10 @@ Create a sample table and point `--auto_params` at the reads folder. Automatic S
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="$(pwd)/project"
 
 # Generate an Illumina YAML and samplesheet from a standard FASTQ folder.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
   --sample_table "$PROJECT_DIR/input/samples.csv" \
@@ -52,7 +51,7 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
   --auto_outdir "$PROJECT_DIR/results"
 
 # Run with Conda; Nextflow creates and reuses the required environments.
-nextflow run "$REPO_DIR/main.nf" --conda \
+nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work" \
   -resume
@@ -65,15 +64,13 @@ Replace `--conda` with `--docker` or `--singularity` for the corresponding conta
 ### 1. Copy a template
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
+# Run this command from the oncotracer directory.
 
 # Copy the Illumina template to an editable file.
-cp "$REPO_DIR/params/illumina.minimal.yml" "$REPO_DIR/params/my_illumina.yml"
+cp "params/illumina.minimal.yml" "params/my_illumina.yml"
 
 # For ONT, copy the ONT template instead.
-# cp "$REPO_DIR/params/ont.minimal.yml" "$REPO_DIR/params/my_ont.yml"
+# cp "params/ont.minimal.yml" "params/my_ont.yml"
 ```
 
 Do not edit the versioned template directly.
@@ -81,13 +78,12 @@ Do not edit the versioned template directly.
 ### 2. Resolve the project paths
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Print the absolute repository and project paths.
-realpath "$REPO_DIR"
-realpath "$REPO_DIR/project"
-realpath "$REPO_DIR/project/input"
+realpath .
+realpath "project"
+realpath "project/input"
 ```
 
 Use absolute paths in the YAML.
@@ -96,7 +92,7 @@ Use absolute paths in the YAML.
 
 ```bash
 # Open the copied Illumina YAML.
-nano /path/to/my/directory/oncotracer/params/my_illumina.yml
+nano params/my_illumina.yml
 ```
 
 Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`. Do not use tabs.
@@ -104,23 +100,21 @@ Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`. Do not use tabs.
 ### 4. Check the workflow wiring
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Validate parameters and workflow connections without running the analysis tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
-  -params-file "$REPO_DIR/params/my_illumina.yml"
+nextflow run main.nf -stub-run --conda \
+  -params-file "params/my_illumina.yml"
 ```
 
 ### 5. Run the analysis
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Run or resume the manual Illumina YAML with Conda.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/params/my_illumina.yml" \
+nextflow run main.nf --conda \
+  -params-file "params/my_illumina.yml" \
   -resume
 ```
 

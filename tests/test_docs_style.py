@@ -45,7 +45,8 @@ FORBIDDEN_PATHS = (
     "/data/study42",
 )
 
-STANDARD_REPOSITORY_PATH = "/path/to/my/directory/oncotracer"
+CLONE_COMMAND = "git clone https://github.com/cfarkas/oncotracer.git"
+CD_COMMAND = "cd oncotracer"
 
 HCC1143_WGET_URLS = (
     "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_1.fastq.gz",
@@ -106,7 +107,7 @@ REQUIRED_TEXT = {
         "create and reuse the required Conda environments automatically",
         "https://github.com/conda-forge/miniforge",
         "https://hub.docker.com/r/carlosfarkas/oncotracer",
-        STANDARD_REPOSITORY_PATH,
+        CLONE_COMMAND,
         "## Other Example Runs",
         "is a mock example",
         "cat > \"$READS_DIR/samples.csv\" <<'CSV'",
@@ -153,7 +154,7 @@ REQUIRED_TEXT = {
         "HCC1143_BEZ235,TUMOR",
         "HCC1143_TRAMETINIB,TUMOR",
         "cat > \"$READS_DIR/samples.csv\" <<'CSV'",
-        STANDARD_REPOSITORY_PATH,
+        CLONE_COMMAND,
     ),
     "docs/full_tutorial.md": (
         "sample_name,status\nDDLPS_1a,TUMOR",
@@ -241,12 +242,12 @@ def check_generic_paths() -> None:
         for legacy_path in FORBIDDEN_PATHS:
             if legacy_path in text:
                 fail(f"legacy example path in {path.relative_to(ROOT)}: {legacy_path}")
-    for relative_path in GENERIC_PATH_FILES:
-        if STANDARD_REPOSITORY_PATH not in read(relative_path):
-            fail(
-                f"missing standard repository path in {relative_path}: "
-                f"{STANDARD_REPOSITORY_PATH}"
-            )
+    for path in DOC_TEXT_FILES:
+        text = path.read_text(encoding="utf-8")
+        if "REPO_DIR=" in text or "$REPO_DIR" in text:
+            fail(f"verbose REPO_DIR usage in {path.relative_to(ROOT)}")
+        if 'git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"' in text:
+            fail(f"target-path clone in {path.relative_to(ROOT)}")
 
 
 def check_required_text() -> None:

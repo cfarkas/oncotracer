@@ -5,6 +5,7 @@ Every run writes a numbered directory tree under the YAML `outdir`. Start with t
 Set one shell variable so the commands below are easy to reuse:
 
 ```bash
+# Run this command from the oncotracer directory.
 OUT="$PWD/project/runs/my_first_run" # replace this with the exact outdir from your YAML
 cat "$OUT/06_workflow_summary/workflow_summary.txt"
 ```
@@ -29,6 +30,7 @@ Do not report files from `work/` as results. That directory is Nextflow's resuma
 ### Illumina
 
 ```bash
+# Run this command from the oncotracer directory.
 find "$OUT/01_samurai_illumina" -maxdepth 2 -type f | sort | sed -n '1,80p' # inventory
 sed -n '1,8p' "$OUT/01_samurai_illumina/qdnaseq/all_segments.seg"          # initial qDNAseq segments
 find "$OUT/01_samurai_illumina/alignment" -maxdepth 1 -name '*.bam' -print # aligned BAMs
@@ -98,6 +100,7 @@ Normal alignments and key panel artifacts are kept under the Illumina stage:
 Inspect the panel before using its CNA calls:
 
 ```bash
+# Run this command from the oncotracer directory.
 PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
 test -s "$OUT/01_samurai_illumina/logs/normal_panel_manifest.tsv"
 test -s "$PON/pon/normal_panel_manifest.tsv"
@@ -121,6 +124,7 @@ manifest, reference, QC, and tumor outputs are all present.
 ### ONT
 
 ```bash
+# Run this command from the oncotracer directory.
 find "$OUT/01_samurai_ont" -maxdepth 3 -type f | sort | sed -n '1,100p' # inventory
 sed -n '1,80p' "$OUT/01_samurai_ont/logs/run_summary.txt"               # used/skipped barcode summary
 sed -n '1,8p' "$OUT/01_samurai_ont/results/ichorcna/segments_logR_corrected_gistic.seg" # initial ichorCNA segments
@@ -134,6 +138,7 @@ Also inspect `logs/used_fastq.tsv`, `logs/skipped_fastq.tsv`, `logs/skipped_samp
 The dataset subdirectory is normally `illumina_qdnaseq_100kb` or `ONT_ichorcna_500kb`, depending on the YAML. List it rather than guessing:
 
 ```bash
+# Run this command from the oncotracer directory.
 find "$OUT/02_bam_refinement" -mindepth 1 -maxdepth 1 -type d -print
 sed -n '1,8p' "$OUT"/02_bam_refinement/*/04_final_results/final_segments.tsv
 sed -n '1,8p' "$OUT"/02_bam_refinement/*/01_tables/boundary_refinement_statistics.csv
@@ -154,6 +159,7 @@ Key files:
 ## Stage 03: final CNA tables
 
 ```bash
+# Run this command from the oncotracer directory.
 sed -n '1,12p' "$OUT/03_cna_codification/cna_events.tsv"
 sed -n '1,12p' "$OUT/03_cna_codification/cna_cytogenomic_notation.tsv"
 wc -l "$OUT/03_cna_codification/cna_events.tsv" "$OUT/03_cna_codification/cna_cytogenomic_notation.tsv"
@@ -168,6 +174,7 @@ A table containing only a header can be a valid CNA-flat result; confirm the sam
 ## Stage 04: plots
 
 ```bash
+# Run this command from the oncotracer directory.
 find "$OUT/04_cna_custom_plots" -maxdepth 2 -type f | sort
 xdg-open "$OUT/04_cna_custom_plots/cna_per_sample_pages.pdf"                  # one page per sample
 xdg-open "$OUT/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf"   # cohort profiles
@@ -180,6 +187,7 @@ On a headless server, copy PDFs to your workstation. Common outputs include geno
 This directory exists only when `run_cna_classifier: true`.
 
 ```bash
+# Run this command from the oncotracer directory.
 sed -n '1,8p' "$OUT/05_cna_classifier/02_classification/cna_patient_classification.tsv"
 sed -n '1,8p' "$OUT/05_cna_classifier/06_knowledge/sample_knowledge_summary.tsv"
 sed -n '1,8p' "$OUT/05_cna_classifier/07_pathology/pathology_concordance.tsv"
@@ -190,6 +198,7 @@ Read [Models and pathology](models_pathology.md) before interpreting these files
 ## Confirm a run before sharing it
 
 ```bash
+# Run this command from the oncotracer directory.
 test -s "$OUT/06_workflow_summary/workflow_summary.txt"                # summary exists
 test -s "$OUT/03_cna_codification/cna_events.tsv"                     # event table exists
 test -s "$OUT/03_cna_codification/cna_cytogenomic_notation.tsv"       # notation table exists

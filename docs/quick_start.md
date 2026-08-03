@@ -14,18 +14,12 @@ The first Conda run also creates the software environments. The example reads ar
 
 ## 1. Clone OncoTracer
 
-Use `/path/to/my/directory/oncotracer` as the repository path throughout this tutorial.
+Run the commands from the cloned `oncotracer` directory.
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
-
-# Clone OncoTracer into that directory.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
-
-# Enter the repository and confirm the path.
-cd "$REPO_DIR"
-pwd
+# Clone OncoTracer and enter the repository.
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
 ```
 
 Skip the clone command when the repository already exists.
@@ -33,12 +27,11 @@ Skip the clone command when the repository already exists.
 ## 2. Prepare the public reads and YAML files
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Download the reads, validate them, and create both YAML files.
-nextflow run "$REPO_DIR/main.nf" --make_test \
-  --test_root "$REPO_DIR/test"
+nextflow run main.nf --make_test \
+  --test_root "test"
 ```
 
 This step checks file size, MD5, and gzip integrity. It does not align reads or call CNAs.
@@ -73,17 +66,16 @@ The preparation command writes:
 ```
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # List the two generated run configurations.
-ls -1 "$REPO_DIR/test/configs"
+ls -1 "test/configs"
 
 # Inspect the Illumina YAML.
-sed -n '1,120p' "$REPO_DIR/test/configs/illumina.quickstart.yml"
+sed -n '1,120p' "test/configs/illumina.quickstart.yml"
 
 # Inspect the ONT YAML.
-sed -n '1,120p' "$REPO_DIR/test/configs/ont.quickstart.yml"
+sed -n '1,120p' "test/configs/ont.quickstart.yml"
 ```
 
 A YAML is a saved run plan containing paths and analysis settings. It does not contain sequencing reads or results.
@@ -91,24 +83,22 @@ A YAML is a saved run plan containing paths and analysis settings. It does not c
 ## 3. Run the Illumina analysis
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Run the generated Illumina YAML with Conda and a reusable work directory.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/illumina" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/illumina.quickstart.yml" \
+  -work-dir "test/work/illumina" \
   -resume
 ```
 
 Wait for this command to finish before starting the ONT run. The outer task can remain at `RUN_ILLUMINA_SAMURAI (0 of 1)` while nested SAMURAI tasks are active.
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Display the first lines of the completed Illumina summary.
-head -n 3 "$REPO_DIR/test/runs/illumina/06_workflow_summary/workflow_summary.txt"
+head -n 3 "test/runs/illumina/06_workflow_summary/workflow_summary.txt"
 ```
 
 The summary should begin with `mode=illumina` and `dataset=illumina_qdnaseq_100kb`.
@@ -116,22 +106,20 @@ The summary should begin with `mode=illumina` and `dataset=illumina_qdnaseq_100k
 ## 4. Run the ONT analysis
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Run the generated ONT YAML with Conda after the Illumina run finishes.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/ont" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/ont.quickstart.yml" \
+  -work-dir "test/work/ont" \
   -resume
 ```
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Display the first lines of the completed ONT summary.
-head -n 3 "$REPO_DIR/test/runs/ont/06_workflow_summary/workflow_summary.txt"
+head -n 3 "test/runs/ont/06_workflow_summary/workflow_summary.txt"
 ```
 
 The summary should begin with `mode=ont` and `dataset=ONT_ichorcna_500kb`.
@@ -139,12 +127,11 @@ The summary should begin with `mode=ont` and `dataset=ONT_ichorcna_500kb`.
 ## 5. Verify the outputs
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Verify the required summary, CNA table, and plot files from both runs.
-python3 "$REPO_DIR/examples/quickstart/verify_outputs.py" \
-  --test-root "$REPO_DIR/test"
+python3 "examples/quickstart/verify_outputs.py" \
+  --test-root "test"
 ```
 
 A successful check ends with:
@@ -176,27 +163,24 @@ These public outputs are also shown in the [Results Gallery](gallery.md).
 Run the common preparation command once, then choose exactly one analysis method below. Illumina must finish before ONT.
 
 ```bash
-# Set the repository path and prepare or revalidate the public reads and YAML files.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
-nextflow run "$REPO_DIR/main.nf" --make_test \
-  --test_root "$REPO_DIR/test"
+# Run this command from the oncotracer directory.
+nextflow run main.nf --make_test \
+  --test_root "test"
 ```
 
 ### Docker
 
 ```bash
 # Run or resume the Illumina example with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/docker-illumina" \
+nextflow run main.nf --docker \
+  -params-file "test/configs/illumina.quickstart.yml" \
+  -work-dir "test/work/docker-illumina" \
   -resume
 
 # Run or resume the ONT example with Docker after Illumina finishes.
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/docker-ont" \
+nextflow run main.nf --docker \
+  -params-file "test/configs/ont.quickstart.yml" \
+  -work-dir "test/work/docker-ont" \
   -resume
 ```
 
@@ -204,16 +188,15 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 
 ```bash
 # Run or resume the Illumina example through Singularity or Apptainer.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --singularity \
-  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/singularity-illumina" \
+nextflow run main.nf --singularity \
+  -params-file "test/configs/illumina.quickstart.yml" \
+  -work-dir "test/work/singularity-illumina" \
   -resume
 
 # Run or resume the ONT example through Singularity or Apptainer.
-nextflow run "$REPO_DIR/main.nf" --singularity \
-  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/singularity-ont" \
+nextflow run main.nf --singularity \
+  -params-file "test/configs/ont.quickstart.yml" \
+  -work-dir "test/work/singularity-ont" \
   -resume
 ```
 
@@ -221,20 +204,18 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 
 ```bash
 # Install the locked Poetry launcher once.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 poetry install --no-interaction
 
 # Run or resume the Illumina example through Poetry with Docker.
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
-  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/poetry-illumina" \
+poetry run oncotracer --repo-dir . --backend docker \
+  -params-file "test/configs/illumina.quickstart.yml" \
+  -work-dir "test/work/poetry-illumina" \
   -resume
 
 # Run or resume the ONT example through Poetry with Docker.
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
-  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/poetry-ont" \
+poetry run oncotracer --repo-dir . --backend docker \
+  -params-file "test/configs/ont.quickstart.yml" \
+  -work-dir "test/work/poetry-ont" \
   -resume
 ```
 
@@ -242,16 +223,15 @@ poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
 
 ```bash
 # Run or resume the Illumina example with native Conda environments.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/illumina.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/conda-illumina" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/illumina.quickstart.yml" \
+  -work-dir "test/work/conda-illumina" \
   -resume
 
 # Run or resume the ONT example with native Conda environments.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/ont.quickstart.yml" \
-  -work-dir "$REPO_DIR/test/work/conda-ont" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/ont.quickstart.yml" \
+  -work-dir "test/work/conda-ont" \
   -resume
 ```
 
@@ -259,9 +239,8 @@ After both analyses finish, run the same verifier regardless of the selected met
 
 ```bash
 # Verify both completed QuickStart runs.
-REPO_DIR=/path/to/my/directory/oncotracer
-python3 "$REPO_DIR/examples/quickstart/verify_outputs.py" \
-  --test-root "$REPO_DIR/test"
+python3 "examples/quickstart/verify_outputs.py" \
+  --test-root "test"
 ```
 
 The Poetry example uses Docker as its scientific backend. The launcher also accepts `--backend singularity` and `--backend conda`.

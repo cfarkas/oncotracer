@@ -12,10 +12,9 @@ force: false
 ```
 
 ```bash
-# Set the standard repository path and run a YAML with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/params/my_illumina.yml" \
+# Run this command from the oncotracer directory.
+nextflow run main.nf --docker \
+  -params-file "params/my_illumina.yml" \
   -resume
 ```
 

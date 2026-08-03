@@ -2,7 +2,7 @@
 
 Use this route for single-end or paired-end Illumina FASTQs. OncoTracer aligns the reads, runs SAMURAI/qDNAseq, refines CNA boundaries, and creates tables, plots, and a workflow summary.
 
-The examples use `/path/to/my/directory/oncotracer` as the repository path.
+The examples use paths relative to the cloned `oncotracer` directory.
 
 ## Recommended: create the YAML automatically
 
@@ -31,8 +31,7 @@ Do not mix single-end and paired-end libraries in one run.
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="$(pwd)/project"
 mkdir -p "$PROJECT_DIR/input/illumina_fastq"
 
 # Create or replace the Illumina sample table.
@@ -54,12 +53,10 @@ cat "$PROJECT_DIR/input/illumina_fastq/samples.csv"
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
-cd "$REPO_DIR"
+PROJECT_DIR="$(pwd)/project"
 
 # Generate the Illumina YAML and FASTQ samplesheet.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/illumina_fastq" \
   --sample_table "$PROJECT_DIR/input/illumina_fastq/samples.csv" \
@@ -83,8 +80,7 @@ It does not start the analysis.
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="$(pwd)/project"
 
 # Inspect the generated files.
 sed -n '1,140p' "$PROJECT_DIR/config/illumina/illumina.auto.yml"
@@ -92,7 +88,7 @@ sed -n '1,30p' "$PROJECT_DIR/config/illumina/illumina.samplesheet.csv"
 cat "$PROJECT_DIR/config/illumina/auto_params_manifest.tsv"
 
 # Run the generated YAML with Docker.
-nextflow run "$REPO_DIR/main.nf" --docker \
+nextflow run main.nf --docker \
   -params-file "$PROJECT_DIR/config/illumina/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/illumina" \
   -resume
@@ -111,8 +107,7 @@ Use manual setup when the filenames do not match the supported automatic pattern
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="$(pwd)/project"
 mkdir -p "$PROJECT_DIR/input"
 
 # Create or replace a paired-end Illumina samplesheet.
@@ -133,13 +128,11 @@ For a single-end run, keep the four-column header and leave `fastq_2` empty for 
 ### 2. Copy and edit the YAML
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
+# Run this command from the oncotracer directory.
 
 # Copy the minimal template and edit the copy.
-cp "$REPO_DIR/params/illumina.minimal.yml" "$REPO_DIR/params/my_illumina.yml"
-nano "$REPO_DIR/params/my_illumina.yml"
+cp "params/illumina.minimal.yml" "params/my_illumina.yml"
+nano "params/my_illumina.yml"
 ```
 
 A tumor-plus-controls YAML can contain:
@@ -170,16 +163,15 @@ The normal list must contain every and only samplesheet row marked `normal`. At 
 ### 3. Check and run the manual YAML
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Check workflow connections without running the scientific tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
-  -params-file "$REPO_DIR/params/my_illumina.yml"
+nextflow run main.nf -stub-run --docker \
+  -params-file "params/my_illumina.yml"
 
 # Run or resume the manual configuration.
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/params/my_illumina.yml" \
+nextflow run main.nf --docker \
+  -params-file "params/my_illumina.yml" \
   -resume
 ```
 

@@ -8,28 +8,26 @@ Nextflow runs OncoTracer with one execution option per analysis command.
 | Linux workstation or server with Docker | `--docker` | [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer) |
 | HPC with Singularity or Apptainer | `--singularity` | `docker://carlosfarkas/oncotracer:latest` |
 
-Use `/path/to/my/directory/oncotracer` as the repository path in these examples.
+Run the commands from the cloned `oncotracer` directory.
 
 ## Conda
 
 Install [Miniforge](https://github.com/conda-forge/miniforge) or another compatible Conda distribution, then run:
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
+# Run this command from the oncotracer directory.
 
 # Create or reuse the required Conda environments and test the software.
-nextflow run "$REPO_DIR/main.nf" --install --conda \
-  --lpwgs_root "$REPO_DIR/project"
+nextflow run main.nf --install --conda \
+  --lpwgs_root "project"
 
 # Optionally check a YAML without running the scientific tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
-  -params-file "$REPO_DIR/params/my_run.yml"
+nextflow run main.nf -stub-run --conda \
+  -params-file "params/my_run.yml"
 
 # Run or resume the analysis with Conda.
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/params/my_run.yml" \
+nextflow run main.nf --conda \
+  -params-file "params/my_run.yml" \
   -resume
 ```
 
@@ -38,21 +36,19 @@ Nextflow creates and reuses Conda environments automatically. The first command 
 ## Docker
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
+# Run this command from the oncotracer directory.
 
 # Pull or reuse the Docker image and test the installed software.
-nextflow run "$REPO_DIR/main.nf" --install --docker \
-  --lpwgs_root "$REPO_DIR/project"
+nextflow run main.nf --install --docker \
+  --lpwgs_root "project"
 
 # Optionally check a YAML without running the scientific tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
-  -params-file "$REPO_DIR/params/my_run.yml"
+nextflow run main.nf -stub-run --docker \
+  -params-file "params/my_run.yml"
 
 # Run or resume the analysis.
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/params/my_run.yml" \
+nextflow run main.nf --docker \
+  -params-file "params/my_run.yml" \
   -resume
 ```
 
@@ -69,21 +65,19 @@ command -v apptainer
 Then use `--singularity`:
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
+# Run this command from the oncotracer directory.
 
 # Pull or reuse docker://carlosfarkas/oncotracer:latest and test the software.
-nextflow run "$REPO_DIR/main.nf" --install --singularity \
-  --lpwgs_root "$REPO_DIR/project"
+nextflow run main.nf --install --singularity \
+  --lpwgs_root "project"
 
 # Optionally check a YAML without running the scientific tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --singularity \
-  -params-file "$REPO_DIR/params/my_run.yml"
+nextflow run main.nf -stub-run --singularity \
+  -params-file "params/my_run.yml"
 
 # Run or resume the analysis on HPC.
-nextflow run "$REPO_DIR/main.nf" --singularity \
-  -params-file "$REPO_DIR/params/my_run.yml" \
+nextflow run main.nf --singularity \
+  -params-file "params/my_run.yml" \
   -resume
 ```
 
@@ -120,11 +114,10 @@ docker_user: "1234:1234"
 ## Record the environment identity
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Read the environment or image identity recorded by the installation check.
-cat "$REPO_DIR/.oncotracer/install/install_manifest.txt"
+cat ".oncotracer/install/install_manifest.txt"
 ```
 
 For a formal analysis, preserve the OncoTracer commit, YAML, generated samplesheet, installation manifest, and nested `pipeline_info` files. Use an approved immutable image digest or explicit Conda package specification when the study requires a frozen runtime.
@@ -154,8 +147,7 @@ See [Troubleshooting](troubleshooting.md) for runtime permissions, paths, disk u
 
 ```bash
 # Run a configuration through the Poetry launcher and Docker backend.
-REPO_DIR=/path/to/my/directory/oncotracer
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+poetry run oncotracer --repo-dir . --backend docker \
   -params-file /path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml \
   -work-dir /path/to/my/directory/my_oncotracer_project/work -resume
 ```

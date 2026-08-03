@@ -1,19 +1,17 @@
 # HCC1143 six-FASTQ public example
 
-This example runs three paired-end HCC1143 low-pass whole-genome sequencing libraries from public project [PRJNA454331](https://www.ebi.ac.uk/ena/browser/view/PRJNA454331). It starts from a fresh OncoTracer clone and requires editing only `/path/to/my/directory/oncotracer`.
+This example runs three paired-end HCC1143 low-pass whole-genome sequencing libraries from public project [PRJNA454331](https://www.ebi.ac.uk/ena/browser/view/PRJNA454331). It starts from a fresh OncoTracer clone and uses paths relative to the clone.
 
 All rows use `TUMOR`. DMSO is a treatment control, not a normal genome.
 
 ## 1. Clone OncoTracer
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Clone OncoTracer and enter the repository.
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
 
-# Clone OncoTracer and create the reads directory.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
-cd "$REPO_DIR"
-READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
 ```
 
@@ -21,8 +19,7 @@ mkdir -p "$READS_DIR"
 
 ```bash
 # Set the repository and HCC1143 reads paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
 
 # Download HCC1143_DMSO read 1.
@@ -60,12 +57,11 @@ curl --fail --location --continue-at - \
 
 ```bash
 # Set the repository and HCC1143 reads paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 cd "$READS_DIR"
 
 # Verify all six checksums and compressed FASTQs.
-md5sum -c "$REPO_DIR/examples/hcc1143_lpwgs/checksums.md5"
+md5sum -c "examples/hcc1143_lpwgs/checksums.md5"
 gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
   HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
   HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
@@ -88,17 +84,15 @@ cat "$READS_DIR/samples.csv"
 
 ```bash
 # Set the repository and reads paths and enter the clone.
-REPO_DIR=/path/to/my/directory/oncotracer
-READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
-cd "$REPO_DIR"
+READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 
 # Generate the paired-end samplesheet and YAML without starting analysis.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$READS_DIR" \
   --sample_table "$READS_DIR/samples.csv" \
-  --auto_config_dir "$REPO_DIR/test/configs/hcc1143_lpwgs" \
-  --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs"
+  --auto_config_dir "test/configs/hcc1143_lpwgs" \
+  --auto_outdir "test/runs/hcc1143_lpwgs"
 ```
 
 ## 5. Choose one execution method
@@ -107,10 +101,9 @@ nextflow run "$REPO_DIR/main.nf" --auto_params \
 
 ```bash
 # Run or resume HCC1143 with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-docker" \
+nextflow run main.nf --docker \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs-docker" \
   -resume
 ```
 
@@ -118,10 +111,9 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 
 ```bash
 # Run or resume HCC1143 through Singularity or Apptainer.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --singularity \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-singularity" \
+nextflow run main.nf --singularity \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs-singularity" \
   -resume
 ```
 
@@ -129,12 +121,10 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 
 ```bash
 # Install the launcher and run HCC1143 through Poetry with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 poetry install --no-interaction
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-poetry" \
+poetry run oncotracer --repo-dir . --backend docker \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs-poetry" \
   -resume
 ```
 
@@ -142,10 +132,9 @@ poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
 
 ```bash
 # Run or resume HCC1143 with native Conda environments.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-conda" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs-conda" \
   -resume
 ```
 
@@ -153,8 +142,7 @@ nextflow run "$REPO_DIR/main.nf" --conda \
 
 ```bash
 # Set the repository and result paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/test/runs/hcc1143_lpwgs"
+OUT="$(pwd)/test/runs/hcc1143_lpwgs"
 
 # List the aligned BAMs and confirm all three samples in qDNAseq output.
 find "$OUT/01_samurai_illumina/alignment" -maxdepth 1 -type f -name '*.bam' -print

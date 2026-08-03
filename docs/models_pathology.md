@@ -63,8 +63,7 @@ Low-pass read-depth CNA analysis does not reliably determine:
 
 ```bash
 # Set the standard classifier output path.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/project/results/illumina_pathology/05_cna_classifier"
+OUT="$(pwd)/project/results/illumina_pathology/05_cna_classifier"
 
 # Inspect prepared features, classification, pathology comparison, and status.
 sed -n '1,8p' "$OUT/01_prepared/sample_cna_summary.tsv"
@@ -75,8 +74,7 @@ sed -n '1,80p' "$OUT/07_pathology/pathology_status.txt"
 
 ```bash
 # Open the cohort report on a workstation with a graphical desktop.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/project/results/illumina_pathology/05_cna_classifier"
+OUT="$(pwd)/project/results/illumina_pathology/05_cna_classifier"
 xdg-open "$OUT/03_report/cna_classifier_report.html"
 ```
 

@@ -11,6 +11,7 @@ A current software citation is:
 Add the exact commit used in your analysis, for example:
 
 ```bash
+# Run this command from the oncotracer directory.
 git rev-parse HEAD
 ```
 
@@ -49,6 +50,7 @@ For any other public data, record archive, project, sample/run accessions, retri
 Archive with the result:
 
 ```bash
+# Run this command from the oncotracer directory.
 git rev-parse HEAD
 nextflow -version
 cat .oncotracer/install/install_manifest.txt
