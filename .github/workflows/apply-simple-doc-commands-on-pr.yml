@@ -28,6 +28,17 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Normalize the generated test templates
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('tools/simplify_public_docs.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace("r'''\\\\\n", "r'''\n")
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Simplify all public documentation
         run: python3 tools/simplify_public_docs.py
 
