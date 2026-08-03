@@ -194,7 +194,7 @@ test_valid_preflight_reaches_mock_nextflow_only() {
   assert_contains "$case_dir/run.log" 'Validated 1 TUMOR and 2 NORMAL Illumina sample(s)'
   assert_contains "$case_dir/run.log" 'Detected Illumina read layout: single-end'
   assert_contains "$case_dir/run.log" 'Using qDNAseq hg38 annotation:'
-  assert_contains "$case_dir/nextflow.log" 'run dincalcilab/samurai -r v1.4.0'
+  assert_contains "$case_dir/nextflow.log" "run $LPWGS_ROOT/.oncotracer/samurai/v1.4.0"
   assert_contains "$case_dir/nextflow.log" "--input $case_dir/out/input/samplesheet.csv"
   assert_contains "$case_dir/nextflow.log" '--qdnaseq_bin_data'
   [[ "$(wc -l < "$case_dir/nextflow.log")" -eq 1 ]] || fail "valid preflight invoked Nextflow more than once"
