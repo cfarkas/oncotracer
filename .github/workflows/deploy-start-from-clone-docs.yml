@@ -17,7 +17,7 @@ jobs:
     if: github.head_ref == 'agent/deploy-start-from-clone-docs'
     runs-on: ubuntu-latest
     env:
-      TARGET_SHA: 1dc21f9d8b5aa7e50977487853ade96026cc40c2
+      TARGET_SHA: 3e360ae6c61de1d2d1e4f78ce69b604a8e49313c
 
     steps:
       - name: Check out the exact main documentation
