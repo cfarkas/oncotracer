@@ -28,18 +28,15 @@ All rows are labeled `TUMOR`. DMSO is a treatment control, not a normal genome. 
 
 ## 1. Clone the repository and create the data folder
 
-Use `/path/to/my/directory/oncotracer` as the repository path throughout this tutorial.
+Run the commands from the cloned `oncotracer` directory.
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
-
-# Clone OncoTracer into that directory.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
+# Clone OncoTracer and enter the repository.
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
 
 # Enter the repository and create the HCC1143 data folder.
-cd "$REPO_DIR"
-mkdir -p "$REPO_DIR/test/public/hcc1143_lpwgs"
+mkdir -p "test/public/hcc1143_lpwgs"
 ```
 
 Skip the clone command when the repository already exists.
@@ -52,8 +49,7 @@ Each command can continue a partial download because it uses `--continue-at -`.
 
 ```bash
 # Set the standard repository and data paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
 
 # Download HCC1143_DMSO read 1.
@@ -93,12 +89,11 @@ Use the copy/paste-ready `cat` block below. The single `>` replaces an existing 
 
 ```bash
 # Set the standard repository and data paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 
 # Check all six MD5 values.
 cd "$READS_DIR"
-md5sum -c "$REPO_DIR/examples/hcc1143_lpwgs/checksums.md5"
+md5sum -c "examples/hcc1143_lpwgs/checksums.md5"
 
 # Check that all six gzip files are complete.
 gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
@@ -123,7 +118,7 @@ To edit manually instead, run:
 
 ```bash
 # Open the sample table in Nano.
-nano /path/to/my/directory/oncotracer/test/public/hcc1143_lpwgs/samples.csv
+nano test/public/hcc1143_lpwgs/samples.csv
 ```
 
 Paste the same four lines, save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
@@ -133,31 +128,28 @@ Paste the same four lines, save with `Ctrl+O`, press Enter, and exit with `Ctrl+
 `--auto_params` matches the three sample names to their R1/R2 files, validates the FASTQs, writes `illumina.samplesheet.csv`, and writes `illumina.auto.yml`. It does not start alignment or CNA calling.
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
+# Run this command from the oncotracer directory.
 
 # Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
-  --reads_folder "$REPO_DIR/test/public/hcc1143_lpwgs" \
-  --sample_table "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" \
-  --auto_config_dir "$REPO_DIR/test/configs/hcc1143_lpwgs" \
-  --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs"
+  --reads_folder "test/public/hcc1143_lpwgs" \
+  --sample_table "test/public/hcc1143_lpwgs/samples.csv" \
+  --auto_config_dir "test/configs/hcc1143_lpwgs" \
+  --auto_outdir "test/runs/hcc1143_lpwgs"
 ```
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Display the generated YAML.
-sed -n '1,120p' "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml"
+sed -n '1,120p' "test/configs/hcc1143_lpwgs/illumina.auto.yml"
 
 # Display the generated R1/R2 samplesheet.
-sed -n '1,10p' "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.samplesheet.csv"
+sed -n '1,10p' "test/configs/hcc1143_lpwgs/illumina.samplesheet.csv"
 
 # Display sample counts and file hashes.
-cat "$REPO_DIR/test/configs/hcc1143_lpwgs/auto_params_manifest.tsv"
+cat "test/configs/hcc1143_lpwgs/auto_params_manifest.tsv"
 ```
 
 The generated samplesheet must contain three data rows, each with one R1 and one R2 path.
@@ -165,13 +157,12 @@ The generated samplesheet must contain three data rows, each with one R1 and one
 ## 5. Optional wiring check
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Check the generated workflow connections without running the analysis tools.
-nextflow run "$REPO_DIR/main.nf" -stub-run --conda \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs_stub"
+nextflow run main.nf -stub-run --conda \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs_stub"
 ```
 
 ## 6. Run the analysis
@@ -182,10 +173,9 @@ Choose exactly one method. Each method reads the same generated YAML and writes 
 
 ```bash
 # Run the generated HCC1143 configuration with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-docker" \
+nextflow run main.nf --docker \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs-docker" \
   -resume
 ```
 
@@ -193,10 +183,9 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 
 ```bash
 # Run the generated HCC1143 configuration through Singularity or Apptainer.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --singularity \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-singularity" \
+nextflow run main.nf --singularity \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs-singularity" \
   -resume
 ```
 
@@ -204,12 +193,10 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 
 ```bash
 # Install the launcher and run HCC1143 through Poetry with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 poetry install --no-interaction
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-poetry" \
+poetry run oncotracer --repo-dir . --backend docker \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs-poetry" \
   -resume
 ```
 
@@ -217,10 +204,9 @@ poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
 
 ```bash
 # Run the generated HCC1143 configuration with native Conda environments.
-REPO_DIR=/path/to/my/directory/oncotracer
-nextflow run "$REPO_DIR/main.nf" --conda \
-  -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
-  -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs-conda" \
+nextflow run main.nf --conda \
+  -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+  -work-dir "test/work/hcc1143_lpwgs-conda" \
   -resume
 ```
 
@@ -230,8 +216,7 @@ Keep the terminal open until Nextflow returns to the prompt. To resume, repeat t
 
 ```bash
 # Set the standard repository and result paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/test/runs/hcc1143_lpwgs"
+OUT="$(pwd)/test/runs/hcc1143_lpwgs"
 
 # List the three aligned BAM files.
 find "$OUT/01_samurai_illumina/alignment" \

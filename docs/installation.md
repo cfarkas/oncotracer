@@ -63,19 +63,12 @@ Either `curl` or `wget` is sufficient. Confirm only the execution environment th
 
 ## 3. Clone OncoTracer
 
-Use `/path/to/my/directory/oncotracer` as the repository path in the documentation.
+Run the commands from the cloned `oncotracer` directory.
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
-
-# Clone OncoTracer into that directory.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
-
-# Enter the repository and confirm that main.nf is present.
-cd "$REPO_DIR"
-pwd
-ls main.nf
+# Clone OncoTracer and enter the repository.
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
 ```
 
 ## 4. Prepare one execution environment without starting an analysis
@@ -85,17 +78,15 @@ Choose one option.
 ### Conda
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
+# Run this command from the oncotracer directory.
 
 # Create or reuse the versioned Conda environment and test the software.
-nextflow run "$REPO_DIR/main.nf" --install --conda \
-  --lpwgs_root "$REPO_DIR/test" \
-  -work-dir "$REPO_DIR/test/work/install_conda"
+nextflow run main.nf --install --conda \
+  --lpwgs_root "test" \
+  -work-dir "test/work/install_conda"
 
 # Record the selected environment and its explicit package specification hash.
-cat "$REPO_DIR/.oncotracer/install/install_manifest.txt"
+cat ".oncotracer/install/install_manifest.txt"
 ```
 
 On the first `--conda` run, Nextflow solves and creates the required environment automatically. It stores reusable environments below `lpwgs_root/.oncotracer/conda`.
@@ -103,33 +94,29 @@ On the first `--conda` run, Nextflow solves and creates the required environment
 ### Docker
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
+# Run this command from the oncotracer directory.
 
 # Pull or reuse the Docker image and test the installed software.
-nextflow run "$REPO_DIR/main.nf" --install --docker \
-  --lpwgs_root "$REPO_DIR/test" \
-  -work-dir "$REPO_DIR/test/work/install_docker"
+nextflow run main.nf --install --docker \
+  --lpwgs_root "test" \
+  -work-dir "test/work/install_docker"
 
 # Record the selected runtime and image identity.
-cat "$REPO_DIR/.oncotracer/install/install_manifest.txt"
+cat ".oncotracer/install/install_manifest.txt"
 ```
 
 ### Singularity or Apptainer
 
 ```bash
-# Set the standard repository path and enter it.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
+# Run this command from the oncotracer directory.
 
 # Pull or reuse the Singularity/Apptainer image and test the software.
-nextflow run "$REPO_DIR/main.nf" --install --singularity \
-  --lpwgs_root "$REPO_DIR/test" \
-  -work-dir "$REPO_DIR/test/work/install_singularity"
+nextflow run main.nf --install --singularity \
+  --lpwgs_root "test" \
+  -work-dir "test/work/install_singularity"
 
 # Record the selected runtime and image identity.
-cat "$REPO_DIR/.oncotracer/install/install_manifest.txt"
+cat ".oncotracer/install/install_manifest.txt"
 ```
 
 The `--install` route checks the host tools, prepares the selected environment, caches SAMURAI v1.4.0, writes the manifest, and stops. It does not start an analysis.
@@ -158,8 +145,6 @@ QuickStart Example 1 is the recommended installation check.
 
 ```bash
 # Install Poetry, enter the standard repository clone, and create its locked launcher environment.
-REPO_DIR=/path/to/my/directory/oncotracer
-cd "$REPO_DIR"
 poetry install --no-interaction
 poetry run oncotracer --help
 ```

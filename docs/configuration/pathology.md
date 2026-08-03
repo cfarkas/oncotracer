@@ -4,7 +4,7 @@ Pathology is an optional section in the same Illumina run YAML. OncoTracer first
 
 Start without this feature when only CNA calls and plots are needed. Enable it after a standard Illumina run works.
 
-The examples use `/path/to/my/directory/oncotracer` as the repository path. The example FASTQs are not distributed with the repository; replace them with your own research data.
+The examples use paths relative to the cloned `oncotracer` directory.
 
 ## Files that must match
 
@@ -38,13 +38,12 @@ Matching is exact and case-sensitive.
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="$(pwd)/project"
 mkdir -p "$PROJECT_DIR/input" "$PROJECT_DIR/results"
 
 # Copy the pathology-enabled YAML template.
-cp "$REPO_DIR/params/illumina.pathology.example.yml" \
-  "$REPO_DIR/params/my_illumina_pathology.yml"
+cp "params/illumina.pathology.example.yml" \
+  "params/my_illumina_pathology.yml"
 ```
 
 Place the four example-named FASTQs, or your own equivalently named FASTQs, under `project/input/` before continuing.
@@ -53,8 +52,7 @@ Place the four example-named FASTQs, or your own equivalently named FASTQs, unde
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="$(pwd)/project"
 
 # Create or replace the paired-end samplesheet.
 cat > "$PROJECT_DIR/input/illumina.samplesheet.csv" <<CSV
@@ -71,8 +69,7 @@ cat "$PROJECT_DIR/input/illumina.samplesheet.csv"
 
 ```bash
 # Set the standard repository and project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="$(pwd)/project"
 
 # Create or replace the matched pathology table.
 cat > "$PROJECT_DIR/input/pathology.csv" <<'CSV'
@@ -91,8 +88,7 @@ Quotes protect diagnosis text containing commas. Use anonymized case identifiers
 
 ```bash
 # Set the standard project path.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/project"
+PROJECT_DIR="$(pwd)/project"
 
 # Confirm that sequencing and pathology sample IDs match exactly.
 python3 - "$PROJECT_DIR/input/illumina.samplesheet.csv" "$PROJECT_DIR/input/pathology.csv" <<'PY'
@@ -122,7 +118,7 @@ PY
 
 ```bash
 # Open the copied pathology-enabled YAML.
-nano /path/to/my/directory/oncotracer/params/my_illumina_pathology.yml
+nano params/my_illumina_pathology.yml
 ```
 
 Use:
@@ -155,16 +151,15 @@ Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
 ## 6. Check and run
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
+# Run this command from the oncotracer directory.
 
 # Check parameters and workflow connections.
-nextflow run "$REPO_DIR/main.nf" -stub-run --docker \
-  -params-file "$REPO_DIR/params/my_illumina_pathology.yml"
+nextflow run main.nf -stub-run --docker \
+  -params-file "params/my_illumina_pathology.yml"
 
 # Run the CNA analysis and optional pathology comparison.
-nextflow run "$REPO_DIR/main.nf" --docker \
-  -params-file "$REPO_DIR/params/my_illumina_pathology.yml" \
+nextflow run main.nf --docker \
+  -params-file "params/my_illumina_pathology.yml" \
   -resume
 ```
 
@@ -174,8 +169,7 @@ On HPC, replace `--docker` with `--singularity`.
 
 ```bash
 # Set the standard output path.
-REPO_DIR=/path/to/my/directory/oncotracer
-OUT="$REPO_DIR/project/results/illumina_pathology"
+OUT="$(pwd)/project/results/illumina_pathology"
 
 # Read the workflow summary and optional classifier tables.
 cat "$OUT/06_workflow_summary/workflow_summary.txt"

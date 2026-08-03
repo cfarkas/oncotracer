@@ -6,15 +6,12 @@ Corrected CNA outputs contain the six tumors. The four controls remain reference
 
 ## 1. Clone OncoTracer
 
-Start from a fresh clone. In the commands below, the only path that needs to be edited is `/path/to/my/directory/oncotracer`; every other path is derived from `REPO_DIR`.
+Start from a fresh clone and run the remaining commands from the `oncotracer` directory.
 
 ```bash
-# Set the standard repository path.
-REPO_DIR=/path/to/my/directory/oncotracer
-
 # Clone OncoTracer and enter the repository.
-git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"
-cd "$REPO_DIR"
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
 ```
 
 ## 2. Prepare the mock project
@@ -48,8 +45,7 @@ The project is kept inside the clone so no second path needs to be edited:
 
 ```bash
 # Derive the mock-project path from the repository clone.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
+PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 mkdir -p "$PROJECT_DIR/input/fastq"
 
 # Create or replace the exact six-tumor/four-normal sample table.
@@ -78,12 +74,10 @@ printf 'Place the paired FASTQs in: %s\n' "$PROJECT_DIR/input/fastq"
 
 ```bash
 # Set the repository and mock-project paths and enter the clone.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
-cd "$REPO_DIR"
+PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 
 # Validate the paired FASTQs and generate the YAML and samplesheet.
-nextflow run "$REPO_DIR/main.nf" --auto_params \
+nextflow run main.nf --auto_params \
   --mode illumina \
   --reads_folder "$PROJECT_DIR/input/fastq" \
   --sample_table "$PROJECT_DIR/input/samples.csv" \
@@ -106,8 +100,7 @@ illumina_pon_min_mapq: 37
 
 ```bash
 # Set the repository and mock-project paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
+PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 
 # Review the generated run configuration and sample mapping.
 sed -n '1,140p' "$PROJECT_DIR/config/illumina.auto.yml"
@@ -129,9 +122,8 @@ Choose exactly one method. Each command reads the same generated YAML; route-spe
 
 ```bash
 # Run the mock configuration with the maintained Docker image.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
-nextflow run "$REPO_DIR/main.nf" --docker \
+PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
+nextflow run main.nf --docker \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/docker" \
   -resume
@@ -141,9 +133,8 @@ nextflow run "$REPO_DIR/main.nf" --docker \
 
 ```bash
 # Run the mock configuration through Singularity or Apptainer.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
-nextflow run "$REPO_DIR/main.nf" --singularity \
+PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
+nextflow run main.nf --singularity \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/singularity" \
   -resume
@@ -153,11 +144,9 @@ nextflow run "$REPO_DIR/main.nf" --singularity \
 
 ```bash
 # Install the launcher and run the mock configuration through Poetry with Docker.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
-cd "$REPO_DIR"
+PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 poetry install --no-interaction
-poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
+poetry run oncotracer --repo-dir . --backend docker \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/poetry" \
   -resume
@@ -167,9 +156,8 @@ poetry run oncotracer --repo-dir "$REPO_DIR" --backend docker \
 
 ```bash
 # Create or reuse the native environments and run the mock configuration.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
-nextflow run "$REPO_DIR/main.nf" --conda \
+PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
+nextflow run main.nf --conda \
   -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
   -work-dir "$PROJECT_DIR/work/conda" \
   -resume
@@ -181,8 +169,7 @@ The Poetry launcher also accepts `--backend singularity` and `--backend conda`.
 
 ```bash
 # Set the repository, mock-project, and result paths.
-REPO_DIR=/path/to/my/directory/oncotracer
-PROJECT_DIR="$REPO_DIR/test/examples/onco6_ctrl4"
+PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
 OUT="$PROJECT_DIR/results"
 PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
 
