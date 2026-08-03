@@ -46,6 +46,87 @@ jobs:
           exec(compile(script, 'apply-start-from-clone-docs.py', 'exec'), {})
           PY
 
+      - name: Normalize the new regression-test functions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/test_docs_style.py')
+          text = path.read_text(encoding='utf-8')
+          start = text.index('def check_examples_start_from_fresh_clone() -> None:')
+          end = text.index('def check_commented_bash_blocks() -> None:')
+          replacement = '''def check_examples_start_from_fresh_clone() -> None:
+              for relative_path in START_FROM_SCRATCH_FILES:
+                  text = read(relative_path)
+                  blocks = BASH_BLOCK_RE.findall(text)
+                  if not blocks:
+                      fail(f"expected a Bash block in {relative_path}")
+                  first_block = blocks[0]
+                  for snippet in (REPO_ASSIGNMENT, CLONE_COMMAND, CD_REPOSITORY_COMMAND):
+                      if snippet not in first_block:
+                          fail(
+                              f"first Bash block in {relative_path} must start from a fresh clone: {snippet}"
+                          )
+
+                  clone_index = text.find(CLONE_COMMAND)
+                  run_indices = [
+                      index
+                      for index in (
+                          text.find("nextflow run"),
+                          text.find("poetry run oncotracer"),
+                      )
+                      if index >= 0
+                  ]
+                  if run_indices and clone_index > min(run_indices):
+                      fail(f"pipeline command appears before git clone in {relative_path}")
+
+                  for placeholder in PLACEHOLDER_PATH_RE.findall(text):
+                      if not placeholder.startswith(STANDARD_REPOSITORY_PATH):
+                          fail(
+                              f"additional editable placeholder in {relative_path}: {placeholder}; "
+                              f"derive paths from {STANDARD_REPOSITORY_PATH}"
+                          )
+
+
+          def check_markdown_fences_and_bash_content() -> None:
+              for path in DOC_TEXT_FILES:
+                  text = path.read_text(encoding="utf-8")
+                  if text.count("```") % 2:
+                      fail(f"unbalanced Markdown code fences in {path.relative_to(ROOT)}")
+                  for index, block in enumerate(BASH_BLOCK_RE.findall(text), start=1):
+                      for line in block.splitlines():
+                          if re.match(r"^\s*#{2,6}\s", line):
+                              fail(
+                                  f"Markdown heading leaked into Bash block {index} in "
+                                  f"{path.relative_to(ROOT)}: {line.strip()}"
+                              )
+
+
+          def check_readme_examples_start_from_fresh_clone() -> None:
+              text = read("README.md")
+              sections = (
+                  ("## Run your own FASTQs", "## QuickStart Example 1"),
+                  ("## QuickStart Example 1", "## QuickStart Example 2"),
+                  ("## QuickStart Example 2", "## Other Example Runs"),
+              )
+              for start, end in sections:
+                  if start not in text or end not in text:
+                      fail(f"missing README example section boundary: {start} -> {end}")
+                  section = text.split(start, 1)[1].split(end, 1)[0]
+                  if CLONE_COMMAND not in section:
+                      fail(f"README example must start from a fresh clone: {start}")
+
+
+          '''
+          # The literal above is indented inside this helper; remove exactly
+          # ten leading spaces from its code lines before writing it.
+          replacement = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in replacement.splitlines()
+          )
+          path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
+          PY
+
       - name: Remove temporary workflows
         run: |
           rm -f .github/workflows/apply-start-from-clone-docs.yml
@@ -53,6 +134,7 @@ jobs:
 
       - name: Validate documentation and command boxes
         run: |
+          python3 -m py_compile tests/test_docs_style.py
           python3 tests/test_docs_style.py
           python3 -m pip install -r docs/requirements.txt
           mkdocs build --strict
