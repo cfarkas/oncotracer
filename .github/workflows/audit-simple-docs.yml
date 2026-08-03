@@ -1,0 +1,30 @@
+name: Audit simplified documentation commands
+
+on:
+  push:
+    branches:
+      - agent/simplify-all-doc-commands
+    paths:
+      - .github/workflows/audit-simple-docs.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/simplify-all-doc-commands
+
+      - name: Report remaining directory changes and awkward path text
+        run: |
+          echo '=== cd commands ==='
+          grep -R -n -E '^[[:space:]]*cd[[:space:]]+' README.md docs examples || true
+          echo '=== old or awkward path wording ==='
+          grep -R -n -E 'Skip the clone|requires editing only|given directory|repository path|absolute path|Run this step from' README.md docs examples params || true
+          echo '=== relative parent traversals ==='
+          grep -R -n -E '\.\./|\.\./\.\.' README.md docs examples params || true
+          exit 1
