@@ -28,28 +28,14 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Execute the versioned simplification script
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
+      - name: Simplify all public documentation
+        run: python3 tools/simplify_public_docs.py
 
-          workflow = Path('.github/workflows/apply-simple-doc-commands.yml').read_text(encoding='utf-8')
-          marker_start = "          python3 - <<'PY'\n"
-          marker_end = "\n          PY\n"
-          if marker_start not in workflow or marker_end not in workflow:
-              raise SystemExit('Unable to locate the embedded documentation script')
-          embedded = workflow.split(marker_start, 1)[1].split(marker_end, 1)[0]
-          script = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in embedded.splitlines()
-          )
-          exec(compile(script, 'apply-simple-doc-commands.py', 'exec'), {})
-          PY
-
-      - name: Remove temporary workflows
+      - name: Remove temporary files
         run: |
           rm -f .github/workflows/apply-simple-doc-commands.yml
           rm -f .github/workflows/apply-simple-doc-commands-on-pr.yml
+          rm -f tools/simplify_public_docs.py
 
       - name: Validate the simplified documentation
         run: |
@@ -64,6 +50,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md docs examples params tests .github/workflows
+          git add README.md docs examples params tests .github/workflows tools
           git commit -m "Docs: simplify all commands to clone and cd oncotracer"
           git push origin HEAD:agent/simplify-all-doc-commands
