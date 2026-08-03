@@ -1,0 +1,44 @@
+name: Deploy final v1.1 documentation
+
+on:
+  pull_request:
+    branches:
+      - agent/v1.1-release-base-docs
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_SHA: 032c1268fa7fdcadc48087055066d7a9fc59bd89
+    steps:
+      - name: Check out the final main documentation
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 0
+
+      - name: Build and verify the published pages
+        run: |
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+          grep -F -- '--docker' site/quick_start/index.html >/dev/null
+          grep -F -- '--singularity' site/quick_start/index.html >/dev/null
+          grep -F 'poetry run oncotracer' site/quick_start/index.html >/dev/null
+          grep -F -- '--conda' site/quick_start/index.html >/dev/null
+          grep -F -- '--docker' site/six_tumor_four_control/index.html >/dev/null
+          grep -F -- '--singularity' site/six_tumor_four_control/index.html >/dev/null
+          grep -F 'poetry run oncotracer' site/six_tumor_four_control/index.html >/dev/null
+          grep -F -- '--conda' site/six_tumor_four_control/index.html >/dev/null
+
+      - name: Deploy to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdocs gh-deploy --force --clean --remote-name origin --remote-branch gh-pages
