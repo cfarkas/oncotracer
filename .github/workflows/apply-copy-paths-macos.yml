@@ -1,0 +1,68 @@
+name: Apply copy-paste path repair on macOS
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    if: github.head_ref == 'agent/fix-copy-paste-relative-paths'
+    runs-on: macos-latest
+    steps:
+      - name: Check out documentation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-copy-paste-relative-paths
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Execute the versioned path-repair script
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/audit-documentation-cwd.yml').read_text(encoding='utf-8')
+          marker_start = "          python3 - <<'PY'\n"
+          marker_end = "\n          PY\n"
+          if marker_start not in workflow or marker_end not in workflow:
+              raise SystemExit('Unable to locate the embedded path-repair script')
+          embedded = workflow.split(marker_start, 1)[1].split(marker_end, 1)[0]
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in embedded.splitlines()
+          )
+          exec(compile(script, 'repair-copy-paste-paths.py', 'exec'), {})
+          PY
+
+      - name: Remove temporary workflows
+        run: |
+          rm -f .github/workflows/audit-documentation-cwd.yml
+          rm -f .github/workflows/apply-copy-paths-macos.yml
+
+      - name: Validate documentation and commands
+        run: |
+          python3 tests/test_docs_style.py
+          python3 tests/test_examples_start_from_clone.py
+          python3 tests/test_copy_paste_paths.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+
+      - name: Commit and push the repaired examples
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs examples tests .github/workflows
+          git commit -m "Docs: preserve working directory in simplified examples"
+          git push origin HEAD:agent/fix-copy-paste-relative-paths
