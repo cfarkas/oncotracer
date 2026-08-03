@@ -211,7 +211,6 @@ cat "$READS_DIR/samples.csv"
 for path in MARKDOWN_FILES:
     text = path.read_text(encoding="utf-8")
 
-    # Remove setup prose that repeats the two clone commands.
     for sentence in (
         "Run the commands from the cloned `oncotracer` directory.\n\n",
         "Skip the clone command when the repository already exists.\n",
@@ -238,15 +237,6 @@ for path in MARKDOWN_FILES:
     text = BASH_BLOCK_RE.sub(normalize_bash_block, text)
     text = TEXT_BLOCK_RE.sub(normalize_text_block, text)
 
-    # Automatic Setup had two adjacent clone introductions. Keep only the first.
-    if path == ROOT / "docs/auto_params.md":
-        duplicate = (
-            "## Before you begin\n\n"
-            f"```bash\n{EXACT_CLONE}\n```\n\n"
-        )
-        text = text.replace(duplicate, "## Before you begin\n\n", 1)
-
-    # Put the simple clone before the README execution-method overview.
     if path == ROOT / "README.md":
         marker = '<a id="four-equivalent-analysis-commands"></a>\n'
         clone_section = (
@@ -259,7 +249,6 @@ for path in MARKDOWN_FILES:
     text = re.sub(r"\n{3,}", "\n\n", text).rstrip() + "\n"
     path.write_text(text, encoding="utf-8")
 
-# Rewrite the HCC1143 validation sections after the generic block cleanup.
 public_hcc = ROOT / "docs/public_cohort.md"
 text = public_hcc.read_text(encoding="utf-8")
 text = replace_section(
