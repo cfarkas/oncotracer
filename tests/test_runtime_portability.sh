@@ -4,12 +4,17 @@ set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
 # The Docker runtime must follow the invoking host UID:GID rather than a fixed
-# account from the image or from one developer workstation.
+# account from the image or from one developer workstation. The shell
+# substitutions are expanded in the generated Docker command, which keeps the
+# Nextflow config compatible with the strict parser.
 grep -F "System.getenv('ONCOTRACER_DOCKER_USER')" "$ROOT/nextflow.config" >/dev/null
-grep -F "['id', '-u'].execute()" "$ROOT/nextflow.config" >/dev/null
-grep -F "['id', '-g'].execute()" "$ROOT/nextflow.config" >/dev/null
+grep -F "'\$(id -u):\$(id -g)'" "$ROOT/nextflow.config" >/dev/null
 if grep -F "docker_user = '1000:1000'" "$ROOT/nextflow.config" >/dev/null; then
   echo "ERROR: nextflow.config still hard-codes Docker UID:GID 1000:1000" >&2
+  exit 1
+fi
+if grep -E '^(def|[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=)' "$ROOT/nextflow.config" >/dev/null; then
+  echo "ERROR: nextflow.config contains a top-level variable declaration rejected by the strict parser" >&2
   exit 1
 fi
 
