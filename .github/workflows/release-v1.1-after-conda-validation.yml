@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows:
       - Full v1.1 QuickStart 1 across Docker, Poetry, and Conda
+      - Full v1.1 QuickStart 2 across Docker, Poetry, and Conda
     types:
       - completed
     branches:
@@ -25,42 +26,38 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - name: Require current main and three successful runtime jobs
+      - name: Require both successful validation workflows for current main
         env:
           GH_TOKEN: ${{ github.token }}
           VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
-          VALIDATION_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -Eeuo pipefail
-
           MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
-          [[ "$VALIDATED_SHA" == "$MAIN_SHA" ]] || {
+
+          if [[ "$VALIDATED_SHA" != "$MAIN_SHA" ]]; then
             echo "ERROR: validated commit $VALIDATED_SHA is not current main $MAIN_SHA" >&2
             exit 1
+          fi
+
+          RUNS_JSON="$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$VALIDATED_SHA&per_page=100")"
+
+          require_success() {
+            local workflow_name="$1" matches
+            matches="$(jq --arg name "$workflow_name" --arg sha "$VALIDATED_SHA" \
+              '[.workflow_runs[] | select(.name == $name and .head_sha == $sha and .status == "completed" and .conclusion == "success")] | length' \
+              <<< "$RUNS_JSON")"
+            if [[ "$matches" -lt 1 ]]; then
+              echo "ERROR: no successful '$workflow_name' run exists for $VALIDATED_SHA" >&2
+              jq -r '.workflow_runs[] | [.name, .status, .conclusion, .head_sha, .html_url] | @tsv' <<< "$RUNS_JSON" || true
+              exit 1
+            fi
+            echo "Validated: $workflow_name"
           }
 
-          EXPECTED=(
-            "docker / QuickStart 1"
-            "poetry / QuickStart 1"
-            "conda / QuickStart 1"
-          )
-          for job_name in "${EXPECTED[@]}"; do
-            count="$(gh api \
-              -H 'Accept: application/vnd.github+json' \
-              "/repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN_ID/jobs?per_page=100" \
-              --jq '[.jobs[] | select(.name == "'"$job_name"'" and .status == "completed" and .conclusion == "success")] | length')"
-            [[ "$count" -eq 1 ]] || {
-              echo "ERROR: expected one successful validation job named: $job_name" >&2
-              gh api \
-                -H 'Accept: application/vnd.github+json' \
-                "/repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN_ID/jobs?per_page=100" \
-                --jq '.jobs[] | [.name, .status, .conclusion, .html_url] | @tsv' || true
-              exit 1
-            }
-          done
-
-          echo "Validated current main commit: $VALIDATED_SHA"
-          echo "Validation run: $VALIDATION_RUN_ID"
+          require_success 'Full v1.1 QuickStart 1 across Docker, Poetry, and Conda'
+          require_success 'Full v1.1 QuickStart 2 across Docker, Poetry, and Conda'
 
       - name: Publish stable OncoTracer v1.1
         env:
@@ -72,26 +69,30 @@ jobs:
           if gh release view v1.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             git fetch --force --tags origin
             TAG_SHA="$(git rev-list -n 1 v1.1)"
-            [[ "$TAG_SHA" == "$VALIDATED_SHA" ]] || {
-              echo "ERROR: existing v1.1 points to $TAG_SHA, not $VALIDATED_SHA" >&2
+            if [[ "$TAG_SHA" != "$VALIDATED_SHA" ]]; then
+              echo "ERROR: existing v1.1 points to $TAG_SHA, not validated main commit $VALIDATED_SHA" >&2
               exit 1
-            }
+            fi
+
             echo "Stable v1.1 is already published for this validated commit."
+            gh release view v1.1 \
+              --repo "$GITHUB_REPOSITORY" \
+              --json tagName,name,isDraft,isPrerelease,targetCommitish,publishedAt,url
             exit 0
           fi
 
           cat > release-notes-v1.1.md <<EOF_NOTES
           # OncoTracer v1.1
 
-          Stable research release validated on commit \`$VALIDATED_SHA\` with the complete public QuickStart Example 1 through all supported launch routes:
+          Stable research release adding first-class Conda execution and a Poetry-managed launcher while retaining Docker and Singularity/Apptainer support.
 
-          - Nextflow with Docker
-          - Poetry launcher with the Docker backend
-          - Nextflow with Conda
+          Validated on commit \`$VALIDATED_SHA\` with both public QuickStarts across the release routes:
 
-          The validation completed the public Illumina \`ERR12341627\` and ONT \`DRR165691\` analyses, including SAMURAI, qDNAseq/ichorCNA, BAM refinement, CNA tables, plots, workflow summaries, BAM checks, and the repository output verifier.
+          - Docker: QuickStart 1 and the three-library HCC1143 QuickStart 2.
+          - Poetry with the Docker backend: QuickStart 1 and QuickStart 2.
+          - Conda: QuickStart 1 and QuickStart 2, with Nextflow creating and reusing the required environments.
 
-          v1.1 also adds first-class Poetry and Conda instructions, automatic host UID:GID mapping for Docker work directories, and an atomic pinned SAMURAI source cache that avoids unauthenticated GitHub API rate limits.
+          The validation includes public-read integrity checks, Automatic Setup, SAMURAI, qDNAseq/ichorCNA, BAM refinement, CNA tables, plots, summaries, and the repository output verifiers.
 
           OncoTracer is for research use and is not a standalone diagnostic system.
           EOF_NOTES
