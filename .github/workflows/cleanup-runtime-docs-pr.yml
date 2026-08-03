@@ -1,0 +1,82 @@
+name: Clean final four-route documentation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  clean-test-commit:
+    if: github.head_ref == 'agent/docs-all-runtime-routes-v1.1'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the documentation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/docs-all-runtime-routes-v1.1
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Remove the duplicate Poetry section and clarify the generic example
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('README.md')
+          text = path.read_text(encoding='utf-8')
+
+          text, count = re.subn(
+              r'\n## Poetry launcher\n\n```bash\n# Install the locked Poetry launcher in the repository clone\..*?See the \[Poetry Launcher guide\]\(https://cfarkas\.github\.io/oncotracer/poetry/\)\.\n',
+              '\n',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f'Expected one duplicate Poetry section, removed {count}')
+
+          old = (
+              'Replace `--conda` with `--docker` for the maintained Docker image or with '
+              '`--singularity` on a configured HPC system. `--auto_params` checks the supported '
+              'FASTQ layout and writes the YAML used by the analysis command.'
+          )
+          new = (
+              'The example above uses Conda. The preceding four-route section gives the equivalent '
+              'Docker, Singularity/Apptainer, and Poetry commands. `--auto_params` checks the '
+              'supported FASTQ layout and writes the YAML used by the analysis command.'
+          )
+          if old not in text:
+              raise SystemExit('Generic FASTQ route sentence was not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Remove this temporary workflow
+        run: rm -f .github/workflows/cleanup-runtime-docs-pr.yml
+
+      - name: Validate documentation and all command boxes
+        run: |
+          python3 tests/test_docs_style.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+
+      - name: Commit and push the final documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md .github/workflows/cleanup-runtime-docs-pr.yml
+          git commit -m "Docs: finalize four-route usage examples"
+          git push origin HEAD:agent/docs-all-runtime-routes-v1.1
