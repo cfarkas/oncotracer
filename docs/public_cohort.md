@@ -28,18 +28,14 @@ All rows are labeled `TUMOR`. DMSO is a treatment control, not a normal genome. 
 
 ## 1. Clone the repository and create the data folder
 
-Run the commands from the cloned `oncotracer` directory.
-
 ```bash
 # Clone OncoTracer and enter the repository.
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
 
-# Enter the repository and create the HCC1143 data folder.
+# Create the HCC1143 data folder.
 mkdir -p "test/public/hcc1143_lpwgs"
 ```
-
-Skip the clone command when the repository already exists.
 
 <a id="2-download-the-six-fastq-files"></a>
 
@@ -48,7 +44,7 @@ Skip the clone command when the repository already exists.
 Each command can continue a partial download because it uses `--continue-at -`.
 
 ```bash
-# Set the standard repository and data paths.
+# Set the HCC1143 data path.
 READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
 mkdir -p "$READS_DIR"
 
@@ -88,17 +84,18 @@ curl --fail --location --continue-at - \
 Use the copy/paste-ready `cat` block below. The single `>` replaces an existing table instead of appending duplicate rows.
 
 ```bash
-# Set the standard repository and data paths.
-READS_DIR="$(pwd)/test/public/hcc1143_lpwgs"
+# Set the repository root and HCC1143 reads directory.
+ROOT="$(pwd)"
+READS_DIR="$ROOT/test/public/hcc1143_lpwgs"
 
-# Check all six MD5 values.
-cd "$READS_DIR"
-md5sum -c "examples/hcc1143_lpwgs/checksums.md5"
-
-# Check that all six gzip files are complete.
-gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
-  HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
-  HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
+# Validate the six FASTQs without leaving the oncotracer directory.
+(
+  cd "$READS_DIR"
+  md5sum -c "$ROOT/examples/hcc1143_lpwgs/checksums.md5"
+  gzip -t HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
+    HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
+    HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
+)
 
 # Create or replace the exact HCC1143 sample table.
 cat > "$READS_DIR/samples.csv" <<'CSV'
@@ -112,7 +109,7 @@ CSV
 cat "$READS_DIR/samples.csv"
 ```
 
-`md5sum` should print `OK` six times. `gzip -t` is silent when the FASTQs are valid.
+`md5sum` should print `OK` six times. `gzip -t` is silent when the FASTQs are valid. The parentheses keep the parent shell in the `oncotracer` directory.
 
 To edit manually instead, run:
 
@@ -128,8 +125,6 @@ Paste the same four lines, save with `Ctrl+O`, press Enter, and exit with `Ctrl+
 `--auto_params` matches the three sample names to their R1/R2 files, validates the FASTQs, writes `illumina.samplesheet.csv`, and writes `illumina.auto.yml`. It does not start alignment or CNA calling.
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Generate the Illumina YAML and R1/R2 samplesheet without starting analysis.
 nextflow run main.nf --auto_params \
   --mode illumina \
@@ -140,15 +135,9 @@ nextflow run main.nf --auto_params \
 ```
 
 ```bash
-# Run this command from the oncotracer directory.
-
-# Display the generated YAML.
+# Display the generated files.
 sed -n '1,120p' "test/configs/hcc1143_lpwgs/illumina.auto.yml"
-
-# Display the generated R1/R2 samplesheet.
 sed -n '1,10p' "test/configs/hcc1143_lpwgs/illumina.samplesheet.csv"
-
-# Display sample counts and file hashes.
 cat "test/configs/hcc1143_lpwgs/auto_params_manifest.tsv"
 ```
 
@@ -157,8 +146,6 @@ The generated samplesheet must contain three data rows, each with one R1 and one
 ## 5. Optional wiring check
 
 ```bash
-# Run this command from the oncotracer directory.
-
 # Check the generated workflow connections without running the analysis tools.
 nextflow run main.nf -stub-run --conda \
   -params-file "test/configs/hcc1143_lpwgs/illumina.auto.yml" \
@@ -215,7 +202,7 @@ Keep the terminal open until Nextflow returns to the prompt. To resume, repeat t
 ## 7. Check the outputs
 
 ```bash
-# Set the standard repository and result paths.
+# Set the result path.
 OUT="$(pwd)/test/runs/hcc1143_lpwgs"
 
 # List the three aligned BAM files.
@@ -252,4 +239,3 @@ Repeat the command for the method you selected in [Run the analysis](#6-run-the-
 This example verifies multi-sample execution. It is not a matched tumor/normal design, does not establish treatment causality, and is not a clinical validation study.
 
 The [Other Example Run: six tumors and four controls](six_tumor_four_control.md) is a mock example illustrating how four normal controls are used to build a local qDNAseq reference for six tumors.
-
