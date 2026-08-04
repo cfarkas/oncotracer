@@ -1,4 +1,4 @@
-# OncoTracer v2 native runtime: no Java and no Nextflow.
+# OncoTracer v2 native runtime: no Nextflow. Picard's Java runtime is managed inside Conda.
 FROM condaforge/miniforge3:24.11.3-0
 
 LABEL org.opencontainers.image.title="OncoTracer" \

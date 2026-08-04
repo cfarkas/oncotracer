@@ -4,7 +4,7 @@
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://cfarkas.github.io/oncotracer/)
 [![Native CI](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
-OncoTracer v2 is a **native, auditable LP-WGS copy-number analysis application** for Illumina and Oxford Nanopore FASTQs. Its normal execution path does not require Java or Nextflow.
+OncoTracer v2 is a **native, auditable LP-WGS copy-number analysis application** for Illumina and Oxford Nanopore FASTQs. Its normal execution path does not invoke Nextflow. Conda and container backends manage all scientific dependencies, including the Java runtime used internally by Picard for Illumina duplicate marking, so no separate host Java installation is required.
 
 ```text
 FASTQ -> alignment -> qDNAseq/ichorCNA -> BAM refinement -> CNA tables -> plots

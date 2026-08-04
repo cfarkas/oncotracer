@@ -1,6 +1,6 @@
 # Native architecture
 
-OncoTracer v2 is an orchestration application, not a reimplementation of BWA, samtools, qDNAseq, HMMcopy, or ichorCNA.
+OncoTracer v2 is an orchestration application, not a reimplementation of BWA, samtools, Picard, qDNAseq, HMMcopy, or ichorCNA.
 
 ## Stage graph
 
@@ -24,4 +24,4 @@ sudo install -m 0755 oncotracer /usr/local/bin/oncotracer
 
 ## Native invariant
 
-Normal v2 execution does not call Java or Nextflow. CI parses the source, inspects the built image, and rejects any native command trace containing `nextflow`. The frozen v1.1 workflow is retained only in a separate checkout used to establish parity.
+Normal v2 execution does not invoke Nextflow. The managed Conda and container backends include the Java runtime used internally by Picard for Illumina duplicate marking; users do not need a separate host Java installation. CI parses the source, inspects the built image, and rejects any native command trace containing `nextflow`. The frozen v1.1 workflow is retained only in a separate checkout used to establish parity.
