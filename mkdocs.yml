@@ -1,5 +1,5 @@
 site_name: OncoTracer
-site_description: Reproducible LP-WGS CNA analysis for ONT and Illumina data
+site_description: Native auditable LP-WGS CNA analysis for ONT and Illumina data
 site_author: OncoTracer developers
 site_url: https://cfarkas.github.io/oncotracer/
 repo_name: cfarkas/oncotracer
@@ -25,34 +25,25 @@ theme:
 nav:
   - Home: index.md
   - Getting Started:
-      - 1. Install Requirements: installation.md
-      - Poetry Launcher: poetry.md
-      - 2. QuickStart Example 1 (Illumina + ONT): quick_start.md
-      - 3. Automatic Setup for Your FASTQs (Recommended): auto_params.md
-      - 4. QuickStart Example 2 (Three-Sample Public): public_cohort.md
-      - Input Files and Folder Layouts: inputs.md
-      - Manual YAML Editing (Second Option): configuration/yaml_basics.md
-  - Full Tutorial: full_tutorial.md
-  - Other Example Runs:
-      - Mock Six Tumors + Four Normal Controls: six_tumor_four_control.md
-  - Run and Configure:
-      - Choose a Configuration Route: configuration.md
-      - Workflow Overview: running.md
-      - Illumina Setup: configuration/illumina.md
-      - ONT Setup: configuration/ont.md
-      - Pathology and Classifier: configuration/pathology.md
-      - Advanced Refinement: configuration/refinement.md
-      - All Parameters: configuration/parameter_reference.md
-      - Execution Environments: containers.md
-      - Programs and Provenance: programs.md
-  - Understand Results:
-      - Output Files: outputs.md
-      - Models and Pathology: models_pathology.md
-      - Results Gallery: gallery.md
-  - Help and About:
+      - Install: installation.md
+      - QuickStart 1 — Illumina + ONT: quick_start.md
+      - Automatic Setup: auto_params.md
+      - QuickStart 2 — HCC1143: public_cohort.md
+  - Run and Understand:
+      - Native workflow: running.md
+      - YAML configuration: configuration_v2.md
+      - Execution backends: containers.md
+      - Output files: outputs.md
+      - Results gallery: gallery.md
+  - Assurance:
+      - Native architecture: native_architecture.md
+      - Parity and release gate: parity_release.md
+      - Migration from v1.1: migration_v1_to_v2.md
+      - Citation and research use: citation_research_use.md
+  - Help and Development:
       - Troubleshooting: troubleshooting.md
-      - Citation and Research Use: citation_research_use.md
-      - Developer Guide: developer_guide.md
+      - Developer guide: developer_guide.md
+      - Legacy v1.1: legacy_v1.md
 
 markdown_extensions:
   - admonition

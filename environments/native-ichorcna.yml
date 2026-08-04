@@ -1,0 +1,10 @@
+name: oncotracer-v2-ichorcna
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - r-base=4.4
+  - r-ichorcna=0.5.1
+  - hmmcopy=0.1.1
+  - samtools=1.22.1
+  - r-yaml
