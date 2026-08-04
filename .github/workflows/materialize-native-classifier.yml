@@ -20,11 +20,36 @@ jobs:
         with:
           ref: agent/native-v2-parity
           fetch-depth: 0
-      - name: Authenticate and extract the reviewed overlay
+      - name: Authenticate, reconstruct, and extract the reviewed overlay
         run: |
           set -Eeuo pipefail
-          echo '75fc9bf97e0312e3aa550fa8290e0e1aa8c8a4127f842ba1718a0239aff956e6  .github/native-classifier-overlay.tar.gz' | sha256sum -c -
-          tar -tzf .github/native-classifier-overlay.tar.gz > "$RUNNER_TEMP/native-classifier-manifest.txt"
+          cat > "$RUNNER_TEMP/native-classifier-parts.sha256" <<'EOF'
+          3d1dda0a43389377db286a0a2f5708405f7ef7cbfa3d6b0d2cc38a4da3e2c5b3  .github/native-classifier-overlay.part00
+          8203de0fbc11a6432e005335bab17e72aee38e96d65ddd92c89a9c890a75650c  .github/native-classifier-overlay.part01
+          3330fd4284797c608d6e5b2f1769f8e81913af8f153956c8fcb4630bc877727f  .github/native-classifier-overlay.part02
+          e29d042ea4006575ade64b516c2ccc7bd8935d725dce09da39030d6c545dccde  .github/native-classifier-overlay.part03
+          aa17c7924218c6fc6883e82619aac368fb3b14ebd6fdb21f2903c5b754952acc  .github/native-classifier-overlay.part04a
+          f60fd8a860e61f8775b4dac918ca4df681dee4c316d126ec8e77271d86d60995  .github/native-classifier-overlay.part04b
+          d5fd48f3c73ba6fdcd9e60ab1f6672541169741c892bbc17a34c4d0b7c99d23a  .github/native-classifier-overlay.part05a
+          f1f733df07a0f113824358316abd3b9390f2e2a9de12abac6716d184a93da360  .github/native-classifier-overlay.part05b
+          5b8ee11d1c1f95fe84c740c508db9d2e0fa10fd075c828d712c3f52567f5b726  .github/native-classifier-overlay.part06
+          EOF
+          sha256sum -c "$RUNNER_TEMP/native-classifier-parts.sha256"
+          cat \
+            .github/native-classifier-overlay.part00 \
+            .github/native-classifier-overlay.part01 \
+            .github/native-classifier-overlay.part02 \
+            .github/native-classifier-overlay.part03 \
+            .github/native-classifier-overlay.part04a \
+            .github/native-classifier-overlay.part04b \
+            .github/native-classifier-overlay.part05a \
+            .github/native-classifier-overlay.part05b \
+            .github/native-classifier-overlay.part06 \
+            | base64 --decode > "$RUNNER_TEMP/native-classifier-overlay.tar.gz"
+          echo '75fc9bf97e0312e3aa550fa8290e0e1aa8c8a4127f842ba1718a0239aff956e6  /tmp/native-classifier-overlay.tar.gz' \
+            | sed "s#/tmp/native-classifier-overlay.tar.gz#$RUNNER_TEMP/native-classifier-overlay.tar.gz#" \
+            | sha256sum -c -
+          tar -tzf "$RUNNER_TEMP/native-classifier-overlay.tar.gz" > "$RUNNER_TEMP/native-classifier-manifest.txt"
           python3 - "$RUNNER_TEMP/native-classifier-manifest.txt" <<'PY'
           import sys
           from pathlib import PurePosixPath
@@ -36,7 +61,7 @@ jobs:
               if path.is_absolute() or '..' in path.parts:
                   raise SystemExit(f'ERROR: unsafe archive path: {name}')
           PY
-          tar -xzf .github/native-classifier-overlay.tar.gz
+          tar -xzf "$RUNNER_TEMP/native-classifier-overlay.tar.gz"
           rm -f MANIFEST.sha256
       - uses: actions/setup-python@v5
         with:
