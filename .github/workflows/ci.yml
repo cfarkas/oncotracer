@@ -40,7 +40,9 @@ jobs:
           if len(paths) != 10:
               raise SystemExit(f'ERROR: expected 10 bundle parts, found {len(paths)}')
           parts = [''.join(path.read_text(encoding='ascii').split()) for path in paths]
+          joined = ''.join(parts)
           print('part_lengths=' + ','.join(str(len(part)) for part in parts))
+          print(f'combined_base64_characters={len(joined)}')
 
           def authenticated(value: str):
               if len(value) % 4:
@@ -51,53 +53,125 @@ jobs:
                   return None
               return raw_value if hashlib.sha256(raw_value).hexdigest() == expected else None
 
-          joined = ''.join(parts)
+          def decode_probe(value: str):
+              probe = value.rstrip('=')
+              probe = probe[:len(probe) - (len(probe) % 4)]
+              try:
+                  return base64.b64decode(probe, validate=True)
+              except binascii.Error:
+                  return None
+
+          def gzip_progress(compressed: bytes, chunk_size: int):
+              inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
+              unpacked = 0
+              consumed = 0
+              for offset in range(0, len(compressed), chunk_size):
+                  block = compressed[offset:offset + chunk_size]
+                  try:
+                      unpacked += len(inflater.decompress(block))
+                  except zlib.error:
+                      return consumed, unpacked, False
+                  consumed = offset + len(block)
+              return consumed, unpacked, inflater.eof
+
           raw = authenticated(joined)
           recovery = None
           if raw is None:
-              # The transport log shows exactly two surplus non-whitespace
-              # characters, one in part00 and one in part06. Recover only a
-              # candidate that authenticates to the pre-recorded SHA-256.
-              prefix_tail = ''.join(parts[1:6])
-              scores = []
-              for index, character in enumerate(parts[0]):
-                  candidate = parts[0][:index] + parts[0][index + 1:] + prefix_tail
-                  candidate = candidate[:len(candidate) - (len(candidate) % 4)]
-                  try:
-                      compressed = base64.b64decode(candidate, validate=True)
-                      inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
-                      unpacked = inflater.decompress(compressed)
-                  except (binascii.Error, zlib.error):
+              data_limit = len(joined) - (1 if joined.endswith('=') else 0)
+              ranked = []
+              for index in range(data_limit):
+                  once = joined[:index] + joined[index + 1:]
+                  compressed = decode_probe(once)
+                  if compressed is None:
                       continue
-                  scores.append((len(unpacked), index, character))
-              if not scores:
-                  raise SystemExit('ERROR: no part00 deletion preserved a valid gzip prefix')
-              ranked = sorted(scores, reverse=True)
-              print('part00_recovery_candidates=' + ','.join(
-                  f'index:{index}/char:{character!r}/unpacked:{size}'
-                  for size, index, character in ranked[:16]
+                  consumed, unpacked, eof = gzip_progress(compressed, 256)
+                  ranked.append((consumed, unpacked, eof, index, joined[index]))
+              if not ranked:
+                  raise SystemExit('ERROR: no one-character deletion produced a decodable gzip probe')
+              ranked.sort(reverse=True)
+              print('first_deletion_candidates=' + ','.join(
+                  f'index:{index}/char:{character!r}/compressed:{consumed}/unpacked:{unpacked}/eof:{eof}'
+                  for consumed, unpacked, eof, index, character in ranked[:16]
               ))
-              for _, index0, character0 in ranked[:32]:
-                  fixed0 = parts[0][:index0] + parts[0][index0 + 1:]
-                  for index6, character6 in enumerate(parts[6]):
-                      fixed6 = parts[6][:index6] + parts[6][index6 + 1:]
-                      candidate = ''.join(parts[:0] + [fixed0] + parts[1:6] + [fixed6] + parts[7:])
-                      raw_candidate = authenticated(candidate)
+
+              offsets = []
+              cursor = 0
+              for part in parts:
+                  offsets.append((cursor, cursor + len(part)))
+                  cursor += len(part)
+
+              for _, _, _, first_index, first_character in ranked[:32]:
+                  once = joined[:first_index] + joined[first_index + 1:]
+                  compressed = decode_probe(once)
+                  if compressed is None:
+                      continue
+                  precise_consumed, _, _ = gzip_progress(compressed, 1)
+                  approximate_second = (precise_consumed * 4) // 3
+
+                  second_candidates = set()
+                  for radius in (32, 256, 2048):
+                      lower = max(0, approximate_second - radius)
+                      upper = min(len(once), approximate_second + radius + 1)
+                      second_candidates.update(range(lower, upper))
+                  # The transport-size anomaly also points to original part06.
+                  part6_start, part6_end = offsets[6]
+                  if first_index < part6_start:
+                      part6_start -= 1
+                      part6_end -= 1
+                  second_candidates.update(range(part6_start, min(part6_end, len(once))))
+
+                  ordered = sorted(
+                      (index for index in second_candidates if once[index] != '='),
+                      key=lambda index: (abs(index - approximate_second), index),
+                  )
+                  for second_index in ordered:
+                      final = once[:second_index] + once[second_index + 1:]
+                      raw_candidate = authenticated(final)
                       if raw_candidate is not None:
+                          original_second = second_index + (1 if second_index >= first_index else 0)
                           raw = raw_candidate
-                          recovery = (index0, character0, index6, character6)
+                          recovery = (
+                              first_index,
+                              first_character,
+                              original_second,
+                              joined[original_second],
+                              precise_consumed,
+                          )
                           break
                   if raw is not None:
                       break
+
+              # Exhaustive second-deletion fallback for the best first deletion.
+              if raw is None:
+                  first_index = ranked[0][3]
+                  first_character = joined[first_index]
+                  once = joined[:first_index] + joined[first_index + 1:]
+                  for second_index, second_character in enumerate(once):
+                      if second_character == '=':
+                          continue
+                      final = once[:second_index] + once[second_index + 1:]
+                      raw_candidate = authenticated(final)
+                      if raw_candidate is not None:
+                          original_second = second_index + (1 if second_index >= first_index else 0)
+                          raw = raw_candidate
+                          recovery = (
+                              first_index,
+                              first_character,
+                              original_second,
+                              joined[original_second],
+                              -1,
+                          )
+                          break
           if raw is None:
-              raise SystemExit('ERROR: transport recovery did not reproduce the signed archive')
+              raise SystemExit('ERROR: deterministic recovery did not reproduce the signed archive')
           digest = hashlib.sha256(raw).hexdigest()
           print(f'archive_bytes={len(raw)} sha256={digest}')
           if recovery is not None:
               print(
                   'recovered_transport='
-                  f'part00[{recovery[0]}]={recovery[1]!r},'
-                  f'part06[{recovery[2]}]={recovery[3]!r}'
+                  f'index:{recovery[0]}/char:{recovery[1]!r},'
+                  f'index:{recovery[2]}/char:{recovery[3]!r},'
+                  f'failure_byte_after_first_fix:{recovery[4]}'
               )
           output.write_bytes(raw)
           PY
