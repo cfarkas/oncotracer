@@ -26,8 +26,37 @@ jobs:
       - name: Reconstruct and authenticate the reviewed archive
         run: |
           set -Eeuo pipefail
-          cat .github/native-v2-bundle.part* | base64 --decode > "$RUNNER_TEMP/native-v2.tar.gz"
-          echo "f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1  $RUNNER_TEMP/native-v2.tar.gz" | sha256sum -c -
+          python3 - "$RUNNER_TEMP/native-v2.tar.gz" <<'PY'
+          import base64
+          import hashlib
+          import sys
+          from pathlib import Path
+
+          output = Path(sys.argv[1])
+          parts = sorted(Path('.github').glob('native-v2-bundle.part*'))
+          if len(parts) != 10:
+              raise SystemExit(f'ERROR: expected 10 bundle parts, found {len(parts)}')
+          text = ''
+          for part in parts:
+              value = part.read_text(encoding='ascii')
+              print(f'{part}: bytes={len(value)} non_whitespace={len("".join(value.split()))}')
+              text += value
+          allowed = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
+          bad = sorted(set(text) - allowed - set(' \t\r\n'))
+          if bad:
+              raise SystemExit(f'ERROR: invalid base64 transport characters: {bad!r}')
+          clean = ''.join(text.split())
+          print(f'combined_non_whitespace={len(clean)}')
+          if len(clean) != 67572:
+              raise SystemExit(f'ERROR: expected 67572 base64 characters, found {len(clean)}')
+          raw = base64.b64decode(clean, validate=True)
+          digest = hashlib.sha256(raw).hexdigest()
+          print(f'archive_bytes={len(raw)} sha256={digest}')
+          expected = 'f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1'
+          if digest != expected:
+              raise SystemExit(f'ERROR: archive SHA-256 mismatch: {digest} != {expected}')
+          output.write_bytes(raw)
+          PY
           tar -tzf "$RUNNER_TEMP/native-v2.tar.gz" | tee "$RUNNER_TEMP/archive-manifest.txt"
           tar -xzf "$RUNNER_TEMP/native-v2.tar.gz"
 
