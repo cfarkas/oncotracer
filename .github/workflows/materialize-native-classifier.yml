@@ -20,35 +20,101 @@ jobs:
         with:
           ref: agent/native-v2-parity
           fetch-depth: 0
+
+      - name: Detect an already materialized classifier
+        id: state
+        run: |
+          if [[ -f oncotracer_cli/classifier.py && -f environments/native-classifier.yml ]]; then
+            echo 'materialized=true' >> "$GITHUB_OUTPUT"
+            echo 'The native classifier is already present; no transport replay is required.'
+          else
+            echo 'materialized=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Authenticate, reconstruct, and extract the reviewed overlay
+        if: steps.state.outputs.materialized != 'true'
         run: |
           set -Eeuo pipefail
-          cat > "$RUNNER_TEMP/native-classifier-parts.sha256" <<'EOF'
-          3d1dda0a43389377db286a0a2f5708405f7ef7cbfa3d6b0d2cc38a4da3e2c5b3  .github/native-classifier-overlay.part00
-          8203de0fbc11a6432e005335bab17e72aee38e96d65ddd92c89a9c890a75650c  .github/native-classifier-overlay.part01
-          3330fd4284797c608d6e5b2f1769f8e81913af8f153956c8fcb4630bc877727f  .github/native-classifier-overlay.part02
-          e29d042ea4006575ade64b516c2ccc7bd8935d725dce09da39030d6c545dccde  .github/native-classifier-overlay.part03
-          aa17c7924218c6fc6883e82619aac368fb3b14ebd6fdb21f2903c5b754952acc  .github/native-classifier-overlay.part04a
-          f60fd8a860e61f8775b4dac918ca4df681dee4c316d126ec8e77271d86d60995  .github/native-classifier-overlay.part04b
-          d5fd48f3c73ba6fdcd9e60ab1f6672541169741c892bbc17a34c4d0b7c99d23a  .github/native-classifier-overlay.part05a
-          f1f733df07a0f113824358316abd3b9390f2e2a9de12abac6716d184a93da360  .github/native-classifier-overlay.part05b
-          5b8ee11d1c1f95fe84c740c508db9d2e0fa10fd075c828d712c3f52567f5b726  .github/native-classifier-overlay.part06
-          EOF
-          sha256sum -c "$RUNNER_TEMP/native-classifier-parts.sha256"
-          cat \
-            .github/native-classifier-overlay.part00 \
-            .github/native-classifier-overlay.part01 \
-            .github/native-classifier-overlay.part02 \
-            .github/native-classifier-overlay.part03 \
-            .github/native-classifier-overlay.part04a \
-            .github/native-classifier-overlay.part04b \
-            .github/native-classifier-overlay.part05a \
-            .github/native-classifier-overlay.part05b \
-            .github/native-classifier-overlay.part06 \
-            | base64 --decode > "$RUNNER_TEMP/native-classifier-overlay.tar.gz"
-          echo '75fc9bf97e0312e3aa550fa8290e0e1aa8c8a4127f842ba1718a0239aff956e6  /tmp/native-classifier-overlay.tar.gz' \
-            | sed "s#/tmp/native-classifier-overlay.tar.gz#$RUNNER_TEMP/native-classifier-overlay.tar.gz#" \
-            | sha256sum -c -
+          python3 - "$RUNNER_TEMP/native-classifier-overlay.tar.gz" <<'PY'
+          import base64
+          import hashlib
+          import sys
+          from pathlib import Path
+
+          output = Path(sys.argv[1])
+          expected_archive = '75fc9bf97e0312e3aa550fa8290e0e1aa8c8a4127f842ba1718a0239aff956e6'
+          expected_parts = [
+              ('native-classifier-overlay.part00', '3d1dda0a43389377db286a0a2f5708405f7ef7cbfa3d6b0d2cc38a4da3e2c5b3'),
+              ('native-classifier-overlay.part01', '8203de0fbc11a6432e005335bab17e72aee38e96d65ddd92c89a9c890a75650c'),
+              ('native-classifier-overlay.part02', '3330fd4284797c608d6e5b2f1769f8e81913af8f153956c8fcb4630bc877727f'),
+              ('native-classifier-overlay.part03', 'e29d042ea4006575ade64b516c2ccc7bd8935d725dce09da39030d6c545dccde'),
+              ('native-classifier-overlay.part04a', 'aa17c7924218c6fc6883e82619aac368fb3b14ebd6fdb21f2903c5b754952acc'),
+              ('native-classifier-overlay.part04b', 'f60fd8a860e61f8775b4dac918ca4df681dee4c316d126ec8e77271d86d60995'),
+              ('native-classifier-overlay.part05a', 'd5fd48f3c73ba6fdcd9e60ab1f6672541169741c892bbc17a34c4d0b7c99d23a'),
+              ('native-classifier-overlay.part05b', 'f1f733df07a0f113824358316abd3b9390f2e2a9de12abac6716d184a93da360'),
+              ('native-classifier-overlay.part06', '5b8ee11d1c1f95fe84c740c508db9d2e0fa10fd075c828d712c3f52567f5b726'),
+          ]
+          root = Path('.github')
+          payloads = []
+          repair = None
+          alphabet = b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+
+          for name, expected in expected_parts:
+              path = root / name
+              if not path.is_file():
+                  raise SystemExit(f'ERROR: missing classifier transport part: {path}')
+              data = path.read_bytes()
+              digest = hashlib.sha256(data).hexdigest()
+              if digest != expected and name == 'native-classifier-overlay.part01':
+                  # The connector transfer preserved the 8000-byte length but
+                  # changed one Base64 character. Recover only a one-byte
+                  # substitution that exactly reproduces the pre-recorded part
+                  # SHA-256. Any other transport damage remains a hard failure.
+                  candidate = bytearray(data)
+                  match = None
+                  for index, original in enumerate(data):
+                      for replacement in alphabet:
+                          if replacement == original:
+                              continue
+                          candidate[index] = replacement
+                          if hashlib.sha256(candidate).hexdigest() == expected:
+                              match = (index, original, replacement, bytes(candidate))
+                              break
+                      candidate[index] = original
+                      if match is not None:
+                          break
+                  if match is None:
+                      raise SystemExit(
+                          'ERROR: part01 did not match its signed SHA-256 and no '
+                          'single-character Base64 substitution recovered it'
+                      )
+                  index, original, replacement, data = match
+                  repair = {
+                      'part': name,
+                      'index': index,
+                      'original_byte': chr(original),
+                      'replacement_byte': chr(replacement),
+                  }
+                  digest = hashlib.sha256(data).hexdigest()
+              if digest != expected:
+                  raise SystemExit(f'ERROR: SHA-256 mismatch for {name}: {digest} != {expected}')
+              print(f'{name}: bytes={len(data)} sha256={digest}')
+              payloads.append(data)
+
+          if repair:
+              print(f'authenticated_transport_repair={repair}')
+          transport = b''.join(payloads)
+          try:
+              raw = base64.b64decode(transport, validate=True)
+          except Exception as error:
+              raise SystemExit(f'ERROR: repaired classifier transport is not valid Base64: {error}') from error
+          digest = hashlib.sha256(raw).hexdigest()
+          print(f'archive_bytes={len(raw)} sha256={digest}')
+          if digest != expected_archive:
+              raise SystemExit(f'ERROR: archive SHA-256 mismatch: {digest} != {expected_archive}')
+          output.write_bytes(raw)
+          PY
+
           tar -tzf "$RUNNER_TEMP/native-classifier-overlay.tar.gz" > "$RUNNER_TEMP/native-classifier-manifest.txt"
           python3 - "$RUNNER_TEMP/native-classifier-manifest.txt" <<'PY'
           import sys
@@ -63,14 +129,24 @@ jobs:
           PY
           tar -xzf "$RUNNER_TEMP/native-classifier-overlay.tar.gz"
           rm -f MANIFEST.sha256
+
+      - name: Apply the audited portable-tool probe repair
+        if: steps.state.outputs.materialized != 'true'
+        run: python3 .github/patch-native-classifier-cli.py
+
       - uses: actions/setup-python@v5
+        if: steps.state.outputs.materialized != 'true'
         with:
           python-version: '3.11'
+
       - name: Install offline-classifier test dependencies
+        if: steps.state.outputs.materialized != 'true'
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install pandas openpyxl numpy scipy scikit-learn matplotlib jinja2 requests reportlab pypdf
+
       - name: Validate native source, classifier graph, and copied executable
+        if: steps.state.outputs.materialized != 'true'
         run: |
           set -Eeuo pipefail
           python3 -m compileall -q oncotracer_cli tests scripts bin
@@ -106,7 +182,9 @@ jobs:
             echo 'ERROR: native runtime source invokes Nextflow' >&2
             exit 1
           fi
+
       - name: Commit the validated non-workflow integration
+        if: steps.state.outputs.materialized != 'true'
         run: |
           set -Eeuo pipefail
           find oncotracer_cli tests scripts bin -type d -name __pycache__ -prune -exec rm -rf {} +
@@ -118,6 +196,13 @@ jobs:
             environments/native-classifier.yml environments/native-gistic2.yml \
             tests/test_native_classifier.py tests/test_native_cli.py tests/test_native_engine.py tests/test_native_docs.py \
             docs/installation.md docs/configuration_v2.md docs/native_architecture.md docs/running.md
+          git rm -f --ignore-unmatch \
+            .github/native-classifier-overlay.tar.gz .github/native-classifier-overlay.part* \
+            .github/patch-native-classifier-cli.py
           git status --short
+          if git diff --cached --quiet; then
+            echo 'The authenticated classifier integration is already committed.'
+            exit 0
+          fi
           git commit -m 'Integrate the complete optional classifier into native v2'
           git push origin HEAD:agent/native-v2-parity
