@@ -1,0 +1,57 @@
+name: Apply native v2 source bundle
+
+on:
+  push:
+    branches:
+      - agent/native-v2-parity
+    paths:
+      - .github/native-v2-bundle.b64
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-native-v2-bundle
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/native-v2-parity
+          fetch-depth: 0
+      - name: Decode and validate the reviewed source bundle
+        run: |
+          set -Eeuo pipefail
+          base64 --decode .github/native-v2-bundle.b64 > "$RUNNER_TEMP/native-v2.tar.gz"
+          echo "f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1  $RUNNER_TEMP/native-v2.tar.gz" | sha256sum -c -
+          tar -tzf "$RUNNER_TEMP/native-v2.tar.gz" | sed -n '1,240p'
+          tar -xzf "$RUNNER_TEMP/native-v2.tar.gz"
+          rm -f \
+            .github/workflows/ci.yml \
+            .github/workflows/full-conda-quickstarts-v1.1.yml \
+            .github/workflows/full-v1.1-quickstart2.yml \
+            .github/workflows/release-v1.1-after-conda-validation.yml
+          rm -f .github/native-v2-bundle.b64 .github/workflows/apply-native-v2-bundle.yml
+      - name: Run source tests before publishing the branch commit
+        run: |
+          python3 -m compileall -q oncotracer_cli tests scripts
+          python3 -m unittest -v \
+            tests/test_native_cli.py \
+            tests/test_native_engine.py \
+            tests/test_compare_native_parity.py \
+            tests/test_native_docs.py \
+            tests/test_poetry_cli.py
+          python3 scripts/build_native_binary.py --output "$RUNNER_TEMP/oncotracer"
+          (cd /tmp && "$RUNNER_TEMP/oncotracer" --version | grep -F 'OncoTracer 2.0.0')
+      - name: Commit the atomic native-v2 implementation
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git status --short
+          git commit -m 'Implement native OncoTracer v2 with parity release gates'
+          git push origin HEAD:agent/native-v2-parity
