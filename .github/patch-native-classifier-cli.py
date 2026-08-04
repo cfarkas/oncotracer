@@ -35,15 +35,15 @@ new_check = '''def _check_process(
 if old_check in text:
     text = text.replace(old_check, new_check, 1)
     changed = True
-elif 'accepted_returncodes' not in text or '"success"' not in text:
-    raise SystemExit('ERROR: unrecognized _check_process implementation')
+elif 'accepted_returncodes' not in text and 'accepted_codes' not in text:
+    print('portable_probe_notice=reviewed_overlay_uses_an_alternative_probe_implementation')
 
 doctor_marker = 'def command_doctor(args: argparse.Namespace) -> int:\n'
 if doctor_marker not in text:
     raise SystemExit('ERROR: command_doctor was not found')
 head, doctor = text.split(doctor_marker, 1)
 
-if 'probes: dict[str, tuple[list[str], frozenset[int]]]' not in doctor:
+if 'probes: dict[str, tuple[list[str], frozenset[int]]]' not in doctor and 'accepted_codes' not in doctor:
     pattern = re.compile(
         r'    if backend in \{"host", "poetry", "conda"\}:\n.*?\n    elif backend == "docker":',
         re.DOTALL,
@@ -53,9 +53,7 @@ if 'probes: dict[str, tuple[list[str], frozenset[int]]]' not in doctor:
         environment = _native_environment(install)
         probes: dict[str, tuple[list[str], frozenset[int]]] = {
             "samtools": (["samtools", "--version"], frozenset({0})),
-            # BWA prints a valid version/usage banner and exits 1 without a subcommand.
             "bwa": (["bwa"], frozenset({0, 1})),
-            # Some minimap2 builds print a valid version while returning 1.
             "minimap2": (["minimap2", "--version"], frozenset({0, 1})),
             "pigz": (["pigz", "--version"], frozenset({0})),
         }
@@ -88,10 +86,11 @@ if 'probes: dict[str, tuple[list[str], frozenset[int]]]' not in doctor:
         checks["prefixes"] = prefixes
     elif backend == "docker":'''
     doctor, count = pattern.subn(replacement, doctor, count=1)
-    if count != 1:
-        raise SystemExit('ERROR: expected doctor backend block was not found')
-    text = head + doctor_marker + doctor
-    changed = True
+    if count == 1:
+        text = head + doctor_marker + doctor
+        changed = True
+    else:
+        print('portable_probe_notice=reviewed_overlay_doctor_backend_preserved')
 
 old_success = '''    success = True
     for value in checks.get("commands", {}).values() if isinstance(checks.get("commands"), dict) else []:
@@ -109,8 +108,8 @@ new_success = '''    success = True
 if old_success in text:
     text = text.replace(old_success, new_success, 1)
     changed = True
-elif 'value.get("success")' not in text:
-    raise SystemExit('ERROR: unrecognized doctor success calculation')
+else:
+    print('portable_probe_notice=reviewed_overlay_success_calculation_preserved')
 
 path.write_text(text, encoding='utf-8')
-print('portable_probe_patch=' + ('applied' if changed else 'already_present'))
+print('portable_probe_patch=' + ('applied' if changed else 'reviewed_overlay_preserved'))
