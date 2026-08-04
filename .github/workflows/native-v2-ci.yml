@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: native-v2-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   source-and-binary:
     runs-on: ubuntu-24.04
@@ -111,6 +115,7 @@ jobs:
               conda run --prefix "$PREFIX" python -c 'import numpy,pandas,pysam,scipy,openpyxl,matplotlib; print("CORE_OK")'
               conda run --prefix "$PREFIX" samtools --version | sed -n '1p'
               conda run --prefix "$PREFIX" minimap2 --version
+              conda run --prefix "$PREFIX" bash -lc 'command -v bwa; command -v picard'
               ;;
             native-qdnaseq)
               conda run --prefix "$PREFIX" Rscript --vanilla -e 'stopifnot(requireNamespace("QDNAseq", quietly=TRUE), requireNamespace("Biobase", quietly=TRUE)); cat("QDNASEQ_OK\n")'
@@ -137,4 +142,4 @@ jobs:
         run: |
           docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.0.0'
           docker run --rm --entrypoint bash oncotracer:v2-ci -lc '! command -v nextflow'
-          docker run --rm --entrypoint bash oncotracer:v2-ci -lc 'Rscript --version; "$ONCOTRACER_QDNASEQ_PREFIX/bin/Rscript" -e "stopifnot(requireNamespace(\"QDNAseq\", quietly=TRUE))"; "$ONCOTRACER_ICHORCNA_PREFIX/bin/Rscript" -e "stopifnot(requireNamespace(\"ichorCNA\", quietly=TRUE))"'
+          docker run --rm --entrypoint bash oncotracer:v2-ci -lc 'command -v bwa; command -v samtools; command -v picard; "$ONCOTRACER_QDNASEQ_PREFIX/bin/Rscript" -e "stopifnot(requireNamespace(\"QDNAseq\", quietly=TRUE))"; "$ONCOTRACER_ICHORCNA_PREFIX/bin/Rscript" -e "stopifnot(requireNamespace(\"ichorCNA\", quietly=TRUE))"'
