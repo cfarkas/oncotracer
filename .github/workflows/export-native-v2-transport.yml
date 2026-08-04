@@ -1,0 +1,34 @@
+name: Export native v2 transport for forensic audit
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: github.head_ref == 'agent/native-v2-parity'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/native-v2-parity
+      - name: Record exact transport bytes
+        run: |
+          set -Eeuo pipefail
+          mkdir -p transport-audit
+          cp .github/native-v2-bundle.part* .github/native-v2-bundle.ready transport-audit/
+          cat .github/native-v2-bundle.part* > transport-audit/joined.transport.txt
+          sha256sum transport-audit/* > transport-audit/SHA256SUMS
+          wc -c transport-audit/* > transport-audit/BYTE_COUNTS
+          wc -l transport-audit/* > transport-audit/LINE_COUNTS
+      - name: Upload exact transport
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-v2-transport-${{ github.event.pull_request.head.sha }}
+          path: transport-audit/
+          if-no-files-found: error
+          retention-days: 30
