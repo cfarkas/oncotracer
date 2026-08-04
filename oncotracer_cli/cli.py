@@ -77,16 +77,21 @@ def _run(command: Sequence[str | Path], *, cwd: Path | None = None, dry_run: boo
 
 def _conda_prefixes(prefix: Path | None = None) -> dict[str, Path]:
     base = (prefix or (_data_home() / "envs")).expanduser().resolve()
-    return {name: base / name for name in ("core", "qdnaseq", "ichorcna")}
+    return {
+        name: base / name
+        for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
+    }
 
 
-def _install_conda(root: Path, args: argparse.Namespace) -> dict[str, object]:
-    conda = require_command("conda")
+def _install_conda(root: Path, args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
+    conda = shutil.which("conda") or ("conda" if args.dry_run else require_command("conda"))
     prefixes = _conda_prefixes(Path(args.prefix) if args.prefix else None)
     definitions = {
         "core": root / "environments" / "native-core.yml",
         "qdnaseq": root / "environments" / "native-qdnaseq.yml",
         "ichorcna": root / "environments" / "native-ichorcna.yml",
+        "classifier": root / "environments" / "native-classifier.yml",
+        "gistic": root / "environments" / "native-gistic2.yml",
     }
     for name, destination in prefixes.items():
         definition = require_file(definitions[name], f"native {name} environment definition")
@@ -103,8 +108,10 @@ def _install_conda(root: Path, args: argparse.Namespace) -> dict[str, object]:
         "core_prefix": str(prefixes["core"]),
         "qdnaseq_prefix": str(prefixes["qdnaseq"]),
         "ichorcna_prefix": str(prefixes["ichorcna"]),
+        "classifier_prefix": str(prefixes["classifier"]),
+        "gistic_prefix": str(prefixes["gistic"]),
     }
-    if not args.dry_run:
+    if save and not args.dry_run:
         _save_install_config(result)
     return result
 
@@ -153,9 +160,17 @@ def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
 
 
 def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
-    poetry = require_command("poetry")
+    poetry = shutil.which("poetry") or ("poetry" if args.dry_run else require_command("poetry"))
+    if not args.dry_run:
+        require_command("conda")
     _run([poetry, "install", "--no-interaction"], cwd=root, dry_run=args.dry_run)
-    result: dict[str, object] = {"backend": "poetry", "repository": str(root)}
+    scientific = _install_conda(root, args, save=False)
+    result: dict[str, object] = {
+        **scientific,
+        "backend": "poetry",
+        "repository": str(root),
+        "scientific_backend": "conda",
+    }
     if not args.dry_run:
         _save_install_config(result)
     return result
@@ -222,6 +237,10 @@ def _native_environment(config: dict[str, object]) -> dict[str, str]:
         environment["ONCOTRACER_QDNASEQ_PREFIX"] = str(config["qdnaseq_prefix"])
     if config.get("ichorcna_prefix"):
         environment["ONCOTRACER_ICHORCNA_PREFIX"] = str(config["ichorcna_prefix"])
+    if config.get("classifier_prefix"):
+        environment["ONCOTRACER_CLASSIFIER_PREFIX"] = str(config["classifier_prefix"])
+    if config.get("gistic_prefix"):
+        environment["ONCOTRACER_GISTIC_PREFIX"] = str(config["gistic_prefix"])
     return environment
 
 
@@ -284,13 +303,17 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
     config_path = require_file(config_path, "OncoTracer YAML config")
     backend = _backend_from(args)
     if backend in {"host", "poetry", "conda"}:
-        if backend == "conda":
+        if backend in {"conda", "poetry"}:
             install = _load_install_config()
-            required = {"core_prefix", "qdnaseq_prefix", "ichorcna_prefix"}
+            required = {
+                "core_prefix", "qdnaseq_prefix", "ichorcna_prefix",
+                "classifier_prefix", "gistic_prefix",
+            }
             missing = sorted(key for key in required if not install.get(key))
             if missing:
                 raise OncoTracerError(
-                    "Conda backend is not installed; run 'oncotracer install --conda' "
+                    f"{backend.capitalize()} backend is not installed; run "
+                    f"'oncotracer install --{backend}' "
                     f"(missing: {', '.join(missing)})"
                 )
         return _run_host(config_path, args)
@@ -488,12 +511,20 @@ def command_quickstart(args: argparse.Namespace) -> int:
     return 0
 
 
-def _check_process(command: Sequence[str], *, env: dict[str, str] | None = None) -> dict[str, object]:
+def _check_process(
+    command: Sequence[str],
+    *,
+    env: dict[str, str] | None = None,
+    accepted_returncodes: set[int] | None = None,
+) -> dict[str, object]:
     completed = subprocess.run(command, text=True, capture_output=True, env=env, check=False)
     text = (completed.stdout + completed.stderr).strip().splitlines()
+    accepted = accepted_returncodes or {0}
     return {
         "command": shlex.join(command),
         "returncode": completed.returncode,
+        "accepted_returncodes": sorted(accepted),
+        "success": completed.returncode in accepted,
         "first_line": text[0] if text else "",
     }
 
@@ -509,33 +540,55 @@ def command_doctor(args: argparse.Namespace) -> int:
         "nextflow_required": False,
         "checked_at": utc_now(),
     }
+    success = True
     if backend in {"host", "poetry", "conda"}:
         install = _load_install_config()
         environment = _native_environment(install)
-        commands = ["samtools", "bwa", "minimap2", "pigz"]
-        checks["commands"] = {
-            command: _check_process([command, "--version"], env=environment)
-            for command in commands
-            if shutil.which(command, path=environment.get("PATH"))
+        probes: dict[str, tuple[list[str], frozenset[int]]] = {
+            "samtools": (["samtools", "--version"], frozenset({0})),
+            "bwa": (["bwa"], frozenset({0, 1})),
+            "minimap2": (["minimap2", "--version"], frozenset({0, 1})),
+            "pigz": (["pigz", "--version"], frozenset({0})),
         }
+        command_checks: dict[str, dict[str, object]] = {}
+        for command, (probe, accepted_returncodes) in probes.items():
+            executable = shutil.which(command, path=environment.get("PATH"))
+            if not executable:
+                command_checks[command] = {
+                    "command": shlex.join(probe),
+                    "returncode": None,
+                    "first_line": "",
+                    "present": False,
+                    "success": False,
+                }
+                continue
+            result = _check_process(
+                probe,
+                env=environment,
+                accepted_returncodes=accepted_returncodes,
+            )
+            result["present"] = True
+            command_checks[command] = result
+        checks["commands"] = command_checks
         prefixes = {}
-        for name in ("core", "qdnaseq", "ichorcna"):
+        for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic2"):
             value = install.get(f"{name}_prefix")
             if value:
-                path = Path(str(value))
-                prefixes[name] = {"path": str(path), "exists": path.is_dir()}
+                prefix = Path(str(value))
+                prefixes[name] = {"path": str(prefix), "exists": prefix.is_dir()}
         checks["prefixes"] = prefixes
     elif backend == "docker":
         docker = require_command("docker")
         image = args.image or str(_load_install_config().get("image") or DEFAULT_IMAGE)
-        checks["docker"] = _check_process([docker, "run", "--rm", image, "doctor", "--backend", "host"])
+        result = _check_process([docker, "run", "--rm", image, "doctor", "--backend", "host"])
+        checks["docker"] = result
+        success = bool(result["success"])
     elif backend in {"singularity", "apptainer"}:
         executable = _singularity_command()
+        sif = str(_load_install_config().get("sif") or "")
         checks["runtime"] = executable
-        checks["sif"] = str(_load_install_config().get("sif") or "")
-    success = True
-    for value in checks.get("commands", {}).values() if isinstance(checks.get("commands"), dict) else []:
-        success = success and value.get("returncode") == 0
+        checks["sif"] = sif
+        success = bool(executable) and bool(sif) and Path(sif).is_file()
     checks["success"] = success
     print(json.dumps(checks, indent=2, sort_keys=True))
     return 0 if success else 1

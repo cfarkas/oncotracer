@@ -335,6 +335,7 @@ class CommandRunner:
         cwd: Path | None = None,
         env: Mapping[str, str] | None = None,
         stdout: TextIO | None = None,
+        stderr: TextIO | None = None,
         stdin: TextIO | int | None = None,
         check: bool = True,
     ) -> CommandResult:
@@ -352,6 +353,7 @@ class CommandRunner:
             env=dict(os.environ, **(dict(env) if env else {})),
             stdin=stdin,
             stdout=stdout,
+            stderr=stderr,
             check=False,
         )
         finished = utc_now()

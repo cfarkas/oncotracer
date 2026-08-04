@@ -37,6 +37,15 @@ class NativeDocumentationTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertEqual(text.count("```" ) % 2, 0, path)
 
+    def test_optional_classifier_is_documented_as_native(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8").lower()
+        configuration = (ROOT / "docs/configuration_v2.md").read_text(encoding="utf-8").lower()
+        architecture = (ROOT / "docs/native_architecture.md").read_text(encoding="utf-8").lower()
+        self.assertIn("run_cna_classifier: true", readme)
+        self.assertIn("run_cna_classifier: true", configuration)
+        self.assertIn("optional cna classifier", architecture)
+        self.assertNotIn("nextflow run", configuration)
+
     def test_mkdocs_contains_assurance_pages(self) -> None:
         text = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
         for page in ("native_architecture.md", "parity_release.md", "migration_v1_to_v2.md"):

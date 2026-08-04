@@ -54,8 +54,8 @@ class NativeCliTests(unittest.TestCase):
     def test_conda_prefixes_are_isolated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             prefixes = _conda_prefixes(Path(directory))
-            self.assertEqual(set(prefixes), {"core", "qdnaseq", "ichorcna"})
-            self.assertEqual(len(set(prefixes.values())), 3)
+            self.assertEqual(set(prefixes), {"core", "qdnaseq", "ichorcna", "classifier", "gistic"})
+            self.assertEqual(len(set(prefixes.values())), 5)
 
     def test_quickstart_configuration_generation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

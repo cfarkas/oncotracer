@@ -13,6 +13,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     ONCOTRACER_CORE_PREFIX=/opt/conda \
     ONCOTRACER_QDNASEQ_PREFIX=/opt/oncotracer-envs/qdnaseq \
     ONCOTRACER_ICHORCNA_PREFIX=/opt/oncotracer-envs/ichorcna \
+    ONCOTRACER_CLASSIFIER_PREFIX=/opt/oncotracer-envs/classifier \
+    ONCOTRACER_GISTIC_PREFIX=/opt/oncotracer-envs/gistic \
     MPLBACKEND=Agg \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/conda/bin:/usr/local/bin:$PATH
@@ -23,14 +25,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
 WORKDIR ${ONCOTRACER_HOME}
 COPY . ${ONCOTRACER_HOME}/
 
-# Core tools live in base so the existing direct BAM-refinement helper can use
-# the read-only-container fallback without creating another environment.
-# Do not prune the base prefix: Conda itself must remain available until the
-# two isolated scientific environments have been created.
+# Core tools live in base so the direct BAM-refinement helper can use the
+# read-only-container fallback without creating another environment.
 RUN conda config --system --set channel_priority strict \
     && conda env update --prefix /opt/conda --file environments/native-core.yml \
     && conda env create --prefix "${ONCOTRACER_QDNASEQ_PREFIX}" --file environments/native-qdnaseq.yml \
     && conda env create --prefix "${ONCOTRACER_ICHORCNA_PREFIX}" --file environments/native-ichorcna.yml \
+    && conda env create --prefix "${ONCOTRACER_CLASSIFIER_PREFIX}" --file environments/native-classifier.yml \
+    && conda env create --prefix "${ONCOTRACER_GISTIC_PREFIX}" --file environments/native-gistic2.yml \
     && conda clean -afy
 
 RUN python scripts/build_native_binary.py --root "${ONCOTRACER_HOME}" --output /usr/local/bin/oncotracer \

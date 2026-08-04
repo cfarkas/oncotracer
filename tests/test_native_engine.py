@@ -55,9 +55,12 @@ class NativeEngineTests(unittest.TestCase):
     def test_toolchain_wraps_stage_prefix(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for name in ("core", "qdna", "ichor"):
+            for name in ("core", "qdna", "ichor", "classifier", "gistic"):
                 (root / name).mkdir()
-            toolchain = Toolchain(root / "core", root / "qdna", root / "ichor")
+            toolchain = Toolchain(
+                root / "core", root / "qdna", root / "ichor",
+                root / "classifier", root / "gistic",
+            )
             with patch("oncotracer_cli.engine.require_command", return_value="conda"):
                 command = toolchain.wrap("qdnaseq", ["Rscript", "x.R"])
             self.assertEqual(command[:4], ["conda", "run", "--no-capture-output", "--prefix"])

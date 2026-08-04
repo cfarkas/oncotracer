@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
 from . import __version__
+from .classifier import run_native_classifier
 from .runtime import (
     CommandRunner,
     OncoTracerError,
@@ -66,6 +67,8 @@ class Toolchain:
     core_prefix: Path | None = None
     qdnaseq_prefix: Path | None = None
     ichorcna_prefix: Path | None = None
+    classifier_prefix: Path | None = None
+    gistic_prefix: Path | None = None
 
     @classmethod
     def from_environment(cls) -> "Toolchain":
@@ -77,6 +80,8 @@ class Toolchain:
             core_prefix=resolved("ONCOTRACER_CORE_PREFIX"),
             qdnaseq_prefix=resolved("ONCOTRACER_QDNASEQ_PREFIX"),
             ichorcna_prefix=resolved("ONCOTRACER_ICHORCNA_PREFIX"),
+            classifier_prefix=resolved("ONCOTRACER_CLASSIFIER_PREFIX"),
+            gistic_prefix=resolved("ONCOTRACER_GISTIC_PREFIX"),
         )
 
     def wrap(self, group: str, command: Sequence[str | Path]) -> list[str]:
@@ -86,6 +91,10 @@ class Toolchain:
             prefix = self.qdnaseq_prefix
         elif group == "ichorcna":
             prefix = self.ichorcna_prefix
+        elif group == "classifier":
+            prefix = self.classifier_prefix
+        elif group == "gistic":
+            prefix = self.gistic_prefix
         else:
             raise OncoTracerError(f"unknown toolchain group: {group}")
         argv = [str(item) for item in command]
@@ -403,10 +412,10 @@ def align_illumina(
                     f"illumina-markdup-{sample.sample}", mark_signature, [markdup, markdup_bai]
                 )
         else:
-            # Fail visibly in provenance but preserve functionality on minimal systems.
-            shutil.copy2(bam, markdup)
-            shutil.copy2(bai, markdup_bai)
-            atomic_write_text(metrics, "MarkDuplicates unavailable; BAM copied without duplicate marking.\n")
+            raise OncoTracerError(
+                "Picard MarkDuplicates is required for native Illumina analysis; "
+                "run 'oncotracer install --conda' or use the maintained container backend"
+            )
         results[sample.sample] = markdup
     return results
 
@@ -1012,6 +1021,9 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "03_cna_codification/cna_cytogenomic_notation.tsv",
         "04_cna_custom_plots/cna_per_sample_pages.pdf",
         "04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf",
+        "05_cna_classifier/native_classifier_summary.json",
+        "05_cna_classifier/02_classification/cna_patient_classification.tsv",
+        "05_cna_classifier/03_report/cna_classifier_report.html",
     ]:
         path = outdir / relative
         if path.is_file():
@@ -1152,6 +1164,18 @@ def run_native(
             outdir,
             lpwgs_root,
             runner,
+            toolchain,
+            force=force_run,
+        )
+
+    if _as_bool(config.get("run_cna_classifier"), False):
+        run_native_classifier(
+            root,
+            config,
+            outdir,
+            lpwgs_root,
+            runner,
+            ledger,
             toolchain,
             force=force_run,
         )

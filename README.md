@@ -8,6 +8,8 @@ OncoTracer v2 is a **native, auditable LP-WGS copy-number analysis application**
 
 ```text
 FASTQ -> alignment -> qDNAseq/ichorCNA -> BAM refinement -> CNA tables -> plots
+                                                             |
+                                                             +-> optional native CNA classifier/reports
 ```
 
 ## Install the global executable
@@ -35,6 +37,8 @@ Run a generated YAML:
 oncotracer run --backend conda --config project/config/illumina.auto.yml
 ```
 
+Set `run_cna_classifier: true` in the YAML to run the complete cancer-context classifier, optional GISTIC2 branch, knowledge/pathology concordance, HTML/PDF reports, and clinician summaries through the same native stage ledger.
+
 Run the complete public examples:
 
 ```bash
@@ -42,15 +46,16 @@ oncotracer quickstart 1 --backend conda --test-root "$PWD/quickstart1"
 oncotracer quickstart 2 --backend conda --test-root "$PWD/quickstart2"
 ```
 
-The [complete documentation](https://cfarkas.github.io/oncotracer/) contains installation, Automatic Setup, complete QuickStarts, configuration, output interpretation, provenance, v1.1 migration, and the v2 release parity reports.
+The [complete documentation](https://cfarkas.github.io/oncotracer/) contains installation, Automatic Setup, complete QuickStarts, classifier settings, output interpretation, provenance, v1.1 migration, and the v2 release parity reports.
 
 ## Release assurance
 
 Stable v2 releases are generated only after current `main` passes:
 
+- native source, copied executable, five managed environments, documentation, and container validation;
 - complete QuickStart 1 parity for both Illumina and ONT against the pinned v1.1 workflow;
 - complete three-library HCC1143 QuickStart 2 parity;
 - exact sample-set checks, CNA event precision/recall, refined-bin profile concordance, output hashes, and a native trace containing no Nextflow command;
-- copied single-file executable testing outside the repository checkout.
+- a complete offline native classifier integration test, including HTML/PDF and clinician reports.
 
 OncoTracer is for research use and is not a standalone diagnostic system.
