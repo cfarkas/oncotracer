@@ -1,0 +1,213 @@
+name: Native v2 QuickStart 1 parity
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NXF_ANSI_LOG: "false"
+  NXF_DISABLE_CHECK_LATEST: "true"
+  NXF_OPTS: "-Xms256m -Xmx2g"
+  NXF_GITHUB_TOKEN: ${{ github.token }}
+  PIP_NO_CACHE_DIR: "1"
+  XDG_CONFIG_HOME: ${{ runner.temp }}/oncotracer-v2-config
+  ONCOTRACER_PAYLOAD_CACHE: ${{ runner.temp }}/oncotracer-v2-payload
+
+jobs:
+  parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - name: Check out candidate v2
+        uses: actions/checkout@v4
+        with:
+          path: v2
+      - name: Check out frozen v1.1 baseline
+        uses: actions/checkout@v4
+        with:
+          ref: v1.1
+          path: v1
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune --all --force || true
+          df -h
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          activate-environment: base
+          auto-activate: true
+          conda-remove-defaults: true
+      - name: Install v1.1 host prerequisites and Nextflow comparator
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends samtools bwa minimap2 pigz curl wget git
+          curl -fsSL https://get.nextflow.io | bash
+          sudo install -m 0755 nextflow /usr/local/bin/nextflow
+          nextflow -version
+          docker info
+          docker pull carlosfarkas/oncotracer:latest
+          docker image inspect carlosfarkas/oncotracer:latest --format '{{index .RepoDigests 0}}' | tee "$RUNNER_TEMP/v1-docker-digest.txt"
+      - name: Add addressable-memory headroom
+        run: |
+          sudo fallocate -l 32G /swapfile.oncotracer-v2
+          sudo chmod 600 /swapfile.oncotracer-v2
+          sudo mkswap /swapfile.oncotracer-v2
+          sudo swapon /swapfile.oncotracer-v2 || true
+          sudo sysctl -w vm.swappiness=100 || true
+          free -h
+          df -h
+      - name: Build copied v2 executable and install native Conda backend
+        working-directory: v2
+        run: |
+          conda config --set channel_priority strict
+          conda config --set solver libmamba
+          python3 scripts/build_native_binary.py --output dist/oncotracer
+          chmod 0755 dist/oncotracer
+          dist/oncotracer --version
+          dist/oncotracer install --conda --prefix "$RUNNER_TEMP/oncotracer-v2-envs" \
+            | tee "$RUNNER_TEMP/native-install.json"
+      - name: Prepare checksum-validated public reads and isolated configs
+        run: |
+          set -Eeuo pipefail
+          TEST_ROOT="$GITHUB_WORKSPACE/parity-quickstart1"
+          INPUT_ROOT="$TEST_ROOT/input"
+          mkdir -p "$TEST_ROOT/configs" "$TEST_ROOT/reports"
+          "$GITHUB_WORKSPACE/v2/dist/oncotracer" quickstart 1 \
+            --test-root "$INPUT_ROOT" --download-only
+
+          python3 "$GITHUB_WORKSPACE/v2/tests/make_parity_config.py" \
+            --source "$INPUT_ROOT/configs/illumina.quickstart.yml" \
+            --destination "$TEST_ROOT/configs/v1-illumina.yml" \
+            --lpwgs-root "$TEST_ROOT" \
+            --outdir "$TEST_ROOT/v1/illumina"
+          python3 "$GITHUB_WORKSPACE/v2/tests/make_parity_config.py" \
+            --source "$INPUT_ROOT/configs/illumina.quickstart.yml" \
+            --destination "$TEST_ROOT/configs/v2-illumina.yml" \
+            --lpwgs-root "$TEST_ROOT" \
+            --outdir "$TEST_ROOT/v2/illumina"
+          python3 "$GITHUB_WORKSPACE/v2/tests/make_parity_config.py" \
+            --source "$INPUT_ROOT/configs/ont.quickstart.yml" \
+            --destination "$TEST_ROOT/configs/v1-ont.yml" \
+            --lpwgs-root "$TEST_ROOT" \
+            --outdir "$TEST_ROOT/v1/ont"
+          python3 "$GITHUB_WORKSPACE/v2/tests/make_parity_config.py" \
+            --source "$INPUT_ROOT/configs/ont.quickstart.yml" \
+            --destination "$TEST_ROOT/configs/v2-ont.yml" \
+            --lpwgs-root "$TEST_ROOT" \
+            --outdir "$TEST_ROOT/v2/ont"
+          {
+            echo "TEST_ROOT=$TEST_ROOT"
+            echo "INPUT_ROOT=$INPUT_ROOT"
+          } >> "$GITHUB_ENV"
+      - name: Limit nested v1.1 SAMURAI resources
+        run: |
+          for nested_home in \
+            "$TEST_ROOT/v1/illumina/01_samurai_illumina/.nextflow" \
+            "$TEST_ROOT/v1/ont/01_samurai_ont/.nextflow"; do
+            mkdir -p "$nested_home"
+            cat > "$nested_home/config" <<'EOF'
+          process {
+            resourceLimits = [cpus: 4, memory: '14.GB', time: '6.h']
+          }
+          conda { useMamba = false }
+          EOF
+          done
+      - name: Run complete frozen v1.1 baseline
+        run: |
+          set -Eeuo pipefail
+          nextflow run "$GITHUB_WORKSPACE/v1/main.nf" --docker \
+            -params-file "$TEST_ROOT/configs/v1-illumina.yml" \
+            -work-dir "$TEST_ROOT/work/v1-illumina" \
+            -with-report "$TEST_ROOT/reports/v1-illumina.html" \
+            -with-trace "$TEST_ROOT/reports/v1-illumina.tsv" \
+            -resume 2>&1 | tee "$TEST_ROOT/reports/v1-illumina.log"
+          nextflow run "$GITHUB_WORKSPACE/v1/main.nf" --docker \
+            -params-file "$TEST_ROOT/configs/v1-ont.yml" \
+            -work-dir "$TEST_ROOT/work/v1-ont" \
+            -with-report "$TEST_ROOT/reports/v1-ont.html" \
+            -with-trace "$TEST_ROOT/reports/v1-ont.tsv" \
+            -resume 2>&1 | tee "$TEST_ROOT/reports/v1-ont.log"
+      - name: Run complete copied native v2 executable
+        run: |
+          set -Eeuo pipefail
+          "$GITHUB_WORKSPACE/v2/dist/oncotracer" run --backend conda \
+            --config "$TEST_ROOT/configs/v2-illumina.yml" --threads 4 \
+            2>&1 | tee "$TEST_ROOT/reports/v2-illumina.log"
+          "$GITHUB_WORKSPACE/v2/dist/oncotracer" run --backend conda \
+            --config "$TEST_ROOT/configs/v2-ont.yml" --threads 4 \
+            2>&1 | tee "$TEST_ROOT/reports/v2-ont.log"
+      - name: Produce semantic parity records
+        run: |
+          set -Eeuo pipefail
+          python3 "$GITHUB_WORKSPACE/v2/tests/compare_native_parity.py" \
+            --v1 "$TEST_ROOT/v1/illumina" \
+            --v2 "$TEST_ROOT/v2/illumina" \
+            --outdir "$TEST_ROOT/audit/illumina" \
+            --label "QuickStart 1 / Illumina"
+          python3 "$GITHUB_WORKSPACE/v2/tests/compare_native_parity.py" \
+            --v1 "$TEST_ROOT/v1/ont" \
+            --v2 "$TEST_ROOT/v2/ont" \
+            --outdir "$TEST_ROOT/audit/ont" \
+            --label "QuickStart 1 / ONT"
+          grep -Rni nextflow "$TEST_ROOT/v2"/*/.oncotracer-native/trace.tsv && exit 1 || true
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ['TEST_ROOT'])
+          reports = [json.loads((root/'audit'/name/'parity_report.json').read_text()) for name in ('illumina','ont')]
+          overall = {
+              'schema': 'oncotracer-quickstart1-parity-v1',
+              'passed': all(report['passed'] for report in reports),
+              'reports': reports,
+          }
+          path = root/'audit'/'quickstart1_parity.json'
+          path.write_text(json.dumps(overall, indent=2, sort_keys=True)+'\n')
+          checksums=[]
+          for item in sorted((root/'audit').rglob('*')):
+              if item.is_file() and item.name != 'SHA256SUMS':
+                  checksums.append(f"{hashlib.sha256(item.read_bytes()).hexdigest()}  {item.relative_to(root/'audit')}" )
+          (root/'audit'/'SHA256SUMS').write_text('\n'.join(checksums)+'\n')
+          if not overall['passed']:
+              raise SystemExit('QuickStart 1 parity failed')
+          PY
+      - name: Collect audit bundle
+        if: always()
+        run: |
+          mkdir -p "$TEST_ROOT/audit/context"
+          cp "$RUNNER_TEMP/v1-docker-digest.txt" "$TEST_ROOT/audit/context/" || true
+          cp "$RUNNER_TEMP/native-install.json" "$TEST_ROOT/audit/context/" || true
+          cp "$TEST_ROOT/configs"/*.yml "$TEST_ROOT/audit/context/" || true
+          cp "$TEST_ROOT/v1/illumina/06_workflow_summary/workflow_summary.txt" "$TEST_ROOT/audit/context/v1-illumina-summary.txt" || true
+          cp "$TEST_ROOT/v1/ont/06_workflow_summary/workflow_summary.txt" "$TEST_ROOT/audit/context/v1-ont-summary.txt" || true
+          cp "$TEST_ROOT/v2/illumina/06_workflow_summary/"* "$TEST_ROOT/audit/context/" || true
+          cp "$TEST_ROOT/v2/ont/06_workflow_summary/"* "$TEST_ROOT/audit/context/" || true
+          cp "$TEST_ROOT/v2/illumina/.oncotracer-native/trace.tsv" "$TEST_ROOT/audit/context/v2-illumina-trace.tsv" || true
+          cp "$TEST_ROOT/v2/ont/.oncotracer-native/trace.tsv" "$TEST_ROOT/audit/context/v2-ont-trace.tsv" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-v2-quickstart1-parity-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          include-hidden-files: true
+          path: |
+            parity-quickstart1/audit/**
+            parity-quickstart1/reports/*.log
+            parity-quickstart1/reports/*.tsv

@@ -1,0 +1,216 @@
+name: Release stable native v2
+
+on:
+  workflow_run:
+    workflows:
+      - Native v2 QuickStart 1 parity
+      - Native v2 QuickStart 2 parity
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  packages: write
+
+concurrency:
+  group: release-native-v2.0.0
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Resolve exact current-main parity runs
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -Eeuo pipefail
+          MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          if [[ '${{ github.event_name }}' != 'workflow_dispatch' && "$EVENT_SHA" != "$MAIN_SHA" ]]; then
+            echo "validated event SHA $EVENT_SHA is stale; current main is $MAIN_SHA"
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          RUNS="$(gh api -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$MAIN_SHA&per_page=100")"
+          resolve_run() {
+            local name="$1"
+            jq -r --arg name "$name" --arg sha "$MAIN_SHA" '
+              [.workflow_runs[] |
+                select(.name == $name and .head_sha == $sha and .event == "push" and
+                       .status == "completed" and .conclusion == "success")] |
+              sort_by(.run_number) | last | (.id|tostring) + "\t" + .html_url
+            ' <<< "$RUNS"
+          }
+          Q1="$(resolve_run 'Native v2 QuickStart 1 parity')"
+          Q2="$(resolve_run 'Native v2 QuickStart 2 parity')"
+          if [[ -z "$Q1" || "$Q1" == 'null' || -z "$Q2" || "$Q2" == 'null' ]]; then
+            echo "Both successful push-triggered parity workflows are not yet present for $MAIN_SHA"
+            jq -r '.workflow_runs[] | [.name,.event,.status,.conclusion,.head_sha,.html_url] | @tsv' <<< "$RUNS" || true
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          IFS=$'\t' read -r Q1_ID Q1_URL <<< "$Q1"
+          IFS=$'\t' read -r Q2_ID Q2_URL <<< "$Q2"
+          {
+            echo 'ready=true'
+            echo "main_sha=$MAIN_SHA"
+            echo "q1_id=$Q1_ID"
+            echo "q1_url=$Q1_URL"
+            echo "q2_id=$Q2_ID"
+            echo "q2_url=$Q2_URL"
+          } >> "$GITHUB_OUTPUT"
+      - name: Check out the validated main SHA
+        if: steps.gate.outputs.ready == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.gate.outputs.main_sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          python-version: "3.11"
+      - name: Build and test standalone release executable
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          set -Eeuo pipefail
+          mkdir -p release
+          python3 scripts/build_native_binary.py --output release/oncotracer
+          chmod 0755 release/oncotracer
+          (cd /tmp && "$GITHUB_WORKSPACE/release/oncotracer" --version | grep -F 'OncoTracer 2.0.0')
+          sha256sum release/oncotracer > release/SHA256SUMS
+      - name: Download both auditable parity artifacts
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          Q1_ID: ${{ steps.gate.outputs.q1_id }}
+          Q2_ID: ${{ steps.gate.outputs.q2_id }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p release/parity/quickstart1 release/parity/quickstart2
+          gh run download "$Q1_ID" \
+            --name "native-v2-quickstart1-parity-$Q1_ID" \
+            --dir release/parity/quickstart1
+          gh run download "$Q2_ID" \
+            --name "native-v2-quickstart2-parity-$Q2_ID" \
+            --dir release/parity/quickstart2
+          test "$(jq -r '.passed' release/parity/quickstart1/audit/quickstart1_parity.json)" = true
+          test "$(jq -r '.passed' release/parity/quickstart2/audit/parity_report.json)" = true
+          tar -C release/parity -czf release/oncotracer-v2.0.0-parity-audit.tar.gz quickstart1 quickstart2
+          sha256sum release/oncotracer-v2.0.0-parity-audit.tar.gz >> release/SHA256SUMS
+      - name: Write release provenance
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          Q1_ID: ${{ steps.gate.outputs.q1_id }}
+          Q1_URL: ${{ steps.gate.outputs.q1_url }}
+          Q2_ID: ${{ steps.gate.outputs.q2_id }}
+          Q2_URL: ${{ steps.gate.outputs.q2_url }}
+        run: |
+          jq -n \
+            --arg schema 'oncotracer-v2-release-provenance-v1' \
+            --arg version '2.0.0' \
+            --arg commit "$MAIN_SHA" \
+            --arg q1_id "$Q1_ID" --arg q1_url "$Q1_URL" \
+            --arg q2_id "$Q2_ID" --arg q2_url "$Q2_URL" \
+            --arg binary_sha256 "$(awk '$2=="release/oncotracer" || $2=="oncotracer" {print $1}' release/SHA256SUMS | head -1)" \
+            '{schema:$schema,version:$version,commit:$commit,
+              quickstart1:{run_id:$q1_id,url:$q1_url},
+              quickstart2:{run_id:$q2_id,url:$q2_url},
+              binary_sha256:$binary_sha256,
+              native_nextflow_required:false}' \
+            > release/release-provenance.json
+          sha256sum release/release-provenance.json >> release/SHA256SUMS
+      - name: Log in to GitHub Container Registry
+        if: steps.gate.outputs.ready == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Set up Docker Buildx
+        if: steps.gate.outputs.ready == 'true'
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push native stable container
+        if: steps.gate.outputs.ready == 'true'
+        uses: docker/build-push-action@v6
+        id: image
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/cfarkas/oncotracer:2.0.0
+            ghcr.io/cfarkas/oncotracer:2.0
+            ghcr.io/cfarkas/oncotracer:latest
+          labels: |
+            org.opencontainers.image.revision=${{ steps.gate.outputs.main_sha }}
+            org.opencontainers.image.version=2.0.0
+      - name: Complete provenance with container digest
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          tmp="$(mktemp)"
+          jq --arg digest "$DIGEST" '.container_digest=$digest' release/release-provenance.json > "$tmp"
+          mv "$tmp" release/release-provenance.json
+          grep -v 'release-provenance.json' release/SHA256SUMS > release/SHA256SUMS.tmp || true
+          mv release/SHA256SUMS.tmp release/SHA256SUMS
+          sha256sum release/release-provenance.json >> release/SHA256SUMS
+      - name: Publish stable v2.0.0 release
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          Q1_URL: ${{ steps.gate.outputs.q1_url }}
+          Q2_URL: ${{ steps.gate.outputs.q2_url }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -Eeuo pipefail
+          cat > release/RELEASE_NOTES.md <<EOF
+          # OncoTracer v2.0.0
+
+          Stable native release for Illumina and Oxford Nanopore LP-WGS CNA analysis.
+
+          - Global copied executable: \`sudo install -m 0755 oncotracer /usr/local/bin/oncotracer\`.
+          - Native Python/R stage graph; Java and Nextflow are not required or invoked.
+          - Conda, Docker, Singularity/Apptainer, and Poetry installation commands.
+          - Complete QuickStart 1 parity for Illumina and ONT: $Q1_URL
+          - Complete three-library HCC1143 QuickStart 2 parity: $Q2_URL
+          - Validated source commit: \`$MAIN_SHA\`
+          - Native container: \`ghcr.io/cfarkas/oncotracer:2.0.0@$IMAGE_DIGEST\`
+
+          The attached parity audit bundle contains semantic thresholds, observed metrics, event matches, refined-bin concordance, command traces, summaries, manifests, and SHA-256 records. OncoTracer remains for research use and is not a standalone diagnostic system.
+          EOF
+          if gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            git fetch --force --tags origin
+            TAG_SHA="$(git rev-list -n 1 v2.0.0)"
+            test "$TAG_SHA" = "$MAIN_SHA"
+            gh release upload v2.0.0 \
+              release/oncotracer \
+              release/SHA256SUMS \
+              release/release-provenance.json \
+              release/oncotracer-v2.0.0-parity-audit.tar.gz \
+              --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create v2.0.0 \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$MAIN_SHA" \
+              --title 'OncoTracer v2.0.0' \
+              --notes-file release/RELEASE_NOTES.md \
+              release/oncotracer \
+              release/SHA256SUMS \
+              release/release-provenance.json \
+              release/oncotracer-v2.0.0-parity-audit.tar.gz
+          fi
+          gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,isDraft,isPrerelease,targetCommitish,publishedAt,url,assets

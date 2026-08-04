@@ -1,0 +1,140 @@
+name: Native v2 CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-binary:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install source-test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends r-base-core
+      - name: Parse Python, Bash, and native R sources
+        run: |
+          python3 -m compileall -q oncotracer_cli tests scripts bin
+          find bin examples tests -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
+          Rscript -e "parse(file='bin/scripts/native_qdnaseq.R')"
+          Rscript -e "parse(file='bin/scripts/native_qdnaseq_pon.R')"
+          Rscript -e "parse(file='bin/scripts/native_ichorcna.R')"
+      - name: Run native unit and audit tests
+        run: |
+          python3 -m unittest -v \
+            tests/test_native_cli.py \
+            tests/test_native_engine.py \
+            tests/test_compare_native_parity.py \
+            tests/test_native_docs.py
+      - name: Build and test the copied single-file executable
+        run: |
+          python3 scripts/build_native_binary.py --output dist/oncotracer
+          test -x dist/oncotracer
+          sha256sum dist/oncotracer | tee dist/oncotracer.sha256
+          mkdir -p "$RUNNER_TEMP/outside-checkout"
+          cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
+          cd "$RUNNER_TEMP/outside-checkout"
+          ./oncotracer --version | grep -F 'OncoTracer 2.0.0'
+          ./oncotracer --help | grep -F 'Native LP-WGS CNA analysis without Nextflow'
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          executable = Path('oncotracer')
+          assert zipfile.is_zipfile(executable)
+          with zipfile.ZipFile(executable) as archive:
+              names = set(archive.namelist())
+          assert 'payload/bin/scripts/native_qdnaseq.R' in names
+          assert 'payload/bin/scripts/native_qdnaseq_pon.R' in names
+          assert 'payload/bin/scripts/native_ichorcna.R' in names
+          assert not any(name.endswith('/main.nf') or name == 'main.nf' for name in names)
+          PY
+      - name: Verify Poetry launcher installation
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install 'poetry>=2,<3'
+          poetry check --lock
+          poetry install --no-interaction
+          poetry run oncotracer --version | grep -F 'OncoTracer 2.0.0'
+      - name: Build documentation strictly
+        run: |
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-v2-binary-${{ github.run_id }}
+          retention-days: 30
+          path: |
+            dist/oncotracer
+            dist/oncotracer.sha256
+
+  environment-solve:
+    name: Solve ${{ matrix.environment }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [native-core, native-qdnaseq, native-ichorcna]
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          activate-environment: base
+          auto-activate: true
+          conda-remove-defaults: true
+      - name: Create the exact environment
+        run: |
+          conda config --set channel_priority strict
+          conda config --set solver libmamba
+          conda env create \
+            --prefix "$RUNNER_TEMP/${{ matrix.environment }}" \
+            --file "environments/${{ matrix.environment }}.yml"
+      - name: Verify native stage commands
+        run: |
+          PREFIX="$RUNNER_TEMP/${{ matrix.environment }}"
+          case '${{ matrix.environment }}' in
+            native-core)
+              conda run --prefix "$PREFIX" python -c 'import numpy,pandas,pysam,scipy,openpyxl,matplotlib; print("CORE_OK")'
+              conda run --prefix "$PREFIX" samtools --version | sed -n '1p'
+              conda run --prefix "$PREFIX" minimap2 --version
+              ;;
+            native-qdnaseq)
+              conda run --prefix "$PREFIX" Rscript --vanilla -e 'stopifnot(requireNamespace("QDNAseq", quietly=TRUE), requireNamespace("Biobase", quietly=TRUE)); cat("QDNASEQ_OK\n")'
+              ;;
+            native-ichorcna)
+              conda run --prefix "$PREFIX" Rscript --vanilla -e 'stopifnot(requireNamespace("ichorCNA", quietly=TRUE)); cat("ICHORCNA_OK\n")'
+              conda run --prefix "$PREFIX" readCounter 2>&1 | sed -n '1,4p' || true
+              ;;
+          esac
+
+  docker-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune --all --force || true
+          df -h
+      - name: Build native image
+        run: docker build --tag oncotracer:v2-ci .
+      - name: Verify native image and absent Nextflow
+        run: |
+          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.0.0'
+          docker run --rm --entrypoint bash oncotracer:v2-ci -lc '! command -v nextflow'
+          docker run --rm --entrypoint bash oncotracer:v2-ci -lc 'Rscript --version; "$ONCOTRACER_QDNASEQ_PREFIX/bin/Rscript" -e "stopifnot(requireNamespace(\"QDNAseq\", quietly=TRUE))"; "$ONCOTRACER_ICHORCNA_PREFIX/bin/Rscript" -e "stopifnot(requireNamespace(\"ichorCNA\", quietly=TRUE))"'
