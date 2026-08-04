@@ -1,0 +1,98 @@
+name: Materialize native classifier integration
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: native-classifier-materialize-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    if: github.head_ref == 'agent/native-v2-parity'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/native-v2-parity
+          fetch-depth: 0
+      - name: Authenticate and extract the reviewed overlay
+        run: |
+          set -Eeuo pipefail
+          echo '75fc9bf97e0312e3aa550fa8290e0e1aa8c8a4127f842ba1718a0239aff956e6  .github/native-classifier-overlay.tar.gz' | sha256sum -c -
+          tar -tzf .github/native-classifier-overlay.tar.gz > "$RUNNER_TEMP/native-classifier-manifest.txt"
+          python3 - "$RUNNER_TEMP/native-classifier-manifest.txt" <<'PY'
+          import sys
+          from pathlib import PurePosixPath
+          for raw in open(sys.argv[1], encoding='utf-8'):
+              name = raw.strip()
+              if not name:
+                  continue
+              path = PurePosixPath(name)
+              if path.is_absolute() or '..' in path.parts:
+                  raise SystemExit(f'ERROR: unsafe archive path: {name}')
+          PY
+          tar -xzf .github/native-classifier-overlay.tar.gz
+          rm -f MANIFEST.sha256
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install offline-classifier test dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pandas openpyxl numpy scipy scikit-learn matplotlib jinja2 requests reportlab pypdf
+      - name: Validate native source, classifier graph, and copied executable
+        run: |
+          set -Eeuo pipefail
+          python3 -m compileall -q oncotracer_cli tests scripts bin
+          python3 -m unittest -v \
+            tests/test_native_cli.py \
+            tests/test_native_engine.py \
+            tests/test_compare_native_parity.py \
+            tests/test_native_docs.py \
+            tests/test_poetry_cli.py \
+            tests/test_native_classifier.py
+          python3 scripts/build_native_binary.py --output "$RUNNER_TEMP/oncotracer"
+          (cd /tmp && "$RUNNER_TEMP/oncotracer" --version | grep -F 'OncoTracer 2.0.0')
+          python3 - "$RUNNER_TEMP/oncotracer" <<'PY'
+          import sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              names=set(archive.namelist())
+          required={
+              'oncotracer_cli/classifier.py',
+              'payload/bin/cna_classifier_nf/bin/01_prepare_cna_inputs.py',
+              'payload/bin/cna_classifier_nf/assets/pancancer_cna_regions.tsv',
+              'payload/environments/native-classifier.yml',
+              'payload/environments/native-gistic2.yml',
+          }
+          missing=sorted(required-names)
+          if missing:
+              raise SystemExit(f'ERROR: copied executable lacks classifier payload: {missing}')
+          if any(name.endswith('.nf') for name in names):
+              raise SystemExit('ERROR: copied executable contains a Nextflow source')
+          PY
+          if grep -R -n --include='*.py' --include='*.R' --include='Dockerfile' \
+            -E 'nextflow[[:space:]]+run|exec[[:space:]]+nextflow' \
+            oncotracer_cli bin/scripts Dockerfile; then
+            echo 'ERROR: native runtime source invokes Nextflow' >&2
+            exit 1
+          fi
+      - name: Commit the validated non-workflow integration
+        run: |
+          set -Eeuo pipefail
+          find oncotracer_cli tests scripts bin -type d -name __pycache__ -prune -exec rm -rf {} +
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            README.md Dockerfile \
+            oncotracer_cli/classifier.py oncotracer_cli/engine.py oncotracer_cli/cli.py oncotracer_cli/runtime.py \
+            environments/native-classifier.yml environments/native-gistic2.yml \
+            tests/test_native_classifier.py tests/test_native_cli.py tests/test_native_engine.py tests/test_native_docs.py \
+            docs/installation.md docs/configuration_v2.md docs/native_architecture.md docs/running.md
+          git status --short
+          git commit -m 'Integrate the complete optional classifier into native v2'
+          git push origin HEAD:agent/native-v2-parity
