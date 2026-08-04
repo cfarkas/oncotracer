@@ -4,10 +4,16 @@ on:
   issues:
     types:
       - opened
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
   issues: write
+  pull-requests: write
 
 concurrency:
   group: bootstrap-native-v2
@@ -15,7 +21,9 @@ concurrency:
 
 jobs:
   apply:
-    if: github.event.issue.title == '[oncotracer-bootstrap] apply native v2 bundle'
+    if: >-
+      (github.event_name == 'issues' && github.event.issue.title == '[oncotracer-bootstrap] apply native v2 bundle') ||
+      (github.event_name == 'pull_request_target' && github.event.pull_request.head.ref == 'agent/native-v2-parity' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     steps:
       - name: Check out the isolated implementation branch
@@ -72,10 +80,20 @@ jobs:
           git commit -m 'Implement native OncoTracer v2 with parity release gates'
           git push origin HEAD:agent/native-v2-parity
 
-      - name: Record completion on the bootstrap issue
+      - name: Record completion on an issue trigger
+        if: github.event_name == 'issues'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue comment "${{ github.event.issue.number }}" \
             --repo "$GITHUB_REPOSITORY" \
             --body "Native v2 source archive authenticated and materialized on \`agent/native-v2-parity\` from SHA-256 \`f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1\`."
+
+      - name: Record completion on a pull-request trigger
+        if: github.event_name == 'pull_request_target'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Native v2 source archive authenticated and materialized from SHA-256 \`f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1\`."
