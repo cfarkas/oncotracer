@@ -28,27 +28,77 @@ jobs:
           set -Eeuo pipefail
           python3 - "$RUNNER_TEMP/native-v2.tar.gz" <<'PY'
           import base64
+          import binascii
           import hashlib
           import sys
+          import zlib
           from pathlib import Path
 
           output = Path(sys.argv[1])
-          parts = sorted(Path('.github').glob('native-v2-bundle.part*'))
-          if len(parts) != 10:
-              raise SystemExit(f'ERROR: expected 10 bundle parts, found {len(parts)}')
-          text = ''.join(part.read_text(encoding='ascii') for part in parts)
-          clean = ''.join(text.split())
-          allowed = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
-          bad = sorted(set(clean) - allowed)
-          if bad:
-              raise SystemExit(f'ERROR: invalid base64 transport characters: {bad!r}')
-          print(f'parts={len(parts)} base64_characters={len(clean)}')
-          raw = base64.b64decode(clean, validate=True)
-          digest = hashlib.sha256(raw).hexdigest()
           expected = 'f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1'
+          paths = sorted(Path('.github').glob('native-v2-bundle.part*'))
+          if len(paths) != 10:
+              raise SystemExit(f'ERROR: expected 10 bundle parts, found {len(paths)}')
+          parts = [''.join(path.read_text(encoding='ascii').split()) for path in paths]
+          print('part_lengths=' + ','.join(str(len(part)) for part in parts))
+
+          def authenticated(value: str):
+              if len(value) % 4:
+                  return None
+              try:
+                  raw_value = base64.b64decode(value, validate=True)
+              except binascii.Error:
+                  return None
+              return raw_value if hashlib.sha256(raw_value).hexdigest() == expected else None
+
+          joined = ''.join(parts)
+          raw = authenticated(joined)
+          recovery = None
+          if raw is None:
+              # The transport log shows exactly two surplus non-whitespace
+              # characters, one in part00 and one in part06. Recover only a
+              # candidate that authenticates to the pre-recorded SHA-256.
+              prefix_tail = ''.join(parts[1:6])
+              scores = []
+              for index, character in enumerate(parts[0]):
+                  candidate = parts[0][:index] + parts[0][index + 1:] + prefix_tail
+                  candidate = candidate[:len(candidate) - (len(candidate) % 4)]
+                  try:
+                      compressed = base64.b64decode(candidate, validate=True)
+                      inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
+                      unpacked = inflater.decompress(compressed)
+                  except (binascii.Error, zlib.error):
+                      continue
+                  scores.append((len(unpacked), index, character))
+              if not scores:
+                  raise SystemExit('ERROR: no part00 deletion preserved a valid gzip prefix')
+              ranked = sorted(scores, reverse=True)
+              print('part00_recovery_candidates=' + ','.join(
+                  f'index:{index}/char:{character!r}/unpacked:{size}'
+                  for size, index, character in ranked[:16]
+              ))
+              for _, index0, character0 in ranked[:32]:
+                  fixed0 = parts[0][:index0] + parts[0][index0 + 1:]
+                  for index6, character6 in enumerate(parts[6]):
+                      fixed6 = parts[6][:index6] + parts[6][index6 + 1:]
+                      candidate = ''.join(parts[:0] + [fixed0] + parts[1:6] + [fixed6] + parts[7:])
+                      raw_candidate = authenticated(candidate)
+                      if raw_candidate is not None:
+                          raw = raw_candidate
+                          recovery = (index0, character0, index6, character6)
+                          break
+                  if raw is not None:
+                      break
+          if raw is None:
+              raise SystemExit('ERROR: transport recovery did not reproduce the signed archive')
+          digest = hashlib.sha256(raw).hexdigest()
           print(f'archive_bytes={len(raw)} sha256={digest}')
-          if digest != expected:
-              raise SystemExit(f'ERROR: archive SHA-256 mismatch: {digest} != {expected}')
+          if recovery is not None:
+              print(
+                  'recovered_transport='
+                  f'part00[{recovery[0]}]={recovery[1]!r},'
+                  f'part06[{recovery[2]}]={recovery[3]!r}'
+              )
           output.write_bytes(raw)
           PY
           tar -tzf "$RUNNER_TEMP/native-v2.tar.gz" > "$RUNNER_TEMP/archive-manifest.txt"
