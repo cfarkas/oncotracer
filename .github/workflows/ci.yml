@@ -83,6 +83,13 @@ jobs:
           sed -n '1,240p' "$RUNNER_TEMP/archive-manifest.txt"
           tar -xzf "$RUNNER_TEMP/native-v2.tar.gz"
 
+          mkdir -p ci/workflow-sources
+          cp .github/workflows/native-v2-ci.yml ci/workflow-sources/native-v2-ci.yml
+          cp .github/workflows/native-v2-quickstart1-parity.yml ci/workflow-sources/native-v2-quickstart1-parity.yml
+          cp .github/workflows/native-v2-quickstart2-parity.yml ci/workflow-sources/native-v2-quickstart2-parity.yml
+          cp .github/workflows/release-v2.yml ci/workflow-sources/release-v2.yml
+          sha256sum ci/workflow-sources/*.yml
+
       - name: Validate source and copied executable
         run: |
           set -Eeuo pipefail
@@ -102,7 +109,7 @@ jobs:
             exit 1
           fi
 
-      - name: Commit only the validated non-workflow implementation
+      - name: Commit validated source and workflow blob sources
         run: |
           set -Eeuo pipefail
           find oncotracer_cli tests scripts -type d -name __pycache__ -prune -exec rm -rf {} +
@@ -115,11 +122,11 @@ jobs:
             bin/scripts/native_qdnaseq.R \
             bin/scripts/native_qdnaseq_pon.R \
             scripts/build_native_binary.py \
-            environments tests docs
+            environments tests docs ci/workflow-sources
           git status --short
           if git diff --cached --quiet; then
-            echo 'Validated native v2 source is already materialized.'
+            echo 'Validated native v2 source and workflow blobs are already materialized.'
             exit 0
           fi
-          git commit -m 'Materialize validated native OncoTracer v2 source'
+          git commit -m 'Stage reviewed native v2 workflow blobs'
           git push origin HEAD:agent/native-v2-parity
