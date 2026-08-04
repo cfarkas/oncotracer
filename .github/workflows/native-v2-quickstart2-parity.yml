@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: native-v2-quickstart2-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   NXF_ANSI_LOG: "false"
   NXF_DISABLE_CHECK_LATEST: "true"
@@ -18,6 +22,9 @@ env:
   PIP_NO_CACHE_DIR: "1"
   XDG_CONFIG_HOME: /tmp/oncotracer-v2-config
   ONCOTRACER_PAYLOAD_CACHE: /tmp/oncotracer-v2-payload
+  V2_ENV_PREFIX: /tmp/oncotracer-v2-envs
+  TEST_ROOT: ${{ github.workspace }}/parity-quickstart2
+  INPUT_ROOT: ${{ github.workspace }}/parity-quickstart2/input
 
 jobs:
   parity:
@@ -80,13 +87,20 @@ jobs:
           conda config --set solver libmamba
           python3 scripts/build_native_binary.py --output dist/oncotracer
           chmod 0755 dist/oncotracer
-          dist/oncotracer install --conda --prefix "$RUNNER_TEMP/oncotracer-v2-envs" \
+          dist/oncotracer --version
+          sha256sum dist/oncotracer | tee "$RUNNER_TEMP/native-binary.sha256"
+          git rev-parse HEAD | tee "$RUNNER_TEMP/v2-source-commit.txt"
+          git -C "$GITHUB_WORKSPACE/v1" rev-parse HEAD | tee "$RUNNER_TEMP/v1-baseline-commit.txt"
+          dist/oncotracer install --conda --prefix "$V2_ENV_PREFIX" \
             | tee "$RUNNER_TEMP/native-install.json"
+          dist/oncotracer doctor --backend conda | tee "$RUNNER_TEMP/native-doctor.json"
+          for name in core qdnaseq ichorcna; do
+            conda list --explicit --prefix "$V2_ENV_PREFIX/$name" \
+              > "$RUNNER_TEMP/native-${name}.explicit.txt"
+          done
       - name: Download and validate all six HCC1143 FASTQs
         run: |
           set -Eeuo pipefail
-          TEST_ROOT="$GITHUB_WORKSPACE/parity-quickstart2"
-          INPUT_ROOT="$TEST_ROOT/input"
           mkdir -p "$TEST_ROOT/configs" "$TEST_ROOT/reports"
           "$GITHUB_WORKSPACE/v2/dist/oncotracer" quickstart 2 \
             --test-root "$INPUT_ROOT" --download-only
@@ -100,10 +114,6 @@ jobs:
             --destination "$TEST_ROOT/configs/v2-hcc1143.yml" \
             --lpwgs-root "$TEST_ROOT" \
             --outdir "$TEST_ROOT/v2/hcc1143"
-          {
-            echo "TEST_ROOT=$TEST_ROOT"
-            echo "INPUT_ROOT=$INPUT_ROOT"
-          } >> "$GITHUB_ENV"
       - name: Limit nested v1.1 SAMURAI resources
         run: |
           nested_home="$TEST_ROOT/v1/hcc1143/01_samurai_illumina/.nextflow"
@@ -138,28 +148,43 @@ jobs:
             --outdir "$TEST_ROOT/audit" \
             --label "QuickStart 2 / HCC1143"
           grep -ni nextflow "$TEST_ROOT/v2/hcc1143/.oncotracer-native/trace.tsv" && exit 1 || true
-          python3 - <<'PY'
-          import hashlib, os
-          from pathlib import Path
-          root=Path(os.environ['TEST_ROOT'])/'audit'
-          rows=[]
-          for path in sorted(root.rglob('*')):
-              if path.is_file() and path.name != 'SHA256SUMS':
-                  rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root)}")
-          (root/'SHA256SUMS').write_text('\n'.join(rows)+'\n')
-          PY
       - name: Collect audit context
         if: always()
         run: |
+          set +e
           mkdir -p "$TEST_ROOT/audit/context"
+          printf '%s\n' "$GITHUB_SHA" > "$TEST_ROOT/audit/context/workflow-event-sha.txt"
           cp "$RUNNER_TEMP/v1-docker-digest.txt" "$TEST_ROOT/audit/context/" || true
           cp "$RUNNER_TEMP/native-install.json" "$TEST_ROOT/audit/context/" || true
+          cp "$RUNNER_TEMP/native-doctor.json" "$TEST_ROOT/audit/context/" || true
+          cp "$RUNNER_TEMP/native-binary.sha256" "$TEST_ROOT/audit/context/" || true
+          cp "$RUNNER_TEMP/v1-baseline-commit.txt" "$TEST_ROOT/audit/context/" || true
+          cp "$RUNNER_TEMP/v2-source-commit.txt" "$TEST_ROOT/audit/context/" || true
+          cp "$RUNNER_TEMP"/native-*.explicit.txt "$TEST_ROOT/audit/context/" || true
           cp "$TEST_ROOT/configs"/*.yml "$TEST_ROOT/audit/context/" || true
+          cp "$INPUT_ROOT/configs/hcc1143_lpwgs"/* "$TEST_ROOT/audit/context/" || true
+          find "$INPUT_ROOT/public/hcc1143_lpwgs" -type f -name '*.fastq.gz' -print0 2>/dev/null \
+            | sort -z | xargs -0 -r sha256sum \
+            > "$TEST_ROOT/audit/context/public-fastq-SHA256SUMS" || true
           cp "$TEST_ROOT/v1/hcc1143/06_workflow_summary/workflow_summary.txt" "$TEST_ROOT/audit/context/v1-summary.txt" || true
           cp "$TEST_ROOT/v2/hcc1143/06_workflow_summary/"* "$TEST_ROOT/audit/context/" || true
           cp "$TEST_ROOT/v2/hcc1143/.oncotracer-native/trace.tsv" "$TEST_ROOT/audit/context/v2-trace.tsv" || true
           cp "$INPUT_ROOT/public/hcc1143_lpwgs/samples.csv" "$TEST_ROOT/audit/context/" || true
           cp "$GITHUB_WORKSPACE/v2/examples/hcc1143_lpwgs/manifest.tsv" "$TEST_ROOT/audit/context/" || true
+      - name: Finalize complete audit checksums
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          root = Path(os.environ['TEST_ROOT']) / 'audit'
+          root.mkdir(parents=True, exist_ok=True)
+          rows = []
+          for path in sorted(root.rglob('*')):
+              if path.is_file() and path.name != 'SHA256SUMS':
+                  rows.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root)}")
+          (root / 'SHA256SUMS').write_text('\n'.join(rows) + '\n', encoding='utf-8')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -171,3 +196,4 @@ jobs:
             parity-quickstart2/audit/**
             parity-quickstart2/reports/*.log
             parity-quickstart2/reports/*.tsv
+            parity-quickstart2/reports/*.html

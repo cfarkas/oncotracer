@@ -3,6 +3,7 @@ name: Release stable native v2
 on:
   workflow_run:
     workflows:
+      - Native v2 CI
       - Native v2 QuickStart 1 parity
       - Native v2 QuickStart 2 parity
     types: [completed]
@@ -52,19 +53,23 @@ jobs:
               sort_by(.run_number) | last | (.id|tostring) + "\t" + .html_url
             ' <<< "$RUNS"
           }
+          CI="$(resolve_run 'Native v2 CI')"
           Q1="$(resolve_run 'Native v2 QuickStart 1 parity')"
           Q2="$(resolve_run 'Native v2 QuickStart 2 parity')"
-          if [[ -z "$Q1" || "$Q1" == 'null' || -z "$Q2" || "$Q2" == 'null' ]]; then
-            echo "Both successful push-triggered parity workflows are not yet present for $MAIN_SHA"
+          if [[ -z "$CI" || "$CI" == 'null' || -z "$Q1" || "$Q1" == 'null' || -z "$Q2" || "$Q2" == 'null' ]]; then
+            echo "Native CI and both successful push-triggered parity workflows are not yet present for $MAIN_SHA"
             jq -r '.workflow_runs[] | [.name,.event,.status,.conclusion,.head_sha,.html_url] | @tsv' <<< "$RUNS" || true
             echo 'ready=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          IFS=$'\t' read -r CI_ID CI_URL <<< "$CI"
           IFS=$'\t' read -r Q1_ID Q1_URL <<< "$Q1"
           IFS=$'\t' read -r Q2_ID Q2_URL <<< "$Q2"
           {
             echo 'ready=true'
             echo "main_sha=$MAIN_SHA"
+            echo "ci_id=$CI_ID"
+            echo "ci_url=$CI_URL"
             echo "q1_id=$Q1_ID"
             echo "q1_url=$Q1_URL"
             echo "q2_id=$Q2_ID"
@@ -112,6 +117,8 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         env:
           MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          CI_ID: ${{ steps.gate.outputs.ci_id }}
+          CI_URL: ${{ steps.gate.outputs.ci_url }}
           Q1_ID: ${{ steps.gate.outputs.q1_id }}
           Q1_URL: ${{ steps.gate.outputs.q1_url }}
           Q2_ID: ${{ steps.gate.outputs.q2_id }}
@@ -121,10 +128,12 @@ jobs:
             --arg schema 'oncotracer-v2-release-provenance-v1' \
             --arg version '2.0.0' \
             --arg commit "$MAIN_SHA" \
+            --arg ci_id "$CI_ID" --arg ci_url "$CI_URL" \
             --arg q1_id "$Q1_ID" --arg q1_url "$Q1_URL" \
             --arg q2_id "$Q2_ID" --arg q2_url "$Q2_URL" \
             --arg binary_sha256 "$(awk '$2=="release/oncotracer" || $2=="oncotracer" {print $1}' release/SHA256SUMS | head -1)" \
             '{schema:$schema,version:$version,commit:$commit,
+              native_ci:{run_id:$ci_id,url:$ci_url},
               quickstart1:{run_id:$q1_id,url:$q1_url},
               quickstart2:{run_id:$q2_id,url:$q2_url},
               binary_sha256:$binary_sha256,
@@ -171,6 +180,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          CI_URL: ${{ steps.gate.outputs.ci_url }}
           Q1_URL: ${{ steps.gate.outputs.q1_url }}
           Q2_URL: ${{ steps.gate.outputs.q2_url }}
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
@@ -182,8 +192,10 @@ jobs:
           Stable native release for Illumina and Oxford Nanopore LP-WGS CNA analysis.
 
           - Global copied executable: \`sudo install -m 0755 oncotracer /usr/local/bin/oncotracer\`.
-          - Native Python/R stage graph; Java and Nextflow are not required or invoked.
+          - Native Python/R stage graph; Nextflow is not required or invoked.
+          - Picard's Java runtime is managed by Conda or the container; no separate host Java installation is required.
           - Conda, Docker, Singularity/Apptainer, and Poetry installation commands.
+          - Native source, copied executable, environments, documentation, and container validation: $CI_URL
           - Complete QuickStart 1 parity for Illumina and ONT: $Q1_URL
           - Complete three-library HCC1143 QuickStart 2 parity: $Q2_URL
           - Validated source commit: \`$MAIN_SHA\`
