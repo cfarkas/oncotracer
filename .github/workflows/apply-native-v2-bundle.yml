@@ -5,7 +5,7 @@ on:
     branches:
       - agent/native-v2-parity
     paths:
-      - .github/native-v2-bundle.b64
+      - .github/native-v2-bundle.ready
 
 permissions:
   contents: write
@@ -25,7 +25,7 @@ jobs:
       - name: Decode and validate the reviewed source bundle
         run: |
           set -Eeuo pipefail
-          base64 --decode .github/native-v2-bundle.b64 > "$RUNNER_TEMP/native-v2.tar.gz"
+          cat .github/native-v2-bundle.part* | base64 --decode > "$RUNNER_TEMP/native-v2.tar.gz"
           echo "f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1  $RUNNER_TEMP/native-v2.tar.gz" | sha256sum -c -
           tar -tzf "$RUNNER_TEMP/native-v2.tar.gz" | sed -n '1,240p'
           tar -xzf "$RUNNER_TEMP/native-v2.tar.gz"
@@ -34,7 +34,8 @@ jobs:
             .github/workflows/full-conda-quickstarts-v1.1.yml \
             .github/workflows/full-v1.1-quickstart2.yml \
             .github/workflows/release-v1.1-after-conda-validation.yml
-          rm -f .github/native-v2-bundle.b64 .github/workflows/apply-native-v2-bundle.yml
+          rm -f .github/native-v2-bundle.part* .github/native-v2-bundle.ready
+          rm -f .github/workflows/apply-native-v2-bundle.yml
       - name: Run source tests before publishing the branch commit
         run: |
           python3 -m compileall -q oncotracer_cli tests scripts
