@@ -17,16 +17,18 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/conda/bin:/usr/local/bin:$PATH
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      bash ca-certificates curl git gzip less procps rsync tar unzip wget \
-    && rm -rf /var/lib/apt/lists/*
-
+# Miniforge already provides the bootstrap shell, certificates, Git, curl,
+# wget, tar, and gzip. Keeping the image Conda-only avoids dependence on an
+# independently changing Ubuntu package mirror during reproducible builds.
 WORKDIR ${ONCOTRACER_HOME}
 COPY . ${ONCOTRACER_HOME}/
 
 # Core tools live in base so the existing direct BAM-refinement helper can use
 # the read-only-container fallback without creating another environment.
-RUN conda env update --prefix /opt/conda --file environments/native-core.yml --prune \
+# Do not prune the base prefix: Conda itself must remain available until the
+# two isolated scientific environments have been created.
+RUN conda config --system --set channel_priority strict \
+    && conda env update --prefix /opt/conda --file environments/native-core.yml \
     && conda env create --prefix "${ONCOTRACER_QDNASEQ_PREFIX}" --file environments/native-qdnaseq.yml \
     && conda env create --prefix "${ONCOTRACER_ICHORCNA_PREFIX}" --file environments/native-ichorcna.yml \
     && conda clean -afy
