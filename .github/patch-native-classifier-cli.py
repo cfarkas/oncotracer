@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Apply the audited portable-tool probe repair to the materialized v2 CLI."""
+"""Apply or verify the audited portable-tool probe repair in the v2 CLI."""
 from pathlib import Path
 import re
 
 path = Path('oncotracer_cli/cli.py')
 text = path.read_text(encoding='utf-8')
+changed = False
+
 old_check = '''def _check_process(command: Sequence[str], *, env: dict[str, str] | None = None) -> dict[str, object]:
     completed = subprocess.run(command, text=True, capture_output=True, env=env, check=False)
     text = (completed.stdout + completed.stderr).strip().splitlines()
@@ -30,19 +32,23 @@ new_check = '''def _check_process(
         "success": completed.returncode in accepted_returncodes and bool(first_line),
     }
 '''
-if old_check not in text:
-    raise SystemExit('ERROR: expected _check_process implementation was not found')
-text = text.replace(old_check, new_check, 1)
+if old_check in text:
+    text = text.replace(old_check, new_check, 1)
+    changed = True
+elif 'accepted_returncodes' not in text or '"success"' not in text:
+    raise SystemExit('ERROR: unrecognized _check_process implementation')
 
 doctor_marker = 'def command_doctor(args: argparse.Namespace) -> int:\n'
 if doctor_marker not in text:
     raise SystemExit('ERROR: command_doctor was not found')
 head, doctor = text.split(doctor_marker, 1)
-pattern = re.compile(
-    r'    if backend in \{"host", "poetry", "conda"\}:\n.*?\n    elif backend == "docker":',
-    re.DOTALL,
-)
-replacement = '''    if backend in {"host", "poetry", "conda"}:
+
+if 'probes: dict[str, tuple[list[str], frozenset[int]]]' not in doctor:
+    pattern = re.compile(
+        r'    if backend in \{"host", "poetry", "conda"\}:\n.*?\n    elif backend == "docker":',
+        re.DOTALL,
+    )
+    replacement = '''    if backend in {"host", "poetry", "conda"}:
         install = _load_install_config()
         environment = _native_environment(install)
         probes: dict[str, tuple[list[str], frozenset[int]]] = {
@@ -81,10 +87,11 @@ replacement = '''    if backend in {"host", "poetry", "conda"}:
                 prefixes[name] = {"path": str(prefix), "exists": prefix.is_dir()}
         checks["prefixes"] = prefixes
     elif backend == "docker":'''
-doctor, count = pattern.subn(replacement, doctor, count=1)
-if count != 1:
-    raise SystemExit('ERROR: expected doctor backend block was not found')
-text = head + doctor_marker + doctor
+    doctor, count = pattern.subn(replacement, doctor, count=1)
+    if count != 1:
+        raise SystemExit('ERROR: expected doctor backend block was not found')
+    text = head + doctor_marker + doctor
+    changed = True
 
 old_success = '''    success = True
     for value in checks.get("commands", {}).values() if isinstance(checks.get("commands"), dict) else []:
@@ -99,6 +106,11 @@ new_success = '''    success = True
             bool(value.get("exists")) for value in configured.values()
         )
 '''
-if old_success not in text:
-    raise SystemExit('ERROR: expected doctor success block was not found')
-path.write_text(text.replace(old_success, new_success, 1), encoding='utf-8')
+if old_success in text:
+    text = text.replace(old_success, new_success, 1)
+    changed = True
+elif 'value.get("success")' not in text:
+    raise SystemExit('ERROR: unrecognized doctor success calculation')
+
+path.write_text(text, encoding='utf-8')
+print('portable_probe_patch=' + ('applied' if changed else 'already_present'))
