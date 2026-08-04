@@ -83,18 +83,6 @@ jobs:
           sed -n '1,240p' "$RUNNER_TEMP/archive-manifest.txt"
           tar -xzf "$RUNNER_TEMP/native-v2.tar.gz"
 
-      - name: Remove superseded v1 and transport files
-        run: |
-          set -Eeuo pipefail
-          rm -f \
-            .github/workflows/ci.yml \
-            .github/workflows/full-conda-quickstarts-v1.1.yml \
-            .github/workflows/full-v1.1-quickstart2.yml \
-            .github/workflows/release-v1.1-after-conda-validation.yml \
-            .github/workflows/apply-native-v2-bundle.yml \
-            .github/workflows/export-native-v2-transport.yml
-          rm -f .github/native-v2-bundle.part* .github/native-v2-bundle.ready
-
       - name: Validate source and copied executable
         run: |
           set -Eeuo pipefail
@@ -114,12 +102,24 @@ jobs:
             exit 1
           fi
 
-      - name: Commit the materialized implementation to the PR branch
+      - name: Commit only the validated non-workflow implementation
         run: |
           set -Eeuo pipefail
+          find oncotracer_cli tests scripts -type d -name __pycache__ -prune -exec rm -rf {} +
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add \
+            README.md Dockerfile pyproject.toml environment.yml mkdocs.yml oncotracer \
+            oncotracer_cli \
+            bin/scripts/native_ichorcna.R \
+            bin/scripts/native_qdnaseq.R \
+            bin/scripts/native_qdnaseq_pon.R \
+            scripts/build_native_binary.py \
+            environments tests docs
           git status --short
-          git commit -m 'Implement native OncoTracer v2 with parity release gates'
+          if git diff --cached --quiet; then
+            echo 'Validated native v2 source is already materialized.'
+            exit 0
+          fi
+          git commit -m 'Materialize validated native OncoTracer v2 source'
           git push origin HEAD:agent/native-v2-parity
