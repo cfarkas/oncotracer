@@ -16,8 +16,8 @@ env:
   NXF_OPTS: "-Xms256m -Xmx2g"
   NXF_GITHUB_TOKEN: ${{ github.token }}
   PIP_NO_CACHE_DIR: "1"
-  XDG_CONFIG_HOME: ${{ runner.temp }}/oncotracer-v2-config
-  ONCOTRACER_PAYLOAD_CACHE: ${{ runner.temp }}/oncotracer-v2-payload
+  XDG_CONFIG_HOME: /tmp/oncotracer-v2-config
+  ONCOTRACER_PAYLOAD_CACHE: /tmp/oncotracer-v2-payload
 
 jobs:
   parity:
