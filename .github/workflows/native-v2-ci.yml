@@ -114,7 +114,10 @@ jobs:
             native-core)
               conda run --prefix "$PREFIX" python -c 'import numpy,pandas,pysam,scipy,openpyxl,matplotlib; print("CORE_OK")'
               conda run --prefix "$PREFIX" samtools --version | sed -n '1p'
-              conda run --prefix "$PREFIX" minimap2 --version
+              conda run --prefix "$PREFIX" minimap2 --version \
+                > "$RUNNER_TEMP/minimap2-version.txt" 2>&1 || true
+              cat "$RUNNER_TEMP/minimap2-version.txt"
+              grep -Eq '^[0-9]+\.[0-9]+-r[0-9]+' "$RUNNER_TEMP/minimap2-version.txt"
               conda run --prefix "$PREFIX" bash -lc 'command -v bwa; command -v picard'
               ;;
             native-qdnaseq)
