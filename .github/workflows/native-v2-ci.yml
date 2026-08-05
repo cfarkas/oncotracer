@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read
 
+env:
+  CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 concurrency:
   group: native-v2-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -19,6 +22,24 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Verify the exact candidate and deterministic source hash
+        id: source
+        run: |
+          set -Eeuo pipefail
+          SOURCE_COMMIT="$(git rev-parse HEAD)"
+          test "$SOURCE_COMMIT" = "$CANDIDATE_SHA"
+          SOURCE_SHA256="$(git -c tar.umask=0002 archive --format=tar "$SOURCE_COMMIT" | sha256sum | awk '{print $1}')"
+          {
+            echo "source_commit=$SOURCE_COMMIT"
+            echo "source_sha256=$SOURCE_SHA256"
+          } >> "$GITHUB_OUTPUT"
+          {
+            printf 'source_commit=%s\n' "$SOURCE_COMMIT"
+            printf 'source_sha256=%s\n' "$SOURCE_SHA256"
+          } | tee "$RUNNER_TEMP/native-v2-source-provenance.txt"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -26,41 +47,82 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends r-base-core
+          python3 -m pip install --upgrade pip
+          python3 -m pip install \
+            pandas openpyxl numpy scipy scikit-learn matplotlib jinja2 \
+            requests reportlab pypdf
       - name: Parse Python, Bash, and native R sources
         run: |
           python3 -m compileall -q oncotracer_cli tests scripts bin
-          find bin examples tests -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
-          Rscript -e "parse(file='bin/scripts/native_qdnaseq.R')"
-          Rscript -e "parse(file='bin/scripts/native_qdnaseq_pon.R')"
-          Rscript -e "parse(file='bin/scripts/native_ichorcna.R')"
+          find bin examples tests scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
+          find bin -type f -name '*.R' -print0 \
+            | xargs -0 -n1 Rscript --vanilla -e 'invisible(parse(file=commandArgs(TRUE)[1]))'
       - name: Run native unit and audit tests
         run: |
           python3 -m unittest -v \
             tests/test_native_cli.py \
             tests/test_native_engine.py \
             tests/test_compare_native_parity.py \
-            tests/test_native_docs.py
+            tests/test_native_docs.py \
+            tests/test_poetry_cli.py \
+            tests/test_native_classifier.py \
+            tests/test_native_provenance.py \
+            tests/test_qdnaseq_helper.py
+      - name: Run shell and standalone documentation regression tests
+        run: |
+          set -Eeuo pipefail
+          bash tests/test_generate_auto_params.sh
+          bash tests/test_illumina_pon_preflight.sh
+          bash tests/test_qdnaseq_conda_compat.sh
+          bash tests/test_qdnaseq_local_pon.sh
+          bash tests/test_runtime_portability.sh
+          python3 tests/test_copy_paste_paths.py
+          python3 tests/test_docs_style.py
+          python3 tests/test_examples_start_from_clone.py
       - name: Build and test the copied single-file executable
         run: |
-          python3 scripts/build_native_binary.py --output dist/oncotracer
+          python3 scripts/build_native_binary.py \
+            --output dist/oncotracer \
+            --source-commit '${{ steps.source.outputs.source_commit }}' \
+            --source-sha256 '${{ steps.source.outputs.source_sha256 }}'
           test -x dist/oncotracer
           sha256sum dist/oncotracer | tee dist/oncotracer.sha256
           mkdir -p "$RUNNER_TEMP/outside-checkout"
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
           ./oncotracer --version | grep -F 'OncoTracer 2.0.0'
-          ./oncotracer --help | grep -F 'Native LP-WGS CNA analysis without Nextflow'
+          ./oncotracer --help | grep -F 'Native LP-WGS CNA analysis.'
+          ./oncotracer provenance --json | tee provenance.json
+          jq -e \
+            --arg commit '${{ steps.source.outputs.source_commit }}' \
+            --arg sha256 '${{ steps.source.outputs.source_sha256 }}' \
+            '.source_commit == $commit and .source_sha256 == $sha256 and
+             .source_tree_dirty == false' \
+            provenance.json
           python3 - <<'PY'
           import zipfile
+          from pathlib import PurePosixPath
           from pathlib import Path
           executable = Path('oncotracer')
           assert zipfile.is_zipfile(executable)
           with zipfile.ZipFile(executable) as archive:
               names = set(archive.namelist())
-          assert 'payload/bin/scripts/native_qdnaseq.R' in names
-          assert 'payload/bin/scripts/native_qdnaseq_pon.R' in names
-          assert 'payload/bin/scripts/native_ichorcna.R' in names
-          assert not any(name.endswith('/main.nf') or name == 'main.nf' for name in names)
+          required = {
+              'payload/bin/scripts/native_qdnaseq.R',
+              'payload/bin/scripts/native_qdnaseq_pon.R',
+              'payload/bin/scripts/native_ichorcna.R',
+              'oncotracer_cli/classifier.py',
+              'payload/bin/cna_classifier_nf/bin/01_prepare_cna_inputs.py',
+              'payload/bin/cna_classifier_nf/bin/08_clinician_driver_reports.py',
+              'payload/bin/cna_classifier_nf/assets/pancancer_cna_regions.tsv',
+              'payload/environments/native-classifier.yml',
+              'payload/environments/native-gistic2.yml',
+          }
+          assert not (required - names), sorted(required - names)
+          assert not any(
+              name.endswith('.nf') or PurePosixPath(name).name == 'nextflow.config'
+              for name in names
+          )
           PY
       - name: Verify Poetry launcher installation
         run: |
@@ -80,6 +142,8 @@ jobs:
           path: |
             dist/oncotracer
             dist/oncotracer.sha256
+            ${{ runner.temp }}/outside-checkout/provenance.json
+            ${{ runner.temp }}/native-v2-source-provenance.txt
 
   environment-solve:
     name: Solve ${{ matrix.environment }}
@@ -88,12 +152,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [native-core, native-qdnaseq, native-ichorcna]
+        environment:
+          - native-core
+          - native-qdnaseq
+          - native-ichorcna
+          - native-classifier
+          - native-gistic2
     defaults:
       run:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Verify the exact candidate
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
       - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-version: latest
@@ -109,40 +183,214 @@ jobs:
             --file "environments/${{ matrix.environment }}.yml"
       - name: Verify native stage commands
         run: |
+          set -Eeuo pipefail
           PREFIX="$RUNNER_TEMP/${{ matrix.environment }}"
           case '${{ matrix.environment }}' in
             native-core)
-              conda run --prefix "$PREFIX" python -c 'import numpy,pandas,pysam,scipy,openpyxl,matplotlib; print("CORE_OK")'
-              conda run --prefix "$PREFIX" samtools --version | sed -n '1p'
-              conda run --prefix "$PREFIX" minimap2 --version \
-                > "$RUNNER_TEMP/minimap2-version.txt" 2>&1 || true
-              cat "$RUNNER_TEMP/minimap2-version.txt"
-              grep -Eq '^[0-9]+\.[0-9]+-r[0-9]+' "$RUNNER_TEMP/minimap2-version.txt"
-              conda run --prefix "$PREFIX" bash -lc 'command -v bwa; command -v picard'
+              "$PREFIX/bin/python" -c 'import numpy,pandas,pysam,scipy,openpyxl,matplotlib; print("CORE_OK")'
+              "$PREFIX/bin/samtools" --version | sed -n '1p'
+              "$PREFIX/bin/minimap2" --version | grep -Eq '^[0-9]+\.[0-9]+-r[0-9]+'
+              "$PREFIX/bin/pigz" --version
+              test -x "$PREFIX/bin/bwa"
+              test -x "$PREFIX/bin/picard"
+              BWA_STATUS=0
+              "$PREFIX/bin/bwa" > "$RUNNER_TEMP/bwa-probe.txt" 2>&1 \
+                || BWA_STATUS=$?
+              cat "$RUNNER_TEMP/bwa-probe.txt"
+              test "$BWA_STATUS" -eq 1
+              grep -F 'Program: bwa' "$RUNNER_TEMP/bwa-probe.txt"
+              PICARD_STATUS=0
+              "$PREFIX/bin/picard" -h > "$RUNNER_TEMP/picard-probe.txt" 2>&1 \
+                || PICARD_STATUS=$?
+              cat "$RUNNER_TEMP/picard-probe.txt"
+              test "$PICARD_STATUS" -eq 1
+              grep -F 'USAGE: PicardCommandLine' "$RUNNER_TEMP/picard-probe.txt"
               ;;
             native-qdnaseq)
-              conda run --prefix "$PREFIX" Rscript --vanilla -e 'stopifnot(requireNamespace("QDNAseq", quietly=TRUE), requireNamespace("Biobase", quietly=TRUE)); cat("QDNASEQ_OK\n")'
+              env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+                "$PREFIX/bin/Rscript" --vanilla -e \
+                'library(Biobase); library(QDNAseq); cat("QDNASEQ_OK\n")'
+              ANNOTATION_PATH="$(
+                env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+                  bash bin/scripts/prepare_qdnaseq_bin_data.sh \
+                    --rscript "$PREFIX/bin/Rscript" \
+                    --binsize 100 \
+                    --cache-dir "$RUNNER_TEMP/qdnaseq-bin-data" \
+                  | tail -n 1
+              )"
+              test -s "$ANNOTATION_PATH"
+              test -s "$ANNOTATION_PATH.provenance.tsv"
+              env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+                "$PREFIX/bin/Rscript" --vanilla -e \
+                'library(Biobase); x <- readRDS(commandArgs(TRUE)[1]); stopifnot(inherits(x, "AnnotatedDataFrame")); cat("QDNASEQ_ANNOTATION_OK\n")' \
+                "$ANNOTATION_PATH"
+              grep -F $'source_commit\tcf7c07e39de0ac64a9c38cb030cba4626e2aae83' \
+                "$ANNOTATION_PATH.provenance.tsv"
+              test "$(awk -F '\t' '$1=="rds_sha256" {print $2}' "$ANNOTATION_PATH.provenance.tsv")" \
+                = "$(sha256sum "$ANNOTATION_PATH" | awk '{print $1}')"
               ;;
             native-ichorcna)
-              conda run --prefix "$PREFIX" Rscript --vanilla -e 'stopifnot(requireNamespace("ichorCNA", quietly=TRUE)); cat("ICHORCNA_OK\n")'
-              conda run --prefix "$PREFIX" readCounter 2>&1 | sed -n '1,4p' || true
+              env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+                "$PREFIX/bin/Rscript" --vanilla -e \
+                'library(ichorCNA); cat("ICHORCNA_OK\n")'
+              test -x "$PREFIX/bin/readCounter"
+              READCOUNTER_STATUS=0
+              "$PREFIX/bin/readCounter" > "$RUNNER_TEMP/readcounter-probe.txt" 2>&1 \
+                || READCOUNTER_STATUS=$?
+              cat "$RUNNER_TEMP/readcounter-probe.txt"
+              test "$READCOUNTER_STATUS" -eq 255
+              grep -Fx 'Please specify a BAM file.' "$RUNNER_TEMP/readcounter-probe.txt"
+              grep -F 'Usage:' "$RUNNER_TEMP/readcounter-probe.txt"
+              ;;
+            native-classifier)
+              env CUDA_VISIBLE_DEVICES='' NVIDIA_VISIBLE_DEVICES=void \
+                "$PREFIX/bin/python" -c \
+                'import pandas,openpyxl,numpy,scipy,sklearn,matplotlib,jinja2,requests,reportlab,pypdf,transformers,torch,safetensors,huggingface_hub; print("CLASSIFIER_OK")'
+              ;;
+            native-gistic2)
+              test -x "$PREFIX/bin/gistic2"
+              shopt -s nullglob
+              MCR_ROOTS=("$PREFIX"/share/mcr-*/v*)
+              shopt -u nullglob
+              test "${#MCR_ROOTS[@]}" -eq 1
+              MCR_ROOT="${MCR_ROOTS[0]}"
+              test -d "$MCR_ROOT/runtime/glnxa64"
+              test -d "$MCR_ROOT/bin/glnxa64"
+              test -d "$MCR_ROOT/sys/os/glnxa64"
+              GISTIC_STATUS=0
+              env -u LD_LIBRARY_PATH -u LD_LIBRARY_PATH_MCR \
+                LD_LIBRARY_PATH="$MCR_ROOT/runtime/glnxa64:$MCR_ROOT/bin/glnxa64:$MCR_ROOT/sys/os/glnxa64" \
+                "$PREFIX/bin/gistic2" -h > "$RUNNER_TEMP/gistic2-probe.txt" 2>&1 \
+                || GISTIC_STATUS=$?
+              cat "$RUNNER_TEMP/gistic2-probe.txt"
+              test "$GISTIC_STATUS" -eq 0
+              grep -F 'Usage: gp_gistic2_from_seg' "$RUNNER_TEMP/gistic2-probe.txt"
               ;;
           esac
+      - name: Export the exact environment specification
+        if: always()
+        run: |
+          PREFIX="$RUNNER_TEMP/${{ matrix.environment }}"
+          if [[ -d "$PREFIX/conda-meta" ]]; then
+            conda list --explicit --prefix "$PREFIX" \
+              > "$RUNNER_TEMP/${{ matrix.environment }}.explicit.txt"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-v2-environment-${{ matrix.environment }}-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/${{ matrix.environment }}.explicit.txt
+            ${{ runner.temp }}/qdnaseq-bin-data/*.provenance.tsv
+            ${{ runner.temp }}/*-probe.txt
 
   docker-build:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+      - name: Verify the exact candidate and deterministic source hash
+        id: source
+        run: |
+          set -Eeuo pipefail
+          SOURCE_COMMIT="$(git rev-parse HEAD)"
+          test "$SOURCE_COMMIT" = "$CANDIDATE_SHA"
+          SOURCE_SHA256="$(git -c tar.umask=0002 archive --format=tar "$SOURCE_COMMIT" | sha256sum | awk '{print $1}')"
+          {
+            echo "source_commit=$SOURCE_COMMIT"
+            echo "source_sha256=$SOURCE_SHA256"
+          } >> "$GITHUB_OUTPUT"
       - name: Free runner disk space
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
           docker system prune --all --force || true
           df -h
       - name: Build native image
-        run: docker build --tag oncotracer:v2-ci .
-      - name: Verify native image and absent Nextflow
+        run: |
+          docker build \
+            --build-arg SOURCE_COMMIT='${{ steps.source.outputs.source_commit }}' \
+            --build-arg SOURCE_SHA256='${{ steps.source.outputs.source_sha256 }}' \
+            --tag oncotracer:v2-ci .
+      - name: Verify native image provenance, all five environments, and absent Nextflow
         run: |
           docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.0.0'
-          docker run --rm --entrypoint bash oncotracer:v2-ci -lc '! command -v nextflow'
-          docker run --rm --entrypoint bash oncotracer:v2-ci -lc 'command -v bwa; command -v samtools; command -v picard; "$ONCOTRACER_QDNASEQ_PREFIX/bin/Rscript" -e "stopifnot(requireNamespace(\"QDNAseq\", quietly=TRUE))"; "$ONCOTRACER_ICHORCNA_PREFIX/bin/Rscript" -e "stopifnot(requireNamespace(\"ichorCNA\", quietly=TRUE))"'
+          docker run --rm oncotracer:v2-ci provenance --json \
+            | tee "$RUNNER_TEMP/docker-provenance.json"
+          jq -e \
+            --arg commit '${{ steps.source.outputs.source_commit }}' \
+            --arg sha256 '${{ steps.source.outputs.source_sha256 }}' \
+            '.source_commit == $commit and .source_sha256 == $sha256 and
+             .source_tree_dirty == false' \
+            "$RUNNER_TEMP/docker-provenance.json"
+          docker run --rm oncotracer:v2-ci doctor --backend host \
+            | tee "$RUNNER_TEMP/docker-doctor.json"
+          jq -e '.success == true' "$RUNNER_TEMP/docker-doctor.json"
+          docker run --rm --entrypoint bash oncotracer:v2-ci -c '
+            set -Eeuo pipefail
+            ! command -v nextflow
+            test -x "$ONCOTRACER_CORE_PREFIX/bin/bwa"
+            test -x "$ONCOTRACER_CORE_PREFIX/bin/samtools"
+            test -x "$ONCOTRACER_CORE_PREFIX/bin/minimap2"
+            test -x "$ONCOTRACER_CORE_PREFIX/bin/pigz"
+            test -x "$ONCOTRACER_CORE_PREFIX/bin/picard"
+            BWA_STATUS=0
+            "$ONCOTRACER_CORE_PREFIX/bin/bwa" > /tmp/bwa-probe.txt 2>&1 \
+              || BWA_STATUS=$?
+            cat /tmp/bwa-probe.txt
+            test "$BWA_STATUS" -eq 1
+            grep -F "Program: bwa" /tmp/bwa-probe.txt
+            PICARD_STATUS=0
+            "$ONCOTRACER_CORE_PREFIX/bin/picard" -h > /tmp/picard-probe.txt 2>&1 \
+              || PICARD_STATUS=$?
+            cat /tmp/picard-probe.txt
+            test "$PICARD_STATUS" -eq 1
+            grep -F "USAGE: PicardCommandLine" /tmp/picard-probe.txt
+            env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+              "$ONCOTRACER_QDNASEQ_PREFIX/bin/Rscript" --vanilla -e \
+              "library(Biobase); library(QDNAseq); cat(\"QDNASEQ_OK\\n\")"
+            env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+              "$ONCOTRACER_ICHORCNA_PREFIX/bin/Rscript" --vanilla -e \
+              "library(ichorCNA); cat(\"ICHORCNA_OK\\n\")"
+            test -x "$ONCOTRACER_ICHORCNA_PREFIX/bin/readCounter"
+            READCOUNTER_STATUS=0
+            "$ONCOTRACER_ICHORCNA_PREFIX/bin/readCounter" \
+              > /tmp/readcounter-probe.txt 2>&1 || READCOUNTER_STATUS=$?
+            cat /tmp/readcounter-probe.txt
+            test "$READCOUNTER_STATUS" -eq 255
+            grep -Fx "Please specify a BAM file." /tmp/readcounter-probe.txt
+            grep -F "Usage:" /tmp/readcounter-probe.txt
+            env CUDA_VISIBLE_DEVICES="" NVIDIA_VISIBLE_DEVICES=void \
+              "$ONCOTRACER_CLASSIFIER_PREFIX/bin/python" -c \
+              "import pandas,openpyxl,numpy,scipy,sklearn,matplotlib,jinja2,requests,reportlab,pypdf,transformers,torch,safetensors,huggingface_hub; print(\"CLASSIFIER_OK\")"
+            test -x "$ONCOTRACER_GISTIC_PREFIX/bin/gistic2"
+            shopt -s nullglob
+            MCR_ROOTS=("$ONCOTRACER_GISTIC_PREFIX"/share/mcr-*/v*)
+            shopt -u nullglob
+            test "${#MCR_ROOTS[@]}" -eq 1
+            MCR_ROOT="${MCR_ROOTS[0]}"
+            test -d "$MCR_ROOT/runtime/glnxa64"
+            test -d "$MCR_ROOT/bin/glnxa64"
+            test -d "$MCR_ROOT/sys/os/glnxa64"
+            GISTIC_STATUS=0
+            env -u LD_LIBRARY_PATH -u LD_LIBRARY_PATH_MCR \
+              LD_LIBRARY_PATH="$MCR_ROOT/runtime/glnxa64:$MCR_ROOT/bin/glnxa64:$MCR_ROOT/sys/os/glnxa64" \
+              "$ONCOTRACER_GISTIC_PREFIX/bin/gistic2" -h \
+              > /tmp/gistic2-probe.txt 2>&1 || GISTIC_STATUS=$?
+            cat /tmp/gistic2-probe.txt
+            test "$GISTIC_STATUS" -eq 0
+            grep -F "Usage: gp_gistic2_from_seg" /tmp/gistic2-probe.txt
+          '
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-v2-docker-provenance-${{ github.run_id }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/docker-provenance.json
+            ${{ runner.temp }}/docker-doctor.json

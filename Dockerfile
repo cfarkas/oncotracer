@@ -1,10 +1,15 @@
 # OncoTracer v2 native runtime: no Nextflow. Picard's Java runtime is managed inside Conda.
 FROM condaforge/miniforge3:24.11.3-0
 
+ARG SOURCE_COMMIT
+ARG SOURCE_SHA256
+
 LABEL org.opencontainers.image.title="OncoTracer" \
       org.opencontainers.image.version="2.0.0" \
-      org.opencontainers.image.description="Native LP-WGS CNA analysis without Nextflow" \
+      org.opencontainers.image.description="Native LP-WGS CNA analysis" \
       org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
+      org.opencontainers.image.revision="${SOURCE_COMMIT}" \
+      org.opencontainers.image.source.sha256="${SOURCE_SHA256}" \
       org.opencontainers.image.licenses="MIT"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -35,7 +40,18 @@ RUN conda config --system --set channel_priority strict \
     && conda env create --prefix "${ONCOTRACER_GISTIC_PREFIX}" --file environments/native-gistic2.yml \
     && conda clean -afy
 
-RUN python scripts/build_native_binary.py --root "${ONCOTRACER_HOME}" --output /usr/local/bin/oncotracer \
+RUN if [[ -z "${SOURCE_COMMIT}" && -z "${SOURCE_SHA256}" ]]; then \
+        python scripts/build_native_binary.py \
+          --root "${ONCOTRACER_HOME}" --output /usr/local/bin/oncotracer \
+          --allow-unbound-development; \
+    elif [[ -n "${SOURCE_COMMIT}" && -n "${SOURCE_SHA256}" ]]; then \
+        python scripts/build_native_binary.py \
+          --root "${ONCOTRACER_HOME}" --output /usr/local/bin/oncotracer \
+          --source-commit "${SOURCE_COMMIT}" --source-sha256 "${SOURCE_SHA256}"; \
+    else \
+        echo "SOURCE_COMMIT and SOURCE_SHA256 must be supplied together" >&2; \
+        exit 2; \
+    fi \
     && chmod 0755 /usr/local/bin/oncotracer \
     && find "${ONCOTRACER_HOME}" -type f \( -name '*.nf' -o -name 'nextflow.config' \) -delete \
     && oncotracer --version \

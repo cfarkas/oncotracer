@@ -1,13 +1,10 @@
 services:
   oncotracer:
-    image: carlosfarkas/oncotracer:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/cfarkas/oncotracer:2.0.0
     volumes:
-      # Edit these mounts for your machine. Every absolute path referenced in
-      # your YAML must be visible inside the container.
-      - /media/server/STORAGE/LPWGS_2025:/media/server/STORAGE/LPWGS_2025
-    working_dir: /opt/OncoTracer
-    entrypoint: ["oncoTracer"]
+      # Set ONCOTRACER_PROJECT_DIR to the host project directory. Inside this
+      # direct-container example, YAML paths must point below /project.
+      - ${ONCOTRACER_PROJECT_DIR:-./project}:/project
+    working_dir: /project
+    entrypoint: ["oncotracer"]
     command: ["--help"]
