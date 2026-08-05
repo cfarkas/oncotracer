@@ -1,5 +1,7 @@
 # Full tutorial: complete public PRJNA754199 archive
 
+> **Legacy v1.1 documentation.** This unlisted tutorial is retained only to reproduce the immutable Nextflow release. New analyses should use the global v2 executable and the [native QuickStarts](quick_start.md).
+
 This tutorial processes the **12 Illumina plasma cfDNA libraries currently available in the public PRJNA754199 read archive**. It downloads and validates the FASTQs, creates the sample table, generates the configuration automatically, runs OncoTracer, verifies the required files, and reviews the research outputs.
 
 [![Roadmap for the complete PRJNA754199 tutorial.](assets/tutorial/full_tutorial_flow.svg)](assets/tutorial/full_tutorial_flow.svg)

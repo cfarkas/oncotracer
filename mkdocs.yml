@@ -28,6 +28,7 @@ nav:
       - Install: installation.md
       - QuickStart 1 — Illumina + ONT: quick_start.md
       - Automatic Setup: auto_params.md
+      - Mock cohort — six tumors + four normals: six_tumor_four_control.md
       - QuickStart 2 — HCC1143: public_cohort.md
   - Run and Understand:
       - Native workflow: running.md

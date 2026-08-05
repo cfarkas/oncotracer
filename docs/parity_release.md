@@ -28,4 +28,23 @@ Each artifact includes `parity_report.json`, `parity_report.md`, `event_matches.
 
 ## Release automation
 
-The release workflow verifies that both named parity workflows succeeded for the exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v2.0.0`. A release cannot be created from a stale or partially validated commit.
+The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v2.0.0`. A release cannot be created from a stale or partially validated commit.
+
+## Repeat the complete gate on a validation server
+
+Run the auditable driver from a clean checkout in a dedicated tmux session. The shared reference is copied or reflinked into the validation root, so the source cache is never modified:
+
+```bash
+tmux new-session -s oncotracer-v2-validation
+scripts/validate_v2_release.sh \
+  --validation-root /large/storage/oncotracer-v2-validation \
+  --threads 16 \
+  --shared-reference /large/storage/references/samurai_hg38 \
+  --resume
+```
+
+The driver is CPU-only (`CUDA_VISIBLE_DEVICES` is empty and `NVIDIA_VISIBLE_DEVICES=void`) and never queries, resets, configures, or loads NVIDIA devices. This keeps release validation isolated from GPU-backed sequencing services.
+
+The driver refuses an empty path, `/`, the repository checkout or any path inside it, a validation/reference path overlap, a dirty checkout, or a non-empty validation directory without its release-driver sentinel and `--resume`. Its content-derived stage signatures include the exact source, command, inputs, tool identity, and explicit Conda specifications; complete output manifests are regenerated and compared before a completed stage is reused. The five-environment probe uses exact prefix executables; in particular, GISTIC derives the one usable `share/mcr-*/v*` runtime exclusively from its exact prefix and must return the real `gp_gistic2_from_seg` usage signature with exit status zero. It downloads the official self-contained Nextflow 26.04.6 distribution and verifies SHA-256 `182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c`; that executable runs only the immutable v1.1 comparator at commit `032c1268fa7fdcadc48087055066d7a9fc59bd89`. Before any baseline starts, the nested SAMURAI v1.4.0 source must resolve to commit `6a901940288b008237703c6b181d447e7dee4fcf`. The copied v2 executable runs every native operation from outside the checkout with Python path injection disabled, and any scientific parity failure stops the script.
+
+The final `bundles/` directory contains separate QuickStart audit archives, a deterministic combined `oncotracer-v2.0.0-parity-audit.tar.gz`, and `SHA256SUMS`. The audits retain input and output manifests, exact Conda specifications, qDNAseq annotation provenance, native traces, frozen-comparator traces/reports, stage logs, source identities, and the stage-ledger snapshot. The driver creates evidence only; it does not merge, tag, or publish a release.

@@ -1,5 +1,7 @@
 # PRJNA754199 complete public-archive example
 
+> **Legacy v1.1 command record.** This command sequence is retained for historical reproduction of the immutable Nextflow release. New analyses should use the native v2 executable and [Automatic Setup](https://cfarkas.github.io/oncotracer/auto_params/).
+
 This example downloads and processes the 12 Illumina HiSeq 2500 single-end plasma cfDNA libraries currently available from [NCBI BioProject PRJNA754199](https://www.ncbi.nlm.nih.gov/bioproject/754199). The archive contains 266,097,582 reads and about **5.75 GiB** of compressed FASTQs.
 
 The associated publication is Przybyl et al., *PLOS ONE* (2022), [doi:10.1371/journal.pone.0262272](https://doi.org/10.1371/journal.pone.0262272).

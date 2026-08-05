@@ -14,12 +14,18 @@ FASTQ -> alignment -> qDNAseq/ichorCNA -> BAM refinement -> CNA tables -> plots
 
 ## Install the global executable
 
-Download the `oncotracer` asset from the latest stable release, then install it like a Kent utility:
+Download and verify all stable-release assets, then install the copied executable:
 
 ```bash
+gh release download v2.0.0 \
+  --repo cfarkas/oncotracer \
+  --dir oncotracer-v2.0.0
+cd oncotracer-v2.0.0
+sha256sum -c SHA256SUMS
 chmod +x oncotracer
 sudo install -m 0755 oncotracer /usr/local/bin/oncotracer
 oncotracer --version
+oncotracer provenance --json
 ```
 
 Prepare exactly one backend:
@@ -57,5 +63,7 @@ Stable v2 releases are generated only after current `main` passes:
 - complete three-library HCC1143 QuickStart 2 parity;
 - exact sample-set checks, CNA event precision/recall, refined-bin profile concordance, output hashes, and a native trace containing no Nextflow command;
 - a complete offline native classifier integration test, including HTML/PDF and clinician reports.
+
+Each release records the exact Git commit, deterministic `git archive` SHA-256, copied-executable SHA-256, stable-container digest, and exact QuickStart workflow runs in `release-provenance.json`.
 
 OncoTracer is for research use and is not a standalone diagnostic system.

@@ -1,5 +1,7 @@
 # Pathology and Classifier Configuration
 
+> **Legacy v1.1 documentation.** This unlisted page describes the immutable Nextflow release. Native v2 runs the classifier directly; use [Native YAML configuration](../configuration_v2.md).
+
 Pathology is an optional section in the same Illumina run YAML. OncoTracer first completes the CNA workflow, then the optional classifier compares CNA-derived results with a supplied pathology table.
 
 Start without this feature when only CNA calls and plots are needed. Enable it after a standard Illumina run works.

@@ -45,7 +45,7 @@ These are presentation views derived from `03_cna_codification/cna_events.tsv` a
 ## HCC1143 three-library, six-FASTQ public cohort
 
 !!! warning "Verified gallery artifact pending"
-    The complete literal download and Nextflow commands are documented, but
+    The complete checksum-validated native command is documented, but
     this section intentionally does not claim a cohort result until the
     complete run, output checks, provenance record, and gallery export have
     all been verified. The maintainer will replace this notice with the actual
@@ -62,8 +62,8 @@ The example contains three paired-end LP-WGS libraries (six physical FASTQ files
 | Experimental status | All are `TUMOR`; DMSO is a treatment control, not a normal genome |
 | Download validation | Exact ENA byte count, ENA MD5, and `gzip -t`; values stored in `examples/hcc1143_lpwgs/manifest.tsv` |
 | Complete reproduction guide | [QuickStart Example 2](public_cohort.md) |
-| Analysis command after preparation | `nextflow run main.nf --docker -params-file test/configs/hcc1143_lpwgs/illumina.auto.yml -work-dir test/work/hcc1143_lpwgs -resume` |
-| Expected result source | `test/runs/hcc1143_lpwgs/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf` |
+| Analysis command | `oncotracer quickstart 2 --backend conda --test-root "$PWD/oncotracer-quickstart2"` |
+| Expected result source | `$PWD/oncotracer-quickstart2/runs/hcc1143_lpwgs/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf` |
 | OncoTracer commit | _to be recorded after verified run_ |
 | Container digest | _to be recorded after verified run_ |
 | Reference/caller/bin size | _to be recorded after verified run_ |

@@ -6,7 +6,7 @@
 oncotracer doctor
 ```
 
-The JSON result records the executable version, backend, configured prefixes or image, command checks, and whether Nextflow is required (`false`).
+The JSON result records the executable version and source identity, backend, all five configured prefixes or image, semantic command/package checks, and whether Nextflow is required (`false`). A failed check makes the command nonzero.
 
 ## Find the failing native command
 
@@ -24,11 +24,21 @@ Repeat the same run command. Do not delete `.oncotracer-native/state.json`, refe
 
 ## Conda solver problems
 
-The three environment definitions are independent. Remove the versioned installation directory or rerun:
+The five environment definitions are independent. Rerun the fail-closed installer when a prefix is incomplete:
 
 ```bash
 oncotracer install --conda --force
 ```
+
+Do not set `R_HOME`, `R_LIBS`, `R_LIBS_USER`, or `R_LIBS_SITE` to another R installation. Native qDNAseq and ichorCNA stages invoke the exact `Rscript` in their own prefix with those ambient variables removed. Diagnose an installation with `oncotracer doctor --backend conda`; do not substitute a login-shell `command -v` check.
+
+## Confirm release identity
+
+```bash
+oncotracer provenance --json
+```
+
+For a stable asset, `source_commit` and `source_sha256` must match `release-provenance.json` from the same release.
 
 ## Docker permissions
 

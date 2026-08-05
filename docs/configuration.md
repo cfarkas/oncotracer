@@ -1,5 +1,7 @@
 # Choose how to configure a run
 
+> **Legacy v1.1 documentation.** This unlisted page describes the immutable Nextflow release. For native v2, use [Native YAML configuration](configuration_v2.md) and [Automatic Setup](auto_params.md).
+
 Most analyses need one YAML file. Use this page to choose the shortest setup route.
 
 ## Which route should I choose?

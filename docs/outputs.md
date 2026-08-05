@@ -23,7 +23,7 @@ If `cat` says the file does not exist, either the run has not finished or `OUT` 
 | `05_cna_classifier/` | What optional CNA-pattern/pathology research interpretation was produced? | Optional and non-diagnostic |
 | `06_workflow_summary/` | Where are the important folders? | Index/pointer file, not a scientific result |
 
-Do not report files from `work/` as results. That directory is Nextflow's resumable task cache and may contain temporary or duplicated files.
+Do not report temporary alignment/caller intermediates or `.oncotracer-native/` ledger files as scientific results. Preserve the ledger and trace for audit, but use the numbered stage-02/03 outputs for exact scientific values.
 
 ## Stage 01: alignment and initial caller
 
@@ -206,4 +206,4 @@ test -s "$OUT/04_cna_custom_plots/cna_per_sample_pages.pdf"           # plots ex
 find "$OUT" -type f -name '*.command.err' -size +0c -print             # review any non-empty task stderr files
 ```
 
-Non-empty standard error is not automatically a failure--many tools write progress there--but it must be reviewed. Preserve the YAML, samplesheet, commit hash (`git rev-parse HEAD`), container digest, and workflow summary with any released result.
+Non-empty standard error is not automatically a failure--many tools write progress there--but it must be reviewed. Preserve the YAML, samplesheet, `oncotracer provenance --json`, input/reference checksums, container digest or five Conda explicit specifications, and workflow summary with any released result.

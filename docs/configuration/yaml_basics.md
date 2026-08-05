@@ -1,5 +1,7 @@
 # YAML and Paths
 
+> **Legacy v1.1 documentation.** This unlisted command page describes the immutable Nextflow release. For native v2, use [Native YAML configuration](../configuration_v2.md).
+
 A YAML file is a small plain-text run configuration. It tells OncoTracer which sequencing route to use, where the inputs are, and where results belong. FASTQ reads are not stored in YAML.
 
 ## Choose how to create the YAML

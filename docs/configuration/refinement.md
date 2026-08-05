@@ -1,5 +1,7 @@
 # Boundary Refinement
 
+> **Legacy v1.1 documentation.** This unlisted command page describes the immutable Nextflow release. Native v2 performs refinement in its direct stage graph; use [Running the native workflow](../running.md).
+
 Boundary refinement is stage `02_bam_refinement` of every standard Illumina and ONT run. After qDNAseq or ichorCNA identifies broad CNA segments, this stage evaluates local BAM depth and tests whether each coarse boundary should move.
 
 When the evidence is insufficient, OncoTracer keeps the original boundary. Refinement does not by itself prove that a CNA is biologically real.

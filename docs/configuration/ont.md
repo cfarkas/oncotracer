@@ -1,5 +1,7 @@
 # ONT Configuration
 
+> **Legacy v1.1 documentation.** This unlisted page describes the immutable Nextflow release. For native v2, use [Native YAML configuration](../configuration_v2.md) and [Automatic Setup](../auto_params.md).
+
 Use this route for Oxford Nanopore FASTQs organized in barcode directories. OncoTracer merges selected reads, aligns them with minimap2, runs SAMURAI/ichorCNA, refines CNA boundaries, and creates tables, plots, and a workflow summary.
 
 The examples use paths relative to the cloned `oncotracer` directory.

@@ -1,5 +1,7 @@
 # Programs used by OncoTracer
 
+> **Legacy v1.1 documentation.** This unlisted runtime page describes the immutable Nextflow release. Native v2 dependencies are managed through the [five-environment or container backends](containers.md).
+
 OncoTracer connects established alignment, quality-control, CNA-calling, refinement, plotting, and reporting programs. Most users should run the workflow rather than invoke these programs separately.
 
 ## Workflow and runtime layer

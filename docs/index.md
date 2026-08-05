@@ -25,11 +25,14 @@ BAM-supported boundary refinement -> CNA notation -> PDF reports
 ```bash
 oncotracer install --conda
 oncotracer doctor
+oncotracer provenance --json
 oncotracer auto --mode illumina --reads-folder reads --sample-table samples.csv
 oncotracer run --config config/illumina.auto.yml
 ```
 
 Every completed native run writes `.oncotracer-native/trace.tsv`, a content-aware stage ledger, a workflow summary, and a checksum manifest. The trace records argument arrays without shell interpolation and is rejected if it contains a Nextflow command.
+
+The stable release also publishes `release-provenance.json`, tying the exact Git commit and deterministic source-tree SHA-256 to the copied executable, container digest, and complete public-data parity audits.
 
 ## Research use
 

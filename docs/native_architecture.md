@@ -17,12 +17,13 @@ The optional classifier is a direct native stage graph over its versioned Python
 
 ## Single-file executable
 
-`scripts/build_native_binary.py` creates a compressed Python zipapp containing the CLI and the complete versioned payload (`bin`, examples, parameter templates, and environment definitions). At first use, payload files are extracted atomically into a versioned user cache and verified against the executable SHA-256.
+`scripts/build_native_binary.py` creates a compressed Python zipapp containing the CLI and the complete versioned payload (`bin`, examples, parameter templates, environment definitions, and stable source-input provenance). The build embeds the exact Git commit and deterministic `git archive` SHA-256. At first use, payload files are extracted atomically into a versioned user cache and verified against the executable SHA-256.
 
 The release file can therefore be installed directly:
 
 ```bash
 sudo install -m 0755 oncotracer /usr/local/bin/oncotracer
+oncotracer provenance --json
 ```
 
 ## Native invariant

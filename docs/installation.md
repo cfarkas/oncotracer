@@ -4,16 +4,24 @@ OncoTracer v2 runs on Linux as one global executable. Python 3.10–3.13 is requ
 
 ## 1. Install the release executable
 
-Download the `oncotracer` file attached to the stable GitHub release, then:
+Download and verify the complete stable v2.0.0 asset set, then:
 
 ```bash
+gh release download v2.0.0 \
+  --repo cfarkas/oncotracer \
+  --dir oncotracer-v2.0.0
+cd oncotracer-v2.0.0
+sha256sum -c SHA256SUMS
 chmod +x oncotracer
 ./oncotracer --version
+./oncotracer provenance --json
 sudo install -m 0755 oncotracer /usr/local/bin/oncotracer
 oncotracer --version
 ```
 
 The file is a self-extracting Python zipapp. Its versioned scientific payload is extracted once below the user cache. It does not require a Git clone after installation.
+
+`release-provenance.json` records the release commit, deterministic source archive SHA-256, binary SHA-256, container digest, and exact successful QuickStart workflow runs. The embedded values printed by `oncotracer provenance --json` must agree with that record.
 
 ## 2. Select one backend
 
