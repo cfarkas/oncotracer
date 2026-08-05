@@ -1,4 +1,4 @@
-"""Native (non-Nextflow) LP-WGS execution engine for OncoTracer v2."""
+"""Native LP-WGS execution engine for OncoTracer v2."""
 
 from __future__ import annotations
 
@@ -84,26 +84,104 @@ class Toolchain:
             gistic_prefix=resolved("ONCOTRACER_GISTIC_PREFIX"),
         )
 
-    def wrap(self, group: str, command: Sequence[str | Path]) -> list[str]:
+    def _prefix(self, group: str) -> Path | None:
         if group == "core":
-            prefix = self.core_prefix
-        elif group == "qdnaseq":
-            prefix = self.qdnaseq_prefix
-        elif group == "ichorcna":
-            prefix = self.ichorcna_prefix
-        elif group == "classifier":
-            prefix = self.classifier_prefix
-        elif group == "gistic":
-            prefix = self.gistic_prefix
-        else:
-            raise OncoTracerError(f"unknown toolchain group: {group}")
-        argv = [str(item) for item in command]
+            return self.core_prefix
+        if group == "qdnaseq":
+            return self.qdnaseq_prefix
+        if group == "ichorcna":
+            return self.ichorcna_prefix
+        if group == "classifier":
+            return self.classifier_prefix
+        if group == "gistic":
+            return self.gistic_prefix
+        raise OncoTracerError(f"unknown toolchain group: {group}")
+
+    def executable(self, group: str, name: str) -> str:
+        """Return the exact executable for a native environment group.
+
+        A configured prefix is authoritative. In particular, do not invoke a
+        basename through conda run: an independently prepended environment can
+        remain ahead of the requested prefix on PATH and select the wrong R or
+        Python runtime.
+        """
+        if not name or Path(name).name != name:
+            raise OncoTracerError(f"tool name must be a basename, found: {name!r}")
+        prefix = self._prefix(group)
         if prefix is None:
-            return argv
-        require_command("conda")
+            return require_command(name)
+        prefix = prefix.expanduser().resolve()
         if not prefix.is_dir():
             raise OncoTracerError(f"configured {group} Conda prefix does not exist: {prefix}")
-        return ["conda", "run", "--no-capture-output", "--prefix", str(prefix), *argv]
+        executable = prefix / "bin" / name
+        if not executable.is_file() or not os.access(executable, os.X_OK):
+            raise OncoTracerError(
+                f"configured {group} Conda prefix is missing executable {name!r}: {executable}"
+            )
+        return str(executable)
+
+    def wrap(self, group: str, command: Sequence[str | Path]) -> list[str]:
+        argv = [str(item) for item in command]
+        if not argv:
+            raise OncoTracerError(f"empty command for toolchain group: {group}")
+        return [self.executable(group, argv[0]), *argv[1:]]
+
+    def environment(self, group: str) -> dict[str, str]:
+        """Return the minimal exact-prefix environment required by a tool.
+
+        Most native executables are relocatable and need no activation state.
+        The pinned GISTIC package is an exception: its launcher depends on the
+        MATLAB Compiler Runtime paths normally installed by a Conda activation
+        hook. Resolve those paths from the configured GISTIC prefix instead of
+        sourcing a shell or inheriting an unrelated environment.
+        """
+        prefix = self._prefix(group)
+        if prefix is None:
+            return {}
+        prefix = prefix.expanduser().resolve()
+        if not prefix.is_dir():
+            raise OncoTracerError(f"configured {group} Conda prefix does not exist: {prefix}")
+        if group != "gistic":
+            return {}
+
+        roots = sorted(
+            candidate
+            for candidate in (prefix / "share").glob("mcr-*/v*")
+            if candidate.is_dir()
+        )
+        valid: list[tuple[Path, list[Path]]] = []
+        for root in roots:
+            libraries = [
+                root / "runtime" / "glnxa64",
+                root / "bin" / "glnxa64",
+                root / "sys" / "os" / "glnxa64",
+            ]
+            if all(path.is_dir() for path in libraries):
+                valid.append((root, libraries))
+        if len(valid) != 1:
+            found = ", ".join(str(root) for root, _ in valid) or "none"
+            raise OncoTracerError(
+                "configured GISTIC prefix must contain exactly one usable MATLAB "
+                f"Compiler Runtime under share/mcr-*/v*; found: {found}"
+            )
+        _, libraries = valid[0]
+        return {
+            "LD_LIBRARY_PATH": os.pathsep.join(str(path) for path in libraries),
+            "LD_LIBRARY_PATH_MCR": "",
+        }
+
+    def rscript(self, group: str, command: Sequence[str | Path]) -> list[str]:
+        """Run the group's exact Rscript with inherited R routing removed."""
+        return [
+            require_command("env"),
+            "-u", "R_HOME",
+            "-u", "R_LIBS",
+            "-u", "R_LIBS_USER",
+            "-u", "R_LIBS_SITE",
+            self.executable(group, "Rscript"),
+            "--vanilla",
+            *[str(item) for item in command],
+        ]
 
 
 def _safe_sample(value: str) -> str:
@@ -220,6 +298,7 @@ def prepare_reference(
     lpwgs_root: Path,
     runner: CommandRunner,
     ledger: StageLedger,
+    toolchain: Toolchain,
     *,
     need_bwa: bool,
     need_minimap2: bool,
@@ -236,7 +315,7 @@ def prepare_reference(
         try:
             download(f"{HG38_BASE}/genome.fa.fai", fai)
         except OncoTracerError:
-            runner.run("reference-faidx", [require_command("samtools"), "faidx", fasta])
+            runner.run("reference-faidx", [toolchain.executable("core", "samtools"), "faidx", fasta])
     if not sequence_dict.is_file() or sequence_dict.stat().st_size == 0:
         try:
             download(f"{HG38_BASE}/genome.dict", sequence_dict)
@@ -244,7 +323,7 @@ def prepare_reference(
             with sequence_dict.open("w", encoding="utf-8") as output:
                 runner.run(
                     "reference-dict",
-                    [require_command("samtools"), "dict", fasta],
+                    [toolchain.executable("core", "samtools"), "dict", fasta],
                     stdout=output,
                 )
     first = ""
@@ -259,7 +338,7 @@ def prepare_reference(
     bwa_prefix = ref_dir / "bwa" / "genome"
     if need_bwa:
         required = [Path(str(bwa_prefix) + suffix) for suffix in (".amb", ".ann", ".bwt", ".pac", ".sa")]
-        command = [require_command("bwa"), "index", "-p", str(bwa_prefix), str(fasta)]
+        command = [toolchain.executable("core", "bwa"), "index", "-p", str(bwa_prefix), str(fasta)]
         signature = ledger.signature("reference-bwa", command, [fasta])
         if not ledger.reusable("reference-bwa", signature, required):
             bwa_prefix.parent.mkdir(parents=True, exist_ok=True)
@@ -270,7 +349,7 @@ def prepare_reference(
 
     minimap_index = Path(str(fasta) + ".map-ont.mmi")
     if need_minimap2:
-        command = [require_command("minimap2"), "-x", "map-ont", "-d", minimap_index, fasta]
+        command = [toolchain.executable("core", "minimap2"), "-x", "map-ont", "-d", minimap_index, fasta]
         signature = ledger.signature("reference-minimap2", [str(x) for x in command], [fasta])
         if not ledger.reusable("reference-minimap2", signature, [minimap_index]):
             runner.run("reference-minimap2", command)
@@ -294,9 +373,16 @@ def prepare_qdnaseq_annotation(
 ) -> Path:
     helper = require_file(root / "bin" / "scripts" / "prepare_qdnaseq_bin_data.sh", "qDNAseq annotation helper")
     cache = lpwgs_root / ".oncotracer" / "qdnaseq-bin-data"
-    command = toolchain.wrap(
-        "qdnaseq", ["bash", helper, "--binsize", str(binsize), "--cache-dir", cache]
-    )
+    command = [
+        toolchain.executable("qdnaseq", "bash"),
+        str(helper),
+        "--rscript",
+        toolchain.executable("qdnaseq", "Rscript"),
+        "--binsize",
+        str(binsize),
+        "--cache-dir",
+        str(cache),
+    ]
     # The helper prints the absolute RDS path as its final line. Capture without shell.
     if runner.dry_run:
         return cache / f"QDNAseq.hg38.{binsize}kbp.SR50.rds"
@@ -335,6 +421,7 @@ def align_illumina(
     outdir: Path,
     runner: CommandRunner,
     ledger: StageLedger,
+    toolchain: Toolchain,
     *,
     threads: int,
     force: bool,
@@ -356,7 +443,7 @@ def align_illumina(
             f"\\tLB:{sample.sample}\\tPL:Illumina"
         )
         bwa = [
-            require_command("bwa"),
+            toolchain.executable("core", "bwa"),
             "mem",
             "-t",
             str(threads),
@@ -366,7 +453,7 @@ def align_illumina(
             *[str(path) for path in reads],
         ]
         sort = [
-            require_command("samtools"),
+            toolchain.executable("core", "samtools"),
             "sort",
             "-@",
             str(max(1, threads // 2)),
@@ -381,11 +468,11 @@ def align_illumina(
             runner.pipeline(f"illumina-align-{sample.sample}", bwa, sort)
             runner.run(
                 f"illumina-index-{sample.sample}",
-                [require_command("samtools"), "index", "-@", str(max(1, threads // 2)), bam],
+                [toolchain.executable("core", "samtools"), "index", "-@", str(max(1, threads // 2)), bam],
             )
             ledger.complete(f"illumina-align-{sample.sample}", signature, [bam, bai])
 
-        picard = shutil.which("picard")
+        picard = toolchain.executable("core", "picard")
         if picard:
             mark_command = [
                 picard,
@@ -406,7 +493,7 @@ def align_illumina(
                 if not markdup_bai.is_file():
                     runner.run(
                         f"illumina-markdup-index-{sample.sample}",
-                        [require_command("samtools"), "index", markdup],
+                        [toolchain.executable("core", "samtools"), "index", markdup],
                     )
                 ledger.complete(
                     f"illumina-markdup-{sample.sample}", mark_signature, [markdup, markdup_bai]
@@ -445,10 +532,9 @@ def run_qdnaseq(
             root / "bin" / "scripts" / "native_qdnaseq_pon.R",
             "native qDNAseq local-PoN R script",
         )
-        command = toolchain.wrap(
+        command = toolchain.rscript(
             "qdnaseq",
             [
-                "Rscript",
                 script,
                 "--samplesheet",
                 bam_sheet,
@@ -488,10 +574,9 @@ def run_qdnaseq(
 
     qdna_out = samurai_outdir / "qdnaseq"
     script = require_file(root / "bin" / "scripts" / "native_qdnaseq.R", "native qDNAseq R script")
-    command = toolchain.wrap(
+    command = toolchain.rscript(
         "qdnaseq",
         [
-            "Rscript",
             script,
             "--samplesheet",
             bam_sheet,
@@ -553,6 +638,7 @@ def align_ont(
     samurai_outdir: Path,
     runner: CommandRunner,
     ledger: StageLedger,
+    toolchain: Toolchain,
     *,
     threads: int,
     min_age_minutes: int,
@@ -576,7 +662,7 @@ def align_ont(
         bam = bam_dir / f"{sample.sample}.sorted.bam"
         bai = Path(str(bam) + ".bai")
         left = [
-            require_command("minimap2"),
+            toolchain.executable("core", "minimap2"),
             "-ax",
             "map-ont",
             "-t",
@@ -587,7 +673,7 @@ def align_ont(
             merged,
         ]
         right = [
-            require_command("samtools"),
+            toolchain.executable("core", "samtools"),
             "sort",
             "-@",
             str(max(1, threads // 2)),
@@ -600,7 +686,7 @@ def align_ont(
             runner.pipeline(f"ont-align-{sample.sample}", left, right)
             runner.run(
                 f"ont-index-{sample.sample}",
-                [require_command("samtools"), "index", "-@", str(max(1, threads // 2)), bam],
+                [toolchain.executable("core", "samtools"), "index", "-@", str(max(1, threads // 2)), bam],
             )
             ledger.complete(f"ont-align-{sample.sample}", signature, [bam, bai])
         bams[sample.sample] = bam
@@ -729,10 +815,9 @@ def run_ichorcna(
 
         sample_out = ichor_out / sample.sample
         sample_out.mkdir(parents=True, exist_ok=True)
-        command = toolchain.wrap(
+        command = toolchain.rscript(
             "ichorcna",
             [
-                "Rscript",
                 script,
                 "--wig",
                 wig,
@@ -874,7 +959,7 @@ def run_refinement_and_outputs(
             str(config.get("min_local_log2_diff_ont", 0.12)),
         ]
     command: list[str | Path] = [
-        "bash",
+        require_command("bash"),
         refine_script,
         *mode_args,
         "--lpwgs-root",
@@ -909,6 +994,11 @@ def run_refinement_and_outputs(
         str(config.get("zipcnv_min_abs_log2", 0.25)),
         "--zipcnv-compare-min-overlap",
         str(config.get("zipcnv_compare_min_overlap", 0.50)),
+        "--native-current-environment",
+        "--python-executable",
+        toolchain.executable("core", "python"),
+        "--samtools-executable",
+        toolchain.executable("core", "samtools"),
         "--skip-install",
     ]
     if force:
@@ -1088,7 +1178,7 @@ def run_native(
         samurai_out = outdir / "01_samurai_illumina"
         samurai_out.mkdir(parents=True, exist_ok=True)
         reference = prepare_reference(
-            lpwgs_root, runner, ledger, need_bwa=True, need_minimap2=False, threads=cpu
+            lpwgs_root, runner, ledger, toolchain, need_bwa=True, need_minimap2=False, threads=cpu
         )
         bams = align_illumina(
             samples,
@@ -1096,6 +1186,7 @@ def run_native(
             samurai_out,
             runner,
             ledger,
+            toolchain,
             threads=cpu,
             force=force_run,
         )
@@ -1129,7 +1220,7 @@ def run_native(
         samurai_out = outdir / "01_samurai_ont"
         samurai_out.mkdir(parents=True, exist_ok=True)
         reference = prepare_reference(
-            lpwgs_root, runner, ledger, need_bwa=False, need_minimap2=True, threads=cpu
+            lpwgs_root, runner, ledger, toolchain, need_bwa=False, need_minimap2=True, threads=cpu
         )
         bams = align_ont(
             samples,
@@ -1137,6 +1228,7 @@ def run_native(
             samurai_out,
             runner,
             ledger,
+            toolchain,
             threads=cpu,
             min_age_minutes=_as_int(config.get("ont_min_age_minutes"), 0),
             force=force_run,

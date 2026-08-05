@@ -47,6 +47,7 @@ ALIGNER="bwamem"
 REF_FA=""
 FORCE="false"
 SAMURAI_PROFILE="singularity"
+QDNASEQ_RSCRIPT=""
 BUILD_PON="false"
 PON_NORMAL_SAMPLES=""
 PON_MIN_NORMALS="2"
@@ -256,20 +257,27 @@ fi
 echo "Detected Illumina read layout: $READ_LAYOUT-end"
 
 if [[ "$SAMURAI_PROFILE" == "conda" ]]; then
-  command -v Rscript >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing Rscript" >&2; exit 1; }
-  Rscript --vanilla - <<'RS_CONDA_CHECK'
+  [[ -n "${CONDA_PREFIX:-}" ]] || { echo "ERROR: --profile conda requires an active CONDA_PREFIX" >&2; exit 1; }
+  QDNASEQ_RSCRIPT="$CONDA_PREFIX/bin/Rscript"
+  [[ -f "$QDNASEQ_RSCRIPT" && -x "$QDNASEQ_RSCRIPT" ]] || { echo "ERROR: the active Conda prefix is missing Rscript: $QDNASEQ_RSCRIPT" >&2; exit 1; }
+  QDNASEQ_RSCRIPT="$(readlink -f -- "$QDNASEQ_RSCRIPT")"
+  env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+    "$QDNASEQ_RSCRIPT" --vanilla - <<'RS_CONDA_CHECK'
 required <- c("Biobase", "QDNAseq", "argparser", "future", "R.cache")
 missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing)) stop("Missing Conda R package(s): ", paste(missing, collapse = ", "))
 RS_CONDA_CHECK
-  command -v qpdf >/dev/null 2>&1 || { echo "ERROR: the OncoTracer Conda environment is missing qpdf" >&2; exit 1; }
+  [[ -x "$CONDA_PREFIX/bin/qpdf" ]] || { echo "ERROR: the active Conda prefix is missing qpdf: $CONDA_PREFIX/bin/qpdf" >&2; exit 1; }
 fi
 
 QDNASEQ_BIN_ARGS=()
 if [[ "$SAMURAI_PROFILE" == "conda" && "$CALLER" == "qdnaseq" ]]; then
   QDNASEQ_BIN_HELPER="$SCRIPT_DIR/prepare_qdnaseq_bin_data.sh"
   [[ -s "$QDNASEQ_BIN_HELPER" ]] || { echo "ERROR: qDNAseq annotation helper not found: $QDNASEQ_BIN_HELPER" >&2; exit 1; }
-  QDNASEQ_BIN_RDS="$(bash "$QDNASEQ_BIN_HELPER"     --binsize "$BINSIZE"     --cache-dir "$LPWGS_ROOT/.oncotracer/qdnaseq-bin-data")"
+  QDNASEQ_BIN_RDS="$(bash "$QDNASEQ_BIN_HELPER" \
+    --rscript "$QDNASEQ_RSCRIPT" \
+    --binsize "$BINSIZE" \
+    --cache-dir "$LPWGS_ROOT/.oncotracer/qdnaseq-bin-data")"
   [[ -s "$QDNASEQ_BIN_RDS" ]] || { echo "ERROR: qDNAseq annotation was not prepared: $QDNASEQ_BIN_RDS" >&2; exit 1; }
   QDNASEQ_BIN_ARGS=(--qdnaseq_bin_data "$QDNASEQ_BIN_RDS")
   echo "Using qDNAseq hg38 annotation: $QDNASEQ_BIN_RDS"

@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 # Native qDNAseq stage for OncoTracer v2.0.0.
-# This reproduces the SAMURAI v1.4.0 qDNAseq sequence without Nextflow.
+# This reproduces the SAMURAI v1.4.0 qDNAseq sequence as a native R stage.
 
 fail <- function(...) stop(paste0(...), call. = FALSE)
 

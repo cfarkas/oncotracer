@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from oncotracer_cli.classifier import run_native_classifier, sample_set_key
+from oncotracer_cli.classifier import _run_gistic, run_native_classifier, sample_set_key
 from oncotracer_cli.engine import Toolchain
 from oncotracer_cli.runtime import CommandRunner, StageLedger
 
@@ -18,6 +19,72 @@ class NativeClassifierTests(unittest.TestCase):
         self.assertEqual(sample_set_key({"cna_classifier_sample_set": "DLBCL"}), "lymphoma")
         self.assertEqual(sample_set_key({"cna_classifier_sample_set": "AML"}), "leukemia")
         self.assertEqual(sample_set_key({"cna_classifier_sample_set": "breast:S1,S2"}), "breast")
+
+    def test_gistic_runtime_receives_exact_prefix_mcr_environment(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            prepared = workspace / "prepared"
+            prepared.mkdir()
+            (prepared / "gistic_full.seg").write_text(
+                "ID\tchrom\tloc.start\tloc.end\tnum.mark\tseg.mean\n",
+                encoding="utf-8",
+            )
+            (prepared / "gistic_events.seg").write_text(
+                "ID\tchrom\tloc.start\tloc.end\tnum.mark\tseg.mean\n",
+                encoding="utf-8",
+            )
+            (prepared / "gistic_markers.tsv").write_text(
+                "marker\tchrom\tposition\n",
+                encoding="utf-8",
+            )
+            (prepared / "prepare_metrics.json").write_text(
+                json.dumps({"samples_total": 2}) + "\n",
+                encoding="utf-8",
+            )
+            refgene = workspace / "refgene.mat"
+            refgene.write_bytes(b"refgene")
+
+            prefix = workspace / "gistic"
+            executable = prefix / "bin" / "gistic2"
+            executable.parent.mkdir(parents=True)
+            mcr = prefix / "share" / "mcr-8.3-0" / "v83"
+            libraries = [
+                mcr / "runtime" / "glnxa64",
+                mcr / "bin" / "glnxa64",
+                mcr / "sys" / "os" / "glnxa64",
+            ]
+            for path in libraries:
+                path.mkdir(parents=True)
+            expected = ":".join(str(path) for path in libraries)
+            executable.write_text(
+                "#!/bin/sh\n"
+                f"test \"$LD_LIBRARY_PATH\" = {expected!r} || exit 88\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            executable.chmod(0o755)
+
+            native = workspace / ".native"
+            runner = CommandRunner(native / "trace.tsv", echo=False)
+            ledger = StageLedger(native / "state.json")
+            output, status, _command = _run_gistic(
+                ROOT,
+                {
+                    "run_gistic": True,
+                    "gistic_required": True,
+                    "gistic_refgene": str(refgene),
+                    "gistic_min_samples": 2,
+                },
+                workspace / "lpwgs",
+                prepared,
+                workspace / "output",
+                runner,
+                ledger,
+                Toolchain(gistic_prefix=prefix),
+                force=True,
+            )
+            self.assertTrue((output / ".oncotracer-complete").is_file())
+            self.assertIn("completed", status.read_text(encoding="utf-8"))
 
     def test_complete_offline_classifier_graph_without_nextflow(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -72,7 +139,7 @@ class NativeClassifierTests(unittest.TestCase):
                 workspace / "lpwgs",
                 runner,
                 ledger,
-                Toolchain(),
+                Toolchain(classifier_prefix=Path(sys.prefix)),
                 force=True,
             )
             self.assertEqual(result, analysis / "05_cna_classifier")
@@ -96,6 +163,7 @@ class NativeClassifierTests(unittest.TestCase):
             self.assertEqual(classifier_summary["gistic_status"], "skipped")
             trace = (native / "trace.tsv").read_text(encoding="utf-8").lower()
             self.assertNotIn("nextflow", trace)
+            self.assertIn(str(Path(sys.prefix) / "bin" / "python").lower(), trace)
             workflow_summary = (summary / "workflow_summary.txt").read_text(encoding="utf-8")
             self.assertIn("cna_classifier_completed=True", workflow_summary)
 

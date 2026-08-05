@@ -7,6 +7,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -15,7 +16,8 @@ from pathlib import Path
 from typing import Sequence
 
 from . import __version__
-from .engine import run_native
+from .engine import Toolchain, run_native
+from .provenance import ProvenanceError, get_provenance
 from .runtime import (
     OncoTracerError,
     atomic_write_json,
@@ -68,7 +70,7 @@ def _run(command: Sequence[str | Path], *, cwd: Path | None = None, dry_run: boo
     print(f"OncoTracer command: {shlex.join(argv)}", file=sys.stderr, flush=True)
     if dry_run:
         return
-    completed = subprocess.run(argv, cwd=cwd, check=False)
+    completed = subprocess.run(argv, cwd=cwd, stdout=sys.stderr, stderr=sys.stderr, check=False)
     if completed.returncode:
         raise OncoTracerError(
             f"command failed with exit code {completed.returncode}: {shlex.join(argv)}"
@@ -512,21 +514,232 @@ def command_quickstart(args: argparse.Namespace) -> int:
 
 
 def _check_process(
-    command: Sequence[str],
+    command: Sequence[str | Path],
     *,
     env: dict[str, str] | None = None,
-    accepted_returncodes: set[int] | None = None,
+    accepted_returncodes: set[int] | frozenset[int] | None = None,
+    required_output: str | None = None,
 ) -> dict[str, object]:
-    completed = subprocess.run(command, text=True, capture_output=True, env=env, check=False)
-    text = (completed.stdout + completed.stderr).strip().splitlines()
-    accepted = accepted_returncodes or {0}
+    argv = [str(item) for item in command]
+    completed = subprocess.run(argv, text=True, capture_output=True, env=env, check=False)
+    output = f"{completed.stdout or ''}{completed.stderr or ''}".strip()
+    lines = output.splitlines()
+    accepted = set(accepted_returncodes or {0})
+    output_matched = required_output is None or re.search(
+        required_output, output, flags=re.IGNORECASE | re.MULTILINE
+    ) is not None
     return {
-        "command": shlex.join(command),
+        "command": shlex.join(argv),
         "returncode": completed.returncode,
         "accepted_returncodes": sorted(accepted),
-        "success": completed.returncode in accepted,
-        "first_line": text[0] if text else "",
+        "required_output": required_output,
+        "output_matched": output_matched,
+        "success": completed.returncode in accepted and output_matched,
+        "first_line": lines[0] if lines else "",
+        "output_excerpt": output[:4000],
     }
+
+
+def _missing_probe(path: Path | str, reason: str) -> dict[str, object]:
+    return {
+        "command": str(path),
+        "returncode": None,
+        "accepted_returncodes": [],
+        "required_output": None,
+        "output_matched": False,
+        "present": False,
+        "success": False,
+        "first_line": "",
+        "output_excerpt": reason,
+    }
+
+
+def _probe_executable(
+    prefix: Path,
+    name: str,
+    arguments: Sequence[str],
+    *,
+    accepted_returncodes: set[int] | frozenset[int] | None = None,
+    required_output: str | None = None,
+    env: dict[str, str] | None = None,
+) -> dict[str, object]:
+    executable = prefix / "bin" / name
+    if not executable.is_file() or not os.access(executable, os.X_OK):
+        return _missing_probe(executable, f"missing executable: {executable}")
+    result = _check_process(
+        [executable, *arguments],
+        env=env,
+        accepted_returncodes=accepted_returncodes,
+        required_output=required_output,
+    )
+    result["present"] = True
+    return result
+
+
+def _configured_native_prefixes(install: dict[str, object]) -> dict[str, Path | None]:
+    definitions = {
+        "core": ("core_prefix", "ONCOTRACER_CORE_PREFIX"),
+        "qdnaseq": ("qdnaseq_prefix", "ONCOTRACER_QDNASEQ_PREFIX"),
+        "ichorcna": ("ichorcna_prefix", "ONCOTRACER_ICHORCNA_PREFIX"),
+        "classifier": ("classifier_prefix", "ONCOTRACER_CLASSIFIER_PREFIX"),
+        "gistic": ("gistic_prefix", "ONCOTRACER_GISTIC_PREFIX"),
+    }
+    prefixes: dict[str, Path | None] = {}
+    for group, (config_key, environment_key) in definitions.items():
+        value = os.environ.get(environment_key) or install.get(config_key)
+        prefixes[group] = Path(str(value)).expanduser().resolve() if value else None
+    return prefixes
+
+
+def _prefix_environment(
+    prefix: Path,
+    *,
+    clean_r: bool = False,
+    cpu_only: bool = False,
+) -> dict[str, str]:
+    environment = os.environ.copy()
+    environment["PATH"] = f"{prefix / 'bin'}{os.pathsep}{environment.get('PATH', '')}"
+    if clean_r:
+        for name in ("R_HOME", "R_LIBS", "R_LIBS_USER", "R_LIBS_SITE"):
+            environment.pop(name, None)
+    if cpu_only:
+        environment["CUDA_VISIBLE_DEVICES"] = ""
+        environment["NVIDIA_VISIBLE_DEVICES"] = "void"
+    return environment
+
+
+def _probe_core(prefix: Path | None) -> dict[str, object]:
+    definitions: dict[str, tuple[list[str], frozenset[int], str]] = {
+        "bwa": ([], frozenset({1}), r"Program:\s*bwa"),
+        "samtools": (["--version"], frozenset({0}), r"\bsamtools\b"),
+        "minimap2": (["--version"], frozenset({0}), r"(minimap2|^[0-9]+\.[0-9]+)"),
+        "pigz": (["--version"], frozenset({0}), r"\bpigz\b"),
+        "picard": (["-h"], frozenset({1}), r"(Picard|USAGE|CommandLineProgram)"),
+    }
+    probes: dict[str, dict[str, object]] = {}
+    for name, (arguments, accepted, expected) in definitions.items():
+        if prefix is not None:
+            result = _probe_executable(
+                prefix,
+                name,
+                arguments,
+                accepted_returncodes=accepted,
+                required_output=expected,
+                env=_prefix_environment(prefix),
+            )
+        else:
+            executable = shutil.which(name)
+            if executable:
+                result = _check_process(
+                    [executable, *arguments],
+                    accepted_returncodes=accepted,
+                    required_output=expected,
+                )
+                result["present"] = True
+            else:
+                result = _missing_probe(name, f"{name} was not found on PATH")
+        probes[name] = result
+    return {"success": all(bool(probe["success"]) for probe in probes.values()), "probes": probes}
+
+
+def _probe_native_prefixes(prefixes: dict[str, Path | None]) -> dict[str, dict[str, object]]:
+    results: dict[str, dict[str, object]] = {}
+    core = prefixes["core"]
+    results["core"] = (
+        _probe_core(core)
+        if core is not None
+        else {"success": False, "probes": {}, "error": "core prefix is not configured"}
+    )
+
+    qdnaseq = prefixes["qdnaseq"]
+    if qdnaseq is None:
+        results["qdnaseq"] = {"success": False, "probes": {}, "error": "qdnaseq prefix is not configured"}
+    else:
+        r_probe = _probe_executable(
+            qdnaseq,
+            "Rscript",
+            [
+                "--vanilla",
+                "-e",
+                'suppressPackageStartupMessages(library(Biobase)); suppressPackageStartupMessages(library(QDNAseq)); cat("QDNASEQ_OK\\n")',
+            ],
+            required_output=r"QDNASEQ_OK",
+            env=_prefix_environment(qdnaseq, clean_r=True),
+        )
+        results["qdnaseq"] = {"success": bool(r_probe["success"]), "probes": {"Rscript": r_probe}}
+
+    ichorcna = prefixes["ichorcna"]
+    if ichorcna is None:
+        results["ichorcna"] = {"success": False, "probes": {}, "error": "ichorcna prefix is not configured"}
+    else:
+        ichor_r = _probe_executable(
+            ichorcna,
+            "Rscript",
+            [
+                "--vanilla",
+                "-e",
+                'suppressPackageStartupMessages(library(ichorCNA)); cat("ICHORCNA_OK\\n")',
+            ],
+            required_output=r"ICHORCNA_OK",
+            env=_prefix_environment(ichorcna, clean_r=True),
+        )
+        readcounter = _probe_executable(
+            ichorcna,
+            "readCounter",
+            [],
+            accepted_returncodes=frozenset({255}),
+            required_output=r"Please specify a BAM file\.\s*Usage:",
+            env=_prefix_environment(ichorcna),
+        )
+        results["ichorcna"] = {
+            "success": bool(ichor_r["success"]) and bool(readcounter["success"]),
+            "probes": {"Rscript": ichor_r, "readCounter": readcounter},
+        }
+
+    classifier = prefixes["classifier"]
+    if classifier is None:
+        results["classifier"] = {"success": False, "probes": {}, "error": "classifier prefix is not configured"}
+    else:
+        imports = (
+            "import pandas,openpyxl,numpy,scipy,sklearn,matplotlib,jinja2,requests,"
+            "reportlab,pypdf,transformers,torch,safetensors,huggingface_hub; "
+            'print("CLASSIFIER_OK")'
+        )
+        python_probe = _probe_executable(
+            classifier,
+            "python",
+            ["-c", imports],
+            required_output=r"CLASSIFIER_OK",
+            env=_prefix_environment(classifier, cpu_only=True),
+        )
+        results["classifier"] = {
+            "success": bool(python_probe["success"]),
+            "probes": {"python": python_probe},
+        }
+
+    gistic = prefixes["gistic"]
+    if gistic is None:
+        results["gistic"] = {"success": False, "probes": {}, "error": "gistic prefix is not configured"}
+    else:
+        try:
+            gistic_environment = _prefix_environment(gistic)
+            gistic_environment.update(Toolchain(gistic_prefix=gistic).environment("gistic"))
+        except OncoTracerError as error:
+            gistic_probe = _missing_probe(gistic / "bin" / "gistic2", str(error))
+        else:
+            gistic_probe = _probe_executable(
+                gistic,
+                "gistic2",
+                ["-h"],
+                accepted_returncodes=frozenset({0}),
+                required_output=r"Usage:\s*gp_gistic2_from_seg\b",
+                env=gistic_environment,
+            )
+        results["gistic"] = {
+            "success": bool(gistic_probe["success"]),
+            "probes": {"gistic2": gistic_probe},
+        }
+    return results
 
 
 def command_doctor(args: argparse.Namespace) -> int:
@@ -540,43 +753,58 @@ def command_doctor(args: argparse.Namespace) -> int:
         "nextflow_required": False,
         "checked_at": utc_now(),
     }
+    source_success = False
+    try:
+        provenance = get_provenance()
+        source_success = (
+            bool(provenance.get("source_commit"))
+            and bool(provenance.get("source_sha256"))
+            and provenance.get("source_tree_dirty") is False
+        )
+        checks["source"] = {
+            "source_commit": provenance.get("source_commit"),
+            "source_sha256": provenance.get("source_sha256"),
+            "source_sha256_definition": provenance.get("source_sha256_definition"),
+            "source_metadata_origin": provenance.get("source_metadata_origin"),
+            "source_tree_dirty": provenance.get("source_tree_dirty"),
+            "success": source_success,
+        }
+    except ProvenanceError as error:
+        checks["source"] = {
+            "source_commit": None,
+            "source_sha256": None,
+            "source_metadata_origin": "error",
+            "source_tree_dirty": None,
+            "success": False,
+            "error": str(error),
+        }
     success = True
     if backend in {"host", "poetry", "conda"}:
         install = _load_install_config()
-        environment = _native_environment(install)
-        probes: dict[str, tuple[list[str], frozenset[int]]] = {
-            "samtools": (["samtools", "--version"], frozenset({0})),
-            "bwa": (["bwa"], frozenset({0, 1})),
-            "minimap2": (["minimap2", "--version"], frozenset({0, 1})),
-            "pigz": (["pigz", "--version"], frozenset({0})),
-        }
-        command_checks: dict[str, dict[str, object]] = {}
-        for command, (probe, accepted_returncodes) in probes.items():
-            executable = shutil.which(command, path=environment.get("PATH"))
-            if not executable:
-                command_checks[command] = {
-                    "command": shlex.join(probe),
-                    "returncode": None,
-                    "first_line": "",
-                    "present": False,
-                    "success": False,
+        prefixes = _configured_native_prefixes(install)
+        any_prefix = any(prefix is not None for prefix in prefixes.values())
+        require_matrix = backend in {"poetry", "conda"} or any_prefix
+        if require_matrix:
+            prefix_checks = {
+                group: {
+                    "path": str(prefix) if prefix is not None else "",
+                    "configured": prefix is not None,
+                    "exists": prefix.is_dir() if prefix is not None else False,
                 }
-                continue
-            result = _check_process(
-                probe,
-                env=environment,
-                accepted_returncodes=accepted_returncodes,
-            )
-            result["present"] = True
-            command_checks[command] = result
-        checks["commands"] = command_checks
-        prefixes = {}
-        for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic2"):
-            value = install.get(f"{name}_prefix")
-            if value:
-                prefix = Path(str(value))
-                prefixes[name] = {"path": str(prefix), "exists": prefix.is_dir()}
-        checks["prefixes"] = prefixes
+                for group, prefix in prefixes.items()
+            }
+            environments = _probe_native_prefixes(prefixes)
+            checks["prefixes"] = prefix_checks
+            checks["environments"] = environments
+            checks["commands"] = environments["core"].get("probes", {})
+            success = all(item["configured"] and item["exists"] for item in prefix_checks.values())
+            success = success and all(bool(item["success"]) for item in environments.values())
+        else:
+            core = _probe_core(None)
+            checks["prefixes"] = {}
+            checks["environments"] = {"core": core}
+            checks["commands"] = core["probes"]
+            success = bool(core["success"])
     elif backend == "docker":
         docker = require_command("docker")
         image = args.image or str(_load_install_config().get("image") or DEFAULT_IMAGE)
@@ -589,9 +817,31 @@ def command_doctor(args: argparse.Namespace) -> int:
         checks["runtime"] = executable
         checks["sif"] = sif
         success = bool(executable) and bool(sif) and Path(sif).is_file()
+    success = bool(success) and source_success
     checks["success"] = success
     print(json.dumps(checks, indent=2, sort_keys=True))
     return 0 if success else 1
+
+
+def command_provenance(args: argparse.Namespace) -> int:
+    try:
+        record = get_provenance()
+    except ProvenanceError as error:
+        raise OncoTracerError(f"could not read build provenance: {error}") from error
+    if args.json:
+        print(json.dumps(record, indent=2, sort_keys=True))
+    else:
+        for key in (
+            "oncotracer_version",
+            "source_commit",
+            "source_sha256",
+            "source_sha256_definition",
+            "source_tree_dirty",
+            "binary_sha256",
+        ):
+            value = record[key]
+            print(f"{key}={value if value is not None else 'unavailable'}")
+    return 0
 
 
 def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
@@ -607,7 +857,7 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="oncotracer",
-        description="Native LP-WGS CNA analysis without Nextflow.",
+        description="Native LP-WGS CNA analysis.",
     )
     parser.add_argument("--version", action="version", version=f"OncoTracer {__version__}")
     subparsers = parser.add_subparsers(dest="command")
@@ -658,6 +908,10 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--backend", choices=("host", "conda", "docker", "singularity", "poetry"))
     doctor.add_argument("--image")
     doctor.set_defaults(func=command_doctor)
+
+    provenance = subparsers.add_parser("provenance", help="Report exact source and binary provenance")
+    provenance.add_argument("--json", action="store_true", help="Emit the complete JSON record")
+    provenance.set_defaults(func=command_provenance)
     return parser
 
 
@@ -665,7 +919,7 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
     """Translate v1 launcher syntax while keeping v2 execution native."""
     if (
         not values
-        or values[0] in {"install", "run", "internal-run", "auto", "quickstart", "doctor"}
+        or values[0] in {"install", "run", "internal-run", "auto", "quickstart", "doctor", "provenance"}
         or values[0] in {"-h", "--help", "--version"}
     ):
         return values

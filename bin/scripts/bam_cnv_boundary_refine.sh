@@ -2,6 +2,8 @@
 set -Eeuo pipefail
 trap 'echo "ERROR at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
+SCRIPT_SOURCE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
 ###############################################################################
 # BAM-supported copy-number segment-boundary refinement for SAMURAI outputs
 # with optional ZIPcnv-adapted CUSUM comparison. Version v17 adds cna_cytogenomic_input qDNAseq-style BEDs under 04_final_results for both ONT and Illumina codification.
@@ -49,6 +51,9 @@ ENV_NAME="bam_cnv_boundary_refine_env"
 MODE="ont"
 OUTDIR=""
 SKIP_INSTALL=false
+NATIVE_CURRENT_ENVIRONMENT=false
+PYTHON_EXECUTABLE=""
+SAMTOOLS_EXECUTABLE=""
 FORCE=false
 PURGE_ENV=false
 
@@ -183,6 +188,18 @@ Environment options
       Reuse the existing conda environment when possible. The script still
       activates the environment and can repair missing packages unless
       --no-auto-fix-env is also supplied.
+
+  --native-current-environment
+      Run in the caller-provided native environment without sourcing, creating,
+      activating, or repairing any Conda environment. Requires absolute
+      --python-executable and --samtools-executable paths. The committed helper
+      payload is used directly and no ZIPcnv repository network action occurs.
+
+  --python-executable PATH
+      Exact core-prefix Python executable for --native-current-environment.
+
+  --samtools-executable PATH
+      Exact core-prefix samtools executable for --native-current-environment.
 
   --check-env-only
       Activate/check the environment, attempt package repair if enabled, then
@@ -422,6 +439,9 @@ while [[ $# -gt 0 ]]; do
     --lpwgs-root) LPWGS_ROOT="$2"; shift 2 ;;
     --outdir) OUTDIR="$2"; shift 2 ;;
     --skip-install) SKIP_INSTALL=true; shift ;;
+    --native-current-environment) NATIVE_CURRENT_ENVIRONMENT=true; shift ;;
+    --python-executable) PYTHON_EXECUTABLE="$2"; shift 2 ;;
+    --samtools-executable) SAMTOOLS_EXECUTABLE="$2"; shift 2 ;;
     --purge_env|--purge-env) PURGE_ENV=true; shift ;;
     --force) FORCE=true; shift ;;
 
@@ -496,6 +516,11 @@ if [[ -z "${ZIPCNV_DIR:-}" && -n "${ZIPCV_DIR:-}" ]]; then
   ZIPCNV_DIR="$ZIPCV_DIR"
 fi
 
+if [[ "$NATIVE_CURRENT_ENVIRONMENT" == "true" && "$PURGE_ENV" == "true" ]]; then
+  echo "ERROR: --purge-env cannot be combined with --native-current-environment" >&2
+  exit 2
+fi
+
 # --purge_env is intentionally handled before any output folders or helper
 # scripts are created. It only removes the workflow conda environment.
 if [[ "$PURGE_ENV" == "true" ]]; then
@@ -538,12 +563,21 @@ fi
 # check requested. Keeping this section linear avoids stale unmatched if/fi blocks
 # after manual copy/paste edits.
 LPWGS_ROOT="$(readlink -m "$LPWGS_ROOT")"
-SCRIPTS_DIR="$LPWGS_ROOT/scripts/bam_cnv_boundary_refine"
+if [[ "$NATIVE_CURRENT_ENVIRONMENT" == "true" ]]; then
+  SCRIPTS_DIR="$SCRIPT_SOURCE_DIR/bam_cnv_boundary_refine"
+else
+  SCRIPTS_DIR="$LPWGS_ROOT/scripts/bam_cnv_boundary_refine"
+fi
 PY_HELPER="$SCRIPTS_DIR/bam_cnv_boundary_refine.py"
 ZIP_HELPER="$SCRIPTS_DIR/zipcnv_compare.py"
 [[ -n "$ZIPCNV_DIR" ]] || ZIPCNV_DIR="$LPWGS_ROOT/tools/ZIPcnv"
 ZIPCNV_DIR="$(readlink -m "$ZIPCNV_DIR")"
-mkdir -p "$SCRIPTS_DIR"
+if [[ "$NATIVE_CURRENT_ENVIRONMENT" == "true" ]]; then
+  [[ -s "$PY_HELPER" ]] || { echo "ERROR: committed BAM-refinement helper missing/empty: $PY_HELPER" >&2; exit 1; }
+  [[ -s "$ZIP_HELPER" ]] || { echo "ERROR: committed ZIPcnv-adapted helper missing/empty: $ZIP_HELPER" >&2; exit 1; }
+else
+  mkdir -p "$SCRIPTS_DIR"
+fi
 
 [[ -n "$OUTDIR" ]] || OUTDIR="$LPWGS_ROOT/CNA_analyses/bam_cnv_boundary_refine_$(date +%Y%m%d)"
 OUTDIR="$(readlink -m "$OUTDIR")"
@@ -557,6 +591,30 @@ mkdir -p "$OUTDIR"
 # when it exists.  If required Python packages are missing, the script attempts
 # to repair the environment automatically unless --no-auto-fix-env is supplied.
 
+if [[ "$NATIVE_CURRENT_ENVIRONMENT" == "true" ]]; then
+  [[ "$PYTHON_EXECUTABLE" == /* ]] || { echo "ERROR: --python-executable must be an absolute path in native mode" >&2; exit 1; }
+  [[ -f "$PYTHON_EXECUTABLE" && -x "$PYTHON_EXECUTABLE" ]] || { echo "ERROR: native Python is missing or not executable: $PYTHON_EXECUTABLE" >&2; exit 1; }
+  [[ "$SAMTOOLS_EXECUTABLE" == /* ]] || { echo "ERROR: --samtools-executable must be an absolute path in native mode" >&2; exit 1; }
+  [[ -f "$SAMTOOLS_EXECUTABLE" && -x "$SAMTOOLS_EXECUTABLE" ]] || { echo "ERROR: native samtools is missing or not executable: $SAMTOOLS_EXECUTABLE" >&2; exit 1; }
+  PYTHON_EXECUTABLE="$(readlink -f "$PYTHON_EXECUTABLE")"
+  SAMTOOLS_EXECUTABLE="$(readlink -f "$SAMTOOLS_EXECUTABLE")"
+  AUTO_FIX_ENV=false
+  SKIP_INSTALL=true
+
+  "$PYTHON_EXECUTABLE" -c \
+    'import numpy, openpyxl, pandas, pysam, scipy; print("Native Python package check: OK")'
+  samtools_probe="$("$SAMTOOLS_EXECUTABLE" --version 2>&1)" || {
+    echo "ERROR: exact native samtools semantic probe failed: $SAMTOOLS_EXECUTABLE" >&2
+    exit 1
+  }
+  grep -Eiq '^samtools[[:space:]]' <<< "$samtools_probe" || {
+    echo "ERROR: exact native samtools probe did not report samtools: $SAMTOOLS_EXECUTABLE" >&2
+    exit 1
+  }
+  echo "Native current-environment check: OK"
+  echo "  python=$PYTHON_EXECUTABLE"
+  echo "  samtools=$SAMTOOLS_EXECUTABLE"
+else
 if [[ -f /opt/conda/etc/profile.d/conda.sh ]]; then
   # shellcheck source=/dev/null
   source /opt/conda/etc/profile.d/conda.sh
@@ -704,13 +762,22 @@ if ! command -v git >/dev/null 2>&1; then
   fi
   command -v git >/dev/null 2>&1 || echo "WARNING: git not found; ZIPcnv repository clone will be skipped" >&2
 fi
+PYTHON_EXECUTABLE="$(command -v python)"
+SAMTOOLS_EXECUTABLE="$(command -v samtools)"
+fi
 
 if [[ "$CHECK_ENV_ONLY" == "true" ]]; then
   echo "Environment check completed successfully."
   exit 0
 fi
 
-if [[ "$ZIPCNV_MODE" != "off" ]]; then
+if [[ "$NATIVE_CURRENT_ENVIRONMENT" == "true" ]]; then
+  if [[ "$ZIPCNV_OFFICIAL_RUN" == "true" ]]; then
+    echo "ERROR: official ZIPcnv execution is unavailable in native mode because no pinned official ZIPcnv payload is committed" >&2
+    exit 1
+  fi
+  echo "Native mode: using committed ZIPcnv-adapted helper without repository clone/update"
+elif [[ "$ZIPCNV_MODE" != "off" ]]; then
   mkdir -p "$(dirname "$ZIPCNV_DIR")"
   if command -v git >/dev/null 2>&1; then
     if [[ -d "$ZIPCNV_DIR/.git" ]]; then
@@ -725,6 +792,7 @@ if [[ "$ZIPCNV_MODE" != "off" ]]; then
   fi
 fi
 
+if [[ "$NATIVE_CURRENT_ENVIRONMENT" != "true" ]]; then
 cat > "$PY_HELPER" <<'PY'
 #!/usr/bin/env python3
 import argparse
@@ -1098,6 +1166,9 @@ def read_qdnaseq_bins(input_dir: Path) -> pd.DataFrame:
         files.extend(sorted(input_dir.glob("*_markdup_bins.bed.gz")))
         files.extend(sorted(input_dir.glob("*_bins.bed")))
         files.extend(sorted(input_dir.glob("*_bins.bed.gz")))
+    # The broad ``*_bins`` fallback also matches ``*_markdup_bins``. Preserve
+    # discovery order while ensuring that one scientific input is loaded once.
+    files = list(dict.fromkeys(files))
     if not files:
         raise FileNotFoundError(
             f"No qDNAseq bin BED files found in {input_dir}/bins. Expected files like *_markdup_bins.bed or *_bins.bed."
@@ -1213,7 +1284,7 @@ def prepare_bam(path: Path, sample: str, outdir: Path) -> Tuple[Path, dict]:
     }
     if order == "coordinate":
         if not has_bam_index(path):
-            run_cmd(["samtools", "index", str(path)])
+            run_cmd([args_global.samtools_executable, "index", str(path)])
             record["action"] = "indexed_original_bam"
             record["index_action"] = "created_index_next_to_original_bam"
         return path, record
@@ -1224,9 +1295,9 @@ def prepare_bam(path: Path, sample: str, outdir: Path) -> Tuple[Path, dict]:
     record["used_bam"] = str(out)
     record["action"] = "created_sorted_indexed_bam_copy"
     if not out.exists():
-        run_cmd(["samtools", "sort", "-o", str(out), str(path)])
+        run_cmd([args_global.samtools_executable, "sort", "-o", str(out), str(path)])
     if not has_bam_index(out):
-        run_cmd(["samtools", "index", str(out)])
+        run_cmd([args_global.samtools_executable, "index", str(out)])
     record["index_action"] = "prepared_bam_index_present"
     return out, record
 
@@ -2218,6 +2289,7 @@ def main():
     p.add_argument("--include-secondary", action="store_true")
     p.add_argument("--state-gain-threshold", type=float, default=0.25)
     p.add_argument("--state-loss-threshold", type=float, default=-0.25)
+    p.add_argument("--samtools-executable", required=True)
     p.add_argument("--force", action="store_true")
     args = p.parse_args()
     args_global = args
@@ -2228,7 +2300,7 @@ if __name__ == "__main__":
     raise SystemExit(main())
 PY
 # Normalize helper indentation defensively and fail early if generated Python is invalid.
-python - "$PY_HELPER" <<'PYCHECK'
+"$PYTHON_EXECUTABLE" - "$PY_HELPER" <<'PYCHECK'
 from pathlib import Path
 import py_compile
 import sys
@@ -2683,7 +2755,7 @@ if __name__ == "__main__":
     raise SystemExit(main())
 PYZIP
 # Normalize and syntax-check ZIPcnv-adapted comparison helper as well.
-python - "$ZIP_HELPER" <<'PYCHECKZIP'
+"$PYTHON_EXECUTABLE" - "$ZIP_HELPER" <<'PYCHECKZIP'
 from pathlib import Path
 import py_compile
 import sys
@@ -2694,6 +2766,7 @@ py_compile.compile(str(path), doraise=True)
 print(f"ZIPcnv comparison helper syntax check: OK ({path})", flush=True)
 PYCHECKZIP
 chmod +x "$ZIP_HELPER"
+fi
 
 run_dataset() {
   local dataset="$1" input_dir="$2" caller="$3" platform="$4" bam_dir="$5" prior_seg="$6" binsize="$7" finekb="$8" coverage_mode="$9"
@@ -2712,7 +2785,7 @@ run_dataset() {
   [[ -d "$bam_dir" ]] || { echo "ERROR: BAM directory missing: $bam_dir" >&2; exit 1; }
   [[ -s "$prior_seg" ]] || { echo "ERROR: prior segmentation missing/empty: $prior_seg" >&2; exit 1; }
 
-  python "$PY_HELPER" \
+  "$PYTHON_EXECUTABLE" "$PY_HELPER" \
     --dataset-name "$dataset" \
     --input-dir "$input_dir" \
     --caller "$caller" \
@@ -2748,11 +2821,12 @@ run_dataset() {
     $([[ "$INCLUDE_SECONDARY" == "true" ]] && echo --include-secondary) \
     --state-gain-threshold "$STATE_GAIN_THRESHOLD" \
     --state-loss-threshold "$STATE_LOSS_THRESHOLD" \
+    --samtools-executable "$SAMTOOLS_EXECUTABLE" \
     $([[ "$FORCE" == "true" ]] && echo --force)
 
   if [[ "$ZIPCNV_MODE" != "off" ]]; then
     echo "Running ZIPcnv comparison layer for $dataset"
-    python "$ZIP_HELPER"       --dataset-name "$dataset"       --dataset-dir "$ds_out"       --zipcnv-mode "$ZIPCNV_MODE"       --zipcnv-repo-dir "$ZIPCNV_DIR"       --zipcnv-window-bins "$ZIPCNV_WINDOW_BINS"       --zipcnv-k "$ZIPCNV_K"       --zipcnv-h-mult "$ZIPCNV_H_MULT"       --zipcnv-min-segment-bins "$ZIPCNV_MIN_SEGMENT_BINS"       --zipcnv-min-abs-log2 "$ZIPCNV_MIN_ABS_LOG2"       --zipcnv-merge-gap-bins "$ZIPCNV_MERGE_GAP_BINS"       --zipcnv-compare-min-overlap "$ZIPCNV_COMPARE_MIN_OVERLAP"       --state-gain-threshold "$STATE_GAIN_THRESHOLD"       --state-loss-threshold "$STATE_LOSS_THRESHOLD"       $([[ "$ZIPCNV_OFFICIAL_RUN" == "true" ]] && echo --zipcnv-official-run)
+    "$PYTHON_EXECUTABLE" "$ZIP_HELPER"       --dataset-name "$dataset"       --dataset-dir "$ds_out"       --zipcnv-mode "$ZIPCNV_MODE"       --zipcnv-repo-dir "$ZIPCNV_DIR"       --zipcnv-window-bins "$ZIPCNV_WINDOW_BINS"       --zipcnv-k "$ZIPCNV_K"       --zipcnv-h-mult "$ZIPCNV_H_MULT"       --zipcnv-min-segment-bins "$ZIPCNV_MIN_SEGMENT_BINS"       --zipcnv-min-abs-log2 "$ZIPCNV_MIN_ABS_LOG2"       --zipcnv-merge-gap-bins "$ZIPCNV_MERGE_GAP_BINS"       --zipcnv-compare-min-overlap "$ZIPCNV_COMPARE_MIN_OVERLAP"       --state-gain-threshold "$STATE_GAIN_THRESHOLD"       --state-loss-threshold "$STATE_LOSS_THRESHOLD"       $([[ "$ZIPCNV_OFFICIAL_RUN" == "true" ]] && echo --zipcnv-official-run)
   fi
 }
 

@@ -1,4 +1,4 @@
-"""Native (non-Nextflow) CNA classifier/report orchestration for OncoTracer v2."""
+"""Native CNA classifier/report orchestration for OncoTracer v2."""
 
 from __future__ import annotations
 
@@ -25,6 +25,8 @@ class ToolchainLike(Protocol):
     gistic_prefix: Path | None
 
     def wrap(self, group: str, command: Sequence[str | Path]) -> list[str]: ...
+
+    def environment(self, group: str) -> dict[str, str]: ...
 
 
 DEFAULTS: dict[str, object] = {
@@ -332,15 +334,28 @@ def _run_gistic(
         ]
     )
     wrapped = toolchain.wrap("gistic", command)
+    gistic_environment = toolchain.environment("gistic")
     atomic_write_text(command_file, " ".join(__import__("shlex").quote(item) for item in wrapped) + "\n")
     version_probe = toolchain.wrap("gistic", ["gistic2", "-h"])
-    version_result = runner.run("classifier-gistic-version", version_probe, cwd=output, check=False)
+    version_result = runner.run(
+        "classifier-gistic-version",
+        version_probe,
+        cwd=output,
+        env=gistic_environment,
+        check=False,
+    )
     atomic_write_text(versions, f"returncode={version_result.returncode}\n")
 
     signature = ledger.signature("classifier-gistic", wrapped, list(prepared_files.values()) + [refgene])
     sentinel = gistic_out / ".oncotracer-complete"
     if force or not ledger.reusable("classifier-gistic", signature, [status, sentinel]):
-        result = runner.run("classifier-gistic", wrapped, cwd=output, check=False)
+        result = runner.run(
+            "classifier-gistic",
+            wrapped,
+            cwd=output,
+            env=gistic_environment,
+            check=False,
+        )
         if result.returncode == 0:
             atomic_write_text(
                 status,
@@ -386,7 +401,7 @@ def run_native_classifier(
     *,
     force: bool,
 ) -> Path:
-    """Run the complete optional v1.1 classifier/report graph without Nextflow."""
+    """Run the complete optional v1.1 classifier/report graph natively."""
     package = require_directory(root / "bin" / "cna_classifier_nf", "CNA classifier payload")
     scripts = require_directory(package / "bin", "CNA classifier scripts")
     assets = require_directory(package / "assets", "CNA classifier assets")

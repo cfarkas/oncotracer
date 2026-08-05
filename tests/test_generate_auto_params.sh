@@ -77,6 +77,10 @@ test_tumor_only_disables_pon_and_reports_gzip_progress() {
   run_illumina "$case_dir"
 
   assert_line "$case_dir/config/illumina.auto.yml" 'illumina_build_pon: false'
+  assert_contains "$case_dir/run.log" "oncotracer run --config $case_dir/config/illumina.auto.yml"
+  if grep -qi 'nextflow run' "$case_dir/run.log"; then
+    fail "Automatic Setup printed an obsolete Nextflow launch command"
+  fi
   if grep -q '^illumina_pon_normal_samples:' "$case_dir/config/illumina.auto.yml"; then
     fail "tumor-only YAML must not publish a normal sample list"
   fi
