@@ -155,8 +155,11 @@ class NativeDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(digest, text)
         self.assertGreaterEqual(text.count("-c tar.umask=0002 archive"), 4)
-        self.assertIn(
-            'key=lambda candidate: candidate.relative_to(root).as_posix()', text
+        self.assertGreaterEqual(
+            text.count(
+                'key=lambda candidate: candidate.relative_to(root).as_posix()'
+            ),
+            2,
         )
         self.assertIn(
             'umask 0002\n      git -C "$REPOSITORY_ROOT" -c tar.umask=0002 archive',

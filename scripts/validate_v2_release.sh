@@ -1026,7 +1026,9 @@ from pathlib import Path
 
 root, destination = Path(sys.argv[1]), Path(sys.argv[2])
 records = []
-for path in sorted(root.rglob("*")):
+for path in sorted(
+    root.rglob("*"), key=lambda candidate: candidate.relative_to(root).as_posix()
+):
     relative = path.relative_to(root)
     if ".git" in relative.parts:
         continue
