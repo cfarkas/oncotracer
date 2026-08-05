@@ -46,6 +46,24 @@ class ProfileRow:
     log2: float
 
 
+def expected_samples_csv(value: str) -> tuple[str, ...]:
+    """Parse one required, duplicate-free CSV sample list."""
+    raw = value.strip()
+    if not raw:
+        raise argparse.ArgumentTypeError("--expected-samples must contain at least one sample")
+    samples = tuple(item.strip() for item in raw.split(","))
+    if any(not sample for sample in samples):
+        raise argparse.ArgumentTypeError(
+            "--expected-samples cannot contain empty comma-separated entries"
+        )
+    duplicates = sorted({sample for sample in samples if samples.count(sample) > 1})
+    if duplicates:
+        raise argparse.ArgumentTypeError(
+            "--expected-samples contains duplicate sample IDs: " + ", ".join(duplicates)
+        )
+    return samples
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -99,13 +117,23 @@ def parse_events(path: Path) -> list[Event]:
     for row in read_tsv(path):
         start = number(row, ("start", "START", "start0"))
         end = number(row, ("end", "END", "stop"))
-        if start is None or end is None or end <= start:
+        sample = text(row, ("sample", "ID", "samplename"))
+        state = text(row, ("state", "cna_state", "call", "raw_call")).lower()
+        chrom = norm_chrom(text(row, ("chrom", "chromosome", "chr")))
+        if (
+            not sample
+            or not state
+            or not chrom
+            or start is None
+            or end is None
+            or end <= start
+        ):
             continue
         events.append(
             Event(
-                sample=text(row, ("sample", "ID", "samplename")),
-                state=text(row, ("state", "cna_state", "call", "raw_call")).lower(),
-                chrom=norm_chrom(text(row, ("chrom", "chromosome", "chr"))),
+                sample=sample,
+                state=state,
+                chrom=chrom,
                 start=int(start),
                 end=int(end),
                 mean_log2=number(row, ("mean_log2", "median_log2", "seg.mean", "adj.seg", "log2")),
@@ -156,8 +184,12 @@ def match_events(reference: list[Event], candidate: list[Event], minimum_overlap
                     ),
                 }
             )
-    recall = 1.0 if not reference else len(matches) / len(reference)
-    precision = 1.0 if not candidate else len(matches) / len(candidate)
+    # Empty event tables are not evidence of semantic concordance. Keep their
+    # metrics at zero so threshold checks fail in addition to the explicit
+    # non-empty checks emitted by main().
+    recall = len(matches) / len(reference) if reference else 0.0
+    precision = len(matches) / len(candidate) if candidate else 0.0
+    overlaps = [float(item["reciprocal_overlap"]) for item in matches]
     differences = [float(item["abs_log2_difference"]) for item in matches if item["abs_log2_difference"] is not None]
     return {
         "v1_events": len(reference),
@@ -165,6 +197,8 @@ def match_events(reference: list[Event], candidate: list[Event], minimum_overlap
         "matched_events": len(matches),
         "recall": recall,
         "precision": precision,
+        "minimum_reciprocal_overlap": min(overlaps) if overlaps else 0.0,
+        "median_reciprocal_overlap": statistics.median(overlaps) if overlaps else 0.0,
         "median_abs_log2_difference": statistics.median(differences) if differences else 0.0,
         "matches": matches,
     }
@@ -284,6 +318,13 @@ def main() -> int:
     parser.add_argument("--v2", type=Path, required=True)
     parser.add_argument("--outdir", type=Path, required=True)
     parser.add_argument("--label", required=True)
+    parser.add_argument(
+        "--expected-samples",
+        type=expected_samples_csv,
+        required=True,
+        metavar="SAMPLE[,SAMPLE...]",
+        help="exact non-empty sample set expected in both v1.1 and v2 outputs",
+    )
     parser.add_argument("--minimum-event-overlap", type=float, default=0.80)
     parser.add_argument("--minimum-event-recall", type=float, default=0.90)
     parser.add_argument("--minimum-event-precision", type=float, default=0.90)
@@ -300,29 +341,63 @@ def main() -> int:
     v2_required = validate_required(v2)
     summary1 = parse_summary(v1 / REQUIRED[0])
     summary2 = parse_summary(v2 / REQUIRED[0])
+    expected_samples_ordered = args.expected_samples
+    expected_samples = set(expected_samples_ordered)
     samples1 = sample_set(v1 / REQUIRED[2])
     samples2 = sample_set(v2 / REQUIRED[2])
+    v1_events = parse_events(v1 / REQUIRED[1])
+    v2_events = parse_events(v2 / REQUIRED[1])
     events = match_events(
-        parse_events(v1 / REQUIRED[1]),
-        parse_events(v2 / REQUIRED[1]),
+        v1_events,
+        v2_events,
         args.minimum_event_overlap,
     )
+    v1_profile_path = locate_profile(v1, summary1)
+    v2_profile_path = locate_profile(v2, summary2)
+    profile_inputs = {
+        "v1": {
+            "path": str(v1_profile_path),
+            "bytes": v1_profile_path.stat().st_size,
+            "sha256": sha256(v1_profile_path),
+        },
+        "v2": {
+            "path": str(v2_profile_path),
+            "bytes": v2_profile_path.stat().st_size,
+            "sha256": sha256(v2_profile_path),
+        },
+    }
+    v1_profile_rows = profile_rows(v1_profile_path)
+    v2_profile_rows = profile_rows(v2_profile_path)
     profiles = compare_profiles(
-        profile_rows(locate_profile(v1, summary1)),
-        profile_rows(locate_profile(v2, summary2)),
+        v1_profile_rows,
+        v2_profile_rows,
     )
+    v1_event_samples = {event.sample for event in v1_events}
+    v2_event_samples = {event.sample for event in v2_events}
+    v1_profile_samples = {row.sample for row in v1_profile_rows}
+    v2_profile_samples = {row.sample for row in v2_profile_rows}
     trace = v2 / ".oncotracer-native" / "trace.tsv"
     trace_text = trace.read_text(encoding="utf-8", errors="replace") if trace.is_file() else ""
 
     checks = {
         "required_outputs_v1": all(record["exists"] for record in v1_required),
         "required_outputs_v2": all(record["exists"] for record in v2_required),
+        "mode_nonempty": bool(summary1.get("mode")) and bool(summary2.get("mode")),
         "mode_equal": summary1.get("mode") == summary2.get("mode"),
+        "dataset_nonempty": bool(summary1.get("dataset")) and bool(summary2.get("dataset")),
         "dataset_equal": summary1.get("dataset") == summary2.get("dataset"),
+        "sample_set_expected_v1": samples1 == expected_samples,
+        "sample_set_expected_v2": samples2 == expected_samples,
         "sample_set_equal": samples1 == samples2,
+        "event_sets_nonempty": bool(v1_events) and bool(v2_events),
+        "event_samples_expected_v1": bool(v1_events) and v1_event_samples <= expected_samples,
+        "event_samples_expected_v2": bool(v2_events) and v2_event_samples <= expected_samples,
+        "profile_sample_set_expected_v1": v1_profile_samples == expected_samples,
+        "profile_sample_set_expected_v2": v2_profile_samples == expected_samples,
         "native_summary": summary2.get("engine") == "native" and summary2.get("nextflow_used", "").lower() == "false",
         "native_trace_present": trace.is_file() and trace.stat().st_size > 0,
         "native_trace_has_no_nextflow": "nextflow" not in trace_text.lower(),
+        "event_overlap": float(events["minimum_reciprocal_overlap"]) >= args.minimum_event_overlap,
         "event_recall": float(events["recall"]) >= args.minimum_event_recall,
         "event_precision": float(events["precision"]) >= args.minimum_event_precision,
         "profile_correlation": float(profiles["pearson"]) >= args.minimum_profile_correlation,
@@ -348,10 +423,12 @@ def main() -> int:
         "checks": checks,
         "v1_summary": summary1,
         "v2_summary": summary2,
+        "expected_samples": list(expected_samples_ordered),
         "v1_samples": sorted(samples1),
         "v2_samples": sorted(samples2),
         "events": {key: value for key, value in events.items() if key != "matches"},
         "profiles": profiles,
+        "profile_inputs": profile_inputs,
         "required_v1": v1_required,
         "required_v2": v2_required,
     }
@@ -374,14 +451,19 @@ def main() -> int:
             "",
             "## Event concordance",
             "",
+            f"- expected samples: {', '.join(expected_samples_ordered)}",
             f"- v1.1 events: {events['v1_events']}",
             f"- v2 events: {events['v2_events']}",
             f"- matched events: {events['matched_events']}",
+            f"- minimum reciprocal overlap: {events['minimum_reciprocal_overlap']:.6f}",
+            f"- median reciprocal overlap: {events['median_reciprocal_overlap']:.6f}",
             f"- recall: {events['recall']:.6f}",
             f"- precision: {events['precision']:.6f}",
             "",
             "## Refined-bin concordance",
             "",
+            f"- v1.1 profile: `{v1_profile_path}` (`{profile_inputs['v1']['sha256']}`)",
+            f"- v2 profile: `{v2_profile_path}` (`{profile_inputs['v2']['sha256']}`)",
             f"- shared bins: {profiles['shared_bins']}",
             f"- Pearson correlation: {profiles['pearson']:.8f}",
             f"- median absolute log2 difference: {profiles['median_abs_log2_difference']:.8f}",
