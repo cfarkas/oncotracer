@@ -617,7 +617,9 @@ from pathlib import Path
 
 root, destination = Path(sys.argv[1]), Path(sys.argv[2])
 records = []
-for path in sorted(root.rglob("*")):
+for path in sorted(
+    root.rglob("*"), key=lambda candidate: candidate.relative_to(root).as_posix()
+):
     metadata = path.lstat()
     if stat.S_ISDIR(metadata.st_mode):
         continue
@@ -822,8 +824,11 @@ action_prepare_v1() {
   fi
   mkdir -p "$V1_SOURCE_DIR"
   if [[ -z "$(find "$V1_SOURCE_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-    git -C "$REPOSITORY_ROOT" -c tar.umask=0002 archive --format=tar "$V1_COMMIT" |
-      tar -xf - -C "$V1_SOURCE_DIR"
+    (
+      umask 0002
+      git -C "$REPOSITORY_ROOT" -c tar.umask=0002 archive --format=tar "$V1_COMMIT" |
+        tar -xf - -C "$V1_SOURCE_DIR"
+    )
     write_tree_manifest "$V1_SOURCE_DIR" "$CONTEXT_DIR/v1.1-source-SHA256SUMS"
   fi
   write_filesystem_structure_manifest \
