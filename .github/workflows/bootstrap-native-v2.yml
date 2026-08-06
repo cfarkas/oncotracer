@@ -11,10 +11,6 @@ permissions:
   contents: write
   pull-requests: write
 
-concurrency:
-  group: apply-native-v2-release-repair
-  cancel-in-progress: false
-
 jobs:
   apply:
     if: >-
