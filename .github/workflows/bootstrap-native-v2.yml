@@ -88,7 +88,7 @@ jobs:
     if: >-
       startsWith(github.event.pull_request.head.ref, 'agent/v2.0-release-validation') &&
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
     timeout-minutes: 360
     steps:
       - name: Dispatch and wait for exact-head native v2 gates
@@ -132,19 +132,21 @@ jobs:
             return 1
           }
 
-          declare -A run_ids
+          run_ids=()
           dispatch_summary="Dispatched exact-head validation for \`$EXPECTED_SHA\`:"
           for workflow in "${workflows[@]}"; do
-            run_ids[$workflow]="$(resolve_run "$workflow")"
+            run_id="$(resolve_run "$workflow")"
+            run_ids+=("$run_id")
             dispatch_summary="$dispatch_summary
-          - \`$workflow\`: https://github.com/$GITHUB_REPOSITORY/actions/runs/${run_ids[$workflow]}"
+          - \`$workflow\`: https://github.com/$GITHUB_REPOSITORY/actions/runs/$run_id"
           done
           gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$dispatch_summary"
 
           status=0
           summary="Completed exact-head validation for \`$EXPECTED_SHA\`:"
-          for workflow in "${workflows[@]}"; do
-            run_id="${run_ids[$workflow]}"
+          for index in "${!workflows[@]}"; do
+            workflow="${workflows[$index]}"
+            run_id="${run_ids[$index]}"
             run_url="https://github.com/$GITHUB_REPOSITORY/actions/runs/$run_id"
             if gh run watch "$run_id" --exit-status --repo "$GITHUB_REPOSITORY"; then
               conclusion=success
