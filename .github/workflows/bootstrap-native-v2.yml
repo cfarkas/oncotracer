@@ -1,96 +1,83 @@
-name: Apply audited native v2 release repair
+name: Bootstrap reviewed native v2 branch
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/bootstrap-native-v2.yml
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: bootstrap-native-v2
+  cancel-in-progress: false
+
 jobs:
   apply:
-    if: github.repository == 'cfarkas/oncotracer'
+    if: github.event.pull_request.head.ref == 'agent/native-v2-parity'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-
     steps:
-      - name: Check out the exact release-candidate branch
+      - name: Check out the isolated implementation branch
         uses: actions/checkout@v4
         with:
           ref: agent/native-v2-parity
           fetch-depth: 0
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Verify the candidate and transport identity
-        shell: bash
+      - name: Reconstruct and authenticate the reviewed source archive
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 1a96d295a7fde70f925129133cfc231df85e2111
-          test -s .release-fix/apply.py.gz.b64.00
-          test -s .release-fix/apply.py.gz.b64.01
-          test -s .release-fix/ichorcna_plot_compat.R
+          cat .github/native-v2-bundle.part* | base64 --decode > "$RUNNER_TEMP/native-v2.tar.gz"
+          echo "f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1  $RUNNER_TEMP/native-v2.tar.gz" | sha256sum -c -
+          tar -tzf "$RUNNER_TEMP/native-v2.tar.gz" | tee "$RUNNER_TEMP/archive-manifest.txt"
+          tar -xzf "$RUNNER_TEMP/native-v2.tar.gz"
 
-      - name: Reconstruct and authenticate the audited repair
-        shell: bash
+      - name: Remove v1 release jobs and bootstrap transport files from the candidate
         run: |
           set -Eeuo pipefail
-          cat .release-fix/apply.py.gz.b64.00 \
-              .release-fix/apply.py.gz.b64.01 \
-            | base64 --decode \
-            | gzip --decompress --stdout \
-            > .release-fix/apply.py
-          printf '%s  %s\n' \
-            f636a913d730a9afb2f5d2edb4eea6220f2830d388a78ed0a1ed900af3f5abb5 \
-            .release-fix/apply.py \
-            | sha256sum --strict --check -
-          printf '%s  %s\n' \
-            a0a1d5b17fc4574c6354d01c9b913ad52f4751edb4df6b4af0753d617de5feea \
-            .release-fix/ichorcna_plot_compat.R \
-            | sha256sum --strict --check -
-          python -m py_compile .release-fix/apply.py
+          rm -f \
+            .github/workflows/ci.yml \
+            .github/workflows/full-conda-quickstarts-v1.1.yml \
+            .github/workflows/full-v1.1-quickstart2.yml \
+            .github/workflows/release-v1.1-after-conda-validation.yml
+          rm -f .github/native-v2-bundle.part* .github/native-v2-bundle.ready
+          rm -f .github/workflows/apply-native-v2-bundle.yml
 
-      - name: Apply the exact focused repair
-        shell: bash
+      - name: Validate the materialized source and copied executable
+        run: |
+          set -Eeuo pipefail
+          python3 -m compileall -q oncotracer_cli tests scripts
+          python3 -m unittest -v \
+            tests/test_native_cli.py \
+            tests/test_native_engine.py \
+            tests/test_compare_native_parity.py \
+            tests/test_native_docs.py \
+            tests/test_poetry_cli.py
+          python3 scripts/build_native_binary.py --output "$RUNNER_TEMP/oncotracer"
+          (cd /tmp && "$RUNNER_TEMP/oncotracer" --version | grep -F 'OncoTracer 2.0.0')
+          if grep -R -n --include='*.py' --include='*.R' --include='Dockerfile' \
+            -E 'nextflow[[:space:]]+run|exec[[:space:]]+nextflow' \
+            oncotracer_cli bin/scripts Dockerfile; then
+            echo 'ERROR: native runtime source invokes Nextflow' >&2
+            exit 1
+          fi
+
+      - name: Publish one reviewed implementation commit to the candidate branch
         run: |
           set -Eeuo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          python .release-fix/apply.py . \
-            --allow-head-mismatch \
-            --allow-dirty \
-            --commit
-
-      - name: Run focused validation before publishing
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          python -m pip install --disable-pip-version-check pytest
-          python -m pytest -q tests/test_ichorcna_plot_compat.py
-          python -m compileall -q oncotracer_cli tests scripts
-          bash -n scripts/validate_v2_release.sh
-          git diff --check HEAD^ HEAD
-
-      - name: Remove one-shot transport files and publish
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          rm -rf .release-fix
-          git add -A -- .release-fix
-          git commit -m 'chore(v2): remove one-shot release repair machinery'
+          git add -A
+          git status --short
+          git commit -m 'Implement native OncoTracer v2 with parity release gates'
           git push origin HEAD:agent/native-v2-parity
 
-      - name: Record completion on PR #27
+      - name: Record completion on the pull request
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr comment 27 \
+          gh pr comment "${{ github.event.pull_request.number }}" \
             --repo "$GITHUB_REPOSITORY" \
-            --body "Applied the checksum-verified v2 parity repair and removed its one-shot transport files. Candidate head: \`$(git rev-parse HEAD)\`."
+            --body "Native v2 source archive authenticated and materialized from SHA-256 \`f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1\`."
