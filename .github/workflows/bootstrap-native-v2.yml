@@ -9,10 +9,11 @@ on:
 
 permissions:
   contents: write
+  actions: write
   pull-requests: write
 
 concurrency:
-  group: bootstrap-native-v2
+  group: bootstrap-native-v2-${{ github.event.pull_request.head.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -81,3 +82,75 @@ jobs:
           gh pr comment "${{ github.event.pull_request.number }}" \
             --repo "$GITHUB_REPOSITORY" \
             --body "Native v2 source archive authenticated and materialized from SHA-256 \`f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1\`."
+
+  validate_release_candidate:
+    if: >-
+      github.event.pull_request.head.ref == 'agent/v2.0-release-validation' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Dispatch and wait for exact-head native v2 gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          CANDIDATE_BRANCH: agent/v2.0-release-validation
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -Eeuo pipefail
+          current_sha() {
+            gh api "/repos/$GITHUB_REPOSITORY/git/ref/heads/$CANDIDATE_BRANCH" --jq '.object.sha'
+          }
+          test "$(current_sha)" = "$EXPECTED_SHA"
+          start_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          workflows=(
+            native-v2-ci.yml
+            native-v2-quickstart1-parity.yml
+            native-v2-quickstart2-parity.yml
+          )
+          for workflow in "${workflows[@]}"; do
+            gh workflow run "$workflow" --ref "$CANDIDATE_BRANCH" --repo "$GITHUB_REPOSITORY"
+          done
+
+          resolve_run() {
+            local workflow="$1" run_id=""
+            for attempt in $(seq 1 120); do
+              run_id="$(gh api \
+                "/repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?event=workflow_dispatch&branch=$CANDIDATE_BRANCH&per_page=30" \
+                --jq ".workflow_runs | map(select(.head_sha == \"$EXPECTED_SHA\" and .created_at >= \"$start_time\")) | sort_by(.id) | last | .id // empty")"
+              if [[ -n "$run_id" ]]; then
+                printf '%s\n' "$run_id"
+                return 0
+              fi
+              sleep 5
+            done
+            echo "Timed out resolving dispatched run for $workflow" >&2
+            return 1
+          }
+
+          declare -A run_ids
+          for workflow in "${workflows[@]}"; do
+            run_ids[$workflow]="$(resolve_run "$workflow")"
+          done
+
+          status=0
+          summary="Exact-head validation for \`$EXPECTED_SHA\`:"
+          for workflow in "${workflows[@]}"; do
+            run_id="${run_ids[$workflow]}"
+            run_url="https://github.com/$GITHUB_REPOSITORY/actions/runs/$run_id"
+            if gh run watch "$run_id" --exit-status --repo "$GITHUB_REPOSITORY"; then
+              conclusion=success
+            else
+              conclusion=failure
+              status=1
+            fi
+            summary="$summary
+          - \`$workflow\`: **$conclusion** — $run_url"
+          done
+          test "$(current_sha)" = "$EXPECTED_SHA" || {
+            summary="$summary
+          - candidate branch moved during validation: **failure**"
+            status=1
+          }
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$summary"
+          exit "$status"
