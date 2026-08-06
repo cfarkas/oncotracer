@@ -4,6 +4,8 @@ OncoTracer v2 converts low-pass whole-genome sequencing FASTQs into copy-number 
 
 The v2 engine is native Python, R, and command-line orchestration. **Nextflow is not installed or invoked by the v2 analysis path.** The frozen v1.1 Nextflow release is used only as the independent comparator in release-validation jobs.
 
+> **Documentation version:** this site describes the native OncoTracer v2 command-line application. Historical Nextflow commands belong only to the archived [v1.1 workflow](legacy_v1.md) and must not be used as the normal v2 execution route.
+
 ```text
 Illumina FASTQ -> BWA/Picard -> qDNAseq
 ONT FASTQ      -> minimap2   -> HMMcopy/ichorCNA
