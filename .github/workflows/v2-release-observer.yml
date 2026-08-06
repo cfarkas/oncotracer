@@ -1,3 +1,4 @@
+# Second push intentionally triggers this branch-only observer.
 name: Observe exact-main v2 release
 
 on:
