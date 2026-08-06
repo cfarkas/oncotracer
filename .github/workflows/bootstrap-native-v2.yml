@@ -1,16 +1,14 @@
 name: Apply audited native v2 release repair
 
 on:
-  issues:
-    types:
-      - opened
-  pull_request_target:
+  pull_request:
+    branches:
+      - main
     types:
       - reopened
 
 permissions:
   contents: write
-  issues: write
   pull-requests: write
 
 concurrency:
@@ -20,8 +18,8 @@ concurrency:
 jobs:
   apply:
     if: >-
-      (github.event_name == 'issues' && github.event.issue.title == '[oncotracer-release] apply audited v2 repair') ||
-      (github.event_name == 'pull_request_target' && github.event.pull_request.head.ref == 'agent/native-v2-parity' && github.event.pull_request.head.repo.full_name == github.repository)
+      github.event.pull_request.head.ref == 'agent/native-v2-parity' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -96,16 +94,10 @@ jobs:
           git commit -m 'chore(v2): remove one-shot release repair machinery'
           git push origin HEAD:agent/native-v2-parity
 
-      - name: Record completion
+      - name: Record completion on PR #27
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -Eeuo pipefail
           gh pr comment 27 \
             --repo "$GITHUB_REPOSITORY" \
             --body "Applied the checksum-verified v2 parity repair and removed its one-shot transport files. Candidate head: \`$(git rev-parse HEAD)\`."
-          if [[ "$GITHUB_EVENT_NAME" == issues ]]; then
-            gh issue close "${{ github.event.issue.number }}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --comment "Audited v2 repair applied successfully to PR #27."
-          fi
