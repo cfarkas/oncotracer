@@ -1,0 +1,14 @@
+{
+  "schema": "oncotracer-v2-release-candidate-v1",
+  "release": "v2.0.0",
+  "native_v2_source_commit": "2af7974a73fda80e866ae0d06a3056b01fb1b38d",
+  "product_merge_commit": "cd84f44f05b9fb892dfa78af383d75c6b999f88e",
+  "clean_main_parent": "7dbc4cee99922158416c41b0d0c5bf212157a621",
+  "required_exact_main_workflows": [
+    "Native v2 CI",
+    "Native v2 QuickStart 1 parity",
+    "Native v2 QuickStart 2 parity"
+  ],
+  "release_workflow": "Release stable native v2",
+  "release_policy": "Stable publication is permitted only when all required push workflows succeed on the same exact current main SHA and the release workflow re-verifies their artifacts and provenance."
+}
