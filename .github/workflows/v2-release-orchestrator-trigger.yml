@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - .github/workflows/v2-release-orchestrator-trigger.yml
+  issue_comment:
+    types:
+      - created
   schedule:
     - cron: '2-57/5 * * * *'
   workflow_dispatch:
@@ -20,6 +23,10 @@ concurrency:
 
 jobs:
   trigger:
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.number == 29 &&
+       github.event.comment.body == '[oncotracer-release] trigger v2.0.0')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
