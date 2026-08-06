@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - agent/native-v2-parity
+  pull_request:
+    branches:
+      - main
+    types:
+      - reopened
 
 permissions:
   contents: write
