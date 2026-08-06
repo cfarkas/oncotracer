@@ -5,6 +5,17 @@
 
 fail <- function(...) stop(paste0(...), call. = FALSE)
 
+script_path <- function() {
+  file_args <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+  if (length(file_args) != 1L) fail("Unable to resolve native_ichorcna.R path")
+  normalizePath(sub("^--file=", "", file_args[[1L]]), mustWork = TRUE)
+}
+
+source(
+  file.path(dirname(script_path()), "ichorcna_plot_compat.R"),
+  local = TRUE
+)
+
 parse_args <- function(argv) {
   options <- list(
     wig = NULL,
@@ -76,6 +87,9 @@ run_analysis <- function(options) {
   on.exit(setwd(old), add = TRUE)
 
   suppressPackageStartupMessages(library(ichorCNA))
+  compat <- oncotracer_patch_ichorcna_plot_correction()
+  compat_path <- paste0(options$sample, ".ichorcna_plot_compat.tsv")
+  oncotracer_write_ichorcna_plot_compat(compat, compat_path)
 
   run_ichorCNA(
     tumor_wig = options$wig,
@@ -117,14 +131,19 @@ run_analysis <- function(options) {
     paste0(options$sample, ".seg.txt"),
     paste0(options$sample, ".cna.seg"),
     paste0(options$sample, ".correctedDepth.txt"),
-    paste0(options$sample, ".params.txt")
+    paste0(options$sample, ".params.txt"),
+    compat_path
   )
   bad <- required[!file.exists(required) | file.info(required)$size <= 0]
   if (length(bad)) fail("Missing ichorCNA output(s): ", paste(bad, collapse = ", "))
 
   versions <- data.frame(
-    component = c("R", "ichorCNA"),
-    version = c(as.character(getRversion()), as.character(utils::packageVersion("ichorCNA"))),
+    component = c("R", "ichorCNA", "ichorCNA_plot_compat"),
+    version = c(
+      as.character(getRversion()),
+      as.character(utils::packageVersion("ichorCNA")),
+      unname(compat[["status"]])
+    ),
     stringsAsFactors = FALSE
   )
   utils::write.table(
