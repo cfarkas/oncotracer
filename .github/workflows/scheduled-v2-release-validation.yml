@@ -7,6 +7,9 @@ on:
     paths:
       - .github/workflows/scheduled-v2-release-validation.yml
       - .github/v2-release-controller.sh
+  issue_comment:
+    types:
+      - created
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
@@ -23,6 +26,9 @@ concurrency:
 
 jobs:
   orchestrate:
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.number == 29 && github.event.comment.body == '[oncotracer-release] run v2 controller')
     runs-on: windows-latest
     timeout-minutes: 360
     steps:
