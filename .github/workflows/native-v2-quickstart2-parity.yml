@@ -1,0 +1,75 @@
+name: Native v2 QuickStart 2 parity
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-v2-quickstart2-parity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  GITHUB_TOKEN: ${{ github.token }}
+
+jobs:
+  parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out the exact native v2 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+          path: v2
+
+      - name: Check out the immutable v1.1 comparator
+        uses: actions/checkout@v4
+        with:
+          ref: 032c1268fa7fdcadc48087055066d7a9fc59bd89
+          fetch-depth: 0
+          path: v1
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Miniforge
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          activate-environment: base
+          conda-remove-defaults: true
+
+      - name: Run complete QuickStart 2 v1.1/native-v2 parity and audit
+        run: bash v2/scripts/ci_native_parity.sh quickstart2
+
+      - name: Upload complete QuickStart 2 parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-v2-quickstart2-parity-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: warn
+          include-hidden-files: true
+          path: |
+            parity-quickstart2/audit/**
+            parity-quickstart2/reports/**
