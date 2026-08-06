@@ -58,6 +58,18 @@ jobs:
           PY
             chmod +x /tmp/oncotracer-controller-bin/python3
           fi
+          REAL_GH="$(command -v gh)"
+          cat > /tmp/oncotracer-controller-bin/gh <<EOF
+          #!/usr/bin/env bash
+          if [[ "\$1" == pr && "\$2" == comment && "\$3" == 33 ]]; then
+            shift 3
+            exec "$REAL_GH" issue comment 29 "\$@"
+          elif [[ "\$1" == pr && "\$2" == close && "\$3" == 33 ]]; then
+            exit 0
+          fi
+          exec "$REAL_GH" "\$@"
+          EOF
+          chmod +x /tmp/oncotracer-controller-bin/gh
           export PATH="/tmp/oncotracer-controller-bin:$PATH"
           export RUNNER_TEMP=/tmp/oncotracer-release-controller
           bash .github/v2-release-controller.sh
