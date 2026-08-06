@@ -1,9 +1,7 @@
 name: Apply audited native v2 release repair
 
 on:
-  pull_request:
-    branches:
-      - main
+  pull_request_target:
     types:
       - reopened
 
