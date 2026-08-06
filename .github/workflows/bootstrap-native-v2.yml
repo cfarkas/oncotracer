@@ -1,0 +1,83 @@
+name: Bootstrap reviewed native v2 branch
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bootstrap-native-v2
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'agent/native-v2-parity'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the isolated implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/native-v2-parity
+          fetch-depth: 0
+
+      - name: Reconstruct and authenticate the reviewed source archive
+        run: |
+          set -Eeuo pipefail
+          cat .github/native-v2-bundle.part* | base64 --decode > "$RUNNER_TEMP/native-v2.tar.gz"
+          echo "f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1  $RUNNER_TEMP/native-v2.tar.gz" | sha256sum -c -
+          tar -tzf "$RUNNER_TEMP/native-v2.tar.gz" | tee "$RUNNER_TEMP/archive-manifest.txt"
+          tar -xzf "$RUNNER_TEMP/native-v2.tar.gz"
+
+      - name: Remove v1 release jobs and bootstrap transport files from the candidate
+        run: |
+          set -Eeuo pipefail
+          rm -f \
+            .github/workflows/ci.yml \
+            .github/workflows/full-conda-quickstarts-v1.1.yml \
+            .github/workflows/full-v1.1-quickstart2.yml \
+            .github/workflows/release-v1.1-after-conda-validation.yml
+          rm -f .github/native-v2-bundle.part* .github/native-v2-bundle.ready
+          rm -f .github/workflows/apply-native-v2-bundle.yml
+
+      - name: Validate the materialized source and copied executable
+        run: |
+          set -Eeuo pipefail
+          python3 -m compileall -q oncotracer_cli tests scripts
+          python3 -m unittest -v \
+            tests/test_native_cli.py \
+            tests/test_native_engine.py \
+            tests/test_compare_native_parity.py \
+            tests/test_native_docs.py \
+            tests/test_poetry_cli.py
+          python3 scripts/build_native_binary.py --output "$RUNNER_TEMP/oncotracer"
+          (cd /tmp && "$RUNNER_TEMP/oncotracer" --version | grep -F 'OncoTracer 2.0.0')
+          if grep -R -n --include='*.py' --include='*.R' --include='Dockerfile' \
+            -E 'nextflow[[:space:]]+run|exec[[:space:]]+nextflow' \
+            oncotracer_cli bin/scripts Dockerfile; then
+            echo 'ERROR: native runtime source invokes Nextflow' >&2
+            exit 1
+          fi
+
+      - name: Publish one reviewed implementation commit to the candidate branch
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git status --short
+          git commit -m 'Implement native OncoTracer v2 with parity release gates'
+          git push origin HEAD:agent/native-v2-parity
+
+      - name: Record completion on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Native v2 source archive authenticated and materialized from SHA-256 \`f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1\`."
