@@ -1,5 +1,7 @@
 # Input Files
 
+> **Legacy v1.1 documentation.** This unlisted command page is retained for the immutable Nextflow release. For native v2 input preparation, use [Automatic Setup](auto_params.md).
+
 Choose the route that matches your data. The optional pathology file does not replace sequencing input.
 
 | Route | Required sequencing input | Required small metadata |

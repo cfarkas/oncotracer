@@ -1,5 +1,7 @@
 # Illumina Configuration
 
+> **Legacy v1.1 documentation.** This unlisted page describes the immutable Nextflow release. For native v2, use [Native YAML configuration](../configuration_v2.md) and [Automatic Setup](../auto_params.md).
+
 Use this route for single-end or paired-end Illumina FASTQs. OncoTracer aligns the reads, runs SAMURAI/qDNAseq, refines CNA boundaries, and creates tables, plots, and a workflow summary.
 
 The examples use paths relative to the cloned `oncotracer` directory.

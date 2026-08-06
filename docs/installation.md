@@ -1,152 +1,80 @@
 # Installation
 
-OncoTracer runs on Linux. Nextflow can create the required Conda environments automatically or run the workflow with Docker or Singularity/Apptainer.
+OncoTracer v2 runs on Linux as one global executable. Python 3.10–3.13 is required for the portable zipapp release asset. The scientific tools are supplied by one selected backend.
 
-Use one launch method:
+## 1. Install the release executable
 
-- **Docker:** `nextflow run ... --docker` uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer).
-- **Singularity or Apptainer:** `nextflow run ... --singularity` uses `docker://carlosfarkas/oncotracer:latest`.
-- **Poetry launcher:** `poetry run oncotracer --backend docker ...` manages the Python launcher and delegates the scientific execution to the selected backend.
-- **Conda:** `nextflow run ... --conda` creates and reuses the required environments from the versioned definitions.
-
-## 1. Install the host prerequisites
-
-Use Linux with the following programs:
-
-| Requirement | Purpose | Installation |
-| --- | --- | --- |
-| Git | Clone and update OncoTracer | [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) |
-| Java 17 or newer | Run Nextflow | [Install Eclipse Temurin 17](https://adoptium.net/temurin/releases/?version=17) |
-| Nextflow | Run the workflow | [Install Nextflow](https://www.nextflow.io/docs/latest/install.html) |
-| Python 3 | Run helper and verification scripts | [Install Python](https://www.python.org/downloads/) |
-| samtools | Prepare and inspect sequence alignments | [Install samtools/HTSlib](https://www.htslib.org/download/) |
-| BWA | Illumina alignment and reference indexing | [Install BWA](https://github.com/lh3/bwa) |
-| minimap2 | ONT alignment | [Install minimap2](https://github.com/lh3/minimap2) |
-| pigz | Parallel gzip support | [Install pigz](https://zlib.net/pigz/) |
-| curl or wget | Download public reads and references | [Install curl](https://curl.se/download.html) or [install wget](https://www.gnu.org/software/wget/) |
-| Miniforge or Conda | Native environment manager used by `--conda` | [Install Miniforge](https://github.com/conda-forge/miniforge) |
-| Docker Engine | Container runtime used by `--docker` | [Install Docker Engine](https://docs.docker.com/engine/install/) |
-| SingularityCE or Apptainer | HPC runtime used by `--singularity` | [Install SingularityCE](https://docs.sylabs.io/guides/latest/admin-guide/installation.html) or [install Apptainer](https://apptainer.org/docs/admin/main/installation.html) |
-
-Choose Miniforge/Conda, Docker, or Singularity/Apptainer. Only one of these execution environments is required. Ask the system administrator when installation or permissions require elevated access.
-
-## 2. Verify the installation
+Download and verify the complete stable v2.0.0 asset set, then:
 
 ```bash
-# Confirm Git, Java, Nextflow, Python, and the sequence tools.
-git --version
-java -version
-nextflow -version
-python3 --version
-samtools --version
-bwa 2>&1 | head -2
-minimap2 --version
-pigz --version
-
-# Confirm curl or wget.
-command -v curl
-command -v wget
-
-# Confirm Conda for --conda.
-command -v conda
-conda --version
-
-# Confirm Docker for --docker.
-command -v docker
-
-# Confirm Singularity or Apptainer for --singularity.
-command -v singularity
-command -v apptainer
+gh release download v2.0.0 \
+  --repo cfarkas/oncotracer \
+  --dir oncotracer-v2.0.0
+cd oncotracer-v2.0.0
+sha256sum -c SHA256SUMS
+chmod +x oncotracer
+./oncotracer --version
+./oncotracer provenance --json
+sudo install -m 0755 oncotracer /usr/local/bin/oncotracer
+oncotracer --version
 ```
 
-Either `curl` or `wget` is sufficient. Confirm only the execution environment that you plan to use.
+The file is a self-extracting Python zipapp. Its versioned scientific payload is extracted once below the user cache. It does not require a Git clone after installation.
 
-## 3. Clone OncoTracer
+`release-provenance.json` records the release commit, deterministic source archive SHA-256, binary SHA-256, container digest, and exact successful QuickStart workflow runs. The embedded values printed by `oncotracer provenance --json` must agree with that record.
 
-Run the commands from the cloned `oncotracer` directory.
-
-```bash
-# Clone OncoTracer and enter the repository.
-git clone https://github.com/cfarkas/oncotracer.git
-cd oncotracer
-```
-
-## 4. Prepare one execution environment without starting an analysis
-
-Choose one option.
+## 2. Select one backend
 
 ### Conda
 
+Install Miniforge or another compatible Conda distribution, then:
+
 ```bash
-# Run this command from the oncotracer directory.
-
-# Create or reuse the versioned Conda environment and test the software.
-nextflow run main.nf --install --conda \
-  --lpwgs_root "test" \
-  -work-dir "test/work/install_conda"
-
-# Record the selected environment and its explicit package specification hash.
-cat ".oncotracer/install/install_manifest.txt"
+oncotracer install --conda
+oncotracer doctor --backend conda
 ```
 
-On the first `--conda` run, Nextflow solves and creates the required environment automatically. It stores reusable environments below `lpwgs_root/.oncotracer/conda`.
+Five isolated, versioned environments are created:
+
+- core alignment, refinement, CNA notation, and plotting tools;
+- qDNAseq with its pinned R 4.1 stack;
+- ichorCNA/HMMcopy with its pinned R 4.4 stack;
+- the optional CNA classifier/report stack;
+- GISTIC2 for the optional recurrence branch.
+
+Separating these environments avoids incompatible R and binary dependency constraints.
 
 ### Docker
 
 ```bash
-# Run this command from the oncotracer directory.
-
-# Pull or reuse the Docker image and test the installed software.
-nextflow run main.nf --install --docker \
-  --lpwgs_root "test" \
-  -work-dir "test/work/install_docker"
-
-# Record the selected runtime and image identity.
-cat ".oncotracer/install/install_manifest.txt"
+oncotracer install --docker
+oncotracer doctor --backend docker
 ```
+
+The command validates access to the Docker daemon and pulls the immutable v2 image from GitHub Container Registry. It does not install Docker or silently request administrator privileges.
 
 ### Singularity or Apptainer
 
 ```bash
-# Run this command from the oncotracer directory.
-
-# Pull or reuse the Singularity/Apptainer image and test the software.
-nextflow run main.nf --install --singularity \
-  --lpwgs_root "test" \
-  -work-dir "test/work/install_singularity"
-
-# Record the selected runtime and image identity.
-cat ".oncotracer/install/install_manifest.txt"
+oncotracer install --singularity
+oncotracer doctor --backend singularity
 ```
 
-The `--install` route checks the host tools, prepares the selected environment, caches SAMURAI v1.4.0, writes the manifest, and stops. It does not start an analysis.
+Apptainer is preferred when both commands are present. The pinned container is stored as a local SIF and reused.
 
-## 5. Estimated time and resources
+### Poetry
 
-A first Conda run needs additional time and storage to solve and download the software environments. Later runs reuse the environments in the Conda cache.
-
-The first uncached Illumina or ONT analysis also downloads the hg38 reference, approximately **3.16 GB**, and creates the required alignment index. Indexing commonly takes **30–60 minutes**. The pinned BWA task requests 72 GB, so provide at least **80 GiB of addressable RAM**.
-
-Also allow space for Conda environments or container images, compressed and uncompressed reads, the Nextflow `work/` directory, and final results. Later `-resume` runs reuse a valid reference index and unchanged completed tasks.
-
-The outer Nextflow display can remain at `RUN_*_SAMURAI (0 of 1)` while nested SAMURAI tasks are active. This counter alone does not indicate a stalled run.
-
-## 6. Choose the first run
-
-- [QuickStart Example 1](quick_start.md): one public Illumina and one public ONT sample, about **225 MB** of reads.
-- [Automatic Setup](auto_params.md): generate a YAML for your own FASTQ folder.
-- [QuickStart Example 2](public_cohort.md): three public HCC1143 libraries, about **1.08 GiB** of reads.
-- [Full Tutorial](full_tutorial.md): all 12 public PRJNA754199 libraries currently available from the archive.
-- [Other Example Run: six tumors and four controls](six_tumor_four_control.md): a mock example illustrating how four normal controls are used to correct six tumor profiles.
-
-QuickStart Example 1 is the recommended installation check.
-
-## Poetry launcher installation
+Use this route in a source checkout when developing the launcher:
 
 ```bash
-# Install Poetry, enter the standard repository clone, and create its locked launcher environment.
-poetry install --no-interaction
-poetry run oncotracer --help
+git clone https://github.com/cfarkas/oncotracer.git
+cd oncotracer
+./oncotracer install --poetry
+poetry run oncotracer --version
 ```
 
-Poetry manages the Python launcher. Select `--backend docker`, `--backend singularity`, or `--backend conda` for the scientific runtime.
+The command installs the Poetry-managed Python launcher and the same five isolated Conda scientific environments. Poetry alone cannot supply R, BWA, samtools, Picard, HMMcopy, ichorCNA, or GISTIC2.
+
+## 3. Storage and memory
+
+The first Illumina analysis downloads the UCSC hg38 FASTA and creates a BWA index. Keep at least 80 GiB of addressable memory for the initial index and adequate storage for the reference, BAMs, native stage cache, classifier environments, and outputs. Later runs reuse valid reference indexes and content-matched completed stages.

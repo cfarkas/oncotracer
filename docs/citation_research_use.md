@@ -6,13 +6,12 @@ OncoTracer does not yet have a formal article DOI. The repository's `CITATION.cf
 
 A current software citation is:
 
-> Farkas, Carlos. (2026). *OncoTracer: reproducible LP-WGS CNA analysis for ONT and Illumina data* (version 0.1.0) [Computer software]. https://github.com/cfarkas/oncotracer
+> Farkas, Carlos. (2026). *OncoTracer: reproducible LP-WGS CNA analysis for ONT and Illumina data* (version 2.0.0) [Computer software]. https://github.com/cfarkas/oncotracer
 
-Add the exact commit used in your analysis, for example:
+Record the embedded source identity used in your analysis:
 
 ```bash
-# Run this command from the oncotracer directory.
-git rev-parse HEAD
+oncotracer provenance --json
 ```
 
 Suggested methods text:
@@ -27,13 +26,12 @@ GitHub can render `CITATION.cff` through its “Cite this repository” interfac
 
 A reproducible report should also cite the relevant upstream methods/software, not only OncoTracer:
 
-- [Nextflow](https://www.nextflow.io/) for workflow execution;
 - [SAMURAI](https://github.com/dincalcilab/samurai) for the upstream LP-WGS workflow;
 - [QDNAseq](https://bioconductor.org/packages/QDNAseq/) for the standard Illumina route;
 - [ichorCNA](https://github.com/broadinstitute/ichorCNA) for the standard ONT/liquid-biopsy route;
-- aligner and other major tools listed in [Programs](programs.md).
+- aligner and other native dependencies recorded by the [five-environment or container backend](containers.md).
 
-Use the citation/version recorded by the actual run's `pipeline_info`, because nested tool versions may differ between releases.
+Use the citation/version recorded by the actual run manifest and stage-01 provenance, because tool versions may differ between releases. Cite Nextflow only when reproducing a historical v1.1 analysis; native v2 does not invoke it.
 
 ## Cite public example data separately
 
@@ -50,15 +48,12 @@ For any other public data, record archive, project, sample/run accessions, retri
 Archive with the result:
 
 ```bash
-# Run this command from the oncotracer directory.
-git rev-parse HEAD
-nextflow -version
-cat .oncotracer/install/install_manifest.txt
+oncotracer --version
+oncotracer provenance --json
+oncotracer doctor --backend conda
 ```
 
-Create or refresh that manifest through `nextflow run main.nf --install` with
-the same Nextflow runtime option used for the analysis. Do not invoke Docker,
-Apptainer, or Singularity directly to inspect or launch the image.
+For Conda, preserve the explicit package specifications for all five prefixes. For containers, preserve the immutable image digest. Also retain the release's `release-provenance.json`, which ties the source identity to the binary, image, and complete public-data parity audits.
 
 Also preserve:
 

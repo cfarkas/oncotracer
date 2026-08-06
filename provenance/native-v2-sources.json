@@ -1,0 +1,16 @@
+{
+  "historical_sources": {
+    "classifier_overlay": {
+      "description": "Historical native classifier overlay staged during the v2 migration",
+      "sha256": "75fc9bf97e0312e3aa550fa8290e0e1aa8c8a4127f842ba1718a0239aff956e6",
+      "sha256_definition": "sha256(file bytes)"
+    },
+    "native_source_input_archive": {
+      "description": "Historical native v2 source input archive staged before source materialization",
+      "sha256": "f374c8f80dd320ab7de0be13bb6ad6ad9a82dfdb725f318893322efee6deb4a1",
+      "sha256_definition": "sha256(file bytes)"
+    }
+  },
+  "note": "Historical input hashes are retained separately from the deterministic hash of the exact release commit.",
+  "schema": "oncotracer-native-v2-sources-v1"
+}

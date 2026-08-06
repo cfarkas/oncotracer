@@ -1,5 +1,7 @@
 # HCC1143 six-FASTQ public example
 
+> **Legacy v1.1 command record.** The commands below are retained for historical reproduction. Native v2 users should run `oncotracer quickstart 2 --backend conda --test-root "$PWD/oncotracer-quickstart2"`; the versioned manifest remains the checksum authority for both routes.
+
 This example runs three paired-end HCC1143 low-pass whole-genome sequencing libraries from public project [PRJNA454331](https://www.ebi.ac.uk/ena/browser/view/PRJNA454331). It starts from a fresh OncoTracer clone and uses paths relative to the clone.
 
 All rows use `TUMOR`. DMSO is a treatment control, not a normal genome.

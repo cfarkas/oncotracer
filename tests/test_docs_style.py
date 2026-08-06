@@ -1,219 +1,209 @@
 #!/usr/bin/env python3
-"""Regression checks for the public documentation and example commands."""
+"""Standalone regression checks for the native v2 public documentation."""
 
 from __future__ import annotations
 
+import csv
 import re
 import subprocess
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+FENCE = chr(96) * 3
+BASH_BLOCK_RE = re.compile(re.escape(FENCE) + r"bash[ \t]*\n(.*?)" + re.escape(FENCE), re.DOTALL)
 
-DOC_TEXT_FILES = [ROOT / "README.md", ROOT / "mkdocs.yml"]
-DOC_TEXT_FILES.extend(sorted((ROOT / "docs").rglob("*.md")))
-DOC_TEXT_FILES.extend(sorted((ROOT / "examples").rglob("README.md")))
+MARKDOWN_FILES = [ROOT / "README.md"]
+MARKDOWN_FILES.extend(sorted((ROOT / "docs").rglob("*.md")))
+MARKDOWN_FILES.extend(sorted((ROOT / "examples").rglob("*.md")))
 
-FORBIDDEN_PHRASES = (
-    "Every OncoTracer command starts with Nextflow",
-    "The user always starts OncoTracer with Nextflow",
-    "Illumina controls are never silently ignored",
-    "PoN output contract",
-    "Current main fixes a fail-open",
-    "Current main corrects an earlier fail-open",
-    "The first analysis is much larger than the example reads",
-    "QuickStart Example 3",
-    "GNU Screen",
-    "screen -S",
-    "screen -r",
-    "Enter a screen session",
-    "Start OncoTracer through Nextflow",
-    "Start containers only through Nextflow",
-    "Use container runtimes only through Nextflow",
-    "does **not** include or download",
-    "Nothing on this page can run until you provide all 20 paired-end files",
-    "**Not included**; the user must provide all 20 FASTQs",
-    "the user must provide all 20 FASTQs",
-    "User Data Required",
-    "FASTQs are not included or downloaded",
-)
-
-FORBIDDEN_PATHS = (
-    "/home/student/oncotracer",
-    "/home/user/oncotracer",
-    "/absolute/path/oncotracer",
-    "/data/study42",
-)
-
-CLONE_COMMAND = "git clone https://github.com/cfarkas/oncotracer.git"
-CD_COMMAND = "cd oncotracer"
-
-HCC1143_WGET_URLS = (
-    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_1.fastq.gz",
-    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_2.fastq.gz",
-    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_1.fastq.gz",
-    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_2.fastq.gz",
-    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_1.fastq.gz",
-    "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_2.fastq.gz",
-)
-
-HCC1143_TARGETS = (
-    "HCC1143_DMSO_R1.fastq.gz",
-    "HCC1143_DMSO_R2.fastq.gz",
-    "HCC1143_BEZ235_R1.fastq.gz",
-    "HCC1143_BEZ235_R2.fastq.gz",
-    "HCC1143_TRAMETINIB_R1.fastq.gz",
-    "HCC1143_TRAMETINIB_R2.fastq.gz",
-)
-
-COMMENTED_BASH_FILES = (
+ACTIVE_NATIVE_FILES = (
     "README.md",
+    "docs/index.md",
     "docs/installation.md",
     "docs/quick_start.md",
-    "docs/public_cohort.md",
-    "docs/full_tutorial.md",
-    "docs/six_tumor_four_control.md",
     "docs/auto_params.md",
-    "docs/configuration.md",
+    "docs/public_cohort.md",
+    "docs/six_tumor_four_control.md",
     "docs/running.md",
+    "docs/configuration_v2.md",
     "docs/containers.md",
-    "docs/programs.md",
+    "docs/outputs.md",
+    "docs/gallery.md",
+    "docs/native_architecture.md",
+    "docs/parity_release.md",
+    "docs/citation_research_use.md",
+    "docs/troubleshooting.md",
     "docs/developer_guide.md",
-    "examples/hcc1143_lpwgs/README.md",
-    "examples/prjna754199/README.md",
-)
-
-GENERIC_PATH_FILES = (
-    "README.md",
-    "docs/installation.md",
-    "docs/quick_start.md",
-    "docs/public_cohort.md",
-    "docs/full_tutorial.md",
-    "docs/six_tumor_four_control.md",
-    "docs/auto_params.md",
-    "docs/configuration.md",
-    "docs/running.md",
-    "docs/containers.md",
-    "docs/programs.md",
-    "examples/hcc1143_lpwgs/README.md",
-    "examples/prjna754199/README.md",
 )
 
 REQUIRED_TEXT = {
     "README.md": (
-        "--conda",
-        "Poetry launcher",
-        "poetry run oncotracer",
-        "create and reuse the required Conda environments automatically",
-        "https://github.com/conda-forge/miniforge",
-        "https://hub.docker.com/r/carlosfarkas/oncotracer",
-        CLONE_COMMAND,
-        "## Other Example Runs",
-        "is a mock example",
-        "cat > \"$READS_DIR/samples.csv\" <<'CSV'",
-        "wget --continue --directory-prefix=\"$READS_DIR\"",
-        "https://www.htslib.org/download/",
-        "https://github.com/lh3/bwa",
-        "https://github.com/lh3/minimap2",
+        "native, auditable LP-WGS copy-number analysis",
+        "normal execution path does not invoke Nextflow",
+        "gh release download v2.0.0",
+        "sha256sum -c SHA256SUMS",
+        "oncotracer provenance --json",
+        "oncotracer install --conda",
+        "oncotracer install --docker",
+        "oncotracer install --singularity",
+        "oncotracer install --poetry",
+        "oncotracer quickstart 1",
+        "oncotracer quickstart 2",
+        "run_cna_classifier: true",
+        "release-provenance.json",
     ),
     "docs/index.md": (
-        "Poetry launcher",
-        "--conda",
-        "Other Example Run: six tumors and four controls",
-        "Mock six-tumor/four-normal example",
-        "## Estimated time for the first analysis",
+        "Nextflow is not installed or invoked by the v2 analysis path",
+        "frozen v1.1 Nextflow release",
+        ".oncotracer-native/trace.tsv",
+        "release-provenance.json",
+        "deterministic source-tree SHA-256",
     ),
     "docs/installation.md": (
-        "--conda",
-        "--docker",
-        "--singularity",
-        "https://github.com/conda-forge/miniforge",
-        "https://hub.docker.com/r/carlosfarkas/oncotracer",
-        "Other Example Run: six tumors and four controls",
-        "https://adoptium.net/temurin/releases/?version=17",
-        "https://www.python.org/downloads/",
-        "https://zlib.net/pigz/",
+        "It does not require a Git clone after installation",
+        "Five isolated, versioned environments are created",
+        "core alignment",
+        "qDNAseq with its pinned R 4.1 stack",
+        "ichorCNA/HMMcopy with its pinned R 4.4 stack",
+        "optional CNA classifier/report stack",
+        "GISTIC2 for the optional recurrence branch",
+        "oncotracer doctor --backend conda",
+        "oncotracer doctor --backend docker",
+        "oncotracer doctor --backend singularity",
     ),
     "docs/quick_start.md": (
-        "## Choose one of four execution methods",
-        "### Docker",
-        "### Singularity or Apptainer",
-        "### Poetry launcher",
-        "### Conda",
-        "sample_name,status\nERR12341627,TUMOR",
-        "barcode,sample_name,status\nbarcode01,DRR165691,TUMOR",
-        "## Estimated time for this analysis",
+        "complete native analysis",
+        "approximately 225 MB",
+        "oncotracer quickstart 1",
+        "--backend conda",
+        "--backend docker",
+        "--backend singularity",
+        "03_cna_codification/cna_events.tsv",
+        ".oncotracer-native/trace.tsv",
+        "--download-only",
     ),
     "docs/public_cohort.md": (
-        "## 6. Run the analysis",
-        "### Docker",
-        "### Singularity or Apptainer",
-        "### Poetry launcher",
-        "### Conda",
-        "sample_name,status\nHCC1143_DMSO,TUMOR",
-        "HCC1143_BEZ235,TUMOR",
-        "HCC1143_TRAMETINIB,TUMOR",
-        "cat > \"$READS_DIR/samples.csv\" <<'CSV'",
-        CLONE_COMMAND,
-    ),
-    "docs/full_tutorial.md": (
-        "sample_name,status\nDDLPS_1a,TUMOR",
-        "WDLPS_3,TUMOR",
-        "## Estimated time and resources",
-        "### Docker",
-        "### Singularity or Apptainer",
-        "### Poetry launcher",
-        "### Conda",
-    ),
-    "docs/six_tumor_four_control.md": (
-        "# Other Example Run: Mock Six-Tumor/Four-Normal Study",
-        "This mock example illustrates",
-        "--conda",
-        "ONCO001,TUMOR",
-        "CTRL004,NORMAL",
-        "### Docker",
-        "### Singularity or Apptainer",
-        "### Poetry launcher",
-        "### Conda",
+        "all six paired-end FASTQs",
+        "validates each exact size and MD5 checksum",
+        "HCC1143_DMSO",
+        "HCC1143_BEZ235",
+        "HCC1143_TRAMETINIB",
+        "SRR7085656",
+        "SRR7085655",
+        "SRR7085657",
+        "oncotracer quickstart 2",
+        "## Resume",
     ),
     "docs/auto_params.md": (
-        "sample_name,status\nTUMOR_01,TUMOR",
-        "CONTROL_02,NORMAL",
-        "barcode,sample_name,status\nbarcode01,TUMOR_01,TUMOR",
-        "#### Docker",
-        "#### Singularity or Apptainer",
-        "#### Poetry launcher",
-        "#### Conda",
+        "does not start the scientific analysis",
+        "oncotracer auto",
+        "oncotracer run --backend conda",
+        "Zero normal rows run without a local panel",
+        "Exactly one normal is rejected",
+        "Two or more normals build and apply",
+        "tumor samples are exported downstream",
+    ),
+    "docs/six_tumor_four_control.md": (
+        "installed `oncotracer` executable",
+        "does not invoke Nextflow",
+        "does not replace the checksum-validated public-data",
+        "oncotracer install --conda",
+        "oncotracer doctor --backend conda",
+        "oncotracer auto --mode illumina --reads-folder",
+        "--sample-table",
+        "--config-dir",
+        "--outdir",
+        "illumina_pon_min_normals: 4",
+        "oncotracer run --backend conda --config",
+        "QDNASEQ_LOCAL_PON_SUCCESS",
+        "nextflow_used",
+    ),
+    "docs/running.md": (
+        "Running the native workflow",
+        "direct qDNAseq or direct HMMcopy/ichorCNA",
+        "BAM-supported boundary refinement",
+        "run_cna_classifier: true",
+        "argument arrays rather than shell strings",
+        "fails if a Nextflow invocation appears",
+    ),
+    "docs/configuration_v2.md": (
+        "mode: illumina",
+        "mode: ont",
+        "run_cna_classifier: true",
+        "run_gistic: true",
+        "gistic_required: false",
+        "knowledge_web: false",
+        "Nested YAML is deliberately rejected",
     ),
     "docs/containers.md": (
-        "Nextflow creates and reuses Conda environments automatically",
-        "lpwgs_root/.oncotracer/conda",
+        "All backends use the same native stage graph",
+        "ghcr.io/cfarkas/oncotracer:2.0.0",
+        "The five Conda groups are",
+        "core",
+        "qdnaseq",
+        "ichorcna",
+        "classifier",
+        "gistic",
+        "semantic tool/package probes",
+        "login shell's",
     ),
-    "mkdocs.yml": (
-        "Poetry Launcher: poetry.md",
-        "Other Example Runs:",
-        "Mock Six Tumors + Four Normal Controls",
+    "docs/native_architecture.md": (
+        "BWA and Picard for Illumina",
+        "qDNAseq in its pinned R 4.1 environment",
+        "HMMcopy and ichorCNA 0.5.1",
+        ".nf",
+        "file is present in the release executable or container",
+        "exact Git commit and deterministic",
+        "Normal v2 execution does not invoke Nextflow",
+    ),
+    "docs/parity_release.md": (
+        "Illumina ERR12341627",
+        "ONT DRR165691",
+        "all three HCC1143 libraries",
+        "six checksum-validated FASTQs",
+        "same exact current",
+        "oncotracer-v2.0.0-parity-audit.tar.gz",
+        "SHA256SUMS",
+    ),
+    "docs/migration_v1_to_v2.md": (
+        "nextflow run main.nf --conda -params-file run.yml -resume",
+        "oncotracer run --backend conda --config run.yml",
+        "never forwards that command to Nextflow",
+        "immutable",
+        "v1.1",
+        "git -c tar.umask=0002 archive --format=tar <exact-commit>",
+    ),
+    "docs/citation_research_use.md": (
+        "version 2.0.0",
+        "oncotracer provenance --json",
+        "not a standalone diagnostic system",
+        "input file checksums and source accessions",
+        "immutable image digest",
+    ),
+    "docs/troubleshooting.md": (
+        "all five configured prefixes",
+        "whether Nextflow is required",
+        "false",
+        "R_HOME",
+        "R_LIBS_USER",
+        "exact",
+        "Rscript",
+        "do not substitute a login-shell",
     ),
 }
 
-ROUTE_EXAMPLE_FILES = (
-    "docs/quick_start.md",
-    "docs/public_cohort.md",
-    "docs/full_tutorial.md",
-    "docs/six_tumor_four_control.md",
-    "docs/auto_params.md",
-    "examples/hcc1143_lpwgs/README.md",
-    "examples/prjna754199/README.md",
+PARITY_REQUIREMENTS = (
+    "identical analysis mode, dataset name, and sample set",
+    "engine=native",
+    "nextflow_used=false",
+    "at least 0.80 reciprocal interval overlap",
+    "event recall and precision of at least 0.90",
+    "at least 0.95 of each refined-bin grid shared exactly",
+    "Pearson correlation of at least 0.98",
+    "no greater than 0.08",
 )
-
-ROUTE_SNIPPETS = (
-    "--docker",
-    "--singularity",
-    "poetry run oncotracer",
-    "--conda",
-)
-
-BASH_BLOCK_RE = re.compile(r"```bash[ \t]*\n(.*?)```", re.DOTALL)
 
 
 def fail(message: str) -> None:
@@ -228,80 +218,95 @@ def read(relative_path: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def check_forbidden_phrases() -> None:
-    for path in DOC_TEXT_FILES:
-        text = path.read_text(encoding="utf-8")
-        for phrase in FORBIDDEN_PHRASES:
-            if phrase.casefold() in text.casefold():
-                fail(f"obsolete phrase in {path.relative_to(ROOT)}: {phrase}")
-
-
-def check_generic_paths() -> None:
-    for path in DOC_TEXT_FILES:
-        text = path.read_text(encoding="utf-8")
-        for legacy_path in FORBIDDEN_PATHS:
-            if legacy_path in text:
-                fail(f"legacy example path in {path.relative_to(ROOT)}: {legacy_path}")
-    for path in DOC_TEXT_FILES:
-        text = path.read_text(encoding="utf-8")
-        if "REPO_DIR=" in text or "$REPO_DIR" in text:
-            fail(f"verbose REPO_DIR usage in {path.relative_to(ROOT)}")
-        if 'git clone https://github.com/cfarkas/oncotracer.git "$REPO_DIR"' in text:
-            fail(f"target-path clone in {path.relative_to(ROOT)}")
-
-
-def check_required_text() -> None:
+def check_required_native_content() -> None:
     for relative_path, snippets in REQUIRED_TEXT.items():
         text = read(relative_path)
         for snippet in snippets:
             if snippet not in text:
-                fail(f"missing required text in {relative_path}: {snippet}")
+                fail(f"missing native v2 requirement in {relative_path}: {snippet}")
 
 
-def check_hcc1143_wget_downloads() -> None:
-    readme = read("README.md")
-    wget_command = 'wget --continue --directory-prefix="$READS_DIR"'
-    if readme.count(wget_command) != 6:
-        fail("README.md must expose exactly six resumable HCC1143 wget commands")
-    for url in HCC1143_WGET_URLS:
-        if url not in readme:
-            fail(f"README.md is missing HCC1143 download URL: {url}")
-    for target in HCC1143_TARGETS:
-        if target not in readme:
-            fail(f"README.md is missing HCC1143 target filename: {target}")
-
-
-def check_all_example_routes() -> None:
-    for relative_path in ROUTE_EXAMPLE_FILES:
+def check_native_runtime_boundary() -> None:
+    forbidden = (
+        "nextflow run",
+        "carlosfarkas/oncotracer:latest",
+        "docker://carlosfarkas/oncotracer:latest",
+        "Every OncoTracer command starts with Nextflow",
+        "Start OncoTracer through Nextflow",
+    )
+    for relative_path in ACTIVE_NATIVE_FILES:
         text = read(relative_path)
-        for snippet in ROUTE_SNIPPETS:
-            if snippet not in text:
-                fail(f"missing execution route in {relative_path}: {snippet}")
+        for phrase in forbidden:
+            if phrase.casefold() in text.casefold():
+                fail(f"obsolete v1 runtime instruction in {relative_path}: {phrase}")
+
+    installation_release = read("docs/installation.md").split("### Poetry", 1)[0]
+    if "git clone" in installation_release:
+        fail("global v2 release installation must not require a source checkout")
 
 
-def check_commented_bash_blocks() -> None:
-    for relative_path in COMMENTED_BASH_FILES:
-        text = read(relative_path)
-        blocks = BASH_BLOCK_RE.findall(text)
-        if not blocks:
-            fail(f"expected at least one Bash command block in {relative_path}")
-        for index, block in enumerate(blocks, start=1):
-            first_line = next(
-                (line.strip() for line in block.splitlines() if line.strip()),
-                "",
-            )
-            if not first_line.startswith("#"):
-                fail(
-                    f"Bash block {index} in {relative_path} must begin with a brief # comment"
-                )
+def check_parity_contract() -> None:
+    text = read("docs/parity_release.md")
+    for requirement in PARITY_REQUIREMENTS:
+        if requirement not in text:
+            fail(f"parity contract is missing or changed: {requirement}")
 
 
-def check_bash_block_syntax() -> None:
-    for path in DOC_TEXT_FILES:
-        if path.suffix != ".md":
-            continue
+def check_hcc1143_manifest() -> None:
+    manifest = ROOT / "examples/hcc1143_lpwgs/manifest.tsv"
+    with manifest.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle, delimiter="\t"))
+    if len(rows) != 6:
+        fail(f"HCC1143 manifest must contain six FASTQs, observed {len(rows)}")
+
+    expected = {
+        "HCC1143_DMSO": "SRR7085656",
+        "HCC1143_BEZ235": "SRR7085655",
+        "HCC1143_TRAMETINIB": "SRR7085657",
+    }
+    grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in rows:
+        grouped[row["sample_name"]].append(row)
+        if row["run_accession"] != expected.get(row["sample_name"]):
+            fail(f"unexpected sample/run mapping in HCC1143 manifest: {row}")
+        if row["read"] not in {"R1", "R2"}:
+            fail(f"unexpected read end in HCC1143 manifest: {row}")
+        if not re.fullmatch(r"[0-9a-f]{32}", row["md5"]):
+            fail(f"invalid MD5 in HCC1143 manifest: {row['filename']}")
+        if not row["bytes"].isdigit() or int(row["bytes"]) <= 0:
+            fail(f"invalid byte count in HCC1143 manifest: {row['filename']}")
+        if not row["url"].startswith("https://ftp.sra.ebi.ac.uk/"):
+            fail(f"non-ENA URL in HCC1143 manifest: {row['filename']}")
+    if set(grouped) != set(expected):
+        fail("HCC1143 manifest sample set changed")
+    for sample_name, sample_rows in grouped.items():
+        if {row["read"] for row in sample_rows} != {"R1", "R2"}:
+            fail(f"{sample_name} does not have exactly one R1 and one R2")
+
+
+def check_navigation() -> None:
+    text = read("mkdocs.yml")
+    for entry in (
+        "Home: index.md",
+        "QuickStart 1 — Illumina + ONT: quick_start.md",
+        "QuickStart 2 — HCC1143: public_cohort.md",
+        "Mock cohort — six tumors + four normals: six_tumor_four_control.md",
+        "Native architecture: native_architecture.md",
+        "Parity and release gate: parity_release.md",
+        "Migration from v1.1: migration_v1_to_v2.md",
+        "Legacy v1.1: legacy_v1.md",
+    ):
+        if entry not in text:
+            fail(f"mkdocs navigation is missing: {entry}")
+
+
+def check_markdown_and_bash_syntax() -> None:
+    for path in MARKDOWN_FILES:
+        text = path.read_text(encoding="utf-8")
         relative_path = path.relative_to(ROOT)
-        for index, block in enumerate(BASH_BLOCK_RE.findall(path.read_text(encoding="utf-8")), start=1):
+        if text.count(FENCE) % 2:
+            fail(f"unbalanced Markdown fences in {relative_path}")
+        for index, block in enumerate(BASH_BLOCK_RE.findall(text), start=1):
             completed = subprocess.run(
                 ["bash", "-n"],
                 input=block,
@@ -315,14 +320,16 @@ def check_bash_block_syntax() -> None:
 
 
 def main() -> None:
-    check_forbidden_phrases()
-    check_generic_paths()
-    check_required_text()
-    check_hcc1143_wget_downloads()
-    check_all_example_routes()
-    check_commented_bash_blocks()
-    check_bash_block_syntax()
-    print("PASS: Docker/Singularity, Poetry, and Conda documentation, generic paths, examples, downloads, and Bash syntax")
+    check_required_native_content()
+    check_native_runtime_boundary()
+    check_parity_contract()
+    check_hcc1143_manifest()
+    check_navigation()
+    check_markdown_and_bash_syntax()
+    print(
+        "PASS: native v2 docs preserve runtime isolation, public-input provenance, "
+        "scientific parity thresholds, release identity, and valid commands"
+    )
 
 
 if __name__ == "__main__":

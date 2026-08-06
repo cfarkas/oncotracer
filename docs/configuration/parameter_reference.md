@@ -1,5 +1,7 @@
 # Parameter Reference
 
+> **Legacy v1.1 documentation.** This unlisted parameter reference belongs to the immutable Nextflow release. Native v2 users should start with [Native YAML configuration](../configuration_v2.md).
+
 This page documents the top-level parameters declared in `nextflow.config`. For a first run, use Automatic Setup or a minimal YAML and keep the remaining defaults.
 
 ## How parameters are supplied

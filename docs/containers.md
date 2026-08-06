@@ -1,155 +1,34 @@
-# Execution environments
+# Execution backends
 
-Nextflow runs OncoTracer with one execution option per analysis command.
+All backends use the same native stage graph and output contract.
 
-| Environment | Option | What Nextflow uses |
+| Backend | Installation | Scientific execution |
 | --- | --- | --- |
-| Linux with Miniforge or Conda | `--conda` | Conda environments created automatically from the versioned environment definitions |
-| Linux workstation or server with Docker | `--docker` | [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer) |
-| HPC with Singularity or Apptainer | `--singularity` | `docker://carlosfarkas/oncotracer:latest` |
+| Conda | `oncotracer install --conda` | Five isolated versioned prefixes |
+| Docker | `oncotracer install --docker` | Native v2 image from GHCR |
+| Singularity/Apptainer | `oncotracer install --singularity` | The same native image as a SIF |
+| Poetry | `oncotracer install --poetry` | Development launcher; scientific tools remain explicit |
 
-Run the commands from the cloned `oncotracer` directory.
+## Container mounts
 
-## Conda
+The CLI reads the flat YAML, identifies the config, input, `lpwgs_root`, and output parents, and mounts the minimal distinct roots at identical absolute paths. Patient-data policies and institutional container restrictions still apply.
 
-Install [Miniforge](https://github.com/conda-forge/miniforge) or another compatible Conda distribution, then run:
+## Image identity
+
+Stable images use the immutable release tag:
+
+```text
+ghcr.io/cfarkas/oncotracer:2.0.0
+```
+
+Release records contain the source commit, binary checksum, container digest, and the exact successful native-CI and two parity workflow run identifiers.
+
+The five Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`. `oncotracer doctor --backend conda` checks their exact prefixes and performs semantic tool/package probes rather than relying on a login shell's `PATH`.
+
+For direct Compose use, mount a project directory at `/project`:
 
 ```bash
-# Run this command from the oncotracer directory.
-
-# Create or reuse the required Conda environments and test the software.
-nextflow run main.nf --install --conda \
-  --lpwgs_root "project"
-
-# Optionally check a YAML without running the scientific tools.
-nextflow run main.nf -stub-run --conda \
-  -params-file "params/my_run.yml"
-
-# Run or resume the analysis with Conda.
-nextflow run main.nf --conda \
-  -params-file "params/my_run.yml" \
-  -resume
+ONCOTRACER_PROJECT_DIR="$PWD/project" docker compose run --rm oncotracer --version
 ```
 
-Nextflow creates and reuses Conda environments automatically. The first command solves and creates the top-level environment, which is cached below `lpwgs_root/.oncotracer/conda`; the nested SAMURAI workflow also creates and reuses its required Conda environments.
-
-## Docker
-
-```bash
-# Run this command from the oncotracer directory.
-
-# Pull or reuse the Docker image and test the installed software.
-nextflow run main.nf --install --docker \
-  --lpwgs_root "project"
-
-# Optionally check a YAML without running the scientific tools.
-nextflow run main.nf -stub-run --docker \
-  -params-file "params/my_run.yml"
-
-# Run or resume the analysis.
-nextflow run main.nf --docker \
-  -params-file "params/my_run.yml" \
-  -resume
-```
-
-Nextflow pulls or reuses `carlosfarkas/oncotracer:latest` as needed. Use `--docker` on the OncoTracer command; do not replace it with `-profile docker`.
-
-## Singularity or Apptainer
-
-```bash
-# Confirm which HPC launcher is available.
-command -v singularity
-command -v apptainer
-```
-
-Then use `--singularity`:
-
-```bash
-# Run this command from the oncotracer directory.
-
-# Pull or reuse docker://carlosfarkas/oncotracer:latest and test the software.
-nextflow run main.nf --install --singularity \
-  --lpwgs_root "project"
-
-# Optionally check a YAML without running the scientific tools.
-nextflow run main.nf -stub-run --singularity \
-  -params-file "params/my_run.yml"
-
-# Run or resume the analysis on HPC.
-nextflow run main.nf --singularity \
-  -params-file "params/my_run.yml" \
-  -resume
-```
-
-Use a Singularity/Apptainer cache directory on a filesystem with enough quota. Cluster scheduler and bind-mount rules still apply.
-
-## Project paths
-
-Keep the YAML inputs, reference/cache, work directory, and results below a common project root:
-
-```yaml
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
-```
-
-For container runs, a path outside `lpwgs_root` may not be visible inside the container. For Conda runs, a common project root keeps environments, references, work files, and outputs together.
-
-## File ownership with Docker
-
-The default container user is `1000:1000`. When the host uses different numeric IDs, record them:
-
-```bash
-# Print the host user and group IDs.
-id -u
-id -g
-```
-
-Then add the matching value to the YAML when required:
-
-```yaml
-docker_user: "1234:1234"
-```
-
-## Record the environment identity
-
-```bash
-# Run this command from the oncotracer directory.
-
-# Read the environment or image identity recorded by the installation check.
-cat ".oncotracer/install/install_manifest.txt"
-```
-
-For a formal analysis, preserve the OncoTracer commit, YAML, generated samplesheet, installation manifest, and nested `pipeline_info` files. Use an approved immutable image digest or explicit Conda package specification when the study requires a frozen runtime.
-
-## Cache and storage locations
-
-- `work/`: top-level Nextflow cache used by `-resume`.
-- `<outdir>/01_samurai_*/work/`: nested SAMURAI cache.
-- `lpwgs_root/.oncotracer/conda/`: top-level Conda environment cache.
-- `.nextflow/`: Nextflow metadata.
-- `.singularity_cache/` below `lpwgs_root`: Singularity/Apptainer images.
-- Docker system storage: managed by the Docker daemon.
-
-Do not remove these while a run is active. Verify and archive the final results before cleaning caches.
-
-## Security notes
-
-- Treat Docker access as privileged according to local policy.
-- Use trusted image names, recorded digests, and trusted Conda channels.
-- Do not place registry credentials in YAML files or shell history.
-- Mount only the project directories needed for the analysis.
-- Follow institutional rules for patient data.
-
-See [Troubleshooting](troubleshooting.md) for runtime permissions, paths, disk usage, environment solving, and task logs.
-
-## Poetry as a launcher
-
-```bash
-# Run a configuration through the Poetry launcher and Docker backend.
-poetry run oncotracer --repo-dir . --backend docker \
-  -params-file /path/to/my/directory/my_oncotracer_project/config/illumina.auto.yml \
-  -work-dir /path/to/my/directory/my_oncotracer_project/work -resume
-```
-
-Poetry isolates the Python launcher; Docker, Singularity/Apptainer, or Conda supplies the scientific programs selected by `--backend`.
+The ordinary `oncotracer run --backend docker` route mounts the absolute paths referenced by the YAML automatically and is preferred for analyses.

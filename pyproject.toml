@@ -1,7 +1,7 @@
 [project]
 name = "oncotracer"
-version = "1.1.0"
-description = "Poetry-managed launcher for the OncoTracer Nextflow workflow"
+version = "2.0.0"
+description = "Native, auditable LP-WGS CNA analysis for Illumina and Oxford Nanopore data"
 authors = [{ name = "OncoTracer developers" }]
 readme = "README.md"
 license = "MIT"

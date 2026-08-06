@@ -363,16 +363,23 @@ def read_qdnaseq_bins(input_dir: Path) -> pd.DataFrame:
     if bin_dir.exists():
         files.extend(sorted(bin_dir.glob("*_markdup_bins.bed")))
         files.extend(sorted(bin_dir.glob("*_markdup_bins.bed.gz")))
+        files.extend(sorted(bin_dir.glob("*_bins.bed")))
+        files.extend(sorted(bin_dir.glob("*_bins.bed.gz")))
     if not files:
         files.extend(sorted(input_dir.glob("*_markdup_bins.bed")))
         files.extend(sorted(input_dir.glob("*_markdup_bins.bed.gz")))
+        files.extend(sorted(input_dir.glob("*_bins.bed")))
+        files.extend(sorted(input_dir.glob("*_bins.bed.gz")))
+    # The broad ``*_bins`` fallback also matches ``*_markdup_bins``. Preserve
+    # discovery order while ensuring that one scientific input is loaded once.
+    files = list(dict.fromkeys(files))
     if not files:
         raise FileNotFoundError(
-            f"No qDNAseq bin BED files found in {input_dir}/bins. Expected files like *_markdup_bins.bed."
+            f"No qDNAseq bin BED files found in {input_dir}/bins. Expected files like *_markdup_bins.bed or *_bins.bed."
         )
     frames = []
     for f in files:
-        sample = re.sub(r"_markdup_bins\.bed(\.gz)?$", "", f.name)
+        sample = re.sub(r"_(?:markdup_)?bins\.bed(\.gz)?$", "", f.name)
         log(f"Reading qDNAseq bins: {sample} <- {f}")
         frames.append(standardize_bin_df(read_table(f), sample, f))
     return pd.concat(frames, ignore_index=True)
@@ -481,7 +488,7 @@ def prepare_bam(path: Path, sample: str, outdir: Path) -> Tuple[Path, dict]:
     }
     if order == "coordinate":
         if not has_bam_index(path):
-            run_cmd(["samtools", "index", str(path)])
+            run_cmd([args_global.samtools_executable, "index", str(path)])
             record["action"] = "indexed_original_bam"
             record["index_action"] = "created_index_next_to_original_bam"
         return path, record
@@ -492,9 +499,9 @@ def prepare_bam(path: Path, sample: str, outdir: Path) -> Tuple[Path, dict]:
     record["used_bam"] = str(out)
     record["action"] = "created_sorted_indexed_bam_copy"
     if not out.exists():
-        run_cmd(["samtools", "sort", "-o", str(out), str(path)])
+        run_cmd([args_global.samtools_executable, "sort", "-o", str(out), str(path)])
     if not has_bam_index(out):
-        run_cmd(["samtools", "index", str(out)])
+        run_cmd([args_global.samtools_executable, "index", str(out)])
     record["index_action"] = "prepared_bam_index_present"
     return out, record
 
@@ -1486,6 +1493,7 @@ def main():
     p.add_argument("--include-secondary", action="store_true")
     p.add_argument("--state-gain-threshold", type=float, default=0.25)
     p.add_argument("--state-loss-threshold", type=float, default=-0.25)
+    p.add_argument("--samtools-executable", required=True)
     p.add_argument("--force", action="store_true")
     args = p.parse_args()
     args_global = args

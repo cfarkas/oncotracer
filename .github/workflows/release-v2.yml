@@ -1,0 +1,452 @@
+name: Release stable native v2
+
+on:
+  workflow_run:
+    workflows:
+      - Native v2 CI
+      - Native v2 QuickStart 1 parity
+      - Native v2 QuickStart 2 parity
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  packages: write
+
+concurrency:
+  group: release-native-v2.0.0
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: v2.0.0
+  IMAGE_NAME: ghcr.io/cfarkas/oncotracer
+  V1_1_COMMIT: 032c1268fa7fdcadc48087055066d7a9fc59bd89
+  V1_DOCKER_IMAGE: carlosfarkas/oncotracer@sha256:4856aed020e1102f891b91de54d6acf365d6b8a57e2283a4f7b670b0bd5b07ed
+  SAMURAI_COMMIT: 6a901940288b008237703c6b181d447e7dee4fcf
+  NEXTFLOW_VERSION: 26.04.6
+  NEXTFLOW_DIST_SHA256: 182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c
+  QDNASEQ_SOURCE_COMMIT: cf7c07e39de0ac64a9c38cb030cba4626e2aae83
+
+jobs:
+  release:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Resolve all successful push gates for the exact current main SHA
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -Eeuo pipefail
+          MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          if [[ "$GITHUB_EVENT_NAME" == workflow_run && "$EVENT_SHA" != "$MAIN_SHA" ]]; then
+            echo "stale workflow_run $EVENT_SHA; current main is $MAIN_SHA"
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          RUNS="$(gh api -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&event=push&status=completed&per_page=100")"
+          resolve_run() {
+            local workflow_name="$1"
+            jq -c --arg name "$workflow_name" --arg sha "$MAIN_SHA" '
+              [.workflow_runs[] |
+                select(.name == $name and .head_sha == $sha and
+                       .head_branch == "main" and .event == "push" and
+                       .status == "completed" and .conclusion == "success")] |
+              sort_by(.run_number, .run_attempt, .id) | last // empty |
+              {id, name, html_url, url, head_sha, event, conclusion}
+            ' <<< "$RUNS"
+          }
+          CI="$(resolve_run 'Native v2 CI')"
+          Q1="$(resolve_run 'Native v2 QuickStart 1 parity')"
+          Q2="$(resolve_run 'Native v2 QuickStart 2 parity')"
+          if [[ -z "$CI" || -z "$Q1" || -z "$Q2" ]]; then
+            echo "all three exact-main gates are not green yet for $MAIN_SHA"
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          {
+            echo 'ready=true'
+            echo "main_sha=$MAIN_SHA"
+            echo "ci_id=$(jq -r '.id' <<< "$CI")"
+            echo "ci_url=$(jq -r '.html_url' <<< "$CI")"
+            echo "q1_id=$(jq -r '.id' <<< "$Q1")"
+            echo "q1_url=$(jq -r '.html_url' <<< "$Q1")"
+            echo "q2_id=$(jq -r '.id' <<< "$Q2")"
+            echo "q2_url=$(jq -r '.html_url' <<< "$Q2")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check out the exact validated main SHA
+        if: steps.gate.outputs.ready == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.gate.outputs.main_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable source identity and release namespace
+        if: steps.gate.outputs.ready == 'true'
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$MAIN_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          SOURCE_SHA256="$(git -c tar.umask=0002 archive --format=tar "$MAIN_SHA" \
+            | sha256sum | awk '{print $1}')"
+          [[ "$SOURCE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          git fetch --tags origin
+          test "$(git rev-list -n 1 v1.1)" = "$V1_1_COMMIT"
+          if git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG" >/dev/null; then
+            test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$MAIN_SHA" || {
+              echo "$RELEASE_TAG already points at another commit" >&2
+              exit 1
+            }
+          fi
+          RELEASE_EXISTS=false
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,isDraft,isPrerelease,targetCommitish \
+            > "$RUNNER_TEMP/existing-release.json" 2>/dev/null; then
+            jq -e --arg sha "$MAIN_SHA" '
+              .tagName == "v2.0.0" and .isDraft == false and
+              .isPrerelease == false and .targetCommitish == $sha
+            ' "$RUNNER_TEMP/existing-release.json"
+            RELEASE_EXISTS=true
+          fi
+          {
+            echo "source_sha256=$SOURCE_SHA256"
+            echo "release_exists=$RELEASE_EXISTS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python 3.11
+        if: steps.gate.outputs.ready == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build and authenticate copied release executable
+        if: steps.gate.outputs.ready == 'true'
+        id: binary
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p release
+          python3 scripts/build_native_binary.py \
+            --output release/oncotracer \
+            --source-commit "$MAIN_SHA" \
+            --source-sha256 "$SOURCE_SHA256"
+          chmod 0755 release/oncotracer
+          BINARY_SHA256="$(sha256sum release/oncotracer | awk '{print $1}')"
+          release/oncotracer --version | grep -F 'OncoTracer 2.0.0'
+          release/oncotracer provenance --json > "$RUNNER_TEMP/binary-provenance.json"
+          jq -e --arg commit "$MAIN_SHA" --arg source "$SOURCE_SHA256" --arg binary "$BINARY_SHA256" '
+            .source_commit == $commit and .source_sha256 == $source and
+            .source_tree_dirty == false and .binary_sha256 == $binary
+          ' "$RUNNER_TEMP/binary-provenance.json"
+          echo "sha256=$BINARY_SHA256" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve and download exact parity artifacts
+        if: steps.gate.outputs.ready == 'true'
+        id: parity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
+          BINARY_SHA256: ${{ steps.binary.outputs.sha256 }}
+          Q1_RUN_ID: ${{ steps.gate.outputs.q1_id }}
+          Q2_RUN_ID: ${{ steps.gate.outputs.q2_id }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p release/parity/quickstart1 release/parity/quickstart2
+          resolve_artifact() {
+            local run_id="$1" expected_name="$2" output="$3"
+            local response record count digest artifact_id
+            response="$(gh api -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts?per_page=100")"
+            count="$(jq --arg name "$expected_name" \
+              '[.artifacts[] | select(.name == $name and .expired == false)] | length' <<< "$response")"
+            test "$count" = 1
+            record="$(jq -c --arg name "$expected_name" \
+              '[.artifacts[] | select(.name == $name and .expired == false)][0]' <<< "$response")"
+            digest="$(jq -r '.digest' <<< "$record")"
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            artifact_id="$(jq -r '.id' <<< "$record")"
+            gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$output"
+            test "sha256:$(sha256sum "$output" | awk '{print $1}')" = "$digest"
+            printf '%s\t%s\t%s\n' "$artifact_id" "$expected_name" "$digest"
+          }
+          Q1_NAME="native-v2-quickstart1-parity-$Q1_RUN_ID"
+          Q2_NAME="native-v2-quickstart2-parity-$Q2_RUN_ID"
+          Q1_RECORD="$(resolve_artifact "$Q1_RUN_ID" "$Q1_NAME" "$RUNNER_TEMP/q1.zip")"
+          Q2_RECORD="$(resolve_artifact "$Q2_RUN_ID" "$Q2_NAME" "$RUNNER_TEMP/q2.zip")"
+          unzip -q "$RUNNER_TEMP/q1.zip" -d release/parity/quickstart1
+          unzip -q "$RUNNER_TEMP/q2.zip" -d release/parity/quickstart2
+          python3 tests/parity_audit.py verify \
+            --suite quickstart1 --audit release/parity/quickstart1/audit \
+            --candidate-sha "$MAIN_SHA" --source-sha256 "$SOURCE_SHA256" \
+            --binary-sha256 "$BINARY_SHA256"
+          python3 tests/parity_audit.py verify \
+            --suite quickstart2 --audit release/parity/quickstart2/audit \
+            --candidate-sha "$MAIN_SHA" --source-sha256 "$SOURCE_SHA256" \
+            --binary-sha256 "$BINARY_SHA256"
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
+            --mode='u+rwX,go+rX,go-w' --format=gnu \
+            -C release/parity -cf - quickstart1 quickstart2 \
+            | gzip -n -9 > release/oncotracer-v2.0.0-parity-audit.tar.gz
+          PARITY_SHA256="$(sha256sum release/oncotracer-v2.0.0-parity-audit.tar.gz | awk '{print $1}')"
+          {
+            IFS=$'\t' read -r q1_artifact_id q1_artifact_name q1_artifact_digest <<< "$Q1_RECORD"
+            IFS=$'\t' read -r q2_artifact_id q2_artifact_name q2_artifact_digest <<< "$Q2_RECORD"
+            echo "bundle_sha256=$PARITY_SHA256"
+            echo "q1_artifact_id=$q1_artifact_id"
+            echo "q1_artifact_name=$q1_artifact_name"
+            echo "q1_artifact_digest=$q1_artifact_digest"
+            echo "q2_artifact_id=$q2_artifact_id"
+            echo "q2_artifact_name=$q2_artifact_name"
+            echo "q2_artifact_digest=$q2_artifact_digest"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create clean Docker source context
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+        run: |
+          set -Eeuo pipefail
+          CONTEXT="$RUNNER_TEMP/oncotracer-v2-release-context"
+          mkdir -p "$CONTEXT"
+          git -c tar.umask=0002 archive --format=tar "$MAIN_SHA" | tar -xf - -C "$CONTEXT"
+          test -f "$CONTEXT/Dockerfile"
+
+      - name: Log in to GHCR
+        if: steps.gate.outputs.ready == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set up Docker Buildx
+        if: steps.gate.outputs.ready == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build native release container locally
+        if: steps.gate.outputs.ready == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ runner.temp }}/oncotracer-v2-release-context
+          load: true
+          push: false
+          tags: oncotracer:v2.0.0-release-candidate
+          build-args: |
+            SOURCE_COMMIT=${{ steps.gate.outputs.main_sha }}
+            SOURCE_SHA256=${{ steps.source.outputs.source_sha256 }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.gate.outputs.main_sha }}
+            org.opencontainers.image.source.sha256=${{ steps.source.outputs.source_sha256 }}
+            org.opencontainers.image.version=2.0.0
+
+      - name: Verify and publish immutable container digest
+        if: steps.gate.outputs.ready == 'true'
+        id: image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
+          RELEASE_BINARY_SHA256: ${{ steps.binary.outputs.sha256 }}
+        run: |
+          set -Eeuo pipefail
+          docker run --rm oncotracer:v2.0.0-release-candidate --version | grep -F 'OncoTracer 2.0.0'
+          docker run --rm oncotracer:v2.0.0-release-candidate provenance --json \
+            > "$RUNNER_TEMP/container-provenance.json"
+          CONTAINER_BINARY_SHA256="$(jq -r '.binary_sha256' "$RUNNER_TEMP/container-provenance.json")"
+          test "$CONTAINER_BINARY_SHA256" = "$RELEASE_BINARY_SHA256"
+          jq -e --arg commit "$MAIN_SHA" --arg source "$SOURCE_SHA256" '
+            .source_commit == $commit and .source_sha256 == $source and
+            .source_tree_dirty == false
+          ' "$RUNNER_TEMP/container-provenance.json"
+          docker run --rm oncotracer:v2.0.0-release-candidate doctor --backend host \
+            > "$RUNNER_TEMP/container-doctor.json"
+          jq -e '.success == true' "$RUNNER_TEMP/container-doctor.json"
+          docker run --rm --entrypoint bash oncotracer:v2.0.0-release-candidate \
+            -c '! command -v nextflow'
+
+          CURRENT_MAIN="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          test "$CURRENT_MAIN" = "$MAIN_SHA"
+          CANDIDATE_TAG="$IMAGE_NAME:v2.0.0-candidate-$GITHUB_RUN_ID"
+          docker tag oncotracer:v2.0.0-release-candidate "$CANDIDATE_TAG"
+          docker push "$CANDIDATE_TAG"
+          IMAGE_DIGEST="$(docker buildx imagetools inspect "$CANDIDATE_TAG" \
+            | awk '$1 == "Digest:" {print $2; exit}')"
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+
+          for stable in "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0"; do
+            if docker buildx imagetools inspect "$stable" > "$RUNNER_TEMP/stable.txt" 2>&1; then
+              EXISTING="$(awk '$1 == "Digest:" {print $2; exit}' "$RUNNER_TEMP/stable.txt")"
+              test "$EXISTING" = "$IMAGE_DIGEST" || {
+                echo "$stable already points at $EXISTING" >&2
+                exit 1
+              }
+            fi
+          done
+          docker buildx imagetools create \
+            --tag "$IMAGE_NAME:2.0.0" \
+            --tag "$IMAGE_NAME:v2.0.0" \
+            "$CANDIDATE_TAG@$IMAGE_DIGEST"
+          test "$(docker buildx imagetools inspect "$IMAGE_NAME:2.0.0" \
+            | awk '$1 == "Digest:" {print $2; exit}')" = "$IMAGE_DIGEST"
+          docker pull "$IMAGE_NAME@$IMAGE_DIGEST"
+          docker run --rm "$IMAGE_NAME@$IMAGE_DIGEST" provenance --json \
+            > "$RUNNER_TEMP/published-container-provenance.json"
+          cmp "$RUNNER_TEMP/container-provenance.json" "$RUNNER_TEMP/published-container-provenance.json"
+          {
+            echo "digest=$IMAGE_DIGEST"
+            echo "candidate_tag=$CANDIDATE_TAG"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build final release provenance and assets
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
+          BINARY_SHA256: ${{ steps.binary.outputs.sha256 }}
+          PARITY_SHA256: ${{ steps.parity.outputs.bundle_sha256 }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          CI_ID: ${{ steps.gate.outputs.ci_id }}
+          CI_URL: ${{ steps.gate.outputs.ci_url }}
+          Q1_ID: ${{ steps.gate.outputs.q1_id }}
+          Q1_URL: ${{ steps.gate.outputs.q1_url }}
+          Q2_ID: ${{ steps.gate.outputs.q2_id }}
+          Q2_URL: ${{ steps.gate.outputs.q2_url }}
+          Q1_ARTIFACT_ID: ${{ steps.parity.outputs.q1_artifact_id }}
+          Q1_ARTIFACT_NAME: ${{ steps.parity.outputs.q1_artifact_name }}
+          Q1_ARTIFACT_DIGEST: ${{ steps.parity.outputs.q1_artifact_digest }}
+          Q2_ARTIFACT_ID: ${{ steps.parity.outputs.q2_artifact_id }}
+          Q2_ARTIFACT_NAME: ${{ steps.parity.outputs.q2_artifact_name }}
+          Q2_ARTIFACT_DIGEST: ${{ steps.parity.outputs.q2_artifact_digest }}
+        run: |
+          set -Eeuo pipefail
+          jq -n \
+            --arg commit "$MAIN_SHA" \
+            --arg source_sha256 "$SOURCE_SHA256" \
+            --arg binary_sha256 "$BINARY_SHA256" \
+            --arg parity_sha256 "$PARITY_SHA256" \
+            --arg image_digest "$IMAGE_DIGEST" \
+            --arg v1_commit "$V1_1_COMMIT" \
+            --arg v1_image "$V1_DOCKER_IMAGE" \
+            --arg samurai "$SAMURAI_COMMIT" \
+            --arg nextflow_version "$NEXTFLOW_VERSION" \
+            --arg nextflow_sha256 "$NEXTFLOW_DIST_SHA256" \
+            --arg qdnaseq "$QDNASEQ_SOURCE_COMMIT" \
+            --arg ci_id "$CI_ID" --arg ci_url "$CI_URL" \
+            --arg q1_id "$Q1_ID" --arg q1_url "$Q1_URL" \
+            --arg q2_id "$Q2_ID" --arg q2_url "$Q2_URL" \
+            --arg q1_artifact_id "$Q1_ARTIFACT_ID" \
+            --arg q1_artifact_name "$Q1_ARTIFACT_NAME" \
+            --arg q1_artifact_digest "$Q1_ARTIFACT_DIGEST" \
+            --arg q2_artifact_id "$Q2_ARTIFACT_ID" \
+            --arg q2_artifact_name "$Q2_ARTIFACT_NAME" \
+            --arg q2_artifact_digest "$Q2_ARTIFACT_DIGEST" '
+            {
+              schema: "oncotracer-v2-release-provenance-v3",
+              version: "2.0.0",
+              release_tag: "v2.0.0",
+              source_commit: $commit,
+              source_sha256: $source_sha256,
+              source_tree_dirty: false,
+              binary_sha256: $binary_sha256,
+              parity_audit_bundle_sha256: $parity_sha256,
+              native_nextflow_required: false,
+              container: {
+                reference: ("ghcr.io/cfarkas/oncotracer@" + $image_digest),
+                digest: $image_digest,
+                nextflow_present: false
+              },
+              frozen_comparator: {
+                oncotracer_commit: $v1_commit,
+                oncotracer_image: $v1_image,
+                samurai_commit: $samurai,
+                nextflow_version: $nextflow_version,
+                nextflow_sha256: $nextflow_sha256,
+                qdnaseq_source_commit: $qdnaseq
+              },
+              workflows: {
+                native_v2_ci: {run_id: ($ci_id|tonumber), url: $ci_url, sha: $commit},
+                quickstart1: {
+                  run_id: ($q1_id|tonumber), url: $q1_url, sha: $commit,
+                  artifact: {id: ($q1_artifact_id|tonumber), name: $q1_artifact_name, digest: $q1_artifact_digest}
+                },
+                quickstart2: {
+                  run_id: ($q2_id|tonumber), url: $q2_url, sha: $commit,
+                  artifact: {id: ($q2_artifact_id|tonumber), name: $q2_artifact_name, digest: $q2_artifact_digest}
+                }
+              }
+            }
+          ' > release/release-provenance.json
+          cat > release/RELEASE_NOTES.md <<EOF
+          # OncoTracer v2.0.0
+
+          Native, copied-executable OncoTracer release with no Nextflow dependency in the v2 runtime.
+
+          Validated on exact commit: \`$MAIN_SHA\`
+
+          - Native v2 CI passed on the exact release commit.
+          - QuickStart 1 passed semantic v1.1/native-v2 parity for Illumina and ONT.
+          - QuickStart 2 passed semantic v1.1/native-v2 parity for all three HCC1143 libraries.
+          - The frozen comparator uses OncoTracer v1.1, SAMURAI v1.4.0, pinned Nextflow, and immutable container digests.
+          - Container: \`$IMAGE_NAME@$IMAGE_DIGEST\`
+          EOF
+          (
+            cd release
+            sha256sum oncotracer oncotracer-v2.0.0-parity-audit.tar.gz \
+              release-provenance.json > SHA256SUMS
+            sha256sum --strict -c SHA256SUMS
+          )
+
+      - name: Reconfirm main and publish or verify GitHub release
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          RELEASE_EXISTS: ${{ steps.source.outputs.release_exists }}
+        run: |
+          set -Eeuo pipefail
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')" = "$MAIN_SHA"
+          assets=(
+            release/oncotracer
+            release/oncotracer-v2.0.0-parity-audit.tar.gz
+            release/release-provenance.json
+            release/SHA256SUMS
+          )
+          if [[ "$RELEASE_EXISTS" == true ]]; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber \
+              --repo "$GITHUB_REPOSITORY"
+            gh release edit "$RELEASE_TAG" --target "$MAIN_SHA" \
+              --title 'OncoTracer v2.0.0' --notes-file release/RELEASE_NOTES.md \
+              --latest --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" \
+              --target "$MAIN_SHA" --title 'OncoTracer v2.0.0' \
+              --notes-file release/RELEASE_NOTES.md --latest \
+              --repo "$GITHUB_REPOSITORY"
+          fi
+          test "$(git ls-remote origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')" = "$MAIN_SHA"
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,isDraft,isPrerelease,targetCommitish,assets \
+            > "$RUNNER_TEMP/published-release.json"
+          jq -e --arg sha "$MAIN_SHA" '
+            .tagName == "v2.0.0" and .isDraft == false and
+            .isPrerelease == false and .targetCommitish == $sha and
+            ([.assets[].name] | sort) ==
+              (["SHA256SUMS","oncotracer","oncotracer-v2.0.0-parity-audit.tar.gz","release-provenance.json"] | sort)
+          ' "$RUNNER_TEMP/published-release.json"

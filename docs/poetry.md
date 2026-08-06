@@ -1,6 +1,6 @@
 # Poetry Launcher
 
-Poetry provides a managed Python launcher for OncoTracer. It does not replace the scientific software runtime: the launcher calls the versioned Nextflow workflow with Docker by default, or with Singularity/Apptainer or Conda when selected.
+Poetry provides a managed Python launcher for OncoTracer's native v2 engine. It does not replace the scientific software runtime: installation also creates the same five isolated Conda environments used by the global executable.
 
 ## Install Poetry and the launcher
 
@@ -13,10 +13,14 @@ poetry run oncotracer --help
 ## Run through Poetry
 
 ```bash
-# Prepare and run QuickStart Example 1 through Poetry with Docker.
-poetry run oncotracer --repo-dir . --backend docker --make_test   --test_root "test"
-poetry run oncotracer --repo-dir . --backend docker   -params-file "test/configs/illumina.quickstart.yml"   -work-dir "test/work/poetry-illumina" -resume
-poetry run oncotracer --repo-dir . --backend docker   -params-file "test/configs/ont.quickstart.yml"   -work-dir "test/work/poetry-ont" -resume
+# Install the launcher and its five scientific environments.
+poetry run oncotracer install --poetry
+poetry run oncotracer doctor --backend poetry
+
+# Run the complete native QuickStart 1 through the Poetry launcher.
+poetry run oncotracer quickstart 1 \
+  --backend poetry \
+  --test-root "$PWD/oncotracer-quickstart1"
 ```
 
-Change `--backend docker` to `--backend singularity` on a configured HPC system or to `--backend conda` for native Conda environments. Remaining arguments are forwarded unchanged to `nextflow run main.nf`.
+For a different managed runtime, install it explicitly with `oncotracer install --docker`, `--singularity`, or `--conda`, then select the matching `--backend`. Every v2 route executes the native stage graph and records `nextflow_used=false`.

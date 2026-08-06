@@ -1,22 +1,59 @@
-# Other Example Run: Mock Six-Tumor/Four-Normal Study
+# Mock Six-Tumor/Four-Normal Study
 
-This mock example illustrates how OncoTracer uses four `NORMAL` samples to build a local qDNAseq panel of normals and applies that reference to six `TUMOR` samples. The names `ONCO001`–`ONCO006` and `CTRL001`–`CTRL004` are placeholders used to demonstrate the configuration.
+This native v2 example uses the installed `oncotracer` executable to build a run-local qDNAseq panel from four `NORMAL` samples and apply it to six `TUMOR` samples. `ONCO001`–`ONCO006` and `CTRL001`–`CTRL004` are placeholders for a paired-end Illumina cohort.
 
-Corrected CNA outputs contain the six tumors. The four controls remain reference and quality-control inputs.
+!!! note "Mock inputs"
+    These 20 FASTQs are not bundled. Use de-identified paired-end files that you are permitted to analyze. This setup example does not replace the checksum-validated public-data [QuickStart 1](quick_start.md), [QuickStart 2](public_cohort.md), or stable-release parity gates.
 
-## 1. Clone OncoTracer
+The historical launcher is linked only from [Legacy v1.1](legacy_v1.md). Every command below uses native v2 and does not invoke Nextflow.
 
-Start from a fresh clone and run the remaining commands from the `oncotracer` directory.
+## Expected cohort behavior
+
+| Role | Samples | Native behavior |
+| --- | --- | --- |
+| Tumor | `ONCO001`–`ONCO006` | Corrected CNA bins, segments, events, and plots are exported downstream |
+| Normal | `CTRL001`–`CTRL004` | Build the local reference and remain panel/QC inputs |
+
+Four controls are a small run-specific reference. Review their leave-one-out stability and other QC before interpreting tumor CNA calls.
+
+## 1. Verify the installed executable and backend
+
+Follow [Installation](installation.md), then prepare and inspect the five isolated Conda environments:
 
 ```bash
-# Clone OncoTracer and enter the repository.
-git clone https://github.com/cfarkas/oncotracer.git
-cd oncotracer
+# Verify the installed executable, source identity, and scientific backend.
+oncotracer --version
+oncotracer provenance --json
+oncotracer install --conda
+oncotracer doctor --backend conda
 ```
 
-## 2. Prepare the mock project
+## 2. Create the project and sample table
 
-Automatic Setup expects one R1/R2 pair for each sample:
+Run the blocks from one working directory, or export `PROJECT_DIR` as an absolute path:
+
+```bash
+# Create a project without requiring a source checkout.
+PROJECT_DIR="${PROJECT_DIR:-$PWD/oncotracer-onco6-ctrl4}"
+mkdir -p "$PROJECT_DIR/input/fastq" "$PROJECT_DIR/config" "$PROJECT_DIR/results"
+
+cat > "$PROJECT_DIR/input/samples.csv" <<'CSV'
+sample_name,status
+ONCO001,TUMOR
+ONCO002,TUMOR
+ONCO003,TUMOR
+ONCO004,TUMOR
+ONCO005,TUMOR
+ONCO006,TUMOR
+CTRL001,NORMAL
+CTRL002,NORMAL
+CTRL003,NORMAL
+CTRL004,NORMAL
+CSV
+cat "$PROJECT_DIR/input/samples.csv"
+```
+
+Automatic Setup expects exactly one R1/R2 pair for each row:
 
 ```text
 ONCO001_R1.fastq.gz       ONCO001_R2.fastq.gz
@@ -31,62 +68,42 @@ CTRL003_R1.fastq.gz       CTRL003_R2.fastq.gz
 CTRL004_R1.fastq.gz       CTRL004_R2.fastq.gz
 ```
 
-The project is kept inside the clone so no second path needs to be edited:
-
-```text
-/path/to/my/directory/oncotracer/test/examples/onco6_ctrl4/
-├── input/
-│   ├── samples.csv
-│   └── fastq/
-├── config/
-├── results/
-└── work/
-```
+Place them in `$PROJECT_DIR/input/fastq`. Each identifier must match the filename before `_R1` and `_R2`:
 
 ```bash
-# Derive the mock-project path from the repository clone.
-PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
-mkdir -p "$PROJECT_DIR/input/fastq"
-
-# Create or replace the exact six-tumor/four-normal sample table.
-cat > "$PROJECT_DIR/input/samples.csv" <<'CSV'
-sample_name,status
-ONCO001,TUMOR
-ONCO002,TUMOR
-ONCO003,TUMOR
-ONCO004,TUMOR
-ONCO005,TUMOR
-ONCO006,TUMOR
-CTRL001,NORMAL
-CTRL002,NORMAL
-CTRL003,NORMAL
-CTRL004,NORMAL
-CSV
-
-# Display the saved table and the expected FASTQ folder.
-cat "$PROJECT_DIR/input/samples.csv"
-printf 'Place the paired FASTQs in: %s\n' "$PROJECT_DIR/input/fastq"
+# Require 20 non-empty, complete gzip files.
+PROJECT_DIR="${PROJECT_DIR:-$PWD/oncotracer-onco6-ctrl4}"
+SAMPLES=(ONCO001 ONCO002 ONCO003 ONCO004 ONCO005 ONCO006 CTRL001 CTRL002 CTRL003 CTRL004)
+for sample in "${SAMPLES[@]}"; do
+  for read in R1 R2; do
+    fastq="$PROJECT_DIR/input/fastq/${sample}_${read}.fastq.gz"
+    test -s "$fastq"
+    gzip -t "$fastq"
+  done
+done
+printf 'Validated %s paired-end samples.\n' "${#SAMPLES[@]}"
 ```
 
-`sample_name` must match the filename text before `_R1` and `_R2`. The four `NORMAL` rows tell Automatic Setup to enable the local qDNAseq reference.
+## 3. Generate and inspect the native YAML
 
-## 3. Generate the YAML automatically
+The option names below are the exact native v2 parser interface:
 
 ```bash
-# Set the repository and mock-project paths and enter the clone.
-PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
+# Validate inputs and atomically publish YAML, samplesheet, and manifest.
+PROJECT_DIR="${PROJECT_DIR:-$PWD/oncotracer-onco6-ctrl4}"
+oncotracer auto --mode illumina --reads-folder "$PROJECT_DIR/input/fastq" --sample-table "$PROJECT_DIR/input/samples.csv" --config-dir "$PROJECT_DIR/config" --outdir "$PROJECT_DIR/results"
 
-# Validate the paired FASTQs and generate the YAML and samplesheet.
-nextflow run main.nf --auto_params \
-  --mode illumina \
-  --reads_folder "$PROJECT_DIR/input/fastq" \
-  --sample_table "$PROJECT_DIR/input/samples.csv" \
-  --auto_config_dir "$PROJECT_DIR/config" \
-  --auto_outdir "$PROJECT_DIR/results" \
-  -work-dir "$PROJECT_DIR/work/auto_params"
+test -s "$PROJECT_DIR/config/illumina.auto.yml"
+test -s "$PROJECT_DIR/config/illumina.samplesheet.csv"
+test -s "$PROJECT_DIR/config/auto_params_manifest.tsv"
+test "$(grep -c ',tumor$' "$PROJECT_DIR/config/illumina.samplesheet.csv")" -eq 6
+test "$(grep -c ',normal$' "$PROJECT_DIR/config/illumina.samplesheet.csv")" -eq 4
+awk -F '\t' 'NR == 2 { exit !($1 == "illumina" && $2 == 6 && $3 == 4) }' "$PROJECT_DIR/config/auto_params_manifest.tsv"
+sed -n '1,140p' "$PROJECT_DIR/config/illumina.auto.yml"
+cat "$PROJECT_DIR/config/auto_params_manifest.tsv"
 ```
 
-Automatic Setup writes ten sample rows and enables the local panel with settings equivalent to:
+The generated YAML records:
 
 ```yaml
 illumina_build_pon: true
@@ -96,96 +113,58 @@ illumina_pon_name: CTRL001_CTRL002_CTRL003_CTRL004_PoN
 illumina_pon_min_mapq: 37
 ```
 
-## 4. Inspect the generated files
+Automatic Setup rejects a single normal, duplicate or invalid sample identifiers, missing mates, corrupt gzip streams, and normal-only cohorts. It publishes generated files only after validation succeeds. The manifest records SHA-256 values for the YAML and samplesheet; archive all three files.
+
+## 4. Run or resume the native analysis
 
 ```bash
-# Set the repository and mock-project paths.
-PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
-
-# Review the generated run configuration and sample mapping.
-sed -n '1,140p' "$PROJECT_DIR/config/illumina.auto.yml"
-sed -n '1,20p' "$PROJECT_DIR/config/illumina.samplesheet.csv"
-cat "$PROJECT_DIR/config/auto_params_manifest.tsv"
-
-# Confirm the generated tumor and normal row counts.
-grep -c ',tumor$' "$PROJECT_DIR/config/illumina.samplesheet.csv"
-grep -c ',normal$' "$PROJECT_DIR/config/illumina.samplesheet.csv"
+# Run all native Illumina stages with the prepared Conda backend.
+PROJECT_DIR="${PROJECT_DIR:-$PWD/oncotracer-onco6-ctrl4}"
+oncotracer run --backend conda --config "$PROJECT_DIR/config/illumina.auto.yml" --threads 16
 ```
 
-The final two commands should print `6` and `4`.
+Repeat that command to reuse valid content-matched stages. Add `--force` only to deliberately invalidate reusable work. Do not delete `.oncotracer-native/state.json`, reference indexes, or active outputs to resume. Docker and Singularity use the same command with the matching installed backend; see [Execution backends](containers.md).
 
-## 5. Run the mock configuration
-
-Choose exactly one method. Each command reads the same generated YAML; route-specific work directories prevent cache mixing.
-
-### Docker
+## 5. Audit the panel and native outputs
 
 ```bash
-# Run the mock configuration with the maintained Docker image.
-PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
-nextflow run main.nf --docker \
-  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work/docker" \
-  -resume
-```
-
-### Singularity or Apptainer
-
-```bash
-# Run the mock configuration through Singularity or Apptainer.
-PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
-nextflow run main.nf --singularity \
-  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work/singularity" \
-  -resume
-```
-
-### Poetry launcher
-
-```bash
-# Install the launcher and run the mock configuration through Poetry with Docker.
-PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
-poetry install --no-interaction
-poetry run oncotracer --repo-dir . --backend docker \
-  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work/poetry" \
-  -resume
-```
-
-### Conda
-
-```bash
-# Create or reuse the native environments and run the mock configuration.
-PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
-nextflow run main.nf --conda \
-  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work/conda" \
-  -resume
-```
-
-The Poetry launcher also accepts `--backend singularity` and `--backend conda`.
-
-## 6. Check the panel and corrected tumor outputs
-
-```bash
-# Set the repository, mock-project, and result paths.
-PROJECT_DIR="$(pwd)/test/examples/onco6_ctrl4"
+# Require panel completion, native identity, and principal result files.
+PROJECT_DIR="${PROJECT_DIR:-$PWD/oncotracer-onco6-ctrl4}"
 OUT="$PROJECT_DIR/results"
 PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
+SUMMARY="$OUT/06_workflow_summary/workflow_summary.json"
+TRACE="$OUT/.oncotracer-native/trace.tsv"
 
-# Require the successful local-panel completion marker.
-test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = QDNASEQ_LOCAL_PON_SUCCESS \
-  && echo "PoN completed successfully"
+test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = QDNASEQ_LOCAL_PON_SUCCESS
+test -s "$PON/pon/normal_panel_manifest.tsv"
+test -s "$PON/qc/normal_panel_sample_qc.tsv"
+test -s "$PON/all_tumors.qdnaseq_pon_corrected_bins.tsv"
+test -s "$OUT/03_cna_codification/cna_events.tsv"
+test -s "$OUT/06_workflow_summary/native_run_manifest.json"
+test -s "$TRACE"
 
-# Review the four-control manifest and leave-one-out control QC.
+python3 - "$SUMMARY" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    summary = json.load(handle)
+assert summary["engine"] == "native"
+assert summary["nextflow_used"] is False
+assert summary["mode"] == "illumina"
+PY
+
+if grep -Eiq '(^|[[:space:]/])nextflow([[:space:]]|$)' "$TRACE"; then
+  echo "ERROR: native trace contains a Nextflow command" >&2
+  exit 1
+fi
+
 sed -n '1,10p' "$PON/pon/normal_panel_manifest.tsv"
 sed -n '1,10p' "$PON/qc/normal_panel_sample_qc.tsv"
-
-# List corrected tumor bins and read the workflow summary.
 find "$PON/bins" -maxdepth 1 -type f -name '*_markdup_bins.bed' -printf '%f\n' | sort
 cat "$OUT/06_workflow_summary/workflow_summary.txt"
 ```
 
-The control manifest and QC contain `CTRL001` through `CTRL004`. Corrected tumor outputs contain `ONCO001` through `ONCO006`.
+The normal manifest and QC must contain `CTRL001` through `CTRL004`. Corrected downstream outputs must contain `ONCO001` through `ONCO006`, while controls remain reference/QC inputs.
 
-Four controls form a small, run-specific reference, so review the control QC before interpreting CNA calls. OncoTracer is for research use and is not a standalone diagnostic system.
+This is a research-use example, not a diagnostic protocol. Preserve input checksums, the generated contract, native trace, run manifest, exact source and reference identities, environment specifications, and primary stage-02/03 tables with any interpretation.

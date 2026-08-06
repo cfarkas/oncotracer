@@ -1,0 +1,16 @@
+name: oncotracer-v2-qdnaseq
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - r-base=4.1
+  - bioconductor-qdnaseq=1.30.0
+  - bioconductor-biobase
+  - bioconductor-dnacopy
+  - r-argparser
+  - r-future
+  - r-r.cache
+  - r-yaml
+  - curl
+  - wget
+  - bash

@@ -27,7 +27,8 @@ assert_not_invoked() {
   [[ ! -e "$case_dir/nextflow.log" ]] || fail "preflight failure invoked Nextflow: $case_dir"
 }
 
-MOCK_BIN="$TEST_TMP/mock_bin"
+MOCK_PREFIX="$TEST_TMP/mock_prefix"
+MOCK_BIN="$MOCK_PREFIX/bin"
 mkdir -p "$MOCK_BIN"
 printf '%s\n' \
   '#!/usr/bin/env bash' \
@@ -99,6 +100,7 @@ run_wrapper() {
   local case_dir="$1"
   shift
   PATH="$MOCK_BIN:$ORIGINAL_PATH" \
+  CONDA_PREFIX="$MOCK_PREFIX" \
   MOCK_NEXTFLOW_LOG="$case_dir/nextflow.log" \
   MOCK_NEXTFLOW_EXIT_CODE="$MOCK_NEXTFLOW_EXIT" \
     bash "$WRAPPER" \

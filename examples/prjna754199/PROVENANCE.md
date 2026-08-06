@@ -1,5 +1,7 @@
 # PRJNA754199 archive provenance
 
+> **Legacy v1.1 command record.** The archive facts and checksums remain useful, but the Nextflow commands below describe only the immutable v1.1 release. New analyses should use the native v2 executable.
+
 The manifest was frozen from the ENA Portal API on **2026-07-15** by joining the read-run report with the sample-alias report.
 
 Read-run report:
