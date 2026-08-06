@@ -1,0 +1,106 @@
+name: Scheduled v2.0.0 release validation
+
+on:
+  schedule:
+    - cron: '4-59/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: scheduled-v2-release-validation
+  cancel-in-progress: false
+
+jobs:
+  orchestrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      CANDIDATE_BRANCH: agent/v2.0-release-validation-2
+      PR_NUMBER: '33'
+    steps:
+      - name: Dispatch and wait for exact-head validation gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          EXPECTED_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/heads/$CANDIDATE_BRANCH" --jq '.object.sha')"
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.state')" = open
+
+          comments="$(gh api --paginate "/repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --jq '.[].body')"
+          if grep -Fq "<!-- v2-validation-complete:$EXPECTED_SHA -->" <<< "$comments"; then
+            echo "Exact candidate $EXPECTED_SHA is already validated."
+            exit 0
+          fi
+
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --body "<!-- v2-validation-running:$EXPECTED_SHA -->
+          Started scheduled exact-head OncoTracer v2.0.0 validation for \`$EXPECTED_SHA\` on \`$CANDIDATE_BRANCH\`."
+
+          start_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          workflows=(
+            native-v2-ci.yml
+            native-v2-quickstart1-parity.yml
+            native-v2-quickstart2-parity.yml
+          )
+          for workflow in "${workflows[@]}"; do
+            gh workflow run "$workflow" --ref "$CANDIDATE_BRANCH" --repo "$GITHUB_REPOSITORY"
+          done
+
+          resolve_run() {
+            local workflow="$1" run_id=""
+            for attempt in $(seq 1 120); do
+              run_id="$(gh api \
+                "/repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?event=workflow_dispatch&branch=$CANDIDATE_BRANCH&per_page=30" \
+                --jq ".workflow_runs | map(select(.head_sha == \"$EXPECTED_SHA\" and .created_at >= \"$start_time\")) | sort_by(.id) | last | .id // empty")"
+              if [[ -n "$run_id" ]]; then
+                printf '%s\n' "$run_id"
+                return 0
+              fi
+              sleep 5
+            done
+            echo "Timed out resolving dispatched run for $workflow" >&2
+            return 1
+          }
+
+          declare -A run_ids
+          dispatch_summary="Dispatched scheduled exact-head validation for \`$EXPECTED_SHA\`:"
+          for workflow in "${workflows[@]}"; do
+            run_ids[$workflow]="$(resolve_run "$workflow")"
+            dispatch_summary="$dispatch_summary
+          - \`$workflow\`: https://github.com/$GITHUB_REPOSITORY/actions/runs/${run_ids[$workflow]}"
+          done
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$dispatch_summary"
+
+          status=0
+          summary="Completed scheduled exact-head validation for \`$EXPECTED_SHA\`:"
+          for workflow in "${workflows[@]}"; do
+            run_id="${run_ids[$workflow]}"
+            run_url="https://github.com/$GITHUB_REPOSITORY/actions/runs/$run_id"
+            if gh run watch "$run_id" --exit-status --repo "$GITHUB_REPOSITORY"; then
+              conclusion=success
+            else
+              conclusion=failure
+              status=1
+            fi
+            summary="$summary
+          - \`$workflow\`: **$conclusion** — $run_url"
+          done
+          current_sha="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/heads/$CANDIDATE_BRANCH" --jq '.object.sha')"
+          if [[ "$current_sha" != "$EXPECTED_SHA" ]]; then
+            summary="$summary
+          - candidate branch moved to \`$current_sha\`: **failure**"
+            status=1
+          fi
+          if [[ "$status" -eq 0 ]]; then
+            summary="<!-- v2-validation-complete:$EXPECTED_SHA -->
+          $summary"
+          else
+            summary="<!-- v2-validation-failed:$EXPECTED_SHA -->
+          $summary"
+          fi
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$summary"
+          exit "$status"
