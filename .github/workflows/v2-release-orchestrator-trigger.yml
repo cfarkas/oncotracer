@@ -25,7 +25,9 @@ jobs:
   trigger:
     if: >-
       github.event_name != 'issue_comment' ||
-      ((github.event.issue.number == 29 || github.event.issue.number == 39) &&
+      ((github.event.issue.number == 12 ||
+        github.event.issue.number == 29 ||
+        github.event.issue.number == 39) &&
        github.event.comment.body == '[oncotracer-release] trigger v2.0.0')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
