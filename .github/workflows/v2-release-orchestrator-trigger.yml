@@ -1,0 +1,45 @@
+name: Trigger stable native v2.0.0 orchestrator
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/v2-release-orchestrator-trigger.yml
+  schedule:
+    - cron: '2-57/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: trigger-native-v2.0.0-orchestrator
+  cancel-in-progress: true
+
+jobs:
+  trigger:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Remove this one-shot trigger and dispatch the orchestrator
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          path='.github/workflows/v2-release-orchestrator-trigger.yml'
+          file_sha="$(gh api "/repos/$GITHUB_REPOSITORY/contents/$path?ref=main" --jq '.sha')"
+          response="$(gh api -X DELETE "/repos/$GITHUB_REPOSITORY/contents/$path" \
+            -f message='ci(v2): remove one-shot orchestrator trigger' \
+            -f sha="$file_sha" -f branch=main)"
+          clean_sha="$(jq -r '.commit.sha' <<< "$response")"
+          test -n "$clean_sha"
+          for attempt in $(seq 1 60); do
+            observed="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+            [[ "$observed" == "$clean_sha" ]] && break
+            sleep 2
+          done
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')" = "$clean_sha"
+          gh workflow run v2-release-orchestrator.yml --ref main --repo "$GITHUB_REPOSITORY"
+          echo "Dispatched stable v2 orchestrator from clean main $clean_sha"
