@@ -17,12 +17,12 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: oncotracer-v2-release-controller-macos
-  cancel-in-progress: false
+  group: oncotracer-v2-release-controller
+  cancel-in-progress: true
 
 jobs:
   orchestrate:
-    runs-on: macos-14
+    runs-on: windows-latest
     timeout-minutes: 360
     steps:
       - name: Check out current main
@@ -35,4 +35,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: bash .github/v2-release-controller.sh
+        run: |
+          sed -i 's/\r$//' .github/v2-release-controller.sh
+          bash .github/v2-release-controller.sh
