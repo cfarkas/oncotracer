@@ -93,7 +93,12 @@ fi
 test "$(branch_sha "$CANDIDATE_BRANCH")" = "$CANDIDATE_SHA"
 test "$(branch_sha "$PRODUCT_BRANCH")" = "$CANDIDATE_SHA"
 test "$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PRODUCT_PR" --jq '.head.sha')" = "$CANDIDATE_SHA"
-test "$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PRODUCT_PR" --jq '.state')" = open
+PR_STATE="$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PRODUCT_PR" --jq '.state')"
+PR_MERGED="$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PRODUCT_PR" --jq '.merged')"
+if [[ "$PR_STATE" != open && "$PR_MERGED" != true ]]; then
+  echo "Product PR is neither open nor merged" >&2
+  exit 1
+fi
 comment_validation "<!-- v2-candidate-validation-running:$CANDIDATE_SHA -->
 Started exact-head candidate validation for \`$CANDIDATE_SHA\`."
 dispatch_gate_set "$CANDIDATE_BRANCH" "$CANDIDATE_SHA" 'candidate'
@@ -102,7 +107,12 @@ All three exact-head candidate gates passed for \`$CANDIDATE_SHA\`."
 
 test "$(branch_sha "$PRODUCT_BRANCH")" = "$CANDIDATE_SHA"
 test "$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PRODUCT_PR" --jq '.head.sha')" = "$CANDIDATE_SHA"
-test "$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PRODUCT_PR" --jq '.state')" = open
+PR_STATE="$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PRODUCT_PR" --jq '.state')"
+PR_MERGED="$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PRODUCT_PR" --jq '.merged')"
+if [[ "$PR_STATE" != open && "$PR_MERGED" != true ]]; then
+  echo "Product PR changed to an invalid state during validation" >&2
+  exit 1
+fi
 
 git config user.name 'github-actions[bot]'
 git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -113,7 +123,13 @@ git checkout -B oncotracer-v2-release-integration origin/main
 STARTING_MAIN="$(git rev-parse HEAD)"
 test "$STARTING_MAIN" = "$(branch_sha main)"
 test "$(git rev-parse "origin/$PRODUCT_BRANCH")" = "$CANDIDATE_SHA"
-git merge --no-ff --no-commit "origin/$PRODUCT_BRANCH"
+if [[ "$PR_MERGED" == true ]]; then
+  git merge-base --is-ancestor "$CANDIDATE_SHA" HEAD
+  INTEGRATION_MESSAGE='Finalize OncoTracer v2.0.0 release gate on main'
+else
+  git merge --no-ff --no-commit "origin/$PRODUCT_BRANCH"
+  INTEGRATION_MESSAGE='Release OncoTracer v2.0.0 candidate to main'
+fi
 
 python3 - <<'PY'
 from pathlib import Path
@@ -154,7 +170,7 @@ test ! -e .github/workflows/bootstrap-native-v2.yml
 git add -A
 git diff --cached --check
 git status --short
-git commit -m 'Release OncoTracer v2.0.0 candidate to main'
+git commit -m "$INTEGRATION_MESSAGE"
 FINAL_MAIN_SHA="$(git rev-parse HEAD)"
 git merge-base --is-ancestor "$CANDIDATE_SHA" "$FINAL_MAIN_SHA"
 git push origin HEAD:main
