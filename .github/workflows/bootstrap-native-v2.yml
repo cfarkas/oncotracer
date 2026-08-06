@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = cc1715189c8a925cc87797dd58ec62dd7aa8960f
+          test "$(git rev-parse HEAD)" = 1a96d295a7fde70f925129133cfc231df85e2111
           test -s .release-fix/apply.py.gz.b64.00
           test -s .release-fix/apply.py.gz.b64.01
           test -s .release-fix/ichorcna_plot_compat.R
@@ -85,8 +85,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           rm -rf .release-fix
-          rm -f .github/workflows/apply-v2-release-repair.yml
-          git add -A -- .release-fix .github/workflows/apply-v2-release-repair.yml
+          git add -A -- .release-fix
           git commit -m 'chore(v2): remove one-shot release repair machinery'
           git push origin HEAD:agent/native-v2-parity
 
