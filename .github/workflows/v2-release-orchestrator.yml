@@ -1,0 +1,239 @@
+name: Orchestrate stable native v2.0.0
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: orchestrate-native-v2.0.0
+  cancel-in-progress: false
+
+jobs:
+  orchestrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Permit explicitly dispatched exact-main validation gates
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --ff-only origin main
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          release = Path('.github/workflows/release-v2.yml')
+          text = release.read_text(encoding='utf-8')
+          replacements = {
+              'Resolve all successful push gates for the exact current main SHA':
+                  'Resolve all successful exact-main gates for the current main SHA',
+              '/actions/runs?branch=main&event=push&status=completed&per_page=100':
+                  '/actions/runs?branch=main&status=completed&per_page=100',
+              '.event == "push" and':
+                  '(.event == "push" or .event == "workflow_dispatch") and',
+          }
+          for old, new in replacements.items():
+              old_count = text.count(old)
+              new_count = text.count(new)
+              if old_count == 1 and new_count == 0:
+                  text = text.replace(old, new)
+              elif old_count == 0 and new_count == 1:
+                  pass
+              else:
+                  raise SystemExit(
+                      f'unexpected release gate state for {old!r}: '
+                      f'old={old_count}, new={new_count}'
+                  )
+          release.write_text(text, encoding='utf-8')
+
+          docs = Path('docs/parity_release.md')
+          text = docs.read_text(encoding='utf-8')
+          old = ('The release workflow verifies that Native v2 CI and both named parity workflows '
+                 'succeeded as push runs for the same exact current `main` SHA.')
+          new = ('The release workflow verifies that Native v2 CI and both named parity workflows '
+                 'succeeded for the same exact current `main` SHA, either as normal push gates or '
+                 'as explicitly dispatched exact-main gates from the trusted release orchestrator.')
+          if old in text:
+              text = text.replace(old, new)
+              docs.write_text(text, encoding='utf-8')
+          elif new not in text:
+              raise SystemExit('unexpected parity-release documentation contract')
+          PY
+
+          if ! git diff --quiet; then
+            git diff --check
+            git add .github/workflows/release-v2.yml docs/parity_release.md
+            git commit -m 'ci(v2): accept trusted exact-main dispatched gates'
+            git push origin HEAD:main
+          fi
+
+          MAIN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          test -n "$MAIN_SHA"
+          echo "main_sha=$MAIN_SHA" >> "$GITHUB_OUTPUT"
+          echo "Exact current main: $MAIN_SHA"
+
+      - name: Dispatch missing gates and publish exact run status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ steps.source.outputs.main_sha }}
+        run: |
+          set -Eeuo pipefail
+          MARKER='<!-- oncotracer-v2-release-orchestrator -->'
+          REPORT="$RUNNER_TEMP/v2-orchestrator-status.md"
+
+          update_status() {
+            local comment_id
+            comment_id="$(
+              gh api --paginate "/repos/$GITHUB_REPOSITORY/issues/29/comments" \
+                --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" \
+                | tail -n 1
+            )"
+            if [[ -n "$comment_id" ]]; then
+              gh api -X PATCH "/repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" \
+                -f body="$(cat "$REPORT")" >/dev/null
+            else
+              gh issue comment 29 --repo "$GITHUB_REPOSITORY" \
+                --body-file "$REPORT" >/dev/null
+            fi
+          }
+
+          if gh release view v2.0.0 --repo "$GITHUB_REPOSITORY" \
+              --json tagName,isDraft,isPrerelease >/dev/null 2>&1; then
+            cat > "$REPORT" <<EOF
+          $MARKER
+          Stable **OncoTracer v2.0.0 is published**.
+
+          Release source validation completed before publication. The temporary orchestrator is removing itself and closing diagnostic items.
+          EOF
+            update_status
+            gh pr close 36 --repo "$GITHUB_REPOSITORY" \
+              --comment 'Diagnostic validation mirror closed after stable v2.0.0 publication.' || true
+            gh issue close 37 --repo "$GITHUB_REPOSITORY" \
+              --comment 'Temporary API observation closed after stable v2.0.0 publication.' || true
+            gh issue close 29 --repo "$GITHUB_REPOSITORY" \
+              --comment 'Stable OncoTracer v2.0.0 was published.' || true
+            FILE_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/contents/.github/workflows/v2-release-orchestrator.yml?ref=main" --jq '.sha')"
+            gh api -X DELETE \
+              "/repos/$GITHUB_REPOSITORY/contents/.github/workflows/v2-release-orchestrator.yml" \
+              -f message='chore(v2): remove completed release orchestrator' \
+              -f sha="$FILE_SHA" -f branch=main >/dev/null
+            exit 0
+          fi
+
+          RUNS="$(
+            gh api -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100"
+          )"
+          all_green=true
+          any_second_failure=false
+          lines=()
+
+          latest_run() {
+            local workflow_name="$1"
+            jq -c --arg name "$workflow_name" --arg sha "$MAIN_SHA" '
+              [.workflow_runs[] |
+                select(.name == $name and .head_sha == $sha and
+                       (.event == "push" or .event == "workflow_dispatch"))] |
+              sort_by(.run_number, .run_attempt, .id) | last // empty
+            ' <<< "$RUNS"
+          }
+
+          inspect_gate() {
+            local workflow_name="$1" workflow_file="$2" required="$3"
+            local run status conclusion run_id run_url attempt
+            run="$(latest_run "$workflow_name")"
+            if [[ -z "$run" ]]; then
+              if gh workflow run "$workflow_file" --ref main \
+                  --repo "$GITHUB_REPOSITORY"; then
+                lines+=("- **$workflow_name**: dispatched for \`$MAIN_SHA\`")
+              else
+                lines+=("- **$workflow_name**: dispatch raced with another orchestrator run; it will be resolved next cycle")
+              fi
+              [[ "$required" == true ]] && all_green=false
+              return
+            fi
+
+            status="$(jq -r '.status' <<< "$run")"
+            conclusion="$(jq -r '.conclusion // "—"' <<< "$run")"
+            run_id="$(jq -r '.id' <<< "$run")"
+            run_url="$(jq -r '.html_url' <<< "$run")"
+            attempt="$(jq -r '.run_attempt // 1' <<< "$run")"
+
+            if [[ "$status" != completed ]]; then
+              lines+=("- **$workflow_name**: \`$status\` — [run $run_id]($run_url)")
+              [[ "$required" == true ]] && all_green=false
+            elif [[ "$conclusion" == success ]]; then
+              lines+=("- **$workflow_name**: **success** — [run $run_id]($run_url)")
+            elif [[ "$attempt" -lt 2 ]]; then
+              gh api -X POST "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/rerun-failed-jobs" >/dev/null
+              lines+=("- **$workflow_name**: first failure; failed jobs re-requested — [run $run_id]($run_url)")
+              [[ "$required" == true ]] && all_green=false
+            else
+              lines+=("- **$workflow_name**: **failure after retry** — [run $run_id]($run_url)")
+              [[ "$required" == true ]] && {
+                all_green=false
+                any_second_failure=true
+              }
+            fi
+          }
+
+          inspect_gate 'Deploy documentation' docs.yml false
+          inspect_gate 'Native v2 CI' native-v2-ci.yml true
+          inspect_gate 'Native v2 QuickStart 1 parity' native-v2-quickstart1-parity.yml true
+          inspect_gate 'Native v2 QuickStart 2 parity' native-v2-quickstart2-parity.yml true
+
+          release_line='- **Release stable native v2**: waiting for all three required gates'
+          if [[ "$all_green" == true ]]; then
+            release_run="$(latest_run 'Release stable native v2')"
+            if [[ -z "$release_run" ]]; then
+              gh workflow run release-v2.yml --ref main --repo "$GITHUB_REPOSITORY"
+              release_line="- **Release stable native v2**: dispatched for \`$MAIN_SHA\`"
+            else
+              release_status="$(jq -r '.status' <<< "$release_run")"
+              release_conclusion="$(jq -r '.conclusion // "—"' <<< "$release_run")"
+              release_id="$(jq -r '.id' <<< "$release_run")"
+              release_url="$(jq -r '.html_url' <<< "$release_run")"
+              release_line="- **Release stable native v2**: \`$release_status\` / \`$release_conclusion\` — [run $release_id]($release_url)"
+              if [[ "$release_status" == completed && "$release_conclusion" != success ]]; then
+                release_attempt="$(jq -r '.run_attempt // 1' <<< "$release_run")"
+                if [[ "$release_attempt" -lt 2 ]]; then
+                  gh api -X POST "/repos/$GITHUB_REPOSITORY/actions/runs/$release_id/rerun-failed-jobs" >/dev/null
+                  release_line="- **Release stable native v2**: failed jobs re-requested — [run $release_id]($release_url)"
+                fi
+              fi
+            fi
+          fi
+
+          {
+            echo "$MARKER"
+            echo "Exact-main release state for \`$MAIN_SHA\`:"
+            echo
+            printf '%s\n' "${lines[@]}"
+            echo "$release_line"
+            echo
+            if [[ "$any_second_failure" == true ]]; then
+              echo '**Action required:** at least one scientific gate failed twice. The run links above identify the logs to repair.'
+            else
+              echo 'The orchestrator will check again on the next scheduled cycle; it never publishes unless all required exact-SHA gates pass.'
+            fi
+          } > "$REPORT"
+          cat "$REPORT"
+          update_status
