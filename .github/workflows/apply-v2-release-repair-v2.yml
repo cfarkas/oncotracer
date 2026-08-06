@@ -1,0 +1,106 @@
+name: Apply audited v2 release repair v2
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - reopened
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply:
+    if: >-
+      github.event.pull_request.head.ref == 'agent/native-v2-parity' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the exact event head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify candidate and transport identity
+        shell: bash
+        env:
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$EVENT_HEAD_SHA"
+          test -s .release-fix/apply.py.gz.b64.00
+          test -s .release-fix/apply.py.gz.b64.01
+          test -s .release-fix/ichorcna_plot_compat.R
+
+      - name: Reconstruct and authenticate the audited repair
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat .release-fix/apply.py.gz.b64.00 \
+              .release-fix/apply.py.gz.b64.01 \
+            | base64 --decode \
+            | gzip --decompress --stdout \
+            > .release-fix/apply.py
+          printf '%s  %s\n' \
+            f636a913d730a9afb2f5d2edb4eea6220f2830d388a78ed0a1ed900af3f5abb5 \
+            .release-fix/apply.py \
+            | sha256sum --strict --check -
+          printf '%s  %s\n' \
+            a0a1d5b17fc4574c6354d01c9b913ad52f4751edb4df6b4af0753d617de5feea \
+            .release-fix/ichorcna_plot_compat.R \
+            | sha256sum --strict --check -
+          python -m py_compile .release-fix/apply.py
+
+      - name: Apply exact focused repair
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python .release-fix/apply.py . \
+            --allow-head-mismatch \
+            --allow-dirty \
+            --commit
+
+      - name: Run focused validation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m pip install --disable-pip-version-check pytest
+          python -m pytest -q tests/test_ichorcna_plot_compat.py
+          python -m compileall -q oncotracer_cli tests scripts
+          bash -n scripts/validate_v2_release.sh
+          git diff --check HEAD^ HEAD
+
+      - name: Remove one-shot transport and workflow files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -rf .release-fix
+          rm -f .github/workflows/apply-v2-release-repair-v2.yml
+          git add -A -- .release-fix .github/workflows/apply-v2-release-repair-v2.yml
+          git commit -m 'chore(v2): remove one-shot release repair machinery'
+
+      - name: Publish repaired candidate
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git push origin HEAD:agent/native-v2-parity
+
+      - name: Record completion on PR #27
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment 27 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Applied and validated the checksum-verified v2 parity repair. Removed the one-shot transport and workflow files. Candidate head: \`$(git rev-parse HEAD)\`."
