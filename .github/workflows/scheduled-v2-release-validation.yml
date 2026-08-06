@@ -31,10 +31,26 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: Set up controller Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Execute the fail-closed release controller
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          set -Eeuo pipefail
           sed -i 's/\r$//' .github/v2-release-controller.sh
+          mkdir -p /tmp/oncotracer-controller-bin /tmp/oncotracer-release-controller
+          if ! command -v python3 >/dev/null 2>&1; then
+            cat > /tmp/oncotracer-controller-bin/python3 <<'PY'
+          #!/usr/bin/env bash
+          exec python "$@"
+          PY
+            chmod +x /tmp/oncotracer-controller-bin/python3
+          fi
+          export PATH="/tmp/oncotracer-controller-bin:$PATH"
+          export RUNNER_TEMP=/tmp/oncotracer-release-controller
           bash .github/v2-release-controller.sh
