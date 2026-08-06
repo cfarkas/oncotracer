@@ -1,0 +1,104 @@
+name: Observe exact-main v2 release
+
+on:
+  push:
+    branches:
+      - agent/v2.0-release-observer
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  observe:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Poll exact-main workflows and report their identities
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: 7dbc4cee99922158416c41b0d0c5bf212157a621
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RUNNER_TEMP/oncotracer-observer"
+          payload="$RUNNER_TEMP/oncotracer-observer/runs.json"
+          report="$RUNNER_TEMP/oncotracer-observer/report.md"
+
+          for attempt in $(seq 1 30); do
+            gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$TARGET_SHA&per_page=100" > "$payload"
+            complete="$(python - "$payload" <<'PY'
+          import json
+          import sys
+
+          expected = {
+              "Deploy documentation",
+              "Native v2 CI",
+              "Native v2 QuickStart 1 parity",
+              "Native v2 QuickStart 2 parity",
+          }
+          runs = json.load(open(sys.argv[1], encoding="utf-8")).get("workflow_runs", [])
+          latest = {}
+          for run in sorted(runs, key=lambda item: item["id"]):
+              if run.get("head_sha") == "7dbc4cee99922158416c41b0d0c5bf212157a621":
+                  latest[run["name"]] = run
+          print(str(expected <= set(latest) and all(latest[name]["status"] == "completed" for name in expected)).lower())
+          PY
+          )"
+            [[ "$complete" == true ]] && break
+            sleep 20
+          done
+
+          python - "$payload" "$report" <<'PY'
+          import json
+          import sys
+
+          target = "7dbc4cee99922158416c41b0d0c5bf212157a621"
+          payload, destination = sys.argv[1:]
+          runs = json.load(open(payload, encoding="utf-8")).get("workflow_runs", [])
+          latest = {}
+          for run in sorted(runs, key=lambda item: item["id"]):
+              if run.get("head_sha") == target:
+                  latest[run["name"]] = run
+
+          expected = [
+              "Deploy documentation",
+              "Native v2 CI",
+              "Native v2 QuickStart 1 parity",
+              "Native v2 QuickStart 2 parity",
+              "Release stable native v2",
+          ]
+          lines = [
+              f"<!-- oncotracer-v2-observer:{target} -->",
+              f"Exact-main workflow observation for `{target}`:",
+              "",
+          ]
+          for name in expected:
+              run = latest.get(name)
+              if run is None:
+                  lines.append(f"- **{name}**: not observed yet")
+              else:
+                  conclusion = run.get("conclusion") or "—"
+                  lines.append(
+                      f"- **{name}**: `{run['status']}` / `{conclusion}` — "
+                      f"[run {run['id']}]({run['html_url']}) (event `{run['event']}`)"
+                  )
+          other = [run for name, run in sorted(latest.items()) if name not in expected]
+          if other:
+              lines.extend(["", "Other exact-SHA runs:"])
+              for run in other:
+                  conclusion = run.get("conclusion") or "—"
+                  lines.append(
+                      f"- **{run['name']}**: `{run['status']}` / `{conclusion}` — "
+                      f"[run {run['id']}]({run['html_url']})"
+                  )
+          open(destination, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+          PY
+
+          cat "$report"
+          gh issue comment 35 --repo "$GITHUB_REPOSITORY" --body-file "$report"
