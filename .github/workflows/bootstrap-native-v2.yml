@@ -85,7 +85,7 @@ jobs:
 
   validate_release_candidate:
     if: >-
-      github.event.pull_request.head.ref == 'agent/v2.0-release-validation' &&
+      startsWith(github.event.pull_request.head.ref, 'agent/v2.0-release-validation') &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 360
@@ -94,7 +94,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-          CANDIDATE_BRANCH: agent/v2.0-release-validation
+          CANDIDATE_BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -Eeuo pipefail
@@ -102,6 +102,9 @@ jobs:
             gh api "/repos/$GITHUB_REPOSITORY/git/ref/heads/$CANDIDATE_BRANCH" --jq '.object.sha'
           }
           test "$(current_sha)" = "$EXPECTED_SHA"
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --body "Started exact-head OncoTracer v2.0.0 validation for \`$EXPECTED_SHA\` on \`$CANDIDATE_BRANCH\`."
+
           start_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           workflows=(
             native-v2-ci.yml
@@ -129,12 +132,16 @@ jobs:
           }
 
           declare -A run_ids
+          dispatch_summary="Dispatched exact-head validation for \`$EXPECTED_SHA\`:"
           for workflow in "${workflows[@]}"; do
             run_ids[$workflow]="$(resolve_run "$workflow")"
+            dispatch_summary="$dispatch_summary
+          - \`$workflow\`: https://github.com/$GITHUB_REPOSITORY/actions/runs/${run_ids[$workflow]}"
           done
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$dispatch_summary"
 
           status=0
-          summary="Exact-head validation for \`$EXPECTED_SHA\`:"
+          summary="Completed exact-head validation for \`$EXPECTED_SHA\`:"
           for workflow in "${workflows[@]}"; do
             run_id="${run_ids[$workflow]}"
             run_url="https://github.com/$GITHUB_REPOSITORY/actions/runs/$run_id"
