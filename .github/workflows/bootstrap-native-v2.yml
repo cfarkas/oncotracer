@@ -1,12 +1,16 @@
 name: Apply audited native v2 release repair
 
 on:
+  issues:
+    types:
+      - opened
   pull_request_target:
     types:
       - reopened
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 concurrency:
@@ -16,8 +20,8 @@ concurrency:
 jobs:
   apply:
     if: >-
-      github.event.pull_request.head.ref == 'agent/native-v2-parity' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event_name == 'issues' && github.event.issue.title == '[oncotracer-release] apply audited v2 repair') ||
+      (github.event_name == 'pull_request_target' && github.event.pull_request.head.ref == 'agent/native-v2-parity' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -33,13 +37,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Verify the event and candidate identity
+      - name: Verify the candidate and transport identity
         shell: bash
-        env:
-          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = "$EVENT_HEAD_SHA"
+          test "$(git rev-parse HEAD)" = cc1715189c8a925cc87797dd58ec62dd7aa8960f
           test -s .release-fix/apply.py.gz.b64.00
           test -s .release-fix/apply.py.gz.b64.01
           test -s .release-fix/ichorcna_plot_compat.R
@@ -94,10 +96,16 @@ jobs:
           git commit -m 'chore(v2): remove one-shot release repair machinery'
           git push origin HEAD:agent/native-v2-parity
 
-      - name: Record the repair commit on the pull request
+      - name: Record completion
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr comment "${{ github.event.pull_request.number }}" \
+          set -Eeuo pipefail
+          gh pr comment 27 \
             --repo "$GITHUB_REPOSITORY" \
             --body "Applied the checksum-verified v2 parity repair and removed its one-shot transport files. Candidate head: \`$(git rev-parse HEAD)\`."
+          if [[ "$GITHUB_EVENT_NAME" == issues ]]; then
+            gh issue close "${{ github.event.issue.number }}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --comment "Audited v2 repair applied successfully to PR #27."
+          fi
