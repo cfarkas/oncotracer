@@ -1,9 +1,11 @@
 name: Apply audited native v2 release repair
 
 on:
-  pull_request_target:
-    types:
-      - reopened
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/bootstrap-native-v2.yml
 
 permissions:
   contents: write
@@ -11,9 +13,7 @@ permissions:
 
 jobs:
   apply:
-    if: >-
-      github.event.pull_request.head.ref == 'agent/native-v2-parity' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+    if: github.repository == 'cfarkas/oncotracer'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
