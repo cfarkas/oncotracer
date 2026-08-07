@@ -1,112 +1,98 @@
-# Programs used by OncoTracer
+# Programs and provenance
 
-> **Legacy v1.1 documentation.** This unlisted runtime page describes the immutable Nextflow release. Native v2 dependencies are managed through the [five-environment or container backends](containers.md).
+OncoTracer v2 connects established alignment, quality-control, copy-number, refinement, plotting, and reporting programs through one native stage graph. Normal users invoke the installed `oncotracer` executable rather than calling these programs independently.
 
-OncoTracer connects established alignment, quality-control, CNA-calling, refinement, plotting, and reporting programs. Most users should run the workflow rather than invoke these programs separately.
+## Native application and backend layer
 
-## Workflow and runtime layer
+| Component | Role |
+| --- | --- |
+| `oncotracer` | Parses flat YAML, schedules stages, records argument-array traces, validates outputs, and resumes content-matched work |
+| Conda backend | Five isolated versioned prefixes for incompatible scientific stacks |
+| Docker backend | Native v2 image from GitHub Container Registry |
+| Singularity/Apptainer backend | Same native image converted to and reused as a SIF |
+| Poetry route | Source-development launcher plus the same five scientific Conda prefixes |
 
-| Program | Role | Source |
-| --- | --- | --- |
-| [Nextflow](https://www.nextflow.io/docs/latest/) | Executes tasks, records provenance, and supports `-resume` | Official documentation |
-| [Docker](https://docs.docker.com/engine/) | Container runtime for Linux workstations and servers | Uses [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer) |
-| [Apptainer](https://apptainer.org/docs/) / [SingularityCE](https://docs.sylabs.io/guides/latest/user-guide/) | HPC container runtime | Uses `docker://carlosfarkas/oncotracer:latest` |
-| [Conda](https://docs.conda.io/) | Fallback environment manager | Official documentation |
-| [SAMURAI](https://github.com/dincalcilab/samurai) | Upstream LP-WGS alignment, QC, and CNA workflow used in stage 01 | SAMURAI repository |
-
-Java 17 or newer is required to launch Nextflow.
+The five groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`.
 
 ## Illumina route
 
-| Program | Purpose | Main output |
+| Program or library | Purpose | Representative output |
 | --- | --- | --- |
-| [BWA-MEM](https://github.com/lh3/bwa) | Align single-end or paired short reads to hg38 | `01_samurai_illumina/alignment/*.bam` |
-| [SAMtools](https://www.htslib.org/) | Sort, index, and inspect BAM/reference files | BAM/BAI and reference indexes |
-| [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) | Per-FASTQ quality control | `01_samurai_illumina/fastqc/` |
-| [MultiQC](https://multiqc.info/) | Aggregate sample QC | `01_samurai_illumina/multiqc/` |
-| [Picard](https://broadinstitute.github.io/picard/) | Alignment and whole-genome metrics | `01_samurai_illumina/picard/` |
-| [qDNAseq](https://bioconductor.org/packages/QDNAseq/) | Read-depth binning, segmentation, and optional local normal correction | `01_samurai_illumina/qdnaseq/` or `qdnaseq_local_pon/` |
+| BWA-MEM | Single-end or paired-end alignment to hg38 | `01_samurai_illumina/alignment/*.bam` |
+| SAMtools | FASTA/BAM indexing and BAM validation | BAM/BAI and reference indexes |
+| Picard | Duplicate marking and whole-genome metrics | stage-01 BAMs and metrics |
+| qDNAseq | Read-depth correction, segmentation, calls, and optional local normal panel | `01_samurai_illumina/qdnaseq/` or `qdnaseq_local_pon/` |
+| Native boundary-refinement Python | Local BAM-depth boundary evaluation | `02_bam_refinement/` |
+| Native CNA codification/plotting | Event tables, cytogenomic notation, cohort and sample plots | stages 03 and 04 |
 
-The standard Illumina configuration uses `solid_biopsy`, qDNAseq, and 100 kb bins.
+The standard Illumina configuration uses hg38, qDNAseq, and 100 kb coarse bins.
 
 ## ONT route
 
-| Program | Purpose | Main output |
+| Program or library | Purpose | Representative output |
 | --- | --- | --- |
-| [minimap2](https://github.com/lh3/minimap2) | Align Oxford Nanopore reads to hg38 | `01_samurai_ont/bam/*.bam` |
-| SAMtools and pigz | Sort/index BAMs and validate/merge compressed FASTQs | `bam/`, `merged_fastq/`, and `logs/` |
-| [ichorCNA](https://github.com/broadinstitute/ichorCNA) | Read-depth CNA and tumor-fraction-oriented analysis | `01_samurai_ont/results/ichorcna/` |
-| Picard | Alignment and WGS metrics | `01_samurai_ont/results/picard/` |
+| pigz/Python gzip handling | Validate and merge barcode FASTQs | stage-01 merged FASTQ/logs |
+| minimap2 | ONT alignment to hg38 | `01_samurai_ont/bam/*.bam` |
+| SAMtools | Sort, index, and validate BAMs | BAM/BAI |
+| HMMcopy `readCounter` | Genomic read-count bins | ichorCNA input WIG files |
+| ichorCNA | Read-depth copy-number and tumor-fraction-oriented fitting | `01_samurai_ont/results/ichorcna/` |
+| Native boundary refinement/codification/plotting | Refined segments and final result products | stages 02–04 |
 
-The standard ONT configuration uses `liquid_biopsy`, ichorCNA, and 500 kb bins. Review the used, skipped, and warning logs before interpreting results.
+The standard ONT configuration uses hg38, ichorCNA, and 500 kb coarse bins.
 
-## OncoTracer stages after SAMURAI
+## Optional interpretation route
 
-1. `02_bam_refinement`: evaluates and refines broad CNA boundaries.
-2. `03_cna_codification`: creates CNA event tables and cytogenomic notation.
-3. `04_cna_custom_plots`: creates per-sample and cohort plots.
-4. `05_cna_classifier`: optionally produces CNA-pattern, literature, report, and pathology-comparison outputs.
+When `run_cna_classifier: true`, the native classifier uses Python packages such as pandas, NumPy, SciPy, scikit-learn, Matplotlib, Jinja2, ReportLab, openpyxl, and optional Transformers/PyTorch support. GISTIC2 is isolated in its own prefix because it requires the MATLAB Compiler Runtime.
 
-These stages use Python and R packages including pandas, NumPy, SciPy, pysam, Matplotlib, scikit-learn, ReportLab, openpyxl, and qDNAseq.
-
-## Host program checks
+## Inspect the installed toolchain
 
 ```bash
-# Confirm Java, Nextflow, Python, and the host-side helpers.
-java -version
-nextflow -version
-python3 --version
-samtools --version | sed -n '1p'
-bwa 2>&1 | head -2
-minimap2 --version
-pigz --version
+oncotracer --version
+oncotracer provenance --json
+oncotracer doctor --backend conda
 ```
+
+`doctor` uses exact configured prefixes and semantic probes. It does not infer correctness merely because a similarly named command appears first on a login shell's `PATH`.
 
 For Docker:
 
 ```bash
-# Run this command from the oncotracer directory.
-command -v docker
-
-# Let Nextflow prepare and test the maintained Docker image.
-nextflow run main.nf --install --docker \
-  --lpwgs_root "project"
+oncotracer install --docker
+oncotracer doctor --backend docker
 ```
 
 For Singularity or Apptainer:
 
 ```bash
-# Run this command from the oncotracer directory.
-command -v singularity
-command -v apptainer
-
-# Test docker://carlosfarkas/oncotracer:latest through Nextflow.
-nextflow run main.nf --install --singularity \
-  --lpwgs_root "project"
+oncotracer install --singularity
+oncotracer doctor --backend singularity
 ```
 
-Ask the system administrator to install missing host programs on managed systems.
-
-## Record versions from a completed run
+## Provenance from a completed analysis
 
 ```bash
-# Set the standard repository and output paths.
-OUT="$(pwd)/project/results"
+OUT="$PWD/project/results"
 
-# List the Illumina or ONT pipeline provenance files.
-find "$OUT/01_samurai_illumina/pipeline_info" \
-  -maxdepth 1 -type f | sort
-find "$OUT/01_samurai_ont/results/pipeline_info" \
-  -maxdepth 1 -type f | sort
-
-# Record the OncoTracer commit, Nextflow version, and selected image.
-git rev-parse HEAD
-nextflow -version
-cat ".oncotracer/install/install_manifest.txt"
+cat "$OUT/06_workflow_summary/workflow_summary.txt"
+cat "$OUT/06_workflow_summary/native_run_manifest.json"
+cat "$OUT/.oncotracer-native/trace.tsv"
+find "$OUT" -type f \
+  \( -name '*versions*' -o -name '*manifest*' -o -name '*SHA256SUMS*' \) \
+  -print | sort
 ```
 
-The installer and Illumina wrapper pin SAMURAI `v1.4.0`. Preserve the nested `pipeline_info`, generated YAML and samplesheet, OncoTracer commit, and installation manifest with formal study outputs.
+Preserve:
+
+- the exact `oncotracer provenance --json` output;
+- the YAML and generated samplesheet/mapping table;
+- input and reference checksums;
+- explicit package specifications for all five Conda prefixes, or the immutable container digest;
+- native trace, state, run manifest, stage-specific version files, and result checksums.
+
+## Frozen v1.1 comparator
+
+The v2 release gate executes the immutable v1.1 workflow as an independent comparator. Its SAMURAI source, Nextflow distribution, containers, and inputs are pinned and audited. This comparator is not part of normal v2 analysis execution.
 
 ## Scientific responsibility
 
-Each program has assumptions about genome build, bin size, coverage, tumor purity, and sample type. Reproducible software execution does not make an unsuitable method scientifically valid. Predefine parameters, retain QC and provenance, and validate important findings with an appropriate orthogonal assay.
+Each component has assumptions about genome build, coverage, tumor fraction, ploidy, mappability, bin size, and sample type. Reproducible execution does not make an unsuitable method valid. Predefine settings, retain QC, and confirm important findings with an appropriate orthogonal assay.
