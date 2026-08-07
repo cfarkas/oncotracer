@@ -14,9 +14,14 @@ The three sample/run mappings are:
 
 The complete input is larger than QuickStart 1. Provide enough storage for six FASTQs, hg38, BAMs, qDNAseq outputs, refinement tables, PDFs, and the selected backend. The first uncached Illumina run also creates the hg38 BWA index and should have at least 80 GiB of addressable memory.
 
+!!! important "Choose the analyses directory first"
+    Every copy/paste block below that uses `$PWD` begins with `cd /path/to/my/analyses_dir/`. Replace that placeholder with an existing directory where you want OncoTracer to create the downloaded FASTQs, YAML files, reference cache, BAMs, and results.
+
 ## One-command QuickStart
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --conda
 oncotracer doctor --backend conda
 
@@ -34,6 +39,7 @@ QuickStart 2 completed: .../oncotracer-quickstart2
 ## Step 1. Download and validate the public data only
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart2"
 
 oncotracer quickstart 2 \
@@ -67,6 +73,7 @@ oncotracer-quickstart2/
 Inspect the generated files:
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart2"
 
 cat "$TEST_ROOT/public/hcc1143_lpwgs/samples.csv"
@@ -89,6 +96,7 @@ HCC1143_TRAMETINIB,TUMOR
 ## Step 2. Run the generated YAML
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart2"
 
 oncotracer run \
@@ -103,6 +111,7 @@ The analysis runs alignment, Picard processing, qDNAseq, BAM-supported boundary 
 The complete QuickStart command reuses valid completed stages and performs the bundled output checks:
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart2"
 
 oncotracer quickstart 2 \
@@ -113,6 +122,7 @@ oncotracer quickstart 2 \
 Review:
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart2"
 OUTDIR="$TEST_ROOT/runs/hcc1143_lpwgs"
 
@@ -148,6 +158,8 @@ runs/hcc1143_lpwgs/
 ### Conda
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --conda
 oncotracer quickstart 2 \
   --backend conda \
@@ -157,6 +169,8 @@ oncotracer quickstart 2 \
 ### Docker
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --docker
 oncotracer quickstart 2 \
   --backend docker \
@@ -166,6 +180,8 @@ oncotracer quickstart 2 \
 ### Singularity or Apptainer
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --singularity
 oncotracer quickstart 2 \
   --backend singularity \
@@ -174,11 +190,15 @@ oncotracer quickstart 2 \
 
 ### Poetry launcher
 
+Poetry is a source-development route. Keep the source checkout separate from the analysis output:
+
 ```bash
+cd /path/to/my/oncotracer_source/
+
 ./oncotracer install --poetry
 poetry run oncotracer quickstart 2 \
   --backend poetry \
-  --test-root "$PWD/oncotracer-quickstart2-poetry"
+  --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry
 ```
 
 ## Run the prepared YAML through another backend
@@ -186,6 +206,7 @@ poetry run oncotracer quickstart 2 \
 The downloaded FASTQs and generated YAML are backend-independent:
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart2"
 
 oncotracer run \
@@ -198,6 +219,8 @@ oncotracer run \
 Repeat the same QuickStart or `oncotracer run` command with the same test root and result directory:
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 2 \
   --backend conda \
   --test-root "$PWD/oncotracer-quickstart2"
