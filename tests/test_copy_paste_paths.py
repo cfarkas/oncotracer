@@ -9,6 +9,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FENCE = chr(96) * 3
 BASH_BLOCK_RE = re.compile(re.escape(FENCE) + r"bash[ \t]*\n(.*?)" + re.escape(FENCE), re.DOTALL)
+ANALYSES_CD = "cd /path/to/my/analyses_dir/"
+TUTORIAL_SVGS = (
+    "docs/assets/tutorial/quickstart_flow.svg",
+    "docs/assets/tutorial/full_tutorial_flow.svg",
+    "docs/assets/tutorial/full_tutorial_download_checkpoint.svg",
+    "docs/assets/tutorial/full_tutorial_setup_checkpoint.svg",
+    "docs/assets/tutorial/full_tutorial_verify_checkpoint.svg",
+)
 
 
 def fail(message: str) -> None:
@@ -31,6 +39,14 @@ def find_block(relative_path: str, *fragments: str) -> str:
             return block
     fail(f"{relative_path} has no Bash block containing: {', '.join(fragments)}")
     raise AssertionError("unreachable")
+
+
+def first_command(block: str) -> str:
+    for line in block.splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            return stripped
+    return ""
 
 
 def require_order(block: str, fragments: tuple[str, ...], label: str) -> None:
@@ -78,7 +94,7 @@ def check_native_quickstarts() -> None:
     )
     require_order(
         quickstart1,
-        ("oncotracer install --conda", "oncotracer quickstart 1"),
+        (ANALYSES_CD, "oncotracer install --conda", "oncotracer quickstart 1"),
         "QuickStart 1",
     )
 
@@ -91,7 +107,7 @@ def check_native_quickstarts() -> None:
     )
     require_order(
         quickstart2,
-        ("oncotracer install --conda", "oncotracer quickstart 2"),
+        (ANALYSES_CD, "oncotracer install --conda", "oncotracer quickstart 2"),
         "QuickStart 2",
     )
 
@@ -102,7 +118,7 @@ def check_native_quickstarts() -> None:
     )
     require_order(
         readme,
-        ("oncotracer quickstart 1", "oncotracer quickstart 2"),
+        (ANALYSES_CD, "oncotracer quickstart 1", "oncotracer quickstart 2"),
         "README public QuickStarts",
     )
 
@@ -111,9 +127,45 @@ def check_native_quickstarts() -> None:
         ("QuickStart 2", quickstart2),
         ("README public QuickStarts", readme),
     ):
+        require(first_command(block) == ANALYSES_CD, f"{label} must enter the analyses directory first")
         require("git clone" not in block, f"{label} must run from the installed executable")
         require("cd oncotracer" not in block, f"{label} must not depend on a checkout")
         require("nextflow" not in block.casefold(), f"{label} must not invoke Nextflow")
+
+
+def check_every_pwd_quickstart_block_enters_analysis_directory() -> None:
+    for relative_path in ("README.md", "docs/quick_start.md", "docs/public_cohort.md"):
+        for number, block in enumerate(BASH_BLOCK_RE.findall(read(relative_path)), start=1):
+            uses_pwd_quickstart = any(
+                token in block
+                for token in (
+                    "$PWD/oncotracer-quickstart1",
+                    "$PWD/oncotracer-quickstart2",
+                )
+            )
+            if not uses_pwd_quickstart:
+                continue
+            require(
+                first_command(block) == ANALYSES_CD,
+                f"{relative_path} Bash block {number} uses a $PWD QuickStart root "
+                f"without starting with {ANALYSES_CD!r}",
+            )
+
+
+def check_tutorial_figures_are_native_and_beginner_safe() -> None:
+    for relative_path in TUTORIAL_SVGS:
+        text = read(relative_path)
+        folded = text.casefold()
+        require("nextflow" not in folded, f"obsolete Nextflow wording remains in {relative_path}")
+        require("main.nf" not in folded, f"obsolete main.nf wording remains in {relative_path}")
+        require(
+            ANALYSES_CD in text,
+            f"beginner tutorial figure does not show the analyses-directory first step: {relative_path}",
+        )
+    require(
+        "Clone OncoTracer" not in read("docs/assets/tutorial/quickstart_flow.svg"),
+        "QuickStart figure must start from the installed executable, not a clone",
+    )
 
 
 def check_automatic_setup_paths() -> None:
@@ -178,9 +230,14 @@ def main() -> None:
     check_release_install("README.md")
     check_release_install("docs/installation.md")
     check_native_quickstarts()
+    check_every_pwd_quickstart_block_enters_analysis_directory()
+    check_tutorial_figures_are_native_and_beginner_safe()
     check_automatic_setup_paths()
     check_checkout_is_only_for_source_development()
-    print("PASS: native v2 release, QuickStart, and Automatic Setup paths are copy/paste safe")
+    print(
+        "PASS: native v2 release, QuickStart, figures, and Automatic Setup paths "
+        "are beginner-safe and copy/paste ready"
+    )
 
 
 if __name__ == "__main__":
