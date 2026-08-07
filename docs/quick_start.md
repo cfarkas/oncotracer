@@ -12,9 +12,14 @@ The one-command route is recommended. The detailed walkthrough below exposes the
 
 The example FASTQs are small. The first uncached Illumina analysis still downloads hg38 and creates the BWA index, which can take tens of minutes and requires substantial addressable memory. Provide at least 80 GiB of RAM and enough free storage for the reference, BAMs, five Conda environments or container layers, and results.
 
+!!! important "Choose the analyses directory first"
+    Every copy/paste block below that uses `$PWD` begins with `cd /path/to/my/analyses_dir/`. Replace that placeholder with an existing directory where you want OncoTracer to create the QuickStart downloads, YAML files, reference cache, BAMs, and results. The installed `oncotracer` executable does not require a repository checkout.
+
 ## One-command QuickStart
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --conda
 oncotracer doctor --backend conda
 
@@ -81,6 +86,7 @@ oncotracer doctor --backend singularity
 Poetry development route:
 
 ```bash
+cd /path/to/my/oncotracer_source/
 ./oncotracer install --poetry
 poetry run oncotracer doctor --backend poetry
 ```
@@ -90,6 +96,7 @@ Use one route for a normal analysis.
 ## Step 2. Download, validate, and create both YAML files
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 oncotracer quickstart 1 \
@@ -121,6 +128,7 @@ oncotracer-quickstart1/
 Inspect the generated run plans:
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 ls -1 "$TEST_ROOT/configs"
@@ -134,6 +142,7 @@ A YAML is a saved native run plan. It contains input paths, output paths, caller
 ## Step 3. Run the Illumina analysis separately
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 oncotracer run \
@@ -146,6 +155,7 @@ Wait for completion before starting ONT when workstation memory or storage bandw
 Inspect the summary:
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 head -n 12 "$TEST_ROOT/runs/illumina/06_workflow_summary/workflow_summary.txt"
@@ -158,6 +168,7 @@ The summary should identify the Illumina qDNAseq analysis, `engine=native`, and 
 ## Step 4. Run the ONT analysis separately
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 oncotracer run \
@@ -168,6 +179,7 @@ oncotracer run \
 Inspect the summary:
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 head -n 12 "$TEST_ROOT/runs/ont/06_workflow_summary/workflow_summary.txt"
@@ -182,6 +194,7 @@ The summary should identify the ONT ichorCNA analysis, `engine=native`, and `nex
 Run the complete QuickStart command against the same root. Content-matched completed stages are reused, and the bundled verifier checks both output trees:
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 oncotracer quickstart 1 \
@@ -224,6 +237,8 @@ The following commands run the complete example. Choose one backend.
 ### Conda
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --conda
 oncotracer quickstart 1 \
   --backend conda \
@@ -233,6 +248,8 @@ oncotracer quickstart 1 \
 ### Docker
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --docker
 oncotracer quickstart 1 \
   --backend docker \
@@ -242,6 +259,8 @@ oncotracer quickstart 1 \
 ### Singularity or Apptainer
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --singularity
 oncotracer quickstart 1 \
   --backend singularity \
@@ -250,18 +269,23 @@ oncotracer quickstart 1 \
 
 ### Poetry launcher
 
+Poetry is a source-development route. Keep the source checkout separate from the analysis output:
+
 ```bash
+cd /path/to/my/oncotracer_source/
+
 ./oncotracer install --poetry
 poetry run oncotracer quickstart 1 \
   --backend poetry \
-  --test-root "$PWD/oncotracer-quickstart1-poetry"
+  --test-root /path/to/my/analyses_dir/oncotracer-quickstart1-poetry
 ```
 
 ## Run generated YAMLs through another backend
 
-Preparation is backend-independent. For example, after `--download-only`, run the same Illumina YAML through Docker:
+Preparation is backend-independent. For example, after `--download-only`, run the same Illumina and ONT YAML files through Docker:
 
 ```bash
+cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 oncotracer run \
@@ -278,6 +302,8 @@ oncotracer run \
 Repeat the same command with the same `--test-root` or YAML. The native stage ledger reuses stages whose command, relevant input metadata, and outputs still match.
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 1 \
   --backend conda \
   --test-root "$PWD/oncotracer-quickstart1"
