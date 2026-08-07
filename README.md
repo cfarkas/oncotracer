@@ -4,17 +4,16 @@
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://cfarkas.github.io/oncotracer/)
 [![Native CI](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
-OncoTracer v2 is a **native, auditable LP-WGS copy-number analysis application** for Illumina and Oxford Nanopore FASTQs. Its normal execution path does not invoke Nextflow. Conda and container backends manage all scientific dependencies, including the Java runtime used internally by Picard for Illumina duplicate marking, so no separate host Java installation is required.
+OncoTracer v2 is a **native, auditable LP-WGS copy-number analysis** application for Illumina and Oxford Nanopore Technologies (ONT) FASTQs. Its normal execution path does not invoke Nextflow. The installed `oncotracer` executable schedules alignment, copy-number calling, BAM-supported boundary refinement, CNA codification, plots, reports, and optional cancer-context interpretation directly.
 
 ```text
-FASTQ -> alignment -> qDNAseq/ichorCNA -> BAM refinement -> CNA tables -> plots
-                                                             |
-                                                             +-> optional native CNA classifier/reports
+Illumina FASTQ -> BWA/Picard -> qDNAseq -----------+
+                                                    +-> boundary refinement -> CNA tables -> plots/reports
+ONT FASTQ ------> minimap2 ---> HMMcopy/ichorCNA --+
+                                                    +-> optional native CNA classifier/GISTIC2
 ```
 
-## Install the global executable
-
-Download and verify all stable-release assets, then install the copied executable:
+## Install the verified global executable
 
 ```bash
 gh release download v2.0.0 \
@@ -34,36 +33,47 @@ Prepare exactly one backend:
 oncotracer install --conda
 # or: oncotracer install --docker
 # or: oncotracer install --singularity
-# or: oncotracer install --poetry
+# or, from a source-development checkout: ./oncotracer install --poetry
 ```
 
-Run a generated YAML:
+Verify it:
 
 ```bash
-oncotracer run --backend conda --config project/config/illumina.auto.yml
+oncotracer doctor --backend conda
 ```
 
-Set `run_cna_classifier: true` in the YAML to run the complete cancer-context classifier, optional GISTIC2 branch, knowledge/pathology concordance, HTML/PDF reports, and clinician summaries through the same native stage ledger.
-
-Run the complete public examples:
+## Run the same complete public examples shown in the documentation
 
 ```bash
-oncotracer quickstart 1 --backend conda --test-root "$PWD/quickstart1"
-oncotracer quickstart 2 --backend conda --test-root "$PWD/quickstart2"
+oncotracer quickstart 1 \
+  --backend conda \
+  --test-root "$PWD/oncotracer-quickstart1"
+
+oncotracer quickstart 2 \
+  --backend conda \
+  --test-root "$PWD/oncotracer-quickstart2"
 ```
 
-The [complete documentation](https://cfarkas.github.io/oncotracer/) contains installation, Automatic Setup, complete QuickStarts, classifier settings, output interpretation, provenance, v1.1 migration, and the v2 release parity reports.
+QuickStart 1 analyzes one public Illumina library and one public ONT library. QuickStart 2 analyzes all three HCC1143 Illumina libraries. Both commands download and validate the public FASTQs, create the YAML files, run the native stages, and verify the required outputs. The [complete documentation](https://cfarkas.github.io/oncotracer/) also presents the same examples step by step: download only, inspect the generated YAML, run each branch separately, resume, verify outputs, and choose Conda, Docker, Singularity/Apptainer, or Poetry.
+
+## Analyze your own FASTQs
+
+```bash
+oncotracer auto \
+  --mode illumina \
+  --reads-folder "$PWD/project/input/fastq" \
+  --sample-table "$PWD/project/input/samples.csv" \
+  --config-dir "$PWD/project/config" \
+  --outdir "$PWD/project/results"
+
+oncotracer run --backend conda \
+  --config "$PWD/project/config/illumina.auto.yml"
+```
+
+Set `run_cna_classifier: true` in the YAML to run the complete native cancer-context classifier, optional GISTIC2 recurrence branch, knowledge/pathology concordance, HTML/PDF reports, and clinician summaries.
 
 ## Release assurance
 
-Stable v2 releases are generated only after current `main` passes:
-
-- native source, copied executable, five managed environments, documentation, and container validation;
-- complete QuickStart 1 parity for both Illumina and ONT against the pinned v1.1 workflow;
-- complete three-library HCC1143 QuickStart 2 parity;
-- exact sample-set checks, CNA event precision/recall, refined-bin profile concordance, output hashes, and a native trace containing no Nextflow command;
-- a complete offline native classifier integration test, including HTML/PDF and clinician reports.
-
-Each release records the exact Git commit, deterministic `git archive` SHA-256, copied-executable SHA-256, stable-container digest, and exact QuickStart workflow runs in `release-provenance.json`.
+Stable v2 releases require native source and copied-executable tests, five managed environment solves, container validation, complete QuickStart 1 parity for Illumina and ONT, complete HCC1143 QuickStart 2 parity, semantic CNA-event and refined-bin concordance, output hashes, and a trace containing no Nextflow command. Each release records the exact commit, deterministic source-tree SHA-256, executable SHA-256, container digest, workflow runs, and artifacts in `release-provenance.json`.
 
 OncoTracer is for research use and is not a standalone diagnostic system.

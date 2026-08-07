@@ -1,154 +1,222 @@
-# Parameter Reference
+# Native CLI and YAML parameter reference
 
-> **Legacy v1.1 documentation.** This unlisted parameter reference belongs to the immutable Nextflow release. Native v2 users should start with [Native YAML configuration](../configuration_v2.md).
+Use [Automatic Setup](../auto_params.md) for a first analysis. This page documents the installed v2 command interface and the flat YAML fields used by the native engine.
 
-This page documents the top-level parameters declared in `nextflow.config`. For a first run, use Automatic Setup or a minimal YAML and keep the remaining defaults.
+## Command structure
 
-## How parameters are supplied
-
-```yaml
-mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a
-force: false
+```text
+oncotracer install ...
+oncotracer doctor ...
+oncotracer quickstart 1|2 ...
+oncotracer auto ...
+oncotracer run ...
+oncotracer provenance --json
 ```
+
+Run `oncotracer <subcommand> --help` to inspect the executable installed on the system.
+
+## `oncotracer install`
+
+Exactly one backend flag is required.
 
 ```bash
-# Run this command from the oncotracer directory.
-nextflow run main.nf --docker \
-  -params-file "params/my_illumina.yml" \
-  -resume
+oncotracer install --conda
+oncotracer install --docker
+oncotracer install --singularity
+./oncotracer install --poetry
 ```
 
-Pipeline parameters use two hyphens, for example `--mode illumina`. Nextflow options such as `-resume` and `-stub-run` use one hyphen. A command-line value overrides the same YAML value.
-
-## Choose a route
-
-| Goal | Route settings |
+| Option | Meaning |
 | --- | --- |
-| Prepare one runtime | `--install` plus one of `--docker`, `--singularity`, or `--conda` |
-| Generate Illumina configuration | `--auto_params --mode illumina --reads_folder PATH --sample_table FILE` |
-| Generate ONT configuration | `--auto_params --mode ont --reads_folder PATH --sample_table FILE` |
-| Prepare the small public tests | `--make_test`; optional `--test_root PATH` |
-| Download the PRJNA754199 archive | `--make_prjna754199`; optional `--test_root PATH` |
-| Run Illumina | `mode`, `lpwgs_root`, `outdir`, `illumina_samplesheet` |
-| Run ONT | `mode`, `lpwgs_root`, `outdir`, `ont_folder`, `ont_barcodes` |
+| `--conda` | Create/update five isolated Conda prefixes |
+| `--docker` | Validate Docker, pull the native image, and run its host doctor |
+| `--singularity` | Pull/reuse a SIF through Apptainer or Singularity |
+| `--poetry` | Install the source-development launcher and the five Conda prefixes |
+| `--prefix PATH` | Alternate parent for the five Conda prefixes |
+| `--image IMAGE` | Override the default native container image |
+| `--sif PATH` | Override the Singularity/Apptainer image path |
+| `--force` | Recreate damaged/changed managed assets deliberately |
+| `--dry-run` | Print installation commands without executing them |
+| `--root PATH` | Explicit source or extracted payload root |
 
-Preparation routes create files and stop before the CNA analysis.
+## `oncotracer doctor`
 
-## Preparation parameters
+```bash
+oncotracer doctor --backend conda
+oncotracer doctor --backend docker
+oncotracer doctor --backend singularity
+oncotracer doctor --backend poetry
+```
 
-| Parameter | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `install` | Boolean | `false` | Prepare and test one selected runtime, cache SAMURAI v1.4.0, write a manifest, and stop. |
-| `install_dir` | absolute directory or `null` | `<repository>/.oncotracer/install` | Optional alternate manifest destination. |
-| `make_test` | Boolean | `false` | Download/reuse small public FASTQs and write QuickStart YAMLs. |
-| `make_prjna754199` | Boolean | `false` | Download and validate the 12 PRJNA754199 FASTQs. |
-| `test_root` | absolute directory or `null` | `<repository>/test` | Public input, configuration, work, and result root. |
-| `auto_params` | Boolean | `false` | Generate a YAML from a reads folder and sample table. |
-| `reads_folder` | absolute directory | `null` | Illumina FASTQ folder or ONT `fastq_pass` parent. |
-| `sample_table` | CSV/TSV/TXT path | `null` | Illumina `sample_name,status` or ONT `barcode,sample_name,status` table. |
-| `auto_config_dir` | absolute directory or `null` | `<reads_folder>/oncotracer_config` | Generated YAML, manifest, and Illumina samplesheet destination. |
-| `auto_outdir` | absolute directory or `null` | `<reads_folder>/oncotracer_results` | Result path written into the generated YAML. |
+The command returns JSON and exits nonzero when required source identity, prefixes, packages, or semantic executable probes fail.
 
-## Common analysis parameters
+## `oncotracer quickstart`
 
-| Parameter | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `mode` | `illumina` or `ont` | `null` | Selects the sequencing route. |
-| `lpwgs_root` | absolute directory | site-specific repository default | Common parent visible to the selected runtime. Set it explicitly. |
-| `outdir` | absolute directory | `null` | Main result directory. |
-| `force` | Boolean | `false` | Requests supported refresh behavior. Keep false for real projects. |
+```bash
+oncotracer quickstart 1 \
+  --backend conda \
+  --test-root "$PWD/oncotracer-quickstart1"
 
-## Runtime parameters
+oncotracer quickstart 2 \
+  --backend conda \
+  --test-root "$PWD/oncotracer-quickstart2"
+```
 
-Use exactly one runtime option for installation or analysis.
+| Option | Meaning |
+| --- | --- |
+| `1` | Public one-sample Illumina plus one-sample ONT example |
+| `2` | Public three-library HCC1143 Illumina example |
+| `--test-root PATH` | Required isolated input/config/result root |
+| `--download-only` | Download/validate inputs and generate YAML without analysis |
+| `--backend NAME` | `host`, `conda`, `docker`, `singularity`, or `poetry` |
+| `--threads N` | Native stage thread limit where supported |
+| `--force` | Deliberately invalidate reusable stages |
+| `--dry-run` | Print planned operations without computation |
+| `--image IMAGE` | Container override for Docker |
+| `--sif PATH` | Image override for Singularity/Apptainer |
 
-| Parameter | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `docker` | Boolean | `false` | Enables Docker with `--docker`. |
-| `singularity` | Boolean | `false` | Enables Singularity/Apptainer with `--singularity`. |
-| `conda` | Boolean | `false` | Enables the Conda fallback with `--conda`. |
-| `docker_image` | image name | `carlosfarkas/oncotracer:latest` | Docker image. |
-| `singularity_image` | image URI | `docker://carlosfarkas/oncotracer:latest` | Singularity/Apptainer image. |
-| `docker_user` | `UID:GID` | `1000:1000` | Container user/group for output ownership. |
-| `docker_container_options` | option string | `--entrypoint ""` | Advanced Docker settings. |
+## `oncotracer auto`
 
-## Illumina parameters
+```bash
+oncotracer auto \
+  --mode illumina \
+  --reads-folder "$PWD/project/input/fastq" \
+  --sample-table "$PWD/project/input/samples.csv" \
+  --config-dir "$PWD/project/config" \
+  --outdir "$PWD/project/results"
+```
 
-| Parameter | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `illumina_samplesheet` | absolute CSV path | `null` | Columns: `sample,fastq_1,fastq_2,status`. |
-| `illumina_analysis_type` | text | `solid_biopsy` | SAMURAI analysis preset. |
-| `illumina_caller` | text | `qdnaseq` | Illumina CNA caller. |
-| `illumina_binsize_kb` | positive integer | `100` | Initial qDNAseq bin width in kb. |
-| `illumina_build_pon` | Boolean | `false` | Build and apply a local qDNAseq normal reference. |
-| `illumina_pon_normal_samples` | comma-separated IDs or `null` | `null` | Every and only samplesheet IDs marked normal. |
-| `illumina_pon_min_normals` | integer ≥2 | `2` | Required number of selected normal controls. |
-| `illumina_pon_name` | safe identifier | `illumina_local_PoN` | Name used in local-panel artifacts. |
-| `illumina_pon_min_mapq` | non-negative integer | `37` | Mapping-quality threshold for panel construction. |
-| `illumina_pon_r_container` | image URI | `docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1` | Pinned qDNAseq runtime. |
+| Option | Required | Meaning |
+| --- | --- | --- |
+| `--mode illumina|ont` | yes | Select input discovery and YAML route |
+| `--reads-folder PATH` | yes | Illumina FASTQ folder or ONT barcode parent |
+| `--sample-table FILE` | yes | Illumina `sample_name,status` or ONT `barcode,sample_name,status` CSV |
+| `--config-dir PATH` | no | Generated YAML/manifest/samplesheet destination |
+| `--outdir PATH` | no | Result directory written into the YAML |
+| `--run-cna-classifier` | no | Write `run_cna_classifier: true` |
+| `--dry-run` | no | Print generator command without writing analysis files |
+| `--root PATH` | no | Explicit payload/source root |
 
-Automatic Setup writes `illumina_build_pon: false` with no normals, rejects exactly one, and enables the local panel with two or more. Corrected panel outputs contain tumor samples only.
+Automatic Setup creates files and stops before alignment.
 
-## ONT parameters
+## `oncotracer run`
 
-Comma-separated barcode and sample-name lists are positional and must have matching lengths.
+```bash
+oncotracer run \
+  --backend conda \
+  --threads 16 \
+  --config "$PWD/project/config/illumina.auto.yml"
+```
 
-| Parameter | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `ont_folder` | absolute directory | `null` | Parent containing tumor barcode directories. |
-| `ont_barcodes` | comma-separated names | `null` | Tumor barcode selection. |
-| `ont_sample_names` | comma-separated names or `null` | `null` | Output names matching `ont_barcodes`. |
-| `ont_analysis_type` | `liquid_biopsy` or `solid_biopsy` | `liquid_biopsy` | SAMURAI preset. |
-| `ont_caller` | text | `ichorcna` | ONT CNA caller. |
-| `ont_binsize_kb` | positive integer | `500` | Initial ichorCNA bin width in kb. |
-| `ont_ref` | absolute FASTA or `null` | `null` | Optional custom reference below `lpwgs_root`. |
-| `ont_normal_folder` | absolute directory or `null` | `null` | Optional normal barcode parent. |
-| `ont_normal_barcodes` | comma-separated names or `null` | `null` | Normal barcode selection. |
-| `ont_normal_sample_names` | comma-separated names or `null` | `null` | Names matching normal barcodes. |
-| `ont_build_pon` | Boolean | `false` | Explicitly requests the supported local normal route. |
-| `ont_min_age_minutes` | non-negative integer | `0` | Minimum FASTQ age before use. |
-| `ont_force_realign` | Boolean | `false` | Recreate supported ONT alignments. |
+| Option | Meaning |
+| --- | --- |
+| `--config FILE` | Required flat native YAML |
+| `--backend NAME` | `host`, `conda`, `docker`, `singularity`, or `poetry`; saved backend used when omitted |
+| `--threads N` | Thread limit passed to supported native stages |
+| `--force` | Deliberate stage refresh |
+| `--dry-run` | Validate and print native commands without launching tools |
+| `--image IMAGE` | Docker image override |
+| `--sif PATH` | Singularity/Apptainer image override |
+| `--root PATH` | Explicit payload/source root |
 
-## Classifier and pathology parameters
+Repeating the same command reuses valid content-matched stages automatically.
 
-| Parameter | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `run_cna_classifier` | Boolean | `false` | Adds stage `05_cna_classifier`. |
-| `cna_classifier_sample_set` | context name | `broad_cancer` | Classification context selected from study design. |
-| `cna_classifier_profile` | runtime profile | `conda` | Nested classifier runtime. |
-| `pathology_csv` | absolute CSV or `null` | `null` | Optional matched pathology table. |
-| `pathology_sample_col` | column name | `illumina_sample_id` | Column matching OncoTracer sample IDs. |
-| `pathology_case_col` | column name | `case_code` | Case/accession column. |
-| `pathology_diagnosis_col` | column name | `final_diagnosis` | Diagnosis-text column. |
-| `pathology_use_biomed_models` | Boolean | `true` | Attempts optional biomedical model assistance. |
-| `pathology_biomed_local_files_only` | Boolean | `false` | Restricts models to an existing local cache. |
+## Common YAML fields
 
-## Boundary-refinement parameters
+| Field | Type/default | Meaning |
+| --- | --- | --- |
+| `mode` | required `illumina` or `ont` | Sequencing route |
+| `lpwgs_root` | required absolute directory | Project/reference/cache root visible to the backend |
+| `outdir` | required absolute directory | Numbered native result tree |
+| `force` | Boolean, `false` | Scientific refresh request; normally keep false |
+| `run_cna_classifier` | Boolean, `false` | Add stage `05_cna_classifier` |
 
-Stage `02_bam_refinement` runs by default. These settings tune it.
+## Illumina YAML fields
 
-| Parameter | Default | Meaning |
+| Field | Typical/default | Meaning |
+| --- | --- | --- |
+| `illumina_samplesheet` | required path | Four columns: `sample,fastq_1,fastq_2,status` |
+| `illumina_analysis_type` | `solid_biopsy` | Analysis preset |
+| `illumina_caller` | `qdnaseq` | Native Illumina CNA caller |
+| `illumina_binsize_kb` | `100` | Coarse qDNAseq bin width |
+| `illumina_build_pon` | `false` | Build/apply local qDNAseq normal panel |
+| `illumina_pon_normal_samples` | comma-separated IDs | Every and only selected normal samples |
+| `illumina_pon_min_normals` | `2` | Minimum selected controls; must be at least two |
+| `illumina_pon_name` | `illumina_local_PoN` | Safe panel artifact name |
+| `illumina_pon_min_mapq` | `37` | Panel construction mapping-quality threshold |
+
+Automatic Setup writes no panel for zero normals, rejects exactly one normal, and enables the local panel for two or more. Normal samples remain reference/QC inputs; downstream corrected outputs contain tumors.
+
+## ONT YAML fields
+
+| Field | Typical/default | Meaning |
+| --- | --- | --- |
+| `ont_folder` | required path | Parent containing selected barcode directories |
+| `ont_barcodes` | required comma-separated names | Tumor barcode selection |
+| `ont_sample_names` | barcode names when omitted | Positional biological sample names |
+| `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
+| `ont_caller` | `ichorcna` | Native ONT CNA caller |
+| `ont_binsize_kb` | `500` | Coarse ichorCNA/HMMcopy bin width |
+| `ont_ref` | optional FASTA | Custom reference |
+| `ont_normal_folder` | optional path | Parent containing normal barcodes |
+| `ont_normal_barcodes` | optional names | Positional normal barcode selection |
+| `ont_normal_sample_names` | optional names | Positional normal sample names |
+| `ont_build_pon` | `false` | Explicit local-normal route request |
+| `ont_min_age_minutes` | `0` | Exclude very new FASTQs in active run folders |
+| `ont_force_realign` | `false` | Deliberately recreate supported ONT alignments |
+
+`ont_barcodes` and `ont_sample_names` must have equal lengths and order.
+
+## Native classifier and pathology fields
+
+| Field | Typical/default | Meaning |
+| --- | --- | --- |
+| `cna_classifier_sample_set` | `broad_cancer` | Study-defined cancer context |
+| `cna_classifier_samples` | optional IDs | Optional subset of sequencing samples |
+| `pathology_csv` | optional path | De-identified matched pathology table |
+| `pathology_sample_col` | `illumina_sample_id` | Column matching sequencing sample IDs |
+| `pathology_case_col` | `case_code` | De-identified case/accession column |
+| `pathology_diagnosis_col` | `final_diagnosis` | Diagnosis text column |
+| `pathology_use_biomed_models` | `false` recommended initially | Optional biomedical model assistance |
+| `pathology_biomed_local_files_only` | `true` recommended initially | Restrict models to local cache |
+| `run_gistic` | `false` unless enabled | Optional cohort recurrence branch |
+| `gistic_required` | `false` | Make GISTIC2 failure fatal only when justified |
+| `gistic_min_samples` | `2` | Minimum cohort size for requested recurrence analysis |
+| `knowledge_web` | `false` recommended | Optional network enrichment |
+| `knowledge_literature_llm` | `false` recommended | Optional model-assisted literature synthesis |
+| `knowledge_deep_literature` | `false` recommended | Optional expanded literature workflow |
+
+Nested YAML is deliberately rejected. Keep this section flat.
+
+## Boundary-refinement fields
+
+| Field | Default | Meaning |
 | --- | ---: | --- |
-| `refine_skip_install` | `false` | Prefer an existing refinement environment. |
-| `fine_bin_kb_illumina` | `10` | Illumina local depth-bin width in kb. |
-| `fine_bin_kb_ont` | `25` | ONT local depth-bin width in kb. |
-| `search_radius_bins` | `2` | Search distance around each original boundary. |
-| `min_mapq` | `20` | Minimum read mapping quality. |
-| `min_local_log2_diff_illumina` | `0.10` | Minimum local Illumina depth step. |
-| `min_local_log2_diff_ont` | `0.12` | Minimum local ONT depth step. |
-| `min_adjacent_seg_delta` | `0.10` | Minimum adjacent coarse-segment difference. |
-| `min_bic_gain` | `6` | Minimum local model-fit improvement. |
-| `permutations` | `300` | Empirical permutations; `0` disables them. |
-| `permutation_p` | `0.05` | Empirical p-value threshold. |
-| `accept_rule` | `p_and_bic` | Boundary-shift acceptance rule. |
-| `max_ci_fraction_of_coarse` | `1.0` | Maximum confidence-interval width relative to a coarse bin. |
-| `zipcnv_mode` | `adapted` | ZIPcnv comparison mode. |
-| `zipcnv_window_bins` | `5` | Adapted ZIPcnv local window. |
-| `zipcnv_k` | `0.05` | Adapted ZIPcnv tuning constant. |
-| `zipcnv_min_segment_bins` | `3` | Minimum retained ZIPcnv segment length. |
-| `zipcnv_min_abs_log2` | `0.25` | Minimum retained absolute signal. |
-| `zipcnv_compare_min_overlap` | `0.50` | Minimum overlap for comparison. |
+| `fine_bin_kb_illumina` | `10` | Local Illumina depth bin |
+| `fine_bin_kb_ont` | `25` | Local ONT depth bin |
+| `search_radius_bins` | `2` | Coarse-bin search distance |
+| `min_mapq` | `20` | Minimum BAM mapping quality |
+| `min_local_log2_diff_illumina` | `0.10` | Minimum Illumina local step |
+| `min_local_log2_diff_ont` | `0.12` | Minimum ONT local step |
+| `min_adjacent_seg_delta` | `0.10` | Minimum adjacent coarse difference |
+| `min_bic_gain` | `6` | Minimum model-fit improvement |
+| `permutations` | `300` | Empirical permutations |
+| `permutation_p` | `0.05` | Empirical threshold |
+| `accept_rule` | `p_and_bic` | Boundary acceptance rule |
+| `max_ci_fraction_of_coarse` | `1.0` | Maximum CI width relative to coarse bin |
+| `zipcnv_mode` | `adapted` | ZIPcnv comparison mode |
+| `zipcnv_window_bins` | `5` | Adapted comparison window |
+| `zipcnv_k` | `0.05` | Adapted tuning constant |
+| `zipcnv_min_segment_bins` | `3` | Minimum retained segment length |
+| `zipcnv_min_abs_log2` | `0.25` | Minimum retained absolute signal |
+| `zipcnv_compare_min_overlap` | `0.50` | Minimum comparison overlap |
 
-See [Boundary Refinement](refinement.md) for a controlled comparison. Keep defaults for an initial analysis.
+Keep defaults for an initial analysis. Use a new YAML and new `outdir` for methods comparisons.
+
+## Provenance command
+
+```bash
+oncotracer provenance --json
+```
+
+The record includes version, source commit, deterministic source digest definition/value, source-tree cleanliness, and copied-binary SHA-256 when bound into a release build.

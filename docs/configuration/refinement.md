@@ -1,77 +1,55 @@
-# Boundary Refinement
+# Advanced BAM-supported boundary refinement
 
-> **Legacy v1.1 documentation.** This unlisted command page describes the immutable Nextflow release. Native v2 performs refinement in its direct stage graph; use [Running the native workflow](../running.md).
+Boundary refinement is native stage `02_bam_refinement` in every standard Illumina and ONT analysis. qDNAseq or ichorCNA first identifies broad segments. OncoTracer then examines local BAM depth around each coarse boundary and tests whether moving that boundary is supported.
 
-Boundary refinement is stage `02_bam_refinement` of every standard Illumina and ONT run. After qDNAseq or ichorCNA identifies broad CNA segments, this stage evaluates local BAM depth and tests whether each coarse boundary should move.
+When evidence is insufficient, the original boundary is retained. Refinement improves coordinate resolution; it does not prove that a CNA is biologically real.
 
-When the evidence is insufficient, OncoTracer keeps the original boundary. Refinement does not by itself prove that a CNA is biologically real.
+## Most analyses should keep the defaults
 
-## Most users: keep the defaults
-
-A minimal Illumina YAML still runs refinement:
+A minimal run still performs refinement:
 
 ```yaml
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
+lpwgs_root: /absolute/path/project
+outdir: /absolute/path/project/results/default
+illumina_samplesheet: /absolute/path/project/config/illumina.samplesheet.csv
 force: false
 ```
 
-The main refinement result is:
+The main result is beneath:
 
 ```text
-outdir/02_bam_refinement/
+<outdir>/02_bam_refinement/
 └── illumina_qdnaseq_100kb/ or ONT_ichorcna_500kb/
     ├── 01_tables/
+    ├── 02_samurai_compatible/
+    ├── 03_consolidated/
     └── 04_final_results/
         └── final_segments.tsv
 ```
 
-Use the tested defaults for routine work. Write any methods comparison to a new `outdir`.
+Use `04_final_results/final_segments.tsv` as the refined segment table and stage `03_cna_codification` for final event-level results.
 
-## Optional settings
-
-Add refinement settings to the same run YAML:
-
-```yaml
-mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a_conservative
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
-force: false
-
-fine_bin_kb_illumina: 20
-min_mapq: 30
-min_local_log2_diff_illumina: 0.15
-min_bic_gain: 8
-permutations: 500
-permutation_p: 0.05
-accept_rule: p_and_bic
-```
-
-## Main parameter groups
-
-### Resolution and search area
+## Resolution and search area
 
 | Parameter | Default | Purpose |
 | --- | ---: | --- |
 | `fine_bin_kb_illumina` | `10` | Local Illumina depth-bin width in kb |
 | `fine_bin_kb_ont` | `25` | Local ONT depth-bin width in kb |
-| `search_radius_bins` | `2` | Coarse bins searched on each side |
-| `max_ci_fraction_of_coarse` | `1.0` | Maximum accepted confidence-interval width |
+| `search_radius_bins` | `2` | Number of coarse bins searched around each boundary |
+| `max_ci_fraction_of_coarse` | `1.0` | Maximum accepted confidence-interval width relative to a coarse bin |
 
-### Read and signal filters
+## Read and signal filters
 
 | Parameter | Default | Purpose |
 | --- | ---: | --- |
 | `min_mapq` | `20` | Minimum read mapping quality |
 | `min_local_log2_diff_illumina` | `0.10` | Minimum local Illumina depth step |
 | `min_local_log2_diff_ont` | `0.12` | Minimum local ONT depth step |
-| `min_adjacent_seg_delta` | `0.10` | Minimum adjacent coarse-segment difference |
-| `min_bic_gain` | `6` | Minimum model-fit improvement |
+| `min_adjacent_seg_delta` | `0.10` | Minimum difference between adjacent coarse segments |
+| `min_bic_gain` | `6` | Minimum local model-fit improvement |
 
-### Statistical acceptance
+## Statistical acceptance
 
 | Parameter | Default | Purpose |
 | --- | ---: | --- |
@@ -79,71 +57,124 @@ accept_rule: p_and_bic
 | `permutation_p` | `0.05` | Largest accepted empirical p-value |
 | `accept_rule` | `p_and_bic` | Requires empirical and BIC evidence |
 
-### ZIPcnv comparison
+## ZIPcnv comparison
 
 | Parameter | Default | Purpose |
 | --- | ---: | --- |
-| `zipcnv_mode` | `adapted` | Select adapted, official, both, or off |
-| `zipcnv_window_bins` | `5` | Local adapted ZIPcnv window |
-| `zipcnv_k` | `0.05` | Adapted ZIPcnv tuning constant |
+| `zipcnv_mode` | `adapted` | Adapted comparison mode |
+| `zipcnv_window_bins` | `5` | Local window |
+| `zipcnv_k` | `0.05` | Adapted tuning constant |
 | `zipcnv_min_segment_bins` | `3` | Minimum retained segment length |
 | `zipcnv_min_abs_log2` | `0.25` | Minimum retained absolute signal |
+| `zipcnv_compare_min_overlap` | `0.50` | Minimum overlap for comparison |
 
-## Reproducible public-data comparison
+## Reproducible public-data methods comparison
 
-First prepare the public Illumina test and copy its generated YAML:
-
-```bash
-# Run this command from the oncotracer directory.
-
-# Download and validate the small public test data.
-nextflow run main.nf --make_test \
-  --test_root "test"
-
-# Copy the generated Illumina YAML to a new methods-comparison file.
-cp "test/configs/illumina.quickstart.yml" \
-  "params/illumina.conservative.yml"
-
-# Edit only the copied YAML.
-nano "params/illumina.conservative.yml"
-```
-
-Change `outdir` to `/path/to/my/directory/oncotracer/test/runs/illumina_conservative`, then add:
-
-```yaml
-fine_bin_kb_illumina: 20
-search_radius_bins: 2
-min_mapq: 30
-min_local_log2_diff_illumina: 0.15
-min_bic_gain: 8
-permutations: 500
-permutation_p: 0.05
-accept_rule: p_and_bic
-```
+Prepare QuickStart 1 without analysis:
 
 ```bash
-# Run this command from the oncotracer directory.
+TEST_ROOT="$PWD/oncotracer-refinement-comparison"
 
-# Inspect, check, and run the conservative comparison.
-sed -n '1,180p' "params/illumina.conservative.yml"
-nextflow run main.nf -stub-run --docker \
-  -params-file "params/illumina.conservative.yml"
-nextflow run main.nf --docker \
-  -params-file "params/illumina.conservative.yml" \
-  -work-dir "test/work/illumina_conservative" \
-  -resume
+oncotracer quickstart 1 \
+  --test-root "$TEST_ROOT" \
+  --download-only
+```
+
+Run the default Illumina analysis:
+
+```bash
+TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+
+oncotracer run \
+  --backend conda \
+  --config "$TEST_ROOT/configs/illumina.quickstart.yml"
+```
+
+Create a separate conservative configuration. The script changes `outdir` and appends non-default refinement values while leaving the original YAML unchanged:
+
+```bash
+TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+DEFAULT_CONFIG="$TEST_ROOT/configs/illumina.quickstart.yml"
+CONSERVATIVE_CONFIG="$TEST_ROOT/configs/illumina.conservative.yml"
+
+python3 - \
+  "$DEFAULT_CONFIG" \
+  "$CONSERVATIVE_CONFIG" \
+  "$TEST_ROOT/runs/illumina_conservative" <<'PY'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1])
+destination = Path(sys.argv[2])
+outdir = Path(sys.argv[3]).resolve()
+lines = source.read_text(encoding="utf-8").splitlines()
+updated = []
+for line in lines:
+    if line.startswith("outdir:"):
+        updated.append(f"outdir: {outdir}")
+    else:
+        updated.append(line)
+updated.extend(
+    [
+        "fine_bin_kb_illumina: 20",
+        "search_radius_bins: 2",
+        "min_mapq: 30",
+        "min_local_log2_diff_illumina: 0.15",
+        "min_bic_gain: 8",
+        "permutations: 500",
+        "permutation_p: 0.05",
+        "accept_rule: p_and_bic",
+    ]
+)
+destination.write_text("\n".join(updated) + "\n", encoding="utf-8")
+PY
+
+sed -n '1,220p' "$CONSERVATIVE_CONFIG"
+```
+
+Validate the native command graph before computation:
+
+```bash
+TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+
+oncotracer run \
+  --backend conda \
+  --config "$TEST_ROOT/configs/illumina.conservative.yml" \
+  --dry-run
+```
+
+Run the comparison:
+
+```bash
+TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+
+oncotracer run \
+  --backend conda \
+  --config "$TEST_ROOT/configs/illumina.conservative.yml"
 ```
 
 Compare the final tables:
 
 ```bash
-# Set the standard repository and result paths.
-DEFAULT="$(pwd)/test/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
-EXPERIMENT="$(pwd)/test/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
+TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+DEFAULT="$TEST_ROOT/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
+EXPERIMENT="$TEST_ROOT/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
 
-# Confirm and compare both outputs.
 ls -lh "$DEFAULT" "$EXPERIMENT"
-diff -u "$DEFAULT" "$EXPERIMENT"
+diff -u "$DEFAULT" "$EXPERIMENT" || true
 ```
 
-Predefine the comparison, retain the default run, and report every non-default setting. Do not tune parameters toward a desired diagnosis.
+Also compare:
+
+```bash
+TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+
+sed -n '1,20p' \
+  "$TEST_ROOT/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv"
+sed -n '1,20p' \
+  "$TEST_ROOT/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv"
+```
+
+## Reporting a comparison
+
+Predefine the comparison, use a new `outdir`, retain the default analysis, and report every non-default setting. Do not tune thresholds toward a desired diagnosis. Review coverage, confidence intervals, segment amplitude, caller uncertainty, and orthogonal evidence before treating a shifted boundary as meaningful.
