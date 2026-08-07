@@ -1,41 +1,93 @@
-# OncoTracer v2
+# OncoTracer v2.0.0
 
-OncoTracer v2 converts low-pass whole-genome sequencing FASTQs into copy-number alteration tables, cytogenomic notation, plots, and auditable run records. It supports Illumina paired- or single-end reads and Oxford Nanopore barcode folders.
-
-The v2 engine is native Python, R, and command-line orchestration. **Nextflow is not installed or invoked by the v2 analysis path.** The frozen v1.1 Nextflow release is used only as the independent comparator in release-validation jobs.
-
-> **Documentation version:** this site describes the native OncoTracer v2 command-line application. Historical Nextflow commands belong only to the archived [v1.1 workflow](legacy_v1.md) and must not be used as the normal v2 execution route.
+OncoTracer is a native, auditable workflow for low-pass whole-genome sequencing (LP-WGS) copy-number analysis from Illumina and Oxford Nanopore Technologies (ONT) FASTQs.
 
 ```text
-Illumina FASTQ -> BWA/Picard -> qDNAseq
-ONT FASTQ      -> minimap2   -> HMMcopy/ichorCNA
-                                  |
-                                  v
-BAM-supported boundary refinement -> CNA notation -> PDF reports
+Illumina FASTQ -> BWA/Picard -> qDNAseq -----------+
+                                                    +-> BAM-supported refinement
+ONT FASTQ ------> minimap2 ---> HMMcopy/ichorCNA --+              |
+                                                                   v
+                                                       CNA tables and notation
+                                                                   |
+                                                                   +-> plots and summaries
+                                                                   +-> optional classifier/GISTIC2
 ```
 
-## Start here
+**Nextflow is not installed or invoked by the v2 analysis path.** The frozen v1.1 Nextflow release remains available only for reproducing historical analyses and for the independent semantic parity comparator used by the v2 release gate.
 
-1. [Install the global executable and one backend](installation.md).
-2. Run [QuickStart 1](quick_start.md), covering one Illumina and one ONT library.
-3. Use [Automatic Setup](auto_params.md) for your own FASTQs.
-4. Run [QuickStart 2](public_cohort.md), covering three public HCC1143 libraries.
-5. Review [release parity and audit records](parity_release.md).
+## Start with a complete public example
 
-## Core commands
+QuickStart 1 runs one checksum-validated Illumina library and one checksum-validated ONT library:
 
 ```bash
 oncotracer install --conda
-oncotracer doctor
-oncotracer provenance --json
-oncotracer auto --mode illumina --reads-folder reads --sample-table samples.csv
-oncotracer run --config config/illumina.auto.yml
+oncotracer doctor --backend conda
+
+oncotracer quickstart 1 \
+  --backend conda \
+  --test-root "$PWD/oncotracer-quickstart1"
 ```
 
-Every completed native run writes `.oncotracer-native/trace.tsv`, a content-aware stage ledger, a workflow summary, and a checksum manifest. The trace records argument arrays without shell interpolation and is rejected if it contains a Nextflow command.
+QuickStart 2 runs three public HCC1143 Illumina libraries:
 
-The stable release also publishes `release-provenance.json`, tying the exact Git commit and deterministic source-tree SHA-256 to the copied executable, container digest, and complete public-data parity audits.
+```bash
+oncotracer quickstart 2 \
+  --backend conda \
+  --test-root "$PWD/oncotracer-quickstart2"
+```
 
-## Research use
+The QuickStart pages reproduce the detailed style of the original documentation: prepare the backend, download and validate inputs, inspect generated YAML, run each analysis, verify output tables and PDFs, and resume safely.
 
-OncoTracer is a research workflow. CNA calls require expert review, laboratory validation, and interpretation together with pathology and orthogonal molecular evidence.
+- [QuickStart 1 — Illumina and ONT](quick_start.md)
+- [QuickStart 2 — HCC1143](public_cohort.md)
+- [Complete 12-library PRJNA754199 tutorial](full_tutorial.md)
+- [Mock six-tumor/four-normal cohort](six_tumor_four_control.md)
+
+## Run your own FASTQs
+
+Automatic Setup is the recommended route:
+
+```bash
+oncotracer auto \
+  --mode illumina \
+  --reads-folder "$PWD/project/input/fastq" \
+  --sample-table "$PWD/project/input/samples.csv" \
+  --config-dir "$PWD/project/config" \
+  --outdir "$PWD/project/results"
+
+oncotracer run --config "$PWD/project/config/illumina.auto.yml" \
+  --backend conda
+```
+
+Use `--mode ont` for a `fastq_pass` directory organized by barcode. Automatic Setup creates the analysis YAML and, for Illumina, an exact four-column samplesheet. It does not start alignment or CNA calling.
+
+## What v2 records
+
+Every native run writes:
+
+- `.oncotracer-native/trace.tsv`, with the exact argument arrays for executed stages;
+- `.oncotracer-native/state.json`, used for content-aware reuse of completed stages;
+- `06_workflow_summary/workflow_summary.txt` and JSON;
+- `native_run_manifest.json` and output checksums;
+- CNA events, cytogenomic notation, refined bins, plots, and optional classifier reports.
+
+The stable release also ships `release-provenance.json`, containing the exact Git commit, deterministic source-tree SHA-256, copied-executable SHA-256, container digest, and successful QuickStart workflow/artifact identities.
+
+## Choose a backend
+
+| Backend | Installation | Typical use |
+| --- | --- | --- |
+| Conda | `oncotracer install --conda` | Native workstation or server execution |
+| Docker | `oncotracer install --docker` | Reproducible container execution |
+| Singularity/Apptainer | `oncotracer install --singularity` | HPC systems |
+| Poetry | `./oncotracer install --poetry` from a source checkout | Launcher development with the same Conda scientific environments |
+
+All backends use the same native stage graph and output contract.
+
+## Continue
+
+1. [Install the verified executable and one backend](installation.md).
+2. [Run QuickStart 1](quick_start.md).
+3. [Generate a YAML for your FASTQs](auto_params.md).
+4. [Understand inputs, settings, and outputs](inputs.md).
+5. [Review the native architecture and release parity evidence](native_architecture.md).
