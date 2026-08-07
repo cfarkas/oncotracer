@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+        <meta name="description" content="Native auditable LP-WGS CNA analysis for ONT and Illumina data">
       
       
         <meta name="author" content="OncoTracer developers">
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pathology-and-classifier-configuration" class="md-skip">
+        <a href="#pathology-and-native-classifier-configuration" class="md-skip">
           Skip to content
         </a>
       
@@ -231,17 +231,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../../full_tutorial/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../../full_tutorial/" class="md-tabs__link">
+          
+  
   
   Full Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -300,6 +301,26 @@
   
   
   Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../native_architecture/" class="md-tabs__link">
+          
+  
+  
+  Assurance and Migration
 
         </a>
       </li>
@@ -467,7 +488,7 @@
   <span class="md-ellipsis">
     
   
-    1. Install Requirements
+    Install Requirements
   
 
     
@@ -523,7 +544,7 @@
   <span class="md-ellipsis">
     
   
-    2. QuickStart Example 1 (Illumina + ONT)
+    QuickStart 1 — Illumina + ONT
   
 
     
@@ -551,7 +572,7 @@
   <span class="md-ellipsis">
     
   
-    3. Automatic Setup for Your FASTQs (Recommended)
+    Automatic Setup for Your FASTQs
   
 
     
@@ -579,7 +600,7 @@
   <span class="md-ellipsis">
     
   
-    4. QuickStart Example 2 (Three-Sample Public)
+    QuickStart 2 — HCC1143
   
 
     
@@ -635,7 +656,7 @@
   <span class="md-ellipsis">
     
   
-    Manual YAML Editing (Second Option)
+    Manual YAML Editing
   
 
     
@@ -662,9 +683,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../full_tutorial/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -678,7 +717,51 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Full Tutorial
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../full_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete PRJNA754199 archive
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -751,7 +834,7 @@
   <span class="md-ellipsis">
     
   
-    Mock Six Tumors + Four Normal Controls
+    Mock cohort — six tumors + four normals
   
 
     
@@ -871,7 +954,35 @@
   <span class="md-ellipsis">
     
   
-    Workflow Overview
+    Native Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canonical Native YAML
   
 
     
@@ -1008,10 +1119,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#files-that-must-match" class="md-nav__link">
+  <a href="#files-that-must-agree" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Files that must match
+        Files that must agree
       
     </span>
   </a>
@@ -1019,10 +1130,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#recommended-layout" class="md-nav__link">
+  <a href="#recommended-project-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended layout
+        Recommended project layout
       
     </span>
   </a>
@@ -1030,10 +1141,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-create-the-directories-and-copy-the-template" class="md-nav__link">
+  <a href="#step-1-create-the-sequencing-sample-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Create the directories and copy the template
+        Step 1. Create the sequencing sample table
       
     </span>
   </a>
@@ -1041,10 +1152,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-create-the-illumina-samplesheet" class="md-nav__link">
+  <a href="#step-2-create-the-de-identified-pathology-csv" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Create the Illumina samplesheet
+        Step 2. Create the de-identified pathology CSV
       
     </span>
   </a>
@@ -1052,10 +1163,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-create-the-matching-pathology-csv" class="md-nav__link">
+  <a href="#step-3-verify-exact-sample-matching" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Create the matching pathology CSV
+        Step 3. Verify exact sample matching
       
     </span>
   </a>
@@ -1063,10 +1174,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-verify-sample-matching" class="md-nav__link">
+  <a href="#step-4-generate-the-yaml-with-the-classifier-enabled" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Verify sample matching
+        Step 4. Generate the YAML with the classifier enabled
       
     </span>
   </a>
@@ -1074,10 +1185,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-edit-the-copied-yaml" class="md-nav__link">
+  <a href="#context-selection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Edit the copied YAML
+        Context selection
       
     </span>
   </a>
@@ -1085,10 +1196,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-check-and-run" class="md-nav__link">
+  <a href="#step-5-dry-run-and-execute" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Check and run
+        Step 5. Dry-run and execute
       
     </span>
   </a>
@@ -1096,10 +1207,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-inspect-the-result" class="md-nav__link">
+  <a href="#step-6-inspect-classifier-and-pathology-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Inspect the result
+        Step 6. Inspect classifier and pathology outputs
       
     </span>
   </a>
@@ -1107,10 +1218,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pathology-settings" class="md-nav__link">
+  <a href="#deterministic-and-model-assisted-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pathology settings
+        Deterministic and model-assisted modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
       
     </span>
   </a>
@@ -1422,7 +1544,7 @@
   <span class="md-ellipsis">
     
   
-    Help and About
+    Assurance and Migration
   
 
     
@@ -1435,6 +1557,179 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Assurance and Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../native_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Native architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../parity_release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration_v1_to_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../legacy_v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1562,10 +1857,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#files-that-must-match" class="md-nav__link">
+  <a href="#files-that-must-agree" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Files that must match
+        Files that must agree
       
     </span>
   </a>
@@ -1573,10 +1868,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#recommended-layout" class="md-nav__link">
+  <a href="#recommended-project-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended layout
+        Recommended project layout
       
     </span>
   </a>
@@ -1584,10 +1879,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-create-the-directories-and-copy-the-template" class="md-nav__link">
+  <a href="#step-1-create-the-sequencing-sample-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Create the directories and copy the template
+        Step 1. Create the sequencing sample table
       
     </span>
   </a>
@@ -1595,10 +1890,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-create-the-illumina-samplesheet" class="md-nav__link">
+  <a href="#step-2-create-the-de-identified-pathology-csv" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Create the Illumina samplesheet
+        Step 2. Create the de-identified pathology CSV
       
     </span>
   </a>
@@ -1606,10 +1901,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-create-the-matching-pathology-csv" class="md-nav__link">
+  <a href="#step-3-verify-exact-sample-matching" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Create the matching pathology CSV
+        Step 3. Verify exact sample matching
       
     </span>
   </a>
@@ -1617,10 +1912,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-verify-sample-matching" class="md-nav__link">
+  <a href="#step-4-generate-the-yaml-with-the-classifier-enabled" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Verify sample matching
+        Step 4. Generate the YAML with the classifier enabled
       
     </span>
   </a>
@@ -1628,10 +1923,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-edit-the-copied-yaml" class="md-nav__link">
+  <a href="#context-selection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Edit the copied YAML
+        Context selection
       
     </span>
   </a>
@@ -1639,10 +1934,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-check-and-run" class="md-nav__link">
+  <a href="#step-5-dry-run-and-execute" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Check and run
+        Step 5. Dry-run and execute
       
     </span>
   </a>
@@ -1650,10 +1945,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-inspect-the-result" class="md-nav__link">
+  <a href="#step-6-inspect-classifier-and-pathology-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Inspect the result
+        Step 6. Inspect classifier and pathology outputs
       
     </span>
   </a>
@@ -1661,10 +1956,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pathology-settings" class="md-nav__link">
+  <a href="#deterministic-and-model-assisted-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pathology settings
+        Deterministic and model-assisted modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
       
     </span>
   </a>
@@ -1696,11 +2002,10 @@
   
 
 
-<h1 id="pathology-and-classifier-configuration">Pathology and Classifier Configuration<a class="headerlink" href="#pathology-and-classifier-configuration" title="Permanent link">&para;</a></h1>
-<p>Pathology is an optional section in the same Illumina run YAML. OncoTracer first completes the CNA workflow, then the optional classifier compares CNA-derived results with a supplied pathology table.</p>
-<p>Start without this feature when only CNA calls and plots are needed. Enable it after a standard Illumina run works.</p>
-<p>The examples use paths relative to the cloned <code>oncotracer</code> directory.</p>
-<h2 id="files-that-must-match">Files that must match<a class="headerlink" href="#files-that-must-match" title="Permanent link">&para;</a></h2>
+<h1 id="pathology-and-native-classifier-configuration">Pathology and native classifier configuration<a class="headerlink" href="#pathology-and-native-classifier-configuration" title="Permanent link">&para;</a></h1>
+<p>Pathology is optional. Native v2 first completes the CNA workflow and then, when <code>run_cna_classifier: true</code>, derives CNA features, context-aware classifications, optional GISTIC2 recurrence results, knowledge summaries, HTML/PDF reports, clinician-oriented summaries, and a matched pathology compatibility table.</p>
+<p>The classifier does not replace the stage-02/03 CNA tables. Start with a standard CNA-only run, confirm its QC and outputs, and then enable this stage in a new YAML and <code>outdir</code>.</p>
+<h2 id="files-that-must-agree">Files that must agree<a class="headerlink" href="#files-that-must-agree" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -1711,199 +2016,227 @@
 </thead>
 <tbody>
 <tr>
-<td>Illumina samplesheet</td>
-<td>Points to each FASTQ or R1/R2 pair</td>
-<td><code>sample</code></td>
+<td>Illumina samplesheet or ONT mapping</td>
+<td>Defines the sequencing sample</td>
+<td><code>sample</code> or generated sample name</td>
 </tr>
 <tr>
 <td>Pathology CSV</td>
-<td>Contains sample, case, and diagnosis fields</td>
-<td><code>illumina_sample_id</code> in this example</td>
+<td>Supplies case and diagnosis fields</td>
+<td>Column selected by <code>pathology_sample_col</code></td>
 </tr>
 <tr>
-<td>Run YAML</td>
-<td>Points to both files and names the columns</td>
+<td>Flat YAML</td>
+<td>Points to both inputs and names the columns</td>
 <td>No sample rows are stored in YAML</td>
 </tr>
 </tbody>
 </table>
 <p>Matching is exact and case-sensitive.</p>
-<h2 id="recommended-layout">Recommended layout<a class="headerlink" href="#recommended-layout" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>/path/to/my/directory/oncotracer/
-├── main.nf
-├── params/
-│   └── my_illumina_pathology.yml
-└── project/
-    ├── input/
-    │   ├── I7738_R1.fastq.gz
-    │   ├── I7738_R2.fastq.gz
-    │   ├── V480_R1.fastq.gz
-    │   ├── V480_R2.fastq.gz
-    │   ├── illumina.samplesheet.csv
-    │   └── pathology.csv
-    └── results/
+<h2 id="recommended-project-layout">Recommended project layout<a class="headerlink" href="#recommended-project-layout" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>project/
+├── input/
+│   ├── fastq/
+│   │   ├── I7738_R1.fastq.gz
+│   │   ├── I7738_R2.fastq.gz
+│   │   ├── V480_R1.fastq.gz
+│   │   └── V480_R2.fastq.gz
+│   ├── samples.csv
+│   └── pathology.csv
+├── config/
+└── results/
 </code></pre></div>
-<h2 id="1-create-the-directories-and-copy-the-template">1. Create the directories and copy the template<a class="headerlink" href="#1-create-the-directories-and-copy-the-template" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
+<h2 id="step-1-create-the-sequencing-sample-table">Step 1. Create the sequencing sample table<a class="headerlink" href="#step-1-create-the-sequencing-sample-table" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
 
-<span class="c1"># Copy the pathology-enabled YAML template.</span>
-cp<span class="w"> </span><span class="s2">&quot;params/illumina.pathology.example.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;params/my_illumina_pathology.yml&quot;</span>
-</code></pre></div>
-<p>Place the four example-named FASTQs, or your own equivalently named FASTQs, under <code>project/input/</code> before continuing.</p>
-<h2 id="2-create-the-illumina-samplesheet">2. Create the Illumina samplesheet<a class="headerlink" href="#2-create-the-illumina-samplesheet" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-
-<span class="c1"># Create or replace the paired-end samplesheet.</span>
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;CSV</span>
-<span class="s">sample,fastq_1,fastq_2,status</span>
-<span class="s">I7738,$PROJECT_DIR/input/I7738_R1.fastq.gz,$PROJECT_DIR/input/I7738_R2.fastq.gz,tumor</span>
-<span class="s">V480,$PROJECT_DIR/input/V480_R1.fastq.gz,$PROJECT_DIR/input/V480_R2.fastq.gz,tumor</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+<span class="s">sample_name,status</span>
+<span class="s">I7738,TUMOR</span>
+<span class="s">V480,TUMOR</span>
 <span class="s">CSV</span>
-
-<span class="c1"># Display the saved samplesheet.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span>
 </code></pre></div>
-<h2 id="3-create-the-matching-pathology-csv">3. Create the matching pathology CSV<a class="headerlink" href="#3-create-the-matching-pathology-csv" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
+<p>Place the matching R1/R2 FASTQs under <code>$PROJECT_DIR/input/fastq</code>.</p>
+<h2 id="step-2-create-the-de-identified-pathology-csv">Step 2. Create the de-identified pathology CSV<a class="headerlink" href="#step-2-create-the-de-identified-pathology-csv" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
 
-<span class="c1"># Create or replace the matched pathology table.</span>
 cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
 <span class="s">illumina_sample_id,case_code,final_diagnosis</span>
-<span class="s">I7738,2023-07738,&quot;Glioblastoma, IDH-wildtype.&quot;</span>
-<span class="s">V480,2024-00480,&quot;Diffuse large B-cell lymphoma, NOS.&quot;</span>
+<span class="s">I7738,Case_07738,&quot;Glioblastoma, IDH-wildtype.&quot;</span>
+<span class="s">V480,Case_00480,&quot;Diffuse large B-cell lymphoma, NOS.&quot;</span>
 <span class="s">CSV</span>
 
-<span class="c1"># Display the saved pathology table.</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span>
 </code></pre></div>
-<p>Quotes protect diagnosis text containing commas. Use anonymized case identifiers and include only the fields required for the analysis.</p>
-<h2 id="4-verify-sample-matching">4. Verify sample matching<a class="headerlink" href="#4-verify-sample-matching" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard project path.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
+<p>Quotes protect diagnosis text containing commas. Use research identifiers and include only fields required by the approved analysis.</p>
+<h2 id="step-3-verify-exact-sample-matching">Step 3. Verify exact sample matching<a class="headerlink" href="#step-3-verify-exact-sample-matching" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
 
-<span class="c1"># Confirm that sequencing and pathology sample IDs match exactly.</span>
-python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+python3<span class="w"> </span>-<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
 <span class="s">import csv</span>
 <span class="s">import sys</span>
 
-<span class="s">samplesheet, pathology = sys.argv[1:3]</span>
-<span class="s">with open(samplesheet, newline=&quot;&quot;) as handle:</span>
-<span class="s">    fastq_ids = {row[&quot;sample&quot;].strip() for row in csv.DictReader(handle)}</span>
-<span class="s">with open(pathology, newline=&quot;&quot;) as handle:</span>
+<span class="s">sample_table, pathology = sys.argv[1:3]</span>
+<span class="s">with open(sample_table, newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
+<span class="s">    sequencing_ids = {</span>
+<span class="s">        row[&quot;sample_name&quot;].strip() for row in csv.DictReader(handle)</span>
+<span class="s">    }</span>
+<span class="s">with open(pathology, newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
 <span class="s">    pathology_ids = {</span>
 <span class="s">        row[&quot;illumina_sample_id&quot;].strip() for row in csv.DictReader(handle)</span>
 <span class="s">    }</span>
 
-<span class="s">missing_pathology = fastq_ids - pathology_ids</span>
-<span class="s">missing_fastq = pathology_ids - fastq_ids</span>
-<span class="s">if missing_pathology or missing_fastq:</span>
+<span class="s">missing_pathology = sequencing_ids - pathology_ids</span>
+<span class="s">missing_sequence = pathology_ids - sequencing_ids</span>
+<span class="s">if missing_pathology or missing_sequence:</span>
 <span class="s">    raise SystemExit(</span>
-<span class="s">        f&quot;ERROR: missing pathology={sorted(missing_pathology)}; &quot;</span>
-<span class="s">        f&quot;missing FASTQ={sorted(missing_fastq)}&quot;</span>
+<span class="s">        f&quot;Missing pathology={sorted(missing_pathology)}; &quot;</span>
+<span class="s">        f&quot;missing sequencing={sorted(missing_sequence)}&quot;</span>
 <span class="s">    )</span>
-<span class="s">print(&quot;OK: every sample identifier matches exactly&quot;)</span>
+<span class="s">print(&quot;OK: every pathology identifier matches a sequencing sample&quot;)</span>
 <span class="s">PY</span>
 </code></pre></div>
-<h2 id="5-edit-the-copied-yaml">5. Edit the copied YAML<a class="headerlink" href="#5-edit-the-copied-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Open the copied pathology-enabled YAML.</span>
-nano<span class="w"> </span>params/my_illumina_pathology.yml
+<h2 id="step-4-generate-the-yaml-with-the-classifier-enabled">Step 4. Generate the YAML with the classifier enabled<a class="headerlink" href="#step-4-generate-the-yaml-with-the-classifier-enabled" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+
+oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina_pathology&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--run-cna-classifier
 </code></pre></div>
-<p>Use:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/results/illumina_pathology</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/input/illumina.samplesheet.csv</span>
+<p>Add the study-defined context and pathology columns with the real absolute pathology path:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
 
-<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
-<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
-<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="s">from pathlib import Path</span>
+<span class="s">import sys</span>
 
-<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">cna_classifier_sample_set</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">broad_cancer</span>
-<span class="nt">cna_classifier_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda</span>
+<span class="s">config = Path(sys.argv[1])</span>
+<span class="s">pathology = Path(sys.argv[2]).resolve()</span>
+<span class="s">with config.open(&quot;a&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
+<span class="s">    handle.write(</span>
+<span class="s">        f&quot;&quot;&quot;cna_classifier_sample_set: broad_cancer</span>
 
-<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/input/pathology.csv</span>
-<span class="nt">pathology_sample_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina_sample_id</span>
-<span class="nt">pathology_case_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case_code</span>
-<span class="nt">pathology_diagnosis_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_diagnosis</span>
-<span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="nt">pathology_biomed_local_files_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="s">pathology_csv: {pathology}</span>
+<span class="s">pathology_sample_col: illumina_sample_id</span>
+<span class="s">pathology_case_col: case_code</span>
+<span class="s">pathology_diagnosis_col: final_diagnosis</span>
+<span class="s">pathology_use_biomed_models: false</span>
+<span class="s">pathology_biomed_local_files_only: true</span>
+
+<span class="s">run_gistic: true</span>
+<span class="s">gistic_required: false</span>
+<span class="s">gistic_min_samples: 2</span>
+
+<span class="s">knowledge_web: false</span>
+<span class="s">knowledge_literature_llm: false</span>
+<span class="s">knowledge_deep_literature: false</span>
+<span class="s">&quot;&quot;&quot;</span>
+<span class="s">    )</span>
+<span class="s">PY</span>
+
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,240p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
 </code></pre></div>
-<p>Save with <code>Ctrl+O</code>, press Enter, and exit with <code>Ctrl+X</code>.</p>
-<h2 id="6-check-and-run">6. Check and run<a class="headerlink" href="#6-check-and-run" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+<h2 id="context-selection">Context selection<a class="headerlink" href="#context-selection" title="Permanent link">&para;</a></h2>
+<p>Choose <code>cna_classifier_sample_set</code> from the study design before reviewing results. Supported contexts include:</p>
+<ul>
+<li><code>broad_cancer</code>, <code>lymphoma</code>, <code>brain_cns</code>, <code>breast</code>, <code>pancreas</code>, <code>colorectal</code>;</li>
+<li><code>leukemia</code>, <code>lung</code>, <code>prostate</code>, <code>ovarian</code>, <code>gastric_esophageal</code>;</li>
+<li><code>sarcoma</code>, <code>renal</code>, <code>urothelial</code>, <code>thyroid</code>, <code>melanoma</code>, <code>liver</code>;</li>
+<li><code>head_neck</code>, <code>germ_cell</code>, <code>myeloma</code>, <code>neuroblastoma</code>, <code>neuroendocrine</code>;</li>
+<li><code>pediatric_solid</code>.</li>
+</ul>
+<p>Do not choose a context because it produces the desired classification.</p>
+<h2 id="step-5-dry-run-and-execute">Step 5. Dry-run and execute<a class="headerlink" href="#step-5-dry-run-and-execute" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
 
-<span class="c1"># Check parameters and workflow connections.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina_pathology.yml&quot;</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run
 
-<span class="c1"># Run the CNA analysis and optional pathology comparison.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina_pathology.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
 </code></pre></div>
-<p>On HPC, replace <code>--docker</code> with <code>--singularity</code>.</p>
-<h2 id="7-inspect-the-result">7. Inspect the result<a class="headerlink" href="#7-inspect-the-result" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard output path.</span>
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/illumina_pathology&quot;</span>
+<p>The same YAML can be run through Docker or Singularity after installing that backend.</p>
+<h2 id="step-6-inspect-classifier-and-pathology-outputs">Step 6. Inspect classifier and pathology outputs<a class="headerlink" href="#step-6-inspect-classifier-and-pathology-outputs" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results/illumina_pathology&quot;</span>
+<span class="nv">CLASSIFIER</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier&quot;</span>
 
-<span class="c1"># Read the workflow summary and optional classifier tables.</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/02_classification/cna_patient_classification.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/07_pathology/pathology_concordance.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/01_prepared/sample_cna_summary.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/02_classification/cna_patient_classification.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/07_pathology/pathology_concordance.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/07_pathology/pathology_status.txt&quot;</span>
+ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/03_report/cna_classifier_report.html&quot;</span>
+find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/03_report/clinician_reports&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 </code></pre></div>
-<h2 id="pathology-settings">Pathology settings<a class="headerlink" href="#pathology-settings" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Field</th>
-<th>Meaning</th>
+<th>Directory</th>
+<th>Main contents</th>
+<th>Interpretation level</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>run_cna_classifier</code></td>
-<td>Enables the optional classifier/report stage</td>
+<td><code>01_prepared/</code></td>
+<td>CNA feature and matrix inputs</td>
+<td>Derived from stage 03</td>
 </tr>
 <tr>
-<td><code>cna_classifier_sample_set</code></td>
-<td>Biological context selected from the study design</td>
+<td><code>02_classification/</code></td>
+<td>Context scores and labels</td>
+<td>Research interpretation</td>
 </tr>
 <tr>
-<td><code>pathology_csv</code></td>
-<td>Absolute path to the matched pathology table</td>
+<td><code>03_report/</code></td>
+<td>HTML/PDF and clinician summaries</td>
+<td>Presentation layer</td>
 </tr>
 <tr>
-<td><code>pathology_sample_col</code></td>
-<td>Header matching samplesheet <code>sample</code> values</td>
+<td><code>04_gistic2/</code>, <code>05_gistic2_parsed/</code></td>
+<td>Optional cohort recurrence analysis</td>
+<td>Cohort research output</td>
 </tr>
 <tr>
-<td><code>pathology_case_col</code></td>
-<td>Header containing anonymized case identifiers</td>
+<td><code>06_knowledge/</code></td>
+<td>Driver-region and literature summaries</td>
+<td>Requires manual verification</td>
 </tr>
 <tr>
-<td><code>pathology_diagnosis_col</code></td>
-<td>Header containing diagnosis text</td>
-</tr>
-<tr>
-<td><code>pathology_use_biomed_models</code></td>
-<td>Enables optional biomedical model assistance</td>
-</tr>
-<tr>
-<td><code>pathology_biomed_local_files_only</code></td>
-<td>Restricts models to an existing local cache</td>
+<td><code>07_pathology/</code></td>
+<td>Matching, compatibility, status, model trials</td>
+<td>Research comparison</td>
 </tr>
 </tbody>
 </table>
-<p>Pathology concordance is a research comparison. It cannot replace morphology, immunohistochemistry, tumor-fraction assessment, orthogonal molecular tests, or expert review.</p>
+<h2 id="deterministic-and-model-assisted-modes">Deterministic and model-assisted modes<a class="headerlink" href="#deterministic-and-model-assisted-modes" title="Permanent link">&para;</a></h2>
+<p>Recommended initial mode:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">pathology_biomed_local_files_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">knowledge_web</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">knowledge_literature_llm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">knowledge_deep_literature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<p>After the deterministic analysis succeeds, optional model or network enrichment can be enabled only when governance, privacy, connectivity, and reproducibility requirements permit it. Preserve <code>pathology_model_trials.tsv</code> and manually verify generated references and summaries.</p>
+<h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
+<p>CNA/pathology concordance asks whether the observed copy-number profile is compatible with the supplied diagnosis in the selected context. An indeterminate or discordant result can reflect low tumor fraction, low depth, CNA-quiet biology, sample mismatch, caller assumptions, or alterations that LP-WGS does not measure.</p>
+<p>Pathology concordance cannot replace morphology, immunohistochemistry, cytogenetics, methylation, RNA/fusion assays, validated clinical sequencing, or expert review. These are research outputs, not diagnostic confirmation.</p>
 
 
 

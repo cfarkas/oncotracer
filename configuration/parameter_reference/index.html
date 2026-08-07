@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+        <meta name="description" content="Native auditable LP-WGS CNA analysis for ONT and Illumina data">
       
       
         <meta name="author" content="OncoTracer developers">
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#parameter-reference" class="md-skip">
+        <a href="#native-cli-and-yaml-parameter-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -231,17 +231,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../../full_tutorial/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../../full_tutorial/" class="md-tabs__link">
+          
+  
   
   Full Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -300,6 +301,26 @@
   
   
   Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../native_architecture/" class="md-tabs__link">
+          
+  
+  
+  Assurance and Migration
 
         </a>
       </li>
@@ -467,7 +488,7 @@
   <span class="md-ellipsis">
     
   
-    1. Install Requirements
+    Install Requirements
   
 
     
@@ -523,7 +544,7 @@
   <span class="md-ellipsis">
     
   
-    2. QuickStart Example 1 (Illumina + ONT)
+    QuickStart 1 — Illumina + ONT
   
 
     
@@ -551,7 +572,7 @@
   <span class="md-ellipsis">
     
   
-    3. Automatic Setup for Your FASTQs (Recommended)
+    Automatic Setup for Your FASTQs
   
 
     
@@ -579,7 +600,7 @@
   <span class="md-ellipsis">
     
   
-    4. QuickStart Example 2 (Three-Sample Public)
+    QuickStart 2 — HCC1143
   
 
     
@@ -635,7 +656,7 @@
   <span class="md-ellipsis">
     
   
-    Manual YAML Editing (Second Option)
+    Manual YAML Editing
   
 
     
@@ -662,9 +683,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../full_tutorial/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -678,7 +717,51 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Full Tutorial
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../full_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete PRJNA754199 archive
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -751,7 +834,7 @@
   <span class="md-ellipsis">
     
   
-    Mock Six Tumors + Four Normal Controls
+    Mock cohort — six tumors + four normals
   
 
     
@@ -871,7 +954,35 @@
   <span class="md-ellipsis">
     
   
-    Workflow Overview
+    Native Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canonical Native YAML
   
 
     
@@ -1064,10 +1175,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-parameters-are-supplied" class="md-nav__link">
+  <a href="#command-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How parameters are supplied
+        Command structure
       
     </span>
   </a>
@@ -1075,10 +1186,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choose-a-route" class="md-nav__link">
+  <a href="#oncotracer-install" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choose a route
+        oncotracer install
       
     </span>
   </a>
@@ -1086,10 +1197,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#preparation-parameters" class="md-nav__link">
+  <a href="#oncotracer-doctor" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Preparation parameters
+        oncotracer doctor
       
     </span>
   </a>
@@ -1097,10 +1208,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#common-analysis-parameters" class="md-nav__link">
+  <a href="#oncotracer-quickstart" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Common analysis parameters
+        oncotracer quickstart
       
     </span>
   </a>
@@ -1108,10 +1219,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#runtime-parameters" class="md-nav__link">
+  <a href="#oncotracer-auto" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Runtime parameters
+        oncotracer auto
       
     </span>
   </a>
@@ -1119,10 +1230,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-parameters" class="md-nav__link">
+  <a href="#oncotracer-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina parameters
+        oncotracer run
       
     </span>
   </a>
@@ -1130,10 +1241,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-parameters" class="md-nav__link">
+  <a href="#common-yaml-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT parameters
+        Common YAML fields
       
     </span>
   </a>
@@ -1141,10 +1252,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#classifier-and-pathology-parameters" class="md-nav__link">
+  <a href="#illumina-yaml-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Classifier and pathology parameters
+        Illumina YAML fields
       
     </span>
   </a>
@@ -1152,10 +1263,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#boundary-refinement-parameters" class="md-nav__link">
+  <a href="#ont-yaml-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Boundary-refinement parameters
+        ONT YAML fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-classifier-and-pathology-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native classifier and pathology fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#boundary-refinement-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boundary-refinement fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provenance-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance command
       
     </span>
   </a>
@@ -1411,7 +1555,7 @@
   <span class="md-ellipsis">
     
   
-    Help and About
+    Assurance and Migration
   
 
     
@@ -1424,6 +1568,179 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Assurance and Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../native_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Native architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../parity_release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration_v1_to_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../legacy_v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1551,10 +1868,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-parameters-are-supplied" class="md-nav__link">
+  <a href="#command-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How parameters are supplied
+        Command structure
       
     </span>
   </a>
@@ -1562,10 +1879,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choose-a-route" class="md-nav__link">
+  <a href="#oncotracer-install" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choose a route
+        oncotracer install
       
     </span>
   </a>
@@ -1573,10 +1890,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#preparation-parameters" class="md-nav__link">
+  <a href="#oncotracer-doctor" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Preparation parameters
+        oncotracer doctor
       
     </span>
   </a>
@@ -1584,10 +1901,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#common-analysis-parameters" class="md-nav__link">
+  <a href="#oncotracer-quickstart" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Common analysis parameters
+        oncotracer quickstart
       
     </span>
   </a>
@@ -1595,10 +1912,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#runtime-parameters" class="md-nav__link">
+  <a href="#oncotracer-auto" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Runtime parameters
+        oncotracer auto
       
     </span>
   </a>
@@ -1606,10 +1923,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-parameters" class="md-nav__link">
+  <a href="#oncotracer-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina parameters
+        oncotracer run
       
     </span>
   </a>
@@ -1617,10 +1934,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-parameters" class="md-nav__link">
+  <a href="#common-yaml-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT parameters
+        Common YAML fields
       
     </span>
   </a>
@@ -1628,10 +1945,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#classifier-and-pathology-parameters" class="md-nav__link">
+  <a href="#illumina-yaml-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Classifier and pathology parameters
+        Illumina YAML fields
       
     </span>
   </a>
@@ -1639,10 +1956,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#boundary-refinement-parameters" class="md-nav__link">
+  <a href="#ont-yaml-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Boundary-refinement parameters
+        ONT YAML fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-classifier-and-pathology-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native classifier and pathology fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#boundary-refinement-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boundary-refinement fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provenance-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance command
       
     </span>
   </a>
@@ -1674,568 +2024,612 @@
   
 
 
-<h1 id="parameter-reference">Parameter Reference<a class="headerlink" href="#parameter-reference" title="Permanent link">&para;</a></h1>
-<p>This page documents the top-level parameters declared in <code>nextflow.config</code>. For a first run, use Automatic Setup or a minimal YAML and keep the remaining defaults.</p>
-<h2 id="how-parameters-are-supplied">How parameters are supplied<a class="headerlink" href="#how-parameters-are-supplied" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/results/sample_a</span>
-<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<h1 id="native-cli-and-yaml-parameter-reference">Native CLI and YAML parameter reference<a class="headerlink" href="#native-cli-and-yaml-parameter-reference" title="Permanent link">&para;</a></h1>
+<p>Use <a href="../../auto_params/">Automatic Setup</a> for a first analysis. This page documents the installed v2 command interface and the flat YAML fields used by the native engine.</p>
+<h2 id="command-structure">Command structure<a class="headerlink" href="#command-structure" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>oncotracer install ...
+oncotracer doctor ...
+oncotracer quickstart 1|2 ...
+oncotracer auto ...
+oncotracer run ...
+oncotracer provenance --json
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+<p>Run <code>oncotracer &lt;subcommand&gt; --help</code> to inspect the executable installed on the system.</p>
+<h2 id="oncotracer-install"><code>oncotracer install</code><a class="headerlink" href="#oncotracer-install" title="Permanent link">&para;</a></h2>
+<p>Exactly one backend flag is required.</p>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
+oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
+oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
+./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
 </code></pre></div>
-<p>Pipeline parameters use two hyphens, for example <code>--mode illumina</code>. Nextflow options such as <code>-resume</code> and <code>-stub-run</code> use one hyphen. A command-line value overrides the same YAML value.</p>
-<h2 id="choose-a-route">Choose a route<a class="headerlink" href="#choose-a-route" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Goal</th>
-<th>Route settings</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Prepare one runtime</td>
-<td><code>--install</code> plus one of <code>--docker</code>, <code>--singularity</code>, or <code>--conda</code></td>
-</tr>
-<tr>
-<td>Generate Illumina configuration</td>
-<td><code>--auto_params --mode illumina --reads_folder PATH --sample_table FILE</code></td>
-</tr>
-<tr>
-<td>Generate ONT configuration</td>
-<td><code>--auto_params --mode ont --reads_folder PATH --sample_table FILE</code></td>
-</tr>
-<tr>
-<td>Prepare the small public tests</td>
-<td><code>--make_test</code>; optional <code>--test_root PATH</code></td>
-</tr>
-<tr>
-<td>Download the PRJNA754199 archive</td>
-<td><code>--make_prjna754199</code>; optional <code>--test_root PATH</code></td>
-</tr>
-<tr>
-<td>Run Illumina</td>
-<td><code>mode</code>, <code>lpwgs_root</code>, <code>outdir</code>, <code>illumina_samplesheet</code></td>
-</tr>
-<tr>
-<td>Run ONT</td>
-<td><code>mode</code>, <code>lpwgs_root</code>, <code>outdir</code>, <code>ont_folder</code>, <code>ont_barcodes</code></td>
-</tr>
-</tbody>
-</table>
-<p>Preparation routes create files and stop before the CNA analysis.</p>
-<h2 id="preparation-parameters">Preparation parameters<a class="headerlink" href="#preparation-parameters" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
+<th>Option</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>install</code></td>
-<td>Boolean</td>
-<td><code>false</code></td>
-<td>Prepare and test one selected runtime, cache SAMURAI v1.4.0, write a manifest, and stop.</td>
+<td><code>--conda</code></td>
+<td>Create/update five isolated Conda prefixes</td>
 </tr>
 <tr>
-<td><code>install_dir</code></td>
-<td>absolute directory or <code>null</code></td>
-<td><code>&lt;repository&gt;/.oncotracer/install</code></td>
-<td>Optional alternate manifest destination.</td>
+<td><code>--docker</code></td>
+<td>Validate Docker, pull the native image, and run its host doctor</td>
 </tr>
 <tr>
-<td><code>make_test</code></td>
-<td>Boolean</td>
-<td><code>false</code></td>
-<td>Download/reuse small public FASTQs and write QuickStart YAMLs.</td>
+<td><code>--singularity</code></td>
+<td>Pull/reuse a SIF through Apptainer or Singularity</td>
 </tr>
 <tr>
-<td><code>make_prjna754199</code></td>
-<td>Boolean</td>
-<td><code>false</code></td>
-<td>Download and validate the 12 PRJNA754199 FASTQs.</td>
+<td><code>--poetry</code></td>
+<td>Install the source-development launcher and the five Conda prefixes</td>
 </tr>
 <tr>
-<td><code>test_root</code></td>
-<td>absolute directory or <code>null</code></td>
-<td><code>&lt;repository&gt;/test</code></td>
-<td>Public input, configuration, work, and result root.</td>
+<td><code>--prefix PATH</code></td>
+<td>Alternate parent for the five Conda prefixes</td>
 </tr>
 <tr>
-<td><code>auto_params</code></td>
-<td>Boolean</td>
-<td><code>false</code></td>
-<td>Generate a YAML from a reads folder and sample table.</td>
+<td><code>--image IMAGE</code></td>
+<td>Override the default native container image</td>
 </tr>
 <tr>
-<td><code>reads_folder</code></td>
-<td>absolute directory</td>
-<td><code>null</code></td>
-<td>Illumina FASTQ folder or ONT <code>fastq_pass</code> parent.</td>
+<td><code>--sif PATH</code></td>
+<td>Override the Singularity/Apptainer image path</td>
 </tr>
 <tr>
-<td><code>sample_table</code></td>
-<td>CSV/TSV/TXT path</td>
-<td><code>null</code></td>
-<td>Illumina <code>sample_name,status</code> or ONT <code>barcode,sample_name,status</code> table.</td>
+<td><code>--force</code></td>
+<td>Recreate damaged/changed managed assets deliberately</td>
 </tr>
 <tr>
-<td><code>auto_config_dir</code></td>
-<td>absolute directory or <code>null</code></td>
-<td><code>&lt;reads_folder&gt;/oncotracer_config</code></td>
-<td>Generated YAML, manifest, and Illumina samplesheet destination.</td>
+<td><code>--dry-run</code></td>
+<td>Print installation commands without executing them</td>
 </tr>
 <tr>
-<td><code>auto_outdir</code></td>
-<td>absolute directory or <code>null</code></td>
-<td><code>&lt;reads_folder&gt;/oncotracer_results</code></td>
-<td>Result path written into the generated YAML.</td>
+<td><code>--root PATH</code></td>
+<td>Explicit source or extracted payload root</td>
 </tr>
 </tbody>
 </table>
-<h2 id="common-analysis-parameters">Common analysis parameters<a class="headerlink" href="#common-analysis-parameters" title="Permanent link">&para;</a></h2>
+<h2 id="oncotracer-doctor"><code>oncotracer doctor</code><a class="headerlink" href="#oncotracer-doctor" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
+oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>docker
+oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>singularity
+oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
+</code></pre></div>
+<p>The command returns JSON and exits nonzero when required source identity, prefixes, packages, or semantic executable probes fail.</p>
+<h2 id="oncotracer-quickstart"><code>oncotracer quickstart</code><a class="headerlink" href="#oncotracer-quickstart" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1&quot;</span>
+
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+</code></pre></div>
 <table>
 <thead>
 <tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td>Public one-sample Illumina plus one-sample ONT example</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Public three-library HCC1143 Illumina example</td>
+</tr>
+<tr>
+<td><code>--test-root PATH</code></td>
+<td>Required isolated input/config/result root</td>
+</tr>
+<tr>
+<td><code>--download-only</code></td>
+<td>Download/validate inputs and generate YAML without analysis</td>
+</tr>
+<tr>
+<td><code>--backend NAME</code></td>
+<td><code>host</code>, <code>conda</code>, <code>docker</code>, <code>singularity</code>, or <code>poetry</code></td>
+</tr>
+<tr>
+<td><code>--threads N</code></td>
+<td>Native stage thread limit where supported</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>Deliberately invalidate reusable stages</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Print planned operations without computation</td>
+</tr>
+<tr>
+<td><code>--image IMAGE</code></td>
+<td>Container override for Docker</td>
+</tr>
+<tr>
+<td><code>--sif PATH</code></td>
+<td>Image override for Singularity/Apptainer</td>
+</tr>
+</tbody>
+</table>
+<h2 id="oncotracer-auto"><code>oncotracer auto</code><a class="headerlink" href="#oncotracer-auto" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Required</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--mode illumina|ont</code></td>
+<td>yes</td>
+<td>Select input discovery and YAML route</td>
+</tr>
+<tr>
+<td><code>--reads-folder PATH</code></td>
+<td>yes</td>
+<td>Illumina FASTQ folder or ONT barcode parent</td>
+</tr>
+<tr>
+<td><code>--sample-table FILE</code></td>
+<td>yes</td>
+<td>Illumina <code>sample_name,status</code> or ONT <code>barcode,sample_name,status</code> CSV</td>
+</tr>
+<tr>
+<td><code>--config-dir PATH</code></td>
+<td>no</td>
+<td>Generated YAML/manifest/samplesheet destination</td>
+</tr>
+<tr>
+<td><code>--outdir PATH</code></td>
+<td>no</td>
+<td>Result directory written into the YAML</td>
+</tr>
+<tr>
+<td><code>--run-cna-classifier</code></td>
+<td>no</td>
+<td>Write <code>run_cna_classifier: true</code></td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>no</td>
+<td>Print generator command without writing analysis files</td>
+</tr>
+<tr>
+<td><code>--root PATH</code></td>
+<td>no</td>
+<td>Explicit payload/source root</td>
+</tr>
+</tbody>
+</table>
+<p>Automatic Setup creates files and stops before alignment.</p>
+<h2 id="oncotracer-run"><code>oncotracer run</code><a class="headerlink" href="#oncotracer-run" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config FILE</code></td>
+<td>Required flat native YAML</td>
+</tr>
+<tr>
+<td><code>--backend NAME</code></td>
+<td><code>host</code>, <code>conda</code>, <code>docker</code>, <code>singularity</code>, or <code>poetry</code>; saved backend used when omitted</td>
+</tr>
+<tr>
+<td><code>--threads N</code></td>
+<td>Thread limit passed to supported native stages</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>Deliberate stage refresh</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Validate and print native commands without launching tools</td>
+</tr>
+<tr>
+<td><code>--image IMAGE</code></td>
+<td>Docker image override</td>
+</tr>
+<tr>
+<td><code>--sif PATH</code></td>
+<td>Singularity/Apptainer image override</td>
+</tr>
+<tr>
+<td><code>--root PATH</code></td>
+<td>Explicit payload/source root</td>
+</tr>
+</tbody>
+</table>
+<p>Repeating the same command reuses valid content-matched stages automatically.</p>
+<h2 id="common-yaml-fields">Common YAML fields<a class="headerlink" href="#common-yaml-fields" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type/default</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>mode</code></td>
-<td><code>illumina</code> or <code>ont</code></td>
-<td><code>null</code></td>
-<td>Selects the sequencing route.</td>
+<td>required <code>illumina</code> or <code>ont</code></td>
+<td>Sequencing route</td>
 </tr>
 <tr>
 <td><code>lpwgs_root</code></td>
-<td>absolute directory</td>
-<td>site-specific repository default</td>
-<td>Common parent visible to the selected runtime. Set it explicitly.</td>
+<td>required absolute directory</td>
+<td>Project/reference/cache root visible to the backend</td>
 </tr>
 <tr>
 <td><code>outdir</code></td>
-<td>absolute directory</td>
-<td><code>null</code></td>
-<td>Main result directory.</td>
+<td>required absolute directory</td>
+<td>Numbered native result tree</td>
 </tr>
 <tr>
 <td><code>force</code></td>
-<td>Boolean</td>
-<td><code>false</code></td>
-<td>Requests supported refresh behavior. Keep false for real projects.</td>
+<td>Boolean, <code>false</code></td>
+<td>Scientific refresh request; normally keep false</td>
+</tr>
+<tr>
+<td><code>run_cna_classifier</code></td>
+<td>Boolean, <code>false</code></td>
+<td>Add stage <code>05_cna_classifier</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="runtime-parameters">Runtime parameters<a class="headerlink" href="#runtime-parameters" title="Permanent link">&para;</a></h2>
-<p>Use exactly one runtime option for installation or analysis.</p>
+<h2 id="illumina-yaml-fields">Illumina YAML fields<a class="headerlink" href="#illumina-yaml-fields" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
-<th>Meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>docker</code></td>
-<td>Boolean</td>
-<td><code>false</code></td>
-<td>Enables Docker with <code>--docker</code>.</td>
-</tr>
-<tr>
-<td><code>singularity</code></td>
-<td>Boolean</td>
-<td><code>false</code></td>
-<td>Enables Singularity/Apptainer with <code>--singularity</code>.</td>
-</tr>
-<tr>
-<td><code>conda</code></td>
-<td>Boolean</td>
-<td><code>false</code></td>
-<td>Enables the Conda fallback with <code>--conda</code>.</td>
-</tr>
-<tr>
-<td><code>docker_image</code></td>
-<td>image name</td>
-<td><code>carlosfarkas/oncotracer:latest</code></td>
-<td>Docker image.</td>
-</tr>
-<tr>
-<td><code>singularity_image</code></td>
-<td>image URI</td>
-<td><code>docker://carlosfarkas/oncotracer:latest</code></td>
-<td>Singularity/Apptainer image.</td>
-</tr>
-<tr>
-<td><code>docker_user</code></td>
-<td><code>UID:GID</code></td>
-<td><code>1000:1000</code></td>
-<td>Container user/group for output ownership.</td>
-</tr>
-<tr>
-<td><code>docker_container_options</code></td>
-<td>option string</td>
-<td><code>--entrypoint ""</code></td>
-<td>Advanced Docker settings.</td>
-</tr>
-</tbody>
-</table>
-<h2 id="illumina-parameters">Illumina parameters<a class="headerlink" href="#illumina-parameters" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
+<th>Field</th>
+<th>Typical/default</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>illumina_samplesheet</code></td>
-<td>absolute CSV path</td>
-<td><code>null</code></td>
-<td>Columns: <code>sample,fastq_1,fastq_2,status</code>.</td>
+<td>required path</td>
+<td>Four columns: <code>sample,fastq_1,fastq_2,status</code></td>
 </tr>
 <tr>
 <td><code>illumina_analysis_type</code></td>
-<td>text</td>
 <td><code>solid_biopsy</code></td>
-<td>SAMURAI analysis preset.</td>
+<td>Analysis preset</td>
 </tr>
 <tr>
 <td><code>illumina_caller</code></td>
-<td>text</td>
 <td><code>qdnaseq</code></td>
-<td>Illumina CNA caller.</td>
+<td>Native Illumina CNA caller</td>
 </tr>
 <tr>
 <td><code>illumina_binsize_kb</code></td>
-<td>positive integer</td>
 <td><code>100</code></td>
-<td>Initial qDNAseq bin width in kb.</td>
+<td>Coarse qDNAseq bin width</td>
 </tr>
 <tr>
 <td><code>illumina_build_pon</code></td>
-<td>Boolean</td>
 <td><code>false</code></td>
-<td>Build and apply a local qDNAseq normal reference.</td>
+<td>Build/apply local qDNAseq normal panel</td>
 </tr>
 <tr>
 <td><code>illumina_pon_normal_samples</code></td>
-<td>comma-separated IDs or <code>null</code></td>
-<td><code>null</code></td>
-<td>Every and only samplesheet IDs marked normal.</td>
+<td>comma-separated IDs</td>
+<td>Every and only selected normal samples</td>
 </tr>
 <tr>
 <td><code>illumina_pon_min_normals</code></td>
-<td>integer ≥2</td>
 <td><code>2</code></td>
-<td>Required number of selected normal controls.</td>
+<td>Minimum selected controls; must be at least two</td>
 </tr>
 <tr>
 <td><code>illumina_pon_name</code></td>
-<td>safe identifier</td>
 <td><code>illumina_local_PoN</code></td>
-<td>Name used in local-panel artifacts.</td>
+<td>Safe panel artifact name</td>
 </tr>
 <tr>
 <td><code>illumina_pon_min_mapq</code></td>
-<td>non-negative integer</td>
 <td><code>37</code></td>
-<td>Mapping-quality threshold for panel construction.</td>
-</tr>
-<tr>
-<td><code>illumina_pon_r_container</code></td>
-<td>image URI</td>
-<td><code>docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1</code></td>
-<td>Pinned qDNAseq runtime.</td>
+<td>Panel construction mapping-quality threshold</td>
 </tr>
 </tbody>
 </table>
-<p>Automatic Setup writes <code>illumina_build_pon: false</code> with no normals, rejects exactly one, and enables the local panel with two or more. Corrected panel outputs contain tumor samples only.</p>
-<h2 id="ont-parameters">ONT parameters<a class="headerlink" href="#ont-parameters" title="Permanent link">&para;</a></h2>
-<p>Comma-separated barcode and sample-name lists are positional and must have matching lengths.</p>
+<p>Automatic Setup writes no panel for zero normals, rejects exactly one normal, and enables the local panel for two or more. Normal samples remain reference/QC inputs; downstream corrected outputs contain tumors.</p>
+<h2 id="ont-yaml-fields">ONT YAML fields<a class="headerlink" href="#ont-yaml-fields" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
+<th>Field</th>
+<th>Typical/default</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>ont_folder</code></td>
-<td>absolute directory</td>
-<td><code>null</code></td>
-<td>Parent containing tumor barcode directories.</td>
+<td>required path</td>
+<td>Parent containing selected barcode directories</td>
 </tr>
 <tr>
 <td><code>ont_barcodes</code></td>
-<td>comma-separated names</td>
-<td><code>null</code></td>
-<td>Tumor barcode selection.</td>
+<td>required comma-separated names</td>
+<td>Tumor barcode selection</td>
 </tr>
 <tr>
 <td><code>ont_sample_names</code></td>
-<td>comma-separated names or <code>null</code></td>
-<td><code>null</code></td>
-<td>Output names matching <code>ont_barcodes</code>.</td>
+<td>barcode names when omitted</td>
+<td>Positional biological sample names</td>
 </tr>
 <tr>
 <td><code>ont_analysis_type</code></td>
-<td><code>liquid_biopsy</code> or <code>solid_biopsy</code></td>
 <td><code>liquid_biopsy</code></td>
-<td>SAMURAI preset.</td>
+<td>Analysis preset</td>
 </tr>
 <tr>
 <td><code>ont_caller</code></td>
-<td>text</td>
 <td><code>ichorcna</code></td>
-<td>ONT CNA caller.</td>
+<td>Native ONT CNA caller</td>
 </tr>
 <tr>
 <td><code>ont_binsize_kb</code></td>
-<td>positive integer</td>
 <td><code>500</code></td>
-<td>Initial ichorCNA bin width in kb.</td>
+<td>Coarse ichorCNA/HMMcopy bin width</td>
 </tr>
 <tr>
 <td><code>ont_ref</code></td>
-<td>absolute FASTA or <code>null</code></td>
-<td><code>null</code></td>
-<td>Optional custom reference below <code>lpwgs_root</code>.</td>
+<td>optional FASTA</td>
+<td>Custom reference</td>
 </tr>
 <tr>
 <td><code>ont_normal_folder</code></td>
-<td>absolute directory or <code>null</code></td>
-<td><code>null</code></td>
-<td>Optional normal barcode parent.</td>
+<td>optional path</td>
+<td>Parent containing normal barcodes</td>
 </tr>
 <tr>
 <td><code>ont_normal_barcodes</code></td>
-<td>comma-separated names or <code>null</code></td>
-<td><code>null</code></td>
-<td>Normal barcode selection.</td>
+<td>optional names</td>
+<td>Positional normal barcode selection</td>
 </tr>
 <tr>
 <td><code>ont_normal_sample_names</code></td>
-<td>comma-separated names or <code>null</code></td>
-<td><code>null</code></td>
-<td>Names matching normal barcodes.</td>
+<td>optional names</td>
+<td>Positional normal sample names</td>
 </tr>
 <tr>
 <td><code>ont_build_pon</code></td>
-<td>Boolean</td>
 <td><code>false</code></td>
-<td>Explicitly requests the supported local normal route.</td>
+<td>Explicit local-normal route request</td>
 </tr>
 <tr>
 <td><code>ont_min_age_minutes</code></td>
-<td>non-negative integer</td>
 <td><code>0</code></td>
-<td>Minimum FASTQ age before use.</td>
+<td>Exclude very new FASTQs in active run folders</td>
 </tr>
 <tr>
 <td><code>ont_force_realign</code></td>
-<td>Boolean</td>
 <td><code>false</code></td>
-<td>Recreate supported ONT alignments.</td>
+<td>Deliberately recreate supported ONT alignments</td>
 </tr>
 </tbody>
 </table>
-<h2 id="classifier-and-pathology-parameters">Classifier and pathology parameters<a class="headerlink" href="#classifier-and-pathology-parameters" title="Permanent link">&para;</a></h2>
+<p><code>ont_barcodes</code> and <code>ont_sample_names</code> must have equal lengths and order.</p>
+<h2 id="native-classifier-and-pathology-fields">Native classifier and pathology fields<a class="headerlink" href="#native-classifier-and-pathology-fields" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Default</th>
+<th>Field</th>
+<th>Typical/default</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>run_cna_classifier</code></td>
-<td>Boolean</td>
-<td><code>false</code></td>
-<td>Adds stage <code>05_cna_classifier</code>.</td>
-</tr>
-<tr>
 <td><code>cna_classifier_sample_set</code></td>
-<td>context name</td>
 <td><code>broad_cancer</code></td>
-<td>Classification context selected from study design.</td>
+<td>Study-defined cancer context</td>
 </tr>
 <tr>
-<td><code>cna_classifier_profile</code></td>
-<td>runtime profile</td>
-<td><code>conda</code></td>
-<td>Nested classifier runtime.</td>
+<td><code>cna_classifier_samples</code></td>
+<td>optional IDs</td>
+<td>Optional subset of sequencing samples</td>
 </tr>
 <tr>
 <td><code>pathology_csv</code></td>
-<td>absolute CSV or <code>null</code></td>
-<td><code>null</code></td>
-<td>Optional matched pathology table.</td>
+<td>optional path</td>
+<td>De-identified matched pathology table</td>
 </tr>
 <tr>
 <td><code>pathology_sample_col</code></td>
-<td>column name</td>
 <td><code>illumina_sample_id</code></td>
-<td>Column matching OncoTracer sample IDs.</td>
+<td>Column matching sequencing sample IDs</td>
 </tr>
 <tr>
 <td><code>pathology_case_col</code></td>
-<td>column name</td>
 <td><code>case_code</code></td>
-<td>Case/accession column.</td>
+<td>De-identified case/accession column</td>
 </tr>
 <tr>
 <td><code>pathology_diagnosis_col</code></td>
-<td>column name</td>
 <td><code>final_diagnosis</code></td>
-<td>Diagnosis-text column.</td>
+<td>Diagnosis text column</td>
 </tr>
 <tr>
 <td><code>pathology_use_biomed_models</code></td>
-<td>Boolean</td>
-<td><code>true</code></td>
-<td>Attempts optional biomedical model assistance.</td>
+<td><code>false</code> recommended initially</td>
+<td>Optional biomedical model assistance</td>
 </tr>
 <tr>
 <td><code>pathology_biomed_local_files_only</code></td>
-<td>Boolean</td>
+<td><code>true</code> recommended initially</td>
+<td>Restrict models to local cache</td>
+</tr>
+<tr>
+<td><code>run_gistic</code></td>
+<td><code>false</code> unless enabled</td>
+<td>Optional cohort recurrence branch</td>
+</tr>
+<tr>
+<td><code>gistic_required</code></td>
 <td><code>false</code></td>
-<td>Restricts models to an existing local cache.</td>
+<td>Make GISTIC2 failure fatal only when justified</td>
+</tr>
+<tr>
+<td><code>gistic_min_samples</code></td>
+<td><code>2</code></td>
+<td>Minimum cohort size for requested recurrence analysis</td>
+</tr>
+<tr>
+<td><code>knowledge_web</code></td>
+<td><code>false</code> recommended</td>
+<td>Optional network enrichment</td>
+</tr>
+<tr>
+<td><code>knowledge_literature_llm</code></td>
+<td><code>false</code> recommended</td>
+<td>Optional model-assisted literature synthesis</td>
+</tr>
+<tr>
+<td><code>knowledge_deep_literature</code></td>
+<td><code>false</code> recommended</td>
+<td>Optional expanded literature workflow</td>
 </tr>
 </tbody>
 </table>
-<h2 id="boundary-refinement-parameters">Boundary-refinement parameters<a class="headerlink" href="#boundary-refinement-parameters" title="Permanent link">&para;</a></h2>
-<p>Stage <code>02_bam_refinement</code> runs by default. These settings tune it.</p>
+<p>Nested YAML is deliberately rejected. Keep this section flat.</p>
+<h2 id="boundary-refinement-fields">Boundary-refinement fields<a class="headerlink" href="#boundary-refinement-fields" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Parameter</th>
+<th>Field</th>
 <th style="text-align: right;">Default</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>refine_skip_install</code></td>
-<td style="text-align: right;"><code>false</code></td>
-<td>Prefer an existing refinement environment.</td>
-</tr>
-<tr>
 <td><code>fine_bin_kb_illumina</code></td>
 <td style="text-align: right;"><code>10</code></td>
-<td>Illumina local depth-bin width in kb.</td>
+<td>Local Illumina depth bin</td>
 </tr>
 <tr>
 <td><code>fine_bin_kb_ont</code></td>
 <td style="text-align: right;"><code>25</code></td>
-<td>ONT local depth-bin width in kb.</td>
+<td>Local ONT depth bin</td>
 </tr>
 <tr>
 <td><code>search_radius_bins</code></td>
 <td style="text-align: right;"><code>2</code></td>
-<td>Search distance around each original boundary.</td>
+<td>Coarse-bin search distance</td>
 </tr>
 <tr>
 <td><code>min_mapq</code></td>
 <td style="text-align: right;"><code>20</code></td>
-<td>Minimum read mapping quality.</td>
+<td>Minimum BAM mapping quality</td>
 </tr>
 <tr>
 <td><code>min_local_log2_diff_illumina</code></td>
 <td style="text-align: right;"><code>0.10</code></td>
-<td>Minimum local Illumina depth step.</td>
+<td>Minimum Illumina local step</td>
 </tr>
 <tr>
 <td><code>min_local_log2_diff_ont</code></td>
 <td style="text-align: right;"><code>0.12</code></td>
-<td>Minimum local ONT depth step.</td>
+<td>Minimum ONT local step</td>
 </tr>
 <tr>
 <td><code>min_adjacent_seg_delta</code></td>
 <td style="text-align: right;"><code>0.10</code></td>
-<td>Minimum adjacent coarse-segment difference.</td>
+<td>Minimum adjacent coarse difference</td>
 </tr>
 <tr>
 <td><code>min_bic_gain</code></td>
 <td style="text-align: right;"><code>6</code></td>
-<td>Minimum local model-fit improvement.</td>
+<td>Minimum model-fit improvement</td>
 </tr>
 <tr>
 <td><code>permutations</code></td>
 <td style="text-align: right;"><code>300</code></td>
-<td>Empirical permutations; <code>0</code> disables them.</td>
+<td>Empirical permutations</td>
 </tr>
 <tr>
 <td><code>permutation_p</code></td>
 <td style="text-align: right;"><code>0.05</code></td>
-<td>Empirical p-value threshold.</td>
+<td>Empirical threshold</td>
 </tr>
 <tr>
 <td><code>accept_rule</code></td>
 <td style="text-align: right;"><code>p_and_bic</code></td>
-<td>Boundary-shift acceptance rule.</td>
+<td>Boundary acceptance rule</td>
 </tr>
 <tr>
 <td><code>max_ci_fraction_of_coarse</code></td>
 <td style="text-align: right;"><code>1.0</code></td>
-<td>Maximum confidence-interval width relative to a coarse bin.</td>
+<td>Maximum CI width relative to coarse bin</td>
 </tr>
 <tr>
 <td><code>zipcnv_mode</code></td>
 <td style="text-align: right;"><code>adapted</code></td>
-<td>ZIPcnv comparison mode.</td>
+<td>ZIPcnv comparison mode</td>
 </tr>
 <tr>
 <td><code>zipcnv_window_bins</code></td>
 <td style="text-align: right;"><code>5</code></td>
-<td>Adapted ZIPcnv local window.</td>
+<td>Adapted comparison window</td>
 </tr>
 <tr>
 <td><code>zipcnv_k</code></td>
 <td style="text-align: right;"><code>0.05</code></td>
-<td>Adapted ZIPcnv tuning constant.</td>
+<td>Adapted tuning constant</td>
 </tr>
 <tr>
 <td><code>zipcnv_min_segment_bins</code></td>
 <td style="text-align: right;"><code>3</code></td>
-<td>Minimum retained ZIPcnv segment length.</td>
+<td>Minimum retained segment length</td>
 </tr>
 <tr>
 <td><code>zipcnv_min_abs_log2</code></td>
 <td style="text-align: right;"><code>0.25</code></td>
-<td>Minimum retained absolute signal.</td>
+<td>Minimum retained absolute signal</td>
 </tr>
 <tr>
 <td><code>zipcnv_compare_min_overlap</code></td>
 <td style="text-align: right;"><code>0.50</code></td>
-<td>Minimum overlap for comparison.</td>
+<td>Minimum comparison overlap</td>
 </tr>
 </tbody>
 </table>
-<p>See <a href="../refinement/">Boundary Refinement</a> for a controlled comparison. Keep defaults for an initial analysis.</p>
+<p>Keep defaults for an initial analysis. Use a new YAML and new <code>outdir</code> for methods comparisons.</p>
+<h2 id="provenance-command">Provenance command<a class="headerlink" href="#provenance-command" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>provenance<span class="w"> </span>--json
+</code></pre></div>
+<p>The record includes version, source commit, deterministic source digest definition/value, source-tree cleanliness, and copied-binary SHA-256 when bound into a release build.</p>
 
 
 

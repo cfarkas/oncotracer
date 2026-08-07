@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+        <meta name="description" content="Native auditable LP-WGS CNA analysis for ONT and Illumina data">
       
       
         <meta name="author" content="OncoTracer developers">
@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/configuration/illumina/">
       
       
-        <link rel="prev" href="../../running/">
+        <link rel="prev" href="../../configuration_v2/">
       
       
         <link rel="next" href="../ont/">
@@ -231,17 +231,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../../full_tutorial/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../../full_tutorial/" class="md-tabs__link">
+          
+  
   
   Full Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -300,6 +301,26 @@
   
   
   Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../native_architecture/" class="md-tabs__link">
+          
+  
+  
+  Assurance and Migration
 
         </a>
       </li>
@@ -467,7 +488,7 @@
   <span class="md-ellipsis">
     
   
-    1. Install Requirements
+    Install Requirements
   
 
     
@@ -523,7 +544,7 @@
   <span class="md-ellipsis">
     
   
-    2. QuickStart Example 1 (Illumina + ONT)
+    QuickStart 1 — Illumina + ONT
   
 
     
@@ -551,7 +572,7 @@
   <span class="md-ellipsis">
     
   
-    3. Automatic Setup for Your FASTQs (Recommended)
+    Automatic Setup for Your FASTQs
   
 
     
@@ -579,7 +600,7 @@
   <span class="md-ellipsis">
     
   
-    4. QuickStart Example 2 (Three-Sample Public)
+    QuickStart 2 — HCC1143
   
 
     
@@ -635,7 +656,7 @@
   <span class="md-ellipsis">
     
   
-    Manual YAML Editing (Second Option)
+    Manual YAML Editing
   
 
     
@@ -662,9 +683,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../full_tutorial/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -678,7 +717,51 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Full Tutorial
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../full_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete PRJNA754199 archive
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -751,7 +834,7 @@
   <span class="md-ellipsis">
     
   
-    Mock Six Tumors + Four Normal Controls
+    Mock cohort — six tumors + four normals
   
 
     
@@ -871,7 +954,35 @@
   <span class="md-ellipsis">
     
   
-    Workflow Overview
+    Native Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canonical Native YAML
   
 
     
@@ -952,22 +1063,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recommended-create-the-yaml-automatically" class="md-nav__link">
+  <a href="#recommended-automatic-setup" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended: create the YAML automatically
+        Recommended: Automatic Setup
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Recommended: create the YAML automatically">
+    <nav class="md-nav" aria-label="Recommended: Automatic Setup">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-arrange-the-fastqs" class="md-nav__link">
+  <a href="#arrange-the-fastqs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Arrange the FASTQs
+        Arrange the FASTQs
       
     </span>
   </a>
@@ -975,10 +1086,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-create-the-sample-table" class="md-nav__link">
+  <a href="#create-the-sample-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Create the sample table
+        Create the sample table
       
     </span>
   </a>
@@ -986,10 +1097,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-generate-the-configuration" class="md-nav__link">
+  <a href="#generate-the-yaml-and-samplesheet" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Generate the configuration
+        Generate the YAML and samplesheet
       
     </span>
   </a>
@@ -997,10 +1108,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-inspect-and-run" class="md-nav__link">
+  <a href="#inspect-and-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Inspect and run
+        Inspect and run
       
     </span>
   </a>
@@ -1013,63 +1124,35 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#second-option-manual-setup" class="md-nav__link">
+  <a href="#local-qdnaseq-panel-of-normals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Second option: manual setup
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Second option: manual setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-create-the-samplesheet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Create the samplesheet
+        Local qDNAseq panel of normals
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#2-copy-and-edit-the-yaml" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#manual-samplesheet" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Copy and edit the YAML
+        Manual samplesheet
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#how-the-local-pon-is-built" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#manual-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How the local PoN is built
+        Manual YAML
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-check-and-run-the-manual-yaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Check and run the manual YAML
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1078,6 +1161,17 @@
     <span class="md-ellipsis">
       
         Main Illumina settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-run-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-run checks
       
     </span>
   </a>
@@ -1445,7 +1539,7 @@
   <span class="md-ellipsis">
     
   
-    Help and About
+    Assurance and Migration
   
 
     
@@ -1458,6 +1552,179 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Assurance and Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../native_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Native architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../parity_release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration_v1_to_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../legacy_v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1585,22 +1852,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recommended-create-the-yaml-automatically" class="md-nav__link">
+  <a href="#recommended-automatic-setup" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended: create the YAML automatically
+        Recommended: Automatic Setup
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Recommended: create the YAML automatically">
+    <nav class="md-nav" aria-label="Recommended: Automatic Setup">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-arrange-the-fastqs" class="md-nav__link">
+  <a href="#arrange-the-fastqs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Arrange the FASTQs
+        Arrange the FASTQs
       
     </span>
   </a>
@@ -1608,10 +1875,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-create-the-sample-table" class="md-nav__link">
+  <a href="#create-the-sample-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Create the sample table
+        Create the sample table
       
     </span>
   </a>
@@ -1619,10 +1886,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-generate-the-configuration" class="md-nav__link">
+  <a href="#generate-the-yaml-and-samplesheet" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Generate the configuration
+        Generate the YAML and samplesheet
       
     </span>
   </a>
@@ -1630,10 +1897,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-inspect-and-run" class="md-nav__link">
+  <a href="#inspect-and-run" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Inspect and run
+        Inspect and run
       
     </span>
   </a>
@@ -1646,63 +1913,35 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#second-option-manual-setup" class="md-nav__link">
+  <a href="#local-qdnaseq-panel-of-normals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Second option: manual setup
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Second option: manual setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-create-the-samplesheet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Create the samplesheet
+        Local qDNAseq panel of normals
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#2-copy-and-edit-the-yaml" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#manual-samplesheet" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Copy and edit the YAML
+        Manual samplesheet
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#how-the-local-pon-is-built" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#manual-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How the local PoN is built
+        Manual YAML
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-check-and-run-the-manual-yaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Check and run the manual YAML
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1711,6 +1950,17 @@
     <span class="md-ellipsis">
       
         Main Illumina settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-run-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-run checks
       
     </span>
   </a>
@@ -1742,18 +1992,12 @@
   
 
 
-<h1 id="illumina-configuration">Illumina Configuration<a class="headerlink" href="#illumina-configuration" title="Permanent link">&para;</a></h1>
-<p>Use this route for single-end or paired-end Illumina FASTQs. OncoTracer aligns the reads, runs SAMURAI/qDNAseq, refines CNA boundaries, and creates tables, plots, and a workflow summary.</p>
-<p>The examples use paths relative to the cloned <code>oncotracer</code> directory.</p>
-<h2 id="recommended-create-the-yaml-automatically">Recommended: create the YAML automatically<a class="headerlink" href="#recommended-create-the-yaml-automatically" title="Permanent link">&para;</a></h2>
-<p>Automatic Setup supports either:</p>
-<ul>
-<li>one <code>&lt;sample&gt;.fastq.gz</code> or <code>&lt;sample&gt;.fq.gz</code> file per sample; or</li>
-<li>one <code>&lt;sample&gt;_R1.fastq.gz</code> and <code>&lt;sample&gt;_R2.fastq.gz</code> pair per sample.</li>
-</ul>
-<p>Do not mix single-end and paired-end libraries in one run.</p>
-<h3 id="1-arrange-the-fastqs">1. Arrange the FASTQs<a class="headerlink" href="#1-arrange-the-fastqs" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>/path/to/my/directory/oncotracer/project/input/illumina_fastq/
+<h1 id="illumina-configuration">Illumina configuration<a class="headerlink" href="#illumina-configuration" title="Permanent link">&para;</a></h1>
+<p>Use this route for single-end or paired-end Illumina FASTQs. Native v2 validates the inputs, aligns with BWA, performs samtools/Picard processing, runs qDNAseq or a local qDNAseq normal panel, refines CNA boundaries from BAM depth, and creates CNA tables, plots, and summaries.</p>
+<h2 id="recommended-automatic-setup">Recommended: Automatic Setup<a class="headerlink" href="#recommended-automatic-setup" title="Permanent link">&para;</a></h2>
+<h3 id="arrange-the-fastqs">Arrange the FASTQs<a class="headerlink" href="#arrange-the-fastqs" title="Permanent link">&para;</a></h3>
+<p>Paired-end example:</p>
+<div class="highlight"><pre><span></span><code>project/input/illumina_fastq/
 ├── Patient_A_R1.fastq.gz
 ├── Patient_A_R2.fastq.gz
 ├── Patient_B_R1.fastq.gz
@@ -1763,135 +2007,152 @@
 ├── Control_B_R1.fastq.gz
 └── Control_B_R2.fastq.gz
 </code></pre></div>
-<h3 id="2-create-the-sample-table">2. Create the sample table<a class="headerlink" href="#2-create-the-sample-table" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
+<p>Single-end files may be named <code>&lt;sample&gt;.fastq.gz</code>. Do not mix layouts in one run.</p>
+<h3 id="create-the-sample-table">Create the sample table<a class="headerlink" href="#create-the-sample-table" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
 mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span>
 
-<span class="c1"># Create or replace the Illumina sample table.</span>
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
 <span class="s">sample_name,status</span>
 <span class="s">Patient_A,TUMOR</span>
 <span class="s">Patient_B,TUMOR</span>
 <span class="s">Control_A,NORMAL</span>
 <span class="s">Control_B,NORMAL</span>
 <span class="s">CSV</span>
-
-<span class="c1"># Display the saved table.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/samples.csv&quot;</span>
 </code></pre></div>
-<p><code>sample_name</code> must match the FASTQ filename prefix exactly. Zero normal rows run without a local panel, one normal is rejected, and two or more normals enable the local qDNAseq reference.</p>
-<h3 id="3-generate-the-configuration">3. Generate the configuration<a class="headerlink" href="#3-generate-the-configuration" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
+<p><code>sample_name</code> must match the FASTQ filename prefix exactly.</p>
+<h3 id="generate-the-yaml-and-samplesheet">Generate the YAML and samplesheet<a class="headerlink" href="#generate-the-yaml-and-samplesheet" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
 
-<span class="c1"># Generate the Illumina YAML and FASTQ samplesheet.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/auto_params_illumina&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina&quot;</span>
 </code></pre></div>
 <p>Automatic Setup validates every gzip file and writes:</p>
-<div class="highlight"><pre><span></span><code>/path/to/my/directory/oncotracer/project/config/illumina/
+<div class="highlight"><pre><span></span><code>project/config/illumina/
 ├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
 </code></pre></div>
 <p>It does not start the analysis.</p>
-<h3 id="4-inspect-and-run">4. Inspect and run<a class="headerlink" href="#4-inspect-and-run" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
+<h3 id="inspect-and-run">Inspect and run<a class="headerlink" href="#inspect-and-run" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
 
-<span class="c1"># Inspect the generated files.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,140p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,180p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,30p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.samplesheet.csv&quot;</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/auto_params_manifest.tsv&quot;</span>
 
-<span class="c1"># Run the generated YAML with Docker.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml&quot;</span>
 
-<span class="c1"># Read the completed workflow summary.</span>
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina/06_workflow_summary/workflow_summary.txt&quot;</span>
 </code></pre></div>
-<p>On HPC, replace <code>--docker</code> with <code>--singularity</code>.</p>
-<h2 id="second-option-manual-setup">Second option: manual setup<a class="headerlink" href="#second-option-manual-setup" title="Permanent link">&para;</a></h2>
-<p>Use manual setup when the filenames do not match the supported automatic patterns or when advanced settings are required.</p>
-<h3 id="1-create-the-samplesheet">1. Create the samplesheet<a class="headerlink" href="#1-create-the-samplesheet" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input&quot;</span>
+<h2 id="local-qdnaseq-panel-of-normals">Local qDNAseq panel of normals<a class="headerlink" href="#local-qdnaseq-panel-of-normals" title="Permanent link">&para;</a></h2>
+<p>Automatic Setup applies this rule:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Normal rows</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td>Run qDNAseq without a local panel</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td>Reject the configuration</td>
+</tr>
+<tr>
+<td style="text-align: right;">2 or more</td>
+<td>Build and apply a run-local median-log₂ reference</td>
+</tr>
+</tbody>
+</table>
+<p>Generated settings:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A,Control_B</span>
+<span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="nt">illumina_pon_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A_Control_B_PoN</span>
+<span class="nt">illumina_pon_min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
+</code></pre></div>
+<p>All tumor and normal BAMs use the same alignment, bin definition, paired-read setting, and mapping-quality threshold. The panel stores the per-bin control reference and subtracts it from each tumor profile. Normal samples remain reference/QC inputs; corrected downstream bins, segments, CNA events, and plots contain tumor samples only.</p>
+<p>Review:</p>
+<div class="highlight"><pre><span></span><code>01_samurai_illumina/qdnaseq_local_pon/
+├── pon/normal_panel_manifest.tsv
+├── qc/normal_panel_sample_qc.tsv
+├── all_tumors.qdnaseq_pon_corrected_bins.tsv
+└── qdnaseq_local_pon.done
+</code></pre></div>
+<p>The completion marker must contain <code>QDNASEQ_LOCAL_PON_SUCCESS</code>.</p>
+<h2 id="manual-samplesheet">Manual samplesheet<a class="headerlink" href="#manual-samplesheet" title="Permanent link">&para;</a></h2>
+<p>Use a manual samplesheet for unusual filenames:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span>
 
-<span class="c1"># Create or replace a paired-end Illumina samplesheet.</span>
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;CSV</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;CSV</span>
 <span class="s">sample,fastq_1,fastq_2,status</span>
 <span class="s">Patient_A,$PROJECT_DIR/input/illumina_fastq/Patient_A_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor</span>
 <span class="s">Patient_B,$PROJECT_DIR/input/illumina_fastq/Patient_B_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor</span>
 <span class="s">Control_A,$PROJECT_DIR/input/illumina_fastq/Control_A_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Control_A_R2.fastq.gz,normal</span>
 <span class="s">Control_B,$PROJECT_DIR/input/illumina_fastq/Control_B_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Control_B_R2.fastq.gz,normal</span>
 <span class="s">CSV</span>
-
-<span class="c1"># Display the saved samplesheet.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span>
 </code></pre></div>
-<p>For a single-end run, keep the four-column header and leave <code>fastq_2</code> empty for every row.</p>
-<h3 id="2-copy-and-edit-the-yaml">2. Copy and edit the YAML<a class="headerlink" href="#2-copy-and-edit-the-yaml" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+<p>For single-end data, retain the four-column header and leave <code>fastq_2</code> empty for every row.</p>
+<h2 id="manual-yaml">Manual YAML<a class="headerlink" href="#manual-yaml" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
 
-<span class="c1"># Copy the minimal template and edit the copy.</span>
-cp<span class="w"> </span><span class="s2">&quot;params/illumina.minimal.yml&quot;</span><span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
-nano<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
-</code></pre></div>
-<p>A tumor-plus-controls YAML can contain:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/results/manual_illumina</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/input/illumina.samplesheet.csv</span>
-<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
-<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
-<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
-<span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A,Control_B</span>
-<span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="nt">illumina_pon_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A_Control_B_PoN</span>
-<span class="nt">illumina_pon_min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
-<span class="nt">illumina_pon_r_container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1</span>
-<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</code></pre></div>
-<h3 id="how-the-local-pon-is-built">How the local PoN is built<a class="headerlink" href="#how-the-local-pon-is-built" title="Permanent link">&para;</a></h3>
-<p>All tumor and normal BAMs use the same alignment stage, bin definition, paired-read setting, and MAPQ threshold. qDNAseq computes the per-bin median signal across the selected controls and subtracts that reference from each tumor profile. Corrected bins, segments, and plots contain tumors only.</p>
-<p>The normal list must contain every and only samplesheet row marked <code>normal</code>. At least two controls are required. Review <code>qc/normal_panel_sample_qc.tsv</code> before interpreting corrected calls.</p>
-<h3 id="3-check-and-run-the-manual-yaml">3. Check and run the manual YAML<a class="headerlink" href="#3-check-and-run-the-manual-yaml" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
+<span class="s">mode: illumina</span>
+<span class="s">lpwgs_root: $PROJECT_DIR</span>
+<span class="s">outdir: $PROJECT_DIR/results/manual_illumina</span>
+<span class="s">illumina_samplesheet: $PROJECT_DIR/config/illumina.samplesheet.csv</span>
+<span class="s">illumina_analysis_type: solid_biopsy</span>
+<span class="s">illumina_caller: qdnaseq</span>
+<span class="s">illumina_binsize_kb: 100</span>
+<span class="s">illumina_build_pon: true</span>
+<span class="s">illumina_pon_normal_samples: Control_A,Control_B</span>
+<span class="s">illumina_pon_min_normals: 2</span>
+<span class="s">illumina_pon_name: Control_A_Control_B_PoN</span>
+<span class="s">illumina_pon_min_mapq: 37</span>
+<span class="s">run_cna_classifier: false</span>
+<span class="s">force: false</span>
+<span class="s">YAML</span>
 
-<span class="c1"># Check workflow connections without running the scientific tools.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run
 
-<span class="c1"># Run or resume the manual configuration.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/my_illumina.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span>
 </code></pre></div>
 <h2 id="main-illumina-settings">Main Illumina settings<a class="headerlink" href="#main-illumina-settings" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Setting</th>
-<th>Default</th>
+<th>Typical value</th>
 <th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td><code>illumina_samplesheet</code></td>
+<td>absolute CSV path</td>
+<td>Exact FASTQ/sample/status contract</td>
+</tr>
+<tr>
 <td><code>illumina_analysis_type</code></td>
 <td><code>solid_biopsy</code></td>
-<td>SAMURAI analysis preset</td>
+<td>Analysis preset</td>
 </tr>
 <tr>
 <td><code>illumina_caller</code></td>
@@ -1901,31 +2162,50 @@ nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w
 <tr>
 <td><code>illumina_binsize_kb</code></td>
 <td><code>100</code></td>
-<td>Initial bin size in kilobases</td>
+<td>Initial qDNAseq bin width</td>
 </tr>
 <tr>
 <td><code>illumina_build_pon</code></td>
-<td><code>false</code></td>
-<td>Enable the local qDNAseq normal reference</td>
+<td><code>false</code> or <code>true</code></td>
+<td>Enable local normal panel</td>
 </tr>
 <tr>
 <td><code>illumina_pon_normal_samples</code></td>
-<td>none</td>
-<td>Exact comma-separated normal IDs</td>
+<td>comma-separated IDs</td>
+<td>Exact normal sample set</td>
 </tr>
 <tr>
 <td><code>illumina_pon_min_normals</code></td>
-<td><code>2</code></td>
-<td>Minimum required controls</td>
+<td><code>2</code> or study-specific value</td>
+<td>Minimum controls</td>
+</tr>
+<tr>
+<td><code>illumina_pon_min_mapq</code></td>
+<td><code>37</code></td>
+<td>Panel read mapping-quality threshold</td>
+</tr>
+<tr>
+<td><code>run_cna_classifier</code></td>
+<td><code>false</code></td>
+<td>Add native cancer-context reports</td>
 </tr>
 <tr>
 <td><code>force</code></td>
 <td><code>false</code></td>
-<td>Keep false for normal project runs</td>
+<td>Preserve reusable stages</td>
 </tr>
 </tbody>
 </table>
-<p>See <a href="../parameter_reference/">All parameters</a> for advanced options.</p>
+<h2 id="pre-run-checks">Pre-run checks<a class="headerlink" href="#pre-run-checks" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<span class="nv">SHEET</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.samplesheet.csv&quot;</span>
+
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SHEET</span><span class="s2">&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,30p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SHEET</span><span class="s2">&quot;</span>
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R1.fastq.gz&quot;</span>
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R2.fastq.gz&quot;</span>
+</code></pre></div>
+<p>Use a new YAML and <code>outdir</code> when changing bin size, panel membership, or other scientific settings.</p>
 
 
 

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+        <meta name="description" content="Native auditable LP-WGS CNA analysis for ONT and Illumina data">
       
       
         <meta name="author" content="OncoTracer developers">
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#programs-used-by-oncotracer" class="md-skip">
+        <a href="#programs-and-provenance" class="md-skip">
           Skip to content
         </a>
       
@@ -231,17 +231,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../full_tutorial/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../full_tutorial/" class="md-tabs__link">
+          
+  
   
   Full Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -300,6 +301,26 @@
   
   
   Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../native_architecture/" class="md-tabs__link">
+          
+  
+  
+  Assurance and Migration
 
         </a>
       </li>
@@ -467,7 +488,7 @@
   <span class="md-ellipsis">
     
   
-    1. Install Requirements
+    Install Requirements
   
 
     
@@ -523,7 +544,7 @@
   <span class="md-ellipsis">
     
   
-    2. QuickStart Example 1 (Illumina + ONT)
+    QuickStart 1 — Illumina + ONT
   
 
     
@@ -551,7 +572,7 @@
   <span class="md-ellipsis">
     
   
-    3. Automatic Setup for Your FASTQs (Recommended)
+    Automatic Setup for Your FASTQs
   
 
     
@@ -579,7 +600,7 @@
   <span class="md-ellipsis">
     
   
-    4. QuickStart Example 2 (Three-Sample Public)
+    QuickStart 2 — HCC1143
   
 
     
@@ -635,7 +656,7 @@
   <span class="md-ellipsis">
     
   
-    Manual YAML Editing (Second Option)
+    Manual YAML Editing
   
 
     
@@ -662,9 +683,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../full_tutorial/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -678,7 +717,51 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Full Tutorial
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../full_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete PRJNA754199 archive
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -751,7 +834,7 @@
   <span class="md-ellipsis">
     
   
-    Mock Six Tumors + Four Normal Controls
+    Mock cohort — six tumors + four normals
   
 
     
@@ -871,7 +954,35 @@
   <span class="md-ellipsis">
     
   
-    Workflow Overview
+    Native Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canonical Native YAML
   
 
     
@@ -1120,10 +1231,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#workflow-and-runtime-layer" class="md-nav__link">
+  <a href="#native-application-and-backend-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workflow and runtime layer
+        Native application and backend layer
       
     </span>
   </a>
@@ -1153,10 +1264,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#oncotracer-stages-after-samurai" class="md-nav__link">
+  <a href="#optional-interpretation-route" class="md-nav__link">
     <span class="md-ellipsis">
       
-        OncoTracer stages after SAMURAI
+        Optional interpretation route
       
     </span>
   </a>
@@ -1164,10 +1275,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#host-program-checks" class="md-nav__link">
+  <a href="#inspect-the-installed-toolchain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Host program checks
+        Inspect the installed toolchain
       
     </span>
   </a>
@@ -1175,10 +1286,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#record-versions-from-a-completed-run" class="md-nav__link">
+  <a href="#provenance-from-a-completed-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Record versions from a completed run
+        Provenance from a completed analysis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#frozen-v11-comparator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frozen v1.1 comparator
       
     </span>
   </a>
@@ -1389,7 +1511,7 @@
   <span class="md-ellipsis">
     
   
-    Help and About
+    Assurance and Migration
   
 
     
@@ -1402,6 +1524,179 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Assurance and Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../native_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Native architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../parity_release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration_v1_to_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../legacy_v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1529,10 +1824,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#workflow-and-runtime-layer" class="md-nav__link">
+  <a href="#native-application-and-backend-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workflow and runtime layer
+        Native application and backend layer
       
     </span>
   </a>
@@ -1562,10 +1857,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#oncotracer-stages-after-samurai" class="md-nav__link">
+  <a href="#optional-interpretation-route" class="md-nav__link">
     <span class="md-ellipsis">
       
-        OncoTracer stages after SAMURAI
+        Optional interpretation route
       
     </span>
   </a>
@@ -1573,10 +1868,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#host-program-checks" class="md-nav__link">
+  <a href="#inspect-the-installed-toolchain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Host program checks
+        Inspect the installed toolchain
       
     </span>
   </a>
@@ -1584,10 +1879,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#record-versions-from-a-completed-run" class="md-nav__link">
+  <a href="#provenance-from-a-completed-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Record versions from a completed run
+        Provenance from a completed analysis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#frozen-v11-comparator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frozen v1.1 comparator
       
     </span>
   </a>
@@ -1630,176 +1936,164 @@
   
 
 
-<h1 id="programs-used-by-oncotracer">Programs used by OncoTracer<a class="headerlink" href="#programs-used-by-oncotracer" title="Permanent link">&para;</a></h1>
-<p>OncoTracer connects established alignment, quality-control, CNA-calling, refinement, plotting, and reporting programs. Most users should run the workflow rather than invoke these programs separately.</p>
-<h2 id="workflow-and-runtime-layer">Workflow and runtime layer<a class="headerlink" href="#workflow-and-runtime-layer" title="Permanent link">&para;</a></h2>
+<h1 id="programs-and-provenance">Programs and provenance<a class="headerlink" href="#programs-and-provenance" title="Permanent link">&para;</a></h1>
+<p>OncoTracer v2 connects established alignment, quality-control, copy-number, refinement, plotting, and reporting programs through one native stage graph. Normal users invoke the installed <code>oncotracer</code> executable rather than calling these programs independently.</p>
+<h2 id="native-application-and-backend-layer">Native application and backend layer<a class="headerlink" href="#native-application-and-backend-layer" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Program</th>
+<th>Component</th>
 <th>Role</th>
-<th>Source</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><a href="https://www.nextflow.io/docs/latest/">Nextflow</a></td>
-<td>Executes tasks, records provenance, and supports <code>-resume</code></td>
-<td>Official documentation</td>
+<td><code>oncotracer</code></td>
+<td>Parses flat YAML, schedules stages, records argument-array traces, validates outputs, and resumes content-matched work</td>
 </tr>
 <tr>
-<td><a href="https://docs.docker.com/engine/">Docker</a></td>
-<td>Container runtime for Linux workstations and servers</td>
-<td>Uses <a href="https://hub.docker.com/r/carlosfarkas/oncotracer"><code>carlosfarkas/oncotracer:latest</code></a></td>
+<td>Conda backend</td>
+<td>Five isolated versioned prefixes for incompatible scientific stacks</td>
 </tr>
 <tr>
-<td><a href="https://apptainer.org/docs/">Apptainer</a> / <a href="https://docs.sylabs.io/guides/latest/user-guide/">SingularityCE</a></td>
-<td>HPC container runtime</td>
-<td>Uses <code>docker://carlosfarkas/oncotracer:latest</code></td>
+<td>Docker backend</td>
+<td>Native v2 image from GitHub Container Registry</td>
 </tr>
 <tr>
-<td><a href="https://docs.conda.io/">Conda</a></td>
-<td>Fallback environment manager</td>
-<td>Official documentation</td>
+<td>Singularity/Apptainer backend</td>
+<td>Same native image converted to and reused as a SIF</td>
 </tr>
 <tr>
-<td><a href="https://github.com/dincalcilab/samurai">SAMURAI</a></td>
-<td>Upstream LP-WGS alignment, QC, and CNA workflow used in stage 01</td>
-<td>SAMURAI repository</td>
+<td>Poetry route</td>
+<td>Source-development launcher plus the same five scientific Conda prefixes</td>
 </tr>
 </tbody>
 </table>
-<p>Java 17 or newer is required to launch Nextflow.</p>
+<p>The five groups are <code>core</code>, <code>qdnaseq</code>, <code>ichorcna</code>, <code>classifier</code>, and <code>gistic</code>.</p>
 <h2 id="illumina-route">Illumina route<a class="headerlink" href="#illumina-route" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Program</th>
+<th>Program or library</th>
 <th>Purpose</th>
-<th>Main output</th>
+<th>Representative output</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><a href="https://github.com/lh3/bwa">BWA-MEM</a></td>
-<td>Align single-end or paired short reads to hg38</td>
+<td>BWA-MEM</td>
+<td>Single-end or paired-end alignment to hg38</td>
 <td><code>01_samurai_illumina/alignment/*.bam</code></td>
 </tr>
 <tr>
-<td><a href="https://www.htslib.org/">SAMtools</a></td>
-<td>Sort, index, and inspect BAM/reference files</td>
+<td>SAMtools</td>
+<td>FASTA/BAM indexing and BAM validation</td>
 <td>BAM/BAI and reference indexes</td>
 </tr>
 <tr>
-<td><a href="https://www.bioinformatics.babraham.ac.uk/projects/fastqc/">FastQC</a></td>
-<td>Per-FASTQ quality control</td>
-<td><code>01_samurai_illumina/fastqc/</code></td>
+<td>Picard</td>
+<td>Duplicate marking and whole-genome metrics</td>
+<td>stage-01 BAMs and metrics</td>
 </tr>
 <tr>
-<td><a href="https://multiqc.info/">MultiQC</a></td>
-<td>Aggregate sample QC</td>
-<td><code>01_samurai_illumina/multiqc/</code></td>
-</tr>
-<tr>
-<td><a href="https://broadinstitute.github.io/picard/">Picard</a></td>
-<td>Alignment and whole-genome metrics</td>
-<td><code>01_samurai_illumina/picard/</code></td>
-</tr>
-<tr>
-<td><a href="https://bioconductor.org/packages/QDNAseq/">qDNAseq</a></td>
-<td>Read-depth binning, segmentation, and optional local normal correction</td>
+<td>qDNAseq</td>
+<td>Read-depth correction, segmentation, calls, and optional local normal panel</td>
 <td><code>01_samurai_illumina/qdnaseq/</code> or <code>qdnaseq_local_pon/</code></td>
+</tr>
+<tr>
+<td>Native boundary-refinement Python</td>
+<td>Local BAM-depth boundary evaluation</td>
+<td><code>02_bam_refinement/</code></td>
+</tr>
+<tr>
+<td>Native CNA codification/plotting</td>
+<td>Event tables, cytogenomic notation, cohort and sample plots</td>
+<td>stages 03 and 04</td>
 </tr>
 </tbody>
 </table>
-<p>The standard Illumina configuration uses <code>solid_biopsy</code>, qDNAseq, and 100 kb bins.</p>
+<p>The standard Illumina configuration uses hg38, qDNAseq, and 100 kb coarse bins.</p>
 <h2 id="ont-route">ONT route<a class="headerlink" href="#ont-route" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Program</th>
+<th>Program or library</th>
 <th>Purpose</th>
-<th>Main output</th>
+<th>Representative output</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><a href="https://github.com/lh3/minimap2">minimap2</a></td>
-<td>Align Oxford Nanopore reads to hg38</td>
+<td>pigz/Python gzip handling</td>
+<td>Validate and merge barcode FASTQs</td>
+<td>stage-01 merged FASTQ/logs</td>
+</tr>
+<tr>
+<td>minimap2</td>
+<td>ONT alignment to hg38</td>
 <td><code>01_samurai_ont/bam/*.bam</code></td>
 </tr>
 <tr>
-<td>SAMtools and pigz</td>
-<td>Sort/index BAMs and validate/merge compressed FASTQs</td>
-<td><code>bam/</code>, <code>merged_fastq/</code>, and <code>logs/</code></td>
+<td>SAMtools</td>
+<td>Sort, index, and validate BAMs</td>
+<td>BAM/BAI</td>
 </tr>
 <tr>
-<td><a href="https://github.com/broadinstitute/ichorCNA">ichorCNA</a></td>
-<td>Read-depth CNA and tumor-fraction-oriented analysis</td>
+<td>HMMcopy <code>readCounter</code></td>
+<td>Genomic read-count bins</td>
+<td>ichorCNA input WIG files</td>
+</tr>
+<tr>
+<td>ichorCNA</td>
+<td>Read-depth copy-number and tumor-fraction-oriented fitting</td>
 <td><code>01_samurai_ont/results/ichorcna/</code></td>
 </tr>
 <tr>
-<td>Picard</td>
-<td>Alignment and WGS metrics</td>
-<td><code>01_samurai_ont/results/picard/</code></td>
+<td>Native boundary refinement/codification/plotting</td>
+<td>Refined segments and final result products</td>
+<td>stages 02–04</td>
 </tr>
 </tbody>
 </table>
-<p>The standard ONT configuration uses <code>liquid_biopsy</code>, ichorCNA, and 500 kb bins. Review the used, skipped, and warning logs before interpreting results.</p>
-<h2 id="oncotracer-stages-after-samurai">OncoTracer stages after SAMURAI<a class="headerlink" href="#oncotracer-stages-after-samurai" title="Permanent link">&para;</a></h2>
-<ol>
-<li><code>02_bam_refinement</code>: evaluates and refines broad CNA boundaries.</li>
-<li><code>03_cna_codification</code>: creates CNA event tables and cytogenomic notation.</li>
-<li><code>04_cna_custom_plots</code>: creates per-sample and cohort plots.</li>
-<li><code>05_cna_classifier</code>: optionally produces CNA-pattern, literature, report, and pathology-comparison outputs.</li>
-</ol>
-<p>These stages use Python and R packages including pandas, NumPy, SciPy, pysam, Matplotlib, scikit-learn, ReportLab, openpyxl, and qDNAseq.</p>
-<h2 id="host-program-checks">Host program checks<a class="headerlink" href="#host-program-checks" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Confirm Java, Nextflow, Python, and the host-side helpers.</span>
-java<span class="w"> </span>-version
-nextflow<span class="w"> </span>-version
-python3<span class="w"> </span>--version
-samtools<span class="w"> </span>--version<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1p&#39;</span>
-bwa<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-2
-minimap2<span class="w"> </span>--version
-pigz<span class="w"> </span>--version
+<p>The standard ONT configuration uses hg38, ichorCNA, and 500 kb coarse bins.</p>
+<h2 id="optional-interpretation-route">Optional interpretation route<a class="headerlink" href="#optional-interpretation-route" title="Permanent link">&para;</a></h2>
+<p>When <code>run_cna_classifier: true</code>, the native classifier uses Python packages such as pandas, NumPy, SciPy, scikit-learn, Matplotlib, Jinja2, ReportLab, openpyxl, and optional Transformers/PyTorch support. GISTIC2 is isolated in its own prefix because it requires the MATLAB Compiler Runtime.</p>
+<h2 id="inspect-the-installed-toolchain">Inspect the installed toolchain<a class="headerlink" href="#inspect-the-installed-toolchain" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>--version
+oncotracer<span class="w"> </span>provenance<span class="w"> </span>--json
+oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 </code></pre></div>
+<p><code>doctor</code> uses exact configured prefixes and semantic probes. It does not infer correctness merely because a similarly named command appears first on a login shell's <code>PATH</code>.</p>
 <p>For Docker:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>docker
-
-<span class="c1"># Let Nextflow prepare and test the maintained Docker image.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;project&quot;</span>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
+oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>docker
 </code></pre></div>
 <p>For Singularity or Apptainer:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>singularity
-<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>apptainer
-
-<span class="c1"># Test docker://carlosfarkas/oncotracer:latest through Nextflow.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;project&quot;</span>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
+oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>singularity
 </code></pre></div>
-<p>Ask the system administrator to install missing host programs on managed systems.</p>
-<h2 id="record-versions-from-a-completed-run">Record versions from a completed run<a class="headerlink" href="#record-versions-from-a-completed-run" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and output paths.</span>
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results&quot;</span>
+<h2 id="provenance-from-a-completed-analysis">Provenance from a completed analysis<a class="headerlink" href="#provenance-from-a-completed-analysis" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
 
-<span class="c1"># List the Illumina or ONT pipeline provenance files.</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/pipeline_info&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/results/pipeline_info&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
-
-<span class="c1"># Record the OncoTracer commit, Nextflow version, and selected image.</span>
-git<span class="w"> </span>rev-parse<span class="w"> </span>HEAD
-nextflow<span class="w"> </span>-version
-cat<span class="w"> </span><span class="s2">&quot;.oncotracer/install/install_manifest.txt&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/native_run_manifest.json&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/.oncotracer-native/trace.tsv&quot;</span>
+find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*versions*&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*manifest*&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*SHA256SUMS*&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 </code></pre></div>
-<p>The installer and Illumina wrapper pin SAMURAI <code>v1.4.0</code>. Preserve the nested <code>pipeline_info</code>, generated YAML and samplesheet, OncoTracer commit, and installation manifest with formal study outputs.</p>
+<p>Preserve:</p>
+<ul>
+<li>the exact <code>oncotracer provenance --json</code> output;</li>
+<li>the YAML and generated samplesheet/mapping table;</li>
+<li>input and reference checksums;</li>
+<li>explicit package specifications for all five Conda prefixes, or the immutable container digest;</li>
+<li>native trace, state, run manifest, stage-specific version files, and result checksums.</li>
+</ul>
+<h2 id="frozen-v11-comparator">Frozen v1.1 comparator<a class="headerlink" href="#frozen-v11-comparator" title="Permanent link">&para;</a></h2>
+<p>The v2 release gate executes the immutable v1.1 workflow as an independent comparator. Its SAMURAI source, Nextflow distribution, containers, and inputs are pinned and audited. This comparator is not part of normal v2 analysis execution.</p>
 <h2 id="scientific-responsibility">Scientific responsibility<a class="headerlink" href="#scientific-responsibility" title="Permanent link">&para;</a></h2>
-<p>Each program has assumptions about genome build, bin size, coverage, tumor purity, and sample type. Reproducible software execution does not make an unsuitable method scientifically valid. Predefine parameters, retain QC and provenance, and validate important findings with an appropriate orthogonal assay.</p>
+<p>Each component has assumptions about genome build, coverage, tumor fraction, ploidy, mappability, bin size, and sample type. Reproducible execution does not make an unsuitable method valid. Predefine settings, retain QC, and confirm important findings with an appropriate orthogonal assay.</p>
 
 
 

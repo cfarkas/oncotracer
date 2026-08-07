@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+        <meta name="description" content="Native auditable LP-WGS CNA analysis for ONT and Illumina data">
       
       
         <meta name="author" content="OncoTracer developers">
@@ -233,17 +233,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../full_tutorial/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../full_tutorial/" class="md-tabs__link">
+          
+  
   
   Full Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -300,6 +301,26 @@
   
   
   Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../native_architecture/" class="md-tabs__link">
+          
+  
+  
+  Assurance and Migration
 
         </a>
       </li>
@@ -470,7 +491,7 @@
   <span class="md-ellipsis">
     
   
-    1. Install Requirements
+    Install Requirements
   
 
     
@@ -551,10 +572,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install-poetry-and-the-launcher" class="md-nav__link">
+  <a href="#prepare-a-source-development-checkout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install Poetry and the launcher
+        Prepare a source-development checkout
       
     </span>
   </a>
@@ -562,10 +583,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-through-poetry" class="md-nav__link">
+  <a href="#run-a-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run through Poetry
+        Run a YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-the-public-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the public examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rebuild-after-source-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rebuild after source changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#boundary-between-poetry-and-the-scientific-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boundary between Poetry and the scientific runtime
       
     </span>
   </a>
@@ -595,7 +649,7 @@
   <span class="md-ellipsis">
     
   
-    2. QuickStart Example 1 (Illumina + ONT)
+    QuickStart 1 — Illumina + ONT
   
 
     
@@ -623,7 +677,7 @@
   <span class="md-ellipsis">
     
   
-    3. Automatic Setup for Your FASTQs (Recommended)
+    Automatic Setup for Your FASTQs
   
 
     
@@ -651,7 +705,7 @@
   <span class="md-ellipsis">
     
   
-    4. QuickStart Example 2 (Three-Sample Public)
+    QuickStart 2 — HCC1143
   
 
     
@@ -707,7 +761,7 @@
   <span class="md-ellipsis">
     
   
-    Manual YAML Editing (Second Option)
+    Manual YAML Editing
   
 
     
@@ -734,9 +788,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../full_tutorial/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -750,7 +822,51 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Full Tutorial
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../full_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete PRJNA754199 archive
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -823,7 +939,7 @@
   <span class="md-ellipsis">
     
   
-    Mock Six Tumors + Four Normal Controls
+    Mock cohort — six tumors + four normals
   
 
     
@@ -940,7 +1056,35 @@
   <span class="md-ellipsis">
     
   
-    Workflow Overview
+    Native Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canonical Native YAML
   
 
     
@@ -1334,7 +1478,7 @@
   <span class="md-ellipsis">
     
   
-    Help and About
+    Assurance and Migration
   
 
     
@@ -1347,6 +1491,179 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Assurance and Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../native_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Native architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../parity_release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration_v1_to_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../legacy_v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1474,10 +1791,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install-poetry-and-the-launcher" class="md-nav__link">
+  <a href="#prepare-a-source-development-checkout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install Poetry and the launcher
+        Prepare a source-development checkout
       
     </span>
   </a>
@@ -1485,10 +1802,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-through-poetry" class="md-nav__link">
+  <a href="#run-a-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run through Poetry
+        Run a YAML
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-the-public-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the public examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rebuild-after-source-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rebuild after source changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#boundary-between-poetry-and-the-scientific-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boundary between Poetry and the scientific runtime
       
     </span>
   </a>
@@ -1520,20 +1870,44 @@
   
 
 
-<h1 id="poetry-launcher">Poetry Launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h1>
-<p>Poetry provides a managed Python launcher for OncoTracer. It does not replace the scientific software runtime: the launcher calls the versioned Nextflow workflow with Docker by default, or with Singularity/Apptainer or Conda when selected.</p>
-<h2 id="install-poetry-and-the-launcher">Install Poetry and the launcher<a class="headerlink" href="#install-poetry-and-the-launcher" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--help
+<h1 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h1>
+<p>The Poetry route is intended for development of the Python launcher while retaining the same native scientific stage graph used by the copied release executable.</p>
+<p>For normal users, install the verified release asset and choose Conda, Docker, or Singularity/Apptainer. See <a href="../installation/">Installation</a>.</p>
+<h2 id="prepare-a-source-development-checkout">Prepare a source-development checkout<a class="headerlink" href="#prepare-a-source-development-checkout" title="Permanent link">&para;</a></h2>
+<p>From an existing source checkout:</p>
+<div class="highlight"><pre><span></span><code>./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--version
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>provenance<span class="w"> </span>--json
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
 </code></pre></div>
-<h2 id="run-through-poetry">Run through Poetry<a class="headerlink" href="#run-through-poetry" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Prepare and run QuickStart Example 1 through Poetry with Docker.</span>
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span>.<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span>--make_test<span class="w">   </span>--test_root<span class="w"> </span><span class="s2">&quot;test&quot;</span>
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span>.<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w">   </span>-params-file<span class="w"> </span><span class="s2">&quot;test/configs/illumina.quickstart.yml&quot;</span><span class="w">   </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/poetry-illumina&quot;</span><span class="w"> </span>-resume
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span>.<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w">   </span>-params-file<span class="w"> </span><span class="s2">&quot;test/configs/ont.quickstart.yml&quot;</span><span class="w">   </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/poetry-ont&quot;</span><span class="w"> </span>-resume
+<p>The installer performs two jobs:</p>
+<ol>
+<li><code>poetry install --no-interaction</code> creates the locked Python launcher environment.</li>
+<li>The five scientific Conda prefixes are created for core tools, qDNAseq, ichorCNA/HMMcopy, classifier/reporting, and GISTIC2.</li>
+</ol>
+<p>The saved backend is <code>poetry</code>, but scientific stages execute through those exact Conda prefixes rather than through the Poetry virtual environment.</p>
+<h2 id="run-a-yaml">Run a YAML<a class="headerlink" href="#run-a-yaml" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
 </code></pre></div>
-<p>Change <code>--backend docker</code> to <code>--backend singularity</code> on a configured HPC system or to <code>--backend conda</code> for native Conda environments. Remaining arguments are forwarded unchanged to <code>nextflow run main.nf</code>.</p>
+<h2 id="run-the-public-examples">Run the public examples<a class="headerlink" href="#run-the-public-examples" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1-poetry&quot;</span>
+
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-poetry&quot;</span>
+</code></pre></div>
+<h2 id="rebuild-after-source-changes">Rebuild after source changes<a class="headerlink" href="#rebuild-after-source-changes" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span>--force
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
+</code></pre></div>
+<p>Use <code>--force</code> only when the environment definitions changed or a prefix is known to be damaged.</p>
+<h2 id="boundary-between-poetry-and-the-scientific-runtime">Boundary between Poetry and the scientific runtime<a class="headerlink" href="#boundary-between-poetry-and-the-scientific-runtime" title="Permanent link">&para;</a></h2>
+<p>Poetry manages the launcher and Python development dependencies. It does not replace the versioned R stacks, alignment programs, Picard, HMMcopy, ichorCNA, or GISTIC2. The run trace and result contract are identical to the other v2 backends.</p>
 
 
 

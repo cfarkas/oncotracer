@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+        <meta name="description" content="Native auditable LP-WGS CNA analysis for ONT and Illumina data">
       
       
         <meta name="author" content="OncoTracer developers">
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#boundary-refinement" class="md-skip">
+        <a href="#advanced-bam-supported-boundary-refinement" class="md-skip">
           Skip to content
         </a>
       
@@ -231,17 +231,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../../full_tutorial/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../../full_tutorial/" class="md-tabs__link">
+          
+  
   
   Full Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -300,6 +301,26 @@
   
   
   Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../native_architecture/" class="md-tabs__link">
+          
+  
+  
+  Assurance and Migration
 
         </a>
       </li>
@@ -467,7 +488,7 @@
   <span class="md-ellipsis">
     
   
-    1. Install Requirements
+    Install Requirements
   
 
     
@@ -523,7 +544,7 @@
   <span class="md-ellipsis">
     
   
-    2. QuickStart Example 1 (Illumina + ONT)
+    QuickStart 1 — Illumina + ONT
   
 
     
@@ -551,7 +572,7 @@
   <span class="md-ellipsis">
     
   
-    3. Automatic Setup for Your FASTQs (Recommended)
+    Automatic Setup for Your FASTQs
   
 
     
@@ -579,7 +600,7 @@
   <span class="md-ellipsis">
     
   
-    4. QuickStart Example 2 (Three-Sample Public)
+    QuickStart 2 — HCC1143
   
 
     
@@ -635,7 +656,7 @@
   <span class="md-ellipsis">
     
   
-    Manual YAML Editing (Second Option)
+    Manual YAML Editing
   
 
     
@@ -662,9 +683,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../full_tutorial/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -678,7 +717,51 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Full Tutorial
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../full_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete PRJNA754199 archive
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -751,7 +834,7 @@
   <span class="md-ellipsis">
     
   
-    Mock Six Tumors + Four Normal Controls
+    Mock cohort — six tumors + four normals
   
 
     
@@ -871,7 +954,35 @@
   <span class="md-ellipsis">
     
   
-    Workflow Overview
+    Native Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canonical Native YAML
   
 
     
@@ -1036,10 +1147,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#most-users-keep-the-defaults" class="md-nav__link">
+  <a href="#most-analyses-should-keep-the-defaults" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Most users: keep the defaults
+        Most analyses should keep the defaults
       
     </span>
   </a>
@@ -1047,29 +1158,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional settings
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#main-parameter-groups" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Main parameter groups
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Main parameter groups">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#resolution-and-search-area" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1079,8 +1167,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#read-and-signal-filters" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1090,8 +1178,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#statistical-acceptance" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1101,8 +1189,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#zipcnv-comparison" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1112,17 +1200,23 @@
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#reproducible-public-data-methods-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproducible public-data methods comparison
+      
+    </span>
+  </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#reproducible-public-data-comparison" class="md-nav__link">
+  <a href="#reporting-a-comparison" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reproducible public-data comparison
+        Reporting a comparison
       
     </span>
   </a>
@@ -1406,7 +1500,7 @@
   <span class="md-ellipsis">
     
   
-    Help and About
+    Assurance and Migration
   
 
     
@@ -1419,6 +1513,179 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Assurance and Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../native_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Native architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../parity_release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration_v1_to_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../legacy_v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1546,10 +1813,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#most-users-keep-the-defaults" class="md-nav__link">
+  <a href="#most-analyses-should-keep-the-defaults" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Most users: keep the defaults
+        Most analyses should keep the defaults
       
     </span>
   </a>
@@ -1557,29 +1824,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional settings
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#main-parameter-groups" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Main parameter groups
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Main parameter groups">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#resolution-and-search-area" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1589,8 +1833,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#read-and-signal-filters" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1600,8 +1844,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#statistical-acceptance" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1611,8 +1855,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#zipcnv-comparison" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1622,17 +1866,23 @@
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#reproducible-public-data-methods-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproducible public-data methods comparison
+      
+    </span>
+  </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#reproducible-public-data-comparison" class="md-nav__link">
+  <a href="#reporting-a-comparison" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reproducible public-data comparison
+        Reporting a comparison
       
     </span>
   </a>
@@ -1664,43 +1914,28 @@
   
 
 
-<h1 id="boundary-refinement">Boundary Refinement<a class="headerlink" href="#boundary-refinement" title="Permanent link">&para;</a></h1>
-<p>Boundary refinement is stage <code>02_bam_refinement</code> of every standard Illumina and ONT run. After qDNAseq or ichorCNA identifies broad CNA segments, this stage evaluates local BAM depth and tests whether each coarse boundary should move.</p>
-<p>When the evidence is insufficient, OncoTracer keeps the original boundary. Refinement does not by itself prove that a CNA is biologically real.</p>
-<h2 id="most-users-keep-the-defaults">Most users: keep the defaults<a class="headerlink" href="#most-users-keep-the-defaults" title="Permanent link">&para;</a></h2>
-<p>A minimal Illumina YAML still runs refinement:</p>
+<h1 id="advanced-bam-supported-boundary-refinement">Advanced BAM-supported boundary refinement<a class="headerlink" href="#advanced-bam-supported-boundary-refinement" title="Permanent link">&para;</a></h1>
+<p>Boundary refinement is native stage <code>02_bam_refinement</code> in every standard Illumina and ONT analysis. qDNAseq or ichorCNA first identifies broad segments. OncoTracer then examines local BAM depth around each coarse boundary and tests whether moving that boundary is supported.</p>
+<p>When evidence is insufficient, the original boundary is retained. Refinement improves coordinate resolution; it does not prove that a CNA is biologically real.</p>
+<h2 id="most-analyses-should-keep-the-defaults">Most analyses should keep the defaults<a class="headerlink" href="#most-analyses-should-keep-the-defaults" title="Permanent link">&para;</a></h2>
+<p>A minimal run still performs refinement:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/results/sample_a</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/results/default</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/config/illumina.samplesheet.csv</span>
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>The main refinement result is:</p>
-<div class="highlight"><pre><span></span><code>outdir/02_bam_refinement/
+<p>The main result is beneath:</p>
+<div class="highlight"><pre><span></span><code>&lt;outdir&gt;/02_bam_refinement/
 └── illumina_qdnaseq_100kb/ or ONT_ichorcna_500kb/
     ├── 01_tables/
+    ├── 02_samurai_compatible/
+    ├── 03_consolidated/
     └── 04_final_results/
         └── final_segments.tsv
 </code></pre></div>
-<p>Use the tested defaults for routine work. Write any methods comparison to a new <code>outdir</code>.</p>
-<h2 id="optional-settings">Optional settings<a class="headerlink" href="#optional-settings" title="Permanent link">&para;</a></h2>
-<p>Add refinement settings to the same run YAML:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/results/sample_a_conservative</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv</span>
-<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-
-<span class="nt">fine_bin_kb_illumina</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
-<span class="nt">min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
-<span class="nt">min_local_log2_diff_illumina</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.15</span>
-<span class="nt">min_bic_gain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<span class="nt">permutations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
-<span class="nt">permutation_p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
-<span class="nt">accept_rule</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p_and_bic</span>
-</code></pre></div>
-<h2 id="main-parameter-groups">Main parameter groups<a class="headerlink" href="#main-parameter-groups" title="Permanent link">&para;</a></h2>
-<h3 id="resolution-and-search-area">Resolution and search area<a class="headerlink" href="#resolution-and-search-area" title="Permanent link">&para;</a></h3>
+<p>Use <code>04_final_results/final_segments.tsv</code> as the refined segment table and stage <code>03_cna_codification</code> for final event-level results.</p>
+<h2 id="resolution-and-search-area">Resolution and search area<a class="headerlink" href="#resolution-and-search-area" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -1723,16 +1958,16 @@
 <tr>
 <td><code>search_radius_bins</code></td>
 <td style="text-align: right;"><code>2</code></td>
-<td>Coarse bins searched on each side</td>
+<td>Number of coarse bins searched around each boundary</td>
 </tr>
 <tr>
 <td><code>max_ci_fraction_of_coarse</code></td>
 <td style="text-align: right;"><code>1.0</code></td>
-<td>Maximum accepted confidence-interval width</td>
+<td>Maximum accepted confidence-interval width relative to a coarse bin</td>
 </tr>
 </tbody>
 </table>
-<h3 id="read-and-signal-filters">Read and signal filters<a class="headerlink" href="#read-and-signal-filters" title="Permanent link">&para;</a></h3>
+<h2 id="read-and-signal-filters">Read and signal filters<a class="headerlink" href="#read-and-signal-filters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -1760,16 +1995,16 @@
 <tr>
 <td><code>min_adjacent_seg_delta</code></td>
 <td style="text-align: right;"><code>0.10</code></td>
-<td>Minimum adjacent coarse-segment difference</td>
+<td>Minimum difference between adjacent coarse segments</td>
 </tr>
 <tr>
 <td><code>min_bic_gain</code></td>
 <td style="text-align: right;"><code>6</code></td>
-<td>Minimum model-fit improvement</td>
+<td>Minimum local model-fit improvement</td>
 </tr>
 </tbody>
 </table>
-<h3 id="statistical-acceptance">Statistical acceptance<a class="headerlink" href="#statistical-acceptance" title="Permanent link">&para;</a></h3>
+<h2 id="statistical-acceptance">Statistical acceptance<a class="headerlink" href="#statistical-acceptance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -1796,7 +2031,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="zipcnv-comparison">ZIPcnv comparison<a class="headerlink" href="#zipcnv-comparison" title="Permanent link">&para;</a></h3>
+<h2 id="zipcnv-comparison">ZIPcnv comparison<a class="headerlink" href="#zipcnv-comparison" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -1809,17 +2044,17 @@
 <tr>
 <td><code>zipcnv_mode</code></td>
 <td style="text-align: right;"><code>adapted</code></td>
-<td>Select adapted, official, both, or off</td>
+<td>Adapted comparison mode</td>
 </tr>
 <tr>
 <td><code>zipcnv_window_bins</code></td>
 <td style="text-align: right;"><code>5</code></td>
-<td>Local adapted ZIPcnv window</td>
+<td>Local window</td>
 </tr>
 <tr>
 <td><code>zipcnv_k</code></td>
 <td style="text-align: right;"><code>0.05</code></td>
-<td>Adapted ZIPcnv tuning constant</td>
+<td>Adapted tuning constant</td>
 </tr>
 <tr>
 <td><code>zipcnv_min_segment_bins</code></td>
@@ -1831,54 +2066,100 @@
 <td style="text-align: right;"><code>0.25</code></td>
 <td>Minimum retained absolute signal</td>
 </tr>
+<tr>
+<td><code>zipcnv_compare_min_overlap</code></td>
+<td style="text-align: right;"><code>0.50</code></td>
+<td>Minimum overlap for comparison</td>
+</tr>
 </tbody>
 </table>
-<h2 id="reproducible-public-data-comparison">Reproducible public-data comparison<a class="headerlink" href="#reproducible-public-data-comparison" title="Permanent link">&para;</a></h2>
-<p>First prepare the public Illumina test and copy its generated YAML:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+<h2 id="reproducible-public-data-methods-comparison">Reproducible public-data methods comparison<a class="headerlink" href="#reproducible-public-data-methods-comparison" title="Permanent link">&para;</a></h2>
+<p>Prepare QuickStart 1 without analysis:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
 
-<span class="c1"># Download and validate the small public test data.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--make_test<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test_root<span class="w"> </span><span class="s2">&quot;test&quot;</span>
-
-<span class="c1"># Copy the generated Illumina YAML to a new methods-comparison file.</span>
-cp<span class="w"> </span><span class="s2">&quot;test/configs/illumina.quickstart.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span>
-
-<span class="c1"># Edit only the copied YAML.</span>
-nano<span class="w"> </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--download-only
 </code></pre></div>
-<p>Change <code>outdir</code> to <code>/path/to/my/directory/oncotracer/test/runs/illumina_conservative</code>, then add:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">fine_bin_kb_illumina</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
-<span class="nt">search_radius_bins</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="nt">min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
-<span class="nt">min_local_log2_diff_illumina</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.15</span>
-<span class="nt">min_bic_gain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<span class="nt">permutations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
-<span class="nt">permutation_p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span>
-<span class="nt">accept_rule</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p_and_bic</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+<p>Run the default Illumina analysis:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
 
-<span class="c1"># Inspect, check, and run the conservative comparison.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,180p&#39;</span><span class="w"> </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;params/illumina.conservative.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/illumina_conservative&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.quickstart.yml&quot;</span>
+</code></pre></div>
+<p>Create a separate conservative configuration. The script changes <code>outdir</code> and appends non-default refinement values while leaving the original YAML unchanged:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+<span class="nv">DEFAULT_CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.quickstart.yml&quot;</span>
+<span class="nv">CONSERVATIVE_CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.conservative.yml&quot;</span>
+
+python3<span class="w"> </span>-<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$DEFAULT_CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CONSERVATIVE_CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina_conservative&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="s">from pathlib import Path</span>
+<span class="s">import sys</span>
+
+<span class="s">source = Path(sys.argv[1])</span>
+<span class="s">destination = Path(sys.argv[2])</span>
+<span class="s">outdir = Path(sys.argv[3]).resolve()</span>
+<span class="s">lines = source.read_text(encoding=&quot;utf-8&quot;).splitlines()</span>
+<span class="s">updated = []</span>
+<span class="s">for line in lines:</span>
+<span class="s">    if line.startswith(&quot;outdir:&quot;):</span>
+<span class="s">        updated.append(f&quot;outdir: {outdir}&quot;)</span>
+<span class="s">    else:</span>
+<span class="s">        updated.append(line)</span>
+<span class="s">updated.extend(</span>
+<span class="s">    [</span>
+<span class="s">        &quot;fine_bin_kb_illumina: 20&quot;,</span>
+<span class="s">        &quot;search_radius_bins: 2&quot;,</span>
+<span class="s">        &quot;min_mapq: 30&quot;,</span>
+<span class="s">        &quot;min_local_log2_diff_illumina: 0.15&quot;,</span>
+<span class="s">        &quot;min_bic_gain: 8&quot;,</span>
+<span class="s">        &quot;permutations: 500&quot;,</span>
+<span class="s">        &quot;permutation_p: 0.05&quot;,</span>
+<span class="s">        &quot;accept_rule: p_and_bic&quot;,</span>
+<span class="s">    ]</span>
+<span class="s">)</span>
+<span class="s">destination.write_text(&quot;\n&quot;.join(updated) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)</span>
+<span class="s">PY</span>
+
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,220p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONSERVATIVE_CONFIG</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Validate the native command graph before computation:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.conservative.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run
+</code></pre></div>
+<p>Run the comparison:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.conservative.yml&quot;</span>
 </code></pre></div>
 <p>Compare the final tables:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and result paths.</span>
-<span class="nv">DEFAULT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/test/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
-<span class="nv">EXPERIMENT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/test/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+<span class="nv">DEFAULT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
+<span class="nv">EXPERIMENT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
 
-<span class="c1"># Confirm and compare both outputs.</span>
 ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEFAULT</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$EXPERIMENT</span><span class="s2">&quot;</span>
-diff<span class="w"> </span>-u<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEFAULT</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$EXPERIMENT</span><span class="s2">&quot;</span>
+diff<span class="w"> </span>-u<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEFAULT</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$EXPERIMENT</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 </code></pre></div>
-<p>Predefine the comparison, retain the default run, and report every non-default setting. Do not tune parameters toward a desired diagnosis.</p>
+<p>Also compare:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv&quot;</span>
+</code></pre></div>
+<h2 id="reporting-a-comparison">Reporting a comparison<a class="headerlink" href="#reporting-a-comparison" title="Permanent link">&para;</a></h2>
+<p>Predefine the comparison, use a new <code>outdir</code>, retain the default analysis, and report every non-default setting. Do not tune thresholds toward a desired diagnosis. Review coverage, confidence intervals, segment amplitude, caller uncertainty, and orthogonal evidence before treating a shifted boundary as meaningful.</p>
 
 
 

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+        <meta name="description" content="Native auditable LP-WGS CNA analysis for ONT and Illumina data">
       
       
         <meta name="author" content="OncoTracer developers">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Full Tutorial - OncoTracer</title>
+        <title>Complete PRJNA754199 archive - OncoTracer</title>
       
     
     
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Full Tutorial
+              Complete PRJNA754199 archive
             
           </span>
         </div>
@@ -233,17 +233,18 @@
     
   
   
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
   
   Full Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -300,6 +301,26 @@
   
   
   Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../native_architecture/" class="md-tabs__link">
+          
+  
+  
+  Assurance and Migration
 
         </a>
       </li>
@@ -467,7 +488,7 @@
   <span class="md-ellipsis">
     
   
-    1. Install Requirements
+    Install Requirements
   
 
     
@@ -523,7 +544,7 @@
   <span class="md-ellipsis">
     
   
-    2. QuickStart Example 1 (Illumina + ONT)
+    QuickStart 1 — Illumina + ONT
   
 
     
@@ -551,7 +572,7 @@
   <span class="md-ellipsis">
     
   
-    3. Automatic Setup for Your FASTQs (Recommended)
+    Automatic Setup for Your FASTQs
   
 
     
@@ -579,7 +600,7 @@
   <span class="md-ellipsis">
     
   
-    4. QuickStart Example 2 (Three-Sample Public)
+    QuickStart 2 — HCC1143
   
 
     
@@ -635,7 +656,7 @@
   <span class="md-ellipsis">
     
   
-    Manual YAML Editing (Second Option)
+    Manual YAML Editing
   
 
     
@@ -664,6 +685,63 @@
   
   
   
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Full Tutorial
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Full Tutorial
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
     <li class="md-nav__item md-nav__item--active">
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
@@ -679,7 +757,7 @@
   <span class="md-ellipsis">
     
   
-    Full Tutorial
+    Complete PRJNA754199 archive
   
 
     
@@ -697,7 +775,7 @@
   <span class="md-ellipsis">
     
   
-    Full Tutorial
+    Complete PRJNA754199 archive
   
 
     
@@ -723,10 +801,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-this-tutorial-contains" class="md-nav__link">
+  <a href="#dataset-represented-by-the-versioned-manifest" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What this tutorial contains
+        Dataset represented by the versioned manifest
       
     </span>
   </a>
@@ -734,10 +812,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#estimated-time-and-resources" class="md-nav__link">
+  <a href="#estimated-resources" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Estimated time and resources
+        Estimated resources
       
     </span>
   </a>
@@ -745,10 +823,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-clone-the-repository" class="md-nav__link">
+  <a href="#step-1-install-and-verify-one-backend" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Clone the repository
+        Step 1. Install and verify one backend
       
     </span>
   </a>
@@ -756,27 +834,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-prepare-the-software" class="md-nav__link">
+  <a href="#step-2-download-the-versioned-manifest-and-all-12-fastqs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Prepare the software
+        Step 2. Download the versioned manifest and all 12 FASTQs
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="2. Prepare the software">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-generate-the-single-end-yaml-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3. Generate the single-end YAML automatically
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-dry-run-the-native-stage-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4. Dry-run the native stage graph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-run-the-complete-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5. Run the complete analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 5. Run the complete analysis">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#poetry-launcher" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Poetry launcher
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#conda" class="md-nav__link">
@@ -788,45 +888,6 @@
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-download-and-validate-the-12-public-fastqs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Download and validate the 12 public FASTQs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-generate-the-samplesheet-and-yaml-automatically" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Generate the samplesheet and YAML automatically
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-check-the-wiring-and-run-the-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Check the wiring and run the analysis
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="5. Check the wiring and run the analysis">
-      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#docker" class="md-nav__link">
@@ -851,21 +912,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#poetry-launcher_1" class="md-nav__link">
+  <a href="#poetry-launcher" class="md-nav__link">
     <span class="md-ellipsis">
       
         Poetry launcher
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#conda_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Conda
       
     </span>
   </a>
@@ -878,10 +928,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-verify-the-completed-run" class="md-nav__link">
+  <a href="#step-6-verify-the-completed-result-tree" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Verify the completed run
+        Step 6. Verify the completed result tree
       
     </span>
   </a>
@@ -889,10 +939,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-review-the-results-carefully" class="md-nav__link">
+  <a href="#step-7-interpret-without-overclaiming" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Review the results carefully
+        Step 7. Interpret without overclaiming
       
     </span>
   </a>
@@ -900,10 +950,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-keep-the-files-that-describe-the-run" class="md-nav__link">
+  <a href="#step-8-preserve-provenance" class="md-nav__link">
     <span class="md-ellipsis">
       
-        8. Keep the files that describe the run
+        Step 8. Preserve provenance
       
     </span>
   </a>
@@ -911,22 +961,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verified-result-gallery" class="md-nav__link">
+  <a href="#representative-gallery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verified result gallery
+        Representative gallery
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Verified result gallery">
+    <nav class="md-nav" aria-label="Representative gallery">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#samurai-fitted-copy-number-profile" class="md-nav__link">
+  <a href="#qdnaseq-fitted-profile" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SAMURAI fitted copy-number profile
+        qDNAseq fitted profile
       
     </span>
   </a>
@@ -945,10 +995,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#cna-only-research-interpretation" class="md-nav__link">
+  <a href="#cna-only-interpretation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CNA-only research interpretation
+        CNA-only interpretation
       
     </span>
   </a>
@@ -985,6 +1035,14 @@
     </ul>
   
 </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -1058,7 +1116,7 @@
   <span class="md-ellipsis">
     
   
-    Mock Six Tumors + Four Normal Controls
+    Mock cohort — six tumors + four normals
   
 
     
@@ -1175,7 +1233,35 @@
   <span class="md-ellipsis">
     
   
-    Workflow Overview
+    Native Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canonical Native YAML
   
 
     
@@ -1569,7 +1655,7 @@
   <span class="md-ellipsis">
     
   
-    Help and About
+    Assurance and Migration
   
 
     
@@ -1582,6 +1668,179 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Assurance and Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../native_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Native architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../parity_release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration_v1_to_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../legacy_v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1709,10 +1968,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-this-tutorial-contains" class="md-nav__link">
+  <a href="#dataset-represented-by-the-versioned-manifest" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What this tutorial contains
+        Dataset represented by the versioned manifest
       
     </span>
   </a>
@@ -1720,10 +1979,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#estimated-time-and-resources" class="md-nav__link">
+  <a href="#estimated-resources" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Estimated time and resources
+        Estimated resources
       
     </span>
   </a>
@@ -1731,10 +1990,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-clone-the-repository" class="md-nav__link">
+  <a href="#step-1-install-and-verify-one-backend" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Clone the repository
+        Step 1. Install and verify one backend
       
     </span>
   </a>
@@ -1742,27 +2001,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-prepare-the-software" class="md-nav__link">
+  <a href="#step-2-download-the-versioned-manifest-and-all-12-fastqs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Prepare the software
+        Step 2. Download the versioned manifest and all 12 FASTQs
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="2. Prepare the software">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-generate-the-single-end-yaml-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3. Generate the single-end YAML automatically
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-dry-run-the-native-stage-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4. Dry-run the native stage graph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-run-the-complete-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5. Run the complete analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 5. Run the complete analysis">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#poetry-launcher" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Poetry launcher
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#conda" class="md-nav__link">
@@ -1774,45 +2055,6 @@
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-download-and-validate-the-12-public-fastqs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Download and validate the 12 public FASTQs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-generate-the-samplesheet-and-yaml-automatically" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Generate the samplesheet and YAML automatically
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-check-the-wiring-and-run-the-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Check the wiring and run the analysis
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="5. Check the wiring and run the analysis">
-      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#docker" class="md-nav__link">
@@ -1837,21 +2079,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#poetry-launcher_1" class="md-nav__link">
+  <a href="#poetry-launcher" class="md-nav__link">
     <span class="md-ellipsis">
       
         Poetry launcher
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#conda_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Conda
       
     </span>
   </a>
@@ -1864,10 +2095,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-verify-the-completed-run" class="md-nav__link">
+  <a href="#step-6-verify-the-completed-result-tree" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Verify the completed run
+        Step 6. Verify the completed result tree
       
     </span>
   </a>
@@ -1875,10 +2106,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-review-the-results-carefully" class="md-nav__link">
+  <a href="#step-7-interpret-without-overclaiming" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Review the results carefully
+        Step 7. Interpret without overclaiming
       
     </span>
   </a>
@@ -1886,10 +2117,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-keep-the-files-that-describe-the-run" class="md-nav__link">
+  <a href="#step-8-preserve-provenance" class="md-nav__link">
     <span class="md-ellipsis">
       
-        8. Keep the files that describe the run
+        Step 8. Preserve provenance
       
     </span>
   </a>
@@ -1897,22 +2128,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verified-result-gallery" class="md-nav__link">
+  <a href="#representative-gallery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verified result gallery
+        Representative gallery
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Verified result gallery">
+    <nav class="md-nav" aria-label="Representative gallery">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#samurai-fitted-copy-number-profile" class="md-nav__link">
+  <a href="#qdnaseq-fitted-profile" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SAMURAI fitted copy-number profile
+        qDNAseq fitted profile
       
     </span>
   </a>
@@ -1931,10 +2162,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#cna-only-research-interpretation" class="md-nav__link">
+  <a href="#cna-only-interpretation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CNA-only research interpretation
+        CNA-only interpretation
       
     </span>
   </a>
@@ -1994,21 +2225,20 @@
 
 
 <h1 id="full-tutorial-complete-public-prjna754199-archive">Full tutorial: complete public PRJNA754199 archive<a class="headerlink" href="#full-tutorial-complete-public-prjna754199-archive" title="Permanent link">&para;</a></h1>
-<p>This tutorial processes the <strong>12 Illumina plasma cfDNA libraries currently available in the public PRJNA754199 read archive</strong>. It downloads and validates the FASTQs, creates the sample table, generates the configuration automatically, runs OncoTracer, verifies the required files, and reviews the research outputs.</p>
+<p>This tutorial processes the 12 Illumina plasma cfDNA libraries in the versioned <code>examples/prjna754199/manifest.tsv</code>. It downloads and validates the FASTQs, creates the exact sample table, generates the native YAML automatically, runs OncoTracer, verifies the main outputs, and reviews the research results.</p>
 <p><a href="../assets/tutorial/full_tutorial_flow.svg"><img alt="Roadmap for the complete PRJNA754199 tutorial." src="../assets/tutorial/full_tutorial_flow.svg" /></a></p>
-<p>Download and Automatic Setup commands are backend-independent. The analysis section provides explicit Docker, Singularity/Apptainer, Poetry, and Conda commands. See <a href="../installation/">Installation</a> for the required software.</p>
-<h2 id="what-this-tutorial-contains">What this tutorial contains<a class="headerlink" href="#what-this-tutorial-contains" title="Permanent link">&para;</a></h2>
-<p>The associated PLOS ONE article describes 41 plasma specimens from 15 patients. On <strong>15 July 2026</strong>, the ENA read-run report returned 12 public runs for the BioProject, so this tutorial processes those 12 runs rather than every specimen described in the article.</p>
+<p>The original article describes more specimens than the versioned public-run manifest. This tutorial intentionally analyzes the 12 archived runs represented by that manifest and records the manifest with the results.</p>
+<h2 id="dataset-represented-by-the-versioned-manifest">Dataset represented by the versioned manifest<a class="headerlink" href="#dataset-represented-by-the-versioned-manifest" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Public archive snapshot</th>
+<th>Property</th>
 <th style="text-align: right;">Value</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Public runs processed here</td>
+<td>Public runs</td>
 <td style="text-align: right;">12</td>
 </tr>
 <tr>
@@ -2016,7 +2246,7 @@
 <td style="text-align: right;">single-end</td>
 </tr>
 <tr>
-<td>Instrument and read length</td>
+<td>Instrument/read length</td>
 <td style="text-align: right;">Illumina HiSeq 2500, 36 bp</td>
 </tr>
 <tr>
@@ -2029,185 +2259,240 @@
 </tr>
 <tr>
 <td>Compressed download</td>
-<td style="text-align: right;">6,171,900,300 bytes, about 5.75 GiB</td>
+<td style="text-align: right;">about 5.75 GiB</td>
 </tr>
 <tr>
-<td>Reference and caller</td>
-<td style="text-align: right;">hg38, SAMURAI/qDNAseq, 100 kb</td>
+<td>Reference/caller</td>
+<td style="text-align: right;">hg38, qDNAseq, 100 kb</td>
 </tr>
 </tbody>
 </table>
-<p><code>DDLPS_*</code> and <code>WDLPS_*</code> are submitter-provided archive aliases. They are retained for provenance and are not independently verified diagnoses. This is an independent hg38/qDNAseq reanalysis, not an exact reproduction of the publication's GRCh37 Plasma-Seq method.</p>
-<h2 id="estimated-time-and-resources">Estimated time and resources<a class="headerlink" href="#estimated-time-and-resources" title="Permanent link">&para;</a></h2>
-<p>Use Linux with at least 150 GiB of free working space, 16 CPU cores, and at least 80 GiB of addressable RAM. The first uncached run downloads hg38 and creates a BWA index. Indexing commonly takes <strong>30–60 minutes</strong> before alignment begins, and the complete 12-library analysis can take several hours.</p>
-<h2 id="1-clone-the-repository">1. Clone the repository<a class="headerlink" href="#1-clone-the-repository" title="Permanent link">&para;</a></h2>
-<p>Use <code>/path/to/my/directory/oncotracer</code> throughout this tutorial.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Clone OncoTracer and enter the repository.</span>
-git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git
-<span class="nb">cd</span><span class="w"> </span>oncotracer
+<p><code>DDLPS_*</code> and <code>WDLPS_*</code> are submitter-provided archive aliases. They are retained for provenance and are not independently verified diagnoses. This is a native hg38/qDNAseq reanalysis rather than an exact reproduction of the publication's original GRCh37 Plasma-Seq workflow.</p>
+<h2 id="estimated-resources">Estimated resources<a class="headerlink" href="#estimated-resources" title="Permanent link">&para;</a></h2>
+<p>Use Linux with at least:</p>
+<ul>
+<li>150 GiB of free working space;</li>
+<li>16 CPU cores when available;</li>
+<li>80 GiB of addressable memory for the first BWA index;</li>
+<li>a stable connection for the approximately 5.75 GiB download.</li>
+</ul>
+<p>The complete analysis can take several hours. The native ledger allows safe reuse of valid completed stages.</p>
+<h2 id="step-1-install-and-verify-one-backend">Step 1. Install and verify one backend<a class="headerlink" href="#step-1-install-and-verify-one-backend" title="Permanent link">&para;</a></h2>
+<p>Conda:</p>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
+oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 </code></pre></div>
-<p>Skip the clone command when the repository already exists.</p>
-<p><a id="2-prepare-software-only"></a></p>
-<h2 id="2-prepare-the-software">2. Prepare the software<a class="headerlink" href="#2-prepare-the-software" title="Permanent link">&para;</a></h2>
 <p>Docker:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-
-<span class="c1"># Pull or reuse the Docker image and test the required software.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/install_docker&quot;</span>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
+oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>docker
 </code></pre></div>
 <p>Singularity or Apptainer:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-
-<span class="c1"># Prepare the same workflow image through the HPC container option.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/install_singularity&quot;</span>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
+oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>singularity
 </code></pre></div>
-<h3 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Install the locked Poetry launcher and prepare the Docker scientific backend.</span>
-poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span>.<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--install<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/install_poetry&quot;</span>
-</code></pre></div>
-<h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Create or reuse the native Conda environments and test the required software.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--install<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--lpwgs_root<span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/install_conda&quot;</span>
-</code></pre></div>
-<p>The installation route checks the software and stops. It does not download patient reads or hg38 and does not start the analysis.</p>
-<h2 id="3-download-and-validate-the-12-public-fastqs">3. Download and validate the 12 public FASTQs<a class="headerlink" href="#3-download-and-validate-the-12-public-fastqs" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+<p>Choose one route for the real run.</p>
+<h2 id="step-2-download-the-versioned-manifest-and-all-12-fastqs">Step 2. Download the versioned manifest and all 12 FASTQs<a class="headerlink" href="#step-2-download-the-versioned-manifest-and-all-12-fastqs" title="Permanent link">&para;</a></h2>
+<p>The following block uses only Python's standard library. It renames each archive FASTQ to the manifest sample alias so Automatic Setup can match the sample table directly. Existing files are reused only when both expected byte count and MD5 match.</p>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+<span class="nv">MANIFEST</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/manifest.tsv&quot;</span>
+<span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/input/fastq&quot;</span>
 
-<span class="c1"># Download or reuse all 12 FASTQs and verify size, MD5, and gzip integrity.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--make_prjna754199<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test_root<span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/prjna754199_download&quot;</span>
-</code></pre></div>
-<p>The command creates <code>/path/to/my/directory/oncotracer/test/public/prjna754199</code>. A completed file is reused when the command is repeated.</p>
-<p><a href="../assets/tutorial/full_tutorial_download_checkpoint.svg"><img alt="Successful validation checkpoint for the 12 PRJNA754199 FASTQs." src="../assets/tutorial/full_tutorial_download_checkpoint.svg" /></a></p>
-<p>Create or replace the exact sample table with this copy/paste-ready block:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and reads paths.</span>
-<span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/test/public/prjna754199&quot;</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/results&quot;</span>
 
-<span class="c1"># Create the exact 12-sample table.</span>
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
-<span class="s">sample_name,status</span>
-<span class="s">DDLPS_1a,TUMOR</span>
-<span class="s">DDLPS_1b,TUMOR</span>
-<span class="s">DDLPS_1c,TUMOR</span>
-<span class="s">DDLPS_2,TUMOR</span>
-<span class="s">DDLPS_3a,TUMOR</span>
-<span class="s">DDLPS_3b,TUMOR</span>
-<span class="s">WDLPS_1a,TUMOR</span>
-<span class="s">WDLPS_1b,TUMOR</span>
-<span class="s">WDLPS_1c,TUMOR</span>
-<span class="s">WDLPS_1d,TUMOR</span>
-<span class="s">WDLPS_2,TUMOR</span>
-<span class="s">WDLPS_3,TUMOR</span>
-<span class="s">CSV</span>
+python3<span class="w"> </span>-<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;https://raw.githubusercontent.com/cfarkas/oncotracer/v2.0.0/examples/prjna754199/manifest.tsv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="s">from __future__ import annotations</span>
 
-<span class="c1"># Display the saved table.</span>
+<span class="s">import csv</span>
+<span class="s">import hashlib</span>
+<span class="s">import pathlib</span>
+<span class="s">import sys</span>
+<span class="s">import urllib.request</span>
+
+<span class="s">manifest_url = sys.argv[1]</span>
+<span class="s">manifest_path = pathlib.Path(sys.argv[2])</span>
+<span class="s">reads_dir = pathlib.Path(sys.argv[3])</span>
+<span class="s">reads_dir.mkdir(parents=True, exist_ok=True)</span>
+
+<span class="s">with urllib.request.urlopen(manifest_url) as response:</span>
+<span class="s">    manifest_bytes = response.read()</span>
+<span class="s">manifest_path.write_bytes(manifest_bytes)</span>
+
+<span class="s">def md5(path: pathlib.Path) -&gt; str:</span>
+<span class="s">    digest = hashlib.md5()</span>
+<span class="s">    with path.open(&quot;rb&quot;) as handle:</span>
+<span class="s">        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b&quot;&quot;):</span>
+<span class="s">            digest.update(chunk)</span>
+<span class="s">    return digest.hexdigest()</span>
+
+<span class="s">with manifest_path.open(newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
+<span class="s">    rows = list(csv.DictReader(handle, delimiter=&quot;\t&quot;))</span>
+
+<span class="s">if len(rows) != 12:</span>
+<span class="s">    raise SystemExit(f&quot;Expected 12 manifest rows, observed {len(rows)}&quot;)</span>
+
+<span class="s">for row in rows:</span>
+<span class="s">    destination = reads_dir / f&quot;{row[&#39;sample_alias&#39;]}.fastq.gz&quot;</span>
+<span class="s">    expected_bytes = int(row[&quot;fastq_bytes&quot;])</span>
+<span class="s">    expected_md5 = row[&quot;fastq_md5&quot;]</span>
+
+<span class="s">    valid = (</span>
+<span class="s">        destination.is_file()</span>
+<span class="s">        and destination.stat().st_size == expected_bytes</span>
+<span class="s">        and md5(destination) == expected_md5</span>
+<span class="s">    )</span>
+<span class="s">    if not valid:</span>
+<span class="s">        temporary = destination.with_suffix(destination.suffix + &quot;.part&quot;)</span>
+<span class="s">        temporary.unlink(missing_ok=True)</span>
+<span class="s">        print(f&quot;Downloading {row[&#39;run_accession&#39;]} -&gt; {destination.name}&quot;, flush=True)</span>
+<span class="s">        urllib.request.urlretrieve(row[&quot;https_url&quot;], temporary)</span>
+<span class="s">        if temporary.stat().st_size != expected_bytes:</span>
+<span class="s">            raise SystemExit(f&quot;Byte-count mismatch: {destination.name}&quot;)</span>
+<span class="s">        if md5(temporary) != expected_md5:</span>
+<span class="s">            raise SystemExit(f&quot;MD5 mismatch: {destination.name}&quot;)</span>
+<span class="s">        temporary.replace(destination)</span>
+<span class="s">    print(f&quot;VALID {destination.name}&quot;, flush=True)</span>
+
+<span class="s">samples = reads_dir / &quot;samples.csv&quot;</span>
+<span class="s">with samples.open(&quot;w&quot;, newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
+<span class="s">    writer = csv.writer(handle)</span>
+<span class="s">    writer.writerow([&quot;sample_name&quot;, &quot;status&quot;])</span>
+<span class="s">    for row in rows:</span>
+<span class="s">        writer.writerow([row[&quot;sample_alias&quot;], &quot;TUMOR&quot;])</span>
+
+<span class="s">print(f&quot;Wrote {samples}&quot;)</span>
+<span class="s">PY</span>
+
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span>/*.fastq.gz
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">/samples.csv&quot;</span>
 </code></pre></div>
-<p>See <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/manifest.tsv"><code>examples/prjna754199/manifest.tsv</code></a> for the public files and checksums and <a href="https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md"><code>PROVENANCE.md</code></a> for the archive notes.</p>
-<p><a id="4-generate-and-inspect-the-single-end-configuration"></a></p>
-<h2 id="4-generate-the-samplesheet-and-yaml-automatically">4. Generate the samplesheet and YAML automatically<a class="headerlink" href="#4-generate-the-samplesheet-and-yaml-automatically" title="Permanent link">&para;</a></h2>
-<p><code>--auto_params</code> matches the 12 sample names to the single-end FASTQs, validates the files, and writes the YAML and samplesheet. It does not start the analysis.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+<p>Preserve <code>manifest.tsv</code> with the study record.</p>
+<h2 id="step-3-generate-the-single-end-yaml-automatically">Step 3. Generate the single-end YAML automatically<a class="headerlink" href="#step-3-generate-the-single-end-yaml-automatically" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
 
-<span class="c1"># Generate the 12-sample Illumina configuration and enable CNA-only reports.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;test/public/prjna754199&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;test/public/prjna754199/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;test/configs/prjna754199&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;test/runs/prjna754199&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--run_cna_classifier<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--cna_classifier_sample_set<span class="w"> </span>sarcoma<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pathology_use_biomed_models<span class="w"> </span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/prjna754199_auto_params&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/input/fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/results&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--run-cna-classifier
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+<p>Add deterministic sarcoma-context settings:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199/config/illumina.auto.yml&quot;</span>
 
-<span class="c1"># List the generated YAML, samplesheet, and manifest.</span>
-ls<span class="w"> </span>-1<span class="w"> </span><span class="s2">&quot;test/configs/prjna754199&quot;</span>
+cat<span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;YAML&#39;</span>
+<span class="s">cna_classifier_sample_set: sarcoma</span>
+<span class="s">pathology_use_biomed_models: false</span>
+<span class="s">run_gistic: true</span>
+<span class="s">gistic_required: false</span>
+<span class="s">knowledge_web: false</span>
+<span class="s">knowledge_literature_llm: false</span>
+<span class="s">knowledge_deep_literature: false</span>
+<span class="s">YAML</span>
 
-<span class="c1"># Inspect the generated analysis settings.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span><span class="s2">&quot;test/configs/prjna754199/illumina.auto.yml&quot;</span>
-
-<span class="c1"># Inspect the generated 12-row single-end samplesheet.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;test/configs/prjna754199/illumina.samplesheet.csv&quot;</span>
-
-<span class="c1"># Inspect the sample counts and file hashes.</span>
-cat<span class="w"> </span><span class="s2">&quot;test/configs/prjna754199/auto_params_manifest.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,220p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
 </code></pre></div>
-<p>The configuration directory contains:</p>
-<div class="highlight"><pre><span></span><code>/path/to/my/directory/oncotracer/test/configs/prjna754199/
+<p>Automatic Setup creates:</p>
+<div class="highlight"><pre><span></span><code>oncotracer-prjna754199/config/
 ├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
 </code></pre></div>
-<p><a id="5-check-wiring-then-run-the-real-workflow"></a></p>
-<h2 id="5-check-the-wiring-and-run-the-analysis">5. Check the wiring and run the analysis<a class="headerlink" href="#5-check-the-wiring-and-run-the-analysis" title="Permanent link">&para;</a></h2>
-<p>Optional Docker stub check:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Check the generated workflow connections without running the scientific tools.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>-stub-run<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/prjna754199_stub&quot;</span>
+<p>Inspect the exact 12-row samplesheet:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
+cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/auto_params_manifest.tsv&quot;</span>
 </code></pre></div>
-<p>Choose exactly one method for the real analysis.</p>
+<h2 id="step-4-dry-run-the-native-stage-graph">Step 4. Dry-run the native stage graph<a class="headerlink" href="#step-4-dry-run-the-native-stage-graph" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run
+</code></pre></div>
+<p>The dry-run prints native argument arrays and validates the configuration without starting alignment or CNA calling.</p>
+<h2 id="step-5-run-the-complete-analysis">Step 5. Run the complete analysis<a class="headerlink" href="#step-5-run-the-complete-analysis" title="Permanent link">&para;</a></h2>
+<p>Choose exactly one backend.</p>
+<h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+</code></pre></div>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run or resume the complete 12-library workflow with Docker.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/prjna754199-docker&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span>
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run or resume the complete workflow through Singularity or Apptainer.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/prjna754199-singularity&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<h3 id="poetry-launcher_1">Poetry launcher<a class="headerlink" href="#poetry-launcher_1" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Install the launcher and run the complete workflow through Poetry with Docker.</span>
-poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--repo-dir<span class="w"> </span>.<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/prjna754199-poetry&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<h3 id="conda_1">Conda<a class="headerlink" href="#conda_1" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run or resume the complete workflow with native Conda environments.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-params-file<span class="w"> </span><span class="s2">&quot;test/configs/prjna754199/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;test/work/prjna754199-conda&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-resume
-</code></pre></div>
-<p>Keep the terminal open until Nextflow returns to the prompt. To resume, repeat the selected command with the same route-specific work directory.</p>
-<h2 id="6-verify-the-completed-run">6. Verify the completed run<a class="headerlink" href="#6-verify-the-completed-run" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
 
-<span class="c1"># Verify the exact 12 samples and all required output groups.</span>
-python3<span class="w"> </span><span class="s2">&quot;examples/prjna754199/verify_outputs.py&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;test/runs/prjna754199&quot;</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span>
 </code></pre></div>
-<p>A successful check ends with:</p>
-<div class="highlight"><pre><span></span><code>SUCCESS: complete PRJNA754199 tutorial outputs are verified.
+<h3 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span>
 </code></pre></div>
-<p><a href="../assets/tutorial/full_tutorial_verify_checkpoint.svg"><img alt="Successful output-verification checkpoint for the complete tutorial." src="../assets/tutorial/full_tutorial_verify_checkpoint.svg" /></a></p>
-<p>Start reviewing the run from:</p>
+<p>Keep the terminal open until the command returns. Repeat the same command to resume content-matched completed stages.</p>
+<h2 id="step-6-verify-the-completed-result-tree">Step 6. Verify the completed result tree<a class="headerlink" href="#step-6-verify-the-completed-result-tree" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">OUTDIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199/results&quot;</span>
+
+python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="s">from __future__ import annotations</span>
+
+<span class="s">import pathlib</span>
+<span class="s">import sys</span>
+
+<span class="s">outdir = pathlib.Path(sys.argv[1])</span>
+<span class="s">required = [</span>
+<span class="s">    outdir / &quot;06_workflow_summary&quot; / &quot;workflow_summary.txt&quot;,</span>
+<span class="s">    outdir / &quot;06_workflow_summary&quot; / &quot;workflow_summary.json&quot;,</span>
+<span class="s">    outdir / &quot;06_workflow_summary&quot; / &quot;native_run_manifest.json&quot;,</span>
+<span class="s">    outdir / &quot;03_cna_codification&quot; / &quot;cna_events.tsv&quot;,</span>
+<span class="s">    outdir / &quot;03_cna_codification&quot; / &quot;cna_cytogenomic_notation.tsv&quot;,</span>
+<span class="s">    outdir / &quot;04_cna_custom_plots&quot; / &quot;cna_per_sample_pages.pdf&quot;,</span>
+<span class="s">    outdir / &quot;.oncotracer-native&quot; / &quot;trace.tsv&quot;,</span>
+<span class="s">    outdir / &quot;.oncotracer-native&quot; / &quot;state.json&quot;,</span>
+<span class="s">]</span>
+<span class="s">missing = [path for path in required if not path.is_file() or path.stat().st_size == 0]</span>
+<span class="s">if missing:</span>
+<span class="s">    raise SystemExit(&quot;Missing or empty outputs:\n&quot; + &quot;\n&quot;.join(map(str, missing)))</span>
+
+<span class="s">summary = (outdir / &quot;06_workflow_summary&quot; / &quot;workflow_summary.txt&quot;).read_text(</span>
+<span class="s">    encoding=&quot;utf-8&quot;</span>
+<span class="s">)</span>
+<span class="s">for required_text in (&quot;mode=illumina&quot;, &quot;engine=native&quot;, &quot;nextflow_used=false&quot;):</span>
+<span class="s">    if required_text not in summary:</span>
+<span class="s">        raise SystemExit(f&quot;Summary is missing {required_text!r}&quot;)</span>
+
+<span class="s">print(&quot;SUCCESS: complete PRJNA754199 native tutorial outputs are present.&quot;)</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p>Start review from:</p>
 <table>
 <thead>
 <tr>
 <th>Output</th>
-<th>Location below <code>test/runs/prjna754199/</code></th>
+<th>Location below <code>results/</code></th>
 </tr>
 </thead>
 <tbody>
@@ -2216,11 +2501,11 @@ python3<span class="w"> </span><span class="s2">&quot;examples/prjna754199/verif
 <td><code>06_workflow_summary/workflow_summary.txt</code></td>
 </tr>
 <tr>
-<td>SAMURAI qDNAseq profiles</td>
+<td>qDNAseq profiles</td>
 <td><code>01_samurai_illumina/qdnaseq/plots/</code></td>
 </tr>
 <tr>
-<td>Boundary-refinement summary</td>
+<td>Refinement summary</td>
 <td><code>02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv</code></td>
 </tr>
 <tr>
@@ -2228,7 +2513,7 @@ python3<span class="w"> </span><span class="s2">&quot;examples/prjna754199/verif
 <td><code>03_cna_codification/cna_events.tsv</code></td>
 </tr>
 <tr>
-<td>Cohort and per-sample plots</td>
+<td>Cohort/per-sample plots</td>
 <td><code>04_cna_custom_plots/</code></td>
 </tr>
 <tr>
@@ -2241,30 +2526,28 @@ python3<span class="w"> </span><span class="s2">&quot;examples/prjna754199/verif
 </tr>
 </tbody>
 </table>
-<p><a id="7-interpret-without-overclaiming"></a></p>
-<h2 id="7-review-the-results-carefully">7. Review the results carefully<a class="headerlink" href="#7-review-the-results-carefully" title="Permanent link">&para;</a></h2>
-<p>Black qDNAseq points show normalized bin-level signal; fitted horizontal lines show the caller's CNA segments. Boundary refinement evaluates whether local BAM coverage supports moving each coarse boundary.</p>
-<p>The classifier may flag regions such as 12q13–q15 or overlaps with genes including <code>MDM2</code> and <code>CDK4</code>. These are research findings, not confirmed diagnoses or treatment recommendations. Review coverage, segment size, focality, longitudinal consistency, and the original CNA table. Confirm important findings with a validated orthogonal assay.</p>
-<p>No pathology table is supplied in this public archive example, so the generated reports are CNA-only research summaries.</p>
-<p><a id="8-preserve-provenance"></a></p>
-<h2 id="8-keep-the-files-that-describe-the-run">8. Keep the files that describe the run<a class="headerlink" href="#8-keep-the-files-that-describe-the-run" title="Permanent link">&para;</a></h2>
-<p>Preserve:</p>
+<h2 id="step-7-interpret-without-overclaiming">Step 7. Interpret without overclaiming<a class="headerlink" href="#step-7-interpret-without-overclaiming" title="Permanent link">&para;</a></h2>
+<p>Black qDNAseq points represent normalized bin-level signal; fitted horizontal lines represent coarse CNA segments. Boundary refinement evaluates whether local BAM depth supports moving each coarse boundary.</p>
+<p>The classifier may flag recurrent regions or overlaps with genes such as <code>MDM2</code> and <code>CDK4</code>. These are research findings, not confirmed diagnoses or treatment recommendations. Review coverage, segment size, focality, longitudinal consistency, pathology, and the original CNA tables. Confirm important findings with a validated orthogonal assay.</p>
+<p>No pathology table is supplied in this public archive example, so reports are CNA-only research summaries.</p>
+<h2 id="step-8-preserve-provenance">Step 8. Preserve provenance<a class="headerlink" href="#step-8-preserve-provenance" title="Permanent link">&para;</a></h2>
+<p>Keep:</p>
 <ul>
-<li><code>examples/prjna754199/manifest.tsv</code> and <code>samples.csv</code>;</li>
-<li><code>test/configs/prjna754199/illumina.samplesheet.csv</code>, <code>illumina.auto.yml</code>, and <code>auto_params_manifest.tsv</code>;</li>
-<li><code>test/runs/prjna754199/06_workflow_summary/workflow_summary.txt</code>;</li>
-<li>the CNA tables, plots, and reports used in any interpretation;</li>
-<li>the OncoTracer commit and installation manifest.</li>
+<li><code>manifest.tsv</code> and <code>input/fastq/samples.csv</code>;</li>
+<li><code>config/illumina.samplesheet.csv</code>, <code>illumina.auto.yml</code>, and <code>auto_params_manifest.tsv</code>;</li>
+<li><code>.oncotracer-native/trace.tsv</code> and <code>state.json</code>;</li>
+<li><code>06_workflow_summary/native_run_manifest.json</code>;</li>
+<li>the release <code>SHA256SUMS</code> and <code>release-provenance.json</code>;</li>
+<li>all result tables, plots, and reports used in interpretation.</li>
 </ul>
-<h2 id="verified-result-gallery">Verified result gallery<a class="headerlink" href="#verified-result-gallery" title="Permanent link">&para;</a></h2>
-<p>These static exports come from the complete 12-run workflow. They demonstrate software output and do not validate a diagnosis.</p>
-<h3 id="samurai-fitted-copy-number-profile">SAMURAI fitted copy-number profile<a class="headerlink" href="#samurai-fitted-copy-number-profile" title="Permanent link">&para;</a></h3>
+<h2 id="representative-gallery">Representative gallery<a class="headerlink" href="#representative-gallery" title="Permanent link">&para;</a></h2>
+<h3 id="qdnaseq-fitted-profile">qDNAseq fitted profile<a class="headerlink" href="#qdnaseq-fitted-profile" title="Permanent link">&para;</a></h3>
 <p><a href="../assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.pdf">Open the source qDNAseq segment PDF</a>.</p>
-<p><img alt="SAMURAI qDNAseq profile for the public DDLPS_1b archive alias" src="../assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.png" /></p>
+<p><img alt="qDNAseq profile for the public DDLPS_1b archive alias" src="../assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.png" /></p>
 <h3 id="boundary-refinement-statistics">Boundary-refinement statistics<a class="headerlink" href="#boundary-refinement-statistics" title="Permanent link">&para;</a></h3>
-<p><a href="../assets/full_tutorial/prjna754199_refinement_summary.csv">Open the source 12-sample refinement summary</a>.</p>
+<p><a href="../assets/full_tutorial/prjna754199_refinement_summary.csv">Open the source refinement summary</a>.</p>
 <p><img alt="Counts of refined, retained, and poor-resolution boundaries" src="../assets/full_tutorial/prjna754199_refinement_summary.png" /></p>
-<h3 id="cna-only-research-interpretation">CNA-only research interpretation<a class="headerlink" href="#cna-only-research-interpretation" title="Permanent link">&para;</a></h3>
+<h3 id="cna-only-interpretation">CNA-only interpretation<a class="headerlink" href="#cna-only-interpretation" title="Permanent link">&para;</a></h3>
 <p><a href="../assets/full_tutorial/prjna754199_cna_interpretation.pdf">Open the source research-use classifier report</a>.</p>
 <p><img alt="CNA-only research interpretation for DDLPS_1b" src="../assets/full_tutorial/prjna754199_cna_interpretation.png" /></p>
 <h2 id="primary-sources">Primary sources<a class="headerlink" href="#primary-sources" title="Permanent link">&para;</a></h2>

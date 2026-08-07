@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+        <meta name="description" content="Native auditable LP-WGS CNA analysis for ONT and Illumina data">
       
       
         <meta name="author" content="OncoTracer developers">
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#input-files" class="md-skip">
+        <a href="#input-files-and-folder-layouts" class="md-skip">
           Skip to content
         </a>
       
@@ -233,17 +233,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../full_tutorial/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../full_tutorial/" class="md-tabs__link">
+          
+  
   
   Full Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -300,6 +301,26 @@
   
   
   Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../native_architecture/" class="md-tabs__link">
+          
+  
+  
+  Assurance and Migration
 
         </a>
       </li>
@@ -470,7 +491,7 @@
   <span class="md-ellipsis">
     
   
-    1. Install Requirements
+    Install Requirements
   
 
     
@@ -526,7 +547,7 @@
   <span class="md-ellipsis">
     
   
-    2. QuickStart Example 1 (Illumina + ONT)
+    QuickStart 1 — Illumina + ONT
   
 
     
@@ -554,7 +575,7 @@
   <span class="md-ellipsis">
     
   
-    3. Automatic Setup for Your FASTQs (Recommended)
+    Automatic Setup for Your FASTQs
   
 
     
@@ -582,7 +603,7 @@
   <span class="md-ellipsis">
     
   
-    4. QuickStart Example 2 (Three-Sample Public)
+    QuickStart 2 — HCC1143
   
 
     
@@ -674,22 +695,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#automatic-setup-inputs" class="md-nav__link">
+  <a href="#illumina-input" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Automatic Setup inputs
+        Illumina input
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Automatic Setup inputs">
+    <nav class="md-nav" aria-label="Illumina input">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#illumina-sample-table" class="md-nav__link">
+  <a href="#automatic-sample-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina sample table
+        Automatic sample table
       
     </span>
   </a>
@@ -697,10 +718,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#ont-barcode-table" class="md-nav__link">
+  <a href="#supported-layouts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT barcode table
+        Supported layouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-illumina-samplesheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Illumina samplesheet
       
     </span>
   </a>
@@ -713,10 +745,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#manual-illumina-samplesheet" class="md-nav__link">
+  <a href="#illumina-local-normal-panel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Manual Illumina samplesheet
+        Illumina local normal panel
       
     </span>
   </a>
@@ -724,10 +756,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#manual-ont-input" class="md-nav__link">
+  <a href="#ont-input" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Manual ONT input
+        ONT input
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-ont-normal-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional ONT normal input
       
     </span>
   </a>
@@ -746,10 +789,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pre-run-checklist" class="md-nav__link">
+  <a href="#pre-run-validation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pre-run checklist
+        Pre-run validation
       
     </span>
   </a>
@@ -779,7 +822,7 @@
   <span class="md-ellipsis">
     
   
-    Manual YAML Editing (Second Option)
+    Manual YAML Editing
   
 
     
@@ -806,9 +849,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../full_tutorial/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -822,7 +883,51 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Full Tutorial
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../full_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete PRJNA754199 archive
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -895,7 +1000,7 @@
   <span class="md-ellipsis">
     
   
-    Mock Six Tumors + Four Normal Controls
+    Mock cohort — six tumors + four normals
   
 
     
@@ -1012,7 +1117,35 @@
   <span class="md-ellipsis">
     
   
-    Workflow Overview
+    Native Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canonical Native YAML
   
 
     
@@ -1406,7 +1539,7 @@
   <span class="md-ellipsis">
     
   
-    Help and About
+    Assurance and Migration
   
 
     
@@ -1419,6 +1552,179 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Assurance and Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../native_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Native architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../parity_release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration_v1_to_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../legacy_v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1557,22 +1863,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#automatic-setup-inputs" class="md-nav__link">
+  <a href="#illumina-input" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Automatic Setup inputs
+        Illumina input
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Automatic Setup inputs">
+    <nav class="md-nav" aria-label="Illumina input">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#illumina-sample-table" class="md-nav__link">
+  <a href="#automatic-sample-table" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina sample table
+        Automatic sample table
       
     </span>
   </a>
@@ -1580,10 +1886,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#ont-barcode-table" class="md-nav__link">
+  <a href="#supported-layouts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT barcode table
+        Supported layouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-illumina-samplesheet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Illumina samplesheet
       
     </span>
   </a>
@@ -1596,10 +1913,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#manual-illumina-samplesheet" class="md-nav__link">
+  <a href="#illumina-local-normal-panel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Manual Illumina samplesheet
+        Illumina local normal panel
       
     </span>
   </a>
@@ -1607,10 +1924,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#manual-ont-input" class="md-nav__link">
+  <a href="#ont-input" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Manual ONT input
+        ONT input
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-ont-normal-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional ONT normal input
       
     </span>
   </a>
@@ -1629,10 +1957,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pre-run-checklist" class="md-nav__link">
+  <a href="#pre-run-validation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pre-run checklist
+        Pre-run validation
       
     </span>
   </a>
@@ -1664,168 +1992,78 @@
   
 
 
-<h1 id="input-files">Input Files<a class="headerlink" href="#input-files" title="Permanent link">&para;</a></h1>
-<p>Choose the route that matches your data. The optional pathology file does not replace sequencing input.</p>
-<table>
-<thead>
-<tr>
-<th>Route</th>
-<th>Required sequencing input</th>
-<th>Required small metadata</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Illumina</td>
-<td>One single-end FASTQ or one paired R1/R2 pair per sample</td>
-<td>Automatic <code>sample_name,status</code> table, or manual four-column samplesheet</td>
-</tr>
-<tr>
-<td>ONT</td>
-<td>One or more FASTQs inside each selected barcode directory</td>
-<td>Automatic <code>barcode,sample_name,status</code> table, or manual barcode/sample lists in YAML</td>
-</tr>
-<tr>
-<td>Classifier plus pathology</td>
-<td>Illumina or ONT input above</td>
-<td>Pathology CSV with matching sample, case, and diagnosis columns</td>
-</tr>
-</tbody>
-</table>
-<p>Run the commands from the cloned <code>oncotracer</code> directory.</p>
+<h1 id="input-files-and-folder-layouts">Input files and folder layouts<a class="headerlink" href="#input-files-and-folder-layouts" title="Permanent link">&para;</a></h1>
+<p>OncoTracer accepts Illumina single-end or paired-end FASTQs, ONT FASTQs grouped by barcode, and an optional matched pathology table. Automatic Setup is recommended because it validates names and creates the exact flat YAML required by the native engine.</p>
 <h2 id="recommended-project-tree">Recommended project tree<a class="headerlink" href="#recommended-project-tree" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>/path/to/my/directory/oncotracer/
-├── main.nf
-├── params/
-└── project/
-    ├── input/
-    │   ├── illumina_fastq/
-    │   │   ├── Patient_A_R1.fastq.gz
-    │   │   ├── Patient_A_R2.fastq.gz
-    │   │   ├── Patient_B_R1.fastq.gz
-    │   │   ├── Patient_B_R2.fastq.gz
-    │   │   ├── Control_A_R1.fastq.gz
-    │   │   ├── Control_A_R2.fastq.gz
-    │   │   ├── Control_B_R1.fastq.gz
-    │   │   ├── Control_B_R2.fastq.gz
-    │   │   └── samples.csv
-    │   ├── pathology.csv
-    │   └── fastq_pass/
-    │       ├── barcode01/
-    │       │   └── reads_001.fastq.gz
-    │       ├── barcode02/
-    │       │   └── reads_001.fastq.gz
-    │       └── samples.csv
-    ├── config/
-    ├── work/
-    └── results/
+<p>The installed executable may live in <code>/usr/local/bin</code>; the project itself can be anywhere on storage visible to the selected backend.</p>
+<div class="highlight"><pre><span></span><code>project/
+├── input/
+│   ├── illumina_fastq/
+│   │   ├── Patient_A_R1.fastq.gz
+│   │   ├── Patient_A_R2.fastq.gz
+│   │   ├── Patient_B_R1.fastq.gz
+│   │   ├── Patient_B_R2.fastq.gz
+│   │   ├── Control_A_R1.fastq.gz
+│   │   ├── Control_A_R2.fastq.gz
+│   │   ├── Control_B_R1.fastq.gz
+│   │   └── Control_B_R2.fastq.gz
+│   ├── fastq_pass/
+│   │   ├── barcode01/
+│   │   │   └── reads_001.fastq.gz
+│   │   └── barcode02/
+│   │       └── reads_001.fastq.gz
+│   ├── illumina_samples.csv
+│   ├── ont_samples.csv
+│   └── pathology.csv
+├── config/
+├── results/
+└── reference_cache/
 </code></pre></div>
-<p>Keep inputs, configuration, work, reference/cache, and results below a common project root visible to Docker or Singularity/Apptainer.</p>
-<h2 id="automatic-setup-inputs">Automatic Setup inputs<a class="headerlink" href="#automatic-setup-inputs" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--reads_folder</code></td>
-<td>Existing folder containing the FASTQs.</td>
-</tr>
-<tr>
-<td><code>--sample_table</code></td>
-<td>Existing CSV mapping sample or barcode names to <code>TUMOR</code> or <code>NORMAL</code>.</td>
-</tr>
-<tr>
-<td><code>--auto_config_dir</code></td>
-<td>Destination for the generated YAML, audit manifest, and Illumina samplesheet.</td>
-</tr>
-<tr>
-<td><code>--auto_outdir</code></td>
-<td>Destination recorded in the YAML for the later analysis results.</td>
-</tr>
-</tbody>
-</table>
-<p>Automatic Setup creates configuration files and stops. It does not align reads or call CNAs.</p>
-<h3 id="illumina-sample-table">Illumina sample table<a class="headerlink" href="#illumina-sample-table" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span>
+<p>Keep inputs, configuration, reference/cache, and results below a small number of absolute project roots. OncoTracer derives Docker and Singularity mounts from the YAML paths.</p>
+<h2 id="illumina-input">Illumina input<a class="headerlink" href="#illumina-input" title="Permanent link">&para;</a></h2>
+<h3 id="automatic-sample-table">Automatic sample table<a class="headerlink" href="#automatic-sample-table" title="Permanent link">&para;</a></h3>
+<p>Create a two-column CSV:</p>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_fastq&quot;</span>
 
-<span class="c1"># Create or replace the Illumina sample table.</span>
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
 <span class="s">sample_name,status</span>
 <span class="s">Patient_A,TUMOR</span>
 <span class="s">Patient_B,TUMOR</span>
 <span class="s">Control_A,NORMAL</span>
 <span class="s">Control_B,NORMAL</span>
 <span class="s">CSV</span>
-
-<span class="c1"># Display the saved table.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/samples.csv&quot;</span>
 </code></pre></div>
-<p>The sample name must match the single-end filename or the text before <code>_R1</code>/<code>_R2</code>. Zero normal rows run without a local panel, one normal is rejected, and two or more normals enable the local qDNAseq reference.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-
-<span class="c1"># Generate the Illumina YAML and samplesheet.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
+<p>The sample name must match the filename stem before a supported read suffix such as <code>_R1</code>, <code>_R2</code>, <code>_1</code>, or <code>_2</code>.</p>
+<p>Generate the YAML and four-column samplesheet:</p>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/auto_params_illumina&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results/illumina&quot;</span>
 </code></pre></div>
-<h3 id="ont-barcode-table">ONT barcode table<a class="headerlink" href="#ont-barcode-table" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span>
-
-<span class="c1"># Create or replace the explicit ONT barcode table.</span>
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
-<span class="s">barcode,sample_name,status</span>
-<span class="s">barcode01,Patient_A,TUMOR</span>
-<span class="s">barcode02,Patient_B,NORMAL</span>
-<span class="s">CSV</span>
-
-<span class="c1"># Display the saved table.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass/samples.csv&quot;</span>
+<h3 id="supported-layouts">Supported layouts<a class="headerlink" href="#supported-layouts" title="Permanent link">&para;</a></h3>
+<p>Paired-end:</p>
+<div class="highlight"><pre><span></span><code>Patient_A_R1.fastq.gz
+Patient_A_R2.fastq.gz
+Patient_B_R1.fastq.gz
+Patient_B_R2.fastq.gz
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-
-<span class="c1"># Generate the ONT YAML.</span>
-nextflow<span class="w"> </span>run<span class="w"> </span>main.nf<span class="w"> </span>--auto_params<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads_folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample_table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_config_dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--auto_outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/ont&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-work-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/work/auto_params_ont&quot;</span>
+<p>Single-end:</p>
+<div class="highlight"><pre><span></span><code>Patient_A.fastq.gz
+Patient_B.fastq.gz
 </code></pre></div>
-<p>See <a href="../auto_params/">Automatic Setup</a> for supported filename patterns and complete run commands.</p>
-<h2 id="manual-illumina-samplesheet">Manual Illumina samplesheet<a class="headerlink" href="#manual-illumina-samplesheet" title="Permanent link">&para;</a></h2>
-<p>Use a manual samplesheet when filenames do not follow the supported automatic patterns.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input&quot;</span>
-
-<span class="c1"># Create or replace a paired-end samplesheet.</span>
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;CSV</span>
+<p>Use one layout per analysis. Do not mix paired-end and single-end rows in the same generated samplesheet.</p>
+<h3 id="manual-illumina-samplesheet">Manual Illumina samplesheet<a class="headerlink" href="#manual-illumina-samplesheet" title="Permanent link">&para;</a></h3>
+<p>Use a manual samplesheet for unusual filenames:</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.samplesheet.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;CSV</span>
 <span class="s">sample,fastq_1,fastq_2,status</span>
-<span class="s">Patient_A,$PROJECT_DIR/input/illumina_fastq/Patient_A_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor</span>
-<span class="s">Patient_B,$PROJECT_DIR/input/illumina_fastq/Patient_B_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor</span>
-<span class="s">Control_A,$PROJECT_DIR/input/illumina_fastq/Control_A_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Control_A_R2.fastq.gz,normal</span>
-<span class="s">Control_B,$PROJECT_DIR/input/illumina_fastq/Control_B_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Control_B_R2.fastq.gz,normal</span>
+<span class="s">Patient_A,$PWD/project/input/illumina_fastq/Patient_A_R1.fastq.gz,$PWD/project/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor</span>
+<span class="s">Patient_B,$PWD/project/input/illumina_fastq/Patient_B_R1.fastq.gz,$PWD/project/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor</span>
+<span class="s">Control_A,$PWD/project/input/illumina_fastq/Control_A_R1.fastq.gz,$PWD/project/input/illumina_fastq/Control_A_R2.fastq.gz,normal</span>
+<span class="s">Control_B,$PWD/project/input/illumina_fastq/Control_B_R1.fastq.gz,$PWD/project/input/illumina_fastq/Control_B_R2.fastq.gz,normal</span>
 <span class="s">CSV</span>
-
-<span class="c1"># Display the saved samplesheet.</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span>
 </code></pre></div>
-<p>For single-end data, retain the four-column header and leave <code>fastq_2</code> empty. Do not mix single-end and paired-end rows in one run.</p>
 <table>
 <thead>
 <tr>
@@ -1836,92 +2074,116 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJE
 <tbody>
 <tr>
 <td><code>sample</code></td>
-<td>Unique sample ID using letters, digits, <code>.</code>, <code>_</code>, or <code>-</code>.</td>
+<td>Unique sample ID using letters, digits, <code>.</code>, <code>_</code>, or <code>-</code></td>
 </tr>
 <tr>
 <td><code>fastq_1</code></td>
-<td>Absolute path to the single read or R1 FASTQ.</td>
+<td>Absolute single-end or R1 FASTQ path</td>
 </tr>
 <tr>
 <td><code>fastq_2</code></td>
-<td>Absolute R2 path, or empty for every row in a single-end run.</td>
+<td>Absolute R2 path, or empty for every row in a single-end run</td>
 </tr>
 <tr>
 <td><code>status</code></td>
-<td><code>tumor</code> or <code>normal</code>.</td>
+<td><code>tumor</code> or <code>normal</code></td>
 </tr>
 </tbody>
 </table>
-<p>For a manually configured local panel, the YAML must list every and only the normal samples:</p>
+<p>A manually written YAML then points to the samplesheet:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/results/illumina</span>
+<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/config/illumina.samplesheet.csv</span>
+<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
+<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
+<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+</code></pre></div>
+<h2 id="illumina-local-normal-panel">Illumina local normal panel<a class="headerlink" href="#illumina-local-normal-panel" title="Permanent link">&para;</a></h2>
+<p>Automatic Setup applies the following contract:</p>
+<ul>
+<li>zero normal rows: no local panel;</li>
+<li>one normal row: rejected;</li>
+<li>two or more normal rows: build and apply a local qDNAseq reference;</li>
+<li>corrected downstream CNA outputs contain tumor samples only.</li>
+</ul>
+<p>Manual YAML:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A,Control_B</span>
 <span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="nt">illumina_pon_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study_local_PoN</span>
+<span class="nt">illumina_pon_min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-
-<span class="c1"># Inspect the table and validate a representative read pair.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina.samplesheet.csv&quot;</span>
-ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R1.fastq.gz&quot;</span>
-ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R2.fastq.gz&quot;</span>
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R1.fastq.gz&quot;</span>
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R2.fastq.gz&quot;</span>
-</code></pre></div>
-<h2 id="manual-ont-input">Manual ONT input<a class="headerlink" href="#manual-ont-input" title="Permanent link">&para;</a></h2>
-<p><code>ont_folder</code> must be the parent of the barcode directories:</p>
-<div class="highlight"><pre><span></span><code>/path/to/my/directory/oncotracer/project/input/fastq_pass/
+<p>Every listed panel sample must exist in the samplesheet and be marked <code>normal</code>.</p>
+<h2 id="ont-input">ONT input<a class="headerlink" href="#ont-input" title="Permanent link">&para;</a></h2>
+<p><code>ont_folder</code> is the parent of barcode directories:</p>
+<div class="highlight"><pre><span></span><code>project/input/fastq_pass/
 ├── barcode01/
 │   ├── reads_001.fastq.gz
 │   └── reads_002.fastq.gz
 └── barcode02/
     └── reads_001.fastq.gz
 </code></pre></div>
-<p>FASTQs may end in <code>.fastq</code>, <code>.fq</code>, <code>.fastq.gz</code>, or <code>.fq.gz</code> and must be placed directly inside each barcode directory.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
+<p>FASTQs may end in <code>.fastq</code>, <code>.fq</code>, <code>.fastq.gz</code>, or <code>.fq.gz</code> and should be placed directly inside each selected barcode directory.</p>
+<p>Create a mapping table:</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/ont_samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+<span class="s">barcode,sample_name,status</span>
+<span class="s">barcode01,Patient_A,TUMOR</span>
+<span class="s">barcode02,Patient_B,TUMOR</span>
+<span class="s">CSV</span>
 
-<span class="c1"># Inspect barcode directories and FASTQs.</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-20
+oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/ont_samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/ont&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results/ont&quot;</span>
 </code></pre></div>
-<p>The YAML lists map by position:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/input/fastq_pass</span>
+<p>Manual YAML lists are positional:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/fastq_pass</span>
 <span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
 <span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A,Patient_B</span>
 </code></pre></div>
-<h2 id="optional-pathology-csv">Optional pathology CSV<a class="headerlink" href="#optional-pathology-csv" title="Permanent link">&para;</a></h2>
-<p>A pathology table needs a sequencing sample identifier, case identifier, and diagnosis text. The sample identifier must match exactly.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard repository and project paths.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project&quot;</span>
-
-<span class="c1"># Copy the anonymized format example and edit it.</span>
-cp<span class="w"> </span><span class="s2">&quot;examples/pathology/anonymized_pathology_example.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span>
-nano<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span>
+<p>The two lists must have identical lengths and order.</p>
+<h2 id="optional-ont-normal-input">Optional ONT normal input<a class="headerlink" href="#optional-ont-normal-input" title="Permanent link">&para;</a></h2>
+<p>A manual configuration may define a separate normal barcode root:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">ont_normal_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/normal_fastq_pass</span>
+<span class="nt">ont_normal_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
+<span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Normal_A,Normal_B</span>
+<span class="nt">ont_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
-<p>Save Nano with <code>Ctrl+O</code>, press Enter, and exit with <code>Ctrl+X</code>.</p>
+<p>Use the supported study design and validate the generated summaries before interpretation.</p>
+<h2 id="optional-pathology-csv">Optional pathology CSV<a class="headerlink" href="#optional-pathology-csv" title="Permanent link">&para;</a></h2>
+<p>A matched pathology table needs a sequencing sample identifier, case identifier, and diagnosis text:</p>
 <div class="highlight"><pre><span></span><code>illumina_sample_id,case_code,final_diagnosis
 Patient_A,Case_001,Diffuse large B-cell lymphoma
 Patient_B,Case_002,Reactive lymphoid tissue
 </code></pre></div>
+<p>Flat YAML:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/input/pathology.csv</span>
+<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/pathology.csv</span>
 <span class="nt">pathology_sample_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina_sample_id</span>
 <span class="nt">pathology_case_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case_code</span>
 <span class="nt">pathology_diagnosis_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_diagnosis</span>
+<span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>Do not commit identifiable clinical data. Continue with <a href="../configuration/pathology/">Pathology and classifier</a>.</p>
-<h2 id="pre-run-checklist">Pre-run checklist<a class="headerlink" href="#pre-run-checklist" title="Permanent link">&para;</a></h2>
+<p>The sample identifier must match the sequencing sample exactly. Do not commit identifiable clinical data to a public repository.</p>
+<h2 id="pre-run-validation">Pre-run validation<a class="headerlink" href="#pre-run-validation" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_fastq/Patient_A_R1.fastq.gz&quot;</span>
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_fastq/Patient_A_R2.fastq.gz&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina/illumina.samplesheet.csv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina/illumina.auto.yml&quot;</span>
+</code></pre></div>
 <p>Confirm that:</p>
 <ul>
-<li>every configured path is absolute and below <code>lpwgs_root</code>;</li>
-<li>FASTQs exist, are non-empty, and compressed files pass <code>gzip -t</code>;</li>
-<li>Illumina R1 and R2 belong to the same sample;</li>
-<li>all Illumina rows use one consistent layout;</li>
-<li>an enabled Illumina panel selects at least two exact normal IDs;</li>
-<li>ONT barcode and sample lists have the same length and order;</li>
-<li>sample names are unique and match pathology exactly; and</li>
-<li><code>outdir</code> is a new directory for the experiment.</li>
+<li>every path is absolute;</li>
+<li>FASTQs are non-empty and compressed files pass <code>gzip -t</code>;</li>
+<li>R1 and R2 belong to the same sample;</li>
+<li>all Illumina samples use one layout;</li>
+<li>local-panel controls are exact normal IDs;</li>
+<li>ONT barcode and sample lists align positionally;</li>
+<li>sample names are unique and match pathology identifiers;</li>
+<li>the result directory is dedicated to the experiment.</li>
 </ul>
 
 

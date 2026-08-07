@@ -12,13 +12,13 @@
         <meta name="author" content="OncoTracer developers">
       
       
-        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/configuration/">
+        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/parity_release/">
       
       
-        <link rel="prev" href="../six_tumor_four_control/">
+        <link rel="prev" href="../native_architecture/">
       
       
-        <link rel="next" href="../running/">
+        <link rel="next" href="../migration_v1_to_v2/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Choose a Configuration Route - OncoTracer</title>
+        <title>Parity and release gate - OncoTracer</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#choose-how-to-configure-a-run" class="md-skip">
+        <a href="#parity-and-stable-release-gate" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Choose a Configuration Route
+              Parity and release gate
             
           </span>
         </div>
@@ -270,13 +270,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../configuration/" class="md-tabs__link">
           
   
   
@@ -312,10 +310,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../native_architecture/" class="md-tabs__link">
           
   
@@ -649,7 +649,7 @@
   
   
     <li class="md-nav__item">
-      <a href="yaml_basics/" class="md-nav__link">
+      <a href="../configuration/yaml_basics/" class="md-nav__link">
         
   
   
@@ -859,31 +859,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -901,7 +898,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -916,37 +913,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Choose a Configuration Route
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
         
   
   
@@ -962,114 +932,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#which-route-should-i-choose" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Which route should I choose?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#one-flat-yaml-controls-one-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        One flat YAML controls one analysis
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recommended-route-automatic-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommended route: Automatic Setup
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#second-option-create-a-manual-yaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Second option: create a manual YAML
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#choose-one-execution-backend" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choose one execution backend
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#common-settings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common settings
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#illumina-normal-control-rule" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Illumina normal-control rule
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#settings-to-leave-unchanged-initially" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Settings to leave unchanged initially
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1138,7 +1000,7 @@
   
   
     <li class="md-nav__item">
-      <a href="illumina/" class="md-nav__link">
+      <a href="../configuration/illumina/" class="md-nav__link">
         
   
   
@@ -1166,7 +1028,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ont/" class="md-nav__link">
+      <a href="../configuration/ont/" class="md-nav__link">
         
   
   
@@ -1194,7 +1056,7 @@
   
   
     <li class="md-nav__item">
-      <a href="pathology/" class="md-nav__link">
+      <a href="../configuration/pathology/" class="md-nav__link">
         
   
   
@@ -1222,7 +1084,7 @@
   
   
     <li class="md-nav__item">
-      <a href="refinement/" class="md-nav__link">
+      <a href="../configuration/refinement/" class="md-nav__link">
         
   
   
@@ -1250,7 +1112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="parameter_reference/" class="md-nav__link">
+      <a href="../configuration/parameter_reference/" class="md-nav__link">
         
   
   
@@ -1483,28 +1345,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
-        
-          
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -1522,7 +1387,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1565,10 +1430,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../parity_release/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1584,6 +1476,92 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quickstart-1-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QuickStart 1 gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quickstart-2-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QuickStart 2 gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semantic-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Release automation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repeat-the-complete-gate-on-a-validation-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repeat the complete gate on a validation server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#frozen-v11-ichorcna-plotting-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frozen v1.1 ichorCNA plotting compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1824,10 +1802,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#which-route-should-i-choose" class="md-nav__link">
+  <a href="#quickstart-1-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Which route should I choose?
+        QuickStart 1 gate
       
     </span>
   </a>
@@ -1835,10 +1813,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#one-flat-yaml-controls-one-analysis" class="md-nav__link">
+  <a href="#quickstart-2-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        One flat YAML controls one analysis
+        QuickStart 2 gate
       
     </span>
   </a>
@@ -1846,10 +1824,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#recommended-route-automatic-setup" class="md-nav__link">
+  <a href="#semantic-criteria" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended route: Automatic Setup
+        Semantic criteria
       
     </span>
   </a>
@@ -1857,10 +1835,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#second-option-create-a-manual-yaml" class="md-nav__link">
+  <a href="#release-automation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Second option: create a manual YAML
+        Release automation
       
     </span>
   </a>
@@ -1868,10 +1846,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choose-one-execution-backend" class="md-nav__link">
+  <a href="#repeat-the-complete-gate-on-a-validation-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choose one execution backend
+        Repeat the complete gate on a validation server
       
     </span>
   </a>
@@ -1879,32 +1857,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#common-settings" class="md-nav__link">
+  <a href="#frozen-v11-ichorcna-plotting-compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Common settings
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#illumina-normal-control-rule" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Illumina normal-control rule
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#settings-to-leave-unchanged-initially" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Settings to leave unchanged initially
+        Frozen v1.1 ichorCNA plotting compatibility
       
     </span>
   </a>
@@ -1928,7 +1884,7 @@
 
 
   
-    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/configuration.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/parity_release.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1936,186 +1892,57 @@
   
 
 
-<h1 id="choose-how-to-configure-a-run">Choose how to configure a run<a class="headerlink" href="#choose-how-to-configure-a-run" title="Permanent link">&para;</a></h1>
-<p>Most analyses need one flat YAML file. Use this page to choose the shortest native v2 route.</p>
-<h2 id="which-route-should-i-choose">Which route should I choose?<a class="headerlink" href="#which-route-should-i-choose" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Goal</th>
-<th>Start here</th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Verify installation with Illumina and ONT</td>
-<td><a href="../quick_start/">QuickStart 1</a></td>
-<td>Downloads, runs, and verifies two public examples</td>
-</tr>
-<tr>
-<td>Run the three-library HCC1143 example</td>
-<td><a href="../public_cohort/">QuickStart 2</a></td>
-<td>Downloads and analyzes six public FASTQs</td>
-</tr>
-<tr>
-<td>Run the complete public archive tutorial</td>
-<td><a href="../full_tutorial/">Full Tutorial</a></td>
-<td>Processes the 12-run PRJNA754199 manifest</td>
-</tr>
-<tr>
-<td>Configure a standard FASTQ folder</td>
-<td><a href="../auto_params/">Automatic Setup</a></td>
-<td>Creates YAML, manifest, and Illumina samplesheet</td>
-</tr>
-<tr>
-<td>See four normal controls used as a panel</td>
-<td><a href="../six_tumor_four_control/">Mock cohort</a></td>
-<td>Demonstrates six tumors plus four normals</td>
-</tr>
-<tr>
-<td>Write an Illumina YAML manually</td>
-<td><a href="illumina/">Illumina setup</a></td>
-<td>Uses an existing samplesheet</td>
-</tr>
-<tr>
-<td>Write an ONT YAML manually</td>
-<td><a href="ont/">ONT setup</a></td>
-<td>Uses explicit barcode/sample lists</td>
-</tr>
-<tr>
-<td>Add pathology or classifier settings</td>
-<td><a href="pathology/">Pathology and classifier</a></td>
-<td>Adds native classifier, GISTIC2, and reports</td>
-</tr>
-<tr>
-<td>Tune boundary refinement</td>
-<td><a href="refinement/">Advanced refinement</a></td>
-<td>Changes justified non-default thresholds</td>
-</tr>
-<tr>
-<td>Look up a field</td>
-<td><a href="parameter_reference/">Parameter reference</a></td>
-<td>Documents CLI and YAML settings</td>
-</tr>
-</tbody>
-</table>
-<p>For standard Illumina or ONT layouts, use Automatic Setup. Manual YAML is the second option for unusual filenames or justified non-default settings.</p>
-<h2 id="one-flat-yaml-controls-one-analysis">One flat YAML controls one analysis<a class="headerlink" href="#one-flat-yaml-controls-one-analysis" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/results</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/config/illumina.samplesheet.csv</span>
-<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
-<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
-<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
-<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</code></pre></div>
-<p>The YAML contains paths and analysis settings; it does not contain sequencing reads. Nested YAML is not supported.</p>
-<h2 id="recommended-route-automatic-setup">Recommended route: Automatic Setup<a class="headerlink" href="#recommended-route-automatic-setup" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-
-oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
-
-oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
-</code></pre></div>
-<p>For ONT, use <code>--mode ont</code> and analyze <code>ont.auto.yml</code>.</p>
-<h2 id="second-option-create-a-manual-yaml">Second option: create a manual YAML<a class="headerlink" href="#second-option-create-a-manual-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
-
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
-<span class="s">mode: illumina</span>
-<span class="s">lpwgs_root: $PROJECT_DIR</span>
-<span class="s">outdir: $PROJECT_DIR/results</span>
-<span class="s">illumina_samplesheet: $PROJECT_DIR/config/illumina.samplesheet.csv</span>
-<span class="s">illumina_analysis_type: solid_biopsy</span>
-<span class="s">illumina_caller: qdnaseq</span>
-<span class="s">illumina_binsize_kb: 100</span>
-<span class="s">run_cna_classifier: false</span>
-<span class="s">force: false</span>
-<span class="s">YAML</span>
-
-oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--dry-run
-
-oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span>
-</code></pre></div>
-<p><code>--dry-run</code> validates the native route and prints argument arrays without running the scientific tools.</p>
-<h2 id="choose-one-execution-backend">Choose one execution backend<a class="headerlink" href="#choose-one-execution-backend" title="Permanent link">&para;</a></h2>
-<p>The YAML is backend-independent:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
-
-oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-<span class="c1"># or:</span>
-oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-<span class="c1"># or:</span>
-oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>singularity<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-<span class="c1"># or, in a Poetry development checkout:</span>
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>poetry<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-</code></pre></div>
-<p>Prepare the selected backend first with <code>oncotracer install</code>.</p>
-<h2 id="common-settings">Common settings<a class="headerlink" href="#common-settings" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Key</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mode</code></td>
-<td><code>illumina</code> or <code>ont</code></td>
-</tr>
-<tr>
-<td><code>lpwgs_root</code></td>
-<td>Common absolute project/reference root</td>
-</tr>
-<tr>
-<td><code>outdir</code></td>
-<td>Native result directory</td>
-</tr>
-<tr>
-<td><code>force</code></td>
-<td>Scientific refresh request; keep <code>false</code> initially</td>
-</tr>
-<tr>
-<td><code>run_cna_classifier</code></td>
-<td>Adds native classifier/report stage</td>
-</tr>
-<tr>
-<td><code>run_gistic</code></td>
-<td>Adds optional cohort recurrence analysis when classifier is enabled</td>
-</tr>
-<tr>
-<td><code>knowledge_web</code></td>
-<td>Enables or disables web enrichment; use <code>false</code> for deterministic offline runs</td>
-</tr>
-</tbody>
-</table>
-<h2 id="illumina-normal-control-rule">Illumina normal-control rule<a class="headerlink" href="#illumina-normal-control-rule" title="Permanent link">&para;</a></h2>
+<h1 id="parity-and-stable-release-gate">Parity and stable-release gate<a class="headerlink" href="#parity-and-stable-release-gate" title="Permanent link">&para;</a></h1>
+<p>A v2 tag is not created from file-existence smoke tests. Two full public-data workflows run both the frozen v1.1 implementation and the candidate native v2 implementation from the same inputs and shared reference cache.</p>
+<h2 id="quickstart-1-gate">QuickStart 1 gate<a class="headerlink" href="#quickstart-1-gate" title="Permanent link">&para;</a></h2>
+<p>The gate completes both the Illumina ERR12341627 and ONT DRR165691 analyses.</p>
+<h2 id="quickstart-2-gate">QuickStart 2 gate<a class="headerlink" href="#quickstart-2-gate" title="Permanent link">&para;</a></h2>
+<p>The gate completes all three HCC1143 libraries from six checksum-validated FASTQs.</p>
+<h2 id="semantic-criteria">Semantic criteria<a class="headerlink" href="#semantic-criteria" title="Permanent link">&para;</a></h2>
+<p>For each branch of each quickstart, the audit program requires:</p>
 <ul>
-<li>zero normals: run without a local panel;</li>
-<li>one normal: reject configuration;</li>
-<li>two or more normals: build and apply a local qDNAseq panel;</li>
-<li>normal samples remain reference/QC inputs;</li>
-<li>tumor samples continue to the downstream CNA outputs.</li>
+<li>all documented output files are non-empty and hashed;</li>
+<li>identical analysis mode, dataset name, and sample set;</li>
+<li>native workflow summary declares <code>engine=native</code> and <code>nextflow_used=false</code>;</li>
+<li>a non-empty native argument-array trace with no Nextflow command;</li>
+<li>CNA events matched by sample, state, chromosome, and at least 0.80 reciprocal interval overlap;</li>
+<li>event recall and precision of at least 0.90;</li>
+<li>at least 0.95 of each refined-bin grid shared exactly;</li>
+<li>refined-bin Pearson correlation of at least 0.98;</li>
+<li>median absolute refined-bin log₂ difference no greater than 0.08.</li>
 </ul>
-<h2 id="settings-to-leave-unchanged-initially">Settings to leave unchanged initially<a class="headerlink" href="#settings-to-leave-unchanged-initially" title="Permanent link">&para;</a></h2>
-<p>Keep the generated caller, analysis type, bin size, and refinement defaults for the first analysis. Use a new YAML and a new <code>outdir</code> for a scientifically different configuration so the original results and native stage records remain separate.</p>
+<p>Each artifact includes <code>parity_report.json</code>, <code>parity_report.md</code>, <code>event_matches.tsv</code>, the native trace, run summaries, and <code>SHA256SUMS</code>.</p>
+<h2 id="release-automation">Release automation<a class="headerlink" href="#release-automation" title="Permanent link">&para;</a></h2>
+<p>The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current <code>main</code> SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates <code>v2.0.0</code>. A release cannot be created from a stale or partially validated commit.</p>
+<h2 id="repeat-the-complete-gate-on-a-validation-server">Repeat the complete gate on a validation server<a class="headerlink" href="#repeat-the-complete-gate-on-a-validation-server" title="Permanent link">&para;</a></h2>
+<p>Run the auditable driver from a clean checkout in a dedicated tmux session. The shared reference is copied or reflinked into the validation root, so the source cache is never modified:</p>
+<div class="highlight"><pre><span></span><code>tmux<span class="w"> </span>new-session<span class="w"> </span>-s<span class="w"> </span>oncotracer-v2-validation
+scripts/validate_v2_release.sh<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--validation-root<span class="w"> </span>/large/storage/oncotracer-v2-validation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--shared-reference<span class="w"> </span>/large/storage/references/samurai_hg38<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--resume
+</code></pre></div>
+<p>The driver is CPU-only (<code>CUDA_VISIBLE_DEVICES</code> is empty and <code>NVIDIA_VISIBLE_DEVICES=void</code>) and never queries, resets, configures, or loads NVIDIA devices. This keeps release validation isolated from GPU-backed sequencing services.</p>
+<p>The driver refuses an empty path, <code>/</code>, the repository checkout or any path inside it, a validation/reference path overlap, a dirty checkout, or a non-empty validation directory without its release-driver sentinel and <code>--resume</code>. Its content-derived stage signatures include the exact source, command, inputs, tool identity, and explicit Conda specifications; complete output manifests are regenerated and compared before a completed stage is reused. The five-environment probe uses exact prefix executables; in particular, GISTIC derives the one usable <code>share/mcr-*/v*</code> runtime exclusively from its exact prefix and must return the real <code>gp_gistic2_from_seg</code> usage signature with exit status zero. It downloads the official self-contained Nextflow 26.04.6 distribution and verifies SHA-256 <code>182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c</code>; that executable runs only the immutable v1.1 comparator at commit <code>032c1268fa7fdcadc48087055066d7a9fc59bd89</code>. Before any baseline starts, the nested SAMURAI v1.4.0 source must resolve to commit <code>6a901940288b008237703c6b181d447e7dee4fcf</code>. The copied v2 executable runs every native operation from outside the checkout with Python path injection disabled, and any scientific parity failure stops the script.</p>
+<p>The final <code>bundles/</code> directory contains separate QuickStart audit archives, a deterministic combined <code>oncotracer-v2.0.0-parity-audit.tar.gz</code>, and <code>SHA256SUMS</code>. The audits retain input and output manifests, exact Conda specifications, qDNAseq annotation provenance, native traces, frozen-comparator traces/reports, stage logs, source identities, and the stage-ledger snapshot. The driver creates evidence only; it does not merge, tag, or publish a release.</p>
+<h2 id="frozen-v11-ichorcna-plotting-compatibility">Frozen v1.1 ichorCNA plotting compatibility<a class="headerlink" href="#frozen-v11-ichorcna-plotting-compatibility" title="Permanent link">&para;</a></h2>
+<p>The v2 release parity jobs keep the v1.1 OncoTracer source, SAMURAI source,
+Nextflow version, and every runtime container digest pinned. The QuickStart 1
+ONT fixture can contain NA read-count bins. ichorCNA 0.5.1 performs two
+<code>quantile(copy, ...)</code> calls without <code>na.rm = TRUE</code> while creating a correction
+plot, after its analytical segment outputs have been written.</p>
+<p>For the frozen comparator, CI mounts an R startup profile only into the pinned
+<code>ICHORCNA_RUN</code> container. The profile rewrites exactly those two calls, refuses
+an unexpected function shape, and writes an audit marker. Native v2 applies the
+same checked compatibility shim and emits <code>&lt;sample&gt;.ichorcna_plot_compat.tsv</code>.
+The shim does not modify read counting, normalization, HMM fitting, segmentation,
+or copy-number calls.</p>
+<p>The Illumina parity contracts validate the BAM-stage SAMURAI execution actually
+invoked by OncoTracer. QuickStart 1 therefore expects six nested tasks for one
+sample, and QuickStart 2 expects fourteen nested tasks for three samples. Only
+the five runtime images used by those BAM-stage tasks are pinned and required;
+FASTQ QC and alignment occur in OncoTracer before SAMURAI is called.</p>
 
 
 

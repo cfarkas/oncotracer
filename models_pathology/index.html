@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Reproducible LP-WGS CNA analysis for ONT and Illumina data">
+        <meta name="description" content="Native auditable LP-WGS CNA analysis for ONT and Illumina data">
       
       
         <meta name="author" content="OncoTracer developers">
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#models-and-pathology" class="md-skip">
+        <a href="#models-and-pathology-interpretation" class="md-skip">
           Skip to content
         </a>
       
@@ -231,17 +231,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../full_tutorial/" class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../full_tutorial/" class="md-tabs__link">
+          
+  
   
   Full Tutorial
 
-      </a>
-    </li>
+        </a>
+      </li>
+    
   
 
       
@@ -300,6 +301,26 @@
   
   
   Understand Results
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../native_architecture/" class="md-tabs__link">
+          
+  
+  
+  Assurance and Migration
 
         </a>
       </li>
@@ -467,7 +488,7 @@
   <span class="md-ellipsis">
     
   
-    1. Install Requirements
+    Install Requirements
   
 
     
@@ -523,7 +544,7 @@
   <span class="md-ellipsis">
     
   
-    2. QuickStart Example 1 (Illumina + ONT)
+    QuickStart 1 — Illumina + ONT
   
 
     
@@ -551,7 +572,7 @@
   <span class="md-ellipsis">
     
   
-    3. Automatic Setup for Your FASTQs (Recommended)
+    Automatic Setup for Your FASTQs
   
 
     
@@ -579,7 +600,7 @@
   <span class="md-ellipsis">
     
   
-    4. QuickStart Example 2 (Three-Sample Public)
+    QuickStart 2 — HCC1143
   
 
     
@@ -635,7 +656,7 @@
   <span class="md-ellipsis">
     
   
-    Manual YAML Editing (Second Option)
+    Manual YAML Editing
   
 
     
@@ -662,9 +683,27 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../full_tutorial/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -678,7 +717,51 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Full Tutorial
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../full_tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete PRJNA754199 archive
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -751,7 +834,7 @@
   <span class="md-ellipsis">
     
   
-    Mock Six Tumors + Four Normal Controls
+    Mock cohort — six tumors + four normals
   
 
     
@@ -868,7 +951,35 @@
   <span class="md-ellipsis">
     
   
-    Workflow Overview
+    Native Workflow Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Canonical Native YAML
   
 
     
@@ -1259,10 +1370,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#minimal-and-model-assisted-modes" class="md-nav__link">
+  <a href="#deterministic-initial-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Minimal and model-assisted modes
+        Deterministic initial mode
       
     </span>
   </a>
@@ -1270,10 +1381,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-cna-data-can-and-cannot-show" class="md-nav__link">
+  <a href="#optional-model-assisted-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What CNA data can and cannot show
+        Optional model-assisted mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-cna-data-can-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What CNA data can support
       
     </span>
   </a>
@@ -1389,7 +1511,7 @@
   <span class="md-ellipsis">
     
   
-    Help and About
+    Assurance and Migration
   
 
     
@@ -1402,6 +1524,179 @@
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Assurance and Migration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../native_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Native architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../parity_release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parity and release gate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration_v1_to_v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration from v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../legacy_v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Legacy v1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1551,10 +1846,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#minimal-and-model-assisted-modes" class="md-nav__link">
+  <a href="#deterministic-initial-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Minimal and model-assisted modes
+        Deterministic initial mode
       
     </span>
   </a>
@@ -1562,10 +1857,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-cna-data-can-and-cannot-show" class="md-nav__link">
+  <a href="#optional-model-assisted-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What CNA data can and cannot show
+        Optional model-assisted mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-cna-data-can-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What CNA data can support
       
     </span>
   </a>
@@ -1630,20 +1936,20 @@
   
 
 
-<h1 id="models-and-pathology">Models and Pathology<a class="headerlink" href="#models-and-pathology" title="Permanent link">&para;</a></h1>
-<p>This page explains the optional stage enabled by <code>run_cna_classifier: true</code>. For matched CSV files and run commands, begin with <a href="../configuration/pathology/">Pathology and classifier configuration</a>.</p>
+<h1 id="models-and-pathology-interpretation">Models and pathology interpretation<a class="headerlink" href="#models-and-pathology-interpretation" title="Permanent link">&para;</a></h1>
+<p>This page explains the optional native stage enabled by <code>run_cna_classifier: true</code>. For matched CSV creation and complete commands, begin with <a href="../configuration/pathology/">Pathology and classifier configuration</a>.</p>
 <h2 id="classifier-input">Classifier input<a class="headerlink" href="#classifier-input" title="Permanent link">&para;</a></h2>
-<p>The classifier does not read FASTQs directly. The core workflow first creates:</p>
+<p>The classifier does not read FASTQs directly. Core analysis first creates:</p>
 <div class="highlight"><pre><span></span><code>03_cna_codification/cna_events.tsv
 </code></pre></div>
-<p>The optional stage summarizes CNA burden, recurrent regions, cytobands, and context-associated patterns. A pathology CSV is joined by exact sample identifier.</p>
+<p>The classifier derives CNA burden, recurrent regions, cytobands, gene-region overlaps, and context-associated patterns from those final event/refined-bin products. A pathology CSV is joined by exact sample identifier.</p>
 <h2 id="choose-the-context-before-analysis">Choose the context before analysis<a class="headerlink" href="#choose-the-context-before-analysis" title="Permanent link">&para;</a></h2>
-<p><code>cna_classifier_sample_set</code> limits the labels and knowledge catalog used during interpretation. Select the narrowest context justified by the study design, not the result you prefer.</p>
+<p><code>cna_classifier_sample_set</code> limits labels and knowledge resources used during interpretation. Select the narrowest context justified by inclusion criteria, not by the result you prefer.</p>
 <table>
 <thead>
 <tr>
 <th>Example context</th>
-<th>Use</th>
+<th>Appropriate use</th>
 </tr>
 </thead>
 <tbody>
@@ -1656,53 +1962,82 @@
 <td>Cohort already established as lymphoma-focused</td>
 </tr>
 <tr>
-<td><code>breast</code>, <code>brain</code>, <code>colon</code>, <code>pancreas</code>, and other supported contexts</td>
-<td>Study whose inclusion criteria establish that context</td>
+<td><code>brain_cns</code></td>
+<td>CNS tumor cohort defined independently of the CNA result</td>
+</tr>
+<tr>
+<td><code>breast</code></td>
+<td>Breast-tumor/cell-line study</td>
+</tr>
+<tr>
+<td><code>colorectal</code></td>
+<td>Colorectal study</td>
+</tr>
+<tr>
+<td><code>sarcoma</code></td>
+<td>Sarcoma-focused study</td>
+</tr>
+<tr>
+<td><code>leukemia</code></td>
+<td>Hematologic study for which CNA profiling is appropriate</td>
+</tr>
+<tr>
+<td><code>pediatric_solid</code></td>
+<td>Pediatric solid-tumor cohort</td>
 </tr>
 </tbody>
 </table>
-<h2 id="minimal-and-model-assisted-modes">Minimal and model-assisted modes<a class="headerlink" href="#minimal-and-model-assisted-modes" title="Permanent link">&para;</a></h2>
-<p>Start with deterministic pathology comparison:</p>
+<p>The full context list is in <a href="../configuration_v2/">Native YAML configuration</a>.</p>
+<h2 id="deterministic-initial-mode">Deterministic initial mode<a class="headerlink" href="#deterministic-initial-mode" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="nt">cna_classifier_sample_set</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">broad_cancer</span>
-<span class="nt">cna_classifier_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda</span>
-<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/my/directory/oncotracer/project/input/pathology.csv</span>
+
+<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/pathology.csv</span>
 <span class="nt">pathology_sample_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina_sample_id</span>
 <span class="nt">pathology_case_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case_code</span>
 <span class="nt">pathology_diagnosis_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_diagnosis</span>
 <span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 <span class="nt">pathology_biomed_local_files_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+
+<span class="nt">run_gistic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">gistic_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">knowledge_web</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">knowledge_literature_llm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">knowledge_deep_literature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>After that succeeds, optional model assistance can be enabled:</p>
+<p>This mode is easiest to reproduce and review. Enable network/model assistance only after the deterministic route succeeds and governance permits it.</p>
+<h2 id="optional-model-assisted-mode">Optional model-assisted mode<a class="headerlink" href="#optional-model-assisted-mode" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="nt">pathology_biomed_local_files_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>The first model-assisted run may download model packages and use substantial disk space. OncoTracer records attempts in <code>07_pathology/pathology_model_trials.tsv</code>.</p>
-<h2 id="what-cna-data-can-and-cannot-show">What CNA data can and cannot show<a class="headerlink" href="#what-cna-data-can-and-cannot-show" title="Permanent link">&para;</a></h2>
-<p>The classifier can use broad and focal gains/losses, amplifications, deep losses, altered-genome burden, aneuploidy, recurrent cytobands, and cataloged driver regions.</p>
-<p>Low-pass read-depth CNA analysis does not reliably determine:</p>
+<p>The first model-assisted run may download large model packages. OncoTracer records attempts and status in <code>07_pathology/pathology_model_trials.tsv</code>. Manually verify generated citations, summaries, and classifications.</p>
+<h2 id="what-cna-data-can-support">What CNA data can support<a class="headerlink" href="#what-cna-data-can-support" title="Permanent link">&para;</a></h2>
+<p>The classifier can summarize:</p>
 <ul>
-<li>single-nucleotide variants or small insertions/deletions;</li>
+<li>broad and focal gains/losses;</li>
+<li>high-level amplifications and deep losses;</li>
+<li>altered-genome burden and aneuploidy;</li>
+<li>recurrent cytobands and cataloged driver regions;</li>
+<li>cohort recurrence when GISTIC2 is enabled and scientifically appropriate.</li>
+</ul>
+<p>LP-WGS read-depth CNA analysis does not reliably determine:</p>
+<ul>
+<li>SNVs or small insertions/deletions;</li>
 <li>balanced translocations or most gene fusions;</li>
 <li>methylation class or RNA/protein expression;</li>
 <li>copy-neutral loss of heterozygosity;</li>
-<li>clonality or biallelic inactivation without other evidence.</li>
+<li>clonality or biallelic inactivation without orthogonal evidence.</li>
 </ul>
 <h2 id="read-the-outputs">Read the outputs<a class="headerlink" href="#read-the-outputs" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Set the standard classifier output path.</span>
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/illumina_pathology/05_cna_classifier&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results/illumina_pathology/05_cna_classifier&quot;</span>
 
-<span class="c1"># Inspect prepared features, classification, pathology comparison, and status.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_prepared/sample_cna_summary.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/02_classification/cna_patient_classification.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/07_pathology/pathology_concordance.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,80p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/07_pathology/pathology_status.txt&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_prepared/sample_cna_summary.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/02_classification/cna_patient_classification.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_knowledge/sample_knowledge_summary.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/07_pathology/pathology_concordance.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/07_pathology/pathology_status.txt&quot;</span>
+ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_report/cna_classifier_report.html&quot;</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># Open the cohort report on a workstation with a graphical desktop.</span>
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/project/results/illumina_pathology/05_cna_classifier&quot;</span>
-xdg-open<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_report/cna_classifier_report.html&quot;</span>
-</code></pre></div>
-<p>On a remote server, copy the report directory to a workstation.</p>
 <table>
 <thead>
 <tr>
@@ -1719,43 +2054,43 @@ xdg-open<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$
 </tr>
 <tr>
 <td><code>02_classification/</code></td>
-<td>CNA-pattern class and scores</td>
+<td>Context scores and classes</td>
 <td>Research interpretation</td>
 </tr>
 <tr>
 <td><code>03_report/</code></td>
-<td>HTML and PDF reports</td>
+<td>HTML, PDF, and clinician summaries</td>
 <td>Presentation layer</td>
 </tr>
 <tr>
 <td><code>04_gistic2/</code>, <code>05_gistic2_parsed/</code></td>
-<td>Optional cohort recurrence analysis</td>
+<td>Optional recurrence analysis</td>
 <td>Cohort-level research output</td>
 </tr>
 <tr>
 <td><code>06_knowledge/</code></td>
-<td>Driver-region and literature summaries</td>
-<td>Requires expert review</td>
+<td>Driver-region/literature summaries</td>
+<td>Requires expert verification</td>
 </tr>
 <tr>
 <td><code>07_pathology/</code></td>
-<td>Matching, concordance, status, and model trials</td>
+<td>Matching, concordance, status, model trials</td>
 <td>Compatibility assessment</td>
 </tr>
 </tbody>
 </table>
 <h2 id="interpret-concordance-carefully">Interpret concordance carefully<a class="headerlink" href="#interpret-concordance-carefully" title="Permanent link">&para;</a></h2>
-<p>A concordance result asks whether CNA features are compatible with the supplied diagnosis in the selected context. A disagreement or indeterminate result may reflect low tumor fraction, low sequencing depth, a CNA-quiet tumor, sample mismatch, an incomplete knowledge catalog, or alterations that LP-WGS cannot detect.</p>
-<p>Review sample matching, coverage, segmentation, CNA events, morphology, immunohistochemistry, cytogenetics, and validated molecular tests before drawing conclusions.</p>
+<p>Concordance asks whether CNA features are compatible with the supplied diagnosis in the selected context. A disagreement or indeterminate result may reflect low tumor fraction, low sequencing depth, CNA-quiet biology, sample mismatch, an incomplete catalog, or alterations that LP-WGS cannot detect.</p>
+<p>Review sample identity, coverage, segmentation, event tables, morphology, immunohistochemistry, cytogenetics, methylation/fusion testing, and validated molecular assays before drawing conclusions.</p>
 <h2 id="reproducibility-and-privacy">Reproducibility and privacy<a class="headerlink" href="#reproducibility-and-privacy" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Record the OncoTracer commit, image identity, sample-set context, and YAML.</li>
-<li>Preserve the de-identified pathology-column mapping.</li>
+<li>Record OncoTracer version/commit, YAML, context, backend, and image/prefix identity.</li>
+<li>Preserve de-identified pathology-column mappings and matching results.</li>
 <li>Do not include names, national identifiers, birth dates, or unnecessary clinical text.</li>
-<li>Enable network model retrieval only when governance permits it.</li>
+<li>Enable network retrieval only when approved.</li>
 <li>Manually verify literature references and generated summaries.</li>
 </ul>
-<p>Classifier scores and pathology compatibility are research outputs, not diagnostic confirmation or a medical device result.</p>
+<p>Classifier scores and pathology compatibility are research outputs, not diagnostic confirmation or a medical-device result.</p>
 
 
 
