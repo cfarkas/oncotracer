@@ -1,139 +1,127 @@
 # Choose how to configure a run
 
-> **Legacy v1.1 documentation.** This unlisted page describes the immutable Nextflow release. For native v2, use [Native YAML configuration](configuration_v2.md) and [Automatic Setup](auto_params.md).
-
-Most analyses need one YAML file. Use this page to choose the shortest setup route.
+Most analyses need one flat YAML file. Use this page to choose the shortest native v2 route.
 
 ## Which route should I choose?
 
-| Your goal | Start here | Data used |
+| Goal | Start here | Result |
 | --- | --- | --- |
-| Verify the installation | [QuickStart Example 1](quick_start.md) | Public Illumina and ONT data downloaded by the tutorial |
-| Run the three-library HCC1143 example | [QuickStart Example 2](public_cohort.md) | Six public FASTQs downloaded from ENA |
-| Run the complete public archive tutorial | [Full Tutorial](full_tutorial.md) | Twelve public PRJNA754199 FASTQs |
-| Configure your own standard FASTQ folder | [Automatic Setup](auto_params.md) | Your own Illumina files or ONT barcode folders |
-| See how four normal controls are used | [Other Example Run](six_tumor_four_control.md) | Mock example with six tumors and four normal controls |
-| Write an Illumina YAML manually | [Illumina manual setup](configuration/illumina.md#second-option-manual-setup) | Your own samplesheet and FASTQs |
-| Write an ONT YAML manually | [ONT manual setup](configuration/ont.md) | Your own barcode folders and mapping table |
-| Add pathology or classifier settings | [Pathology and classifier](configuration/pathology.md) | Your own matched sequencing and pathology tables |
-| Change boundary refinement | [Advanced refinement](configuration/refinement.md) | A justified non-default analysis |
-| Look up one field or default | [All parameters](configuration/parameter_reference.md) | Reference only |
+| Verify installation with Illumina and ONT | [QuickStart 1](quick_start.md) | Downloads, runs, and verifies two public examples |
+| Run the three-library HCC1143 example | [QuickStart 2](public_cohort.md) | Downloads and analyzes six public FASTQs |
+| Run the complete public archive tutorial | [Full Tutorial](full_tutorial.md) | Processes the 12-run PRJNA754199 manifest |
+| Configure a standard FASTQ folder | [Automatic Setup](auto_params.md) | Creates YAML, manifest, and Illumina samplesheet |
+| See four normal controls used as a panel | [Mock cohort](six_tumor_four_control.md) | Demonstrates six tumors plus four normals |
+| Write an Illumina YAML manually | [Illumina setup](configuration/illumina.md) | Uses an existing samplesheet |
+| Write an ONT YAML manually | [ONT setup](configuration/ont.md) | Uses explicit barcode/sample lists |
+| Add pathology or classifier settings | [Pathology and classifier](configuration/pathology.md) | Adds native classifier, GISTIC2, and reports |
+| Tune boundary refinement | [Advanced refinement](configuration/refinement.md) | Changes justified non-default thresholds |
+| Look up a field | [Parameter reference](configuration/parameter_reference.md) | Documents CLI and YAML settings |
 
-For a standard Illumina or ONT layout, use Automatic Setup. Edit a YAML manually only when the supported naming rules do not fit the study or when a non-default option is required.
+For standard Illumina or ONT layouts, use Automatic Setup. Manual YAML is the second option for unusual filenames or justified non-default settings.
 
-For Illumina, zero `NORMAL` rows run without a local panel of normals, one normal is rejected, and two or more normals enable the local qDNAseq reference.
-
-## One YAML controls one run
-
-A YAML is a plain-text list of paths and settings. It does not contain sequencing reads.
+## One flat YAML controls one analysis
 
 ```yaml
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
+lpwgs_root: /absolute/path/project
+outdir: /absolute/path/project/results
+illumina_samplesheet: /absolute/path/project/config/illumina.samplesheet.csv
+illumina_analysis_type: solid_biopsy
+illumina_caller: qdnaseq
+illumina_binsize_kb: 100
+run_cna_classifier: false
+force: false
 ```
 
-Keep the input, output, work, reference, and cache paths under a common project root.
+The YAML contains paths and analysis settings; it does not contain sequencing reads. Nested YAML is not supported.
 
 ## Recommended route: Automatic Setup
 
-Create a sample table and point `--auto_params` at the reads folder. Automatic Setup writes the YAML and, for Illumina, the FASTQ samplesheet.
-
 ```bash
-# Set the standard repository and project paths.
-PROJECT_DIR="$(pwd)/project"
+PROJECT_DIR="$PWD/project"
 
-# Generate an Illumina YAML and samplesheet from a standard FASTQ folder.
-nextflow run main.nf --auto_params \
+oncotracer auto \
   --mode illumina \
-  --reads_folder "$PROJECT_DIR/input/fastq" \
-  --sample_table "$PROJECT_DIR/input/samples.csv" \
-  --auto_config_dir "$PROJECT_DIR/config" \
-  --auto_outdir "$PROJECT_DIR/results"
+  --reads-folder "$PROJECT_DIR/input/fastq" \
+  --sample-table "$PROJECT_DIR/input/samples.csv" \
+  --config-dir "$PROJECT_DIR/config" \
+  --outdir "$PROJECT_DIR/results"
 
-# Run with Conda; Nextflow creates and reuses the required environments.
-nextflow run main.nf --conda \
-  -params-file "$PROJECT_DIR/config/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work" \
-  -resume
+oncotracer run \
+  --backend conda \
+  --config "$PROJECT_DIR/config/illumina.auto.yml"
 ```
 
-Replace `--conda` with `--docker` or `--singularity` for the corresponding container runtime. See [Automatic Setup](auto_params.md) for exact Illumina and ONT sample tables.
+For ONT, use `--mode ont` and analyze `ont.auto.yml`.
 
-## Second option: manual YAML
-
-### 1. Copy a template
+## Second option: create a manual YAML
 
 ```bash
-# Run this command from the oncotracer directory.
+PROJECT_DIR="$PWD/project"
+mkdir -p "$PROJECT_DIR/config" "$PROJECT_DIR/results"
 
-# Copy the Illumina template to an editable file.
-cp "params/illumina.minimal.yml" "params/my_illumina.yml"
+cat > "$PROJECT_DIR/config/illumina.manual.yml" <<YAML
+mode: illumina
+lpwgs_root: $PROJECT_DIR
+outdir: $PROJECT_DIR/results
+illumina_samplesheet: $PROJECT_DIR/config/illumina.samplesheet.csv
+illumina_analysis_type: solid_biopsy
+illumina_caller: qdnaseq
+illumina_binsize_kb: 100
+run_cna_classifier: false
+force: false
+YAML
 
-# For ONT, copy the ONT template instead.
-# cp "params/ont.minimal.yml" "params/my_ont.yml"
+oncotracer run \
+  --backend conda \
+  --config "$PROJECT_DIR/config/illumina.manual.yml" \
+  --dry-run
+
+oncotracer run \
+  --backend conda \
+  --config "$PROJECT_DIR/config/illumina.manual.yml"
 ```
 
-Do not edit the versioned template directly.
+`--dry-run` validates the native route and prints argument arrays without running the scientific tools.
 
-### 2. Resolve the project paths
+## Choose one execution backend
+
+The YAML is backend-independent:
 
 ```bash
-# Run this command from the oncotracer directory.
+CONFIG="$PWD/project/config/illumina.auto.yml"
 
-# Print the absolute repository and project paths.
-realpath .
-realpath "project"
-realpath "project/input"
+oncotracer run --backend conda --config "$CONFIG"
+# or:
+oncotracer run --backend docker --config "$CONFIG"
+# or:
+oncotracer run --backend singularity --config "$CONFIG"
+# or, in a Poetry development checkout:
+poetry run oncotracer run --backend poetry --config "$CONFIG"
 ```
 
-Use absolute paths in the YAML.
+Prepare the selected backend first with `oncotracer install`.
 
-### 3. Edit the YAML
+## Common settings
 
-```bash
-# Open the copied Illumina YAML.
-nano params/my_illumina.yml
-```
+| Key | Purpose |
+| --- | --- |
+| `mode` | `illumina` or `ont` |
+| `lpwgs_root` | Common absolute project/reference root |
+| `outdir` | Native result directory |
+| `force` | Scientific refresh request; keep `false` initially |
+| `run_cna_classifier` | Adds native classifier/report stage |
+| `run_gistic` | Adds optional cohort recurrence analysis when classifier is enabled |
+| `knowledge_web` | Enables or disables web enrichment; use `false` for deterministic offline runs |
 
-Save with `Ctrl+O`, press Enter, and exit with `Ctrl+X`. Do not use tabs.
+## Illumina normal-control rule
 
-### 4. Check the workflow wiring
+- zero normals: run without a local panel;
+- one normal: reject configuration;
+- two or more normals: build and apply a local qDNAseq panel;
+- normal samples remain reference/QC inputs;
+- tumor samples continue to the downstream CNA outputs.
 
-```bash
-# Run this command from the oncotracer directory.
+## Settings to leave unchanged initially
 
-# Validate parameters and workflow connections without running the analysis tools.
-nextflow run main.nf -stub-run --conda \
-  -params-file "params/my_illumina.yml"
-```
-
-### 5. Run the analysis
-
-```bash
-# Run this command from the oncotracer directory.
-
-# Run or resume the manual Illumina YAML with Conda.
-nextflow run main.nf --conda \
-  -params-file "params/my_illumina.yml" \
-  -resume
-```
-
-Replace `--conda` with `--docker` or `--singularity` when using a container runtime.
-
-## Execution options
-
-| Option | Use when | Environment |
-| --- | --- | --- |
-| `--conda` | Miniforge or Conda is installed | Nextflow creates and reuses Conda environments automatically |
-| `--docker` | Docker is installed on a Linux workstation or server | [`carlosfarkas/oncotracer:latest`](https://hub.docker.com/r/carlosfarkas/oncotracer) |
-| `--singularity` | Singularity or Apptainer is configured on HPC | `docker://carlosfarkas/oncotracer:latest` |
-
-Use exactly one execution option on an analysis command.
-
-## Settings to leave unchanged for a first run
-
-Keep the caller, analysis type, bin size, and refinement defaults from the generated YAML or selected template. Do not add internal SAMURAI output paths; OncoTracer derives stage 01 from `outdir`.
-
-Use a new YAML and a new `outdir` when changing the scientific configuration. This keeps the original results separate and easier to compare.
+Keep the generated caller, analysis type, bin size, and refinement defaults for the first analysis. Use a new YAML and a new `outdir` for a scientifically different configuration so the original results and native stage records remain separate.

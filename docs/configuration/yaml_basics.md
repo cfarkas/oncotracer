@@ -1,144 +1,148 @@
-# YAML and Paths
+# Manual YAML editing
 
-> **Legacy v1.1 documentation.** This unlisted command page describes the immutable Nextflow release. For native v2, use [Native YAML configuration](../configuration_v2.md).
+Automatic Setup is the recommended route. Manual flat YAML is useful for unusual filenames, prebuilt samplesheets, custom references, or advanced classifier and refinement settings.
 
-A YAML file is a small plain-text run configuration. It tells OncoTracer which sequencing route to use, where the inputs are, and where results belong. FASTQ reads are not stored in YAML.
+## Flat YAML only
 
-## Choose how to create the YAML
-
-| Situation | Route |
-| --- | --- |
-| Standard Illumina FASTQs or ONT barcode folders | Automatic Setup with `--auto_params` |
-| Custom samplesheet, custom reference, or advanced settings | Manual YAML editing |
-| Public installation test | `--make_test`; see [QuickStart Example 1](../quick_start.md) |
-
-The examples use paths relative to the cloned `oncotracer` directory.
-
-## Recommended: Automatic Setup
-
-For Illumina, first create a sample table:
-
-```bash
-# Set the standard repository and project paths.
-PROJECT_DIR="$(pwd)/project"
-mkdir -p "$PROJECT_DIR/input/fastq"
-
-# Create or replace the sample table.
-cat > "$PROJECT_DIR/input/samples.csv" <<'CSV'
-sample_name,status
-Sample_A,TUMOR
-Control_A,NORMAL
-Control_B,NORMAL
-CSV
-
-# Display the saved table.
-cat "$PROJECT_DIR/input/samples.csv"
-```
-
-Then generate the YAML and Illumina samplesheet:
-
-```bash
-# Set the standard repository and project paths.
-PROJECT_DIR="$(pwd)/project"
-
-# Generate configuration files without starting the analysis.
-nextflow run main.nf --auto_params \
-  --mode illumina \
-  --reads_folder "$PROJECT_DIR/input/fastq" \
-  --sample_table "$PROJECT_DIR/input/samples.csv" \
-  --auto_config_dir "$PROJECT_DIR/config" \
-  --auto_outdir "$PROJECT_DIR/results"
-```
-
-Automatic Setup validates the input files and writes the YAML, audit manifest, and Illumina samplesheet. The later analysis command reads the YAML with `-params-file`.
-
-## YAML vocabulary
-
-```yaml
-mode: illumina                         # text value
-illumina_binsize_kb: 100               # integer
-run_cna_classifier: false              # Boolean
-pathology_csv: null                    # not supplied
-ont_barcodes: barcode01,barcode02      # comma-separated list
-```
-
-Rules:
-
-- Use spaces, not tabs.
-- Keep one `key: value` setting per line.
-- Use lowercase `true`, `false`, and `null`.
-- Text after `#` is a comment.
-- Do not repeat a key.
-- Avoid spaces and `#` in filenames.
-- YAML does not expand `~`, `$HOME`, `$ROOT`, or `$(pwd)`.
-
-## Important paths
+OncoTracer v2 deliberately accepts a flat top-level mapping:
 
 ```yaml
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/config/illumina.samplesheet.csv
-```
-
-- `mode` selects `illumina` or `ont`.
-- `lpwgs_root` is the common parent visible to Docker or Singularity/Apptainer.
-- `outdir` is the result directory for one run.
-- `illumina_samplesheet` points to the FASTQ-to-sample table.
-
-Keep every configured input, output, reference, and cache below `lpwgs_root`.
-
-## Check absolute paths
-
-```bash
-# Set the standard repository and project paths.
-PROJECT_DIR="$(pwd)/project"
-
-# Print and validate example paths.
-realpath .
-realpath "$PROJECT_DIR/input/fastq/Sample_A_R1.fastq.gz"
-ls -lh "$PROJECT_DIR/input/fastq/Sample_A_R1.fastq.gz"
-gzip -t "$PROJECT_DIR/input/fastq/Sample_A_R1.fastq.gz"
-```
-
-On Linux, an absolute path begins with `/`. In WSL, use Linux paths such as `/mnt/c/Users/Name/oncotracer`, not Windows `C:\...` paths.
-
-## Manual YAML editing
-
-Use manual setup only when Automatic Setup does not fit the study.
-
-```bash
-# Run this command from the oncotracer directory.
-
-# Copy the minimal Illumina template and edit the copy.
-cp "params/illumina.minimal.yml" "params/my_illumina.yml"
-nano "params/my_illumina.yml"
-```
-
-A minimal file is:
-
-```yaml
-mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/sample_a
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/input/illumina.samplesheet.csv
-illumina_analysis_type: solid_biopsy
-illumina_caller: qdnaseq
+lpwgs_root: /data/study
+outdir: /data/study/results
+illumina_samplesheet: /data/study/config/illumina.samplesheet.csv
 illumina_binsize_kb: 100
 run_cna_classifier: false
 force: false
 ```
 
-Save Nano with `Ctrl+O`, press Enter, and exit with `Ctrl+X`.
+Nested mappings and lists are rejected. Use comma-separated values where a parameter accepts multiple names.
 
-```bash
-# Run this command from the oncotracer directory.
+Incorrect:
 
-# Inspect and run the copied YAML.
-sed -n '1,120p' "params/my_illumina.yml"
-nextflow run main.nf --docker \
-  -params-file "params/my_illumina.yml" \
-  -resume
+```yaml
+illumina:
+  binsize_kb: 100
 ```
 
-Continue with [Illumina configuration](illumina.md), [ONT configuration](ont.md), or [All parameters](parameter_reference.md).
+Correct:
+
+```yaml
+illumina_binsize_kb: 100
+```
+
+## Value types
+
+| Type | Examples |
+| --- | --- |
+| Boolean | `true`, `false` |
+| Integer | `100`, `500`, `20` |
+| Decimal | `0.10`, `0.98` |
+| Text | `illumina`, `qdnaseq`, `broad_cancer` |
+| Absolute path | `/data/study/input/fastq_pass` |
+| Comma-separated names | `barcode01,barcode02` |
+
+Do not place shell variables such as `$PWD` inside the YAML; expand them when creating the file.
+
+## Minimal Illumina YAML
+
+```bash
+PROJECT_DIR="$PWD/project"
+mkdir -p "$PROJECT_DIR/config" "$PROJECT_DIR/results"
+
+cat > "$PROJECT_DIR/config/illumina.manual.yml" <<YAML
+mode: illumina
+lpwgs_root: $PROJECT_DIR
+outdir: $PROJECT_DIR/results/illumina
+illumina_samplesheet: $PROJECT_DIR/config/illumina.samplesheet.csv
+illumina_analysis_type: solid_biopsy
+illumina_caller: qdnaseq
+illumina_binsize_kb: 100
+run_cna_classifier: false
+force: false
+YAML
+
+oncotracer run --backend conda \
+  --config "$PROJECT_DIR/config/illumina.manual.yml"
+```
+
+## Minimal ONT YAML
+
+```bash
+PROJECT_DIR="$PWD/project"
+mkdir -p "$PROJECT_DIR/config" "$PROJECT_DIR/results"
+
+cat > "$PROJECT_DIR/config/ont.manual.yml" <<YAML
+mode: ont
+lpwgs_root: $PROJECT_DIR
+outdir: $PROJECT_DIR/results/ont
+ont_folder: $PROJECT_DIR/input/fastq_pass
+ont_barcodes: barcode01,barcode02
+ont_sample_names: Patient_A,Patient_B
+ont_analysis_type: liquid_biopsy
+ont_caller: ichorcna
+ont_binsize_kb: 500
+ont_min_age_minutes: 0
+run_cna_classifier: false
+force: false
+YAML
+
+oncotracer run --backend conda \
+  --config "$PROJECT_DIR/config/ont.manual.yml"
+```
+
+## Local Illumina normal panel
+
+```yaml
+illumina_build_pon: true
+illumina_pon_normal_samples: Control_A,Control_B
+illumina_pon_min_normals: 2
+illumina_pon_name: study_local_PoN
+illumina_pon_min_mapq: 37
+```
+
+## Native classifier and pathology
+
+```yaml
+run_cna_classifier: true
+cna_classifier_sample_set: broad_cancer
+run_gistic: true
+gistic_required: false
+gistic_min_samples: 2
+knowledge_web: false
+knowledge_literature_llm: false
+knowledge_deep_literature: false
+
+pathology_csv: /data/study/input/pathology.csv
+pathology_sample_col: illumina_sample_id
+pathology_case_col: case_code
+pathology_diagnosis_col: final_diagnosis
+pathology_use_biomed_models: false
+```
+
+## Validate before execution
+
+```bash
+CONFIG="$PWD/project/config/illumina.manual.yml"
+
+test -s "$CONFIG"
+grep -E '^(mode|lpwgs_root|outdir):' "$CONFIG"
+oncotracer run --backend conda \
+  --config "$CONFIG" \
+  --dry-run
+```
+
+`--dry-run` prints the native argument arrays without launching the scientific tools.
+
+## Precedence
+
+The YAML supplies analysis settings. CLI options control the execution wrapper:
+
+```bash
+oncotracer run \
+  --backend docker \
+  --threads 8 \
+  --config "$PWD/project/config/illumina.manual.yml"
+```
+
+`--force` and `--dry-run` may also be supplied on the CLI. The installed backend is used when `--backend` is omitted.
