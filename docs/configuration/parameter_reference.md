@@ -53,6 +53,8 @@ The command returns JSON and exits nonzero when required source identity, prefix
 ## `oncotracer quickstart`
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 1 \
   --backend conda \
   --test-root "$PWD/oncotracer-quickstart1"
