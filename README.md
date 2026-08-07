@@ -44,7 +44,11 @@ oncotracer doctor --backend conda
 
 ## Run the same complete public examples shown in the documentation
 
+Choose an existing analyses directory first. Every `$PWD` path below is created inside that directory.
+
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 1 \
   --backend conda \
   --test-root "$PWD/oncotracer-quickstart1"
@@ -59,6 +63,8 @@ QuickStart 1 analyzes one public Illumina library and one public ONT library. Qu
 ## Analyze your own FASTQs
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer auto \
   --mode illumina \
   --reads-folder "$PWD/project/input/fastq" \
