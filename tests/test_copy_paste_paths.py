@@ -134,8 +134,13 @@ def check_native_quickstarts() -> None:
 
 
 def check_every_pwd_quickstart_block_enters_analysis_directory() -> None:
-    for relative_path in ("README.md", "docs/quick_start.md", "docs/public_cohort.md"):
-        for number, block in enumerate(BASH_BLOCK_RE.findall(read(relative_path)), start=1):
+    markdown_files = [ROOT / "README.md"]
+    markdown_files.extend(sorted((ROOT / "docs").rglob("*.md")))
+    markdown_files.extend(sorted((ROOT / "examples").rglob("*.md")))
+    for path in markdown_files:
+        relative_path = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8")
+        for number, block in enumerate(BASH_BLOCK_RE.findall(text), start=1):
             uses_pwd_quickstart = any(
                 token in block
                 for token in (
