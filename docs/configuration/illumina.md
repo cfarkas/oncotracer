@@ -1,24 +1,15 @@
-# Illumina Configuration
+# Illumina configuration
 
-> **Legacy v1.1 documentation.** This unlisted page describes the immutable Nextflow release. For native v2, use [Native YAML configuration](../configuration_v2.md) and [Automatic Setup](../auto_params.md).
+Use this route for single-end or paired-end Illumina FASTQs. Native v2 validates the inputs, aligns with BWA, performs samtools/Picard processing, runs qDNAseq or a local qDNAseq normal panel, refines CNA boundaries from BAM depth, and creates CNA tables, plots, and summaries.
 
-Use this route for single-end or paired-end Illumina FASTQs. OncoTracer aligns the reads, runs SAMURAI/qDNAseq, refines CNA boundaries, and creates tables, plots, and a workflow summary.
+## Recommended: Automatic Setup
 
-The examples use paths relative to the cloned `oncotracer` directory.
+### Arrange the FASTQs
 
-## Recommended: create the YAML automatically
-
-Automatic Setup supports either:
-
-- one `<sample>.fastq.gz` or `<sample>.fq.gz` file per sample; or
-- one `<sample>_R1.fastq.gz` and `<sample>_R2.fastq.gz` pair per sample.
-
-Do not mix single-end and paired-end libraries in one run.
-
-### 1. Arrange the FASTQs
+Paired-end example:
 
 ```text
-/path/to/my/directory/oncotracer/project/input/illumina_fastq/
+project/input/illumina_fastq/
 ├── Patient_A_R1.fastq.gz
 ├── Patient_A_R2.fastq.gz
 ├── Patient_B_R1.fastq.gz
@@ -29,48 +20,42 @@ Do not mix single-end and paired-end libraries in one run.
 └── Control_B_R2.fastq.gz
 ```
 
-### 2. Create the sample table
+Single-end files may be named `<sample>.fastq.gz`. Do not mix layouts in one run.
+
+### Create the sample table
 
 ```bash
-# Set the standard repository and project paths.
-PROJECT_DIR="$(pwd)/project"
+PROJECT_DIR="$PWD/project"
 mkdir -p "$PROJECT_DIR/input/illumina_fastq"
 
-# Create or replace the Illumina sample table.
-cat > "$PROJECT_DIR/input/illumina_fastq/samples.csv" <<'CSV'
+cat > "$PROJECT_DIR/input/illumina_samples.csv" <<'CSV'
 sample_name,status
 Patient_A,TUMOR
 Patient_B,TUMOR
 Control_A,NORMAL
 Control_B,NORMAL
 CSV
-
-# Display the saved table.
-cat "$PROJECT_DIR/input/illumina_fastq/samples.csv"
 ```
 
-`sample_name` must match the FASTQ filename prefix exactly. Zero normal rows run without a local panel, one normal is rejected, and two or more normals enable the local qDNAseq reference.
+`sample_name` must match the FASTQ filename prefix exactly.
 
-### 3. Generate the configuration
+### Generate the YAML and samplesheet
 
 ```bash
-# Set the standard repository and project paths.
-PROJECT_DIR="$(pwd)/project"
+PROJECT_DIR="$PWD/project"
 
-# Generate the Illumina YAML and FASTQ samplesheet.
-nextflow run main.nf --auto_params \
+oncotracer auto \
   --mode illumina \
-  --reads_folder "$PROJECT_DIR/input/illumina_fastq" \
-  --sample_table "$PROJECT_DIR/input/illumina_fastq/samples.csv" \
-  --auto_config_dir "$PROJECT_DIR/config/illumina" \
-  --auto_outdir "$PROJECT_DIR/results/illumina" \
-  -work-dir "$PROJECT_DIR/work/auto_params_illumina"
+  --reads-folder "$PROJECT_DIR/input/illumina_fastq" \
+  --sample-table "$PROJECT_DIR/input/illumina_samples.csv" \
+  --config-dir "$PROJECT_DIR/config/illumina" \
+  --outdir "$PROJECT_DIR/results/illumina"
 ```
 
 Automatic Setup validates every gzip file and writes:
 
 ```text
-/path/to/my/directory/oncotracer/project/config/illumina/
+project/config/illumina/
 ├── auto_params_manifest.tsv
 ├── illumina.auto.yml
 └── illumina.samplesheet.csv
@@ -78,72 +63,85 @@ Automatic Setup validates every gzip file and writes:
 
 It does not start the analysis.
 
-### 4. Inspect and run
+### Inspect and run
 
 ```bash
-# Set the standard repository and project paths.
-PROJECT_DIR="$(pwd)/project"
+PROJECT_DIR="$PWD/project"
 
-# Inspect the generated files.
-sed -n '1,140p' "$PROJECT_DIR/config/illumina/illumina.auto.yml"
+sed -n '1,180p' "$PROJECT_DIR/config/illumina/illumina.auto.yml"
 sed -n '1,30p' "$PROJECT_DIR/config/illumina/illumina.samplesheet.csv"
 cat "$PROJECT_DIR/config/illumina/auto_params_manifest.tsv"
 
-# Run the generated YAML with Docker.
-nextflow run main.nf --docker \
-  -params-file "$PROJECT_DIR/config/illumina/illumina.auto.yml" \
-  -work-dir "$PROJECT_DIR/work/illumina" \
-  -resume
+oncotracer run \
+  --backend conda \
+  --config "$PROJECT_DIR/config/illumina/illumina.auto.yml"
 
-# Read the completed workflow summary.
 cat "$PROJECT_DIR/results/illumina/06_workflow_summary/workflow_summary.txt"
 ```
 
-On HPC, replace `--docker` with `--singularity`.
+## Local qDNAseq panel of normals
 
-## Second option: manual setup
+Automatic Setup applies this rule:
 
-Use manual setup when the filenames do not match the supported automatic patterns or when advanced settings are required.
+| Normal rows | Behavior |
+| ---: | --- |
+| 0 | Run qDNAseq without a local panel |
+| 1 | Reject the configuration |
+| 2 or more | Build and apply a run-local median-log₂ reference |
 
-### 1. Create the samplesheet
+Generated settings:
+
+```yaml
+illumina_build_pon: true
+illumina_pon_normal_samples: Control_A,Control_B
+illumina_pon_min_normals: 2
+illumina_pon_name: Control_A_Control_B_PoN
+illumina_pon_min_mapq: 37
+```
+
+All tumor and normal BAMs use the same alignment, bin definition, paired-read setting, and mapping-quality threshold. The panel stores the per-bin control reference and subtracts it from each tumor profile. Normal samples remain reference/QC inputs; corrected downstream bins, segments, CNA events, and plots contain tumor samples only.
+
+Review:
+
+```text
+01_samurai_illumina/qdnaseq_local_pon/
+├── pon/normal_panel_manifest.tsv
+├── qc/normal_panel_sample_qc.tsv
+├── all_tumors.qdnaseq_pon_corrected_bins.tsv
+└── qdnaseq_local_pon.done
+```
+
+The completion marker must contain `QDNASEQ_LOCAL_PON_SUCCESS`.
+
+## Manual samplesheet
+
+Use a manual samplesheet for unusual filenames:
 
 ```bash
-# Set the standard repository and project paths.
-PROJECT_DIR="$(pwd)/project"
-mkdir -p "$PROJECT_DIR/input"
+PROJECT_DIR="$PWD/project"
+mkdir -p "$PROJECT_DIR/config"
 
-# Create or replace a paired-end Illumina samplesheet.
-cat > "$PROJECT_DIR/input/illumina.samplesheet.csv" <<CSV
+cat > "$PROJECT_DIR/config/illumina.samplesheet.csv" <<CSV
 sample,fastq_1,fastq_2,status
 Patient_A,$PROJECT_DIR/input/illumina_fastq/Patient_A_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor
 Patient_B,$PROJECT_DIR/input/illumina_fastq/Patient_B_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor
 Control_A,$PROJECT_DIR/input/illumina_fastq/Control_A_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Control_A_R2.fastq.gz,normal
 Control_B,$PROJECT_DIR/input/illumina_fastq/Control_B_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Control_B_R2.fastq.gz,normal
 CSV
-
-# Display the saved samplesheet.
-cat "$PROJECT_DIR/input/illumina.samplesheet.csv"
 ```
 
-For a single-end run, keep the four-column header and leave `fastq_2` empty for every row.
+For single-end data, retain the four-column header and leave `fastq_2` empty for every row.
 
-### 2. Copy and edit the YAML
+## Manual YAML
 
 ```bash
-# Run this command from the oncotracer directory.
+PROJECT_DIR="$PWD/project"
 
-# Copy the minimal template and edit the copy.
-cp "params/illumina.minimal.yml" "params/my_illumina.yml"
-nano "params/my_illumina.yml"
-```
-
-A tumor-plus-controls YAML can contain:
-
-```yaml
+cat > "$PROJECT_DIR/config/illumina.manual.yml" <<YAML
 mode: illumina
-lpwgs_root: /path/to/my/directory/oncotracer/project
-outdir: /path/to/my/directory/oncotracer/project/results/manual_illumina
-illumina_samplesheet: /path/to/my/directory/oncotracer/project/input/illumina.samplesheet.csv
+lpwgs_root: $PROJECT_DIR
+outdir: $PROJECT_DIR/results/manual_illumina
+illumina_samplesheet: $PROJECT_DIR/config/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -152,41 +150,45 @@ illumina_pon_normal_samples: Control_A,Control_B
 illumina_pon_min_normals: 2
 illumina_pon_name: Control_A_Control_B_PoN
 illumina_pon_min_mapq: 37
-illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1
+run_cna_classifier: false
 force: false
-```
+YAML
 
-### How the local PoN is built
+oncotracer run \
+  --backend conda \
+  --config "$PROJECT_DIR/config/illumina.manual.yml" \
+  --dry-run
 
-All tumor and normal BAMs use the same alignment stage, bin definition, paired-read setting, and MAPQ threshold. qDNAseq computes the per-bin median signal across the selected controls and subtracts that reference from each tumor profile. Corrected bins, segments, and plots contain tumors only.
-
-The normal list must contain every and only samplesheet row marked `normal`. At least two controls are required. Review `qc/normal_panel_sample_qc.tsv` before interpreting corrected calls.
-
-### 3. Check and run the manual YAML
-
-```bash
-# Run this command from the oncotracer directory.
-
-# Check workflow connections without running the scientific tools.
-nextflow run main.nf -stub-run --docker \
-  -params-file "params/my_illumina.yml"
-
-# Run or resume the manual configuration.
-nextflow run main.nf --docker \
-  -params-file "params/my_illumina.yml" \
-  -resume
+oncotracer run \
+  --backend conda \
+  --config "$PROJECT_DIR/config/illumina.manual.yml"
 ```
 
 ## Main Illumina settings
 
-| Setting | Default | Purpose |
+| Setting | Typical value | Purpose |
 | --- | --- | --- |
-| `illumina_analysis_type` | `solid_biopsy` | SAMURAI analysis preset |
+| `illumina_samplesheet` | absolute CSV path | Exact FASTQ/sample/status contract |
+| `illumina_analysis_type` | `solid_biopsy` | Analysis preset |
 | `illumina_caller` | `qdnaseq` | Illumina CNA caller |
-| `illumina_binsize_kb` | `100` | Initial bin size in kilobases |
-| `illumina_build_pon` | `false` | Enable the local qDNAseq normal reference |
-| `illumina_pon_normal_samples` | none | Exact comma-separated normal IDs |
-| `illumina_pon_min_normals` | `2` | Minimum required controls |
-| `force` | `false` | Keep false for normal project runs |
+| `illumina_binsize_kb` | `100` | Initial qDNAseq bin width |
+| `illumina_build_pon` | `false` or `true` | Enable local normal panel |
+| `illumina_pon_normal_samples` | comma-separated IDs | Exact normal sample set |
+| `illumina_pon_min_normals` | `2` or study-specific value | Minimum controls |
+| `illumina_pon_min_mapq` | `37` | Panel read mapping-quality threshold |
+| `run_cna_classifier` | `false` | Add native cancer-context reports |
+| `force` | `false` | Preserve reusable stages |
 
-See [All parameters](parameter_reference.md) for advanced options.
+## Pre-run checks
+
+```bash
+PROJECT_DIR="$PWD/project"
+SHEET="$PROJECT_DIR/config/illumina/illumina.samplesheet.csv"
+
+test -s "$SHEET"
+sed -n '1,30p' "$SHEET"
+gzip -t "$PROJECT_DIR/input/illumina_fastq/Patient_A_R1.fastq.gz"
+gzip -t "$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz"
+```
+
+Use a new YAML and `outdir` when changing bin size, panel membership, or other scientific settings.
