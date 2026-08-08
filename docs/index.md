@@ -17,9 +17,11 @@ ONT FASTQ ------> minimap2 ---> HMMcopy/ichorCNA --+              |
 
 ## Start with a complete public example
 
-QuickStart 1 runs one checksum-validated Illumina library and one checksum-validated ONT library:
+QuickStart 1 runs one checksum-validated Illumina library and one checksum-validated ONT library. Replace the example analyses directory with a real directory on your Linux workstation or server:
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --conda
 oncotracer doctor --backend conda
 
@@ -31,6 +33,8 @@ oncotracer quickstart 1 \
 QuickStart 2 runs three public HCC1143 Illumina libraries:
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 2 \
   --backend conda \
   --test-root "$PWD/oncotracer-quickstart2"
