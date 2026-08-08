@@ -97,7 +97,8 @@ def _install_conda(root: Path, args: argparse.Namespace, *, save: bool = True) -
     }
     for name, destination in prefixes.items():
         definition = require_file(definitions[name], f"native {name} environment definition")
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        if not args.dry_run:
+            destination.parent.mkdir(parents=True, exist_ok=True)
         if destination.is_dir() and not args.force:
             command = [conda, "env", "update", "--prefix", destination, "--file", definition, "--prune"]
         else:
@@ -119,7 +120,7 @@ def _install_conda(root: Path, args: argparse.Namespace, *, save: bool = True) -
 
 
 def _install_docker(args: argparse.Namespace) -> dict[str, object]:
-    docker = require_command("docker")
+    docker = shutil.which("docker") or ("docker" if args.dry_run else require_command("docker"))
     image = args.image or DEFAULT_IMAGE
     _run([docker, "info"], dry_run=args.dry_run)
     _run([docker, "pull", image], dry_run=args.dry_run)
@@ -135,7 +136,7 @@ def _singularity_command() -> str:
 
 
 def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
-    executable = _singularity_command()
+    executable = _singularity_command() or ("apptainer" if args.dry_run else "")
     if not executable:
         raise OncoTracerError("Apptainer or Singularity is required for --singularity")
     image = args.image or DEFAULT_IMAGE
@@ -144,7 +145,8 @@ def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
         if args.sif
         else (_data_home() / "images" / "oncotracer-2.0.0.sif").resolve()
     )
-    destination.parent.mkdir(parents=True, exist_ok=True)
+    if not args.dry_run:
+        destination.parent.mkdir(parents=True, exist_ok=True)
     if args.force and destination.exists() and not args.dry_run:
         destination.unlink()
     if not destination.is_file():
@@ -264,7 +266,7 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
 
 
 def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
-    docker = require_command("docker")
+    docker = shutil.which("docker") or ("docker" if args.dry_run else require_command("docker"))
     install = _load_install_config()
     image = args.image or str(install.get("image") or DEFAULT_IMAGE)
     command: list[str | Path] = [docker, "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}"]
@@ -283,13 +285,14 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
 
 def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
     install = _load_install_config()
-    executable = str(install.get("singularity_command") or _singularity_command())
+    executable = str(install.get("singularity_command") or _singularity_command() or ("apptainer" if args.dry_run else ""))
     if not executable:
         raise OncoTracerError("Apptainer or Singularity is required")
     sif_value = args.sif or install.get("sif")
-    if not sif_value:
+    if not sif_value and not args.dry_run:
         raise OncoTracerError("no SIF is configured; run 'oncotracer install --singularity'")
-    sif = require_file(Path(str(sif_value)), "OncoTracer SIF")
+    sif_candidate = Path(str(sif_value or "/path/to/oncotracer-2.0.0.sif")).expanduser().resolve()
+    sif = sif_candidate if args.dry_run else require_file(sif_candidate, "OncoTracer SIF")
     command: list[str | Path] = [executable, "exec", "--cleanenv"]
     for mount in _project_mounts(config_path):
         command.extend(["--bind", f"{mount}:{mount}"])
@@ -332,7 +335,10 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
 
 def command_run(args: argparse.Namespace) -> int:
     outdir = execute_run(Path(args.config), args)
-    if outdir is not None:
+    if args.dry_run:
+        target = outdir if outdir is not None else Path(args.config).expanduser().resolve()
+        print(f"OncoTracer dry-run validation completed without analysis: {target}")
+    elif outdir is not None:
         print(f"OncoTracer native analysis completed: {outdir}")
     return 0
 
@@ -382,10 +388,24 @@ QS1_FILES = (
 )
 
 
-def prepare_quickstart1(root_path: Path) -> tuple[Path, Path]:
+def prepare_quickstart1(root_path: Path, *, dry_run: bool = False) -> tuple[Path, Path]:
     from .runtime import render_flat_yaml
 
     root_path = root_path.expanduser().resolve()
+    configs = root_path / "configs"
+    illumina_config = configs / "illumina.quickstart.yml"
+    ont_config = configs / "ont.quickstart.yml"
+    if dry_run:
+        for url, relative, size, md5 in QS1_FILES:
+            print(
+                f"Would download and validate {url} -> {root_path / relative} "
+                f"(bytes={size}, md5={md5})",
+                file=sys.stderr,
+            )
+        print(f"Would write {illumina_config}", file=sys.stderr)
+        print(f"Would write {ont_config}", file=sys.stderr)
+        return illumina_config, ont_config
+
     for url, relative, size, md5 in QS1_FILES:
         download(url, root_path / relative, expected_bytes=size, expected_md5=md5)
     illumina_dir = root_path / "public" / "illumina_ERR12341627"
@@ -401,10 +421,7 @@ def prepare_quickstart1(root_path: Path) -> tuple[Path, Path]:
                 "tumor",
             ]
         )
-    configs = root_path / "configs"
     configs.mkdir(parents=True, exist_ok=True)
-    illumina_config = configs / "illumina.quickstart.yml"
-    ont_config = configs / "ont.quickstart.yml"
     atomic_write_text(
         illumina_config,
         render_flat_yaml(
@@ -417,7 +434,7 @@ def prepare_quickstart1(root_path: Path) -> tuple[Path, Path]:
                 "illumina_caller": "qdnaseq",
                 "illumina_binsize_kb": 100,
                 "run_cna_classifier": False,
-                "force": True,
+                "force": False,
             }
         ),
     )
@@ -436,7 +453,7 @@ def prepare_quickstart1(root_path: Path) -> tuple[Path, Path]:
                 "ont_binsize_kb": 500,
                 "ont_min_age_minutes": 0,
                 "run_cna_classifier": False,
-                "force": True,
+                "force": False,
             }
         ),
     )
@@ -446,11 +463,18 @@ def prepare_quickstart1(root_path: Path) -> tuple[Path, Path]:
 def prepare_quickstart2(root: Path, test_root: Path, *, dry_run: bool = False) -> Path:
     manifest = require_file(root / "examples" / "hcc1143_lpwgs" / "manifest.tsv", "HCC1143 manifest")
     reads = test_root / "public" / "hcc1143_lpwgs"
-    reads.mkdir(parents=True, exist_ok=True)
+    samples = reads / "samples.csv"
+    config_dir = test_root / "configs" / "hcc1143_lpwgs"
+    outdir = test_root / "runs" / "hcc1143_lpwgs"
+    if not dry_run:
+        reads.mkdir(parents=True, exist_ok=True)
     with manifest.open(newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle, delimiter="\t"):
             if dry_run:
-                print(f"Would download {row['url']} -> {reads / row['filename']}")
+                print(
+                    f"Would download and validate {row['url']} -> {reads / row['filename']}",
+                    file=sys.stderr,
+                )
             else:
                 download(
                     row["url"],
@@ -458,14 +482,14 @@ def prepare_quickstart2(root: Path, test_root: Path, *, dry_run: bool = False) -
                     expected_bytes=int(row["bytes"]),
                     expected_md5=row["md5"],
                 )
-    samples = reads / "samples.csv"
-    with samples.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["sample_name", "status"])
-        for sample in ("HCC1143_DMSO", "HCC1143_BEZ235", "HCC1143_TRAMETINIB"):
-            writer.writerow([sample, "TUMOR"])
-    config_dir = test_root / "configs" / "hcc1143_lpwgs"
-    outdir = test_root / "runs" / "hcc1143_lpwgs"
+    if dry_run:
+        print(f"Would write {samples}", file=sys.stderr)
+    else:
+        with samples.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(["sample_name", "status"])
+            for sample in ("HCC1143_DMSO", "HCC1143_BEZ235", "HCC1143_TRAMETINIB"):
+                writer.writerow([sample, "TUMOR"])
     script = require_file(root / "bin" / "scripts" / "generate_auto_params.sh", "Automatic Setup script")
     _run(
         [
@@ -492,16 +516,29 @@ def command_quickstart(args: argparse.Namespace) -> int:
     root = runtime_root(args.root)
     test_root = Path(args.test_root).expanduser().resolve()
     if args.number == "1":
-        illumina, ont = prepare_quickstart1(test_root)
+        illumina, ont = prepare_quickstart1(test_root, dry_run=args.dry_run)
+        configs = (illumina, ont)
+    else:
+        configs = (prepare_quickstart2(root, test_root, dry_run=args.dry_run),)
+
+    if args.dry_run:
         if not args.download_only:
-            execute_run(illumina, args)
-            execute_run(ont, args)
+            backend = _backend_from(args)
+            for config in configs:
+                print(
+                    f"Would run oncotracer with backend={backend} and config={config}",
+                    file=sys.stderr,
+                )
+        print(f"QuickStart {args.number} dry-run completed without writing files: {test_root}")
+        return 0
+
+    if not args.download_only:
+        for config in configs:
+            execute_run(config, args)
+        if args.number == "1":
             verify = require_file(root / "examples" / "quickstart" / "verify_outputs.py", "QuickStart verifier")
             _run([sys.executable, verify, "--test-root", test_root], cwd=root)
-    else:
-        config = prepare_quickstart2(root, test_root, dry_run=args.dry_run)
-        if not args.download_only:
-            execute_run(config, args)
+        else:
             required = [
                 test_root / "runs" / "hcc1143_lpwgs" / "06_workflow_summary" / "workflow_summary.txt",
                 test_root / "runs" / "hcc1143_lpwgs" / "03_cna_codification" / "cna_events.tsv",
