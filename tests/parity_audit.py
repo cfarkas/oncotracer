@@ -17,9 +17,10 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from verify_nested_samurai import (  # noqa: E402
     CONTRACTS,
-    REQUIRED_TRACE_COLUMNS,
-    normalize_container,
-    normalize_process,
+    ONT_RESUME_TRACE_IMAGES,
+    ONT_RESUME_TRACE_PROCESSES,
+    Contract,
+    evaluate_trace,
     parse_compat,
 )
 
@@ -169,26 +170,31 @@ def read_tsv(path: Path) -> list[list[str]]:
         return list(csv.reader(handle, delimiter="\t"))
 
 
-def verify_trace(path: Path, contract, pins: dict[str, str]) -> None:
-    with require_file(path).open(newline="", encoding="utf-8") as handle:
-        rows = list(csv.DictReader(handle, delimiter="\t"))
-    if not rows or len(rows) != contract.expected_rows:
-        raise AuditError(f"trace row count mismatch for {contract.label}: {len(rows)}")
-    if not REQUIRED_TRACE_COLUMNS <= set(rows[0]):
-        raise AuditError(f"trace lacks required columns: {path}")
-    if any(
-        row["status"] not in {"COMPLETED", "CACHED"}
-        or row["exit"] != "0"
-        or not row["container"].strip()
-        for row in rows
-    ):
-        raise AuditError(f"failed or uncontainerized task in {path}")
-    processes = {normalize_process(row["name"]) for row in rows}
-    images = {normalize_container(row["container"], pins) for row in rows}
-    if processes != set(contract.processes):
-        raise AuditError(f"trace process set mismatch for {contract.label}")
-    if images != set(contract.images):
-        raise AuditError(f"trace image set mismatch for {contract.label}")
+def verify_trace(path: Path, contract: Contract, pins: dict[str, str]) -> str:
+    """Independently re-evaluate the selected combined trace and evidence mode."""
+    ok, reason, _rows, _images = evaluate_trace(path, contract, pins)
+    if ok:
+        return "complete-combined-trace"
+
+    if contract.label == "quickstart1-ont":
+        resume_contract = Contract(
+            label=contract.label,
+            root_arg=contract.root_arg,
+            expected_rows=4,
+            processes=ONT_RESUME_TRACE_PROCESSES,
+            images=ONT_RESUME_TRACE_IMAGES,
+            require_ichorcna_compat=True,
+        )
+        resume_ok, resume_reason, _resume_rows, _resume_images = evaluate_trace(
+            path, resume_contract, pins
+        )
+        if resume_ok:
+            return "exact-ont-final-resume-trace"
+        reason = f"full={reason}; exact-resume={resume_reason}"
+
+    raise AuditError(
+        f"selected nested trace does not satisfy {contract.label}: {reason}: {path}"
+    )
 
 
 def verify_nested(audit: Path, suite: str) -> dict[str, object]:
@@ -241,12 +247,17 @@ def verify_nested(audit: Path, suite: str) -> dict[str, object]:
         suffix = contract.label.removeprefix("quickstart1-").removeprefix("quickstart2-")
         filename = f"nested-v1-{suffix}-trace.tsv"
         path = context / filename
-        verify_trace(path, contract, pins)
+        evidence_mode = verify_trace(path, contract, pins)
         selected = selection_by_run.get(contract.label)
         if selected is None or selected[4] != filename or selected[5] != sha256(path):
             raise AuditError(f"selected trace manifest mismatch: {contract.label}")
         if int(selected[1]) < 1 or int(selected[2]) < 1:
             raise AuditError(f"selected trace counts invalid: {contract.label}")
+        if not selected[3].startswith(evidence_mode + ":"):
+            raise AuditError(
+                f"selected trace evidence mode mismatch for {contract.label}: "
+                f"expected {evidence_mode!r}, observed {selected[3]!r}"
+            )
         if contract.require_ichorcna_compat:
             metadata = parse_compat(context / "nested-v1-ont-ichorcna-plot-compat.tsv")
             if metadata["target_quantile_calls"] != "2":

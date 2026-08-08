@@ -364,6 +364,86 @@ class ParityComparatorTests(unittest.TestCase):
             self.assertEqual(len(selected), 1)
             self.assertEqual(images, {image})
 
+    def test_sealed_audit_accepts_only_the_exact_ont_resume_contract(self) -> None:
+        verify_spec = importlib.util.spec_from_file_location(
+            "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
+        )
+        self.assertIsNotNone(verify_spec)
+        self.assertIsNotNone(verify_spec.loader)
+        verify_module = importlib.util.module_from_spec(verify_spec)
+        sys.path.insert(0, str(ROOT / "tests"))
+        sys.modules[verify_spec.name] = verify_module
+        try:
+            verify_spec.loader.exec_module(verify_module)
+            audit_spec = importlib.util.spec_from_file_location(
+                "parity_audit", ROOT / "tests" / "parity_audit.py"
+            )
+            self.assertIsNotNone(audit_spec)
+            self.assertIsNotNone(audit_spec.loader)
+            audit_module = importlib.util.module_from_spec(audit_spec)
+            sys.modules[audit_spec.name] = audit_module
+            audit_spec.loader.exec_module(audit_module)
+        finally:
+            sys.modules.pop("parity_audit", None)
+            sys.modules.pop(verify_spec.name, None)
+            sys.path.pop(0)
+
+        full_contract = verify_module.CONTRACTS["quickstart1"][1]
+        process_rows = (
+            (
+                "SAMURAI:SAMTOOLS_INDEX",
+                "quay.io/biocontainers/samtools:1.22.1--h96c455f_0",
+            ),
+            (
+                "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTMULTIPLEMETRICS",
+                "community.wave.seqera.io/library/picard:3.4.0--e9963040df0a9bf6",
+            ),
+            (
+                "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTWGSMETRICS",
+                "community.wave.seqera.io/library/picard:3.4.0--e9963040df0a9bf6",
+            ),
+            (
+                "SAMURAI:LIQUID_BIOPSY:ICHORCNA:HMMCOPY_READCOUNTER_ICHORCNA",
+                "community.wave.seqera.io/library/hmmcopy_samtools:875db3767c6d4ea2",
+            ),
+        )
+        pins = {image: "sha256:" + format(index + 1, "064x") for index, image in enumerate(full_contract.images)}
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            exact = root / "exact.tsv"
+            with exact.open("w", newline="") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    ["task_id", "hash", "name", "status", "exit", "container"],
+                    delimiter="\t",
+                )
+                writer.writeheader()
+                for index, (process, image) in enumerate(process_rows, start=1):
+                    writer.writerow(
+                        {
+                            "task_id": index,
+                            "hash": f"hash-{index}",
+                            "name": f"DINCALCILAB_SAMURAI:{process} (DRR165691)",
+                            "status": "COMPLETED",
+                            "exit": "0",
+                            "container": image,
+                        }
+                    )
+            self.assertEqual(
+                audit_module.verify_trace(exact, full_contract, pins),
+                "exact-ont-final-resume-trace",
+            )
+
+            incomplete = root / "incomplete.tsv"
+            rows = list(csv.DictReader(exact.open(newline=""), delimiter="\t"))[:-1]
+            with incomplete.open("w", newline="") as handle:
+                writer = csv.DictWriter(handle, rows[0].keys(), delimiter="\t")
+                writer.writeheader()
+                writer.writerows(rows)
+            with self.assertRaises(audit_module.AuditError):
+                audit_module.verify_trace(incomplete, full_contract, pins)
+
 
 if __name__ == "__main__":
     unittest.main()
