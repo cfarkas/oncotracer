@@ -184,6 +184,8 @@ def load_flat_yaml(path: Path) -> dict[str, object]:
         key = key.strip()
         if not key:
             raise OncoTracerError(f"empty YAML key ({path}:{line_number})")
+        if key in values:
+            raise OncoTracerError(f"duplicate YAML key {key!r} ({path}:{line_number})")
         # Generated OncoTracer values never contain unquoted inline comments.
         if " #" in value:
             value = value.split(" #", 1)[0]

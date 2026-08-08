@@ -1138,6 +1138,85 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
     atomic_write_json(outdir / "06_workflow_summary" / "native_run_manifest.json", manifest)
 
 
+def _validate_native_dry_run(
+    config: Mapping[str, object],
+    config_path: Path,
+    mode: str,
+    lpwgs_root: Path,
+    outdir: Path,
+    force_run: bool,
+    threads: int,
+) -> None:
+    plan: dict[str, object] = {
+        "schema": "oncotracer-native-dry-run-v1",
+        "oncotracer_version": __version__,
+        "engine": "native",
+        "nextflow_used": False,
+        "config": str(config_path),
+        "mode": mode,
+        "lpwgs_root": str(lpwgs_root),
+        "outdir": str(outdir),
+        "threads": threads,
+        "force": force_run,
+        "run_cna_classifier": _as_bool(config.get("run_cna_classifier"), False),
+    }
+    if mode == "illumina":
+        samplesheet_value = config.get("illumina_samplesheet")
+        if not samplesheet_value:
+            raise OncoTracerError("Illumina config requires illumina_samplesheet")
+        samples = parse_illumina_samplesheet(Path(str(samplesheet_value)))
+        binsize = _as_int(config.get("illumina_binsize_kb"), 100)
+        if binsize < 1:
+            raise OncoTracerError("illumina_binsize_kb must be positive")
+        plan.update(
+            {
+                "samples": [sample.sample for sample in samples],
+                "tumor_samples": [sample.sample for sample in samples if sample.status == "tumor"],
+                "normal_samples": [sample.sample for sample in samples if sample.status == "normal"],
+                "paired_end": all(sample.fastq_2 is not None for sample in samples),
+                "caller": str(config.get("illumina_caller") or "qdnaseq"),
+                "binsize_kb": binsize,
+                "stages": [
+                    "reference-validation",
+                    "illumina-alignment",
+                    "qdnaseq",
+                    "bam-refinement",
+                    "cna-codification",
+                    "cna-plots",
+                    "workflow-summary",
+                ],
+            }
+        )
+    else:
+        samples = parse_ont_samples(config)
+        binsize = _as_int(config.get("ont_binsize_kb"), 500)
+        if binsize < 1:
+            raise OncoTracerError("ont_binsize_kb must be positive")
+        plan.update(
+            {
+                "samples": [sample.sample for sample in samples],
+                "barcodes": [sample.barcode for sample in samples],
+                "caller": str(config.get("ont_caller") or "ichorcna"),
+                "binsize_kb": binsize,
+                "stages": [
+                    "reference-validation",
+                    "ont-fastq-validation",
+                    "ont-alignment",
+                    "hmmcopy-ichorcna",
+                    "bam-refinement",
+                    "cna-codification",
+                    "cna-plots",
+                    "workflow-summary",
+                ],
+            }
+        )
+    pathology = config.get("pathology_csv")
+    if pathology:
+        require_file(Path(str(pathology)), "Pathology CSV")
+        plan["pathology_csv"] = str(Path(str(pathology)).expanduser().resolve())
+    print(json.dumps(plan, indent=2, sort_keys=True))
+
+
 def run_native(
     config_path: Path,
     *,
@@ -1146,17 +1225,34 @@ def run_native(
     force: bool | None = None,
     dry_run: bool = False,
 ) -> Path:
-    root = runtime_root(root)
+    explicit_root = root
     config_path = require_file(config_path, "OncoTracer YAML config")
     config = load_flat_yaml(config_path)
     mode = str(config.get("mode") or "").strip().lower()
     if mode not in {"illumina", "ont"}:
         raise OncoTracerError("config mode must be illumina or ont")
-    lpwgs_root = Path(str(config.get("lpwgs_root") or root / "project")).expanduser().resolve()
+    payload_root: Path | None = None
+    lpwgs_value = config.get("lpwgs_root")
+    if lpwgs_value:
+        lpwgs_root = Path(str(lpwgs_value)).expanduser().resolve()
+    elif dry_run:
+        root_hint = Path(explicit_root).expanduser().resolve() if explicit_root else Path.cwd().resolve()
+        lpwgs_root = (root_hint / "project").resolve()
+    else:
+        payload_root = runtime_root(explicit_root)
+        lpwgs_root = (payload_root / "project").resolve()
     outdir_value = config.get("outdir")
     if not outdir_value:
         raise OncoTracerError("config requires outdir")
     outdir = Path(str(outdir_value)).expanduser().resolve()
+    cpu = threads or max(1, min(os.cpu_count() or 1, 16))
+    force_run = _as_bool(config.get("force"), False) if force is None else force
+    if dry_run:
+        _validate_native_dry_run(
+            config, config_path, mode, lpwgs_root, outdir, force_run, cpu
+        )
+        return outdir
+    root = payload_root or runtime_root(explicit_root)
     outdir.mkdir(parents=True, exist_ok=True)
     native_dir = outdir / ".oncotracer-native"
     native_dir.mkdir(parents=True, exist_ok=True)
@@ -1164,8 +1260,6 @@ def run_native(
     runner = CommandRunner(trace, dry_run=dry_run)
     ledger = StageLedger(native_dir / "state.json")
     toolchain = Toolchain.from_environment()
-    cpu = threads or max(1, min(os.cpu_count() or 1, 16))
-    force_run = _as_bool(config.get("force"), False) if force is None else force
 
     # The native trace is an explicit release invariant.
     atomic_write_text(native_dir / "engine.txt", f"engine=native\nnextflow_used=false\nversion={__version__}\n")
