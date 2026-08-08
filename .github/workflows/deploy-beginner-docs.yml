@@ -1,0 +1,49 @@
+name: Deploy beginner-safe native v2 documentation
+
+on:
+  push:
+    branches:
+      - agent/deploy-beginner-docs
+    paths:
+      - .github/workflows/deploy-beginner-docs.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 4503adaa95dd565251e7789d4035159906e2f874
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build the exact beginner-safe documentation strictly
+        run: |
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict --site-dir site
+          grep -R -F 'cd /path/to/my/analyses_dir/' \
+            site/quick_start/index.html \
+            site/public_cohort/index.html \
+            site/troubleshooting/index.html
+          ! grep -R -F 'nextflow run main.nf' \
+            site/index.html \
+            site/quick_start/index.html \
+            site/public_cohort/index.html \
+            site/full_tutorial/index.html
+
+      - name: Publish the validated site to gh-pages
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          mkdocs gh-deploy --force --clean
