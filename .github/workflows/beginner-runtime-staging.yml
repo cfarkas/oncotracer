@@ -1,0 +1,568 @@
+name: Stage beginner runtime fixes
+
+on:
+  push:
+    branches:
+      - agent/beginner-runtime-staging
+    paths:
+      - .github/workflows/beginner-runtime-staging.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/beginner-runtime-staging
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Apply beginner runtime fixes with exact source guards
+        run: |
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import re
+          from pathlib import Path
+
+          def replace_exact(path: Path, old: str, new: str, *, count: int = 1) -> None:
+              text = path.read_text(encoding='utf-8')
+              observed = text.count(old)
+              if observed != count:
+                  raise SystemExit(f'{path}: expected {count} exact match(es), found {observed}')
+              path.write_text(text.replace(old, new, count), encoding='utf-8')
+
+          def replace_regex(path: Path, pattern: str, replacement: str) -> None:
+              text = path.read_text(encoding='utf-8')
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.DOTALL)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one regex replacement, found {count}')
+              path.write_text(updated, encoding='utf-8')
+
+          cli = Path('oncotracer_cli/cli.py')
+          engine = Path('oncotracer_cli/engine.py')
+          runtime = Path('oncotracer_cli/runtime.py')
+
+          replace_exact(
+              cli,
+              '        destination.parent.mkdir(parents=True, exist_ok=True)\n',
+              '        if not args.dry_run:\n            destination.parent.mkdir(parents=True, exist_ok=True)\n',
+          )
+          replace_exact(
+              cli,
+              '    docker = require_command("docker")\n    image = args.image or DEFAULT_IMAGE\n',
+              '    docker = shutil.which("docker") or ("docker" if args.dry_run else require_command("docker"))\n    image = args.image or DEFAULT_IMAGE\n',
+              count=2,
+          )
+          replace_exact(
+              cli,
+              '    executable = _singularity_command()\n    if not executable:\n        raise OncoTracerError("Apptainer or Singularity is required for --singularity")\n',
+              '    executable = _singularity_command() or ("apptainer" if args.dry_run else "")\n    if not executable:\n        raise OncoTracerError("Apptainer or Singularity is required for --singularity")\n',
+          )
+          replace_exact(
+              cli,
+              '    destination.parent.mkdir(parents=True, exist_ok=True)\n    if args.force and destination.exists() and not args.dry_run:\n',
+              '    if not args.dry_run:\n        destination.parent.mkdir(parents=True, exist_ok=True)\n    if args.force and destination.exists() and not args.dry_run:\n',
+          )
+          replace_exact(
+              cli,
+              '    executable = str(install.get("singularity_command") or _singularity_command())\n    if not executable:\n        raise OncoTracerError("Apptainer or Singularity is required")\n    sif_value = args.sif or install.get("sif")\n    if not sif_value:\n        raise OncoTracerError("no SIF is configured; run \'oncotracer install --singularity\'")\n    sif = require_file(Path(str(sif_value)), "OncoTracer SIF")\n',
+              '    executable = str(install.get("singularity_command") or _singularity_command() or ("apptainer" if args.dry_run else ""))\n    if not executable:\n        raise OncoTracerError("Apptainer or Singularity is required")\n    sif_value = args.sif or install.get("sif")\n    if not sif_value and not args.dry_run:\n        raise OncoTracerError("no SIF is configured; run \'oncotracer install --singularity\'")\n    sif_candidate = Path(str(sif_value or "/path/to/oncotracer-2.0.0.sif")).expanduser().resolve()\n    sif = sif_candidate if args.dry_run else require_file(sif_candidate, "OncoTracer SIF")\n',
+          )
+
+          quickstart1 = '''def prepare_quickstart1(root_path: Path, *, dry_run: bool = False) -> tuple[Path, Path]:
+              from .runtime import render_flat_yaml
+
+              root_path = root_path.expanduser().resolve()
+              configs = root_path / "configs"
+              illumina_config = configs / "illumina.quickstart.yml"
+              ont_config = configs / "ont.quickstart.yml"
+              if dry_run:
+                  for url, relative, size, md5 in QS1_FILES:
+                      print(
+                          f"Would download and validate {url} -> {root_path / relative} "
+                          f"(bytes={size}, md5={md5})",
+                          file=sys.stderr,
+                      )
+                  print(f"Would write {illumina_config}", file=sys.stderr)
+                  print(f"Would write {ont_config}", file=sys.stderr)
+                  return illumina_config, ont_config
+
+              for url, relative, size, md5 in QS1_FILES:
+                  download(url, root_path / relative, expected_bytes=size, expected_md5=md5)
+              illumina_dir = root_path / "public" / "illumina_ERR12341627"
+              sheet = illumina_dir / "illumina.samplesheet.csv"
+              with sheet.open("w", newline="", encoding="utf-8") as handle:
+                  writer = csv.writer(handle)
+                  writer.writerow(["sample", "fastq_1", "fastq_2", "status"])
+                  writer.writerow(
+                      [
+                          "ERR12341627",
+                          illumina_dir / "ERR12341627_1.fastq.gz",
+                          illumina_dir / "ERR12341627_2.fastq.gz",
+                          "tumor",
+                      ]
+                  )
+              configs.mkdir(parents=True, exist_ok=True)
+              atomic_write_text(
+                  illumina_config,
+                  render_flat_yaml(
+                      {
+                          "mode": "illumina",
+                          "lpwgs_root": root_path,
+                          "outdir": root_path / "runs" / "illumina",
+                          "illumina_samplesheet": sheet,
+                          "illumina_analysis_type": "solid_biopsy",
+                          "illumina_caller": "qdnaseq",
+                          "illumina_binsize_kb": 100,
+                          "run_cna_classifier": False,
+                          "force": False,
+                      }
+                  ),
+              )
+              atomic_write_text(
+                  ont_config,
+                  render_flat_yaml(
+                      {
+                          "mode": "ont",
+                          "lpwgs_root": root_path,
+                          "outdir": root_path / "runs" / "ont",
+                          "ont_folder": root_path / "public" / "ont_DRR165691" / "fastq_pass",
+                          "ont_barcodes": "barcode01",
+                          "ont_sample_names": "DRR165691",
+                          "ont_analysis_type": "liquid_biopsy",
+                          "ont_caller": "ichorcna",
+                          "ont_binsize_kb": 500,
+                          "ont_min_age_minutes": 0,
+                          "run_cna_classifier": False,
+                          "force": False,
+                      }
+                  ),
+              )
+              return illumina_config, ont_config
+
+
+          '''
+          quickstart1 = re.sub(r'^          ', '', quickstart1, flags=re.MULTILINE)
+          replace_regex(
+              cli,
+              r'def prepare_quickstart1\(.*?\n\n\ndef prepare_quickstart2',
+              quickstart1 + 'def prepare_quickstart2',
+          )
+
+          quickstart2 = '''def prepare_quickstart2(root: Path, test_root: Path, *, dry_run: bool = False) -> Path:
+              manifest = require_file(root / "examples" / "hcc1143_lpwgs" / "manifest.tsv", "HCC1143 manifest")
+              reads = test_root / "public" / "hcc1143_lpwgs"
+              samples = reads / "samples.csv"
+              config_dir = test_root / "configs" / "hcc1143_lpwgs"
+              outdir = test_root / "runs" / "hcc1143_lpwgs"
+              if not dry_run:
+                  reads.mkdir(parents=True, exist_ok=True)
+              with manifest.open(newline="", encoding="utf-8") as handle:
+                  for row in csv.DictReader(handle, delimiter="\\t"):
+                      if dry_run:
+                          print(f"Would download and validate {row['url']} -> {reads / row['filename']}", file=sys.stderr)
+                      else:
+                          download(
+                              row["url"],
+                              reads / row["filename"],
+                              expected_bytes=int(row["bytes"]),
+                              expected_md5=row["md5"],
+                          )
+              if dry_run:
+                  print(f"Would write {samples}", file=sys.stderr)
+              else:
+                  with samples.open("w", newline="", encoding="utf-8") as handle:
+                      writer = csv.writer(handle)
+                      writer.writerow(["sample_name", "status"])
+                      for sample in ("HCC1143_DMSO", "HCC1143_BEZ235", "HCC1143_TRAMETINIB"):
+                          writer.writerow([sample, "TUMOR"])
+              script = require_file(root / "bin" / "scripts" / "generate_auto_params.sh", "Automatic Setup script")
+              _run(
+                  [
+                      "bash",
+                      script,
+                      "--mode",
+                      "illumina",
+                      "--reads-folder",
+                      reads,
+                      "--sample-table",
+                      samples,
+                      "--config-dir",
+                      config_dir,
+                      "--outdir",
+                      outdir,
+                  ],
+                  cwd=root,
+                  dry_run=dry_run,
+              )
+              return config_dir / "illumina.auto.yml"
+
+
+          '''
+          quickstart2 = re.sub(r'^          ', '', quickstart2, flags=re.MULTILINE)
+          replace_regex(
+              cli,
+              r'def prepare_quickstart2\(.*?\n\n\ndef command_quickstart',
+              quickstart2 + 'def command_quickstart',
+          )
+
+          command_quickstart = '''def command_quickstart(args: argparse.Namespace) -> int:
+              root = runtime_root(args.root)
+              test_root = Path(args.test_root).expanduser().resolve()
+              if args.number == "1":
+                  illumina, ont = prepare_quickstart1(test_root, dry_run=args.dry_run)
+                  configs = (illumina, ont)
+              else:
+                  configs = (prepare_quickstart2(root, test_root, dry_run=args.dry_run),)
+
+              if args.dry_run:
+                  if not args.download_only:
+                      backend = _backend_from(args)
+                      for config in configs:
+                          print(
+                              f"Would run oncotracer with backend={backend} and config={config}",
+                              file=sys.stderr,
+                          )
+                  print(f"QuickStart {args.number} dry-run completed without writing files: {test_root}")
+                  return 0
+
+              if not args.download_only:
+                  for config in configs:
+                      execute_run(config, args)
+                  if args.number == "1":
+                      verify = require_file(root / "examples" / "quickstart" / "verify_outputs.py", "QuickStart verifier")
+                      _run([sys.executable, verify, "--test-root", test_root], cwd=root)
+                  else:
+                      required = [
+                          test_root / "runs" / "hcc1143_lpwgs" / "06_workflow_summary" / "workflow_summary.txt",
+                          test_root / "runs" / "hcc1143_lpwgs" / "03_cna_codification" / "cna_events.tsv",
+                          test_root / "runs" / "hcc1143_lpwgs" / "04_cna_custom_plots" / "cna_per_sample_pages.pdf",
+                      ]
+                      for path in required:
+                          require_file(path, "QuickStart 2 output")
+              print(f"QuickStart {args.number} completed: {test_root}")
+              return 0
+
+
+          '''
+          command_quickstart = re.sub(r'^          ', '', command_quickstart, flags=re.MULTILINE)
+          replace_regex(
+              cli,
+              r'def command_quickstart\(.*?\n\n\ndef _check_process',
+              command_quickstart + 'def _check_process',
+          )
+
+          replace_exact(
+              cli,
+              '''def command_run(args: argparse.Namespace) -> int:
+              outdir = execute_run(Path(args.config), args)
+              if outdir is not None:
+                  print(f"OncoTracer native analysis completed: {outdir}")
+              return 0
+          ''',
+              '''def command_run(args: argparse.Namespace) -> int:
+              outdir = execute_run(Path(args.config), args)
+              if args.dry_run:
+                  target = outdir if outdir is not None else Path(args.config).expanduser().resolve()
+                  print(f"OncoTracer dry-run validation completed without analysis: {target}")
+              elif outdir is not None:
+                  print(f"OncoTracer native analysis completed: {outdir}")
+              return 0
+          ''',
+          )
+
+          replace_exact(
+              runtime,
+              '        if not key:\n            raise OncoTracerError(f"empty YAML key ({path}:{line_number})")\n        # Generated OncoTracer values never contain unquoted inline comments.\n',
+              '        if not key:\n            raise OncoTracerError(f"empty YAML key ({path}:{line_number})")\n        if key in values:\n            raise OncoTracerError(f"duplicate YAML key {key!r} ({path}:{line_number})")\n        # Generated OncoTracer values never contain unquoted inline comments.\n',
+          )
+
+          helper = '''def _validate_native_dry_run(
+              config: Mapping[str, object],
+              config_path: Path,
+              mode: str,
+              lpwgs_root: Path,
+              outdir: Path,
+              force_run: bool,
+              threads: int,
+          ) -> None:
+              plan: dict[str, object] = {
+                  "schema": "oncotracer-native-dry-run-v1",
+                  "oncotracer_version": __version__,
+                  "engine": "native",
+                  "nextflow_used": False,
+                  "config": str(config_path),
+                  "mode": mode,
+                  "lpwgs_root": str(lpwgs_root),
+                  "outdir": str(outdir),
+                  "threads": threads,
+                  "force": force_run,
+                  "run_cna_classifier": _as_bool(config.get("run_cna_classifier"), False),
+              }
+              if mode == "illumina":
+                  samplesheet_value = config.get("illumina_samplesheet")
+                  if not samplesheet_value:
+                      raise OncoTracerError("Illumina config requires illumina_samplesheet")
+                  samples = parse_illumina_samplesheet(Path(str(samplesheet_value)))
+                  binsize = _as_int(config.get("illumina_binsize_kb"), 100)
+                  if binsize < 1:
+                      raise OncoTracerError("illumina_binsize_kb must be positive")
+                  plan.update(
+                      {
+                          "samples": [sample.sample for sample in samples],
+                          "tumor_samples": [sample.sample for sample in samples if sample.status == "tumor"],
+                          "normal_samples": [sample.sample for sample in samples if sample.status == "normal"],
+                          "paired_end": all(sample.fastq_2 is not None for sample in samples),
+                          "caller": str(config.get("illumina_caller") or "qdnaseq"),
+                          "binsize_kb": binsize,
+                          "stages": [
+                              "reference-validation",
+                              "illumina-alignment",
+                              "qdnaseq",
+                              "bam-refinement",
+                              "cna-codification",
+                              "cna-plots",
+                              "workflow-summary",
+                          ],
+                      }
+                  )
+              else:
+                  samples = parse_ont_samples(config)
+                  binsize = _as_int(config.get("ont_binsize_kb"), 500)
+                  if binsize < 1:
+                      raise OncoTracerError("ont_binsize_kb must be positive")
+                  plan.update(
+                      {
+                          "samples": [sample.sample for sample in samples],
+                          "barcodes": [sample.barcode for sample in samples],
+                          "caller": str(config.get("ont_caller") or "ichorcna"),
+                          "binsize_kb": binsize,
+                          "stages": [
+                              "reference-validation",
+                              "ont-fastq-validation",
+                              "ont-alignment",
+                              "hmmcopy-ichorcna",
+                              "bam-refinement",
+                              "cna-codification",
+                              "cna-plots",
+                              "workflow-summary",
+                          ],
+                      }
+                  )
+              pathology = config.get("pathology_csv")
+              if pathology:
+                  require_file(Path(str(pathology)), "Pathology CSV")
+                  plan["pathology_csv"] = str(Path(str(pathology)).expanduser().resolve())
+              print(json.dumps(plan, indent=2, sort_keys=True))
+
+
+          '''
+          helper = re.sub(r'^          ', '', helper, flags=re.MULTILINE)
+          replace_exact(engine, '\ndef run_native(\n', '\n' + helper + 'def run_native(\n')
+
+          old_run_prefix = '''    root = runtime_root(root)
+              config_path = require_file(config_path, "OncoTracer YAML config")
+              config = load_flat_yaml(config_path)
+              mode = str(config.get("mode") or "").strip().lower()
+              if mode not in {"illumina", "ont"}:
+                  raise OncoTracerError("config mode must be illumina or ont")
+              lpwgs_root = Path(str(config.get("lpwgs_root") or root / "project")).expanduser().resolve()
+              outdir_value = config.get("outdir")
+              if not outdir_value:
+                  raise OncoTracerError("config requires outdir")
+              outdir = Path(str(outdir_value)).expanduser().resolve()
+              outdir.mkdir(parents=True, exist_ok=True)
+              native_dir = outdir / ".oncotracer-native"
+          '''
+          old_run_prefix = re.sub(r'^              ', '', old_run_prefix, flags=re.MULTILINE)
+          new_run_prefix = '''    explicit_root = root
+              config_path = require_file(config_path, "OncoTracer YAML config")
+              config = load_flat_yaml(config_path)
+              mode = str(config.get("mode") or "").strip().lower()
+              if mode not in {"illumina", "ont"}:
+                  raise OncoTracerError("config mode must be illumina or ont")
+              root_hint = Path(explicit_root).expanduser().resolve() if explicit_root else Path.cwd().resolve()
+              lpwgs_root = Path(str(config.get("lpwgs_root") or root_hint / "project")).expanduser().resolve()
+              outdir_value = config.get("outdir")
+              if not outdir_value:
+                  raise OncoTracerError("config requires outdir")
+              outdir = Path(str(outdir_value)).expanduser().resolve()
+              cpu = threads or max(1, min(os.cpu_count() or 1, 16))
+              force_run = _as_bool(config.get("force"), False) if force is None else force
+              if dry_run:
+                  _validate_native_dry_run(
+                      config, config_path, mode, lpwgs_root, outdir, force_run, cpu
+                  )
+                  return outdir
+              root = runtime_root(explicit_root)
+              outdir.mkdir(parents=True, exist_ok=True)
+              native_dir = outdir / ".oncotracer-native"
+          '''
+          new_run_prefix = re.sub(r'^              ', '', new_run_prefix, flags=re.MULTILINE)
+          replace_exact(engine, old_run_prefix, new_run_prefix)
+          replace_exact(
+              engine,
+              '    toolchain = Toolchain.from_environment()\n    cpu = threads or max(1, min(os.cpu_count() or 1, 16))\n    force_run = _as_bool(config.get("force"), False) if force is None else force\n',
+              '    toolchain = Toolchain.from_environment()\n',
+          )
+
+          tests = Path('tests/test_beginner_runtime.py')
+          tests.write_text('''from __future__ import annotations
+
+          import contextlib
+          import io
+          import os
+          import tempfile
+          import unittest
+          from pathlib import Path
+          from unittest import mock
+
+          from oncotracer_cli import cli
+          from oncotracer_cli.engine import run_native
+          from oncotracer_cli.runtime import OncoTracerError, load_flat_yaml
+
+          ROOT = Path(__file__).resolve().parents[1]
+
+
+          class BeginnerRuntimeTests(unittest.TestCase):
+              def test_quickstart_dry_runs_are_side_effect_free(self) -> None:
+                  for number in ("1", "2"):
+                      with self.subTest(number=number), tempfile.TemporaryDirectory() as temporary:
+                          destination = Path(temporary) / f"quickstart-{number}"
+                          stdout = io.StringIO()
+                          stderr = io.StringIO()
+                          with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                              status = cli.main(
+                                  [
+                                      "quickstart",
+                                      number,
+                                      "--test-root",
+                                      str(destination),
+                                      "--backend",
+                                      "conda",
+                                      "--dry-run",
+                                      "--root",
+                                      str(ROOT),
+                                  ]
+                              )
+                          self.assertEqual(status, 0)
+                          self.assertFalse(destination.exists())
+                          self.assertIn("dry-run completed without writing files", stdout.getvalue())
+
+              def test_install_dry_runs_need_no_backend_and_write_nothing(self) -> None:
+                  for backend in ("conda", "docker", "singularity", "poetry"):
+                      with self.subTest(backend=backend), tempfile.TemporaryDirectory() as temporary:
+                          base = Path(temporary)
+                          environment = {
+                              "XDG_CONFIG_HOME": str(base / "config"),
+                              "XDG_DATA_HOME": str(base / "data"),
+                          }
+                          arguments = [
+                              "install",
+                              f"--{backend}",
+                              "--dry-run",
+                              "--root",
+                              str(ROOT),
+                          ]
+                          if backend == "conda":
+                              arguments.extend(["--prefix", str(base / "envs")])
+                          with mock.patch.dict(os.environ, environment, clear=False):
+                              with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                                  status = cli.main(arguments)
+                          self.assertEqual(status, 0)
+                          self.assertFalse((base / "config").exists())
+                          self.assertFalse((base / "data").exists())
+                          self.assertFalse((base / "envs").exists())
+
+              def test_quickstart1_generated_configs_resume_by_default(self) -> None:
+                  with tempfile.TemporaryDirectory() as temporary:
+                      root = Path(temporary) / "qs1"
+
+                      def fake_download(_url: str, destination: Path, **_kwargs):
+                          destination.parent.mkdir(parents=True, exist_ok=True)
+                          destination.write_bytes(b"reads")
+                          return destination
+
+                      with mock.patch.object(cli, "download", side_effect=fake_download):
+                          illumina, ont = cli.prepare_quickstart1(root)
+                      self.assertIn("force: false", illumina.read_text(encoding="utf-8"))
+                      self.assertIn("force: false", ont.read_text(encoding="utf-8"))
+
+              def test_native_run_dry_run_validates_without_outputs_or_reference_download(self) -> None:
+                  with tempfile.TemporaryDirectory() as temporary:
+                      base = Path(temporary)
+                      fastq_1 = base / "TUMOR_R1.fastq.gz"
+                      fastq_2 = base / "TUMOR_R2.fastq.gz"
+                      fastq_1.write_bytes(b"reads-1")
+                      fastq_2.write_bytes(b"reads-2")
+                      sheet = base / "samples.csv"
+                      sheet.write_text(
+                          "sample,fastq_1,fastq_2,status\\n"
+                          f"TUMOR,{fastq_1},{fastq_2},tumor\\n",
+                          encoding="utf-8",
+                      )
+                      outdir = base / "results"
+                      lpwgs_root = base / "project"
+                      config = base / "run.yml"
+                      config.write_text(
+                          "mode: illumina\\n"
+                          f"lpwgs_root: {lpwgs_root}\\n"
+                          f"outdir: {outdir}\\n"
+                          f"illumina_samplesheet: {sheet}\\n"
+                          "illumina_binsize_kb: 100\\n"
+                          "force: false\\n",
+                          encoding="utf-8",
+                      )
+                      output = io.StringIO()
+                      with contextlib.redirect_stdout(output):
+                          observed = run_native(config, root=ROOT, dry_run=True)
+                      self.assertEqual(observed, outdir.resolve())
+                      self.assertFalse(outdir.exists())
+                      self.assertFalse(lpwgs_root.exists())
+                      self.assertIn('"schema": "oncotracer-native-dry-run-v1"', output.getvalue())
+                      self.assertIn('"nextflow_used": false', output.getvalue())
+
+              def test_duplicate_yaml_keys_fail_closed(self) -> None:
+                  with tempfile.TemporaryDirectory() as temporary:
+                      config = Path(temporary) / "duplicate.yml"
+                      config.write_text("mode: illumina\\nmode: ont\\n", encoding="utf-8")
+                      with self.assertRaisesRegex(OncoTracerError, "duplicate YAML key"):
+                          load_flat_yaml(config)
+
+
+          if __name__ == "__main__":
+              unittest.main()
+          '''.replace('\n          ', '\n').lstrip(), encoding='utf-8')
+          PY
+
+      - name: Run focused source and beginner validation
+        run: |
+          set -Eeuo pipefail
+          python3 -m compileall -q oncotracer_cli tests scripts bin
+          python3 -m unittest -v \
+            tests/test_beginner_runtime.py \
+            tests/test_native_cli.py \
+            tests/test_native_engine.py
+          python3 tests/test_copy_paste_paths.py
+          python3 tests/test_docs_style.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict --site-dir /tmp/oncotracer-beginner-site
+
+      - name: Commit the validated runtime fixes
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add oncotracer_cli/cli.py oncotracer_cli/engine.py oncotracer_cli/runtime.py \
+            tests/test_beginner_runtime.py
+          git diff --cached --check
+          git commit -m 'fix(cli): make beginner dry-runs and resume side-effect safe'
+          git push origin HEAD:agent/beginner-runtime-staging
