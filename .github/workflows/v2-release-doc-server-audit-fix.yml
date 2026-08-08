@@ -38,6 +38,23 @@ jobs:
           text = text.replace(old, new, 1)
           namespace = {'__name__': '__main__', '__file__': str(patcher)}
           exec(compile(text, str(patcher), 'exec'), namespace)
+
+          docs_style = Path('tests/test_docs_style.py')
+          style_text = docs_style.read_text(encoding='utf-8')
+          old_contract = '''    "event recall and precision of at least 0.90",
+              "at least 0.95 of each refined-bin grid shared exactly",
+              "Pearson correlation of at least 0.98",
+          '''
+          new_contract = '''    "state-specific CNA genomic-coverage recall and precision of at least 0.90",
+              "at least 0.95 of the original corrected-bin coordinate grid shared exactly",
+              "corrected input log₂-signal Pearson correlation of at least 0.98",
+          '''
+          if style_text.count(old_contract) != 1:
+              raise SystemExit('standalone parity documentation contract is missing or ambiguous')
+          docs_style.write_text(
+              style_text.replace(old_contract, new_contract, 1),
+              encoding='utf-8',
+          )
           PY
 
       - name: Validate permanent release contracts
@@ -63,7 +80,8 @@ jobs:
           git add \
             scripts/validate_v2_release.sh \
             docs/parity_release.md \
-            tests/test_native_docs.py
+            tests/test_native_docs.py \
+            tests/test_docs_style.py
           git diff --cached --check
           git commit -m 'fix(v2): align server audit and parity documentation'
           git push origin HEAD:agent/v2-release-doc-server-audit
