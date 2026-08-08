@@ -139,7 +139,11 @@ Stable release records contain the exact source commit, deterministic source-tre
 
 ## Backend-independent QuickStarts
 
+Start from the directory where you want the tutorials to create their input, configuration, and result folders:
+
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 1 \
   --backend docker \
   --test-root "$PWD/oncotracer-quickstart1-docker"
