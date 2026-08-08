@@ -572,10 +572,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prepare-a-source-development-checkout" class="md-nav__link">
+  <a href="#install-poetry-and-the-launcher" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prepare a source-development checkout
+        Install Poetry and the launcher
       
     </span>
   </a>
@@ -583,10 +583,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-a-yaml" class="md-nav__link">
+  <a href="#prepare-the-poetry-backend" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run a YAML
+        Prepare the Poetry backend
       
     </span>
   </a>
@@ -594,10 +594,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-the-public-examples" class="md-nav__link">
+  <a href="#run-quickstart-1-through-poetry" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run the public examples
+        Run QuickStart 1 through Poetry
       
     </span>
   </a>
@@ -605,21 +605,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rebuild-after-source-changes" class="md-nav__link">
+  <a href="#run-quickstart-2-through-poetry" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Rebuild after source changes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#boundary-between-poetry-and-the-scientific-runtime" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Boundary between Poetry and the scientific runtime
+        Run QuickStart 2 through Poetry
       
     </span>
   </a>
@@ -1791,10 +1780,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prepare-a-source-development-checkout" class="md-nav__link">
+  <a href="#install-poetry-and-the-launcher" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prepare a source-development checkout
+        Install Poetry and the launcher
       
     </span>
   </a>
@@ -1802,10 +1791,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-a-yaml" class="md-nav__link">
+  <a href="#prepare-the-poetry-backend" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run a YAML
+        Prepare the Poetry backend
       
     </span>
   </a>
@@ -1813,10 +1802,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-the-public-examples" class="md-nav__link">
+  <a href="#run-quickstart-1-through-poetry" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run the public examples
+        Run QuickStart 1 through Poetry
       
     </span>
   </a>
@@ -1824,21 +1813,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rebuild-after-source-changes" class="md-nav__link">
+  <a href="#run-quickstart-2-through-poetry" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Rebuild after source changes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#boundary-between-poetry-and-the-scientific-runtime" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Boundary between Poetry and the scientific runtime
+        Run QuickStart 2 through Poetry
       
     </span>
   </a>
@@ -1870,44 +1848,37 @@
   
 
 
-<h1 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h1>
-<p>The Poetry route is intended for development of the Python launcher while retaining the same native scientific stage graph used by the copied release executable.</p>
-<p>For normal users, install the verified release asset and choose Conda, Docker, or Singularity/Apptainer. See <a href="../installation/">Installation</a>.</p>
-<h2 id="prepare-a-source-development-checkout">Prepare a source-development checkout<a class="headerlink" href="#prepare-a-source-development-checkout" title="Permanent link">&para;</a></h2>
-<p>From an existing source checkout:</p>
-<div class="highlight"><pre><span></span><code>./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--version
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>provenance<span class="w"> </span>--json
+<h1 id="poetry-launcher">Poetry Launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h1>
+<p>Poetry provides a managed Python launcher for OncoTracer's native v2 engine. It does not replace the scientific software runtime: installation also creates the same five isolated Conda environments used by the global executable.</p>
+<p>Poetry is intended for source development. Beginners who only want to run analyses should normally install the verified global executable and choose Conda, Docker, or Singularity/Apptainer.</p>
+<h2 id="install-poetry-and-the-launcher">Install Poetry and the launcher<a class="headerlink" href="#install-poetry-and-the-launcher" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
+
+poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--help
+</code></pre></div>
+<h2 id="prepare-the-poetry-backend">Prepare the Poetry backend<a class="headerlink" href="#prepare-the-poetry-backend" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
+
+./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
 poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
 </code></pre></div>
-<p>The installer performs two jobs:</p>
-<ol>
-<li><code>poetry install --no-interaction</code> creates the locked Python launcher environment.</li>
-<li>The five scientific Conda prefixes are created for core tools, qDNAseq, ichorCNA/HMMcopy, classifier/reporting, and GISTIC2.</li>
-</ol>
-<p>The saved backend is <code>poetry</code>, but scientific stages execute through those exact Conda prefixes rather than through the Poetry virtual environment.</p>
-<h2 id="run-a-yaml">Run a YAML<a class="headerlink" href="#run-a-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<h2 id="run-quickstart-1-through-poetry">Run QuickStart 1 through Poetry<a class="headerlink" href="#run-quickstart-1-through-poetry" title="Permanent link">&para;</a></h2>
+<p>Keep the source checkout separate from the analysis output. The output path below is explicit so it does not depend on whichever source directory contains <code>pyproject.toml</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
+
+poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart1-poetry
 </code></pre></div>
-<h2 id="run-the-public-examples">Run the public examples<a class="headerlink" href="#run-the-public-examples" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1-poetry&quot;</span>
+<h2 id="run-quickstart-2-through-poetry">Run QuickStart 2 through Poetry<a class="headerlink" href="#run-quickstart-2-through-poetry" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
 
 poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-poetry&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry
 </code></pre></div>
-<h2 id="rebuild-after-source-changes">Rebuild after source changes<a class="headerlink" href="#rebuild-after-source-changes" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
-./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span>--force
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
-</code></pre></div>
-<p>Use <code>--force</code> only when the environment definitions changed or a prefix is known to be damaged.</p>
-<h2 id="boundary-between-poetry-and-the-scientific-runtime">Boundary between Poetry and the scientific runtime<a class="headerlink" href="#boundary-between-poetry-and-the-scientific-runtime" title="Permanent link">&para;</a></h2>
-<p>Poetry manages the launcher and Python development dependencies. It does not replace the versioned R stacks, alignment programs, Picard, HMMcopy, ichorCNA, or GISTIC2. The run trace and result contract are identical to the other v2 backends.</p>
+<p>For a different managed runtime, install it explicitly with <code>oncotracer install --docker</code>, <code>--singularity</code>, or <code>--conda</code>, then select the matching <code>--backend</code>. Every v2 route executes the native stage graph and records <code>nextflow_used=false</code>.</p>
 
 
 

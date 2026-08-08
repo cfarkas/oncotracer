@@ -1878,8 +1878,10 @@ ONT FASTQ ------&gt; minimap2 ---&gt; HMMcopy/ichorCNA --+              |
 </code></pre></div>
 <p><strong>Nextflow is not installed or invoked by the v2 analysis path.</strong> The frozen v1.1 Nextflow release remains available only for reproducing historical analyses and for the independent semantic parity comparator used by the v2 release gate.</p>
 <h2 id="start-with-a-complete-public-example">Start with a complete public example<a class="headerlink" href="#start-with-a-complete-public-example" title="Permanent link">&para;</a></h2>
-<p>QuickStart 1 runs one checksum-validated Illumina library and one checksum-validated ONT library:</p>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
+<p>QuickStart 1 runs one checksum-validated Illumina library and one checksum-validated ONT library. Replace the example analyses directory with a real directory on your Linux workstation or server:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
@@ -1887,7 +1889,9 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1&quot;</span>
 </code></pre></div>
 <p>QuickStart 2 runs three public HCC1143 Illumina libraries:</p>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
 </code></pre></div>

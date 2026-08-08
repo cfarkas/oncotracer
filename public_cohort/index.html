@@ -2085,8 +2085,14 @@
 </table>
 <h2 id="estimated-resources">Estimated resources<a class="headerlink" href="#estimated-resources" title="Permanent link">&para;</a></h2>
 <p>The complete input is larger than QuickStart 1. Provide enough storage for six FASTQs, hg38, BAMs, qDNAseq outputs, refinement tables, PDFs, and the selected backend. The first uncached Illumina run also creates the hg38 BWA index and should have at least 80 GiB of addressable memory.</p>
+<div class="admonition important">
+<p class="admonition-title">Choose the analyses directory first</p>
+<p>Every copy/paste block below that uses <code>$PWD</code> begins with <code>cd /path/to/my/analyses_dir/</code>. Replace that placeholder with an existing directory where you want OncoTracer to create the downloaded FASTQs, YAML files, reference cache, BAMs, and results.</p>
+</div>
 <h2 id="one-command-quickstart">One-command QuickStart<a class="headerlink" href="#one-command-quickstart" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
@@ -2097,7 +2103,8 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <div class="highlight"><pre><span></span><code>QuickStart 2 completed: .../oncotracer-quickstart2
 </code></pre></div>
 <h2 id="step-1-download-and-validate-the-public-data-only">Step 1. Download and validate the public data only<a class="headerlink" href="#step-1-download-and-validate-the-public-data-only" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -2123,7 +2130,8 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 └── runs/
 </code></pre></div>
 <p>Inspect the generated files:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
 
 cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/public/hcc1143_lpwgs/samples.csv&quot;</span>
 sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span><span class="se">\</span>
@@ -2139,7 +2147,8 @@ HCC1143_BEZ235,TUMOR
 HCC1143_TRAMETINIB,TUMOR
 </code></pre></div>
 <h2 id="step-2-run-the-generated-yaml">Step 2. Run the generated YAML<a class="headerlink" href="#step-2-run-the-generated-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
@@ -2148,14 +2157,16 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 <p>The analysis runs alignment, Picard processing, qDNAseq, BAM-supported boundary refinement, CNA codification, cytogenomic notation, cohort/per-sample plots, and workflow summaries.</p>
 <h2 id="step-3-verify-the-required-result-groups">Step 3. Verify the required result groups<a class="headerlink" href="#step-3-verify-the-required-result-groups" title="Permanent link">&para;</a></h2>
 <p>The complete QuickStart command reuses valid completed stages and performs the bundled output checks:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">&quot;</span>
 </code></pre></div>
 <p>Review:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
 <span class="nv">OUTDIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/hcc1143_lpwgs&quot;</span>
 
 head<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDIR</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
@@ -2183,32 +2194,42 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDI
 </code></pre></div>
 <h2 id="choose-one-of-four-execution-methods">Choose one of four execution methods<a class="headerlink" href="#choose-one-of-four-execution-methods" title="Permanent link">&para;</a></h2>
 <h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-conda&quot;</span>
 </code></pre></div>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-docker&quot;</span>
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-singularity&quot;</span>
 </code></pre></div>
 <h3 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
+<p>Poetry is a source-development route. Keep the source checkout separate from the analysis output:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
+
+./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
 poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-poetry&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry
 </code></pre></div>
 <h2 id="run-the-prepared-yaml-through-another-backend">Run the prepared YAML through another backend<a class="headerlink" href="#run-the-prepared-yaml-through-another-backend" title="Permanent link">&para;</a></h2>
 <p>The downloaded FASTQs and generated YAML are backend-independent:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
@@ -2216,7 +2237,9 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 </code></pre></div>
 <h2 id="resume">Resume<a class="headerlink" href="#resume" title="Permanent link">&para;</a></h2>
 <p>Repeat the same QuickStart or <code>oncotracer run</code> command with the same test root and result directory:</p>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
 </code></pre></div>

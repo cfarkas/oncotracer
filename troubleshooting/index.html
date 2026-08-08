@@ -2147,14 +2147,18 @@ find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT<
 </code></pre></div>
 <p>Do not run two writers against the same <code>outdir</code> concurrently.</p>
 <h2 id="5-public-quickstart-download-problems">5. Public QuickStart download problems<a class="headerlink" href="#5-public-quickstart-download-problems" title="Permanent link">&para;</a></h2>
-<p>Download and validate without analysis:</p>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<p>Download and validate without analysis. Replace the example analyses directory with a directory where you have write permission:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--download-only
 </code></pre></div>
 <p>Repeat the command after a transient interruption. Completed files are accepted only when expected byte count and MD5 match. A partial temporary download is not treated as valid.</p>
 <p>For HCC1143:</p>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--download-only
 </code></pre></div>
