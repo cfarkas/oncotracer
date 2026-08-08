@@ -1,0 +1,56 @@
+name: Validate release documentation and server-audit alignment
+
+on:
+  push:
+    branches:
+      - agent/v2-release-doc-server-audit
+    paths:
+      - .github/workflows/v2-release-doc-server-audit-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/v2-release-doc-server-audit
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Apply guarded documentation and server-audit fix
+        run: python3 scripts/apply_v2_release_doc_server_audit_fix.py
+
+      - name: Validate permanent release contracts
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/validate_v2_release.sh
+          python3 -m compileall -q tests oncotracer_cli scripts bin
+          python3 -m unittest -v \
+            tests/test_native_docs.py \
+            tests/test_compare_native_parity.py \
+            tests/test_beginner_runtime.py
+          python3 tests/test_copy_paste_paths.py
+          python3 tests/test_docs_style.py
+          python3 tests/test_examples_start_from_clone.py
+          python3 -m pip install -r docs/requirements.txt
+          mkdocs build --strict
+
+      - name: Commit validated permanent changes
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            scripts/validate_v2_release.sh \
+            docs/parity_release.md \
+            tests/test_native_docs.py
+          git diff --cached --check
+          git commit -m 'fix(v2): align server audit and parity documentation'
+          git push origin HEAD:agent/v2-release-doc-server-audit
