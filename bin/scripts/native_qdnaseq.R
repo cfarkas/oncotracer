@@ -92,43 +92,75 @@ combine_headered <- function(paths, destination) {
   writeLines(output, destination, useBytes = TRUE)
 }
 
-export_samurai_seg <- function(object, destination, sample, type = "segments") {
-  raw_path <- tempfile(pattern = ".qdnaseq_export_", tmpdir = dirname(destination), fileext = ".seg")
-  on.exit(unlink(raw_path), add = TRUE)
-  QDNAseq::exportBins(
-    object,
-    file = raw_path,
-    format = "seg",
-    type = type,
-    filter = TRUE,
-    logTransform = TRUE
+bins_to_use <- function(object) {
+  metadata <- Biobase::fData(object)
+  if ("use" %in% colnames(metadata)) return(as.logical(metadata$use))
+  if ("filter" %in% colnames(metadata)) return(as.logical(metadata$filter))
+  rep(TRUE, nrow(object))
+}
+
+log2_adhoc <- function(values, offset = .Machine$double.xmin) {
+  values[values < 0] <- 0
+  log2(values + offset)
+}
+
+export_samurai_seg <- function(object, destination, sample, include_calls = FALSE) {
+  # The QDNAseq SEG representation requires the object returned by callBins(),
+  # even for the no-call segment table. This mirrors SAMURAI v1.4.0's
+  # exportSegments() implementation instead of passing an uncalled object to
+  # QDNAseq::exportBins(format = "seg"), which fails by design.
+  object <- object[bins_to_use(object), ]
+  calls <- Biobase::assayDataElement(object, "calls")
+  segmented <- Biobase::assayDataElement(object, "segmented")
+  if (is.null(calls)) fail("Called qDNAseq object is missing assay element 'calls'")
+  if (is.null(segmented)) fail("Called qDNAseq object is missing assay element 'segmented'")
+  if (ncol(calls) != 1L || ncol(segmented) != 1L) {
+    fail("Per-sample qDNAseq export expected exactly one sample column")
+  }
+
+  segments <- log2_adhoc(segmented)
+  feature_data <- Biobase::fData(object)
+  required <- c("chromosome", "start", "end")
+  missing <- setdiff(required, names(feature_data))
+  if (length(missing)) {
+    fail("Unexpected qDNAseq feature columns; missing: ", paste(missing, collapse = ", "))
+  }
+
+  data <- cbind(
+    feature_data[, required, drop = FALSE],
+    call = calls[, 1L],
+    segment = segments[, 1L]
   )
-  raw <- utils::read.delim(raw_path, stringsAsFactors = FALSE, check.names = FALSE)
-  required <- c("CHROMOSOME", "START", "STOP", "DATAPOINTS", "LOG2_RATIO_MEAN")
-  missing <- setdiff(required, names(raw))
-  if (length(missing)) fail("Unexpected qDNAseq SEG columns: ", paste(missing, collapse = ", "))
-  chromosome <- as.character(raw$CHROMOSOME)
-  chromosome <- ifelse(grepl("^chr", chromosome, ignore.case = TRUE), chromosome, paste0("chr", chromosome))
-  samurai <- data.frame(
-    ID = rep(paste0(sample, "_markdup"), nrow(raw)),
+  selected <- !is.na(data[, "call"])
+  data <- data[selected, , drop = FALSE]
+  if (!nrow(data)) fail("No called qDNAseq bins available for sample ", sample)
+
+  groups <- rle(paste(data[, "chromosome"], data[, "call"], sep = ":"))
+  end_indices <- cumsum(groups$lengths)
+  start_indices <- c(1L, head(end_indices, -1L) + 1L)
+  chromosome <- as.character(data[start_indices, "chromosome"])
+  chromosome <- ifelse(
+    grepl("^chr", chromosome, ignore.case = TRUE),
+    chromosome,
+    paste0("chr", chromosome)
+  )
+
+  output <- data.frame(
+    ID = rep(paste0(sample, "_markdup"), length(start_indices)),
     chrom = chromosome,
-    start = raw$START,
-    end = raw$STOP,
-    `num.mark` = raw$DATAPOINTS,
-    `seg.mean` = raw$LOG2_RATIO_MEAN,
+    start = as.integer(data[start_indices, "start"]),
+    end = as.integer(data[end_indices, "end"]),
+    `num.mark` = as.integer(groups$lengths),
+    `seg.mean` = round(as.numeric(data[start_indices, "segment"]), 2L),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )
-  if (type == "calls") {
-    value <- suppressWarnings(as.numeric(samurai$seg.mean))
-    samurai$call <- ifelse(
-      value < -2,
-      -2L,
-      ifelse(value < -0.42, -1L, ifelse(value > 2.32, 2L, ifelse(value > 0.32, 1L, 0L)))
-    )
+  if (include_calls) {
+    output$call <- as.integer(data[start_indices, "call"])
   }
+
   utils::write.table(
-    samurai,
+    output,
     destination,
     sep = "\t",
     quote = TRUE,
@@ -193,6 +225,9 @@ run_analysis <- function(options) {
 
   segmented <- QDNAseq::segmentBins(copy_numbers, transformFun = "log2")
   called <- QDNAseq::callBins(segmented, method = "cutoff")
+  if (!"calls" %in% Biobase::assayDataElementNames(called)) {
+    fail("QDNAseq::callBins() did not add the required 'calls' assay element")
+  }
   saveRDS(segmented, file.path(rds_dir, "all_samples.segmented.rds"))
   saveRDS(called, file.path(rds_dir, "all_samples.called.rds"))
 
@@ -213,8 +248,8 @@ run_analysis <- function(options) {
     )
     segment_files[[i]] <- file.path(segments_dir, paste0(sample, "_.seg"))
     call_files[[i]] <- file.path(segments_dir, paste0(sample, ".calls.seg"))
-    export_samurai_seg(segmented[, i], segment_files[[i]], sample, "segments")
-    export_samurai_seg(called[, i], call_files[[i]], sample, "calls")
+    export_samurai_seg(called[, i], segment_files[[i]], sample, include_calls = FALSE)
+    export_samurai_seg(called[, i], call_files[[i]], sample, include_calls = TRUE)
 
     grDevices::pdf(file.path(plots_dir, paste0(prefix, "_segment_plot.pdf")), width = 14, height = 5)
     try(plot(segmented[, i], main = paste0(sample, " qDNAseq")), silent = TRUE)

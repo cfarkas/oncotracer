@@ -88,9 +88,11 @@ Do not run two writers against the same `outdir` concurrently.
 
 ## 5. Public QuickStart download problems
 
-Download and validate without analysis:
+Download and validate without analysis. Replace the example analyses directory with a directory where you have write permission:
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 1 \
   --test-root "$PWD/oncotracer-quickstart1" \
   --download-only
@@ -101,6 +103,8 @@ Repeat the command after a transient interruption. Completed files are accepted 
 For HCC1143:
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 2 \
   --test-root "$PWD/oncotracer-quickstart2" \
   --download-only

@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from combine_nested_samurai_traces import combine_root
+
 
 @dataclass(frozen=True)
 class Contract:
@@ -283,6 +285,21 @@ def main() -> int:
         root = getattr(args, contract.root_arg)
         if root is None or not root.is_dir():
             raise SystemExit(f"missing --{contract.root_arg.replace('_', '-')}: {root}")
+
+        # A nested Nextflow resume can split one complete run across several
+        # execution traces. Build a deterministic latest-successful task bundle
+        # before enforcing the immutable process and image contract.
+        combined_trace, source_manifest, _ = combine_root(root)
+        diagnostic_prefix = contract.label.removeprefix("quickstart1-").removeprefix("quickstart2-")
+        shutil.copyfile(
+            combined_trace,
+            args.selected_dir / f"candidate-{diagnostic_prefix}-combined-trace.tsv",
+        )
+        shutil.copyfile(
+            source_manifest,
+            args.selected_dir / f"candidate-{diagnostic_prefix}-trace-sources.tsv",
+        )
+
         traces = sorted(root.rglob("pipeline_info/execution_trace_*.txt"))
         if not traces:
             raise SystemExit(f"no nested SAMURAI traces found for {contract.label}: {root}")
@@ -299,7 +316,7 @@ def main() -> int:
         selected_path, selected_rows, selected_images = max(
             qualified, key=lambda item: (item[0].stat().st_mtime_ns, item[0].as_posix())
         )
-        selected_name = f"nested-v1-{contract.label.removeprefix('quickstart1-').removeprefix('quickstart2-')}-trace.tsv"
+        selected_name = f"nested-v1-{diagnostic_prefix}-trace.tsv"
         selected_destination = args.selected_dir / selected_name
         shutil.copyfile(selected_path, selected_destination)
         selection_rows.append(
