@@ -87,4 +87,9 @@ CLONES="$(grep -c '^clone ' "$FAKE_GIT_LOG")"
   exit 1
 }
 
-echo "PASS: runtime portability and local SAMURAI cache tests"
+# The same CI path that protects runtime portability also executes the
+# first-time-user dry-run/resume regression suite. This keeps the beginner
+# command contract permanent without relying on a separate optional workflow.
+python3 "$ROOT/tests/test_beginner_runtime.py"
+
+echo "PASS: runtime portability, local SAMURAI cache, and beginner CLI tests"
