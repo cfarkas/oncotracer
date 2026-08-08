@@ -25,7 +25,20 @@ jobs:
           python-version: '3.11'
 
       - name: Apply guarded documentation and server-audit fix
-        run: python3 scripts/apply_v2_release_doc_server_audit_fix.py
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          patcher = Path('scripts/apply_v2_release_doc_server_audit_fix.py')
+          text = patcher.read_text(encoding='utf-8')
+          old = 'updated, observed = re.subn(pattern, replacement, text, count=1, flags=re.DOTALL)'
+          new = 'updated, observed = re.subn(pattern, lambda _match: replacement, text, count=1, flags=re.DOTALL)'
+          if text.count(old) != 1:
+              raise SystemExit('release patcher regex replacement line is missing or ambiguous')
+          text = text.replace(old, new, 1)
+          namespace = {'__name__': '__main__', '__file__': str(patcher)}
+          exec(compile(text, str(patcher), 'exec'), namespace)
+          PY
 
       - name: Validate permanent release contracts
         run: |
