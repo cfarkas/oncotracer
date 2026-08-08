@@ -1,0 +1,67 @@
+name: Wire permanent beginner runtime regression
+
+on:
+  push:
+    branches:
+      - agent/wire-beginner-ci
+    paths:
+      - .github/workflows/wire-beginner-ci.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/wire-beginner-ci
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Add the beginner runtime suite to permanent Native v2 CI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/native-v2-ci.yml')
+          text = path.read_text(encoding='utf-8')
+          old = '''            tests/test_native_engine.py \\
+            tests/test_compare_native_parity.py \\
+'''
+          new = '''            tests/test_native_engine.py \\
+            tests/test_beginner_runtime.py \\
+            tests/test_compare_native_parity.py \\
+'''
+          if text.count(old) != 1:
+              raise SystemExit('Native v2 CI unit-test list is missing or ambiguous')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Validate the permanent workflow and beginner suite
+        run: |
+          set -Eeuo pipefail
+          python3 -m compileall -q oncotracer_cli tests scripts bin
+          python3 -m unittest -v tests/test_beginner_runtime.py
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('.github/workflows/native-v2-ci.yml').read_text(encoding='utf-8')
+          assert text.count('tests/test_beginner_runtime.py') == 1
+          assert text.index('tests/test_native_engine.py') < text.index('tests/test_beginner_runtime.py') < text.index('tests/test_compare_native_parity.py')
+          print('PASS: permanent Native v2 CI executes the beginner runtime suite')
+          PY
+
+      - name: Commit the permanent CI change
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/native-v2-ci.yml
+          git diff --cached --check
+          git commit -m 'ci(v2): run beginner runtime regressions permanently'
+          git push origin HEAD:agent/wire-beginner-ci
