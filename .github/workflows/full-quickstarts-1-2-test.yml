@@ -1,0 +1,428 @@
+name: Full QuickStart 1 and 2 validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/full-quickstarts-1-2-test.yml"
+      - "main.nf"
+      - "nextflow.config"
+      - "environment.yml"
+      - "bin/**"
+      - "examples/quickstart/**"
+      - "examples/hcc1143_lpwgs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quickstart1:
+    name: QuickStart 1 — Illumina and ONT
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      NXF_ANSI_LOG: "false"
+      NXF_DISABLE_CHECK_LATEST: "true"
+      NXF_OPTS: "-Xms256m -Xmx1g"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune --all --force || true
+          df -h
+
+      - name: Install host prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            samtools bwa minimap2 pigz curl wget
+          curl -fsSL https://get.nextflow.io | bash
+          sudo install -m 0755 nextflow /usr/local/bin/nextflow
+
+      - name: Add virtual-memory headroom
+        run: |
+          if [[ ! -e /swapfile.quickstart ]]; then
+            sudo fallocate -l 8G /swapfile.quickstart
+            sudo chmod 600 /swapfile.quickstart
+            sudo mkswap /swapfile.quickstart
+            sudo swapon /swapfile.quickstart || true
+          fi
+          swapon --show || true
+          free -h
+
+      - name: Record versions and resources
+        run: |
+          id
+          uname -a
+          nproc
+          free -h
+          df -h
+          java -version
+          nextflow -version
+          docker --version
+          samtools --version | sed -n '1,3p'
+          bwa 2>&1 | sed -n '1,3p'
+          minimap2 --version
+          pigz --version
+
+      - name: Download and validate the public QuickStart 1 data
+        run: |
+          umask 000
+          TEST_ROOT="$GITHUB_WORKSPACE/test"
+          mkdir -p "$TEST_ROOT/work/prepare" "$TEST_ROOT/reports"
+
+          nextflow run "$GITHUB_WORKSPACE/main.nf" \
+            --make_test \
+            --test_root "$TEST_ROOT" \
+            -work-dir "$TEST_ROOT/work/prepare"
+
+          test -s "$TEST_ROOT/configs/illumina.quickstart.yml"
+          test -s "$TEST_ROOT/configs/ont.quickstart.yml"
+          md5sum \
+            "$TEST_ROOT/public/illumina_ERR12341627/ERR12341627_1.fastq.gz" \
+            "$TEST_ROOT/public/illumina_ERR12341627/ERR12341627_2.fastq.gz" \
+            "$TEST_ROOT/public/ont_DRR165691/fastq_pass/barcode01/DRR165691_1.fastq.gz"
+          gzip -t \
+            "$TEST_ROOT/public/illumina_ERR12341627/ERR12341627_1.fastq.gz" \
+            "$TEST_ROOT/public/illumina_ERR12341627/ERR12341627_2.fastq.gz" \
+            "$TEST_ROOT/public/ont_DRR165691/fastq_pass/barcode01/DRR165691_1.fastq.gz"
+
+      - name: Apply hosted-runner limits to nested SAMURAI runs
+        run: |
+          TEST_ROOT="$GITHUB_WORKSPACE/test"
+          for nested_home in \
+            "$TEST_ROOT/runs/illumina/01_samurai_illumina/.nextflow" \
+            "$TEST_ROOT/runs/ont/01_samurai_ont/.nextflow"; do
+            mkdir -p "$nested_home"
+            cat > "$nested_home/config" <<'EOF_CONFIG'
+          process {
+            resourceLimits = [
+              cpus: 4,
+              memory: '15.GB',
+              time: '6.h'
+            ]
+          }
+          EOF_CONFIG
+          done
+
+      - name: Run the complete Illumina QuickStart 1 workflow
+        run: |
+          umask 000
+          TEST_ROOT="$GITHUB_WORKSPACE/test"
+          USER_SPEC="$(id -u):$(id -g)"
+
+          nextflow run "$GITHUB_WORKSPACE/main.nf" \
+            --docker \
+            --docker_user "$USER_SPEC" \
+            -params-file "$TEST_ROOT/configs/illumina.quickstart.yml" \
+            -work-dir "$TEST_ROOT/work/illumina" \
+            -with-report "$TEST_ROOT/reports/quickstart1-illumina.report.html" \
+            -with-timeline "$TEST_ROOT/reports/quickstart1-illumina.timeline.html" \
+            -with-trace "$TEST_ROOT/reports/quickstart1-illumina.trace.tsv" \
+            -resume
+
+      - name: Run the complete ONT QuickStart 1 workflow
+        run: |
+          umask 000
+          TEST_ROOT="$GITHUB_WORKSPACE/test"
+          USER_SPEC="$(id -u):$(id -g)"
+
+          nextflow run "$GITHUB_WORKSPACE/main.nf" \
+            --docker \
+            --docker_user "$USER_SPEC" \
+            -params-file "$TEST_ROOT/configs/ont.quickstart.yml" \
+            -work-dir "$TEST_ROOT/work/ont" \
+            -with-report "$TEST_ROOT/reports/quickstart1-ont.report.html" \
+            -with-timeline "$TEST_ROOT/reports/quickstart1-ont.timeline.html" \
+            -with-trace "$TEST_ROOT/reports/quickstart1-ont.trace.tsv" \
+            -resume
+
+      - name: Verify all QuickStart 1 outputs
+        run: |
+          TEST_ROOT="$GITHUB_WORKSPACE/test"
+          python3 "$GITHUB_WORKSPACE/examples/quickstart/verify_outputs.py" \
+            --test-root "$TEST_ROOT" \
+            | tee "$TEST_ROOT/reports/quickstart1-verification.txt"
+
+          test -s "$TEST_ROOT/runs/illumina/03_cna_codification/cna_events.tsv"
+          test -s "$TEST_ROOT/runs/illumina/04_cna_custom_plots/cna_per_sample_pages.pdf"
+          test -s "$TEST_ROOT/runs/ont/03_cna_codification/cna_events.tsv"
+          test -s "$TEST_ROOT/runs/ont/04_cna_custom_plots/cna_per_sample_pages.pdf"
+          cat "$TEST_ROOT/runs/illumina/06_workflow_summary/workflow_summary.txt"
+          cat "$TEST_ROOT/runs/ont/06_workflow_summary/workflow_summary.txt"
+          du -h -d 3 "$TEST_ROOT" | sort -h | tail -40
+          df -h
+
+      - name: Upload QuickStart 1 logs and summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quickstart1-full-${{ github.run_id }}
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 14
+          path: |
+            .nextflow.log
+            test/configs/**
+            test/reports/**
+            test/runs/illumina/06_workflow_summary/**
+            test/runs/ont/06_workflow_summary/**
+            test/runs/*/03_cna_codification/cna_events.tsv
+            test/runs/*/01_samurai_*/logs/**
+            test/runs/*/01_samurai_*/nextflow_launch/.nextflow.log
+            test/runs/*/01_samurai_*/results/pipeline_info/**
+
+  quickstart2:
+    name: QuickStart 2 — three HCC1143 libraries
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      NXF_ANSI_LOG: "false"
+      NXF_DISABLE_CHECK_LATEST: "true"
+      NXF_OPTS: "-Xms256m -Xmx1g"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker system prune --all --force || true
+          df -h
+
+      - name: Install host prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            samtools bwa minimap2 pigz curl wget
+          curl -fsSL https://get.nextflow.io | bash
+          sudo install -m 0755 nextflow /usr/local/bin/nextflow
+
+      - name: Add virtual-memory headroom
+        run: |
+          if [[ ! -e /swapfile.quickstart ]]; then
+            sudo fallocate -l 8G /swapfile.quickstart
+            sudo chmod 600 /swapfile.quickstart
+            sudo mkswap /swapfile.quickstart
+            sudo swapon /swapfile.quickstart || true
+          fi
+          swapon --show || true
+          free -h
+
+      - name: Download all six HCC1143 FASTQs
+        run: |
+          umask 000
+          REPO_DIR="$GITHUB_WORKSPACE"
+          READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+          mkdir -p "$READS_DIR" "$REPO_DIR/test/reports"
+
+          curl --fail --location --retry 5 --retry-all-errors --continue-at - \
+            --output "$READS_DIR/HCC1143_DMSO_R1.fastq.gz" \
+            https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_1.fastq.gz
+
+          curl --fail --location --retry 5 --retry-all-errors --continue-at - \
+            --output "$READS_DIR/HCC1143_DMSO_R2.fastq.gz" \
+            https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/006/SRR7085656/SRR7085656_2.fastq.gz
+
+          curl --fail --location --retry 5 --retry-all-errors --continue-at - \
+            --output "$READS_DIR/HCC1143_BEZ235_R1.fastq.gz" \
+            https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_1.fastq.gz
+
+          curl --fail --location --retry 5 --retry-all-errors --continue-at - \
+            --output "$READS_DIR/HCC1143_BEZ235_R2.fastq.gz" \
+            https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/005/SRR7085655/SRR7085655_2.fastq.gz
+
+          curl --fail --location --retry 5 --retry-all-errors --continue-at - \
+            --output "$READS_DIR/HCC1143_TRAMETINIB_R1.fastq.gz" \
+            https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_1.fastq.gz
+
+          curl --fail --location --retry 5 --retry-all-errors --continue-at - \
+            --output "$READS_DIR/HCC1143_TRAMETINIB_R2.fastq.gz" \
+            https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR708/007/SRR7085657/SRR7085657_2.fastq.gz
+
+      - name: Validate HCC1143 FASTQs and create samples.csv
+        run: |
+          REPO_DIR="$GITHUB_WORKSPACE"
+          READS_DIR="$REPO_DIR/test/public/hcc1143_lpwgs"
+          cd "$READS_DIR"
+
+          md5sum -c "$REPO_DIR/examples/hcc1143_lpwgs/checksums.md5"
+          gzip -t \
+            HCC1143_DMSO_R1.fastq.gz HCC1143_DMSO_R2.fastq.gz \
+            HCC1143_BEZ235_R1.fastq.gz HCC1143_BEZ235_R2.fastq.gz \
+            HCC1143_TRAMETINIB_R1.fastq.gz HCC1143_TRAMETINIB_R2.fastq.gz
+
+          cat > "$READS_DIR/samples.csv" <<'CSV'
+          sample_name,status
+          HCC1143_DMSO,TUMOR
+          HCC1143_BEZ235,TUMOR
+          HCC1143_TRAMETINIB,TUMOR
+          CSV
+
+          cat "$READS_DIR/samples.csv"
+
+      - name: Run Automatic Setup for HCC1143
+        run: |
+          REPO_DIR="$GITHUB_WORKSPACE"
+          nextflow run "$REPO_DIR/main.nf" --auto_params \
+            --mode illumina \
+            --reads_folder "$REPO_DIR/test/public/hcc1143_lpwgs" \
+            --sample_table "$REPO_DIR/test/public/hcc1143_lpwgs/samples.csv" \
+            --auto_config_dir "$REPO_DIR/test/configs/hcc1143_lpwgs" \
+            --auto_outdir "$REPO_DIR/test/runs/hcc1143_lpwgs" \
+            -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs_auto"
+
+          sed -n '1,160p' "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml"
+          cat "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.samplesheet.csv"
+          cat "$REPO_DIR/test/configs/hcc1143_lpwgs/auto_params_manifest.tsv"
+
+      - name: Validate generated HCC1143 configuration
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+
+          root = Path.cwd()
+          config_dir = root / "test/configs/hcc1143_lpwgs"
+          expected = {
+              "HCC1143_DMSO",
+              "HCC1143_BEZ235",
+              "HCC1143_TRAMETINIB",
+          }
+
+          yaml_path = config_dir / "illumina.auto.yml"
+          sheet_path = config_dir / "illumina.samplesheet.csv"
+          manifest_path = config_dir / "auto_params_manifest.tsv"
+          for path in (yaml_path, sheet_path, manifest_path):
+              if not path.is_file() or path.stat().st_size == 0:
+                  raise SystemExit(f"missing or empty generated file: {path}")
+
+          with sheet_path.open(newline="") as handle:
+              rows = list(csv.DictReader(handle))
+          if {row["sample"] for row in rows} != expected or len(rows) != 3:
+              raise SystemExit(f"unexpected generated samplesheet rows: {rows}")
+          for row in rows:
+              if row.get("status", "").lower() != "tumor":
+                  raise SystemExit(f"unexpected status in generated samplesheet: {row}")
+              for column in ("fastq_1", "fastq_2"):
+                  path = Path(row[column])
+                  if not path.is_file() or path.stat().st_size == 0:
+                      raise SystemExit(f"missing FASTQ referenced by samplesheet: {path}")
+          print("PASS: Automatic Setup generated the expected three paired HCC1143 samples")
+          PY
+
+      - name: Apply hosted-runner limits to the HCC1143 SAMURAI run
+        run: |
+          NESTED_HOME="$GITHUB_WORKSPACE/test/runs/hcc1143_lpwgs/01_samurai_illumina/.nextflow"
+          mkdir -p "$NESTED_HOME"
+          cat > "$NESTED_HOME/config" <<'EOF_CONFIG'
+          process {
+            resourceLimits = [
+              cpus: 4,
+              memory: '15.GB',
+              time: '6.h'
+            ]
+          }
+          EOF_CONFIG
+
+      - name: Run the complete HCC1143 QuickStart 2 workflow
+        run: |
+          umask 000
+          REPO_DIR="$GITHUB_WORKSPACE"
+          USER_SPEC="$(id -u):$(id -g)"
+
+          nextflow run "$REPO_DIR/main.nf" --docker \
+            --docker_user "$USER_SPEC" \
+            -params-file "$REPO_DIR/test/configs/hcc1143_lpwgs/illumina.auto.yml" \
+            -work-dir "$REPO_DIR/test/work/hcc1143_lpwgs" \
+            -with-report "$REPO_DIR/test/reports/quickstart2-hcc1143.report.html" \
+            -with-timeline "$REPO_DIR/test/reports/quickstart2-hcc1143.timeline.html" \
+            -with-trace "$REPO_DIR/test/reports/quickstart2-hcc1143.trace.tsv" \
+            -resume
+
+      - name: Verify all QuickStart 2 outputs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path.cwd()
+          out = root / "test/runs/hcc1143_lpwgs"
+          expected = (
+              "HCC1143_DMSO",
+              "HCC1143_BEZ235",
+              "HCC1143_TRAMETINIB",
+          )
+
+          required = (
+              out / "01_samurai_illumina/qdnaseq/all_segments.seg",
+              out / "03_cna_codification/cna_events.tsv",
+              out / "03_cna_codification/cna_cytogenomic_notation.tsv",
+              out / "04_cna_custom_plots/cna_per_sample_pages.pdf",
+              out / "04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf",
+              out / "06_workflow_summary/workflow_summary.txt",
+          )
+          for path in required:
+              if not path.is_file() or path.stat().st_size == 0:
+                  raise SystemExit(f"missing or empty required output: {path}")
+
+          bam_dir = out / "01_samurai_illumina/alignment"
+          bams = [path for path in bam_dir.glob("*.bam") if path.stat().st_size > 0]
+          if len(bams) != 3:
+              raise SystemExit(f"expected 3 non-empty BAMs, found {len(bams)}: {bams}")
+          bam_names = {path.stem for path in bams}
+          missing_bams = [sample for sample in expected if sample not in bam_names]
+          if missing_bams:
+              raise SystemExit(f"missing sample BAMs: {missing_bams}; found {sorted(bam_names)}")
+
+          segments = required[0].read_text(encoding="utf-8", errors="replace")
+          for sample in expected:
+              if sample not in segments:
+                  raise SystemExit(f"sample absent from qDNAseq segments: {sample}")
+
+          summary_lines = set(required[-1].read_text(encoding="utf-8").splitlines())
+          for marker in ("mode=illumina", "dataset=illumina_qdnaseq_100kb"):
+              if marker not in summary_lines:
+                  raise SystemExit(f"workflow summary is missing {marker!r}")
+
+          print("PASS: QuickStart 2 completed for all three HCC1143 libraries")
+          print(f"BAMs: {', '.join(sorted(path.name for path in bams))}")
+          PY
+
+          cat "$GITHUB_WORKSPACE/test/runs/hcc1143_lpwgs/06_workflow_summary/workflow_summary.txt"
+          du -h -d 3 "$GITHUB_WORKSPACE/test" | sort -h | tail -40
+          df -h
+
+      - name: Upload QuickStart 2 logs and summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quickstart2-full-${{ github.run_id }}
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 14
+          path: |
+            .nextflow.log
+            test/configs/hcc1143_lpwgs/**
+            test/reports/quickstart2-*
+            test/runs/hcc1143_lpwgs/06_workflow_summary/**
+            test/runs/hcc1143_lpwgs/03_cna_codification/cna_events.tsv
+            test/runs/hcc1143_lpwgs/01_samurai_illumina/logs/**
+            test/runs/hcc1143_lpwgs/01_samurai_illumina/nextflow_launch/.nextflow.log
+            test/runs/hcc1143_lpwgs/01_samurai_illumina/qdnaseq/all_segments.seg
