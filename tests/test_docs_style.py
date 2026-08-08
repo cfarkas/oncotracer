@@ -199,9 +199,9 @@ PARITY_REQUIREMENTS = (
     "engine=native",
     "nextflow_used=false",
     "at least 0.80 reciprocal interval overlap",
-    "event recall and precision of at least 0.90",
-    "at least 0.95 of each refined-bin grid shared exactly",
-    "Pearson correlation of at least 0.98",
+    "state-specific CNA genomic-coverage recall and precision of at least 0.90",
+    "at least 0.95 of the original corrected-bin coordinate grid shared exactly",
+    "corrected input log₂-signal Pearson correlation of at least 0.98",
     "no greater than 0.08",
 )
 
