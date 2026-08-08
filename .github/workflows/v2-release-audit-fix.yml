@@ -1,0 +1,45 @@
+name: Validate sealed parity-audit trace fix
+
+on:
+  push:
+    branches:
+      - agent/v2-release-audit-fix
+    paths:
+      - .github/workflows/v2-release-audit-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/v2-release-audit-fix
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Apply guarded audit fix
+        run: python3 scripts/apply_release_audit_trace_fix.py
+
+      - name: Run parity and audit regression tests
+        run: |
+          set -Eeuo pipefail
+          python3 -m compileall -q tests oncotracer_cli scripts bin
+          python3 -m unittest -v tests/test_compare_native_parity.py
+          python3 tests/test_copy_paste_paths.py
+
+      - name: Commit validated audit fix
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/parity_audit.py tests/test_compare_native_parity.py
+          git diff --cached --check
+          git commit -m 'fix(v2): make sealed parity audit resume-aware'
+          git push origin HEAD:agent/v2-release-audit-fix
