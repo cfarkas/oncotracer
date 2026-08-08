@@ -3,7 +3,11 @@
 
 from __future__ import annotations
 
+import csv
 import re
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -137,6 +141,7 @@ def check_every_pwd_quickstart_block_enters_analysis_directory() -> None:
     markdown_files = [ROOT / "README.md"]
     markdown_files.extend(sorted((ROOT / "docs").rglob("*.md")))
     markdown_files.extend(sorted((ROOT / "examples").rglob("*.md")))
+    violations: list[str] = []
     for path in markdown_files:
         relative_path = path.relative_to(ROOT).as_posix()
         text = path.read_text(encoding="utf-8")
@@ -148,13 +153,16 @@ def check_every_pwd_quickstart_block_enters_analysis_directory() -> None:
                     "$PWD/oncotracer-quickstart2",
                 )
             )
-            if not uses_pwd_quickstart:
-                continue
-            require(
-                first_command(block) == ANALYSES_CD,
-                f"{relative_path} Bash block {number} uses a $PWD QuickStart root "
-                f"without starting with {ANALYSES_CD!r}",
-            )
+            if uses_pwd_quickstart and first_command(block) != ANALYSES_CD:
+                violations.append(
+                    f"{relative_path} Bash block {number}: first command is "
+                    f"{first_command(block)!r}"
+                )
+    require(
+        not violations,
+        "the following $PWD QuickStart blocks do not begin with "
+        f"{ANALYSES_CD!r}:\n  " + "\n  ".join(violations),
+    )
 
 
 def check_tutorial_figures_are_native_and_beginner_safe() -> None:
@@ -255,6 +263,51 @@ def check_native_qdnaseq_uses_called_object_for_seg_exports() -> None:
     )
 
 
+def write_trace(path: Path, names: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(["task_id", "hash", "name", "status", "exit", "container"])
+        for task_id, name in enumerate(names, start=1):
+            writer.writerow([task_id, f"hash-{task_id}", name, "COMPLETED", "0", "example/image:1"])
+
+
+def check_resumed_nested_trace_combiner() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary) / "nested"
+        write_trace(
+            root / "attempt-1" / "pipeline_info" / "execution_trace_1.txt",
+            [f"SAMURAI:PROCESS_{number} (SAMPLE_A)" for number in range(1, 6)],
+        )
+        write_trace(
+            root / "attempt-2" / "pipeline_info" / "execution_trace_2.txt",
+            [f"SAMURAI:PROCESS_{number} (SAMPLE_A)" for number in range(6, 11)],
+        )
+        subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "tests" / "combine_nested_samurai_traces.py"),
+                "--root",
+                str(root),
+            ],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        output = root / ".oncotracer-parity" / "pipeline_info"
+        combined = output / "execution_trace_oncotracer_combined.txt"
+        manifest = output / "execution_trace_oncotracer_sources.tsv"
+        require(combined.is_file(), "resumed nested trace combiner did not create its trace")
+        require(manifest.is_file(), "resumed nested trace combiner did not create its source manifest")
+        with combined.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle, delimiter="\t"))
+        with manifest.open(newline="", encoding="utf-8") as handle:
+            sources = list(csv.DictReader(handle, delimiter="\t"))
+        require(len(rows) == 10, f"resumed nested trace combiner produced {len(rows)} rows, expected 10")
+        require(len(sources) == 2, f"resumed nested trace source manifest has {len(sources)} rows, expected 2")
+        require(all(row["status"] == "COMPLETED" for row in rows), "combined trace contains a non-completed row")
+
+
 def main() -> None:
     check_release_install("README.md")
     check_release_install("docs/installation.md")
@@ -264,9 +317,10 @@ def main() -> None:
     check_automatic_setup_paths()
     check_checkout_is_only_for_source_development()
     check_native_qdnaseq_uses_called_object_for_seg_exports()
+    check_resumed_nested_trace_combiner()
     print(
-        "PASS: native v2 release, QuickStart, figures, Automatic Setup, and "
-        "qDNAseq export contracts are beginner-safe and release-ready"
+        "PASS: native v2 release, QuickStart, figures, Automatic Setup, qDNAseq, "
+        "and resumed nested-trace contracts are beginner-safe and release-ready"
     )
 
 
