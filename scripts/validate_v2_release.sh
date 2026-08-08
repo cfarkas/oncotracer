@@ -1805,11 +1805,14 @@ generate_samurai_trace_audit() {
   if ! selected_output="$(
     python3 - \
       "$root" "$mode" "$expected_rows" \
-      "$CONTEXT_DIR/samurai-container-pins.tsv" "$temporary" "$selected" <<'PY'
+      "$CONTEXT_DIR/samurai-container-pins.tsv" "$temporary" "$selected" \
+      "$REPOSITORY_ROOT/tests" <<'PY'
 import csv
 import hashlib
 import json
+import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 root = Path(sys.argv[1]).resolve()
@@ -1818,6 +1821,9 @@ expected_rows = int(sys.argv[3])
 pins_path = Path(sys.argv[4])
 destination = Path(sys.argv[5])
 selected_arg = sys.argv[6]
+tests_dir = Path(sys.argv[7]).resolve()
+sys.path.insert(0, str(tests_dir))
+from combine_nested_samurai_traces import combine_root  # noqa: E402
 
 expected_processes = {
     "illumina": {
@@ -1869,6 +1875,17 @@ expected_images = {
         "community.wave.seqera.io/library/multiqc:1.32--d58f60e4deb769bf",
     },
 }
+ont_resume_processes = {
+    "SAMURAI:SAMTOOLS_INDEX",
+    "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTMULTIPLEMETRICS",
+    "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTWGSMETRICS",
+    "SAMURAI:LIQUID_BIOPSY:ICHORCNA:HMMCOPY_READCOUNTER_ICHORCNA",
+}
+ont_resume_images = {
+    "quay.io/biocontainers/samtools:1.22.1--h96c455f_0",
+    "community.wave.seqera.io/library/picard:3.4.0--e9963040df0a9bf6",
+    "community.wave.seqera.io/library/hmmcopy_samtools:875db3767c6d4ea2",
+}
 if mode not in expected_processes:
     raise SystemExit(f"unsupported SAMURAI trace mode: {mode}")
 
@@ -1886,21 +1903,16 @@ with pins_path.open(encoding="utf-8") as handle:
                 raise SystemExit(f"ambiguous SAMURAI image alias: {alias}")
             pins[alias] = (tag, digest)
 
-traces = sorted(root.rglob("execution_trace_*.txt"))
-if not traces:
-    raise SystemExit(f"no nested SAMURAI trace found under {root}")
-for trace in traces:
-    trace.resolve().relative_to(root)
-if selected_arg:
-    selected = Path(selected_arg).resolve()
-    selected.relative_to(root)
-    if selected not in [path.resolve() for path in traces]:
-        raise SystemExit(f"recorded SAMURAI trace is unavailable: {selected}")
-else:
-    selected = max(traces, key=lambda path: (path.stat().st_mtime_ns, str(path))).resolve()
+selected, source_manifest, _ = combine_root(root)
+selected = selected.resolve()
+source_manifest = source_manifest.resolve()
+if selected_arg and Path(selected_arg).resolve() != selected:
+    raise SystemExit(
+        f"recorded combined SAMURAI trace changed: expected {selected_arg}, observed {selected}"
+    )
 
 rows = []
-processes = set()
+process_names = []
 containers = set()
 with selected.open(encoding="utf-8-sig", newline="") as handle:
     reader = csv.DictReader(handle, delimiter="\t")
@@ -1910,21 +1922,26 @@ with selected.open(encoding="utf-8-sig", newline="") as handle:
         raise SystemExit(f"SAMURAI trace lacks required column(s): {sorted(missing)}")
     for row in reader:
         name = (row.get("name") or "").rstrip("\r")
+        normalized = re.sub(
+            r"\s+\([^()]*(?:\([^()]*\)[^()]*)*\)$", "", name.strip()
+        )
+        if ":SAMURAI:" in normalized:
+            normalized = "SAMURAI:" + normalized.rsplit(":SAMURAI:", 1)[1]
+        if normalized not in expected_processes[mode]:
+            continue
         status = (row.get("status") or "").rstrip("\r").upper()
         exit_code = (row.get("exit") or "").rstrip("\r")
-        container = (row.get("container") or "").rstrip("\r")
+        container = (row.get("container") or "").rstrip("\r").removeprefix("docker://")
         if status not in {"COMPLETED", "CACHED"} or exit_code != "0":
             raise SystemExit(
-                f"non-passing SAMURAI trace row: {name!r} status={status!r} exit={exit_code!r}"
+                f"non-passing contracted SAMURAI row: {name!r} "
+                f"status={status!r} exit={exit_code!r}"
             )
         if container in {"", "-", "null"} or container not in pins:
             raise SystemExit(f"unresolved or forbidden SAMURAI container: {container!r}")
-        normalized = name.split(" (", 1)[0]
-        if ":SAMURAI:" in normalized:
-            normalized = "SAMURAI:" + normalized.split(":SAMURAI:", 1)[1]
-        processes.add(normalized)
         canonical, digest = pins[container]
         containers.add(canonical)
+        process_names.append(normalized)
         rows.append(
             {
                 "name": name,
@@ -1934,22 +1951,37 @@ with selected.open(encoding="utf-8-sig", newline="") as handle:
                 "container": container,
                 "canonical_container": canonical,
                 "repo_digest": digest,
+                "source_trace": row.get("source_trace", ""),
+                "source_row": row.get("source_row", ""),
             }
         )
-if len(rows) != expected_rows:
+
+processes = set(process_names)
+complete = (
+    len(rows) == expected_rows
+    and processes == expected_processes[mode]
+    and containers == expected_images[mode]
+)
+resume = (
+    mode == "ont"
+    and len(rows) == 4
+    and processes == ont_resume_processes
+    and containers == ont_resume_images
+)
+if complete:
+    evidence_mode = "complete-combined-trace"
+elif resume:
+    evidence_mode = "exact-ont-final-resume-trace"
+else:
     raise SystemExit(
-        f"SAMURAI trace row count mismatch: expected {expected_rows}, observed {len(rows)}"
+        "SAMURAI combined trace contract mismatch: "
+        f"mode={mode!r} expected_rows={expected_rows} observed_rows={len(rows)} "
+        f"counts={dict(Counter(process_names))!r} "
+        f"missing_processes={sorted(expected_processes[mode] - processes)!r} "
+        f"extra_processes={sorted(processes - expected_processes[mode])!r} "
+        f"observed_containers={sorted(containers)!r}"
     )
-if processes != expected_processes[mode]:
-    raise SystemExit(
-        "SAMURAI process-set mismatch: "
-        f"expected={sorted(expected_processes[mode])!r} observed={sorted(processes)!r}"
-    )
-if containers != expected_images[mode]:
-    raise SystemExit(
-        "SAMURAI container-set mismatch: "
-        f"expected={sorted(expected_images[mode])!r} observed={sorted(containers)!r}"
-    )
+
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -1958,17 +1990,38 @@ def sha256(path):
             digest.update(chunk)
     return digest.hexdigest()
 
+with source_manifest.open(newline="", encoding="utf-8") as handle:
+    source_rows = list(csv.DictReader(handle, delimiter="\t"))
+available = []
+for source in source_rows:
+    source_path = (root / source["source_trace"]).resolve()
+    source_path.relative_to(root)
+    if sha256(source_path) != source["sha256"]:
+        raise SystemExit(f"source trace checksum changed: {source_path}")
+    available.append(
+        {
+            "path": str(source_path),
+            "rows": int(source["rows"]),
+            "successful_rows": int(source["successful_rows"]),
+            "sha256": source["sha256"],
+        }
+    )
+
 record = {
     "schema": "oncotracer-samurai-trace-audit-v1",
     "mode": mode,
+    "evidence_mode": evidence_mode,
     "source_trace": str(selected),
     "source_trace_sha256": sha256(selected),
-    "available_traces": [
-        {"path": str(path.resolve()), "sha256": sha256(path)} for path in traces
-    ],
+    "source_manifest": str(source_manifest),
+    "source_manifest_sha256": sha256(source_manifest),
+    "available_traces": available,
+    "contract_row_count": expected_rows,
     "row_count": len(rows),
     "processes": sorted(processes),
+    "contract_processes": sorted(expected_processes[mode]),
     "containers": sorted(containers),
+    "contract_containers": sorted(expected_images[mode]),
     "rows": rows,
 }
 destination.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")

@@ -53,6 +53,15 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("optional cna classifier", architecture)
         self.assertNotIn("nextflow run", configuration)
 
+    def test_parity_documentation_matches_the_executable_gate(self) -> None:
+        text = (ROOT / "docs/parity_release.md").read_text(encoding="utf-8")
+        self.assertIn("state-specific CNA genomic-coverage recall and precision", text)
+        self.assertIn("corrected input log₂-signal Pearson correlation", text)
+        self.assertIn("exact four-process final-resume trace", text)
+        self.assertIn("A smaller or different subset fails closed", text)
+        self.assertNotIn("event recall and precision of at least", text)
+        self.assertNotIn("refined-bin Pearson correlation", text)
+
     def test_mkdocs_contains_assurance_pages(self) -> None:
         text = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
         for page in ("native_architecture.md", "parity_release.md", "migration_v1_to_v2.md"):
@@ -139,6 +148,10 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("samurai-container-identities.tsv", text)
         self.assertIn("samurai-nextflow-audit.config", text)
         self.assertIn("oncotracer-samurai-trace-audit-v1", text)
+        self.assertIn("from combine_nested_samurai_traces import combine_root", text)
+        self.assertIn('evidence_mode = "exact-ont-final-resume-trace"', text)
+        self.assertIn('"contract_containers": sorted(expected_images[mode])', text)
+        self.assertNotIn("selected = max(traces", text)
         self.assertIn('"container"', text)
         self.assertIn("unresolved or forbidden SAMURAI container", text)
         for expected_rows in (
