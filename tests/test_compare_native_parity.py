@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import gzip
 import hashlib
+import importlib.util
 import json
 import subprocess
 import sys
@@ -225,6 +226,143 @@ class ParityComparatorTests(unittest.TestCase):
             self.assertEqual(payload["events"]["v1_events"], 0)
             self.assertEqual(payload["events"]["v2_events"], 0)
             self.assertEqual(payload["events"]["minimum_reciprocal_overlap"], 0.0)
+
+    def test_event_gate_uses_state_specific_coverage_not_fragment_count(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            v1, v2, report = root / "v1", root / "v2", root / "report"
+            write_run(v1, native=False)
+            write_run(v2, native=True)
+
+            def write_events(run_root: Path, intervals: list[tuple[int, int]]) -> None:
+                with (run_root / "03_cna_codification/cna_events.tsv").open("w", newline="") as handle:
+                    writer = csv.DictWriter(
+                        handle,
+                        ["sample", "state", "chrom", "start", "end", "mean_log2"],
+                        delimiter="	",
+                    )
+                    writer.writeheader()
+                    for start, end in intervals:
+                        writer.writerow(
+                            {
+                                "sample": "S1",
+                                "state": "gain",
+                                "chrom": "1",
+                                "start": start,
+                                "end": end,
+                                "mean_log2": 0.5,
+                            }
+                        )
+
+            reference = [(0, 1000), (2000, 3000), (4000, 5000), (6000, 7000), (8000, 8001)]
+            candidate = reference[:-1]
+            write_events(v1, reference)
+            write_events(v2, candidate)
+            completed = run_comparator(v1, v2, report)
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            payload = report_payload(report)
+            self.assertEqual(payload["events"]["recall"], 0.8)
+            self.assertGreater(payload["events"]["coverage_recall"], 0.99)
+            self.assertTrue(payload["checks"]["event_recall"])
+
+    def test_profile_gate_uses_original_coordinates_and_input_signal(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            v1, v2, report = root / "v1", root / "v2", root / "report"
+            write_run(v1, native=False)
+            write_run(v2, native=True)
+
+            def write_profile(run_root: Path, shift: int, reverse_final: bool) -> None:
+                values = [0.1, 0.2, 0.3, 0.4]
+                with gzip.open(run_root / PROFILE_RELATIVE, "wt") as handle:
+                    writer = csv.DictWriter(
+                        handle,
+                        [
+                            "sample", "chrom", "start", "end",
+                            "original_bin_start", "original_bin_end",
+                            "input_log2", "final_log2",
+                        ],
+                        delimiter="	",
+                    )
+                    writer.writeheader()
+                    finals = list(reversed(values)) if reverse_final else values
+                    for index, (input_value, final_value) in enumerate(zip(values, finals, strict=True)):
+                        original_start = index * 100
+                        original_end = (index + 1) * 100
+                        writer.writerow(
+                            {
+                                "sample": "S1",
+                                "chrom": "chr1",
+                                "start": original_start + shift,
+                                "end": original_end + shift,
+                                "original_bin_start": original_start,
+                                "original_bin_end": original_end,
+                                "input_log2": input_value,
+                                "final_log2": final_value,
+                            }
+                        )
+
+            write_profile(v1, shift=0, reverse_final=False)
+            write_profile(v2, shift=7, reverse_final=True)
+            completed = run_comparator(v1, v2, report)
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            payload = report_payload(report)
+            self.assertEqual(payload["profiles"]["shared_bins"], 4)
+            self.assertAlmostEqual(payload["profiles"]["pearson"], 1.0)
+
+    def test_combined_trace_accepts_contract_rows_and_ignores_unrelated_tasks(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(ROOT / "tests"))
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(spec.name, None)
+            sys.path.pop(0)
+
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / "trace.tsv"
+            rows = [
+                {
+                    "task_id": "1",
+                    "hash": "a",
+                    "name": "DINCALCILAB_SAMURAI:SAMURAI:SAMTOOLS_INDEX (S1)",
+                    "status": "COMPLETED",
+                    "exit": "0",
+                    "container": "quay.io/biocontainers/samtools:1.22.1--h96c455f_0",
+                },
+                {
+                    "task_id": "2",
+                    "hash": "b",
+                    "name": "DINCALCILAB_SAMURAI:SAMURAI:FASTA_INDEX_DNA:BWAMEM1_INDEX (genome.fa)",
+                    "status": "COMPLETED",
+                    "exit": "0",
+                    "container": "unrelated/image:latest",
+                },
+            ]
+            with trace.open("w", newline="") as handle:
+                writer = csv.DictWriter(handle, rows[0].keys(), delimiter="	")
+                writer.writeheader()
+                writer.writerows(rows)
+            image = "quay.io/biocontainers/samtools:1.22.1--h96c455f_0"
+            contract = module.Contract(
+                label="test",
+                root_arg="root",
+                expected_rows=1,
+                processes=frozenset({"SAMURAI:SAMTOOLS_INDEX"}),
+                images=frozenset({image}),
+            )
+            ok, reason, selected, images = module.evaluate_trace(
+                trace, contract, {image: "sha256:" + "0" * 64}
+            )
+            self.assertTrue(ok, reason)
+            self.assertEqual(len(selected), 1)
+            self.assertEqual(images, {image})
 
 
 if __name__ == "__main__":
