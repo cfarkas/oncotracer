@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate copy/paste path handling for the installed native v2 executable."""
+"""Validate beginner copy/paste paths and release-blocker source contracts."""
 
 from __future__ import annotations
 
@@ -231,6 +231,30 @@ def check_checkout_is_only_for_source_development() -> None:
         )
 
 
+def check_native_qdnaseq_uses_called_object_for_seg_exports() -> None:
+    script = read("bin/scripts/native_qdnaseq.R")
+    require(
+        'called <- QDNAseq::callBins(segmented, method = "cutoff")' in script,
+        "native qDNAseq must call segmented bins before SEG export",
+    )
+    require(
+        'Biobase::assayDataElement(object, "calls")' in script,
+        "native qDNAseq SEG writer must use the actual QDNAseq calls assay",
+    )
+    require(
+        "export_samurai_seg(called[, i], segment_files[[i]], sample, include_calls = FALSE)" in script,
+        "no-call SEG export must use the called QDNAseq object",
+    )
+    require(
+        "export_samurai_seg(called[, i], call_files[[i]], sample, include_calls = TRUE)" in script,
+        "called SEG export must use the called QDNAseq object",
+    )
+    require(
+        "export_samurai_seg(segmented[, i]" not in script,
+        "uncalled segmented objects cannot be passed to the QDNAseq SEG representation",
+    )
+
+
 def main() -> None:
     check_release_install("README.md")
     check_release_install("docs/installation.md")
@@ -239,9 +263,10 @@ def main() -> None:
     check_tutorial_figures_are_native_and_beginner_safe()
     check_automatic_setup_paths()
     check_checkout_is_only_for_source_development()
+    check_native_qdnaseq_uses_called_object_for_seg_exports()
     print(
-        "PASS: native v2 release, QuickStart, figures, and Automatic Setup paths "
-        "are beginner-safe and copy/paste ready"
+        "PASS: native v2 release, QuickStart, figures, Automatic Setup, and "
+        "qDNAseq export contracts are beginner-safe and release-ready"
     )
 
 
