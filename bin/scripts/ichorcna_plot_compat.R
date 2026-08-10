@@ -88,7 +88,7 @@ oncotracer_patch_ichorcna_plot_correction <- function() {
   patched <- original
   body(patched) <- oncotracer_ichorcna_rewrite_copy_quantiles(body(original))
   environment(patched) <- environment(original)
-  assignInNamespace(function_name, patched, ns = "ichorCNA")
+  utils::assignInNamespace(function_name, patched, ns = "ichorCNA")
 
   verified <- get(function_name, envir = asNamespace("ichorCNA"), inherits = FALSE)
   verified_calls <- oncotracer_ichorcna_collect_copy_quantiles(body(verified))

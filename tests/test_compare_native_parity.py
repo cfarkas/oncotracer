@@ -107,6 +107,26 @@ def empty_event_table(root: Path) -> None:
         writer.writeheader()
 
 
+def write_profile_values(root: Path, values: list[float]) -> None:
+    with gzip.open(root / PROFILE_RELATIVE, "wt") as handle:
+        writer = csv.DictWriter(
+            handle,
+            ["sample", "chrom", "start", "end", "log2"],
+            delimiter="\t",
+        )
+        writer.writeheader()
+        for index, value in enumerate(values):
+            writer.writerow(
+                {
+                    "sample": "S1",
+                    "chrom": "chr1",
+                    "start": index * 100,
+                    "end": (index + 1) * 100,
+                    "log2": value,
+                }
+            )
+
+
 class ParityComparatorTests(unittest.TestCase):
     def test_identical_semantic_outputs_pass(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -137,6 +157,14 @@ class ParityComparatorTests(unittest.TestCase):
             self.assertTrue(payload["checks"]["event_overlap"])
             self.assertEqual(payload["events"]["minimum_reciprocal_overlap"], 1.0)
             self.assertEqual(payload["events"]["median_reciprocal_overlap"], 1.0)
+            self.assertTrue(payload["checks"]["profile_usable_bins"])
+            self.assertEqual(payload["profiles"]["shared_bins"], 4)
+            self.assertEqual(payload["profiles"]["usable_shared_bins"], 4)
+            self.assertEqual(payload["profiles"]["excluded_ieee_log2_floor_bins"], 0)
+            self.assertEqual(
+                (report / "profile_floor_exclusions.tsv").read_text(encoding="utf-8"),
+                "\n",
+            )
             for version, run_root in (("v1", v1), ("v2", v2)):
                 profile = run_root / PROFILE_RELATIVE
                 record = payload["profile_inputs"][version]
@@ -310,6 +338,75 @@ class ParityComparatorTests(unittest.TestCase):
             self.assertEqual(payload["profiles"]["shared_bins"], 4)
             self.assertAlmostEqual(payload["profiles"]["pearson"], 1.0)
 
+    def test_exact_qdnaseq_zero_floor_does_not_poison_pearson(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            v1, v2, report = root / "v1", root / "v2", root / "report"
+            write_run(v1, native=False)
+            write_run(v2, native=True)
+            write_profile_values(v1, [-1022.0000000001, 0.2, 0.3, 0.4])
+            write_profile_values(v2, [0.1, 0.2, 0.3, 0.4])
+
+            completed = run_comparator(v1, v2, report)
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            payload = report_payload(report)
+            profiles = payload["profiles"]
+            self.assertEqual(profiles["shared_bins"], 4)
+            self.assertEqual(profiles["usable_shared_bins"], 3)
+            self.assertEqual(profiles["excluded_ieee_log2_floor_bins"], 1)
+            self.assertEqual(profiles["discordant_ieee_log2_floor_bins"], 1)
+            self.assertAlmostEqual(profiles["pearson"], 1.0)
+            self.assertTrue(payload["checks"]["profile_correlation"])
+            with (report / "profile_floor_exclusions.tsv").open(newline="") as handle:
+                exclusions = list(csv.DictReader(handle, delimiter="\t"))
+            self.assertEqual(len(exclusions), 1)
+            self.assertEqual(exclusions[0]["sample"], "S1")
+            self.assertEqual(exclusions[0]["v1_ieee_log2_floor"], "True")
+            self.assertEqual(exclusions[0]["v2_ieee_log2_floor"], "False")
+
+    def test_broad_finite_profile_discordance_still_fails_correlation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            v1, v2, report = root / "v1", root / "v2", root / "report"
+            write_run(v1, native=False)
+            write_run(v2, native=True)
+            write_profile_values(v1, [0.1, 0.2, 0.3, 0.4])
+            write_profile_values(v2, [0.1, 0.3, 0.2, 0.4])
+
+            completed = run_comparator(v1, v2, report)
+            self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+            payload = report_payload(report)
+            profiles = payload["profiles"]
+            self.assertEqual(profiles["excluded_ieee_log2_floor_bins"], 0)
+            self.assertAlmostEqual(profiles["pearson"], 0.8)
+            self.assertFalse(payload["checks"]["profile_correlation"])
+            self.assertTrue(payload["checks"]["profile_median_difference"])
+
+    def test_no_usable_bins_fails_with_a_complete_report(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            v1, v2, report = root / "v1", root / "v2", root / "report"
+            write_run(v1, native=False)
+            write_run(v2, native=True)
+            write_profile_values(v1, [-1022.0] * 4)
+            write_profile_values(v2, [-1022.0] * 4)
+
+            completed = run_comparator(v1, v2, report)
+            self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+            payload = report_payload(report)
+            profiles = payload["profiles"]
+            self.assertEqual(profiles["shared_bins"], 4)
+            self.assertEqual(profiles["usable_shared_bins"], 0)
+            self.assertEqual(profiles["excluded_ieee_log2_floor_bins"], 4)
+            self.assertIsNone(profiles["pearson"])
+            self.assertFalse(payload["checks"]["profile_usable_bins"])
+            self.assertFalse(payload["checks"]["profile_correlation"])
+            self.assertFalse(payload["checks"]["profile_median_difference"])
+            self.assertIn(
+                "Pearson correlation of corrected input log2 signal: not available",
+                (report / "parity_report.md").read_text(encoding="utf-8"),
+            )
+
     def test_combined_trace_accepts_contract_rows_and_ignores_unrelated_tasks(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
@@ -436,7 +533,8 @@ class ParityComparatorTests(unittest.TestCase):
             )
 
             incomplete = root / "incomplete.tsv"
-            rows = list(csv.DictReader(exact.open(newline=""), delimiter="\t"))[:-1]
+            with exact.open(newline="") as handle:
+                rows = list(csv.DictReader(handle, delimiter="\t"))[:-1]
             with incomplete.open("w", newline="") as handle:
                 writer = csv.DictWriter(handle, rows[0].keys(), delimiter="\t")
                 writer.writeheader()

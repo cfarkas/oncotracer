@@ -300,11 +300,14 @@ jobs:
             fi
           done
           docker buildx imagetools create \
+            --prefer-index=false \
             --tag "$IMAGE_NAME:2.0.0" \
             --tag "$IMAGE_NAME:v2.0.0" \
             "$CANDIDATE_TAG@$IMAGE_DIGEST"
-          test "$(docker buildx imagetools inspect "$IMAGE_NAME:2.0.0" \
-            | awk '$1 == "Digest:" {print $2; exit}')" = "$IMAGE_DIGEST"
+          for stable in "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0"; do
+            test "$(docker buildx imagetools inspect "$stable" \
+              | awk '$1 == "Digest:" {print $2; exit}')" = "$IMAGE_DIGEST"
+          done
           docker pull "$IMAGE_NAME@$IMAGE_DIGEST"
           docker run --rm "$IMAGE_NAME@$IMAGE_DIGEST" provenance --json \
             > "$RUNNER_TEMP/published-container-provenance.json"

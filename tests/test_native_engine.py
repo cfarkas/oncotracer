@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import os
 import subprocess
 import sys
@@ -14,14 +15,18 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from oncotracer_cli.engine import (  # noqa: E402
+    OntSample,
     Toolchain,
     _correct_ichor_segments,
+    _ont_caller,
     parse_illumina_samplesheet,
     prepare_qdnaseq_annotation,
     parse_ont_samples,
+    run_ichorcna,
+    run_qdnaseq,
     run_refinement_and_outputs,
 )
-from oncotracer_cli.runtime import CommandRunner, StageLedger  # noqa: E402
+from oncotracer_cli.runtime import CommandRunner, OncoTracerError, StageLedger  # noqa: E402
 
 
 class NativeEngineTests(unittest.TestCase):
@@ -345,6 +350,260 @@ class NativeEngineTests(unittest.TestCase):
             with output.open(encoding="utf-8") as handle:
                 rows = list(csv.DictReader(handle, delimiter="\t"))
             self.assertAlmostEqual(float(rows[0]["adj.seg"]), 1.0)
+
+    def test_ichorcna_sample_failure_does_not_block_later_sample(self) -> None:
+        class FakeToolchain:
+            @staticmethod
+            def wrap(_group, command):
+                return [str(item) for item in command]
+
+            @staticmethod
+            def rscript(_group, command):
+                return [str(item) for item in command]
+
+        class SampleRunner:
+            dry_run = False
+
+            def __init__(self) -> None:
+                self.stages: list[str] = []
+
+            def run(self, stage, command, *, cwd=None, stdout=None, **_kwargs):
+                self.stages.append(stage)
+                if stage.startswith("ichor-readcounter-"):
+                    assert stdout is not None
+                    stdout.write("fixedStep chrom=chr1 start=1 step=500000 span=500000\n1\n")
+                    return None
+                sample = str(command[command.index("--sample") + 1])
+                assert cwd is not None
+                if sample == "SNC-E":
+                    (cwd / f"{sample}.correctedDepth.txt").write_text(
+                        "chr\tstart\tend\tcopy.number\nchr1\t1\t500000\t0\n",
+                        encoding="utf-8",
+                    )
+                    raise OncoTracerError(
+                        "replication timing normalization at "
+                        "/protected/analysis/SNC-E.wig: invalid 'x'"
+                    )
+                (cwd / f"{sample}.params.txt").write_text(
+                    "Tumor Fraction: 0.25\nPloidy: 2\nGC-Map correction MAD: 0.1\n",
+                    encoding="utf-8",
+                )
+                (cwd / f"{sample}.seg.txt").write_text(
+                    "ID\tchrom\tstart\tend\tnum.mark\tlogR_Copy_Number\n"
+                    f"{sample}\tchr1\t1\t500000\t1\t4\n",
+                    encoding="utf-8",
+                )
+                (cwd / f"{sample}.correctedDepth.txt").write_text(
+                    "chr\tstart\tend\tcopy.number\nchr1\t1\t500000\t2\n",
+                    encoding="utf-8",
+                )
+                return None
+
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            assets = {}
+            for name in ("gc", "map", "centromere", "reptime", "pon"):
+                asset = temporary / f"{name}.asset"
+                asset.write_text(name, encoding="utf-8")
+                assets[name] = asset
+            bams = {}
+            samples = []
+            fastq_dir = temporary / "fastq"
+            fastq_dir.mkdir()
+            for name in ("SNC-E", "SNC-F"):
+                bam = temporary / f"{name}.bam"
+                bam.write_bytes(b"bam")
+                bams[name] = bam
+                samples.append(OntSample(name, name, fastq_dir))
+            samurai = temporary / "01_samurai_ont"
+            ichor_out = samurai / "results" / "ichorcna"
+            ichor_out.mkdir(parents=True)
+            stale = ichor_out / "SNC-E.correctedDepth.txt"
+            stale.write_text("stale\n", encoding="utf-8")
+            runner = SampleRunner()
+            ledger = StageLedger(temporary / "state.json")
+
+            with patch("oncotracer_cli.engine.prepare_ichor_assets", return_value=assets):
+                observed = run_ichorcna(
+                    ROOT,
+                    temporary / "project",
+                    samples,
+                    bams,
+                    samurai,
+                    500,
+                    runner,  # type: ignore[arg-type]
+                    ledger,
+                    FakeToolchain(),  # type: ignore[arg-type]
+                    threads=2,
+                    force=True,
+                )
+
+            self.assertEqual(observed, ichor_out)
+            self.assertLess(
+                runner.stages.index("ichorcna-SNC-E"),
+                runner.stages.index("ichorcna-SNC-F"),
+            )
+            status = json.loads(
+                (ichor_out / "ichorcna_sample_status.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(status["overall_status"], "partial_failure")
+            self.assertEqual(status["failed_samples"], ["SNC-E"])
+            self.assertEqual(status["completed_samples"], ["SNC-F"])
+            self.assertEqual(status["samples"][0]["stage"], "ichorcna")
+            self.assertIn("invalid 'x'", status["samples"][0]["error"])
+            self.assertIn("<path>", status["samples"][0]["error"])
+            self.assertNotIn("/media/", status["samples"][0]["error"])
+            self.assertFalse(stale.exists())
+            self.assertTrue((ichor_out / "SNC-E" / "SNC-E.correctedDepth.txt").is_file())
+            self.assertTrue((ichor_out / "SNC-F.correctedDepth.txt").is_file())
+            aggregate = (ichor_out / "all_segments_ichorcna_gistic.seg").read_text(
+                encoding="utf-8"
+            )
+            summary = (ichor_out / "ichorcna_summary_mqc.txt").read_text(encoding="utf-8")
+            corrected = (ichor_out / "segments_logR_corrected_gistic.seg").read_text(
+                encoding="utf-8"
+            )
+            for output in (aggregate, summary, corrected):
+                self.assertIn("SNC-F", output)
+                self.assertNotIn("SNC-E", output)
+
+    def test_qdnaseq_accepts_explicit_ont_bams_as_unpaired(self) -> None:
+        class FakeToolchain:
+            @staticmethod
+            def rscript(_group, command):
+                return [str(item) for item in command]
+
+        class QdnaRunner:
+            dry_run = False
+
+            def __init__(self, output: Path) -> None:
+                self.output = output
+                self.command: list[str] | None = None
+
+            def run(self, _stage, command, **_kwargs):
+                self.command = [str(item) for item in command]
+                self.output.parent.mkdir(parents=True, exist_ok=True)
+                self.output.write_text(
+                    "ID\tchrom\tloc.start\tloc.end\tseg.mean\n", encoding="utf-8"
+                )
+                (self.output.parent / "qdnaseq_sample_status.json").write_text(
+                    json.dumps(
+                        {
+                            "overall_status": "complete",
+                            "completed_samples": ["SNC-E", "SNC-F"],
+                            "failed_samples": [],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return None
+
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            fastq_dir = temporary / "fastq"
+            fastq_dir.mkdir()
+            samples = [
+                OntSample("SNC-E", "barcode01", fastq_dir),
+                OntSample("SNC-F", "barcode02", fastq_dir),
+            ]
+            bams = {}
+            for sample in samples:
+                bam = temporary / f"{sample.sample}.bam"
+                bam.write_bytes(b"bam")
+                bams[sample.sample] = bam
+            annotation = temporary / "QDNAseq.hg38.100kbp.SR50.rds"
+            annotation.write_bytes(b"annotation")
+            samurai = temporary / "01_samurai_ont"
+            output = samurai / "qdnaseq" / "all_segments.seg"
+            runner = QdnaRunner(output)
+
+            with patch(
+                "oncotracer_cli.engine.prepare_qdnaseq_annotation",
+                return_value=annotation,
+            ):
+                observed, _ = run_qdnaseq(
+                    ROOT,
+                    temporary / "project",
+                    samples,
+                    bams,
+                    samurai,
+                    100,
+                    runner,  # type: ignore[arg-type]
+                    StageLedger(temporary / "state.json"),
+                    FakeToolchain(),  # type: ignore[arg-type]
+                    force=True,
+                    paired_ends=False,
+                )
+
+            self.assertEqual(observed, samurai / "qdnaseq")
+            command = runner.command or []
+            paired_index = command.index("--paired-ends")
+            self.assertEqual(command[paired_index + 1], "false")
+            sheet = (samurai / "input" / "native.bam.samplesheet.csv").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("SNC-E", sheet)
+            self.assertIn("SNC-F", sheet)
+
+    def test_ont_caller_validation_is_explicit(self) -> None:
+        self.assertEqual(_ont_caller({}), "ichorcna")
+        self.assertEqual(
+            _ont_caller(
+                {"ont_caller": "QDNAseq", "ont_analysis_type": "solid_biopsy"}
+            ),
+            "qdnaseq",
+        )
+        with self.assertRaisesRegex(OncoTracerError, "requires ont_analysis_type"):
+            _ont_caller({"ont_caller": "qdnaseq"})
+        with self.assertRaisesRegex(OncoTracerError, "ont_caller must be"):
+            _ont_caller({"ont_caller": "unsupported"})
+
+    def test_ont_qdnaseq_refinement_routes_caller_and_prior(self) -> None:
+        class StopAfterCapture(RuntimeError):
+            pass
+
+        class CaptureRunner:
+            command: list[str] | None = None
+
+            def run(self, stage, command, **_kwargs):
+                self.command = [str(item) for item in command]
+                raise StopAfterCapture(stage)
+
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            core = temporary / "core"
+            for name in ("python", "samtools"):
+                executable = core / "bin" / name
+                executable.parent.mkdir(parents=True, exist_ok=True)
+                executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+                executable.chmod(0o755)
+            caller_dir = temporary / "qdnaseq"
+            caller_dir.mkdir()
+            runner = CaptureRunner()
+            with self.assertRaisesRegex(StopAfterCapture, "bam-refinement"):
+                run_refinement_and_outputs(
+                    ROOT,
+                    {"ont_binsize_kb": 100},
+                    "ont",
+                    temporary / "samurai",
+                    caller_dir,
+                    temporary / "bam",
+                    temporary / "out",
+                    temporary / "project",
+                    runner,  # type: ignore[arg-type]
+                    Toolchain(core_prefix=core),
+                    force=False,
+                    caller="qdnaseq",
+                )
+            command = runner.command or []
+            caller_index = command.index("--ont-caller")
+            input_index = command.index("--ont-cna-dir")
+            prior_index = command.index("--ont-prior-seg")
+            self.assertEqual(command[caller_index + 1], "qdnaseq")
+            self.assertEqual(command[input_index + 1], str(caller_dir))
+            self.assertEqual(
+                command[prior_index + 1], str(caller_dir / "all_segments.seg")
+            )
 
 
 if __name__ == "__main__":

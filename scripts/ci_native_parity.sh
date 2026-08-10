@@ -250,7 +250,7 @@ if [[ "$SUITE" == quickstart1 ]]; then
   cat >> "$TEST_ROOT/v1/ont/01_samurai_ont/.nextflow/config" <<EOF
 process {
   withName: ICHORCNA_RUN {
-    containerOptions = '-v $REPO/bin/scripts:/opt/oncotracer/scripts:ro -e R_PROFILE_USER=/opt/oncotracer/scripts/v1_ichorcna_profile.R'
+    containerOptions = '-v $REPO/bin/scripts:/opt/oncotracer/scripts:ro -v $REPO/bin/scripts/v1_ichorcna_profile.R:/.Rprofile:ro'
   }
 }
 EOF

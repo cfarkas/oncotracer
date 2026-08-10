@@ -65,6 +65,83 @@ class BeginnerRuntimeTests(unittest.TestCase):
                 self.assertFalse((base / "data").exists())
                 self.assertFalse((base / "envs").exists())
 
+    def test_run_dry_runs_need_no_installed_backend_and_write_nothing(self) -> None:
+        for backend in ("conda", "docker", "singularity", "poetry"):
+            with self.subTest(backend=backend), tempfile.TemporaryDirectory() as temporary:
+                base = Path(temporary)
+                fastq_1 = base / "TUMOR_R1.fastq.gz"
+                fastq_2 = base / "TUMOR_R2.fastq.gz"
+                fastq_1.write_bytes(b"reads-1")
+                fastq_2.write_bytes(b"reads-2")
+                sheet = base / "samples.csv"
+                sheet.write_text(
+                    "sample,fastq_1,fastq_2,status\n"
+                    f"TUMOR,{fastq_1},{fastq_2},tumor\n",
+                    encoding="utf-8",
+                )
+                outdir = base / "results"
+                lpwgs_root = base / "payload-project"
+                config = base / "run.yml"
+                config.write_text(
+                    "mode: illumina\n"
+                    f"lpwgs_root: {lpwgs_root}\n"
+                    f"outdir: {outdir}\n"
+                    f"illumina_samplesheet: {sheet}\n"
+                    "illumina_binsize_kb: 100\n"
+                    "force: false\n",
+                    encoding="utf-8",
+                )
+                files_before = {
+                    path.relative_to(base): path.read_bytes()
+                    for path in base.rglob("*")
+                    if path.is_file()
+                }
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                environment = {
+                    "XDG_CONFIG_HOME": str(base / "config-home"),
+                    "XDG_DATA_HOME": str(base / "data-home"),
+                    "XDG_CACHE_HOME": str(base / "cache-home"),
+                }
+                with mock.patch.dict(os.environ, environment, clear=False), mock.patch(
+                    "oncotracer_cli.cli.shutil.which", return_value=None
+                ), mock.patch("oncotracer_cli.cli.subprocess.run") as process, contextlib.redirect_stdout(
+                    stdout
+                ), contextlib.redirect_stderr(stderr):
+                    status = cli.main(
+                        [
+                            "run",
+                            "--config",
+                            str(config),
+                            "--backend",
+                            backend,
+                            "--dry-run",
+                            "--root",
+                            str(ROOT),
+                        ]
+                    )
+
+                self.assertEqual(status, 0)
+                process.assert_not_called()
+                files_after = {
+                    path.relative_to(base): path.read_bytes()
+                    for path in base.rglob("*")
+                    if path.is_file()
+                }
+                self.assertEqual(files_after, files_before)
+                self.assertFalse(outdir.exists())
+                self.assertFalse(lpwgs_root.exists())
+                self.assertFalse((base / "config-home").exists())
+                self.assertFalse((base / "data-home").exists())
+                self.assertFalse((base / "cache-home").exists())
+                self.assertIn('"schema": "oncotracer-native-dry-run-v1"', stdout.getvalue())
+                self.assertIn('"stages": [', stdout.getvalue())
+                self.assertIn('"nextflow_used": false', stdout.getvalue())
+                if backend == "docker":
+                    self.assertIn("docker run", stderr.getvalue())
+                elif backend == "singularity":
+                    self.assertIn("apptainer exec", stderr.getvalue())
+
     def test_quickstart1_generated_configs_resume_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "qs1"

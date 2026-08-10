@@ -1,6 +1,6 @@
 # ONT configuration
 
-Use this route for Oxford Nanopore Technologies FASTQs organized in barcode directories. Native v2 discovers and merges the selected reads, aligns with minimap2, counts genomic bins with HMMcopy, runs ichorCNA, refines CNA boundaries from BAM depth, and creates tables, plots, and summaries.
+Use this route for Oxford Nanopore Technologies FASTQs organized in barcode directories. Native v2 discovers and merges the selected reads, aligns with minimap2, runs the explicitly selected CNA caller, refines CNA boundaries from BAM depth, and creates tables, plots, and summaries. The default liquid-biopsy route uses HMMcopy/ichorCNA; an explicit solid-biopsy route can use qDNAseq.
 
 ## Recommended: Automatic Setup
 
@@ -122,6 +122,27 @@ oncotracer run \
   --config "$PROJECT_DIR/config/ont.manual.yml"
 ```
 
+## Explicit solid-biopsy qDNAseq route
+
+For a solid-tumor ONT cohort, select qDNAseq explicitly and use a new `outdir` so its caller and reports remain separate from an ichorCNA run:
+
+```yaml
+mode: ont
+lpwgs_root: /absolute/path/project
+outdir: /absolute/path/project/results/ont_solid_qdnaseq
+ont_folder: /absolute/path/project/input/fastq_pass
+ont_barcodes: barcode01,barcode02
+ont_sample_names: Tumor_A,Tumor_B
+ont_analysis_type: solid_biopsy
+ont_caller: qdnaseq
+ont_binsize_kb: 100
+ont_min_age_minutes: 0
+run_cna_classifier: false
+force: false
+```
+
+This route reuses the native qDNAseq implementation and its existing scientific settings, passes the long-read BAMs as unpaired data, and writes initial caller output under `01_samurai_ont/qdnaseq/`. It does not combine or overwrite `01_samurai_ont/results/ichorcna/`; retaining a distinct `outdir` also keeps the downstream stage-02 through stage-06 products separate. `ont_caller: qdnaseq` is rejected unless `ont_analysis_type: solid_biopsy` is present.
+
 ## Optional normal/control barcodes
 
 Add:
@@ -169,8 +190,8 @@ Use this only when an existing ONT alignment is invalid or the relevant alignmen
 | `ont_barcodes` | comma-separated names | Tumor barcode selection |
 | `ont_sample_names` | comma-separated names | Biological names in matching order |
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
-| `ont_caller` | `ichorcna` | ONT CNA caller |
-| `ont_binsize_kb` | `500` | Initial genomic bin width |
+| `ont_caller` | `ichorcna` | `ichorcna`, or `qdnaseq` for an explicit `solid_biopsy` analysis |
+| `ont_binsize_kb` | `500` | Initial caller bin width; set it explicitly for qDNAseq |
 | `ont_ref` | optional FASTA | Custom reference |
 | `ont_normal_folder` | optional directory | Parent containing normal barcodes |
 | `ont_normal_barcodes` | optional names | Normal barcode selection |

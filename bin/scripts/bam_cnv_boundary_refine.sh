@@ -58,7 +58,8 @@ FORCE=false
 PURGE_ENV=false
 
 # ONT defaults
-ONT_ICHOR_DIR=""
+ONT_CNA_DIR=""
+ONT_CALLER="ichorcna"
 ONT_BAM_DIR=""
 ONT_PRIOR_SEG=""
 ONT_BINSIZE_KB=500
@@ -145,17 +146,22 @@ Usage
 -----
   bam_cnv_boundary_refine.sh --mode ont|illumina|both [options]
 
-Required ONT ichorCNA inputs
----------------------------
-  --ont-ichor-dir PATH
-      SAMURAI results/ichorcna directory containing *.correctedDepth.txt.
+Required ONT CNA inputs
+-----------------------
+  --ont-cna-dir PATH
+      Caller output directory. ichorCNA requires top-level
+      *.correctedDepth.txt files; qDNAseq requires bins/*_bins.bed files.
+      --ont-ichor-dir remains a compatibility alias.
+
+  --ont-caller ichorcna|qdnaseq
+      CNA caller that produced --ont-cna-dir. Default: ichorcna.
 
   --ont-bam-dir PATH
       BAM directory for the same samples, usually <SAMURAI_RUN_ROOT>/bam.
 
   --ont-prior-seg PATH
-      Prior segmentation table, usually segments_logR_corrected_gistic.seg
-      or all_segments_ichorcna_gistic.seg.
+      Prior segmentation table: usually segments_logR_corrected_gistic.seg
+      for ichorCNA or all_segments.seg for qDNAseq.
 
   --ont-binsize-kb N
       Original coarse bin size in kilobases. Default: 500.
@@ -404,7 +410,8 @@ Examples
   ONT ichorCNA local-PON run:
     bam_cnv_boundary_refine.sh \
       --mode ont \
-      --ont-ichor-dir "$ONT_RUN_ROOT/results/ichorcna" \
+      --ont-cna-dir "$ONT_RUN_ROOT/results/ichorcna" \
+      --ont-caller ichorcna \
       --ont-bam-dir "$ONT_RUN_ROOT/bam" \
       --ont-prior-seg "$ONT_RUN_ROOT/results/ichorcna/segments_logR_corrected_gistic.seg" \
       --ont-binsize-kb 500 \
@@ -445,7 +452,8 @@ while [[ $# -gt 0 ]]; do
     --purge_env|--purge-env) PURGE_ENV=true; shift ;;
     --force) FORCE=true; shift ;;
 
-    --ont-ichor-dir) ONT_ICHOR_DIR="$2"; shift 2 ;;
+    --ont-cna-dir|--ont-ichor-dir) ONT_CNA_DIR="$2"; shift 2 ;;
+    --ont-caller) ONT_CALLER="$2"; shift 2 ;;
     --ont-bam-dir) ONT_BAM_DIR="$2"; shift 2 ;;
     --ont-prior-seg) ONT_PRIOR_SEG="$2"; shift 2 ;;
     --ont-binsize-kb) ONT_BINSIZE_KB="$2"; shift 2 ;;
@@ -509,6 +517,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$MODE" == "ont" || "$MODE" == "illumina" || "$MODE" == "both" ]] || { echo "ERROR: --mode must be ont, illumina, or both" >&2; exit 1; }
+[[ "$ONT_CALLER" == "ichorcna" || "$ONT_CALLER" == "qdnaseq" ]] || { echo "ERROR: --ont-caller must be ichorcna or qdnaseq" >&2; exit 1; }
 [[ "$ZIPCNV_MODE" == "off" || "$ZIPCNV_MODE" == "adapted" || "$ZIPCNV_MODE" == "official" || "$ZIPCNV_MODE" == "both" ]] || { echo "ERROR: --zipcnv-mode must be off, adapted, official, or both" >&2; exit 1; }
 
 # Backward-compatible alias for one historical typo in generated wrappers.
@@ -2831,10 +2840,10 @@ run_dataset() {
 }
 
 if [[ "$MODE" == "ont" || "$MODE" == "both" ]]; then
-  [[ -n "$ONT_ICHOR_DIR" ]] || { echo "ERROR: --ont-ichor-dir required for --mode ont/both" >&2; exit 1; }
+  [[ -n "$ONT_CNA_DIR" ]] || { echo "ERROR: --ont-cna-dir required for --mode ont/both" >&2; exit 1; }
   [[ -n "$ONT_BAM_DIR" ]] || { echo "ERROR: --ont-bam-dir required for --mode ont/both" >&2; exit 1; }
   [[ -n "$ONT_PRIOR_SEG" ]] || { echo "ERROR: --ont-prior-seg required for --mode ont/both" >&2; exit 1; }
-  run_dataset "ONT_ichorcna_${ONT_BINSIZE_KB}kb" "$ONT_ICHOR_DIR" "ichorcna" "ONT" "$ONT_BAM_DIR" "$ONT_PRIOR_SEG" "$ONT_BINSIZE_KB" "$FINE_BIN_KB_ONT" "$COVERAGE_MODE_ONT"
+  run_dataset "ONT_${ONT_CALLER}_${ONT_BINSIZE_KB}kb" "$ONT_CNA_DIR" "$ONT_CALLER" "ONT" "$ONT_BAM_DIR" "$ONT_PRIOR_SEG" "$ONT_BINSIZE_KB" "$FINE_BIN_KB_ONT" "$COVERAGE_MODE_ONT"
 fi
 
 if [[ "$MODE" == "illumina" || "$MODE" == "both" ]]; then

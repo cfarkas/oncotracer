@@ -21,7 +21,8 @@ ont_folder: /home/student/oncotracer/project/input/fastq_pass
 ont_barcodes: barcode07,barcode08
 ont_sample_names: Sample_ONT_1,Sample_ONT_2
 
-# Standard ONT scientific settings. Omit these lines to use the same defaults.
+# Standard liquid-biopsy settings. For an independent solid-biopsy qDNAseq
+# run, use a new outdir and set solid_biopsy, qdnaseq, and an explicit bin size.
 ont_analysis_type: liquid_biopsy
 ont_caller: ichorcna
 ont_binsize_kb: 500

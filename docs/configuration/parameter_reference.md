@@ -157,8 +157,8 @@ Automatic Setup writes no panel for zero normals, rejects exactly one normal, an
 | `ont_barcodes` | required comma-separated names | Tumor barcode selection |
 | `ont_sample_names` | barcode names when omitted | Positional biological sample names |
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
-| `ont_caller` | `ichorcna` | Native ONT CNA caller |
-| `ont_binsize_kb` | `500` | Coarse ichorCNA/HMMcopy bin width |
+| `ont_caller` | `ichorcna` | `ichorcna`, or `qdnaseq` only with explicit `ont_analysis_type: solid_biopsy` |
+| `ont_binsize_kb` | `500` | Coarse caller bin width; set explicitly for qDNAseq solid-biopsy runs |
 | `ont_ref` | optional FASTA | Custom reference |
 | `ont_normal_folder` | optional path | Parent containing normal barcodes |
 | `ont_normal_barcodes` | optional names | Positional normal barcode selection |

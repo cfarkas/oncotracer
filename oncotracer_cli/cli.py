@@ -308,7 +308,7 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
     config_path = require_file(config_path, "OncoTracer YAML config")
     backend = _backend_from(args)
     if backend in {"host", "poetry", "conda"}:
-        if backend in {"conda", "poetry"}:
+        if backend in {"conda", "poetry"} and not args.dry_run:
             install = _load_install_config()
             required = {
                 "core_prefix", "qdnaseq_prefix", "ichorcna_prefix",
@@ -323,11 +323,13 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
                 )
         return _run_host(config_path, args)
     if backend == "docker":
+        outdir = _run_host(config_path, args) if args.dry_run else None
         _run_docker(config_path, args)
-        return None
+        return outdir
     if backend in {"singularity", "apptainer"}:
+        outdir = _run_host(config_path, args) if args.dry_run else None
         _run_singularity(config_path, args)
-        return None
+        return outdir
     raise OncoTracerError(
         f"unsupported backend {backend!r}; choose host, conda, docker, singularity, or poetry"
     )

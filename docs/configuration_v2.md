@@ -47,6 +47,8 @@ force: false
 
 `ont_barcodes` and `ont_sample_names` are positional and must have the same number of entries.
 
+The default above is the liquid-biopsy ichorCNA route. For a separate solid-biopsy qDNAseq analysis, use a new `outdir` and set `ont_analysis_type: solid_biopsy`, `ont_caller: qdnaseq`, and an explicit qDNAseq bin width. The engine rejects qDNAseq for other ONT analysis types.
+
 ## Run a YAML
 
 ```bash

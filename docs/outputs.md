@@ -127,15 +127,24 @@ manifest, reference, QC, and tumor outputs are all present.
 # Run this command from the oncotracer directory.
 find "$OUT/01_samurai_ont" -maxdepth 3 -type f | sort | sed -n '1,100p' # inventory
 sed -n '1,80p' "$OUT/01_samurai_ont/logs/run_summary.txt"               # used/skipped barcode summary
-sed -n '1,8p' "$OUT/01_samurai_ont/results/ichorcna/segments_logR_corrected_gistic.seg" # initial ichorCNA segments
+if test -s "$OUT/01_samurai_ont/results/ichorcna/ichorcna_sample_status.json"; then
+  cat "$OUT/01_samurai_ont/results/ichorcna/ichorcna_sample_status.json" # ichorCNA status
+  sed -n '1,8p' "$OUT/01_samurai_ont/results/ichorcna/segments_logR_corrected_gistic.seg"
+fi
+if test -s "$OUT/01_samurai_ont/qdnaseq/all_segments.seg"; then
+  cat "$OUT/01_samurai_ont/qdnaseq/qdnaseq_sample_status.json"        # qDNAseq status
+  sed -n '1,8p' "$OUT/01_samurai_ont/qdnaseq/all_segments.seg"          # qDNAseq segments
+fi
 find "$OUT/01_samurai_ont/bam" -maxdepth 1 -name '*.bam' -print        # aligned BAMs
 ```
+
+For ichorCNA, `ichorcna_sample_status.json` is authoritative for caller completeness. For qDNAseq, the equivalent record is `qdnaseq_sample_status.json`. A failed or mathematically invalid sample is recorded there and excluded from aggregate caller tables and downstream reports; later viable samples continue. `workflow_summary.json` reports `partial_failure` and lists both completed and failed samples. Nested partial caller files remain available for diagnosis but are not published as complete top-level inputs. For solid-biopsy qDNAseq, use a separate `outdir`; its initial caller output is `01_samurai_ont/qdnaseq/`.
 
 Also inspect `logs/used_fastq.tsv`, `logs/skipped_fastq.tsv`, `logs/skipped_samples.tsv`, and `logs/warning_samples.tsv`. A completed workflow can still contain a skipped barcode warning that matters scientifically.
 
 ## Stage 02: refined segmentation
 
-The dataset subdirectory is normally `illumina_qdnaseq_100kb` or `ONT_ichorcna_500kb`, depending on the YAML. List it rather than guessing:
+The dataset subdirectory is normally `illumina_qdnaseq_100kb`, `ONT_ichorcna_500kb`, or an explicit ONT qDNAseq name such as `ONT_qdnaseq_100kb`, depending on the YAML. List it rather than guessing:
 
 ```bash
 # Run this command from the oncotracer directory.

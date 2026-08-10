@@ -210,6 +210,19 @@ def _as_int(value: object, default: int) -> int:
         raise OncoTracerError(f"expected integer, found {value!r}") from error
 
 
+def _ont_caller(config: Mapping[str, object]) -> str:
+    caller = str(config.get("ont_caller") or "ichorcna").strip().lower()
+    if caller not in {"ichorcna", "qdnaseq"}:
+        raise OncoTracerError("ont_caller must be ichorcna or qdnaseq")
+    if caller == "qdnaseq":
+        analysis_type = str(config.get("ont_analysis_type") or "").strip().lower()
+        if analysis_type != "solid_biopsy":
+            raise OncoTracerError(
+                "ont_caller qdnaseq requires ont_analysis_type: solid_biopsy"
+            )
+    return caller
+
+
 def parse_illumina_samplesheet(path: Path) -> list[IlluminaSample]:
     path = require_file(path, "Illumina samplesheet")
     rows: list[IlluminaSample] = []
@@ -404,7 +417,11 @@ def prepare_qdnaseq_annotation(
     return require_file(Path(output_lines[-1]), "qDNAseq hg38 annotation")
 
 
-def _write_bam_sheet(samples: Iterable[IlluminaSample], bams: Mapping[str, Path], path: Path) -> None:
+def _write_bam_sheet(
+    samples: Iterable[IlluminaSample | OntSample],
+    bams: Mapping[str, Path],
+    path: Path,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["sample", "bam", "status"])
@@ -510,7 +527,7 @@ def align_illumina(
 def run_qdnaseq(
     root: Path,
     lpwgs_root: Path,
-    samples: list[IlluminaSample],
+    samples: list[IlluminaSample] | list[OntSample],
     markdup_bams: Mapping[str, Path],
     samurai_outdir: Path,
     binsize: int,
@@ -519,12 +536,20 @@ def run_qdnaseq(
     toolchain: Toolchain,
     *,
     force: bool,
+    paired_ends: bool | None = None,
 ) -> tuple[Path, Path]:
     normals = [sample for sample in samples if sample.status == "normal"]
     bam_sheet = samurai_outdir / "input" / "native.bam.samplesheet.csv"
     _write_bam_sheet(samples, markdup_bams, bam_sheet)
     annotation = prepare_qdnaseq_annotation(root, lpwgs_root, binsize, runner, toolchain)
-    paired = all(sample.fastq_2 is not None for sample in samples)
+    if paired_ends is None:
+        if not all(isinstance(sample, IlluminaSample) for sample in samples):
+            raise OncoTracerError(
+                "paired_ends must be specified when qDNAseq consumes non-Illumina BAMs"
+            )
+        paired = all(sample.fastq_2 is not None for sample in samples)
+    else:
+        paired = paired_ends
 
     if normals:
         qdna_out = samurai_outdir / "qdnaseq_local_pon"
@@ -556,7 +581,9 @@ def run_qdnaseq(
         )
         output = qdna_out / "all_segments.seg"
         signature = ledger.signature(
-            "qdnaseq-local-pon", command, [bam_sheet, annotation, *markdup_bams.values()]
+            "qdnaseq-local-pon",
+            command,
+            [script, bam_sheet, annotation, *markdup_bams.values()],
         )
         if force or not ledger.reusable("qdnaseq-local-pon", signature, [output]):
             runner.run("qdnaseq-local-pon", command, cwd=root)
@@ -574,6 +601,10 @@ def run_qdnaseq(
 
     qdna_out = samurai_outdir / "qdnaseq"
     script = require_file(root / "bin" / "scripts" / "native_qdnaseq.R", "native qDNAseq R script")
+    qc_helper = require_file(
+        root / "bin" / "scripts" / "qdnaseq_post_normalization_qc.R",
+        "native qDNAseq post-normalization QC helper",
+    )
     command = toolchain.rscript(
         "qdnaseq",
         [
@@ -593,10 +624,21 @@ def run_qdnaseq(
         ],
     )
     output = qdna_out / "all_segments.seg"
-    signature = ledger.signature("qdnaseq", command, [bam_sheet, annotation, *markdup_bams.values()])
-    if force or not ledger.reusable("qdnaseq", signature, [output]):
+    status = qdna_out / "qdnaseq_sample_status.json"
+    expected = [output, status]
+    signature = ledger.signature(
+        "qdnaseq",
+        command,
+        [script, qc_helper, bam_sheet, annotation, *markdup_bams.values()],
+    )
+    if force or not ledger.reusable("qdnaseq", signature, expected):
         runner.run("qdnaseq", command, cwd=root)
-        ledger.complete("qdnaseq", signature, [output])
+        for path, label in (
+            (output, "native qDNAseq segments"),
+            (status, "native qDNAseq sample status"),
+        ):
+            require_file(path, label)
+        ledger.complete("qdnaseq", signature, expected)
     return qdna_out, samurai_outdir / "alignment"
 
 
@@ -768,6 +810,50 @@ def _correct_ichor_segments(seg_path: Path, summary_path: Path, destination: Pat
                 )
 
 
+def _write_ichorcna_sample_status(
+    path: Path,
+    records: list[dict[str, object]],
+) -> dict[str, object]:
+    completed = [str(record["sample"]) for record in records if record["status"] == "complete"]
+    failed = [str(record["sample"]) for record in records if record["status"] == "failed"]
+    pending = [str(record["sample"]) for record in records if record["status"] == "pending"]
+    if pending:
+        overall_status = "in_progress"
+    elif completed and failed:
+        overall_status = "partial_failure"
+    elif failed:
+        overall_status = "failed"
+    else:
+        overall_status = "complete"
+    payload: dict[str, object] = {
+        "schema": "oncotracer-native-ichorcna-sample-status-v1",
+        "overall_status": overall_status,
+        "sample_count": len(records),
+        "completed_samples": completed,
+        "failed_samples": failed,
+        "pending_samples": pending,
+        "samples": records,
+        "updated_at": utc_now(),
+    }
+    atomic_write_json(path, payload)
+    return payload
+
+
+def _sanitize_sample_error(error: BaseException) -> str:
+    """Keep sample status useful without embedding local filesystem paths."""
+    message = " ".join(str(error).split())
+    message = re.sub(r"(?<![A-Za-z0-9._-])/(?:[^\s,;]+)", "<path>", message)
+    return message[:500]
+
+
+def _remove_published_ichorcna_sample(ichor_out: Path, sample: str) -> None:
+    # Only exact, top-level files published by this stage are removed. Nested
+    # partial caller outputs remain available for diagnosis and resume.
+    for path in ichor_out.glob(f"{sample}.*"):
+        if path.parent == ichor_out and (path.is_file() or path.is_symlink()):
+            path.unlink()
+
+
 def run_ichorcna(
     root: Path,
     lpwgs_root: Path,
@@ -787,91 +873,167 @@ def run_ichorcna(
     wig_dir = ichor_out / "wigfiles_samples"
     ichor_out.mkdir(parents=True, exist_ok=True)
     wig_dir.mkdir(parents=True, exist_ok=True)
-    params_files: list[Path] = []
-    seg_files: list[Path] = []
     script = require_file(root / "bin" / "scripts" / "native_ichorcna.R", "native ichorCNA R script")
     chromosomes = ",".join(f"chr{index}" for index in range(1, 23))
-    for sample in samples:
-        bam = bams[sample.sample]
-        wig = wig_dir / f"{sample.sample}.wig"
-        readcounter = toolchain.wrap(
-            "ichorcna",
-            [
-                "readCounter",
-                "--chromosome",
-                chromosomes,
-                "--quality",
-                "20",
-                "--window",
-                str(binsize * 1000),
-                bam,
-            ],
-        )
-        signature = ledger.signature(f"ichor-readcounter-{sample.sample}", readcounter, [bam])
-        if force or not ledger.reusable(f"ichor-readcounter-{sample.sample}", signature, [wig]):
-            with wig.open("w", encoding="utf-8") as output:
-                runner.run(f"ichor-readcounter-{sample.sample}", readcounter, stdout=output)
-            ledger.complete(f"ichor-readcounter-{sample.sample}", signature, [wig])
+    status_path = ichor_out / "ichorcna_sample_status.json"
+    records: list[dict[str, object]] = [
+        {
+            "sample": sample.sample,
+            "status": "pending",
+            "stage": "pending",
+            "error": None,
+            "parameters": None,
+            "segments": None,
+        }
+        for sample in samples
+    ]
+    _write_ichorcna_sample_status(status_path, records)
 
-        sample_out = ichor_out / sample.sample
-        sample_out.mkdir(parents=True, exist_ok=True)
-        command = toolchain.rscript(
-            "ichorcna",
-            [
-                script,
-                "--wig",
-                wig,
-                "--sample",
-                sample.sample,
-                "--outdir",
-                sample_out,
-                "--gc-wig",
-                assets["gc"],
-                "--map-wig",
-                assets["map"],
-                "--centromere",
-                assets["centromere"],
-                "--reptime",
-                assets["reptime"],
-                "--normal-panel",
-                assets["pon"],
-                "--cores",
-                str(max(1, min(threads, 8))),
-            ],
-        )
-        expected_params = sample_out / f"{sample.sample}.params.txt"
-        expected_seg = sample_out / f"{sample.sample}.seg.txt"
-        signature = ledger.signature(f"ichorcna-{sample.sample}", command, [wig, *assets.values()])
-        if force or not ledger.reusable(
-            f"ichorcna-{sample.sample}", signature, [expected_params, expected_seg]
-        ):
-            runner.run(f"ichorcna-{sample.sample}", command, cwd=sample_out)
-            if not expected_params.is_file():
-                matches = sorted(sample_out.rglob(f"{sample.sample}.params.txt"))
-                if matches:
-                    expected_params = matches[0]
-            if not expected_seg.is_file():
-                matches = sorted(sample_out.rglob(f"{sample.sample}.seg.txt"))
-                if matches:
-                    expected_seg = matches[0]
-            ledger.complete(f"ichorcna-{sample.sample}", signature, [expected_params, expected_seg])
-        params_files.append(require_file(expected_params, f"ichorCNA params for {sample.sample}"))
-        seg_files.append(require_file(expected_seg, f"ichorCNA SEG for {sample.sample}"))
+    for aggregate in (
+        ichor_out / "all_segments_ichorcna_gistic.seg",
+        ichor_out / "ichorcna_summary_mqc.txt",
+        ichor_out / "segments_logR_corrected_gistic.seg",
+    ):
+        aggregate.unlink(missing_ok=True)
 
-        # Publish the files where the legacy refinement script expects them.
-        for path in sample_out.rglob("*"):
-            if path.is_file() and path.name.startswith(sample.sample):
-                target = ichor_out / path.name
-                if path.resolve() != target.resolve():
-                    shutil.copy2(path, target)
+    completed: list[tuple[OntSample, Path, Path]] = []
+    for index, sample in enumerate(samples):
+        failed_stage = "readcounter"
+        _remove_published_ichorcna_sample(ichor_out, sample.sample)
+        try:
+            bam = bams[sample.sample]
+            wig = wig_dir / f"{sample.sample}.wig"
+            readcounter = toolchain.wrap(
+                "ichorcna",
+                [
+                    "readCounter",
+                    "--chromosome",
+                    chromosomes,
+                    "--quality",
+                    "20",
+                    "--window",
+                    str(binsize * 1000),
+                    bam,
+                ],
+            )
+            signature = ledger.signature(f"ichor-readcounter-{sample.sample}", readcounter, [bam])
+            if force or not ledger.reusable(f"ichor-readcounter-{sample.sample}", signature, [wig]):
+                with wig.open("w", encoding="utf-8") as output:
+                    runner.run(f"ichor-readcounter-{sample.sample}", readcounter, stdout=output)
+                require_file(wig, f"ichorCNA readCounter WIG for {sample.sample}")
+                ledger.complete(f"ichor-readcounter-{sample.sample}", signature, [wig])
+
+            failed_stage = "ichorcna"
+            sample_out = ichor_out / sample.sample
+            sample_out.mkdir(parents=True, exist_ok=True)
+            command = toolchain.rscript(
+                "ichorcna",
+                [
+                    script,
+                    "--wig",
+                    wig,
+                    "--sample",
+                    sample.sample,
+                    "--outdir",
+                    sample_out,
+                    "--gc-wig",
+                    assets["gc"],
+                    "--map-wig",
+                    assets["map"],
+                    "--centromere",
+                    assets["centromere"],
+                    "--reptime",
+                    assets["reptime"],
+                    "--normal-panel",
+                    assets["pon"],
+                    "--cores",
+                    str(max(1, min(threads, 8))),
+                ],
+            )
+            expected_params = sample_out / f"{sample.sample}.params.txt"
+            expected_seg = sample_out / f"{sample.sample}.seg.txt"
+            signature = ledger.signature(f"ichorcna-{sample.sample}", command, [wig, *assets.values()])
+            if force or not ledger.reusable(
+                f"ichorcna-{sample.sample}", signature, [expected_params, expected_seg]
+            ):
+                runner.run(f"ichorcna-{sample.sample}", command, cwd=sample_out)
+                if not expected_params.is_file():
+                    matches = sorted(sample_out.rglob(f"{sample.sample}.params.txt"))
+                    if matches:
+                        expected_params = matches[0]
+                if not expected_seg.is_file():
+                    matches = sorted(sample_out.rglob(f"{sample.sample}.seg.txt"))
+                    if matches:
+                        expected_seg = matches[0]
+                expected_params = require_file(
+                    expected_params, f"ichorCNA params for {sample.sample}"
+                )
+                expected_seg = require_file(expected_seg, f"ichorCNA SEG for {sample.sample}")
+                ledger.complete(
+                    f"ichorcna-{sample.sample}", signature, [expected_params, expected_seg]
+                )
+            else:
+                expected_params = require_file(
+                    expected_params, f"ichorCNA params for {sample.sample}"
+                )
+                expected_seg = require_file(expected_seg, f"ichorCNA SEG for {sample.sample}")
+
+            failed_stage = "publish"
+            for path in sample_out.rglob("*"):
+                if path.is_file() and path.name.startswith(f"{sample.sample}."):
+                    target = ichor_out / path.name
+                    if path.resolve() != target.resolve():
+                        shutil.copy2(path, target)
+
+            completed.append((sample, expected_params, expected_seg))
+            records[index] = {
+                "sample": sample.sample,
+                "status": "complete",
+                "stage": "complete",
+                "error": None,
+                "parameters": str(expected_params.relative_to(ichor_out)),
+                "segments": str(expected_seg.relative_to(ichor_out)),
+            }
+        except (OncoTracerError, OSError) as error:
+            _remove_published_ichorcna_sample(ichor_out, sample.sample)
+            safe_error = _sanitize_sample_error(error)
+            records[index] = {
+                "sample": sample.sample,
+                "status": "failed",
+                "stage": failed_stage,
+                "error": safe_error,
+                "parameters": None,
+                "segments": None,
+            }
+            print(
+                f"WARNING: ichorCNA sample {sample.sample!r} failed during "
+                f"{failed_stage}; continuing remaining samples: {safe_error}",
+                file=sys.stderr,
+                flush=True,
+            )
+        _write_ichorcna_sample_status(status_path, records)
+
+    status = _write_ichorcna_sample_status(status_path, records)
+    if not completed:
+        failed = ", ".join(str(sample) for sample in status["failed_samples"])
+        raise OncoTracerError(
+            f"ichorCNA failed for every sample ({failed}); inspect {status_path}"
+        )
+    if status["overall_status"] == "partial_failure":
+        print(
+            "WARNING: native ichorCNA completed with sample failures; only complete "
+            f"samples will be aggregated and reported. Inspect {status_path}",
+            file=sys.stderr,
+            flush=True,
+        )
 
     combined_seg = ichor_out / "all_segments_ichorcna_gistic.seg"
-    _combine_headered(seg_files, combined_seg)
+    _combine_headered([segments for _, _, segments in completed], combined_seg)
     summary = ichor_out / "ichorcna_summary_mqc.txt"
     with summary.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle, delimiter="\t")
         writer.writerow(["samplename", "Tumor Fraction", "Ploidy", "GC-Map correction MAD"])
-        for sample, params in zip(samples, params_files, strict=True):
+        for sample, params, _ in completed:
             values = _parse_ichor_params(params)
             writer.writerow(
                 [
@@ -899,7 +1061,13 @@ def run_refinement_and_outputs(
     toolchain: Toolchain,
     *,
     force: bool,
+    caller: str | None = None,
 ) -> None:
+    selected_caller = caller or ("qdnaseq" if mode == "illumina" else "ichorcna")
+    if mode == "illumina" and selected_caller != "qdnaseq":
+        raise OncoTracerError("native Illumina refinement requires qdnaseq")
+    if mode == "ont" and selected_caller not in {"ichorcna", "qdnaseq"}:
+        raise OncoTracerError("native ONT refinement caller must be ichorcna or qdnaseq")
     refine_script = require_file(
         root / "bin" / "scripts" / "bam_cnv_boundary_refine.sh",
         "BAM boundary-refinement script",
@@ -934,13 +1102,19 @@ def run_refinement_and_outputs(
         ]
     else:
         binsize = _as_int(config.get("ont_binsize_kb"), 500)
-        dataset = f"ONT_ichorcna_{binsize}kb"
-        prior = qdna_or_ichor_dir / "segments_logR_corrected_gistic.seg"
+        dataset = f"ONT_{selected_caller}_{binsize}kb"
+        prior = qdna_or_ichor_dir / (
+            "segments_logR_corrected_gistic.seg"
+            if selected_caller == "ichorcna"
+            else "all_segments.seg"
+        )
         mode_args = [
             "--mode",
             "ont",
-            "--ont-ichor-dir",
+            "--ont-cna-dir",
             qdna_or_ichor_dir,
+            "--ont-caller",
+            selected_caller,
             "--ont-bam-dir",
             bam_dir,
             "--ont-prior-seg",
@@ -1086,7 +1260,9 @@ def run_refinement_and_outputs(
         "engine": "native",
         "nextflow_used": False,
         "mode": mode,
+        "caller": selected_caller,
         "dataset": dataset,
+        "workflow_status": "complete",
         "outdir": str(outdir),
         "bam_refinement": str(refine_out / dataset),
         "cna_codification": str(codify_out),
@@ -1095,6 +1271,45 @@ def run_refinement_and_outputs(
         "cna_notation": str(codify_out / "cna_cytogenomic_notation.tsv"),
         "completed_at": utc_now(),
     }
+    sample_status_path: Path | None = None
+    sample_status_key: str | None = None
+    sample_status_label: str | None = None
+    if mode == "ont" and selected_caller == "ichorcna":
+        sample_status_path = qdna_or_ichor_dir / "ichorcna_sample_status.json"
+        sample_status_key = "ichorcna_sample_status"
+        sample_status_label = "ichorCNA"
+    elif selected_caller == "qdnaseq":
+        candidate = qdna_or_ichor_dir / "qdnaseq_sample_status.json"
+        # The local-PoN implementation has separate normal/tumor validity
+        # semantics and does not emit this single-sample status schema.
+        if candidate.is_file():
+            sample_status_path = candidate
+            sample_status_key = "qdnaseq_sample_status"
+            sample_status_label = "qDNAseq"
+
+    if sample_status_path is not None:
+        sample_status_path = require_file(
+            sample_status_path,
+            f"{sample_status_label} sample status",
+        )
+        try:
+            sample_status = json.loads(sample_status_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            raise OncoTracerError(
+                f"invalid {sample_status_label} sample status: {sample_status_path}"
+            ) from error
+        if not isinstance(sample_status, dict):
+            raise OncoTracerError(
+                f"invalid {sample_status_label} sample status object: {sample_status_path}"
+            )
+        summary.update(
+            {
+                "workflow_status": sample_status.get("overall_status"),
+                str(sample_status_key): str(sample_status_path),
+                "completed_samples": sample_status.get("completed_samples", []),
+                "failed_samples": sample_status.get("failed_samples", []),
+            }
+        )
     atomic_write_json(summary_dir / "workflow_summary.json", summary)
     atomic_write_text(
         summary_dir / "workflow_summary.txt",
@@ -1114,6 +1329,9 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "05_cna_classifier/native_classifier_summary.json",
         "05_cna_classifier/02_classification/cna_patient_classification.tsv",
         "05_cna_classifier/03_report/cna_classifier_report.html",
+        "01_samurai_ont/results/ichorcna/ichorcna_sample_status.json",
+        "01_samurai_ont/qdnaseq/qdnaseq_sample_status.json",
+        "01_samurai_illumina/qdnaseq/qdnaseq_sample_status.json",
     ]:
         path = outdir / relative
         if path.is_file():
@@ -1124,6 +1342,15 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
                     "sha256": sha256_file(path),
                 }
             )
+    summary_path = outdir / "06_workflow_summary" / "workflow_summary.json"
+    summary: dict[str, object] = {}
+    if summary_path.is_file():
+        try:
+            parsed = json.loads(summary_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            raise OncoTracerError(f"invalid workflow summary: {summary_path}") from error
+        if isinstance(parsed, dict):
+            summary = parsed
     manifest = {
         "schema": "oncotracer-native-run-manifest-v1",
         "oncotracer_version": __version__,
@@ -1132,6 +1359,9 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "config": str(config_path),
         "config_sha256": sha256_file(config_path),
         "trace": str(trace_path),
+        "workflow_status": summary.get("workflow_status", "complete"),
+        "completed_samples": summary.get("completed_samples", []),
+        "failed_samples": summary.get("failed_samples", []),
         "created_at": utc_now(),
         "files": files,
     }
@@ -1189,6 +1419,7 @@ def _validate_native_dry_run(
         )
     else:
         samples = parse_ont_samples(config)
+        caller = _ont_caller(config)
         binsize = _as_int(config.get("ont_binsize_kb"), 500)
         if binsize < 1:
             raise OncoTracerError("ont_binsize_kb must be positive")
@@ -1196,13 +1427,13 @@ def _validate_native_dry_run(
             {
                 "samples": [sample.sample for sample in samples],
                 "barcodes": [sample.barcode for sample in samples],
-                "caller": str(config.get("ont_caller") or "ichorcna"),
+                "caller": caller,
                 "binsize_kb": binsize,
                 "stages": [
                     "reference-validation",
                     "ont-fastq-validation",
                     "ont-alignment",
-                    "hmmcopy-ichorcna",
+                    "hmmcopy-ichorcna" if caller == "ichorcna" else "qdnaseq",
                     "bam-refinement",
                     "cna-codification",
                     "cna-plots",
@@ -1231,6 +1462,7 @@ def run_native(
     mode = str(config.get("mode") or "").strip().lower()
     if mode not in {"illumina", "ont"}:
         raise OncoTracerError("config mode must be illumina or ont")
+    ont_caller = _ont_caller(config) if mode == "ont" else None
     payload_root: Path | None = None
     lpwgs_value = config.get("lpwgs_root")
     if lpwgs_value:
@@ -1308,6 +1540,7 @@ def run_native(
             runner,
             toolchain,
             force=force_run,
+            caller="qdnaseq",
         )
     else:
         samples = parse_ont_samples(config)
@@ -1327,31 +1560,50 @@ def run_native(
             min_age_minutes=_as_int(config.get("ont_min_age_minutes"), 0),
             force=force_run,
         )
-        ichor_dir = run_ichorcna(
-            root,
-            lpwgs_root,
-            samples,
-            bams,
-            samurai_out,
-            _as_int(config.get("ont_binsize_kb"), 500),
-            runner,
-            ledger,
-            toolchain,
-            threads=cpu,
-            force=force_run,
-        )
+        assert ont_caller is not None
+        caller = ont_caller
+        binsize = _as_int(config.get("ont_binsize_kb"), 500)
+        if caller == "ichorcna":
+            caller_dir = run_ichorcna(
+                root,
+                lpwgs_root,
+                samples,
+                bams,
+                samurai_out,
+                binsize,
+                runner,
+                ledger,
+                toolchain,
+                threads=cpu,
+                force=force_run,
+            )
+        else:
+            caller_dir, _ = run_qdnaseq(
+                root,
+                lpwgs_root,
+                samples,
+                bams,
+                samurai_out,
+                binsize,
+                runner,
+                ledger,
+                toolchain,
+                force=force_run,
+                paired_ends=False,
+            )
         run_refinement_and_outputs(
             root,
             config,
             mode,
             samurai_out,
-            ichor_dir,
+            caller_dir,
             samurai_out / "bam",
             outdir,
             lpwgs_root,
             runner,
             toolchain,
             force=force_run,
+            caller=caller,
         )
 
     if _as_bool(config.get("run_cna_classifier"), False):
@@ -1370,4 +1622,13 @@ def run_native(
     if "nextflow" in trace_text.lower():
         raise OncoTracerError("native execution trace contains a forbidden Nextflow command")
     write_run_manifest(outdir, config_path, trace)
+    summary_path = outdir / "06_workflow_summary" / "workflow_summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    if summary.get("workflow_status") == "partial_failure":
+        failed = ", ".join(str(sample) for sample in summary.get("failed_samples", []))
+        raise OncoTracerError(
+            "native analysis completed with failed samples "
+            f"({failed}); successful-sample reports and the partial-failure manifest "
+            f"were preserved under {outdir}"
+        )
     return outdir

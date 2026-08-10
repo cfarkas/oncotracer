@@ -67,6 +67,7 @@ jobs:
             tests/test_poetry_cli.py \
             tests/test_native_classifier.py \
             tests/test_native_provenance.py \
+            tests/test_ichorcna_plot_compat.py \
             tests/test_qdnaseq_helper.py
       - name: Run shell and standalone documentation regression tests
         run: |
@@ -109,6 +110,7 @@ jobs:
               names = set(archive.namelist())
           required = {
               'payload/bin/scripts/native_qdnaseq.R',
+              'payload/bin/scripts/qdnaseq_post_normalization_qc.R',
               'payload/bin/scripts/native_qdnaseq_pon.R',
               'payload/bin/scripts/native_ichorcna.R',
               'oncotracer_cli/classifier.py',
@@ -224,6 +226,9 @@ jobs:
                 "$PREFIX/bin/Rscript" --vanilla -e \
                 'library(Biobase); x <- readRDS(commandArgs(TRUE)[1]); stopifnot(inherits(x, "AnnotatedDataFrame")); cat("QDNASEQ_ANNOTATION_OK\n")' \
                 "$ANNOTATION_PATH"
+              env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+                "$PREFIX/bin/Rscript" --vanilla -e \
+                'source("bin/scripts/qdnaseq_post_normalization_qc.R"); x <- qdnaseq_classify_normalized(c("invalid", "valid"), list(c(0, 0), c(0.8, 1.2))); stopifnot(x[[1]]$status == "failed", x[[2]]$status == "pending"); cat("QDNASEQ_POST_NORMALIZATION_QC_OK\n")'
               grep -F $'source_commit\tcf7c07e39de0ac64a9c38cb030cba4626e2aae83' \
                 "$ANNOTATION_PATH.provenance.tsv"
               test "$(awk -F '\t' '$1=="rds_sha256" {print $2}' "$ANNOTATION_PATH.provenance.tsv")" \
