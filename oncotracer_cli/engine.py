@@ -17,6 +17,13 @@ from typing import Iterable, Mapping, Sequence
 
 from . import __version__
 from .classifier import run_native_classifier
+from .methylation import (
+    MethylationRequest,
+    methylation_plan,
+    resolve_methylation_request,
+    run_methylation,
+    write_global_methylation_failure,
+)
 from .runtime import (
     CommandRunner,
     OncoTracerError,
@@ -1332,6 +1339,8 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "01_samurai_ont/results/ichorcna/ichorcna_sample_status.json",
         "01_samurai_ont/qdnaseq/qdnaseq_sample_status.json",
         "01_samurai_illumina/qdnaseq/qdnaseq_sample_status.json",
+        "07_methylation/methylation_status.json",
+        "07_methylation/methylation_provenance.json",
     ]:
         path = outdir / relative
         if path.is_file():
@@ -1362,10 +1371,75 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "workflow_status": summary.get("workflow_status", "complete"),
         "completed_samples": summary.get("completed_samples", []),
         "failed_samples": summary.get("failed_samples", []),
+        "cna_status": summary.get("cna_status"),
+        "methylation_status": summary.get("methylation_status"),
+        "methylation_completed_samples": summary.get("methylation_completed_samples", []),
+        "methylation_no_cpg_samples": summary.get("methylation_no_cpg_samples", []),
         "created_at": utc_now(),
         "files": files,
     }
     atomic_write_json(outdir / "06_workflow_summary" / "native_run_manifest.json", manifest)
+
+
+def _merge_methylation_summary(
+    outdir: Path,
+    status: Mapping[str, object],
+    *,
+    cna_error: BaseException | None,
+) -> dict[str, object]:
+    """Publish independent methylation/CNA outcomes even if either branch fails."""
+    summary_dir = outdir / "06_workflow_summary"
+    summary_path = summary_dir / "workflow_summary.json"
+    if summary_path.is_file():
+        try:
+            loaded = json.loads(summary_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            raise OncoTracerError(f"invalid workflow summary: {summary_path}") from error
+        summary = loaded if isinstance(loaded, dict) else {}
+    else:
+        summary = {
+            "oncotracer_version": __version__,
+            "engine": "native",
+            "nextflow_used": False,
+            "mode": "ont",
+            "outdir": str(outdir),
+            "completed_at": utc_now(),
+        }
+
+    prior_cna_status = str(summary.get("workflow_status") or "complete")
+    cna_status = "failed" if cna_error is not None else prior_cna_status
+    methylation_status = str(status.get("overall_status") or "failed")
+    cna_success = cna_status in {"complete", "partial_failure"}
+    methylation_success = bool(status.get("completed_samples"))
+    if cna_status == "complete" and methylation_status == "complete":
+        workflow_status = "complete"
+    elif cna_success or methylation_success:
+        workflow_status = "partial_failure"
+    else:
+        workflow_status = "failed"
+
+    summary.update(
+        {
+            "workflow_status": workflow_status,
+            "cna_status": cna_status,
+            "methylation_status": methylation_status,
+            "methylation_classifier": status.get("classifier"),
+            "methylation_status_file": str(
+                outdir / "07_methylation" / "methylation_status.json"
+            ),
+            "methylation_completed_samples": status.get("completed_samples", []),
+            "methylation_failed_samples": status.get("failed_samples", []),
+            "methylation_no_cpg_samples": status.get("no_cpg_samples", []),
+        }
+    )
+    if cna_error is not None:
+        summary["cna_error"] = _sanitize_sample_error(cna_error)
+    atomic_write_json(summary_path, summary)
+    atomic_write_text(
+        summary_dir / "workflow_summary.txt",
+        "\n".join(f"{key}={value}" for key, value in summary.items()) + "\n",
+    )
+    return summary
 
 
 def _validate_native_dry_run(
@@ -1376,6 +1450,7 @@ def _validate_native_dry_run(
     outdir: Path,
     force_run: bool,
     threads: int,
+    methylation_request: MethylationRequest | None,
 ) -> None:
     plan: dict[str, object] = {
         "schema": "oncotracer-native-dry-run-v1",
@@ -1423,14 +1498,23 @@ def _validate_native_dry_run(
         binsize = _as_int(config.get("ont_binsize_kb"), 500)
         if binsize < 1:
             raise OncoTracerError("ont_binsize_kb must be positive")
+        methylation = (
+            methylation_plan(methylation_request) if methylation_request else None
+        )
         plan.update(
             {
                 "samples": [sample.sample for sample in samples],
                 "barcodes": [sample.barcode for sample in samples],
                 "caller": caller,
                 "binsize_kb": binsize,
+                "methylation": methylation,
                 "stages": [
                     "reference-validation",
+                    *(
+                        list(methylation["stages"])
+                        if isinstance(methylation, dict)
+                        else []
+                    ),
                     "ont-fastq-validation",
                     "ont-alignment",
                     "hmmcopy-ichorcna" if caller == "ichorcna" else "qdnaseq",
@@ -1448,6 +1532,79 @@ def _validate_native_dry_run(
     print(json.dumps(plan, indent=2, sort_keys=True))
 
 
+def _run_ont_cna_branch(
+    root: Path,
+    config: Mapping[str, object],
+    samples: list[OntSample],
+    samurai_out: Path,
+    reference: Mapping[str, Path],
+    outdir: Path,
+    lpwgs_root: Path,
+    runner: CommandRunner,
+    ledger: StageLedger,
+    toolchain: Toolchain,
+    *,
+    caller: str,
+    threads: int,
+    force: bool,
+) -> None:
+    """Execute the CNA branch so optional methylation can isolate its failure."""
+    bams = align_ont(
+        samples,
+        reference,
+        samurai_out,
+        runner,
+        ledger,
+        toolchain,
+        threads=threads,
+        min_age_minutes=_as_int(config.get("ont_min_age_minutes"), 0),
+        force=force,
+    )
+    binsize = _as_int(config.get("ont_binsize_kb"), 500)
+    if caller == "ichorcna":
+        caller_dir = run_ichorcna(
+            root,
+            lpwgs_root,
+            samples,
+            bams,
+            samurai_out,
+            binsize,
+            runner,
+            ledger,
+            toolchain,
+            threads=threads,
+            force=force,
+        )
+    else:
+        caller_dir, _ = run_qdnaseq(
+            root,
+            lpwgs_root,
+            samples,
+            bams,
+            samurai_out,
+            binsize,
+            runner,
+            ledger,
+            toolchain,
+            force=force,
+            paired_ends=False,
+        )
+    run_refinement_and_outputs(
+        root,
+        config,
+        "ont",
+        samurai_out,
+        caller_dir,
+        samurai_out / "bam",
+        outdir,
+        lpwgs_root,
+        runner,
+        toolchain,
+        force=force,
+        caller=caller,
+    )
+
+
 def run_native(
     config_path: Path,
     *,
@@ -1455,6 +1612,10 @@ def run_native(
     threads: int | None = None,
     force: bool | None = None,
     dry_run: bool = False,
+    methylation: bool | None = None,
+    methylation_classifier: str | None = None,
+    methylation_pod5_dir: Path | None = None,
+    methylation_gpu: bool | None = None,
 ) -> Path:
     explicit_root = root
     config_path = require_file(config_path, "OncoTracer YAML config")
@@ -1463,6 +1624,14 @@ def run_native(
     if mode not in {"illumina", "ont"}:
         raise OncoTracerError("config mode must be illumina or ont")
     ont_caller = _ont_caller(config) if mode == "ont" else None
+    methylation_request = resolve_methylation_request(
+        config,
+        mode=mode,
+        enabled_override=methylation,
+        classifier_override=methylation_classifier,
+        pod5_override=methylation_pod5_dir,
+        gpu_override=methylation_gpu,
+    )
     payload_root: Path | None = None
     lpwgs_value = config.get("lpwgs_root")
     if lpwgs_value:
@@ -1481,7 +1650,14 @@ def run_native(
     force_run = _as_bool(config.get("force"), False) if force is None else force
     if dry_run:
         _validate_native_dry_run(
-            config, config_path, mode, lpwgs_root, outdir, force_run, cpu
+            config,
+            config_path,
+            mode,
+            lpwgs_root,
+            outdir,
+            force_run,
+            cpu,
+            methylation_request,
         )
         return outdir
     root = payload_root or runtime_root(explicit_root)
@@ -1495,6 +1671,8 @@ def run_native(
 
     # The native trace is an explicit release invariant.
     atomic_write_text(native_dir / "engine.txt", f"engine=native\nnextflow_used=false\nversion={__version__}\n")
+    cna_error: BaseException | None = None
+    methylation_status: dict[str, object] | None = None
 
     if mode == "illumina":
         samplesheet_value = config.get("illumina_samplesheet")
@@ -1549,73 +1727,68 @@ def run_native(
         reference = prepare_reference(
             lpwgs_root, runner, ledger, toolchain, need_bwa=False, need_minimap2=True, threads=cpu
         )
-        bams = align_ont(
-            samples,
-            reference,
-            samurai_out,
-            runner,
-            ledger,
-            toolchain,
-            threads=cpu,
-            min_age_minutes=_as_int(config.get("ont_min_age_minutes"), 0),
-            force=force_run,
-        )
         assert ont_caller is not None
-        caller = ont_caller
-        binsize = _as_int(config.get("ont_binsize_kb"), 500)
-        if caller == "ichorcna":
-            caller_dir = run_ichorcna(
+        if methylation_request is not None:
+            try:
+                methylation_status = run_methylation(
+                    root,
+                    methylation_request,
+                    samples,
+                    reference,
+                    outdir,
+                    runner,
+                    ledger,
+                    threads=cpu,
+                    force=force_run,
+                )
+            except (OSError, OncoTracerError, ValueError) as error:
+                methylation_status = write_global_methylation_failure(
+                    outdir, methylation_request, error
+                )
+        try:
+            _run_ont_cna_branch(
                 root,
-                lpwgs_root,
+                config,
                 samples,
-                bams,
                 samurai_out,
-                binsize,
+                reference,
+                outdir,
+                lpwgs_root,
                 runner,
                 ledger,
                 toolchain,
+                caller=ont_caller,
                 threads=cpu,
                 force=force_run,
             )
-        else:
-            caller_dir, _ = run_qdnaseq(
+        except (OSError, OncoTracerError, ValueError) as error:
+            if methylation_request is None:
+                raise
+            cna_error = error
+
+    if _as_bool(config.get("run_cna_classifier"), False) and cna_error is None:
+        try:
+            run_native_classifier(
                 root,
+                config,
+                outdir,
                 lpwgs_root,
-                samples,
-                bams,
-                samurai_out,
-                binsize,
                 runner,
                 ledger,
                 toolchain,
                 force=force_run,
-                paired_ends=False,
             )
-        run_refinement_and_outputs(
-            root,
-            config,
-            mode,
-            samurai_out,
-            caller_dir,
-            samurai_out / "bam",
-            outdir,
-            lpwgs_root,
-            runner,
-            toolchain,
-            force=force_run,
-            caller=caller,
-        )
+        except (OSError, OncoTracerError, ValueError) as error:
+            if methylation_request is None:
+                raise
+            cna_error = error
 
-    if _as_bool(config.get("run_cna_classifier"), False):
-        run_native_classifier(
-            root,
-            config,
+    if methylation_request is not None:
+        assert methylation_status is not None
+        _merge_methylation_summary(
             outdir,
-            lpwgs_root,
-            runner,
-            ledger,
-            toolchain,
-            force=force_run,
+            methylation_status,
+            cna_error=cna_error,
         )
 
     trace_text = trace.read_text(encoding="utf-8", errors="replace")
@@ -1624,11 +1797,13 @@ def run_native(
     write_run_manifest(outdir, config_path, trace)
     summary_path = outdir / "06_workflow_summary" / "workflow_summary.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
-    if summary.get("workflow_status") == "partial_failure":
+    if summary.get("workflow_status") != "complete":
         failed = ", ".join(str(sample) for sample in summary.get("failed_samples", []))
         raise OncoTracerError(
-            "native analysis completed with failed samples "
-            f"({failed}); successful-sample reports and the partial-failure manifest "
-            f"were preserved under {outdir}"
+            "native analysis completed with one or more incomplete branches "
+            f"(CNA={summary.get('cna_status', summary.get('workflow_status'))}, "
+            f"methylation={summary.get('methylation_status', 'not_requested')}, "
+            f"failed_samples={failed or 'none'}); successful outputs and the "
+            f"failure manifest were preserved under {outdir}"
         )
     return outdir

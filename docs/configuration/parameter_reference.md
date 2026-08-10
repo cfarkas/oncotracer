@@ -120,8 +120,15 @@ oncotracer run \
 | `--image IMAGE` | Docker image override |
 | `--sif PATH` | Singularity/Apptainer image override |
 | `--root PATH` | Explicit payload/source root |
+| `--methylation` | Enable the optional ONT POD5 methylation branch |
+| `--sturgeon` | Select the supported CNS-tumor research classifier; mutually exclusive with `--marlin` |
+| `--marlin` | Select the supported leukemia research classifier; mutually exclusive with `--sturgeon` |
+| `--pod5-dir PATH` | Required explicit non-empty POD5 directory whenever methylation is enabled |
+| `--gpu` | Use `cuda:all` for Dorado and expose the GPU to MARLIN; requires `--methylation` |
 
 Repeating the same command reuses valid content-matched stages automatically.
+
+Optional methylation is ONT-only and supports the `host`, `conda`, and `poetry` backends with explicit user-installed resources. The stable container does not redistribute the licensed tools/models, so Docker and Singularity/Apptainer reject this branch.
 
 ## Common YAML fields
 
@@ -168,6 +175,39 @@ Automatic Setup writes no panel for zero normals, rejects exactly one normal, an
 | `ont_force_realign` | `false` | Deliberately recreate supported ONT alignments |
 
 `ont_barcodes` and `ont_sample_names` must have equal lengths and order.
+
+## Optional ONT methylation YAML fields
+
+CLI values override `methylation`, classifier, POD5, and GPU YAML values. There is no POD5 discovery; one explicit path is always required.
+
+| Field | Typical/default | Meaning |
+| --- | --- | --- |
+| `methylation` | `false` | Enable optional ONT methylation when not using `--methylation` |
+| `methylation_classifier` | required when enabled | Exactly `sturgeon` or `marlin` |
+| `methylation_pod5_dir` | required when enabled | Explicit directory containing non-empty `.pod5` files |
+| `methylation_gpu` | `false` | Dorado `cuda:all`; MARLIN GPU visibility; Modkit/Sturgeon remain CPU |
+| `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.0.0 |
+| `methylation_dorado_executable` | required local executable | Dorado binary; no download or installation |
+| `methylation_modkit_executable` | required local executable | Modkit binary; no download or installation |
+| `methylation_samtools_executable` | `samtools` | Explicit or PATH-resolved SAMtools binary |
+| `methylation_dorado_model` | required directory | Explicit compatible Dorado basecalling model |
+| `methylation_dorado_model_sha256` | optional expected digest | OncoTracer directory-tree digest; always recorded |
+| `methylation_dorado_modbase_model` | required directory | Explicit compatible 5mCG/5hmCG model |
+| `methylation_dorado_modbase_model_sha256` | optional expected digest | OncoTracer directory-tree digest; always recorded |
+| `sturgeon_source_commit` | fixed supported commit | `4c742ddea49b0077a8f8ff3d99daafb238d00706` |
+| `sturgeon_license_acknowledged` | required `true` | User attests to separately obtaining/accepting the Sturgeon license |
+| `sturgeon_executable` | required | User-installed Sturgeon executable |
+| `sturgeon_model`, `sturgeon_model_sha256` | required pair | Explicit model and exact file SHA-256 |
+| `sturgeon_probes`, `sturgeon_probes_sha256` | required pair | Explicit hg38 probes and exact file SHA-256 |
+| `marlin_source_commit` | fixed supported commit | `37c9836cc325ff2edccbdff06736604163db2c15` |
+| `marlin_rscript` | required | Rscript from the user-prepared MARLIN environment |
+| `marlin_python` | required | Exact Python with h5py, NumPy, and TensorFlow; automatic environments are forbidden |
+| `marlin_model`, `marlin_model_sha256` | required pair | Explicit MARLIN model and exact file SHA-256 |
+| `marlin_features`, `marlin_features_sha256` | required pair | Explicit feature RData and exact file SHA-256 |
+| `marlin_class_annotations`, `marlin_class_annotations_sha256` | required pair | Explicit class workbook and exact file SHA-256 |
+| `marlin_probe_bed`, `marlin_probe_bed_sha256` | required pair | Explicit hg38 probe BED and exact file SHA-256 |
+
+The classifier is not invoked for a sample with zero usable modified-CpG calls. CNA continues, and the final status reports the two branches independently. See [Optional ONT methylation](methylation.md) for the complete setup, dry-run, resume, license, and output contract.
 
 ## Native classifier and pathology fields
 

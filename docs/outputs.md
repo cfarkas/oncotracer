@@ -22,6 +22,7 @@ If `cat` says the file does not exist, either the run has not finished or `OUT` 
 | `04_cna_custom_plots/` | How do those tables look visually? | Derived presentation; use tables for exact values |
 | `05_cna_classifier/` | What optional CNA-pattern/pathology research interpretation was produced? | Optional and non-diagnostic |
 | `06_workflow_summary/` | Where are the important folders? | Index/pointer file, not a scientific result |
+| `07_methylation/` | What optional ONT modified-base/classifier result and provenance were produced? | Independent optional research result; review its status before predictions |
 
 Do not report temporary alignment/caller intermediates or `.oncotracer-native/` ledger files as scientific results. Preserve the ledger and trace for audit, but use the numbered stage-02/03 outputs for exact scientific values.
 
@@ -141,6 +142,21 @@ find "$OUT/01_samurai_ont/bam" -maxdepth 1 -name '*.bam' -print        # aligned
 For ichorCNA, `ichorcna_sample_status.json` is authoritative for caller completeness. For qDNAseq, the equivalent record is `qdnaseq_sample_status.json`. A failed or mathematically invalid sample is recorded there and excluded from aggregate caller tables and downstream reports; later viable samples continue. `workflow_summary.json` reports `partial_failure` and lists both completed and failed samples. Nested partial caller files remain available for diagnosis but are not published as complete top-level inputs. For solid-biopsy qDNAseq, use a separate `outdir`; its initial caller output is `01_samurai_ont/qdnaseq/`.
 
 Also inspect `logs/used_fastq.tsv`, `logs/skipped_fastq.tsv`, `logs/skipped_samples.tsv`, and `logs/warning_samples.tsv`. A completed workflow can still contain a skipped barcode warning that matters scientifically.
+
+## Stage 07: optional ONT methylation
+
+This directory exists only when optional POD5 methylation was requested:
+
+```bash
+# Run this command from the oncotracer directory.
+cat "$OUT/07_methylation/methylation_status.json"
+cat "$OUT/07_methylation/methylation_provenance.json"
+find "$OUT/07_methylation" -maxdepth 3 -type f | sort | sed -n '1,120p'
+```
+
+Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, or `failed`. A zero-call sample is not sent to Sturgeon or MARLIN. `methylation_provenance.json` records the explicit POD5 inventory digest, executable and resource hashes, classifier source identity, and Dorado device.
+
+Methylation and CNA are independent branches: stage 07 remains valid when CNA fails, and stages 01–06 may remain valid when methylation is incomplete. In either partial case, the final command exits nonzero and `workflow_summary.json` records `cna_status`, `methylation_status`, and the relevant sample lists. Do not present a missing classifier output as a negative classification.
 
 ## Stage 02: refined segmentation
 

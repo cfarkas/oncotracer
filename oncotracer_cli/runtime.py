@@ -91,9 +91,13 @@ def _extract_zipapp_payload(archive: Path) -> Path:
             shutil.rmtree(destination)
         destination.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(archive) as bundle:
-            members = [name for name in bundle.namelist() if name.startswith("payload/")]
+            members = [
+                name for name in bundle.namelist() if name.startswith("payload/")
+            ]
             if not members:
-                raise OncoTracerError(f"standalone executable has no payload: {archive}")
+                raise OncoTracerError(
+                    f"standalone executable has no payload: {archive}"
+                )
             for member in members:
                 relative = Path(member).relative_to("payload")
                 if not relative.parts:
@@ -122,7 +126,12 @@ def runtime_root(explicit: str | Path | None = None) -> Path:
     if value := os.environ.get("ONCOTRACER_ROOT"):
         candidates.append(Path(value).expanduser())
     package = Path(__file__).resolve()
-    candidates.extend([package.parents[1], package.parents[2] if len(package.parents) > 2 else package.parent])
+    candidates.extend(
+        [
+            package.parents[1],
+            package.parents[2] if len(package.parents) > 2 else package.parent,
+        ]
+    )
     executable = Path(sys.argv[0]).expanduser()
     if executable.exists() and zipfile.is_zipfile(executable):
         return _extract_zipapp_payload(executable.resolve())
@@ -177,7 +186,9 @@ def load_flat_yaml(path: Path) -> dict[str, object]:
         if not stripped or stripped.startswith("#"):
             continue
         if raw[:1].isspace():
-            raise OncoTracerError(f"nested YAML is not supported ({path}:{line_number})")
+            raise OncoTracerError(
+                f"nested YAML is not supported ({path}:{line_number})"
+            )
         if ":" not in raw:
             raise OncoTracerError(f"invalid YAML entry ({path}:{line_number}): {raw}")
         key, value = raw.split(":", 1)
@@ -264,12 +275,17 @@ def download(
     temporary = destination.with_name(f".{destination.name}.part")
     for attempt in range(1, retries + 1):
         try:
-            request = urllib.request.Request(url, headers={"User-Agent": f"OncoTracer/{__version__}"})
+            request = urllib.request.Request(
+                url, headers={"User-Agent": f"OncoTracer/{__version__}"}
+            )
             mode = "ab" if temporary.exists() and temporary.stat().st_size > 0 else "wb"
             offset = temporary.stat().st_size if mode == "ab" else 0
             if offset:
                 request.add_header("Range", f"bytes={offset}-")
-            with urllib.request.urlopen(request, timeout=120) as source, temporary.open(mode) as sink:
+            with (
+                urllib.request.urlopen(request, timeout=120) as source,
+                temporary.open(mode) as sink,
+            ):
                 if offset and getattr(source, "status", None) == 200:
                     sink.close()
                     temporary.unlink(missing_ok=True)
@@ -286,7 +302,9 @@ def download(
                 return destination
         except (OSError, urllib.error.URLError) as error:
             if attempt == retries:
-                raise OncoTracerError(f"download failed after {retries} attempts: {url}: {error}") from error
+                raise OncoTracerError(
+                    f"download failed after {retries} attempts: {url}: {error}"
+                ) from error
             time.sleep(min(2**attempt, 15))
     raise OncoTracerError(f"download validation failed: {url} -> {destination}")
 
@@ -297,6 +315,19 @@ class CommandResult:
     command: tuple[str, ...]
     started_at: str
     finished_at: str
+
+
+def _command_environment(
+    overrides: Mapping[str, str | None] | None,
+) -> dict[str, str]:
+    """Merge explicit overrides while allowing a caller to unset a variable."""
+    environment = os.environ.copy()
+    for key, value in (overrides or {}).items():
+        if value is None:
+            environment.pop(key, None)
+        else:
+            environment[key] = value
+    return environment
 
 
 class CommandRunner:
@@ -311,7 +342,14 @@ class CommandRunner:
             with trace_path.open("w", encoding="utf-8", newline="") as handle:
                 writer = csv.writer(handle, delimiter="\t")
                 writer.writerow(
-                    ["stage", "started_at", "finished_at", "returncode", "cwd", "command"]
+                    [
+                        "stage",
+                        "started_at",
+                        "finished_at",
+                        "returncode",
+                        "cwd",
+                        "command",
+                    ]
                 )
 
     def _record(
@@ -326,7 +364,14 @@ class CommandRunner:
         with self.trace_path.open("a", encoding="utf-8", newline="") as handle:
             writer = csv.writer(handle, delimiter="\t")
             writer.writerow(
-                [stage, started, finished, returncode, str(cwd or Path.cwd()), shlex.join(command)]
+                [
+                    stage,
+                    started,
+                    finished,
+                    returncode,
+                    str(cwd or Path.cwd()),
+                    shlex.join(command),
+                ]
             )
 
     def run(
@@ -335,7 +380,7 @@ class CommandRunner:
         command: Sequence[str | Path],
         *,
         cwd: Path | None = None,
-        env: Mapping[str, str] | None = None,
+        env: Mapping[str, str | None] | None = None,
         stdout: TextIO | None = None,
         stderr: TextIO | None = None,
         stdin: TextIO | int | None = None,
@@ -352,7 +397,7 @@ class CommandRunner:
         completed = subprocess.run(
             argv,
             cwd=cwd,
-            env=dict(os.environ, **(dict(env) if env else {})),
+            env=_command_environment(env),
             stdin=stdin,
             stdout=stdout,
             stderr=stderr,
@@ -373,21 +418,28 @@ class CommandRunner:
         right: Sequence[str | Path],
         *,
         cwd: Path | None = None,
-        env: Mapping[str, str] | None = None,
+        env: Mapping[str, str | None] | None = None,
     ) -> None:
         left_argv = tuple(str(item) for item in left)
         right_argv = tuple(str(item) for item in right)
         rendered = (*left_argv, "|", *right_argv)
         started = utc_now()
         if self.echo:
-            print(f"[{stage}] {shlex.join(left_argv)} | {shlex.join(right_argv)}", file=sys.stderr)
+            print(
+                f"[{stage}] {shlex.join(left_argv)} | {shlex.join(right_argv)}",
+                file=sys.stderr,
+            )
         if self.dry_run:
             self._record(stage, started, utc_now(), 0, cwd, rendered)
             return
-        proc_env = dict(os.environ, **(dict(env) if env else {}))
-        left_process = subprocess.Popen(left_argv, cwd=cwd, env=proc_env, stdout=subprocess.PIPE)
+        proc_env = _command_environment(env)
+        left_process = subprocess.Popen(
+            left_argv, cwd=cwd, env=proc_env, stdout=subprocess.PIPE
+        )
         assert left_process.stdout is not None
-        right_process = subprocess.Popen(right_argv, cwd=cwd, env=proc_env, stdin=left_process.stdout)
+        right_process = subprocess.Popen(
+            right_argv, cwd=cwd, env=proc_env, stdin=left_process.stdout
+        )
         left_process.stdout.close()
         right_rc = right_process.wait()
         left_rc = left_process.wait()
@@ -432,7 +484,12 @@ class StageLedger:
             else:
                 records.append({"path": str(resolved), "missing": True})
         payload = json.dumps(
-            {"name": name, "command": list(command), "inputs": records, "version": __version__},
+            {
+                "name": name,
+                "command": list(command),
+                "inputs": records,
+                "version": __version__,
+            },
             sort_keys=True,
         )
         return sha256_text(payload)
@@ -451,7 +508,11 @@ class StageLedger:
                 {
                     "path": str(path.resolve()),
                     "size": path.stat().st_size if path.exists() else None,
-                    "sha256": sha256_file(path) if path.is_file() and path.stat().st_size < 128 * 1024 * 1024 else None,
+                    "sha256": (
+                        sha256_file(path)
+                        if path.is_file() and path.stat().st_size < 128 * 1024 * 1024
+                        else None
+                    ),
                 }
                 for path in outputs
             ],

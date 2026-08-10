@@ -49,6 +49,8 @@ force: false
 
 The default above is the liquid-biopsy ichorCNA route. For a separate solid-biopsy qDNAseq analysis, use a new `outdir` and set `ont_analysis_type: solid_biopsy`, `ont_caller: qdnaseq`, and an explicit qDNAseq bin width. The engine rejects qDNAseq for other ONT analysis types.
 
+An optional ONT-only POD5 methylation branch is available with `--methylation` plus exactly one of `--sturgeon` or `--marlin`, and always requires `--pod5-dir /absolute/path`. It runs before CNA, but the two outcomes are preserved independently. See [Optional ONT methylation](configuration/methylation.md) for the required checksum-pinned external resources and license/backend limitations.
+
 ## Run a YAML
 
 ```bash

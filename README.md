@@ -6,6 +6,8 @@
 
 OncoTracer v2 is a **native, auditable LP-WGS copy-number analysis** application for Illumina and Oxford Nanopore Technologies (ONT) FASTQs. Its normal execution path does not invoke Nextflow. The installed `oncotracer` executable schedules alignment, copy-number calling, BAM-supported boundary refinement, CNA codification, plots, reports, and optional cancer-context interpretation directly.
 
+ONT runs can additionally request an explicit-POD5 methylation branch with `--methylation --sturgeon` for CNS-tumor research or `--methylation --marlin` for leukemia research. The branch always requires `--pod5-dir`, runs before but independently from CNA, and skips classification rather than inventing a result when no usable modified-CpG calls are detected. See the [complete methylation contract](https://cfarkas.github.io/oncotracer/configuration/methylation/).
+
 ```text
 Illumina FASTQ -> BWA/Picard -> qDNAseq -----------+
                                                     +-> boundary refinement -> CNA tables -> plots/reports

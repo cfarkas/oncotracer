@@ -40,6 +40,17 @@ The standard Illumina configuration uses hg38, qDNAseq, and 100 kb coarse bins.
 
 The standard ONT configuration uses hg38, ichorCNA, and 500 kb coarse bins.
 
+## Optional ONT methylation route
+
+| Program or library | Purpose | Representative output |
+| --- | --- | --- |
+| Dorado | Explicit-POD5 hg38 basecalling with an explicit 5mCG/5hmCG model | `07_methylation/modbam/` |
+| Modkit | CPU-threaded CpG conversion and deterministic bedMethyl pileup | `07_methylation/bedmethyl/` |
+| Sturgeon | User-installed/licensed CNS-tumor research classification | `07_methylation/sturgeon/` |
+| MARLIN adapter | Checksum-pinned leukemia research model preparation/prediction | `07_methylation/marlin/` |
+
+This optional branch is not part of the five managed core CNA environments or the stable container. Users provide exact local executables/models/resources. `--gpu` targets Dorado and exposes the device to MARLIN; it does not make Modkit or Sturgeon GPU programs. The branch aborts classification on zero usable modified-CpG calls while CNA continues.
+
 ## Optional interpretation route
 
 When `run_cna_classifier: true`, the native classifier uses Python packages such as pandas, NumPy, SciPy, scikit-learn, Matplotlib, Jinja2, ReportLab, openpyxl, and optional Transformers/PyTorch support. GISTIC2 is isolated in its own prefix because it requires the MATLAB Compiler Runtime.

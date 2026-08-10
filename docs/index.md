@@ -2,6 +2,8 @@
 
 OncoTracer is a native, auditable workflow for low-pass whole-genome sequencing (LP-WGS) copy-number analysis from Illumina and Oxford Nanopore Technologies (ONT) FASTQs.
 
+For ONT only, an optional explicit-POD5 branch can perform Dorado/Modkit modified-base processing followed by user-selected Sturgeon (CNS research) or MARLIN (leukemia research) classification. It runs before CNA but records and preserves the two outcomes independently.
+
 ```text
 Illumina FASTQ -> BWA/Picard -> qDNAseq -----------+
                                                     +-> BAM-supported refinement

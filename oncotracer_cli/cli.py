@@ -217,6 +217,18 @@ def _project_mounts(config_path: Path) -> list[Path]:
         "ont_folder",
         "ont_normal_folder",
         "pathology_csv",
+        "methylation_pod5_dir",
+        "methylation_dorado_model",
+        "methylation_dorado_modbase_model",
+        "sturgeon_executable",
+        "sturgeon_model",
+        "sturgeon_probes",
+        "marlin_rscript",
+        "marlin_python",
+        "marlin_model",
+        "marlin_features",
+        "marlin_class_annotations",
+        "marlin_probe_bed",
     ):
         value = config.get(key)
         if not value:
@@ -259,6 +271,10 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
             threads=args.threads,
             force=args.force if args.force else None,
             dry_run=args.dry_run,
+            methylation=args.methylation,
+            methylation_classifier=args.methylation_classifier,
+            methylation_pod5_dir=Path(args.pod5_dir) if args.pod5_dir else None,
+            methylation_gpu=args.gpu,
         )
     finally:
         os.environ.clear()
@@ -280,6 +296,14 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--threads", str(args.threads)])
     if args.force:
         command.append("--force")
+    if args.methylation:
+        command.append("--methylation")
+    if args.methylation_classifier:
+        command.append(f"--{args.methylation_classifier}")
+    if args.pod5_dir:
+        command.extend(["--pod5-dir", Path(args.pod5_dir).expanduser().resolve()])
+    if args.gpu:
+        command.append("--gpu")
     _run(command, dry_run=args.dry_run)
 
 
@@ -301,12 +325,37 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--threads", str(args.threads)])
     if args.force:
         command.append("--force")
+    if args.methylation:
+        command.append("--methylation")
+    if args.methylation_classifier:
+        command.append(f"--{args.methylation_classifier}")
+    if args.pod5_dir:
+        command.extend(["--pod5-dir", Path(args.pod5_dir).expanduser().resolve()])
+    if args.gpu:
+        command.append("--gpu")
     _run(command, dry_run=args.dry_run)
+
+
+def _methylation_requested(config_path: Path, args: argparse.Namespace) -> bool:
+    if args.methylation is not None:
+        return bool(args.methylation)
+    value = load_flat_yaml(config_path).get("methylation")
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"true", "yes", "on", "1"}
 
 
 def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
     config_path = require_file(config_path, "OncoTracer YAML config")
     backend = _backend_from(args)
+    if backend in {"docker", "singularity", "apptainer"} and _methylation_requested(
+        config_path, args
+    ):
+        raise OncoTracerError(
+            "the optional POD5 methylation branch requires backend host, conda, "
+            "or poetry with explicit user-installed Dorado/Modkit/classifier assets; "
+            "the stable OncoTracer container does not redistribute those licensed resources"
+        )
     if backend in {"host", "poetry", "conda"}:
         if backend in {"conda", "poetry"} and not args.dry_run:
             install = _load_install_config()
@@ -891,6 +940,37 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--root", help="Repository or extracted payload root")
     parser.add_argument("--image")
     parser.add_argument("--sif")
+    parser.add_argument(
+        "--methylation",
+        action="store_true",
+        default=None,
+        help="enable the optional ONT-only POD5 methylation branch",
+    )
+    classifier = parser.add_mutually_exclusive_group()
+    classifier.add_argument(
+        "--sturgeon",
+        dest="methylation_classifier",
+        action="store_const",
+        const="sturgeon",
+        help="classify CNS-tumor methylation with a licensed Sturgeon install",
+    )
+    classifier.add_argument(
+        "--marlin",
+        dest="methylation_classifier",
+        action="store_const",
+        const="marlin",
+        help="classify leukemia methylation with explicit MARLIN resources",
+    )
+    parser.add_argument(
+        "--pod5-dir",
+        help="required explicit non-empty POD5 directory for --methylation",
+    )
+    parser.add_argument(
+        "--gpu",
+        action="store_true",
+        default=None,
+        help="use GPU for methylation Dorado and expose it to MARLIN",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

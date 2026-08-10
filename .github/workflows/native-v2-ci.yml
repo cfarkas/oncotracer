@@ -62,13 +62,16 @@ jobs:
           python3 -m unittest -v \
             tests/test_native_cli.py \
             tests/test_native_engine.py \
+            tests/test_native_methylation.py \
+            tests/test_beginner_runtime.py \
             tests/test_compare_native_parity.py \
             tests/test_native_docs.py \
             tests/test_poetry_cli.py \
             tests/test_native_classifier.py \
             tests/test_native_provenance.py \
             tests/test_ichorcna_plot_compat.py \
-            tests/test_qdnaseq_helper.py
+            tests/test_qdnaseq_helper.py \
+            tests/test_release_workflow.py
       - name: Run shell and standalone documentation regression tests
         run: |
           set -Eeuo pipefail
@@ -113,7 +116,12 @@ jobs:
               'payload/bin/scripts/qdnaseq_post_normalization_qc.R',
               'payload/bin/scripts/native_qdnaseq_pon.R',
               'payload/bin/scripts/native_ichorcna.R',
+              'payload/bin/scripts/native_marlin_prepare.R',
+              'payload/bin/scripts/native_marlin_predict.R',
+              'payload/bin/scripts/native_marlin_preflight.R',
+              'payload/bin/scripts/MARLIN-MIT-LICENSE.txt',
               'oncotracer_cli/classifier.py',
+              'oncotracer_cli/methylation.py',
               'payload/bin/cna_classifier_nf/bin/01_prepare_cna_inputs.py',
               'payload/bin/cna_classifier_nf/bin/08_clinician_driver_reports.py',
               'payload/bin/cna_classifier_nf/assets/pancancer_cna_regions.tsv',

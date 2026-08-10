@@ -42,6 +42,7 @@ nav:
       - Canonical Native YAML: configuration_v2.md
       - Illumina Setup: configuration/illumina.md
       - ONT Setup: configuration/ont.md
+      - Optional ONT Methylation: configuration/methylation.md
       - Pathology and Classifier: configuration/pathology.md
       - Advanced Refinement: configuration/refinement.md
       - All Parameters: configuration/parameter_reference.md

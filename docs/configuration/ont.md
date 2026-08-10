@@ -143,6 +143,24 @@ force: false
 
 This route reuses the native qDNAseq implementation and its existing scientific settings, passes the long-read BAMs as unpaired data, and writes initial caller output under `01_samurai_ont/qdnaseq/`. It does not combine or overwrite `01_samurai_ont/results/ichorcna/`; retaining a distinct `outdir` also keeps the downstream stage-02 through stage-06 products separate. `ont_caller: qdnaseq` is rejected unless `ont_analysis_type: solid_biopsy` is present.
 
+## Optional POD5 methylation classification
+
+For an ONT run, `--methylation` can run modified-base basecalling and either Sturgeon (`--sturgeon`, CNS-tumor research) or MARLIN (`--marlin`, leukemia research) before the CNA branch. An explicit non-empty POD5 directory is mandatory; OncoTracer never searches for POD5 files:
+
+```bash
+cd /path/to/my/analyses_dir/
+
+oncotracer run \
+  --backend conda \
+  --config "$PWD/project/config/ont.manual.yml" \
+  --methylation \
+  --sturgeon \
+  --pod5-dir /absolute/path/to/pod5_pass \
+  --gpu
+```
+
+The YAML must also contain explicit, checksum-pinned Dorado/Modkit/classifier resources. If Modkit detects zero usable modified-CpG calls, OncoTracer records `no_cpg_modifications`, skips the methylation classifier, and continues CNA. A CNA failure likewise does not discard a completed methylation result. Read [Optional ONT methylation](methylation.md) before enabling this research branch, especially the Sturgeon license, hg38 model/probe, backend, and GPU limitations.
+
 ## Optional normal/control barcodes
 
 Add:
@@ -198,6 +216,7 @@ Use this only when an existing ONT alignment is invalid or the relevant alignmen
 | `ont_normal_sample_names` | optional names | Positional normal sample names |
 | `ont_min_age_minutes` | `0` | Minimum FASTQ age before use |
 | `ont_force_realign` | `false` | Deliberate alignment refresh |
+| `--methylation --sturgeon|--marlin --pod5-dir PATH` | optional CLI branch | Explicit POD5 methylation/classifier route; see the dedicated page |
 | `run_cna_classifier` | `false` | Add native classifier/reports |
 | `force` | `false` | Preserve reusable stages |
 

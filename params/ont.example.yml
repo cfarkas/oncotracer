@@ -36,6 +36,16 @@ ont_normal_sample_names: null
 ont_build_pon: false
 ont_force_realign: false
 
+# Optional ONT POD5 methylation is disabled by default. When enabled, always
+# pass an explicit non-empty directory on the command line:
+#   --methylation --sturgeon --pod5-dir /absolute/path/to/pod5 --gpu
+# or:
+#   --methylation --marlin --pod5-dir /absolute/path/to/pod5 --gpu
+# Add the checksum-pinned external resource fields documented at
+# docs/configuration/methylation.md. OncoTracer never discovers POD5, models,
+# or classifier installations automatically.
+methylation: false
+
 run_cna_classifier: false
 
 # Protect an existing real-project output directory.
