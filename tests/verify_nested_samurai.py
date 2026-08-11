@@ -267,12 +267,13 @@ def require_ichorcna_task_hash(rows: Iterable[dict[str, str]]) -> str:
             f"ICHORCNA_RUN task; observed={len(matches)}"
         )
     row = matches[0]
-    if row.get("status", "").strip().upper() not in {
-        "COMPLETED",
-        "CACHED",
-    } or row.get("exit", "").strip() != "0":
+    if (
+        row.get("status", "").strip().upper() != "COMPLETED"
+        or row.get("exit", "").strip() != "0"
+    ):
         raise SystemExit(
-            "nested ICHORCNA_RUN task is not successful with exit status zero"
+            "nested ICHORCNA_RUN must be freshly COMPLETED with exit status zero; "
+            "the release comparator disables its cache"
         )
     task_hash = row.get("hash", "").strip().lower()
     if NEXTFLOW_TASK_HASH.fullmatch(task_hash) is None:

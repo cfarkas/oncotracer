@@ -78,8 +78,9 @@ therefore build a deterministic combined trace from the latest occurrence of
 each canonical task, require every contracted latest occurrence to be
 successful or cached with exit status zero, and retain the complete source-trace
 manifest. The ONT audit requires the complete ten-process contract, including a
-successful or cached, exit-zero `ICHORCNA_RUN`. Its compatibility marker must be
-inside the exact Nextflow work directory identified by that task's trace hash.
+freshly `COMPLETED`, exit-zero `ICHORCNA_RUN`; `CACHED` is rejected for this one
+deliberately non-cacheable task. Its compatibility marker must be inside the
+exact Nextflow work directory identified by that task's trace hash.
 An incomplete resume fragment, an unbound marker, or a smaller process subset
 fails closed. Outer comparator sessions do not use `-resume`. A content-derived
 audit-policy digest seals the nested config and mounted compatibility sources,

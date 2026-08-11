@@ -577,11 +577,7 @@ class ParityComparatorTests(unittest.TestCase):
                             "task_id": index,
                             "hash": f"aa/{index:06x}",
                             "name": f"DINCALCILAB_SAMURAI:{process} (DRR165691)",
-                            "status": (
-                                "CACHED"
-                                if process == verify_module.ICHORCNA_RUN_PROCESS
-                                else "COMPLETED"
-                            ),
+                            "status": "COMPLETED",
                             "exit": "0",
                             "container": image,
                         }
@@ -832,6 +828,9 @@ class ParityComparatorTests(unittest.TestCase):
                 "container": "image",
             }
         ]
+        cached_rows = [dict(rows[0], status="CACHED")]
+        with self.assertRaisesRegex(SystemExit, "freshly COMPLETED"):
+            module.require_ichorcna_task_hash(cached_rows)
         marker_text = (
             "key\tvalue\n"
             "schema\toncotracer-ichorcna-plot-compat-v1\n"
