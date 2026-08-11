@@ -17,11 +17,12 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from verify_nested_samurai import (  # noqa: E402
     CONTRACTS,
-    ONT_RESUME_TRACE_IMAGES,
-    ONT_RESUME_TRACE_PROCESSES,
     Contract,
     evaluate_trace,
+    marker_path_matches_task_hash,
     parse_compat,
+    parse_trace,
+    require_ichorcna_task_hash,
 )
 
 SCHEMA = "oncotracer-native-v2-parity-audit-v2"
@@ -180,25 +181,42 @@ def verify_trace(path: Path, contract: Contract, pins: dict[str, str]) -> str:
     if ok:
         return "complete-combined-trace"
 
-    if contract.label == "quickstart1-ont":
-        resume_contract = Contract(
-            label=contract.label,
-            root_arg=contract.root_arg,
-            expected_rows=4,
-            processes=ONT_RESUME_TRACE_PROCESSES,
-            images=ONT_RESUME_TRACE_IMAGES,
-            require_ichorcna_compat=True,
-        )
-        resume_ok, resume_reason, _resume_rows, _resume_images = evaluate_trace(
-            path, resume_contract, pins
-        )
-        if resume_ok:
-            return "exact-ont-final-resume-trace"
-        reason = f"full={reason}; exact-resume={resume_reason}"
-
     raise AuditError(
         f"selected nested trace does not satisfy {contract.label}: {reason}: {path}"
     )
+
+
+def verify_compat_selection(
+    context: Path,
+    trace_path: Path,
+    contract: Contract,
+    selection_by_run: dict[str, list[str]],
+) -> dict[str, str]:
+    try:
+        task_hash = require_ichorcna_task_hash(parse_trace(trace_path))
+    except SystemExit as error:
+        raise AuditError(str(error)) from error
+    marker_selection = selection_by_run.get(contract.label + "-ichorcna-compat")
+    marker_name = "nested-v1-ont-ichorcna-plot-compat.tsv"
+    if (
+        marker_selection is None
+        or len(marker_selection) != 6
+        or marker_selection[4] != marker_name
+    ):
+        raise AuditError("missing nested ichorCNA compatibility selection evidence")
+    prefix = f"task-hash:{task_hash};marker:"
+    if not marker_selection[3].startswith(prefix):
+        raise AuditError("nested ichorCNA marker is not bound to selected task hash")
+    marker_relative = Path(marker_selection[3][len(prefix) :])
+    if not marker_path_matches_task_hash(marker_relative, task_hash):
+        raise AuditError("nested ichorCNA marker source path does not match task hash")
+    marker_path = context / marker_name
+    if marker_selection[5] != sha256(marker_path):
+        raise AuditError("nested ichorCNA compatibility marker checksum mismatch")
+    metadata = parse_compat(marker_path)
+    if metadata["target_quantile_calls"] != "2":
+        raise AuditError("invalid v1 ichorCNA compatibility marker")
+    return metadata
 
 
 def verify_nested(audit: Path, suite: str) -> dict[str, object]:
@@ -263,9 +281,7 @@ def verify_nested(audit: Path, suite: str) -> dict[str, object]:
                 f"expected {evidence_mode!r}, observed {selected[3]!r}"
             )
         if contract.require_ichorcna_compat:
-            metadata = parse_compat(context / "nested-v1-ont-ichorcna-plot-compat.tsv")
-            if metadata["target_quantile_calls"] != "2":
-                raise AuditError("invalid v1 ichorCNA compatibility marker")
+            verify_compat_selection(context, path, contract, selection_by_run)
     return {
         "pin_count": len(pins),
         "runtime_counts": expected_counts,

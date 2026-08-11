@@ -76,26 +76,7 @@ ONT_IMAGES = frozenset(
     }
 )
 
-# Nextflow can finish a resumed nested ONT run while the final execution-trace
-# file contains only the tasks executed in the last resume fragment. The
-# remaining ichorCNA stages are still fail-closed by their required scientific
-# outputs, compatibility marker, and immutable image pins. This exact fallback
-# is deliberately narrower than the complete ten-process contract.
-ONT_RESUME_TRACE_PROCESSES = frozenset(
-    {
-        "SAMURAI:SAMTOOLS_INDEX",
-        "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTMULTIPLEMETRICS",
-        "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTWGSMETRICS",
-        "SAMURAI:LIQUID_BIOPSY:ICHORCNA:HMMCOPY_READCOUNTER_ICHORCNA",
-    }
-)
-ONT_RESUME_TRACE_IMAGES = frozenset(
-    {
-        "quay.io/biocontainers/samtools:1.22.1--h96c455f_0",
-        "community.wave.seqera.io/library/picard:3.4.0--e9963040df0a9bf6",
-        "community.wave.seqera.io/library/hmmcopy_samtools:875db3767c6d4ea2",
-    }
-)
+ICHORCNA_RUN_PROCESS = "SAMURAI:LIQUID_BIOPSY:ICHORCNA:ICHORCNA_RUN"
 
 CONTRACTS: dict[str, tuple[Contract, ...]] = {
     "quickstart1": (
@@ -126,7 +107,8 @@ CONTRACTS: dict[str, tuple[Contract, ...]] = {
     ),
 }
 
-REQUIRED_TRACE_COLUMNS = {"name", "status", "exit", "container"}
+REQUIRED_TRACE_COLUMNS = {"hash", "name", "status", "exit", "container"}
+NEXTFLOW_TASK_HASH = re.compile(r"([0-9a-f]{2})/([0-9a-f]{6,})")
 
 
 def sha256(path: Path) -> str:
@@ -209,7 +191,11 @@ def evaluate_trace(
                 or not row["container"].strip()
             ):
                 return False, "failed, nonzero, or container-free contracted task", rows, set()
+            task_hash = row["hash"].strip().lower()
+            if NEXTFLOW_TASK_HASH.fullmatch(task_hash) is None:
+                return False, f"invalid contracted task hash: {task_hash!r}", rows, set()
             normalized = dict(row)
+            normalized["hash"] = task_hash
             normalized["container"] = normalize_container(row["container"], pins)
             selected.append(normalized)
             normalized_processes.append(process)
@@ -269,25 +255,87 @@ def parse_compat(path: Path) -> dict[str, str]:
     return metadata
 
 
-def select_compat_marker(root: Path, destination: Path) -> dict[str, str]:
-    markers = sorted(root.rglob(".oncotracer-ichorcna-plot-compat.tsv"))
-    valid: list[tuple[Path, dict[str, str]]] = []
+def require_ichorcna_task_hash(rows: Iterable[dict[str, str]]) -> str:
+    matches = [
+        row
+        for row in rows
+        if normalize_process(row.get("name", "")) == ICHORCNA_RUN_PROCESS
+    ]
+    if len(matches) != 1:
+        raise SystemExit(
+            "complete nested ONT evidence must contain exactly one successful "
+            f"ICHORCNA_RUN task; observed={len(matches)}"
+        )
+    row = matches[0]
+    if row.get("status", "").strip().upper() not in {
+        "COMPLETED",
+        "CACHED",
+    } or row.get("exit", "").strip() != "0":
+        raise SystemExit(
+            "nested ICHORCNA_RUN task is not successful with exit status zero"
+        )
+    task_hash = row.get("hash", "").strip().lower()
+    if NEXTFLOW_TASK_HASH.fullmatch(task_hash) is None:
+        raise SystemExit(
+            f"nested ICHORCNA_RUN has invalid Nextflow work hash: {task_hash!r}"
+        )
+    return task_hash
+
+
+def marker_path_matches_task_hash(relative: Path, task_hash: str) -> bool:
+    match = NEXTFLOW_TASK_HASH.fullmatch(task_hash)
+    if match is None or relative.is_absolute() or ".." in relative.parts:
+        return False
+    prefix, suffix = match.groups()
+    return (
+        len(relative.parts) >= 3
+        and relative.name == ".oncotracer-ichorcna-plot-compat.tsv"
+        and relative.parent.name.startswith(suffix)
+        and relative.parent.parent.name == prefix
+    )
+
+
+def find_compat_marker(
+    root: Path, selected_rows: Iterable[dict[str, str]]
+) -> tuple[Path, dict[str, str], str, Path]:
+    root = root.resolve()
+    task_hash = require_ichorcna_task_hash(selected_rows)
+    valid: list[tuple[Path, dict[str, str], Path]] = []
     diagnostics: list[str] = []
-    for marker in markers:
+    for marker in sorted(root.rglob(".oncotracer-ichorcna-plot-compat.tsv")):
         try:
-            valid.append((marker, parse_compat(marker)))
+            resolved = marker.resolve(strict=True)
+            resolved.relative_to(root)
+            relative = marker.relative_to(root)
+        except (OSError, ValueError) as error:
+            diagnostics.append(f"{marker}: unsafe marker path: {error}")
+            continue
+        if not marker_path_matches_task_hash(relative, task_hash):
+            continue
+        try:
+            valid.append((marker, parse_compat(marker), relative))
         except (OSError, ValueError, csv.Error) as error:
             diagnostics.append(f"{marker}: {error}")
-    if not valid:
-        details = "\n".join(diagnostics) if diagnostics else "no marker files found"
-        raise SystemExit(f"no valid nested ichorCNA compatibility marker under {root}:\n{details}")
-    canonical = valid[0][1]
-    if any(metadata != canonical for _, metadata in valid[1:]):
-        raise SystemExit("nested ichorCNA compatibility markers disagree")
-    selected = max(valid, key=lambda item: (item[0].stat().st_mtime_ns, item[0].as_posix()))[0]
+    if len(valid) != 1:
+        details = (
+            "\n".join(diagnostics) if diagnostics else "no matching marker files found"
+        )
+        raise SystemExit(
+            "expected exactly one valid nested ichorCNA compatibility marker in "
+            f"successful ICHORCNA_RUN work hash {task_hash}; observed={len(valid)}:\n"
+            f"{details}"
+        )
+    selected, metadata, relative = valid[0]
+    return selected, metadata, task_hash, relative
+
+
+def select_compat_marker(
+    root: Path, destination: Path, selected_rows: Iterable[dict[str, str]]
+) -> tuple[dict[str, str], str, Path]:
+    selected, metadata, task_hash, relative = find_compat_marker(root, selected_rows)
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(selected, destination)
-    return canonical
+    return metadata, task_hash, relative
 
 
 def write_tsv(path: Path, header: Iterable[str], rows: Iterable[Iterable[str]]) -> None:
@@ -347,28 +395,6 @@ def main() -> int:
         ok, reason, selected_rows, observed_images = evaluate_trace(
             combined_trace, contract, pins
         )
-        evidence_mode = "complete-combined-trace"
-        if not ok and contract.label == "quickstart1-ont":
-            resume_contract = Contract(
-                label=contract.label,
-                root_arg=contract.root_arg,
-                expected_rows=4,
-                processes=ONT_RESUME_TRACE_PROCESSES,
-                images=ONT_RESUME_TRACE_IMAGES,
-                require_ichorcna_compat=True,
-            )
-            resume_ok, resume_reason, resume_rows, resume_images = evaluate_trace(
-                combined_trace, resume_contract, pins
-            )
-            if resume_ok:
-                ok = True
-                reason = (
-                    "qualified exact final-resume trace; missing nested stages are "
-                    "covered by fail-closed outputs, compatibility metadata, and pins"
-                )
-                selected_rows = resume_rows
-                observed_images = resume_images
-                evidence_mode = "exact-ont-final-resume-trace"
         if not ok:
             raise SystemExit(
                 f"combined nested trace did not satisfy {contract.label}: {reason}; "
@@ -383,7 +409,7 @@ def main() -> int:
                 contract.label,
                 str(len(traces)),
                 "1",
-                f"{evidence_mode}:{combined_trace.as_posix()}",
+                f"complete-combined-trace:{combined_trace.as_posix()}",
                 selected_destination.name,
                 sha256(selected_destination),
             ]
@@ -396,15 +422,17 @@ def main() -> int:
                 [contract.label, container, pins[container], verify_image_identity(container, pins[container])]
             )
         if contract.require_ichorcna_compat:
-            metadata = select_compat_marker(
-                root, args.selected_dir / "nested-v1-ont-ichorcna-plot-compat.tsv"
+            metadata, task_hash, marker_relative = select_compat_marker(
+                root,
+                args.selected_dir / "nested-v1-ont-ichorcna-plot-compat.tsv",
+                selected_rows,
             )
             selection_rows.append(
                 [
                     contract.label + "-ichorcna-compat",
                     "",
                     "",
-                    "",
+                    f"task-hash:{task_hash};marker:{marker_relative.as_posix()}",
                     "nested-v1-ont-ichorcna-plot-compat.tsv",
                     sha256(args.selected_dir / "nested-v1-ont-ichorcna-plot-compat.tsv"),
                 ]

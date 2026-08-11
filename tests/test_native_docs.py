@@ -57,8 +57,10 @@ class NativeDocumentationTests(unittest.TestCase):
         text = (ROOT / "docs/parity_release.md").read_text(encoding="utf-8")
         self.assertIn("state-specific CNA genomic-coverage recall and precision", text)
         self.assertIn("corrected input log₂-signal Pearson correlation", text)
-        self.assertIn("exact four-process final-resume trace", text)
-        self.assertIn("A smaller or different subset fails closed", text)
+        self.assertIn("complete ten-process contract", text)
+        self.assertIn("exact Nextflow work directory", text)
+        self.assertIn("An incomplete resume fragment", text)
+        self.assertNotIn("four-process final-resume", text)
         self.assertNotIn("event recall and precision of at least", text)
         self.assertNotIn("refined-bin Pearson correlation", text)
 
@@ -151,11 +153,21 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("from combine_nested_samurai_traces import combine_root", text)
         self.assertIn("from contextlib import redirect_stdout", text)
         self.assertIn("with redirect_stdout(sys.stderr):", text)
-        self.assertIn("from verify_nested_samurai import parse_compat", text)
+        self.assertIn("from verify_nested_samurai import find_compat_marker", text)
         self.assertIn("v1-ichorcna-plot-compat-SHA256SUMS", text)
         self.assertIn("withName: ICHORCNA_RUN", text)
-        self.assertIn('evidence_mode = "exact-ont-final-resume-trace"', text)
+        self.assertIn('"evidence_mode": "complete-combined-trace"', text)
+        self.assertNotIn("exact-ont-final-resume-trace", text)
         self.assertIn('"contract_containers": sorted(expected_images[mode])', text)
+        self.assertIn('"task_hash": task_hash', text)
+        self.assertIn('"relative_path": marker_relative.as_posix()', text)
+        self.assertIn("executor.queueSize = 4", text)
+        self.assertIn("oncotracer_nested_audit_policy_sha256", text)
+        self.assertNotIn("env.ONCOTRACER_NESTED_AUDIT_POLICY_SHA256", text)
+        self.assertIn("cache = false", text)
+        self.assertIn('$REPORT_DIR/frozen-v1.1-quickstart1-$SESSION_ID', text)
+        self.assertIn('$REPORT_DIR/frozen-v1.1-quickstart2-$SESSION_ID', text)
+        self.assertNotRegex(text, r"(?m)^\s+-resume\s*$")
         self.assertNotIn("selected = max(traces", text)
         self.assertIn('"container"', text)
         self.assertIn("unresolved or forbidden SAMURAI container", text)
@@ -191,6 +203,25 @@ class NativeDocumentationTests(unittest.TestCase):
             self.assertIn(f'ENV_ROOT/{environment}', text)
         for threshold in ("0.80", "0.90", "0.95", "0.98", "0.08"):
             self.assertIn(threshold, text)
+
+        hosted_driver = (ROOT / "scripts/ci_native_parity.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual(
+            hosted_driver.count('"$NEXTFLOW" -log "$NEXTFLOW_REPORT_ROOT/'), 3
+        )
+        self.assertIn("executor.queueSize = 4", hosted_driver)
+        self.assertIn("seal_nested_config", hosted_driver)
+        self.assertIn("oncotracer_nested_audit_policy_sha256", hosted_driver)
+        self.assertNotIn(
+            "env.ONCOTRACER_NESTED_AUDIT_POLICY_SHA256", hosted_driver
+        )
+        self.assertIn("cache = false", hosted_driver)
+        self.assertNotIn("-resume 2>&1", hosted_driver)
+        self.assertIn(
+            'readonly NEXTFLOW_REPORT_ROOT="$REPORT_ROOT/frozen-v1.1-$PARITY_SESSION_ID"',
+            hosted_driver,
+        )
 
         self.assertIn('cd "$TMP_DIR"', text)
         self.assertIn('env -u PYTHONHOME -u PYTHONPATH "$BINARY" "$@"', text)

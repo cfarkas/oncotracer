@@ -27,6 +27,8 @@ readonly V1_REPO="$GITHUB_WORKSPACE/v1"
 readonly TEST_ROOT="$GITHUB_WORKSPACE/parity-$SUITE"
 readonly INPUT_ROOT="$TEST_ROOT/input"
 readonly REPORT_ROOT="$TEST_ROOT/reports"
+readonly PARITY_SESSION_ID="$(date -u +%Y%m%dT%H%M%SZ).$$"
+readonly NEXTFLOW_REPORT_ROOT="$REPORT_ROOT/frozen-v1.1-$PARITY_SESSION_ID"
 readonly AUDIT_ROOT="$TEST_ROOT/audit"
 readonly CONTEXT="$AUDIT_ROOT/context"
 readonly V2_ENV_PREFIX="/tmp/oncotracer-v2-envs-$SUITE"
@@ -55,8 +57,9 @@ require_file() {
   [[ -s "$1" ]] || { echo "missing or empty file: $1" >&2; exit 1; }
 }
 
-mkdir -p "$TEST_ROOT/configs" "$REPORT_ROOT" "$CONTEXT/manifests" \
-  "$CONTEXT/configs/parity" "$CONTEXT/configs/input" "$CONTEXT/qdnaseq-annotation"
+mkdir -p "$TEST_ROOT/configs" "$REPORT_ROOT" "$NEXTFLOW_REPORT_ROOT" \
+  "$CONTEXT/manifests" "$CONTEXT/configs/parity" "$CONTEXT/configs/input" \
+  "$CONTEXT/qdnaseq-annotation"
 
 log "Free runner disk and install frozen-comparator prerequisites"
 sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
@@ -236,6 +239,8 @@ nested_config() {
   local home="$1"
   mkdir -p "$home"
   cat > "$home/config" <<'EOF'
+params.oncotracer_nested_audit_policy_sha256 = '__ONCOTRACER_AUDIT_POLICY_SHA256__'
+executor.queueSize = 4
 process {
   resourceLimits = [cpus: 4, memory: '14.GB', time: '6.h']
 }
@@ -244,50 +249,81 @@ trace.fields = 'task_id,hash,name,status,exit,container'
 EOF
 }
 
+seal_nested_config() {
+  local config="$1" source digest policy_sha
+  shift
+  policy_sha="$(
+    {
+      printf 'config-template\0'
+      cat "$config"
+      for source in "$@"; do
+        digest="$(sha256sum "$source" | awk '{print $1}')"
+        printf 'source\0%s\0%s\0' "$(basename "$source")" "$digest"
+      done
+    } | sha256sum | awk '{print $1}'
+  )"
+  [[ "$policy_sha" =~ ^[0-9a-f]{64}$ ]]
+  grep -Fxq \
+    "params.oncotracer_nested_audit_policy_sha256 = '__ONCOTRACER_AUDIT_POLICY_SHA256__'" \
+    "$config"
+  sed -i "s/__ONCOTRACER_AUDIT_POLICY_SHA256__/$policy_sha/" "$config"
+  grep -Fxq \
+    "params.oncotracer_nested_audit_policy_sha256 = '$policy_sha'" "$config"
+}
+
 if [[ "$SUITE" == quickstart1 ]]; then
   nested_config "$TEST_ROOT/v1/illumina/01_samurai_illumina/.nextflow"
+  seal_nested_config "$TEST_ROOT/v1/illumina/01_samurai_illumina/.nextflow/config"
   nested_config "$TEST_ROOT/v1/ont/01_samurai_ont/.nextflow"
   cat >> "$TEST_ROOT/v1/ont/01_samurai_ont/.nextflow/config" <<EOF
 process {
   withName: ICHORCNA_RUN {
+    cache = false
     containerOptions = '-v $REPO/bin/scripts:/opt/oncotracer/scripts:ro -v $REPO/bin/scripts/v1_ichorcna_profile.R:/.Rprofile:ro'
   }
 }
 EOF
+  seal_nested_config "$TEST_ROOT/v1/ont/01_samurai_ont/.nextflow/config" \
+    "$REPO/bin/scripts/ichorcna_plot_compat.R" \
+    "$REPO/bin/scripts/v1_ichorcna_profile.R"
 else
   nested_config "$TEST_ROOT/v1/hcc1143/01_samurai_illumina/.nextflow"
+  seal_nested_config "$TEST_ROOT/v1/hcc1143/01_samurai_illumina/.nextflow/config"
 fi
 
 log "Run complete frozen v1.1 baseline"
 if [[ "$SUITE" == quickstart1 ]]; then
   env PATH="$PINNED_NEXTFLOW_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-    "$NEXTFLOW" run "$V1_REPO/main.nf" \
+    "$NEXTFLOW" -log "$NEXTFLOW_REPORT_ROOT/v1-illumina.nextflow.log" \
+    run "$V1_REPO/main.nf" \
     -c "$TEST_ROOT/configs/v1-pinned-nextflow.config" --docker \
     --docker_image "$V1_DOCKER_IMAGE" \
     -params-file "$TEST_ROOT/configs/v1-illumina.yml" \
     -work-dir "$TEST_ROOT/work/v1-illumina" \
-    -with-report "$REPORT_ROOT/v1-illumina.html" \
-    -with-trace "$REPORT_ROOT/v1-illumina.tsv" \
-    -resume 2>&1 | tee "$REPORT_ROOT/v1-illumina.log"
+    -with-report "$NEXTFLOW_REPORT_ROOT/v1-illumina.html" \
+    -with-trace "$NEXTFLOW_REPORT_ROOT/v1-illumina.tsv" \
+    2>&1 | tee "$NEXTFLOW_REPORT_ROOT/v1-illumina.command.log"
   env PATH="$PINNED_NEXTFLOW_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-    "$NEXTFLOW" run "$V1_REPO/main.nf" \
+    "$NEXTFLOW" -log "$NEXTFLOW_REPORT_ROOT/v1-ont.nextflow.log" \
+    run "$V1_REPO/main.nf" \
     -c "$TEST_ROOT/configs/v1-pinned-nextflow.config" --docker \
     --docker_image "$V1_DOCKER_IMAGE" \
     -params-file "$TEST_ROOT/configs/v1-ont.yml" \
     -work-dir "$TEST_ROOT/work/v1-ont" \
-    -with-report "$REPORT_ROOT/v1-ont.html" \
-    -with-trace "$REPORT_ROOT/v1-ont.tsv" \
-    -resume 2>&1 | tee "$REPORT_ROOT/v1-ont.log"
+    -with-report "$NEXTFLOW_REPORT_ROOT/v1-ont.html" \
+    -with-trace "$NEXTFLOW_REPORT_ROOT/v1-ont.tsv" \
+    2>&1 | tee "$NEXTFLOW_REPORT_ROOT/v1-ont.command.log"
 else
   env PATH="$PINNED_NEXTFLOW_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-    "$NEXTFLOW" run "$V1_REPO/main.nf" \
+    "$NEXTFLOW" -log "$NEXTFLOW_REPORT_ROOT/v1-hcc1143.nextflow.log" \
+    run "$V1_REPO/main.nf" \
     -c "$TEST_ROOT/configs/v1-pinned-nextflow.config" --docker \
     --docker_image "$V1_DOCKER_IMAGE" \
     -params-file "$TEST_ROOT/configs/v1-hcc1143.yml" \
     -work-dir "$TEST_ROOT/work/v1-hcc1143" \
-    -with-report "$REPORT_ROOT/v1-hcc1143.html" \
-    -with-trace "$REPORT_ROOT/v1-hcc1143.tsv" \
-    -resume 2>&1 | tee "$REPORT_ROOT/v1-hcc1143.log"
+    -with-report "$NEXTFLOW_REPORT_ROOT/v1-hcc1143.html" \
+    -with-trace "$NEXTFLOW_REPORT_ROOT/v1-hcc1143.tsv" \
+    2>&1 | tee "$NEXTFLOW_REPORT_ROOT/v1-hcc1143.command.log"
 fi
 
 SAMURAI_SOURCE="$TEST_ROOT/.oncotracer/samurai/v1.4.0"
@@ -391,8 +427,8 @@ if [[ "$SUITE" == quickstart1 ]]; then
   cp "$TEST_ROOT/v2/illumina/06_workflow_summary/workflow_summary.txt" "$CONTEXT/v2-illumina-summary.txt"
   cp "$TEST_ROOT/v1/ont/06_workflow_summary/workflow_summary.txt" "$CONTEXT/v1-ont-summary.txt"
   cp "$TEST_ROOT/v2/ont/06_workflow_summary/workflow_summary.txt" "$CONTEXT/v2-ont-summary.txt"
-  cp "$REPORT_ROOT/v1-illumina.tsv" "$CONTEXT/v1-illumina-trace.tsv"
-  cp "$REPORT_ROOT/v1-ont.tsv" "$CONTEXT/v1-ont-trace.tsv"
+  cp "$NEXTFLOW_REPORT_ROOT/v1-illumina.tsv" "$CONTEXT/v1-illumina-trace.tsv"
+  cp "$NEXTFLOW_REPORT_ROOT/v1-ont.tsv" "$CONTEXT/v1-ont-trace.tsv"
   cp "$TEST_ROOT/v2/illumina/.oncotracer-native/trace.tsv" "$CONTEXT/v2-illumina-trace.tsv"
   cp "$TEST_ROOT/v2/ont/.oncotracer-native/trace.tsv" "$CONTEXT/v2-ont-trace.tsv"
   cp "$TEST_ROOT/v1/illumina/01_samurai_illumina/.nextflow/config" "$CONTEXT/nested-v1-illumina-nextflow.config"
@@ -416,7 +452,7 @@ else
   cp "$REPO/examples/hcc1143_lpwgs/manifest.tsv" "$CONTEXT/"
   cp "$TEST_ROOT/v1/hcc1143/06_workflow_summary/workflow_summary.txt" "$CONTEXT/v1-summary.txt"
   cp "$TEST_ROOT/v2/hcc1143/06_workflow_summary/workflow_summary.txt" "$CONTEXT/v2-summary.txt"
-  cp "$REPORT_ROOT/v1-hcc1143.tsv" "$CONTEXT/v1-trace.tsv"
+  cp "$NEXTFLOW_REPORT_ROOT/v1-hcc1143.tsv" "$CONTEXT/v1-trace.tsv"
   cp "$TEST_ROOT/v2/hcc1143/.oncotracer-native/trace.tsv" "$CONTEXT/v2-trace.tsv"
   cp "$TEST_ROOT/v1/hcc1143/01_samurai_illumina/.nextflow/config" "$CONTEXT/nested-v1-hcc1143-nextflow.config"
   cp "$TEST_ROOT/v1/hcc1143/01_samurai_illumina/nextflow_launch/.nextflow.log" "$CONTEXT/nested-v1-hcc1143-nextflow.log"

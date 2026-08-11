@@ -250,10 +250,18 @@ commit=$SAMURAI_COMMIT_EXPECTED
 prepared_main_nf_sha256=$SAMURAI_PREPARED_MAIN_SHA256
 repository=https://github.com/DIncalciLab/samurai.git
 EOF
-cat > "$CONTEXT_DIR/samurai-nextflow-audit.config" <<EOF
+nested_task_cpu_limit="$THREADS"
+if ((nested_task_cpu_limit > 4)); then
+  nested_task_cpu_limit=4
+fi
+samurai_config_template="$(mktemp "$TMP_DIR/samurai-nextflow-audit.$SESSION_ID.XXXXXX.config")"
+cat > "$samurai_config_template" <<EOF
+params.oncotracer_nested_audit_policy_sha256 = '__ONCOTRACER_AUDIT_POLICY_SHA256__'
+executor.queueSize = 4
 process {
-  resourceLimits = [cpus: $THREADS, memory: '96.GB', time: '48.h']
+  resourceLimits = [cpus: $nested_task_cpu_limit, memory: '96.GB', time: '48.h']
   withName: ICHORCNA_RUN {
+    cache = false
     containerOptions = '-v $REPOSITORY_ROOT/bin/scripts:/opt/oncotracer/scripts:ro -v $REPOSITORY_ROOT/bin/scripts/v1_ichorcna_profile.R:/.Rprofile:ro'
   }
 }
@@ -262,6 +270,25 @@ trace {
   fields = 'task_id,hash,native_id,name,status,exit,submit,duration,realtime,%cpu,peak_rss,peak_vmem,rchar,wchar,container'
 }
 EOF
+samurai_policy_sha="$(
+  {
+    printf 'config-template\0'
+    cat "$samurai_config_template"
+    for source in \
+      "$REPOSITORY_ROOT/bin/scripts/ichorcna_plot_compat.R" \
+      "$REPOSITORY_ROOT/bin/scripts/v1_ichorcna_profile.R"; do
+      digest="$(sha256sum "$source" | awk '{print $1}')"
+      printf 'source\0%s\0%s\0' "$(basename "$source")" "$digest"
+    done
+  } | sha256sum | awk '{print $1}'
+)"
+[[ "$samurai_policy_sha" =~ ^[0-9a-f]{64}$ ]]
+sed "s/__ONCOTRACER_AUDIT_POLICY_SHA256__/$samurai_policy_sha/" \
+  "$samurai_config_template" > "$CONTEXT_DIR/samurai-nextflow-audit.config"
+rm -f -- "$samurai_config_template"
+grep -Fxq \
+  "params.oncotracer_nested_audit_policy_sha256 = '$samurai_policy_sha'" \
+  "$CONTEXT_DIR/samurai-nextflow-audit.config"
 (
   cd "$REPOSITORY_ROOT"
   sha256sum \
@@ -1845,7 +1872,7 @@ selected_arg = sys.argv[6]
 tests_dir = Path(sys.argv[7]).resolve()
 sys.path.insert(0, str(tests_dir))
 from combine_nested_samurai_traces import combine_root  # noqa: E402
-from verify_nested_samurai import parse_compat  # noqa: E402
+from verify_nested_samurai import find_compat_marker  # noqa: E402
 
 expected_processes = {
     "illumina": {
@@ -1897,17 +1924,6 @@ expected_images = {
         "community.wave.seqera.io/library/multiqc:1.32--d58f60e4deb769bf",
     },
 }
-ont_resume_processes = {
-    "SAMURAI:SAMTOOLS_INDEX",
-    "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTMULTIPLEMETRICS",
-    "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTWGSMETRICS",
-    "SAMURAI:LIQUID_BIOPSY:ICHORCNA:HMMCOPY_READCOUNTER_ICHORCNA",
-}
-ont_resume_images = {
-    "quay.io/biocontainers/samtools:1.22.1--h96c455f_0",
-    "community.wave.seqera.io/library/picard:3.4.0--e9963040df0a9bf6",
-    "community.wave.seqera.io/library/hmmcopy_samtools:875db3767c6d4ea2",
-}
 if mode not in expected_processes:
     raise SystemExit(f"unsupported SAMURAI trace mode: {mode}")
 
@@ -1939,7 +1955,7 @@ process_names = []
 containers = set()
 with selected.open(encoding="utf-8-sig", newline="") as handle:
     reader = csv.DictReader(handle, delimiter="\t")
-    required = {"name", "status", "exit", "container"}
+    required = {"hash", "name", "status", "exit", "container"}
     missing = required - set(reader.fieldnames or [])
     if missing:
         raise SystemExit(f"SAMURAI trace lacks required column(s): {sorted(missing)}")
@@ -1955,11 +1971,14 @@ with selected.open(encoding="utf-8-sig", newline="") as handle:
         status = (row.get("status") or "").rstrip("\r").upper()
         exit_code = (row.get("exit") or "").rstrip("\r")
         container = (row.get("container") or "").rstrip("\r").removeprefix("docker://")
+        task_hash = (row.get("hash") or "").rstrip("\r").lower()
         if status not in {"COMPLETED", "CACHED"} or exit_code != "0":
             raise SystemExit(
                 f"non-passing contracted SAMURAI row: {name!r} "
                 f"status={status!r} exit={exit_code!r}"
             )
+        if re.fullmatch(r"[0-9a-f]{2}/[0-9a-f]{6,}", task_hash) is None:
+            raise SystemExit(f"invalid contracted SAMURAI task hash: {task_hash!r}")
         if container in {"", "-", "null"} or container not in pins:
             raise SystemExit(f"unresolved or forbidden SAMURAI container: {container!r}")
         canonical, digest = pins[container]
@@ -1967,6 +1986,7 @@ with selected.open(encoding="utf-8-sig", newline="") as handle:
         process_names.append(normalized)
         rows.append(
             {
+                "hash": task_hash,
                 "name": name,
                 "normalized_process": normalized,
                 "status": status,
@@ -1985,17 +2005,7 @@ complete = (
     and processes == expected_processes[mode]
     and containers == expected_images[mode]
 )
-resume = (
-    mode == "ont"
-    and len(rows) == 4
-    and processes == ont_resume_processes
-    and containers == ont_resume_images
-)
-if complete:
-    evidence_mode = "complete-combined-trace"
-elif resume:
-    evidence_mode = "exact-ont-final-resume-trace"
-else:
+if not complete:
     raise SystemExit(
         "SAMURAI combined trace contract mismatch: "
         f"mode={mode!r} expected_rows={expected_rows} observed_rows={len(rows)} "
@@ -2032,35 +2042,21 @@ for source in source_rows:
 
 compatibility = None
 if mode == "ont":
-    valid_markers = []
-    diagnostics = []
-    for marker in sorted(root.rglob(".oncotracer-ichorcna-plot-compat.tsv")):
-        try:
-            valid_markers.append((marker, parse_compat(marker)))
-        except (OSError, ValueError, csv.Error) as error:
-            diagnostics.append(f"{marker}: {error}")
-    if not valid_markers:
-        details = "\n".join(diagnostics) if diagnostics else "no marker files found"
-        raise SystemExit(
-            f"no valid nested ichorCNA compatibility marker under {root}:\n{details}"
-        )
-    canonical = valid_markers[0][1]
-    if any(metadata != canonical for _, metadata in valid_markers[1:]):
-        raise SystemExit("nested ichorCNA compatibility markers disagree")
-    selected_marker = max(
-        valid_markers,
-        key=lambda item: (item[0].stat().st_mtime_ns, item[0].as_posix()),
-    )[0]
+    selected_marker, metadata, task_hash, marker_relative = find_compat_marker(
+        root, rows
+    )
     compatibility = {
         "path": str(selected_marker.resolve()),
+        "relative_path": marker_relative.as_posix(),
+        "task_hash": task_hash,
         "sha256": sha256(selected_marker),
-        "metadata": canonical,
+        "metadata": metadata,
     }
 
 record = {
     "schema": "oncotracer-samurai-trace-audit-v1",
     "mode": mode,
-    "evidence_mode": evidence_mode,
+    "evidence_mode": "complete-combined-trace",
     "source_trace": str(selected),
     "source_trace_sha256": sha256(selected),
     "source_manifest": str(source_manifest),
@@ -2115,27 +2111,26 @@ action_v1_quickstart1() {
     "$ANALYSIS_ROOT/v1/illumina/01_samurai_illumina"
   install_samurai_nextflow_audit_config \
     "$ANALYSIS_ROOT/v1/ont/01_samurai_ont"
-  mkdir -p "$WORK_DIR/v1-launch/quickstart1"
+  local report_session="$REPORT_DIR/frozen-v1.1-quickstart1-$SESSION_ID"
+  mkdir -p "$WORK_DIR/v1-launch/quickstart1" "$report_session"
   (
     export PATH="$TOOL_BIN:$PATH"
     [[ "$(command -v nextflow)" == "$NEXTFLOW" ]]
     cd "$WORK_DIR/v1-launch/quickstart1"
-    "$NEXTFLOW" -log "$REPORT_DIR/v1-illumina.nextflow.log" run \
+    "$NEXTFLOW" -log "$report_session/v1-illumina.nextflow.log" run \
       "$V1_SOURCE_DIR/main.nf" --docker \
       --docker_image "$V1_DOCKER_IMAGE" \
       -params-file "$CONFIG_DIR/v1-illumina.yml" \
       -work-dir "$WORK_DIR/v1-illumina" \
-      -with-report "$REPORT_DIR/v1-illumina.html" \
-      -with-trace "$REPORT_DIR/v1-illumina.tsv" \
-      -resume
-    "$NEXTFLOW" -log "$REPORT_DIR/v1-ont.nextflow.log" run \
+      -with-report "$report_session/v1-illumina.html" \
+      -with-trace "$report_session/v1-illumina.tsv"
+    "$NEXTFLOW" -log "$report_session/v1-ont.nextflow.log" run \
       "$V1_SOURCE_DIR/main.nf" --docker \
       --docker_image "$V1_DOCKER_IMAGE" \
       -params-file "$CONFIG_DIR/v1-ont.yml" \
       -work-dir "$WORK_DIR/v1-ont" \
-      -with-report "$REPORT_DIR/v1-ont.html" \
-      -with-trace "$REPORT_DIR/v1-ont.tsv" \
-      -resume
+      -with-report "$report_session/v1-ont.html" \
+      -with-trace "$report_session/v1-ont.tsv"
   )
   generate_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/illumina/01_samurai_illumina" illumina 12 \
@@ -2187,19 +2182,19 @@ action_v1_quickstart2() {
   verify_prepare_samurai_containers
   install_samurai_nextflow_audit_config \
     "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina"
-  mkdir -p "$WORK_DIR/v1-launch/quickstart2"
+  local report_session="$REPORT_DIR/frozen-v1.1-quickstart2-$SESSION_ID"
+  mkdir -p "$WORK_DIR/v1-launch/quickstart2" "$report_session"
   (
     export PATH="$TOOL_BIN:$PATH"
     [[ "$(command -v nextflow)" == "$NEXTFLOW" ]]
     cd "$WORK_DIR/v1-launch/quickstart2"
-    "$NEXTFLOW" -log "$REPORT_DIR/v1-hcc1143.nextflow.log" run \
+    "$NEXTFLOW" -log "$report_session/v1-hcc1143.nextflow.log" run \
       "$V1_SOURCE_DIR/main.nf" --docker \
       --docker_image "$V1_DOCKER_IMAGE" \
       -params-file "$CONFIG_DIR/v1-hcc1143.yml" \
       -work-dir "$WORK_DIR/v1-hcc1143" \
-      -with-report "$REPORT_DIR/v1-hcc1143.html" \
-      -with-trace "$REPORT_DIR/v1-hcc1143.tsv" \
-      -resume
+      -with-report "$report_session/v1-hcc1143.html" \
+      -with-trace "$report_session/v1-hcc1143.tsv"
   )
   generate_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina" illumina 32 \

@@ -47,10 +47,12 @@ class IchorCnaPlotCompatibilityTests(unittest.TestCase):
             server_driver,
         )
         self.assertIn(
-            'root.rglob(".oncotracer-ichorcna-plot-compat.tsv")',
+            "from verify_nested_samurai import find_compat_marker",
             server_driver,
         )
         self.assertIn('"ichorcna_plot_compat": compatibility', server_driver)
+        self.assertIn('"task_hash": task_hash', server_driver)
+        self.assertIn('"relative_path": marker_relative.as_posix()', server_driver)
 
 
 if __name__ == "__main__":

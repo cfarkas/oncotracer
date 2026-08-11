@@ -76,8 +76,10 @@ Nested Nextflow resumes can distribute successful tasks across several trace
 files. Both the hosted release gate and the standalone validation-server driver
 therefore build a deterministic combined trace from the latest successful or
 cached occurrence of each canonical task and retain the complete source-trace
-manifest. The ONT audit accepts either the complete ten-process contract or the
-exact four-process final-resume trace observed after downstream ichorCNA stages
-were already complete. That narrow fallback is accepted only while required
-scientific outputs, the compatibility marker, and every immutable container pin
-remain independently verified. A smaller or different subset fails closed.
+manifest. The ONT audit requires the complete ten-process contract, including a
+successful or cached, exit-zero `ICHORCNA_RUN`. Its compatibility marker must be
+inside the exact Nextflow work directory identified by that task's trace hash.
+An incomplete resume fragment, an unbound marker, or a smaller process subset
+fails closed. Outer comparator sessions do not use `-resume`. A content-derived
+audit-policy digest seals the nested config and mounted compatibility sources,
+and ICHORCNA_RUN caching is disabled so a changed shim cannot reuse stale work.

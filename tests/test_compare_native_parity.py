@@ -454,7 +454,7 @@ class ParityComparatorTests(unittest.TestCase):
             rows = [
                 {
                     "task_id": "1",
-                    "hash": "a",
+                    "hash": "aa/000001",
                     "name": "DINCALCILAB_SAMURAI:SAMURAI:SAMTOOLS_INDEX (S1)",
                     "status": "COMPLETED",
                     "exit": "0",
@@ -488,7 +488,9 @@ class ParityComparatorTests(unittest.TestCase):
             self.assertEqual(len(selected), 1)
             self.assertEqual(images, {image})
 
-    def test_sealed_audit_accepts_only_the_exact_ont_resume_contract(self) -> None:
+    def test_incomplete_ont_trace_with_valid_marker_is_rejected_and_complete_trace_binds_marker(
+        self,
+    ) -> None:
         verify_spec = importlib.util.spec_from_file_location(
             "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
         )
@@ -512,7 +514,7 @@ class ParityComparatorTests(unittest.TestCase):
             sys.modules.pop(verify_spec.name, None)
             sys.path.pop(0)
 
-        full_contract = verify_module.CONTRACTS["quickstart1"][1]
+        contract = verify_module.CONTRACTS["quickstart1"][1]
         process_rows = (
             (
                 "SAMURAI:SAMTOOLS_INDEX",
@@ -530,44 +532,154 @@ class ParityComparatorTests(unittest.TestCase):
                 "SAMURAI:LIQUID_BIOPSY:ICHORCNA:HMMCOPY_READCOUNTER_ICHORCNA",
                 "community.wave.seqera.io/library/hmmcopy_samtools:875db3767c6d4ea2",
             ),
+            (
+                "SAMURAI:LIQUID_BIOPSY:ICHORCNA:ICHORCNA_RUN",
+                "community.wave.seqera.io/library/r-ichorcna:0.5.1--eed4be826f05c9d4",
+            ),
+            (
+                "SAMURAI:LIQUID_BIOPSY:ICHORCNA:AGGREGATE_ICHORCNA_TABLE",
+                "quay.io/einar_rainhart/pandas-pandera:1.5.3",
+            ),
+            (
+                "SAMURAI:LIQUID_BIOPSY:ICHORCNA:CORRECT_LOGR_ICHORCNA",
+                "community.wave.seqera.io/library/polars_procps-ng_typer:d1a53d7945a021e3",
+            ),
+            (
+                "SAMURAI:LIQUID_BIOPSY:ICHORCNA:PLOT_ICHORCNA",
+                "community.wave.seqera.io/library/procps-ng_r-argparser_r-dplyr_r-ggplot2_pruned:10da72fa04bcba1a",
+            ),
+            (
+                "SAMURAI:LIQUID_BIOPSY:ICHORCNA:CONCATENATE_BIN_PLOTS",
+                "docker.io/t0shy/qpdf-docker:11.3.0",
+            ),
+            (
+                "SAMURAI:MULTIQC",
+                "community.wave.seqera.io/library/multiqc:1.32--d58f60e4deb769bf",
+            ),
         )
-        pins = {image: "sha256:" + format(index + 1, "064x") for index, image in enumerate(full_contract.images)}
+        pins = {
+            image: "sha256:" + format(index + 1, "064x")
+            for index, image in enumerate(contract.images)
+        }
 
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            exact = root / "exact.tsv"
-            with exact.open("w", newline="") as handle:
+        def write_trace(path: Path, rows: tuple[tuple[str, str], ...]) -> None:
+            with path.open("w", newline="") as handle:
                 writer = csv.DictWriter(
                     handle,
                     ["task_id", "hash", "name", "status", "exit", "container"],
                     delimiter="\t",
                 )
                 writer.writeheader()
-                for index, (process, image) in enumerate(process_rows, start=1):
+                for index, (process, image) in enumerate(rows, start=1):
                     writer.writerow(
                         {
                             "task_id": index,
-                            "hash": f"hash-{index}",
+                            "hash": f"aa/{index:06x}",
                             "name": f"DINCALCILAB_SAMURAI:{process} (DRR165691)",
-                            "status": "COMPLETED",
+                            "status": (
+                                "CACHED"
+                                if process == verify_module.ICHORCNA_RUN_PROCESS
+                                else "COMPLETED"
+                            ),
                             "exit": "0",
                             "container": image,
                         }
                     )
+
+        marker_text = (
+            "key\tvalue\n"
+            "schema\toncotracer-ichorcna-plot-compat-v1\n"
+            "status\tpatched\n"
+            "target_quantile_calls\t2\n"
+            "zero_median_plot_guard\tplaceholder\n"
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            stale_marker = (
+                root
+                / "work"
+                / "ff"
+                / "ffffff-stale"
+                / ".oncotracer-ichorcna-plot-compat.tsv"
+            )
+            stale_marker.parent.mkdir(parents=True)
+            stale_marker.write_text(marker_text, encoding="utf-8")
+
+            four_row_trace = root / "four-row.tsv"
+            write_trace(four_row_trace, process_rows[:4])
+            ok, reason, four_rows, _ = verify_module.evaluate_trace(
+                four_row_trace, contract, pins
+            )
+            self.assertFalse(ok, reason)
+            with self.assertRaises(audit_module.AuditError):
+                audit_module.verify_trace(four_row_trace, contract, pins)
+            with self.assertRaises(SystemExit):
+                verify_module.find_compat_marker(root, four_rows)
+
+            complete_trace = root / "complete.tsv"
+            write_trace(complete_trace, process_rows)
+            ok, reason, selected_rows, images = verify_module.evaluate_trace(
+                complete_trace, contract, pins
+            )
+            self.assertTrue(ok, reason)
+            self.assertEqual(images, set(contract.images))
             self.assertEqual(
-                audit_module.verify_trace(exact, full_contract, pins),
-                "exact-ont-final-resume-trace",
+                audit_module.verify_trace(complete_trace, contract, pins),
+                "complete-combined-trace",
             )
 
-            incomplete = root / "incomplete.tsv"
-            with exact.open(newline="") as handle:
-                rows = list(csv.DictReader(handle, delimiter="\t"))[:-1]
-            with incomplete.open("w", newline="") as handle:
-                writer = csv.DictWriter(handle, rows[0].keys(), delimiter="\t")
-                writer.writeheader()
-                writer.writerows(rows)
+            ichor_hash = verify_module.require_ichorcna_task_hash(selected_rows)
+            prefix, suffix = ichor_hash.split("/", 1)
+            bound_marker = (
+                root
+                / "work"
+                / prefix
+                / f"{suffix}abcdef"
+                / ".oncotracer-ichorcna-plot-compat.tsv"
+            )
+            bound_marker.parent.mkdir(parents=True)
+            bound_marker.write_text(marker_text, encoding="utf-8")
+            marker, metadata, observed_hash, relative = (
+                verify_module.find_compat_marker(root, selected_rows)
+            )
+            self.assertEqual(marker, bound_marker)
+            self.assertEqual(metadata["status"], "patched")
+            self.assertEqual(observed_hash, ichor_hash)
+            self.assertTrue(
+                verify_module.marker_path_matches_task_hash(relative, ichor_hash)
+            )
+
+            marker_name = "nested-v1-ont-ichorcna-plot-compat.tsv"
+            marker_copy = root / marker_name
+            marker_copy.write_text(marker_text, encoding="utf-8")
+            marker_row = [
+                contract.label + "-ichorcna-compat",
+                "",
+                "",
+                f"task-hash:{ichor_hash};marker:{relative.as_posix()}",
+                marker_name,
+                audit_module.sha256(marker_copy),
+            ]
+            metadata = audit_module.verify_compat_selection(
+                root,
+                complete_trace,
+                contract,
+                {marker_row[0]: marker_row},
+            )
+            self.assertEqual(metadata["status"], "patched")
+
+            wrong_hash_row = list(marker_row)
+            wrong_hash_row[3] = (
+                f"task-hash:ff/ffffff;marker:{relative.as_posix()}"
+            )
             with self.assertRaises(audit_module.AuditError):
-                audit_module.verify_trace(incomplete, full_contract, pins)
+                audit_module.verify_compat_selection(
+                    root,
+                    complete_trace,
+                    contract,
+                    {wrong_hash_row[0]: wrong_hash_row},
+                )
 
 
 if __name__ == "__main__":

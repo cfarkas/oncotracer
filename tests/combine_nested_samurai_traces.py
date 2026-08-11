@@ -16,7 +16,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-REQUIRED_COLUMNS = {"name", "status", "exit", "container"}
+REQUIRED_COLUMNS = {"hash", "name", "status", "exit", "container"}
 OUTPUT_COLUMNS = (
     "task_id",
     "hash",
