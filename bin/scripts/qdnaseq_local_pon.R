@@ -1,4 +1,6 @@
 #!/usr/bin/env Rscript
+# Legacy v1.1 source companion; native v2 packages native_qdnaseq_pon.R instead.
+
 
 # Build and apply a cohort-local qDNAseq panel of normals (PoN).
 #

@@ -209,6 +209,11 @@ class NativeProvenanceTests(unittest.TestCase):
                 "payload/bin/scripts/sturgeon_consolidate_report.sh",
             }
             self.assertTrue(obsolete_methylation_launchers.isdisjoint(names))
+            excluded_legacy_paths = {
+                f"payload/{name}"
+                for name in builder.NATIVE_PAYLOAD_EXCLUDED_PATHS
+            }
+            self.assertTrue(excluded_legacy_paths.isdisjoint(names))
 
     def test_copied_executable_reports_embedded_source_and_own_hash(self) -> None:
         outside = self.temp_root / "outside-checkout"

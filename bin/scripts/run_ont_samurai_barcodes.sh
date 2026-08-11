@@ -2,6 +2,9 @@
 set -Eeuo pipefail
 trap 'echo "ERROR at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
+# Legacy v1.1 comparator/source support only. Native v2 does not package or
+# invoke this Nextflow-dependent launcher.
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
 ###############################################################################
@@ -17,7 +20,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 #   correction using the status=normal BAMs prepared from --normal-folder.
 ###############################################################################
 
-LPWGS_ROOT="/media/server/STORAGE/LPWGS_2025"
+LPWGS_ROOT="${LPWGS_ROOT:-$PWD}"
 FOLDER=""
 BARCODES_CSV=""
 SAMPLE_NAMES_CSV=""
@@ -95,7 +98,7 @@ Core options:
   --sample-names LIST                   comma-separated tumor/primary sample names; defaults to barcode names
   --outdir PATH                         output directory
   --ref FASTA                           default: <lpwgs-root>/references/samurai_hg38/genome.fa
-  --lpwgs-root PATH                     default: /media/server/STORAGE/LPWGS_2025
+  --lpwgs-root PATH                     default: current directory
   --status tumor|normal                 status for the primary --folder; default: tumor
 
 Local panel-of-normals options:
@@ -311,10 +314,6 @@ if [[ -f /opt/conda/etc/profile.d/conda.sh ]]; then
   # shellcheck source=/dev/null
   source /opt/conda/etc/profile.d/conda.sh
   conda activate base
-elif [[ -f /home/server/anaconda3/etc/profile.d/conda.sh ]]; then
-  # shellcheck source=/dev/null
-  source /home/server/anaconda3/etc/profile.d/conda.sh
-  conda activate base
 fi
 
 command -v pigz >/dev/null 2>&1 || sudo apt-get install -y pigz
@@ -524,8 +523,8 @@ WARN_SAMPLE_LOG="$RUN_ROOT/logs/warning_samples.tsv"
 unset DISPLAY
 [[ -s "$REF_FAI" ]] || samtools faidx "$REF_FA"
 if [[ ! -s "$DICT" ]]; then
-  if [[ -s /home/server/anaconda3/pkgs/picard-2.20.4-0/share/picard-2.20.4-0/picard.jar ]]; then
-    java -jar /home/server/anaconda3/pkgs/picard-2.20.4-0/share/picard-2.20.4-0/picard.jar CreateSequenceDictionary R="$REF_FA" O="$DICT"
+  if command -v picard >/dev/null 2>&1; then
+    picard CreateSequenceDictionary R="$REF_FA" O="$DICT"
   else
     samtools dict "$REF_FA" > "$DICT"
   fi

@@ -46,7 +46,9 @@ SCRIPT_SOURCE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 #   04_final_results/cna_cytogenomic_input/run_cna_codification.sh
 ###############################################################################
 
-LPWGS_ROOT="/media/server/STORAGE/LPWGS_2025"
+# Native v2 always supplies this explicitly. The current directory is a safe,
+# portable default for direct legacy/helper use.
+LPWGS_ROOT="${LPWGS_ROOT:-$PWD}"
 ENV_NAME="bam_cnv_boundary_refine_env"
 MODE="ont"
 OUTDIR=""
@@ -54,6 +56,8 @@ SKIP_INSTALL=false
 NATIVE_CURRENT_ENVIRONMENT=false
 PYTHON_EXECUTABLE=""
 SAMTOOLS_EXECUTABLE=""
+CODIFICATION_SCRIPT="$SCRIPT_SOURCE_DIR/../cna_codification/scripts/cna_to_cytogenomic_notation.py"
+CYTOBAND_RESOURCE="$SCRIPT_SOURCE_DIR/../cna_codification/resources/hg38.cytoBand.txt.gz"
 FORCE=false
 PURGE_ENV=false
 
@@ -174,7 +178,7 @@ Required Illumina qDNAseq inputs
 
   --illumina-bam-dir PATH
       BAM directory for the same samples, for example
-      /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/alignment.
+      /path/to/my/analyses_dir/samurai_results/alignment.
 
   --illumina-prior-seg PATH
       Prior segmentation table, usually qdnaseq/all_segments.seg.
@@ -206,6 +210,12 @@ Environment options
 
   --samtools-executable PATH
       Exact core-prefix samtools executable for --native-current-environment.
+
+  --codification-script PATH
+      Packaged CNA-to-cytogenomic-notation converter copied into final outputs.
+
+  --cytoband PATH
+      Packaged hg38 cytoband resource copied into final outputs.
 
   --check-env-only
       Activate/check the environment, attempt package repair if enabled, then
@@ -332,7 +342,7 @@ ZIPcnv comparison options
 Runtime options
 ---------------
   --lpwgs-root PATH
-      Project root. Default: /media/server/STORAGE/LPWGS_2025.
+      Project root. Default: the current working directory.
 
   --skip-install
       Use the existing conda environment instead of creating/updating it.
@@ -450,6 +460,8 @@ while [[ $# -gt 0 ]]; do
     --python-executable) PYTHON_EXECUTABLE="$2"; shift 2 ;;
     --samtools-executable) SAMTOOLS_EXECUTABLE="$2"; shift 2 ;;
     --purge_env|--purge-env) PURGE_ENV=true; shift ;;
+    --codification-script) CODIFICATION_SCRIPT="$2"; shift 2 ;;
+    --cytoband) CYTOBAND_RESOURCE="$2"; shift 2 ;;
     --force) FORCE=true; shift ;;
 
     --ont-cna-dir|--ont-ichor-dir) ONT_CNA_DIR="$2"; shift 2 ;;
@@ -536,9 +548,6 @@ if [[ "$PURGE_ENV" == "true" ]]; then
   if [[ -f /opt/conda/etc/profile.d/conda.sh ]]; then
     # shellcheck source=/dev/null
     source /opt/conda/etc/profile.d/conda.sh
-  elif [[ -f /home/server/anaconda3/etc/profile.d/conda.sh ]]; then
-    # shellcheck source=/dev/null
-    source /home/server/anaconda3/etc/profile.d/conda.sh
   elif [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
     # shellcheck source=/dev/null
     source "$HOME/miniconda3/etc/profile.d/conda.sh"
@@ -581,6 +590,10 @@ PY_HELPER="$SCRIPTS_DIR/bam_cnv_boundary_refine.py"
 ZIP_HELPER="$SCRIPTS_DIR/zipcnv_compare.py"
 [[ -n "$ZIPCNV_DIR" ]] || ZIPCNV_DIR="$LPWGS_ROOT/tools/ZIPcnv"
 ZIPCNV_DIR="$(readlink -m "$ZIPCNV_DIR")"
+[[ -s "$CODIFICATION_SCRIPT" ]] || { echo "ERROR: CNA codification script missing/empty: $CODIFICATION_SCRIPT" >&2; exit 1; }
+[[ -s "$CYTOBAND_RESOURCE" ]] || { echo "ERROR: cytoband resource missing/empty: $CYTOBAND_RESOURCE" >&2; exit 1; }
+CODIFICATION_SCRIPT="$(readlink -f "$CODIFICATION_SCRIPT")"
+CYTOBAND_RESOURCE="$(readlink -f "$CYTOBAND_RESOURCE")"
 if [[ "$NATIVE_CURRENT_ENVIRONMENT" == "true" ]]; then
   [[ -s "$PY_HELPER" ]] || { echo "ERROR: committed BAM-refinement helper missing/empty: $PY_HELPER" >&2; exit 1; }
   [[ -s "$ZIP_HELPER" ]] || { echo "ERROR: committed ZIPcnv-adapted helper missing/empty: $ZIP_HELPER" >&2; exit 1; }
@@ -627,9 +640,6 @@ else
 if [[ -f /opt/conda/etc/profile.d/conda.sh ]]; then
   # shellcheck source=/dev/null
   source /opt/conda/etc/profile.d/conda.sh
-elif [[ -f /home/server/anaconda3/etc/profile.d/conda.sh ]]; then
-  # shellcheck source=/dev/null
-  source /home/server/anaconda3/etc/profile.d/conda.sh
 elif [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
   # shellcheck source=/dev/null
   source "$HOME/miniconda3/etc/profile.d/conda.sh"
@@ -1916,6 +1926,41 @@ def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path)
 # Outputs
 ###############################################################################
 
+def write_cna_codification_runner(
+    cna_input: Path,
+    codification_script: Path,
+    cytoband_source: Path,
+) -> Path:
+    """Create a self-contained, relocatable CNA-codification helper."""
+    for source, label in (
+        (codification_script, "CNA codification script"),
+        (cytoband_source, "cytoband resource"),
+    ):
+        if not source.is_file():
+            raise FileNotFoundError(f"{label} missing: {source}")
+    resources = cna_input / "resources"
+    resources.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(codification_script, resources / "cna_to_cytogenomic_notation.py")
+    shutil.copy2(cytoband_source, resources / "hg38.cytoBand.txt.gz")
+
+    run_script = cna_input / "run_cna_codification.sh"
+    run_script.write_text("""#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-python3}"
+mkdir -p "$SCRIPT_DIR/cytogenomic_notation"
+"$PYTHON_EXECUTABLE" "$SCRIPT_DIR/resources/cna_to_cytogenomic_notation.py" \
+  --input_dir "$SCRIPT_DIR/qdnaseq_bins" \
+  --cytoband "$SCRIPT_DIR/resources/hg38.cytoBand.txt.gz" \
+  --outdir "$SCRIPT_DIR/cytogenomic_notation" \
+  --genome-label GRCh38 --prefix seq \
+  --loss -0.30 --gain 0.25 --deep-loss -1.00 --amp 0.70 \
+  --min-bins 3 --min-mb 1.0 --max-gap-bp 500000 --qdnaseq
+""")
+    run_script.chmod(0o755)
+    return run_script
+
+
 def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats: pd.DataFrame, final_segments: pd.DataFrame, refined_bins: pd.DataFrame, args):
     tables = outdir / "01_tables"
     compat = outdir / "02_samurai_compatible"
@@ -2065,27 +2110,7 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
     pd.DataFrame(bed_manifest).to_csv(compat / "input_bed_files.tsv", sep="\t", index=False)
     pd.DataFrame(cna_manifest).to_csv(compat / "input_cna_files.tsv", sep="\t", index=False)
     pd.DataFrame(cytogenomic_manifest).to_csv(cna_input / "input_bed_files.tsv", sep="\t", index=False)
-    cytogenomic_out = cna_input / "cytogenomic_notation"
-    run_script = cna_input / "run_cna_codification.sh"
-    run_script.write_text(f"""#!/usr/bin/env bash
-set -Eeuo pipefail
-mkdir -p "{cytogenomic_out}"
-python /media/server/STORAGE/LPWGS_2025/cna_codification/scripts/cna_to_cytogenomic_notation.py \
-  --input_dir "{cna_bins}" \
-  --cytoband /media/server/STORAGE/LPWGS_2025/cna_codification/resources/hg38.cytoBand.txt.gz \
-  --outdir "{cytogenomic_out}" \
-  --genome-label GRCh38 \
-  --prefix seq \
-  --loss -0.30 \
-  --gain 0.25 \
-  --deep-loss -1.00 \
-  --amp 0.70 \
-  --min-bins 3 \
-  --min-mb 1.0 \
-  --max-gap-bp 500000 \
-  --qdnaseq
-""")
-    run_script.chmod(0o755)
+    write_cna_codification_runner(cna_input, args.codification_script, args.cytoband)
 
     readme = compat / "README.txt"
     readme.write_text(
@@ -2123,6 +2148,7 @@ python /media/server/STORAGE/LPWGS_2025/cna_codification/scripts/cna_to_cytogeno
         {"dataset": args.dataset_name, "category": "refined_bins_boundary_shift", "path": "04_final_results/refined_bins_boundary_bp_difference.xlsx", "description": "Excel copy of refined bins with boundary_bp_difference in bp."},
         {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/qdnaseq_bins/", "description": "Per-sample qDNAseq-style BED bins with final_log2 in column 5 for cna_to_cytogenomic_notation.py --qdnaseq; valid for ONT and Illumina refined outputs."},
         {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/run_cna_codification.sh", "description": "Runnable command for CNA-to-cytogenomic-notation conversion using the converter-ready BED bins."},
+        {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/resources/", "description": "Self-contained converter and hg38 cytoband resource used by run_cna_codification.sh."},
     ]).to_csv(final_results / "final_results_manifest.csv", index=False)
 
     manifest_rows = [
@@ -2138,6 +2164,7 @@ python /media/server/STORAGE/LPWGS_2025/cna_codification/scripts/cna_to_cytogeno
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/refined_bins_boundary_bp_difference.xlsx", "description": "Excel copy of refined bins with boundary_bp_difference in bp."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/qdnaseq_bins/", "description": "Converter-ready qDNAseq-style BED bins with final_log2 in column 5 for cna_to_cytogenomic_notation.py --qdnaseq."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/run_cna_codification.sh", "description": "Runnable CNA-to-cytogenomic-notation command for the converter-ready BED bins."},
+        {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/resources/", "description": "Self-contained converter and hg38 cytoband resource used by run_cna_codification.sh."},
         {"dataset": args.dataset_name, "category": "samurai_compatible_segments", "path": "02_samurai_compatible/all_segments.seg", "description": "GISTIC/SAMURAI-like final segment file for downstream analyses."},
         {"dataset": args.dataset_name, "category": "samurai_compatible_segments", "path": "02_samurai_compatible/segments_logR_corrected_gistic.seg", "description": "ichorCNA/SAMURAI-like final segment file with adj.seg values."},
         {"dataset": args.dataset_name, "category": "samurai_compatible_bins", "path": "02_samurai_compatible/bins/", "description": "Per-sample no-header BED files: chrom, start, end, final_log2."},
@@ -2270,6 +2297,8 @@ def main():
     p.add_argument("--bam-dirs", required=True)
     p.add_argument("--prior-seg", required=True)
     p.add_argument("--outdir", required=True)
+    p.add_argument("--codification-script", required=True, type=Path)
+    p.add_argument("--cytoband", required=True, type=Path)
     p.add_argument("--coarse-binsize-kb", type=float, required=True)
     p.add_argument("--fine-bin-kb", type=float, required=True)
     p.add_argument("--search-radius-bins", type=int, default=2)
@@ -2805,6 +2834,8 @@ run_dataset() {
     --coarse-binsize-kb "$binsize" \
     --fine-bin-kb "$finekb" \
     --search-radius-bins "$SEARCH_RADIUS_BINS" \
+    --codification-script "$CODIFICATION_SCRIPT" \
+    --cytoband "$CYTOBAND_RESOURCE" \
     --search-radius-bp "$SEARCH_RADIUS_BP" \
     --min-side-fine-bins "$MIN_SIDE_FINE_BINS" \
     --min-valid-fine-bins "$MIN_VALID_FINE_BINS" \

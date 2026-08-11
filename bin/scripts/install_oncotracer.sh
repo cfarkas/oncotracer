@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Legacy v1.1 installer retained for source archaeology only. Native v2 uses
+# oncotracer install and does not package or invoke this script.
+
 usage() {
   cat <<'EOF'
 Usage: install_oncotracer.sh \

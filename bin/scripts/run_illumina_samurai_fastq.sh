@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Legacy v1.1 comparator/source support only. Native v2 does not package or
+# invoke this Nextflow-dependent launcher.
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
 usage() {
@@ -23,7 +26,7 @@ Options:
   --binsize INT            qDNAseq bin size in kb [100]
   --aligner VALUE          SAMURAI FASTQ aligner [bwamem]
   --ref FILE               hg38 FASTA. Defaults to $LPWGS_ROOT/references/samurai_hg38/genome.fa
-  --lpwgs-root DIR         Project/data root used for references and caches [/media/server/STORAGE/LPWGS_2025]
+  --lpwgs-root DIR         Project/data root used for references and caches [current directory]
   --profile NAME           SAMURAI Nextflow profile: docker, singularity, or conda [singularity]
   --build-pon              Build and apply a local qDNAseq PoN from NORMAL rows.
   --pon-normal-samples CSV Exact NORMAL sample IDs required for the PoN.
@@ -37,7 +40,7 @@ Options:
 EOF_USAGE
 }
 
-LPWGS_ROOT="${LPWGS_ROOT:-/media/server/STORAGE/LPWGS_2025}"
+LPWGS_ROOT="${LPWGS_ROOT:-$PWD}"
 SAMPLESHEET=""
 OUTDIR=""
 ANALYSIS_TYPE="solid_biopsy"

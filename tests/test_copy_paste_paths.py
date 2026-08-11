@@ -166,6 +166,17 @@ def check_every_pwd_quickstart_block_enters_analysis_directory() -> None:
 
 
 def check_tutorial_figures_are_native_and_beginner_safe() -> None:
+    for path in sorted((ROOT / "docs" / "assets").rglob("*.svg")):
+        relative_path = path.relative_to(ROOT).as_posix()
+        if any(part in {"legacy", "migration"} for part in path.parts):
+            continue
+        folded = path.read_text(encoding="utf-8").casefold()
+        require(
+            "nextflow" not in folded and "main.nf" not in folded,
+            "obsolete workflow wording remains in non-legacy SVG "
+            f"{relative_path}",
+        )
+
     for relative_path in TUTORIAL_SVGS:
         text = read(relative_path)
         folded = text.casefold()

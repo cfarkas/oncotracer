@@ -25,6 +25,26 @@ ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 HEX_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PAYLOAD_ROOTS = ("bin", "examples", "params", "environments", "provenance")
+NATIVE_PAYLOAD_EXCLUDED_PATHS = frozenset(
+    {
+        # These files are retained in the source tree solely for historical
+        # v1.1/standalone compatibility. Native v2 neither invokes nor ships
+        # launchers that install or execute Nextflow.
+        "bin/cna_classifier_nf/README.md",
+        "bin/scripts/install_oncotracer.sh",
+        "examples/hcc1143_lpwgs/README.md",
+        "examples/hcc1143_lpwgs/run_example.sh",
+        "examples/prjna754199/PROVENANCE.md",
+        "examples/prjna754199/README.md",
+        "examples/prjna754199/run_example.sh",
+        "bin/scripts/prepare_samurai_source.sh",
+        "bin/scripts/qdnaseq_local_pon.R",
+        "bin/scripts/run_ifcnv_ont_lpwgs.py",
+        "bin/scripts/run_illumina_samurai_fastq.sh",
+        "bin/scripts/run_ont_samurai_barcodes.sh",
+        "bin/scripts/run_qdnaseq_local_pon.sh",
+    }
+)
 
 
 def _git(root: Path, *arguments: str) -> str:
@@ -182,6 +202,8 @@ def _payload_member_target(staging: Path, member_name: str) -> Path | None:
         return None if forbidden else staging.joinpath(*relative.parts)
     if first not in PAYLOAD_ROOTS:
         return None
+    if relative.as_posix() in NATIVE_PAYLOAD_EXCLUDED_PATHS:
+        return None
     forbidden = any(
         part == "__pycache__"
         or part == "work"
@@ -268,6 +290,8 @@ def copy_payload_from_tree(root: Path, staging: Path) -> None:
         if not source.exists():
             raise SystemExit(f"required payload path is missing: {source}")
         shutil.copytree(source, payload / name, ignore=payload_ignore)
+    for relative in NATIVE_PAYLOAD_EXCLUDED_PATHS:
+        (payload / relative).unlink(missing_ok=True)
     _write_main_module(staging)
 
 

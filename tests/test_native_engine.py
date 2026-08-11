@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import ast
 import csv
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -175,6 +177,15 @@ class NativeEngineTests(unittest.TestCase):
             samtools_index = command.index("--samtools-executable")
             self.assertEqual(command[python_index + 1], str(python))
             self.assertEqual(command[samtools_index + 1], str(samtools))
+            codification_index = command.index("--codification-script")
+            cytoband_index = command.index("--cytoband")
+            self.assertEqual(
+                command[codification_index + 1],
+                str(ROOT / "bin/cna_codification/scripts/cna_to_cytogenomic_notation.py"),
+            )
+            self.assertEqual(
+                command[cytoband_index + 1], str(ROOT / "bin/cna_codification/resources/hg38.cytoBand.txt.gz")
+            )
             self.assertNotIn("conda", command)
             self.assertNotIn("-lc", command)
 
@@ -276,6 +287,89 @@ class NativeEngineTests(unittest.TestCase):
             ROOT / "bin" / "scripts" / "bam_cnv_boundary_refine" / "bam_cnv_boundary_refine.py"
         ).read_text(encoding="utf-8")
         self.assertEqual(committed, embedded)
+
+    def test_generated_codification_runner_is_self_contained_and_relocatable(self) -> None:
+        helper_path = (
+            ROOT
+            / "bin"
+            / "scripts"
+            / "bam_cnv_boundary_refine"
+            / "bam_cnv_boundary_refine.py"
+        )
+        syntax = ast.parse(helper_path.read_text(encoding="utf-8"))
+        function = next(
+            node
+            for node in syntax.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "write_cna_codification_runner"
+        )
+        module = ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[]))
+        namespace: dict[str, object] = {"Path": Path, "shutil": shutil}
+        exec(compile(module, str(helper_path), "exec"), namespace)
+        writer = namespace["write_cna_codification_runner"]
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source-assets"
+            source.mkdir()
+            converter = source / "converter.py"
+            converter.write_text(
+                "#!/usr/bin/env python3\n"
+                "import pathlib, sys\n"
+                "input_dir = pathlib.Path(sys.argv[sys.argv.index('--input_dir') + 1])\n"
+                "cytoband = pathlib.Path(sys.argv[sys.argv.index('--cytoband') + 1])\n"
+                "outdir = pathlib.Path(sys.argv[sys.argv.index('--outdir') + 1])\n"
+                "assert input_dir.is_dir()\n"
+                "assert cytoband.read_bytes() == b'cytoband-fixture'\n"
+                "outdir.mkdir(parents=True, exist_ok=True)\n"
+                "(outdir / 'fixture.ok').write_text('ok\\n', encoding='utf-8')\n",
+                encoding="utf-8",
+            )
+            cytoband = source / "cytoband.gz"
+            cytoband.write_bytes(b"cytoband-fixture")
+            output = root / "original" / "cna_cytogenomic_input"
+            (output / "qdnaseq_bins").mkdir(parents=True)
+
+            runner = writer(output, converter, cytoband)
+            self.assertIsInstance(runner, Path)
+            self.assertTrue(os.access(runner, os.X_OK))
+            self.assertEqual(
+                (output / "resources/cna_to_cytogenomic_notation.py").read_bytes(),
+                converter.read_bytes(),
+            )
+            self.assertEqual(
+                (output / "resources/hg38.cytoBand.txt.gz").read_bytes(),
+                cytoband.read_bytes(),
+            )
+            script_text = runner.read_text(encoding="utf-8")
+            for invariant in (
+                "--loss -0.30",
+                "--gain 0.25",
+                "--deep-loss -1.00",
+                "--amp 0.70",
+                "--min-bins 3",
+                "--min-mb 1.0",
+                "--max-gap-bp 500000",
+            ):
+                self.assertIn(invariant, script_text)
+
+            shutil.rmtree(source)
+            relocated = root / "relocated"
+            shutil.move(output, relocated)
+            environment = os.environ.copy()
+            environment["PYTHON_EXECUTABLE"] = sys.executable
+            completed = subprocess.run(
+                [relocated / "run_cna_codification.sh"],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(
+                (relocated / "cytogenomic_notation/fixture.ok").read_text(),
+                "ok\n",
+            )
 
     def test_qdnaseq_helper_receives_exact_rscript(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

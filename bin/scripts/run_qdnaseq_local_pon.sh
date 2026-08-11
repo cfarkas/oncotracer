@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Legacy v1.1 comparator/source support only. Native v2 uses the committed
+# native_qdnaseq_pon.R execution path and does not package this wrapper.
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 R_SCRIPT="$SCRIPT_DIR/qdnaseq_local_pon.R"
 
@@ -14,7 +17,7 @@ PAIRED_ENDS=true
 PON_NAME=Illumina_local_PoN
 QDNASEQ_BIN_DATA=""
 PROFILE=auto
-LPWGS_ROOT="${LPWGS_ROOT:-/media/server/STORAGE/LPWGS_2025}"
+LPWGS_ROOT="${LPWGS_ROOT:-$PWD}"
 CONTAINER_IMAGE="${QDNASEQ_R_CONTAINER:-}"
 DEFAULT_CONTAINER="docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1"
 SELF_TEST=false

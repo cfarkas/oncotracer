@@ -1080,6 +1080,14 @@ def run_refinement_and_outputs(
         root / "bin" / "scripts" / "bam_cnv_boundary_refine.sh",
         "BAM boundary-refinement script",
     )
+    codify = require_file(
+        root / "bin" / "cna_codification" / "scripts" / "cna_to_cytogenomic_notation.py",
+        "CNA codification script",
+    )
+    cytoband = require_file(
+        root / "bin" / "cna_codification" / "resources" / "hg38.cytoBand.txt.gz",
+        "hg38 cytoband resource",
+    )
     refine_out = outdir / "02_bam_refinement"
     refine_out.mkdir(parents=True, exist_ok=True)
     if mode == "illumina":
@@ -1148,6 +1156,10 @@ def run_refinement_and_outputs(
         lpwgs_root,
         "--outdir",
         refine_out,
+        "--codification-script",
+        codify,
+        "--cytoband",
+        cytoband,
         "--search-radius-bins",
         str(_as_int(config.get("search_radius_bins"), 2)),
         "--min-mapq",
@@ -1195,14 +1207,6 @@ def run_refinement_and_outputs(
 
     codify_out = outdir / "03_cna_codification"
     codify_out.mkdir(parents=True, exist_ok=True)
-    codify = require_file(
-        root / "bin" / "cna_codification" / "scripts" / "cna_to_cytogenomic_notation.py",
-        "CNA codification script",
-    )
-    cytoband = require_file(
-        root / "bin" / "cna_codification" / "resources" / "hg38.cytoBand.txt.gz",
-        "hg38 cytoband resource",
-    )
     runner.run(
         "cna-codification",
         toolchain.wrap(
