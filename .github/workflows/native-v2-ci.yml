@@ -80,6 +80,7 @@ jobs:
           bash tests/test_qdnaseq_conda_compat.sh
           bash tests/test_qdnaseq_local_pon.sh
           bash tests/test_runtime_portability.sh
+          bash tests/test_release_registry_safety.sh
           python3 tests/test_copy_paste_paths.py
           python3 tests/test_docs_style.py
           python3 tests/test_examples_start_from_clone.py

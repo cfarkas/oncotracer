@@ -113,14 +113,24 @@ jobs:
             }
           fi
           RELEASE_EXISTS=false
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-            --json tagName,isDraft,isPrerelease,targetCommitish \
-            > "$RUNNER_TEMP/existing-release.json" 2>/dev/null; then
+          RELEASE_STATUS=0
+          gh api -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+            > "$RUNNER_TEMP/existing-release.json" \
+            2> "$RUNNER_TEMP/existing-release.error" || RELEASE_STATUS=$?
+          if [[ "$RELEASE_STATUS" -eq 0 ]]; then
             jq -e --arg sha "$MAIN_SHA" '
-              .tagName == "v2.0.0" and .isDraft == false and
-              .isPrerelease == false and .targetCommitish == $sha
+              .tag_name == "v2.0.0" and .draft == false and
+              .prerelease == false and .target_commitish == $sha
             ' "$RUNNER_TEMP/existing-release.json"
             RELEASE_EXISTS=true
+          elif grep -Eq '\(HTTP 404\)[[:space:]]*$' \
+            "$RUNNER_TEMP/existing-release.error"; then
+            echo "$RELEASE_TAG has no existing GitHub release"
+          else
+            cat "$RUNNER_TEMP/existing-release.error" >&2
+            echo "unable to establish whether $RELEASE_TAG already exists" >&2
+            exit "$RELEASE_STATUS"
           fi
           {
             echo "source_sha256=$SOURCE_SHA256"
@@ -286,32 +296,105 @@ jobs:
           CANDIDATE_TAG="$IMAGE_NAME:v2.0.0-candidate-$GITHUB_RUN_ID"
           docker tag oncotracer:v2.0.0-release-candidate "$CANDIDATE_TAG"
           docker push "$CANDIDATE_TAG"
-          IMAGE_DIGEST="$(docker buildx imagetools inspect "$CANDIDATE_TAG" \
-            | awk '$1 == "Digest:" {print $2; exit}')"
-          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          CANDIDATE_DIGEST="$(scripts/release_registry_digest.sh "$CANDIDATE_TAG")"
 
-          for stable in "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0"; do
-            if docker buildx imagetools inspect "$stable" > "$RUNNER_TEMP/stable.txt" 2>&1; then
-              EXISTING="$(awk '$1 == "Digest:" {print $2; exit}' "$RUNNER_TEMP/stable.txt")"
-              test "$EXISTING" = "$IMAGE_DIGEST" || {
-                echo "$stable already points at $EXISTING" >&2
+          REGISTRY_STATE="$(scripts/release_registry_pair.sh \
+            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+          IFS=$'\t' read -r STABLE_STATE STABLE_FIELD2 STABLE_FIELD3 \
+            STABLE_FIELD4 STABLE_EXTRA <<< "$REGISTRY_STATE"
+          test -z "$STABLE_EXTRA"
+          PRESENT_STABLE_TAG=""
+          MISSING_STABLE_TAG=""
+          case "$STABLE_STATE" in
+            missing)
+              test -z "$STABLE_FIELD2$STABLE_FIELD3$STABLE_FIELD4"
+              IMAGE_DIGEST="$CANDIDATE_DIGEST"
+              ;;
+            existing)
+              [[ "$STABLE_FIELD2" =~ ^sha256:[0-9a-f]{64}$ ]]
+              test -z "$STABLE_FIELD3$STABLE_FIELD4"
+              IMAGE_DIGEST="$STABLE_FIELD2"
+              echo "found stable container digest $IMAGE_DIGEST; authenticating before reuse"
+              ;;
+            partial)
+              PRESENT_STABLE_TAG="$STABLE_FIELD2"
+              MISSING_STABLE_TAG="$STABLE_FIELD3"
+              IMAGE_DIGEST="$STABLE_FIELD4"
+              [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+              if [[ ! (
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:2.0.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" ||
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:2.0.0"
+              ) ]]; then
+                echo "invalid partial stable registry state: $REGISTRY_STATE" >&2
                 exit 1
-              }
-            fi
-          done
-          docker buildx imagetools create \
-            --prefer-index=false \
-            --tag "$IMAGE_NAME:2.0.0" \
-            --tag "$IMAGE_NAME:v2.0.0" \
-            "$CANDIDATE_TAG@$IMAGE_DIGEST"
-          for stable in "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0"; do
-            test "$(docker buildx imagetools inspect "$stable" \
-              | awk '$1 == "Digest:" {print $2; exit}')" = "$IMAGE_DIGEST"
-          done
-          docker pull "$IMAGE_NAME@$IMAGE_DIGEST"
-          docker run --rm "$IMAGE_NAME@$IMAGE_DIGEST" provenance --json \
+              fi
+              echo "found partial stable registry state; authenticating $IMAGE_DIGEST before repair"
+              ;;
+            *)
+              echo "invalid stable registry state: $REGISTRY_STATE" >&2
+              exit 1
+              ;;
+          esac
+
+          PUBLISHED_IMAGE="$IMAGE_NAME@$IMAGE_DIGEST"
+          docker pull "$PUBLISHED_IMAGE"
+          docker run --rm "$PUBLISHED_IMAGE" --version | grep -F 'OncoTracer 2.0.0'
+          PUBLISHED_BINARY_SHA256="$(docker run --rm --entrypoint sha256sum \
+            "$PUBLISHED_IMAGE" /usr/local/bin/oncotracer | awk 'NR == 1 {print $1}')"
+          [[ "$PUBLISHED_BINARY_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          test "$PUBLISHED_BINARY_SHA256" = "$RELEASE_BINARY_SHA256"
+          docker run --rm "$PUBLISHED_IMAGE" provenance --json \
             > "$RUNNER_TEMP/published-container-provenance.json"
-          cmp "$RUNNER_TEMP/container-provenance.json" "$RUNNER_TEMP/published-container-provenance.json"
+          jq -e \
+            --arg commit "$MAIN_SHA" \
+            --arg source "$SOURCE_SHA256" \
+            --arg binary "$RELEASE_BINARY_SHA256" '
+              .source_commit == $commit and .source_sha256 == $source and
+              .source_tree_dirty == false and .binary_sha256 == $binary
+            ' "$RUNNER_TEMP/published-container-provenance.json"
+          cmp "$RUNNER_TEMP/container-provenance.json" \
+            "$RUNNER_TEMP/published-container-provenance.json"
+          docker run --rm "$PUBLISHED_IMAGE" doctor --backend host \
+            > "$RUNNER_TEMP/published-container-doctor.json"
+          jq -e '.success == true' "$RUNNER_TEMP/published-container-doctor.json"
+          docker run --rm --entrypoint bash "$PUBLISHED_IMAGE" \
+            -c '! command -v nextflow'
+          echo "authenticated release container digest $IMAGE_DIGEST"
+
+          PREPUBLISH_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
+            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+          test "$PREPUBLISH_REGISTRY_STATE" = "$REGISTRY_STATE" || {
+            echo "stable registry state changed during authentication" >&2
+            exit 1
+          }
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')" = "$MAIN_SHA"
+          case "$STABLE_STATE" in
+            missing)
+              docker buildx imagetools create \
+                --prefer-index=false \
+                --tag "$IMAGE_NAME:2.0.0" \
+                --tag "$IMAGE_NAME:v2.0.0" \
+                "$PUBLISHED_IMAGE"
+              ;;
+            partial)
+              docker buildx imagetools create \
+                --prefer-index=false \
+                --tag "$MISSING_STABLE_TAG" \
+                "$PUBLISHED_IMAGE"
+              ;;
+            existing)
+              ;;
+          esac
+
+          FINAL_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
+            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+          IFS=$'\t' read -r FINAL_KIND FINAL_DIGEST FINAL_EXTRA \
+            <<< "$FINAL_REGISTRY_STATE"
+          test "$FINAL_KIND" = existing
+          test "$FINAL_DIGEST" = "$IMAGE_DIGEST"
+          test -z "$FINAL_EXTRA"
           {
             echo "digest=$IMAGE_DIGEST"
             echo "candidate_tag=$CANDIDATE_TAG"
@@ -431,9 +514,46 @@ jobs:
             release/release-provenance.json
             release/SHA256SUMS
           )
+          expected_assets='["SHA256SUMS","oncotracer","oncotracer-v2.0.0-parity-audit.tar.gz","release-provenance.json"]'
           if [[ "$RELEASE_EXISTS" == true ]]; then
-            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber \
-              --repo "$GITHUB_REPOSITORY"
+            gh api -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+              > "$RUNNER_TEMP/existing-release-before-upload.json"
+            jq -e --arg sha "$MAIN_SHA" --argjson expected "$expected_assets" '
+              .tag_name == "v2.0.0" and .draft == false and
+              .prerelease == false and .target_commitish == $sha and
+              ([.assets[].name] | length) == ([.assets[].name] | unique | length) and
+              (([.assets[].name] - $expected) | length) == 0
+            ' "$RUNNER_TEMP/existing-release-before-upload.json"
+
+            missing_assets=()
+            for asset in "${assets[@]}"; do
+              name="${asset##*/}"
+              count="$(jq --arg name "$name" \
+                '[.assets[] | select(.name == $name)] | length' \
+                "$RUNNER_TEMP/existing-release-before-upload.json")"
+              if [[ "$count" -eq 0 ]]; then
+                missing_assets+=("$asset")
+                continue
+              fi
+              test "$count" -eq 1
+              download_dir="$RUNNER_TEMP/existing-release-assets/$name"
+              mkdir -p "$download_dir"
+              gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+                --pattern "$name" --dir "$download_dir"
+              downloaded="$download_dir/$name"
+              test -f "$downloaded"
+              local_sha256="$(sha256sum "$asset" | awk '{print $1}')"
+              existing_sha256="$(sha256sum "$downloaded" | awk '{print $1}')"
+              test "$existing_sha256" = "$local_sha256" || {
+                echo "existing release asset $name has digest $existing_sha256; expected $local_sha256" >&2
+                exit 1
+              }
+            done
+            if [[ "${#missing_assets[@]}" -gt 0 ]]; then
+              gh release upload "$RELEASE_TAG" "${missing_assets[@]}" \
+                --repo "$GITHUB_REPOSITORY"
+            fi
             gh release edit "$RELEASE_TAG" --target "$MAIN_SHA" \
               --title 'OncoTracer v2.0.0' --notes-file release/RELEASE_NOTES.md \
               --latest --repo "$GITHUB_REPOSITORY"
@@ -453,3 +573,18 @@ jobs:
             ([.assets[].name] | sort) ==
               (["SHA256SUMS","oncotracer","oncotracer-v2.0.0-parity-audit.tar.gz","release-provenance.json"] | sort)
           ' "$RUNNER_TEMP/published-release.json"
+          for asset in "${assets[@]}"; do
+            name="${asset##*/}"
+            download_dir="$RUNNER_TEMP/published-release-assets/$name"
+            mkdir -p "$download_dir"
+            gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --pattern "$name" --dir "$download_dir"
+            downloaded="$download_dir/$name"
+            test -f "$downloaded"
+            local_sha256="$(sha256sum "$asset" | awk '{print $1}')"
+            published_sha256="$(sha256sum "$downloaded" | awk '{print $1}')"
+            test "$published_sha256" = "$local_sha256" || {
+              echo "published release asset $name has digest $published_sha256; expected $local_sha256" >&2
+              exit 1
+            }
+          done
