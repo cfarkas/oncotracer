@@ -6,6 +6,7 @@ import gzip
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -631,11 +632,12 @@ class ParityComparatorTests(unittest.TestCase):
 
             ichor_hash = verify_module.require_ichorcna_task_hash(selected_rows)
             prefix, suffix = ichor_hash.split("/", 1)
+            full_suffix = suffix + "a" * (30 - len(suffix))
             bound_marker = (
                 root
                 / "work"
                 / prefix
-                / f"{suffix}abcdef"
+                / full_suffix
                 / ".oncotracer-ichorcna-plot-compat.tsv"
             )
             bound_marker.parent.mkdir(parents=True)
@@ -680,6 +682,229 @@ class ParityComparatorTests(unittest.TestCase):
                     contract,
                     {wrong_hash_row[0]: wrong_hash_row},
                 )
+
+    def test_combiner_rejects_newer_failed_attempt_and_recovers_on_newer_success(
+        self,
+    ) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(ROOT / "tests"))
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(spec.name, None)
+            sys.path.pop(0)
+
+        image = "community.wave.seqera.io/library/r-ichorcna:0.5.1--eed4be826f05c9d4"
+        contract = module.Contract(
+            label="ichorcna-latest-attempt",
+            root_arg="root",
+            expected_rows=1,
+            processes=frozenset({module.ICHORCNA_RUN_PROCESS}),
+            images=frozenset({image}),
+            require_ichorcna_compat=True,
+        )
+        pins = {image: "sha256:" + "1" * 64}
+        marker_text = (
+            "key\tvalue\n"
+            "schema\toncotracer-ichorcna-plot-compat-v1\n"
+            "status\tpatched\n"
+            "target_quantile_calls\t2\n"
+            "zero_median_plot_guard\tplaceholder\n"
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trace_dir = root / "results" / "pipeline_info"
+            trace_dir.mkdir(parents=True)
+
+            def write_attempt(
+                name: str,
+                task_hash: str,
+                status: str,
+                exit_code: str,
+                mtime: int,
+            ) -> Path:
+                trace = trace_dir / f"execution_trace_{name}.txt"
+                with trace.open("w", newline="") as handle:
+                    writer = csv.DictWriter(
+                        handle,
+                        ["task_id", "hash", "name", "status", "exit", "container"],
+                        delimiter="\t",
+                    )
+                    writer.writeheader()
+                    writer.writerow(
+                        {
+                            "task_id": "1",
+                            "hash": task_hash,
+                            "name": (
+                                "DINCALCILAB_SAMURAI:"
+                                f"{module.ICHORCNA_RUN_PROCESS} (DRR165691)"
+                            ),
+                            "status": status,
+                            "exit": exit_code,
+                            "container": image,
+                        }
+                    )
+                os.utime(trace, (mtime, mtime))
+                return trace
+
+            def write_marker(task_hash: str, fill: str) -> Path:
+                prefix, suffix = task_hash.split("/", 1)
+                full_suffix = suffix + fill * (30 - len(suffix))
+                marker = (
+                    root
+                    / "work"
+                    / prefix
+                    / full_suffix
+                    / ".oncotracer-ichorcna-plot-compat.tsv"
+                )
+                marker.parent.mkdir(parents=True)
+                marker.write_text(marker_text, encoding="utf-8")
+                return marker
+
+            old_hash = "aa/000001"
+            failed_hash = "bb/000002"
+            recovered_hash = "cc/000003"
+            write_attempt("old", old_hash, "COMPLETED", "0", 1_700_000_000)
+            write_marker(old_hash, "a")
+            write_attempt("failed", failed_hash, "FAILED", "1", 1_700_000_100)
+            write_marker(failed_hash, "b")
+
+            combined, _manifest, _ = module.combine_root(root)
+            ok, reason, selected_rows, _images = module.evaluate_trace(
+                combined, contract, pins
+            )
+            self.assertFalse(ok)
+            self.assertIn("failed, nonzero", reason)
+            self.assertEqual(selected_rows[0]["hash"], failed_hash)
+            self.assertEqual(selected_rows[0]["status"], "FAILED")
+            with self.assertRaises(SystemExit):
+                module.find_compat_marker(root, selected_rows)
+
+            write_attempt(
+                "recovered",
+                recovered_hash,
+                "COMPLETED",
+                "0",
+                1_700_000_200,
+            )
+            recovered_marker = write_marker(recovered_hash, "c")
+            combined, _manifest, _ = module.combine_root(root)
+            ok, reason, selected_rows, _images = module.evaluate_trace(
+                combined, contract, pins
+            )
+            self.assertTrue(ok, reason)
+            marker, _metadata, task_hash, _relative = module.find_compat_marker(
+                root, selected_rows
+            )
+            self.assertEqual(task_hash, recovered_hash)
+            self.assertEqual(marker, recovered_marker)
+
+    def test_compat_marker_requires_exact_regular_nextflow_work_path(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(ROOT / "tests"))
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(spec.name, None)
+            sys.path.pop(0)
+
+        task_hash = "3a/6efce2"
+        full_suffix = "6efce2" + "a" * 24
+        rows = [
+            {
+                "hash": task_hash,
+                "name": module.ICHORCNA_RUN_PROCESS,
+                "status": "COMPLETED",
+                "exit": "0",
+                "container": "image",
+            }
+        ]
+        marker_text = (
+            "key\tvalue\n"
+            "schema\toncotracer-ichorcna-plot-compat-v1\n"
+            "status\tpatched\n"
+            "target_quantile_calls\t2\n"
+            "zero_median_plot_guard\tplaceholder\n"
+        )
+
+        def write_marker(path: Path) -> Path:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(marker_text, encoding="utf-8")
+            return path
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            exact_relative = (
+                Path("work")
+                / "3a"
+                / full_suffix
+                / ".oncotracer-ichorcna-plot-compat.tsv"
+            )
+            exact = write_marker(root / exact_relative)
+            marker, _metadata, _hash, relative = module.find_compat_marker(root, rows)
+            self.assertEqual(marker, exact)
+            self.assertEqual(relative, exact_relative)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            spoof_relative = (
+                Path("arbitrary")
+                / "3a"
+                / full_suffix
+                / ".oncotracer-ichorcna-plot-compat.tsv"
+            )
+            write_marker(root / spoof_relative)
+            self.assertFalse(
+                module.marker_path_matches_task_hash(spoof_relative, task_hash)
+            )
+            with self.assertRaises(SystemExit):
+                module.find_compat_marker(root, rows)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            nonhex_relative = (
+                Path("work")
+                / "3a"
+                / "6efce2spoofed-work-directory"
+                / ".oncotracer-ichorcna-plot-compat.tsv"
+            )
+            write_marker(root / nonhex_relative)
+            self.assertFalse(
+                module.marker_path_matches_task_hash(nonhex_relative, task_hash)
+            )
+            with self.assertRaises(SystemExit):
+                module.find_compat_marker(root, rows)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = write_marker(
+                root / "elsewhere" / ".oncotracer-ichorcna-plot-compat.tsv"
+            )
+            symlink = (
+                root
+                / "work"
+                / "3a"
+                / full_suffix
+                / ".oncotracer-ichorcna-plot-compat.tsv"
+            )
+            symlink.parent.mkdir(parents=True)
+            symlink.symlink_to(target)
+            self.assertTrue(symlink.is_symlink())
+            with self.assertRaises(SystemExit):
+                module.find_compat_marker(root, rows)
 
 
 if __name__ == "__main__":

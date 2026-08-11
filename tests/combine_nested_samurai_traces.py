@@ -4,7 +4,9 @@
 Nextflow writes a new execution trace for each nested invocation. A completed
 resumed run can therefore be split across several individually incomplete trace
 files. The release verifier needs a single task inventory, not an assumption
-that one invocation necessarily contains every completed or cached task.
+that one invocation necessarily contains every completed or cached task. The
+latest occurrence of each task remains authoritative even when it failed, so a
+new failure cannot be hidden behind an older successful cache entry.
 """
 
 from __future__ import annotations
@@ -90,12 +92,11 @@ def combine_root(root: Path) -> tuple[Path, Path, int]:
         successful = 0
         for row_number, row in enumerate(rows, start=2):
             if (
-                row["status"].strip() not in {"COMPLETED", "CACHED"}
-                or row["exit"].strip() != "0"
-                or not row["container"].strip()
+                row["status"].strip() in {"COMPLETED", "CACHED"}
+                and row["exit"].strip() == "0"
+                and row["container"].strip()
             ):
-                continue
-            successful += 1
+                successful += 1
             key = canonical_task(row["name"])
             candidate = SourceRow(
                 trace=trace,
@@ -124,7 +125,7 @@ def combine_root(root: Path) -> tuple[Path, Path, int]:
         )
 
     if not selected:
-        raise SystemExit(f"no successful containerized tasks found under {root}")
+        raise SystemExit(f"no nested task occurrences found under {root}")
 
     destination_dir = root / ".oncotracer-parity" / "pipeline_info"
     destination_dir.mkdir(parents=True, exist_ok=True)
@@ -155,8 +156,8 @@ def combine_root(root: Path) -> tuple[Path, Path, int]:
         writer.writerows(manifest_rows)
 
     print(
-        f"Combined {len(traces)} nested trace file(s) into {len(ordered)} unique successful tasks: "
-        f"{combined}"
+        f"Combined {len(traces)} nested trace file(s) into {len(ordered)} "
+        f"latest task occurrence(s): {combined}"
     )
     return combined, manifest, len(ordered)
 

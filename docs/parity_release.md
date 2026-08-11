@@ -74,8 +74,9 @@ before SAMURAI is called.
 
 Nested Nextflow resumes can distribute successful tasks across several trace
 files. Both the hosted release gate and the standalone validation-server driver
-therefore build a deterministic combined trace from the latest successful or
-cached occurrence of each canonical task and retain the complete source-trace
+therefore build a deterministic combined trace from the latest occurrence of
+each canonical task, require every contracted latest occurrence to be
+successful or cached with exit status zero, and retain the complete source-trace
 manifest. The ONT audit requires the complete ten-process contract, including a
 successful or cached, exit-zero `ICHORCNA_RUN`. Its compatibility marker must be
 inside the exact Nextflow work directory identified by that task's trace hash.

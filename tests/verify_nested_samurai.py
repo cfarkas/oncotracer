@@ -287,11 +287,15 @@ def marker_path_matches_task_hash(relative: Path, task_hash: str) -> bool:
     if match is None or relative.is_absolute() or ".." in relative.parts:
         return False
     prefix, suffix = match.groups()
+    if len(relative.parts) != 4:
+        return False
+    work, observed_prefix, full_suffix, marker_name = relative.parts
     return (
-        len(relative.parts) >= 3
-        and relative.name == ".oncotracer-ichorcna-plot-compat.tsv"
-        and relative.parent.name.startswith(suffix)
-        and relative.parent.parent.name == prefix
+        work == "work"
+        and observed_prefix == prefix
+        and re.fullmatch(r"[0-9a-f]{30}", full_suffix) is not None
+        and full_suffix.startswith(suffix)
+        and marker_name == ".oncotracer-ichorcna-plot-compat.tsv"
     )
 
 
@@ -304,16 +308,19 @@ def find_compat_marker(
     diagnostics: list[str] = []
     for marker in sorted(root.rglob(".oncotracer-ichorcna-plot-compat.tsv")):
         try:
+            if marker.is_symlink():
+                raise ValueError("marker is a symbolic link")
             resolved = marker.resolve(strict=True)
-            resolved.relative_to(root)
-            relative = marker.relative_to(root)
+            if resolved != marker:
+                raise ValueError("marker path contains a symbolic-link component")
+            relative = resolved.relative_to(root)
         except (OSError, ValueError) as error:
             diagnostics.append(f"{marker}: unsafe marker path: {error}")
             continue
         if not marker_path_matches_task_hash(relative, task_hash):
             continue
         try:
-            valid.append((marker, parse_compat(marker), relative))
+            valid.append((resolved, parse_compat(resolved), relative))
         except (OSError, ValueError, csv.Error) as error:
             diagnostics.append(f"{marker}: {error}")
     if len(valid) != 1:
@@ -379,8 +386,9 @@ def main() -> int:
             raise SystemExit(f"missing --{contract.root_arg.replace('_', '-')}: {root}")
 
         # A nested Nextflow resume can split one complete run across several
-        # execution traces. Build and evaluate one deterministic latest-successful
-        # task bundle instead of requiring an arbitrary individual trace file.
+        # execution traces. Build one deterministic latest-occurrence task
+        # bundle, then require every contracted occurrence to be successful,
+        # instead of trusting an arbitrary individual trace file.
         combined_trace, source_manifest, _ = combine_root(root)
         diagnostic_prefix = contract.label.removeprefix("quickstart1-").removeprefix("quickstart2-")
         combined_audit = args.selected_dir / f"candidate-{diagnostic_prefix}-combined-trace.tsv"
