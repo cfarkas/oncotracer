@@ -165,7 +165,8 @@ class NativeClassifierTests(unittest.TestCase):
             self.assertNotIn("nextflow", trace)
             self.assertIn(str(Path(sys.prefix) / "bin" / "python").lower(), trace)
             workflow_summary = (summary / "workflow_summary.txt").read_text(encoding="utf-8")
-            self.assertIn("cna_classifier_completed=True", workflow_summary)
+            self.assertIn("nextflow_used=false", workflow_summary)
+            self.assertIn("cna_classifier_completed=true", workflow_summary)
 
 
 if __name__ == "__main__":

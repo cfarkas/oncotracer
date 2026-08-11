@@ -26,7 +26,11 @@ from oncotracer_cli.cli import (  # noqa: E402
     build_parser,
     prepare_quickstart1,
 )
-from oncotracer_cli.runtime import load_flat_yaml, render_flat_yaml  # noqa: E402
+from oncotracer_cli.runtime import (  # noqa: E402
+    load_flat_yaml,
+    render_flat_yaml,
+    render_key_value_summary,
+)
 
 
 class NativeCliTests(unittest.TestCase):
@@ -57,6 +61,15 @@ class NativeCliTests(unittest.TestCase):
             path = Path(directory) / "config.yml"
             path.write_text(render_flat_yaml(values), encoding="utf-8")
             self.assertEqual(load_flat_yaml(path), values)
+
+    def test_key_value_summary_uses_lowercase_booleans(self) -> None:
+        rendered = render_key_value_summary(
+            {"engine": "native", "nextflow_used": False, "complete": True}
+        )
+        self.assertEqual(
+            rendered,
+            "engine=native\nnextflow_used=false\ncomplete=true\n",
+        )
 
     def test_conda_prefixes_are_isolated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

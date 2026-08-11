@@ -223,6 +223,28 @@ def render_flat_yaml(values: Mapping[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_key_value_summary(values: Mapping[str, object]) -> str:
+    """Render stable machine-readable ``key=value`` summary text.
+
+    Python's default boolean spelling (``True``/``False``) is incompatible
+    with the lowercase values documented and validated by OncoTracer. Keep
+    the JSON representation typed while making the companion text format
+    deterministic across every native writer.
+    """
+    lines: list[str] = []
+    for key, value in values.items():
+        if value is True:
+            rendered = "true"
+        elif value is False:
+            rendered = "false"
+        elif value is None:
+            rendered = "null"
+        else:
+            rendered = str(value)
+        lines.append(f"{key}={rendered}")
+    return "\n".join(lines) + "\n"
+
+
 def require_file(path: Path, label: str) -> Path:
     path = path.expanduser().resolve()
     if not path.is_file() or path.stat().st_size == 0:

@@ -35,6 +35,7 @@ from .runtime import (
     require_command,
     require_directory,
     require_file,
+    render_key_value_summary,
     runtime_root,
     sha256_file,
     utc_now,
@@ -1320,7 +1321,7 @@ def run_refinement_and_outputs(
     atomic_write_json(summary_dir / "workflow_summary.json", summary)
     atomic_write_text(
         summary_dir / "workflow_summary.txt",
-        "\n".join(f"{key}={value}" for key, value in summary.items()) + "\n",
+        render_key_value_summary(summary),
     )
 
 
@@ -1437,7 +1438,7 @@ def _merge_methylation_summary(
     atomic_write_json(summary_path, summary)
     atomic_write_text(
         summary_dir / "workflow_summary.txt",
-        "\n".join(f"{key}={value}" for key, value in summary.items()) + "\n",
+        render_key_value_summary(summary),
     )
     return summary
 

@@ -16,6 +16,7 @@ from .runtime import (
     atomic_write_text,
     require_directory,
     require_file,
+    render_key_value_summary,
     utc_now,
 )
 
@@ -386,7 +387,7 @@ def _update_summary(analysis_outdir: Path, classifier_out: Path) -> None:
     atomic_write_json(json_path, value)
     atomic_write_text(
         summary_dir / "workflow_summary.txt",
-        "\n".join(f"{key}={item}" for key, item in value.items()) + "\n",
+        render_key_value_summary(value),
     )
 
 
