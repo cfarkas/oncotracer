@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -904,6 +905,338 @@ class ParityComparatorTests(unittest.TestCase):
             self.assertTrue(symlink.is_symlink())
             with self.assertRaises(SystemExit):
                 module.find_compat_marker(root, rows)
+
+    def test_current_invocation_rejects_startup_and_early_failures_then_accepts_recovery(
+        self,
+    ) -> None:
+        verify_spec = importlib.util.spec_from_file_location(
+            "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
+        )
+        self.assertIsNotNone(verify_spec)
+        self.assertIsNotNone(verify_spec.loader)
+        verify_module = importlib.util.module_from_spec(verify_spec)
+        sys.path.insert(0, str(ROOT / "tests"))
+        sys.modules[verify_spec.name] = verify_module
+        try:
+            verify_spec.loader.exec_module(verify_module)
+            audit_spec = importlib.util.spec_from_file_location(
+                "parity_audit", ROOT / "tests" / "parity_audit.py"
+            )
+            self.assertIsNotNone(audit_spec)
+            self.assertIsNotNone(audit_spec.loader)
+            audit_module = importlib.util.module_from_spec(audit_spec)
+            sys.modules[audit_spec.name] = audit_module
+            audit_spec.loader.exec_module(audit_module)
+        finally:
+            sys.modules.pop("parity_audit", None)
+            sys.modules.pop(verify_spec.name, None)
+            sys.path.pop(0)
+
+        image = "community.wave.seqera.io/library/r-ichorcna:0.5.1--eed4be826f05c9d4"
+        contract = verify_module.Contract(
+            label="quickstart1-ont",
+            root_arg="ont_root",
+            expected_rows=1,
+            processes=frozenset({verify_module.ICHORCNA_RUN_PROCESS}),
+            images=frozenset({image}),
+            require_ichorcna_compat=True,
+        )
+        pins = {image: "sha256:" + "1" * 64}
+        marker_text = (
+            "key\tvalue\n"
+            "schema\toncotracer-ichorcna-plot-compat-v1\n"
+            "status\tpatched\n"
+            "target_quantile_calls\t2\n"
+            "zero_median_plot_guard\tplaceholder\n"
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trace_dir = root / "results" / "pipeline_info"
+            evidence = root / "evidence"
+            trace_dir.mkdir(parents=True)
+            evidence.mkdir()
+            base_mtime = 1_700_000_000_000_000_000
+
+            def write_attempt(
+                name: str,
+                process: str,
+                task_hash: str,
+                status: str,
+                exit_code: str,
+                mtime_ns: int,
+            ) -> Path:
+                path = trace_dir / f"execution_trace_{name}.txt"
+                with path.open("w", newline="", encoding="utf-8") as handle:
+                    writer = csv.DictWriter(
+                        handle,
+                        ["task_id", "hash", "name", "status", "exit", "container"],
+                        delimiter="\t",
+                    )
+                    writer.writeheader()
+                    writer.writerow(
+                        {
+                            "task_id": "1",
+                            "hash": task_hash,
+                            "name": f"DINCALCILAB_SAMURAI:{process} (DRR165691)",
+                            "status": status,
+                            "exit": exit_code,
+                            "container": image,
+                        }
+                    )
+                os.utime(path, ns=(mtime_ns, mtime_ns))
+                return path
+
+            def write_marker(task_hash: str, fill: str) -> Path:
+                prefix, suffix = task_hash.split("/", 1)
+                marker = (
+                    root
+                    / "work"
+                    / prefix
+                    / (suffix + fill * (30 - len(suffix)))
+                    / ".oncotracer-ichorcna-plot-compat.tsv"
+                )
+                marker.parent.mkdir(parents=True)
+                marker.write_text(marker_text, encoding="utf-8")
+                return marker
+
+            old_hash = "aa/000001"
+            write_attempt(
+                "old-complete",
+                verify_module.ICHORCNA_RUN_PROCESS,
+                old_hash,
+                "COMPLETED",
+                "0",
+                base_mtime,
+            )
+            old_marker = write_marker(old_hash, "a")
+            startup_pre = evidence / "startup-pre.tsv"
+            verify_module.snapshot_trace_inventory(root, startup_pre)
+
+            combined, sources, _ = verify_module.combine_root(root)
+            ok, reason, selected_rows, _ = verify_module.evaluate_trace(
+                combined, contract, pins
+            )
+            self.assertTrue(ok, reason)
+            with self.assertRaisesRegex(SystemExit, "no new or content-changed"):
+                verify_module.verify_current_trace_invocation(
+                    root,
+                    startup_pre,
+                    sources,
+                    selected_rows,
+                    evidence / "startup-post.tsv",
+                    evidence / "startup-delta.tsv",
+                    require_ichorcna=True,
+                )
+
+            write_attempt(
+                "early-failure",
+                "SAMURAI:STARTUP_PROBE",
+                "bb/000002",
+                "FAILED",
+                "1",
+                base_mtime + 100,
+            )
+            combined, sources, _ = verify_module.combine_root(root)
+            ok, reason, selected_rows, _ = verify_module.evaluate_trace(
+                combined, contract, pins
+            )
+            self.assertTrue(ok, reason)
+            marker, _metadata, task_hash, _relative = verify_module.find_compat_marker(
+                root, selected_rows
+            )
+            self.assertEqual(marker, old_marker)
+            self.assertEqual(task_hash, old_hash)
+            with self.assertRaisesRegex(
+                SystemExit, "deterministic newest nested trace"
+            ):
+                verify_module.verify_current_trace_invocation(
+                    root,
+                    startup_pre,
+                    sources,
+                    selected_rows,
+                    evidence / "failed-post.tsv",
+                    evidence / "failed-delta.tsv",
+                    require_ichorcna=True,
+                )
+
+            recovery_pre = evidence / "recovery-pre.tsv"
+            verify_module.snapshot_trace_inventory(root, recovery_pre)
+            recovered_hash = "cc/000003"
+            recovered_trace = write_attempt(
+                "current-complete",
+                verify_module.ICHORCNA_RUN_PROCESS,
+                recovered_hash,
+                "COMPLETED",
+                "0",
+                base_mtime + 200,
+            )
+            write_marker(recovered_hash, "c")
+            combined, sources, _ = verify_module.combine_root(root)
+            ok, reason, selected_rows, _ = verify_module.evaluate_trace(
+                combined, contract, pins
+            )
+            self.assertTrue(ok, reason)
+            post_path = evidence / "recovery-post.tsv"
+            delta_path = evidence / "recovery-delta.tsv"
+            invocation = verify_module.verify_current_trace_invocation(
+                root,
+                recovery_pre,
+                sources,
+                selected_rows,
+                post_path,
+                delta_path,
+                require_ichorcna=True,
+            )
+            recovered_relative = recovered_trace.relative_to(root).as_posix()
+            self.assertEqual(invocation["newest_source_trace"], recovered_relative)
+            self.assertEqual(
+                invocation["selected_ichorcna_source_trace"], recovered_relative
+            )
+            self.assertEqual(
+                [row["source_trace"] for row in invocation["delta"]["entries"]],
+                [recovered_relative],
+            )
+
+            context = root / "audit-context"
+            context.mkdir()
+            file_copies = {
+                recovery_pre: context / "nested-v1-ont-trace-pre.tsv",
+                post_path: context / "nested-v1-ont-trace-post.tsv",
+                delta_path: context / "nested-v1-ont-trace-delta.tsv",
+                sources: context / "candidate-ont-trace-sources.tsv",
+                combined: context / "nested-v1-ont-trace.tsv",
+            }
+            for source, destination in file_copies.items():
+                shutil.copyfile(source, destination)
+            invocation_name = "nested-v1-ont-trace-invocation.json"
+            invocation_path = context / invocation_name
+            invocation_path.write_text(
+                json.dumps(invocation, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            selection = {
+                contract.label
+                + "-current-invocation": [
+                    contract.label + "-current-invocation",
+                    "",
+                    "",
+                    f"newest-trace:{recovered_relative}",
+                    invocation_name,
+                    audit_module.sha256(invocation_path),
+                ]
+            }
+            audit_module.verify_trace_invocation(
+                context,
+                context / "nested-v1-ont-trace.tsv",
+                contract,
+                selection,
+            )
+
+            (context / "nested-v1-ont-trace-delta.tsv").write_text(
+                "source_trace\tmtime_ns\tbytes\tsha256\n", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(audit_module.AuditError, "empty or forged"):
+                audit_module.verify_trace_invocation(
+                    context,
+                    context / "nested-v1-ont-trace.tsv",
+                    contract,
+                    selection,
+                )
+
+    def test_trace_inventory_rejects_symlink_and_unsafe_source_paths(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(ROOT / "tests"))
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(spec.name, None)
+            sys.path.pop(0)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trace_dir = root / "results" / "pipeline_info"
+            trace_dir.mkdir(parents=True)
+            target = root / "outside-trace.txt"
+            target.write_text(
+                "task_id\thash\tname\tstatus\texit\tcontainer\n",
+                encoding="utf-8",
+            )
+            (trace_dir / "execution_trace_symlink.txt").symlink_to(target)
+            with self.assertRaisesRegex(SystemExit, "symbolic link"):
+                module.snapshot_trace_inventory(root, root / "inventory.tsv")
+
+        with tempfile.TemporaryDirectory() as directory:
+            inventory = Path(directory) / "unsafe.tsv"
+            inventory.write_text(
+                "source_trace\tmtime_ns\tbytes\tsha256\n"
+                f"../pipeline_info/execution_trace_escape.txt\t1\t1\t{'0' * 64}\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(SystemExit, "unsafe nested trace path"):
+                module.read_trace_inventory(inventory)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            real = root / "real" / "pipeline_info" / "execution_trace_real.txt"
+            real.parent.mkdir(parents=True)
+            real.write_text(
+                "task_id\thash\tname\tstatus\texit\tcontainer\n",
+                encoding="utf-8",
+            )
+            (root / "linked").symlink_to(root / "real", target_is_directory=True)
+            linked_trace = root / "linked" / "pipeline_info" / real.name
+            with self.assertRaisesRegex(SystemExit, "symbolic-link component"):
+                module.trace_identity(root, linked_trace)
+
+    def test_trace_delta_uses_path_and_content_not_mtime_only(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(ROOT / "tests"))
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(spec.name, None)
+            sys.path.pop(0)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trace = root / "results" / "pipeline_info" / "execution_trace_same.txt"
+            trace.parent.mkdir(parents=True)
+            original = (
+                "task_id\thash\tname\tstatus\texit\tcontainer\n"
+                "1\taa/000001\tSAMURAI:X\tCOMPLETED\t0\timage:1\n"
+            )
+            trace.write_text(original, encoding="utf-8")
+            before = module.capture_trace_inventory(root)
+
+            touched_ns = trace.stat().st_mtime_ns + 1_000_000_000
+            os.utime(trace, ns=(touched_ns, touched_ns))
+            touched = module.capture_trace_inventory(root)
+            self.assertEqual(module.trace_inventory_delta(before, touched), [])
+
+            trace.write_text(
+                original.replace("aa/000001", "bb/000002"), encoding="utf-8"
+            )
+            changed = module.capture_trace_inventory(root)
+            delta = module.trace_inventory_delta(before, changed)
+            self.assertEqual(len(delta), 1)
+            self.assertEqual(
+                delta[0].source_trace,
+                "results/pipeline_info/execution_trace_same.txt",
+            )
+            self.assertNotEqual(delta[0].sha256, before[0].sha256)
 
 
 if __name__ == "__main__":

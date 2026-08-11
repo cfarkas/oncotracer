@@ -1845,14 +1845,24 @@ verify_samurai_nextflow_audit_config() {
     "$CONTEXT_DIR/samurai-nextflow-audit.config"
 }
 
+capture_samurai_trace_inventory() {
+  local root="$1" destination="$2"
+  python3 "$REPOSITORY_ROOT/tests/verify_nested_samurai.py" \
+    --snapshot-root "$root" \
+    --snapshot-out "$destination"
+  [[ -s "$destination" ]]
+}
+
 generate_samurai_trace_audit() {
   local root="$1" mode="$2" expected_rows="$3" destination="$4" trace_copy="$5"
-  local selected="${6-}" temporary selected_output copy_tmp
+  local pre_inventory="$6" post_inventory="$7" delta_inventory="$8"
+  local selected="${9-}" temporary selected_output copy_tmp
   temporary="$(mktemp "$TMP_DIR/samurai-trace-audit.XXXXXX")"
   if ! selected_output="$(
     python3 - \
       "$root" "$mode" "$expected_rows" \
-      "$CONTEXT_DIR/samurai-container-pins.tsv" "$temporary" "$selected" \
+      "$CONTEXT_DIR/samurai-container-pins.tsv" "$temporary" \
+      "$pre_inventory" "$post_inventory" "$delta_inventory" "$selected" \
       "$REPOSITORY_ROOT/tests" <<'PY'
 import csv
 import hashlib
@@ -1868,11 +1878,15 @@ mode = sys.argv[2]
 expected_rows = int(sys.argv[3])
 pins_path = Path(sys.argv[4])
 destination = Path(sys.argv[5])
-selected_arg = sys.argv[6]
-tests_dir = Path(sys.argv[7]).resolve()
+pre_inventory = Path(sys.argv[6])
+post_inventory = Path(sys.argv[7])
+delta_inventory = Path(sys.argv[8])
+selected_arg = sys.argv[9]
+tests_dir = Path(sys.argv[10]).resolve()
 sys.path.insert(0, str(tests_dir))
 from combine_nested_samurai_traces import combine_root  # noqa: E402
 from verify_nested_samurai import find_compat_marker  # noqa: E402
+from verify_nested_samurai import verify_current_trace_invocation  # noqa: E402
 
 expected_processes = {
     "illumina": {
@@ -2034,12 +2048,25 @@ for source in source_rows:
     available.append(
         {
             "path": str(source_path),
+            "relative_path": source["source_trace"],
+            "mtime_ns": int(source["mtime_ns"]),
+            "bytes": int(source["bytes"]),
             "rows": int(source["rows"]),
             "successful_rows": int(source["successful_rows"]),
             "sha256": source["sha256"],
         }
     )
 
+
+invocation = verify_current_trace_invocation(
+    root,
+    pre_inventory,
+    source_manifest,
+    rows,
+    post_inventory,
+    delta_inventory,
+    require_ichorcna=mode == "ont",
+)
 compatibility = None
 if mode == "ont":
     selected_marker, metadata, task_hash, marker_relative = find_compat_marker(
@@ -2070,6 +2097,7 @@ record = {
     "contract_containers": sorted(expected_images[mode]),
     "ichorcna_plot_compat": compatibility,
     "rows": rows,
+    "trace_invocation": invocation,
 }
 destination.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 print(selected)
@@ -2093,15 +2121,21 @@ PY
 
 verify_samurai_trace_audit() {
   local root="$1" mode="$2" expected_rows="$3" evidence="$4" trace_copy="$5"
-  local source temporary temporary_trace
+  local pre_inventory="$6" post_inventory="$7" delta_inventory="$8"
+  local source temporary temporary_trace temporary_post temporary_delta
   source="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["source_trace"])' "$evidence")"
   temporary="$(mktemp "$TMP_DIR/samurai-trace-verify.XXXXXX")"
   temporary_trace="$(mktemp "$TMP_DIR/samurai-trace-copy-verify.XXXXXX")"
+  temporary_post="$(mktemp "$TMP_DIR/samurai-trace-post-verify.XXXXXX")"
+  temporary_delta="$(mktemp "$TMP_DIR/samurai-trace-delta-verify.XXXXXX")"
   generate_samurai_trace_audit \
-    "$root" "$mode" "$expected_rows" "$temporary" "$temporary_trace" "$source"
+    "$root" "$mode" "$expected_rows" "$temporary" "$temporary_trace" \
+    "$pre_inventory" "$temporary_post" "$temporary_delta" "$source"
   cmp -s "$temporary" "$evidence"
   cmp -s "$temporary_trace" "$trace_copy"
-  rm -f -- "$temporary" "$temporary_trace"
+  cmp -s "$temporary_post" "$post_inventory"
+  cmp -s "$temporary_delta" "$delta_inventory"
+  rm -f -- "$temporary" "$temporary_trace" "$temporary_post" "$temporary_delta"
 }
 action_v1_quickstart1() {
   verify_prepare_pinned_nextflow
@@ -2117,6 +2151,9 @@ action_v1_quickstart1() {
     export PATH="$TOOL_BIN:$PATH"
     [[ "$(command -v nextflow)" == "$NEXTFLOW" ]]
     cd "$WORK_DIR/v1-launch/quickstart1"
+    capture_samurai_trace_inventory \
+      "$ANALYSIS_ROOT/v1/illumina/01_samurai_illumina" \
+      "$CONTEXT_DIR/v1-illumina-samurai-trace-pre.tsv"
     "$NEXTFLOW" -log "$report_session/v1-illumina.nextflow.log" run \
       "$V1_SOURCE_DIR/main.nf" --docker \
       --docker_image "$V1_DOCKER_IMAGE" \
@@ -2124,6 +2161,9 @@ action_v1_quickstart1() {
       -work-dir "$WORK_DIR/v1-illumina" \
       -with-report "$report_session/v1-illumina.html" \
       -with-trace "$report_session/v1-illumina.tsv"
+    capture_samurai_trace_inventory \
+      "$ANALYSIS_ROOT/v1/ont/01_samurai_ont" \
+      "$CONTEXT_DIR/v1-ont-samurai-trace-pre.tsv"
     "$NEXTFLOW" -log "$report_session/v1-ont.nextflow.log" run \
       "$V1_SOURCE_DIR/main.nf" --docker \
       --docker_image "$V1_DOCKER_IMAGE" \
@@ -2135,9 +2175,16 @@ action_v1_quickstart1() {
   generate_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/illumina/01_samurai_illumina" illumina 12 \
     "$CONTEXT_DIR/v1-illumina-samurai-trace-audit.json" \
-    "$CONTEXT_DIR/v1-illumina-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-illumina-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-delta.tsv"
   generate_samurai_trace_audit "$ANALYSIS_ROOT/v1/ont/01_samurai_ont" ont 10 \
-    "$CONTEXT_DIR/v1-ont-samurai-trace-audit.json" "$CONTEXT_DIR/v1-ont-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-ont-samurai-trace-audit.json" \
+    "$CONTEXT_DIR/v1-ont-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-delta.tsv"
   write_tree_manifest "$ANALYSIS_ROOT/v1/illumina" "$CONTEXT_DIR/v1-illumina-output-SHA256SUMS"
   write_tree_manifest "$ANALYSIS_ROOT/v1/ont" "$CONTEXT_DIR/v1-ont-output-SHA256SUMS"
 }
@@ -2154,9 +2201,16 @@ verify_v1_quickstart1() {
   verify_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/illumina/01_samurai_illumina" illumina 12 \
     "$CONTEXT_DIR/v1-illumina-samurai-trace-audit.json" \
-    "$CONTEXT_DIR/v1-illumina-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-illumina-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-delta.tsv"
   verify_samurai_trace_audit "$ANALYSIS_ROOT/v1/ont/01_samurai_ont" ont 10 \
-    "$CONTEXT_DIR/v1-ont-samurai-trace-audit.json" "$CONTEXT_DIR/v1-ont-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-ont-samurai-trace-audit.json" \
+    "$CONTEXT_DIR/v1-ont-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-delta.tsv"
 }
 
 run_stage \
@@ -2174,7 +2228,8 @@ run_stage \
   "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS" \
   "$CONTEXT_DIR/public-input-SHA256SUMS" "$CONTEXT_DIR/validation-reference-SHA256SUMS" \
   "$CONFIG_DIR/v1-illumina.yml" "$CONFIG_DIR/v1-ont.yml" \
-  "$REPOSITORY_ROOT/tests/verify_nested_samurai.py"
+  "$REPOSITORY_ROOT/tests/verify_nested_samurai.py" \
+  "$REPOSITORY_ROOT/tests/combine_nested_samurai_traces.py"
 
 action_v1_quickstart2() {
   verify_prepare_pinned_nextflow
@@ -2188,6 +2243,9 @@ action_v1_quickstart2() {
     export PATH="$TOOL_BIN:$PATH"
     [[ "$(command -v nextflow)" == "$NEXTFLOW" ]]
     cd "$WORK_DIR/v1-launch/quickstart2"
+    capture_samurai_trace_inventory \
+      "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina" \
+      "$CONTEXT_DIR/v1-hcc1143-samurai-trace-pre.tsv"
     "$NEXTFLOW" -log "$report_session/v1-hcc1143.nextflow.log" run \
       "$V1_SOURCE_DIR/main.nf" --docker \
       --docker_image "$V1_DOCKER_IMAGE" \
@@ -2198,7 +2256,11 @@ action_v1_quickstart2() {
   )
   generate_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina" illumina 32 \
-    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-audit.json" "$CONTEXT_DIR/v1-hcc1143-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-audit.json" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-delta.tsv"
   write_tree_manifest "$ANALYSIS_ROOT/v1/hcc1143" "$CONTEXT_DIR/v1-hcc1143-output-SHA256SUMS"
 }
 
@@ -2212,7 +2274,10 @@ verify_v1_quickstart2() {
   verify_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina" illumina 32 \
     "$CONTEXT_DIR/v1-hcc1143-samurai-trace-audit.json" \
-    "$CONTEXT_DIR/v1-hcc1143-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-hcc1143-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-delta.tsv"
 }
 
 run_stage \
@@ -2229,7 +2294,8 @@ run_stage \
   "$CONTEXT_DIR/samurai-nextflow-audit.config" \
   "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS" \
   "$CONTEXT_DIR/public-input-SHA256SUMS" "$CONTEXT_DIR/validation-reference-SHA256SUMS" \
-  "$CONFIG_DIR/v1-hcc1143.yml" "$REPOSITORY_ROOT/tests/verify_nested_samurai.py"
+  "$CONFIG_DIR/v1-hcc1143.yml" "$REPOSITORY_ROOT/tests/verify_nested_samurai.py" \
+  "$REPOSITORY_ROOT/tests/combine_nested_samurai_traces.py"
 
 action_v2_quickstart1() {
   run_copied_binary run --backend conda --config "$CONFIG_DIR/v2-illumina.yml" --threads "$THREADS"

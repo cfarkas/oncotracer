@@ -16,7 +16,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from combine_nested_samurai_traces import combine_root
+from combine_nested_samurai_traces import (
+    SOURCE_MANIFEST_COLUMNS,
+    TraceIdentity,
+    capture_trace_inventory,
+    combine_root,
+    read_trace_inventory,
+    snapshot_trace_inventory,
+    trace_identity,
+    trace_inventory_delta,
+    validate_trace_relative,
+    write_trace_inventory,
+)
 
 
 @dataclass(frozen=True)
@@ -173,7 +184,12 @@ def evaluate_trace(
     if not rows:
         return False, "empty", rows, set()
     if not REQUIRED_TRACE_COLUMNS <= set(rows[0]):
-        return False, f"missing columns {sorted(REQUIRED_TRACE_COLUMNS - set(rows[0]))}", rows, set()
+        return (
+            False,
+            f"missing columns {sorted(REQUIRED_TRACE_COLUMNS - set(rows[0]))}",
+            rows,
+            set(),
+        )
 
     selected: list[dict[str, str]] = []
     normalized_processes: list[str] = []
@@ -190,10 +206,20 @@ def evaluate_trace(
                 or row["exit"] != "0"
                 or not row["container"].strip()
             ):
-                return False, "failed, nonzero, or container-free contracted task", rows, set()
+                return (
+                    False,
+                    "failed, nonzero, or container-free contracted task",
+                    rows,
+                    set(),
+                )
             task_hash = row["hash"].strip().lower()
             if NEXTFLOW_TASK_HASH.fullmatch(task_hash) is None:
-                return False, f"invalid contracted task hash: {task_hash!r}", rows, set()
+                return (
+                    False,
+                    f"invalid contracted task hash: {task_hash!r}",
+                    rows,
+                    set(),
+                )
             normalized = dict(row)
             normalized["hash"] = task_hash
             normalized["container"] = normalize_container(row["container"], pins)
@@ -213,9 +239,19 @@ def evaluate_trace(
     processes = set(normalized_processes)
     images = {row["container"] for row in selected}
     if processes != set(contract.processes):
-        return False, f"process mismatch {sorted(processes ^ set(contract.processes))}", selected, images
+        return (
+            False,
+            f"process mismatch {sorted(processes ^ set(contract.processes))}",
+            selected,
+            images,
+        )
     if images != set(contract.images):
-        return False, f"image mismatch {sorted(images ^ set(contract.images))}", selected, images
+        return (
+            False,
+            f"image mismatch {sorted(images ^ set(contract.images))}",
+            selected,
+            images,
+        )
     return True, "qualified", selected, images
 
 
@@ -226,12 +262,28 @@ def docker_output(arguments: list[str]) -> str:
 def verify_image_identity(container: str, digest: str) -> str:
     repository = container.rsplit(":", 1)[0]
     immutable = f"{repository}@{digest}"
-    image_id = docker_output(["docker", "image", "inspect", container, "--format", "{{.Id}}"])
-    immutable_id = docker_output(["docker", "image", "inspect", immutable, "--format", "{{.Id}}"])
-    if image_id != immutable_id or re.fullmatch(r"sha256:[0-9a-f]{64}", image_id) is None:
+    image_id = docker_output(
+        ["docker", "image", "inspect", container, "--format", "{{.Id}}"]
+    )
+    immutable_id = docker_output(
+        ["docker", "image", "inspect", immutable, "--format", "{{.Id}}"]
+    )
+    if (
+        image_id != immutable_id
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", image_id) is None
+    ):
         raise SystemExit(f"{container} is not bound to pinned digest {digest}")
     repo_digests = json.loads(
-        docker_output(["docker", "image", "inspect", container, "--format", "{{json .RepoDigests}}"])
+        docker_output(
+            [
+                "docker",
+                "image",
+                "inspect",
+                container,
+                "--format",
+                "{{json .RepoDigests}}",
+            ]
+        )
     )
     if not any(item.endswith("@" + digest) for item in repo_digests or []):
         raise SystemExit(f"{container} lacks expected RepoDigest {digest}")
@@ -281,6 +333,161 @@ def require_ichorcna_task_hash(rows: Iterable[dict[str, str]]) -> str:
             f"nested ICHORCNA_RUN has invalid Nextflow work hash: {task_hash!r}"
         )
     return task_hash
+
+
+def identity_record(identity: TraceIdentity) -> dict[str, object]:
+    return {
+        "source_trace": identity.source_trace,
+        "mtime_ns": identity.mtime_ns,
+        "bytes": identity.bytes,
+        "sha256": identity.sha256,
+    }
+
+
+def read_source_manifest_identities(path: Path) -> list[TraceIdentity]:
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            table = list(csv.reader(handle, delimiter="\t"))
+    except (OSError, csv.Error) as error:
+        raise SystemExit(
+            f"cannot read nested trace source manifest {path}: {error}"
+        ) from error
+    if not table or table[0] != list(SOURCE_MANIFEST_COLUMNS):
+        raise SystemExit(f"invalid nested trace source manifest header: {path}")
+    identities: list[TraceIdentity] = []
+    seen: set[str] = set()
+    for record in table[1:]:
+        if len(record) != len(SOURCE_MANIFEST_COLUMNS):
+            raise SystemExit(f"invalid nested trace source manifest row: {record!r}")
+        source_trace, mtime_text, bytes_text, rows_text, successful_text, digest = (
+            record
+        )
+        try:
+            validate_trace_relative(source_trace)
+            mtime_ns = int(mtime_text)
+            size = int(bytes_text)
+            row_count = int(rows_text)
+            successful_rows = int(successful_text)
+        except (ValueError, TypeError) as error:
+            raise SystemExit(
+                f"invalid nested trace source manifest row: {record!r}: {error}"
+            ) from error
+        if (
+            source_trace in seen
+            or mtime_ns < 0
+            or size < 0
+            or row_count < 0
+            or not 0 <= successful_rows <= row_count
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            or str(mtime_ns) != mtime_text
+            or str(size) != bytes_text
+            or str(row_count) != rows_text
+            or str(successful_rows) != successful_text
+        ):
+            raise SystemExit(f"invalid nested trace source manifest row: {record!r}")
+        seen.add(source_trace)
+        identities.append(TraceIdentity(source_trace, mtime_ns, size, digest))
+    expected = sorted(identities, key=lambda item: (item.mtime_ns, item.source_trace))
+    if identities != expected:
+        raise SystemExit(
+            f"nested trace source manifest is not deterministically sorted: {path}"
+        )
+    return identities
+
+
+def verify_current_trace_invocation(
+    root: Path,
+    pre_inventory_path: Path,
+    source_manifest_path: Path,
+    selected_rows: Iterable[dict[str, str]],
+    post_inventory_path: Path,
+    delta_inventory_path: Path,
+    *,
+    require_ichorcna: bool,
+) -> dict[str, object]:
+    """Bind selected evidence to trace content created by this outer invocation."""
+    root = root.expanduser().resolve()
+    pre = read_trace_inventory(pre_inventory_path)
+    post = capture_trace_inventory(root)
+    manifest_identities = read_source_manifest_identities(source_manifest_path)
+    if manifest_identities != post:
+        raise SystemExit(
+            "nested trace source manifest is not the complete current real-file "
+            f"inventory: {source_manifest_path}"
+        )
+    delta = trace_inventory_delta(pre, post)
+    if not delta:
+        raise SystemExit(
+            "nested comparator produced no new or content-changed execution trace "
+            "during the current invocation"
+        )
+    newest = max(post, key=lambda item: (item.mtime_ns, item.source_trace))
+    if newest not in delta:
+        raise SystemExit(
+            "newest nested execution trace predates the current comparator invocation: "
+            f"{newest.source_trace}"
+        )
+
+    selected_ichorcna_source: str | None = None
+    if require_ichorcna:
+        selected = list(selected_rows)
+        require_ichorcna_task_hash(selected)
+        ichorcna_rows = [
+            row
+            for row in selected
+            if normalize_process(row.get("name", "")) == ICHORCNA_RUN_PROCESS
+        ]
+        if len(ichorcna_rows) != 1:
+            raise SystemExit(
+                "selected nested trace has ambiguous ICHORCNA_RUN evidence"
+            )
+        selected_ichorcna_source = ichorcna_rows[0].get("source_trace", "").strip()
+        try:
+            validate_trace_relative(selected_ichorcna_source)
+        except ValueError as error:
+            raise SystemExit(
+                f"selected ICHORCNA_RUN has unsafe source trace: {error}"
+            ) from error
+        if selected_ichorcna_source != newest.source_trace:
+            raise SystemExit(
+                "selected freshly completed ICHORCNA_RUN does not come from the "
+                "deterministic newest nested trace: "
+                f"selected={selected_ichorcna_source!r} newest={newest.source_trace!r}"
+            )
+        if not any(
+            row.source_trace == selected_ichorcna_source and row == newest
+            for row in delta
+        ):
+            raise SystemExit(
+                "selected ICHORCNA_RUN source trace was not newly created or "
+                "content-changed by the current comparator invocation"
+            )
+
+    inventory_paths = {
+        path.expanduser().resolve(strict=False)
+        for path in (pre_inventory_path, post_inventory_path, delta_inventory_path)
+    }
+    if len(inventory_paths) != 3:
+        raise SystemExit("pre/post/delta trace inventory paths must be distinct")
+    write_trace_inventory(post_inventory_path, post)
+    write_trace_inventory(delta_inventory_path, delta)
+    return {
+        "schema": "oncotracer-nested-trace-invocation-v1",
+        "newest_source_trace": newest.source_trace,
+        "selected_ichorcna_source_trace": selected_ichorcna_source,
+        "pre": {
+            "sha256": sha256(pre_inventory_path),
+            "entries": [identity_record(row) for row in pre],
+        },
+        "post": {
+            "sha256": sha256(post_inventory_path),
+            "entries": [identity_record(row) for row in post],
+        },
+        "delta": {
+            "sha256": sha256(delta_inventory_path),
+            "entries": [identity_record(row) for row in delta],
+        },
+    }
 
 
 def marker_path_matches_task_hash(relative: Path, task_hash: str) -> bool:
@@ -356,19 +563,48 @@ def write_tsv(path: Path, header: Iterable[str], rows: Iterable[Iterable[str]]) 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--suite", choices=sorted(CONTRACTS), required=True)
-    parser.add_argument("--pins", type=Path, required=True)
-    parser.add_argument("--runtime-out", type=Path, required=True)
-    parser.add_argument("--selected-dir", type=Path, required=True)
-    parser.add_argument("--selection-out", type=Path, required=True)
+    parser.add_argument("--snapshot-root", type=Path)
+    parser.add_argument("--snapshot-out", type=Path)
+    parser.add_argument("--suite", choices=sorted(CONTRACTS))
+    parser.add_argument("--pins", type=Path)
+    parser.add_argument("--runtime-out", type=Path)
+    parser.add_argument("--selected-dir", type=Path)
+    parser.add_argument("--selection-out", type=Path)
     parser.add_argument("--illumina-root", type=Path)
     parser.add_argument("--ont-root", type=Path)
     parser.add_argument("--hcc-root", type=Path)
+    parser.add_argument("--illumina-pre-inventory", type=Path)
+    parser.add_argument("--ont-pre-inventory", type=Path)
+    parser.add_argument("--hcc-pre-inventory", type=Path)
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
+    if args.snapshot_root is not None or args.snapshot_out is not None:
+        if args.snapshot_root is None or args.snapshot_out is None:
+            raise SystemExit(
+                "--snapshot-root and --snapshot-out must be supplied together"
+            )
+        snapshot_trace_inventory(args.snapshot_root, args.snapshot_out)
+        print(f"captured pre-run nested trace inventory: {args.snapshot_out}")
+        return 0
+
+    required = {
+        "--suite": args.suite,
+        "--pins": args.pins,
+        "--runtime-out": args.runtime_out,
+        "--selected-dir": args.selected_dir,
+        "--selection-out": args.selection_out,
+    }
+    missing_required = [name for name, value in required.items() if value is None]
+    if missing_required:
+        raise SystemExit(
+            "missing verification argument(s): " + ", ".join(missing_required)
+        )
+    if args.snapshot_root is not None or args.snapshot_out is not None:
+        raise SystemExit("snapshot arguments cannot be combined with verification")
+
     pins = read_pins(args.pins)
     contracts = CONTRACTS[args.suite]
     expected_union = set().union(*(set(contract.images) for contract in contracts))
@@ -385,21 +621,31 @@ def main() -> int:
         root = getattr(args, contract.root_arg)
         if root is None or not root.is_dir():
             raise SystemExit(f"missing --{contract.root_arg.replace('_', '-')}: {root}")
+        pre_arg = contract.root_arg.removesuffix("_root") + "_pre_inventory"
+        pre_inventory = getattr(args, pre_arg)
+        if pre_inventory is None:
+            raise SystemExit(
+                f"missing --{pre_arg.replace('_', '-')} for {contract.label}"
+            )
+        diagnostic_prefix = contract.label.removeprefix("quickstart1-").removeprefix(
+            "quickstart2-"
+        )
+        pre_audit = args.selected_dir / f"nested-v1-{diagnostic_prefix}-trace-pre.tsv"
+        write_trace_inventory(pre_audit, read_trace_inventory(pre_inventory))
 
         # A nested Nextflow resume can split one complete run across several
         # execution traces. Build one deterministic latest-occurrence task
         # bundle, then require every contracted occurrence to be successful,
         # instead of trusting an arbitrary individual trace file.
         combined_trace, source_manifest, _ = combine_root(root)
-        diagnostic_prefix = contract.label.removeprefix("quickstart1-").removeprefix("quickstart2-")
-        combined_audit = args.selected_dir / f"candidate-{diagnostic_prefix}-combined-trace.tsv"
-        source_audit = args.selected_dir / f"candidate-{diagnostic_prefix}-trace-sources.tsv"
+        combined_audit = (
+            args.selected_dir / f"candidate-{diagnostic_prefix}-combined-trace.tsv"
+        )
+        source_audit = (
+            args.selected_dir / f"candidate-{diagnostic_prefix}-trace-sources.tsv"
+        )
         shutil.copyfile(combined_trace, combined_audit)
         shutil.copyfile(source_manifest, source_audit)
-
-        traces = sorted(root.rglob("pipeline_info/execution_trace_*.txt"))
-        if not traces:
-            raise SystemExit(f"no nested SAMURAI traces found for {contract.label}: {root}")
 
         ok, reason, selected_rows, observed_images = evaluate_trace(
             combined_trace, contract, pins
@@ -410,15 +656,36 @@ def main() -> int:
                 f"trace={combined_trace}; sources={source_manifest}"
             )
 
+        post_audit = args.selected_dir / f"nested-v1-{diagnostic_prefix}-trace-post.tsv"
+        delta_audit = (
+            args.selected_dir / f"nested-v1-{diagnostic_prefix}-trace-delta.tsv"
+        )
+        invocation = verify_current_trace_invocation(
+            root,
+            pre_audit,
+            source_manifest,
+            selected_rows,
+            post_audit,
+            delta_audit,
+            require_ichorcna=contract.require_ichorcna_compat,
+        )
+        invocation_name = f"nested-v1-{diagnostic_prefix}-trace-invocation.json"
+        invocation_path = args.selected_dir / invocation_name
+        invocation_path.write_text(
+            json.dumps(invocation, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        trace_count = len(invocation["post"]["entries"])
+
         selected_name = f"nested-v1-{diagnostic_prefix}-trace.tsv"
         selected_destination = args.selected_dir / selected_name
         shutil.copyfile(combined_trace, selected_destination)
         selection_rows.append(
             [
                 contract.label,
-                str(len(traces)),
+                str(trace_count),
                 "1",
-                f"complete-combined-trace:{combined_trace.as_posix()}",
+                f"complete-combined-trace:{combined_trace.as_posix()};current:{invocation['newest_source_trace']}",
                 selected_destination.name,
                 sha256(selected_destination),
             ]
@@ -428,8 +695,23 @@ def main() -> int:
         # trace fragment records only the final subset of executed tasks.
         for container in sorted(contract.images):
             runtime_rows.append(
-                [contract.label, container, pins[container], verify_image_identity(container, pins[container])]
+                [
+                    contract.label,
+                    container,
+                    pins[container],
+                    verify_image_identity(container, pins[container]),
+                ]
             )
+        selection_rows.append(
+            [
+                contract.label + "-current-invocation",
+                "",
+                "",
+                f"newest-trace:{invocation['newest_source_trace']}",
+                invocation_name,
+                sha256(invocation_path),
+            ]
+        )
         if contract.require_ichorcna_compat:
             metadata, task_hash, marker_relative = select_compat_marker(
                 root,
@@ -443,7 +725,9 @@ def main() -> int:
                     "",
                     f"task-hash:{task_hash};marker:{marker_relative.as_posix()}",
                     "nested-v1-ont-ichorcna-plot-compat.tsv",
-                    sha256(args.selected_dir / "nested-v1-ont-ichorcna-plot-compat.tsv"),
+                    sha256(
+                        args.selected_dir / "nested-v1-ont-ichorcna-plot-compat.tsv"
+                    ),
                 ]
             )
             print(f"{contract.label} ichorCNA compatibility: {metadata['status']}")
@@ -455,7 +739,14 @@ def main() -> int:
     )
     write_tsv(
         args.selection_out,
-        ["run", "candidate_traces", "qualified_traces", "selected_source", "audit_copy", "sha256"],
+        [
+            "run",
+            "candidate_traces",
+            "qualified_traces",
+            "selected_source",
+            "audit_copy",
+            "sha256",
+        ],
         selection_rows,
     )
     if {row[1] for row in runtime_rows} != set(pins):

@@ -77,10 +77,19 @@ files. Both the hosted release gate and the standalone validation-server driver
 therefore build a deterministic combined trace from the latest occurrence of
 each canonical task, require every contracted latest occurrence to be
 successful or cached with exit status zero, and retain the complete source-trace
-manifest. The ONT audit requires the complete ten-process contract, including a
+manifest with each real trace's relative path, nanosecond mtime, byte size, and
+full SHA-256. Immediately before every outer comparator, the gate records that
+root's trace inventory. The sealed audit preserves the pre-run inventory, the
+post-run inventory, and their content delta. A successful run must create a new
+trace path or change trace content; touching an old file is not sufficient.
+The deterministic newest post-run trace is selected by `(mtime_ns, path)`.
+The ONT audit requires the complete ten-process contract, including a
 freshly `COMPLETED`, exit-zero `ICHORCNA_RUN`; `CACHED` is rejected for this one
 deliberately non-cacheable task. Its compatibility marker must be inside the
-exact Nextflow work directory identified by that task's trace hash.
+exact Nextflow work directory identified by that task's trace hash. That fresh
+task must come from the newest trace and the trace must be in the current
+invocation's content delta.
+An early failure with a new trace or a startup failure with no trace fails closed.
 An incomplete resume fragment, an unbound marker, or a smaller process subset
 fails closed. Outer comparator sessions do not use `-resume`. A content-derived
 audit-policy digest seals the nested config and mounted compatibility sources,

@@ -41,6 +41,9 @@ readonly PREFLIGHT="$RUNNER_TEMP/$SUITE-samurai-container-preflight.tsv"
 readonly RUNTIME="$CONTEXT/nested-v1-container-runtime.tsv"
 readonly SELECTION="$CONTEXT/nested-v1-trace-selection.tsv"
 
+readonly ILLUMINA_PRE_INVENTORY="$RUNNER_TEMP/$SUITE-illumina-nested-traces-pre.tsv"
+readonly ONT_PRE_INVENTORY="$RUNNER_TEMP/$SUITE-ont-nested-traces-pre.tsv"
+readonly HCC_PRE_INVENTORY="$RUNNER_TEMP/$SUITE-hcc1143-nested-traces-pre.tsv"
 export XDG_CONFIG_HOME="$CONFIG_HOME"
 export ONCOTRACER_PAYLOAD_CACHE="$PAYLOAD_CACHE"
 export PIP_NO_CACHE_DIR=1
@@ -293,6 +296,9 @@ fi
 
 log "Run complete frozen v1.1 baseline"
 if [[ "$SUITE" == quickstart1 ]]; then
+  python3 "$REPO/tests/verify_nested_samurai.py" \
+    --snapshot-root "$TEST_ROOT/v1/illumina/01_samurai_illumina" \
+    --snapshot-out "$ILLUMINA_PRE_INVENTORY"
   env PATH="$PINNED_NEXTFLOW_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     "$NEXTFLOW" -log "$NEXTFLOW_REPORT_ROOT/v1-illumina.nextflow.log" \
     run "$V1_REPO/main.nf" \
@@ -303,6 +309,9 @@ if [[ "$SUITE" == quickstart1 ]]; then
     -with-report "$NEXTFLOW_REPORT_ROOT/v1-illumina.html" \
     -with-trace "$NEXTFLOW_REPORT_ROOT/v1-illumina.tsv" \
     2>&1 | tee "$NEXTFLOW_REPORT_ROOT/v1-illumina.command.log"
+  python3 "$REPO/tests/verify_nested_samurai.py" \
+    --snapshot-root "$TEST_ROOT/v1/ont/01_samurai_ont" \
+    --snapshot-out "$ONT_PRE_INVENTORY"
   env PATH="$PINNED_NEXTFLOW_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     "$NEXTFLOW" -log "$NEXTFLOW_REPORT_ROOT/v1-ont.nextflow.log" \
     run "$V1_REPO/main.nf" \
@@ -314,6 +323,9 @@ if [[ "$SUITE" == quickstart1 ]]; then
     -with-trace "$NEXTFLOW_REPORT_ROOT/v1-ont.tsv" \
     2>&1 | tee "$NEXTFLOW_REPORT_ROOT/v1-ont.command.log"
 else
+  python3 "$REPO/tests/verify_nested_samurai.py" \
+    --snapshot-root "$TEST_ROOT/v1/hcc1143/01_samurai_illumina" \
+    --snapshot-out "$HCC_PRE_INVENTORY"
   env PATH="$PINNED_NEXTFLOW_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     "$NEXTFLOW" -log "$NEXTFLOW_REPORT_ROOT/v1-hcc1143.nextflow.log" \
     run "$V1_REPO/main.nf" \
@@ -338,12 +350,15 @@ if [[ "$SUITE" == quickstart1 ]]; then
   python3 "$REPO/tests/verify_nested_samurai.py" \
     --suite quickstart1 --pins "$PINS" --runtime-out "$RUNTIME" \
     --selected-dir "$CONTEXT" --selection-out "$SELECTION" \
+    --illumina-pre-inventory "$ILLUMINA_PRE_INVENTORY" \
+    --ont-pre-inventory "$ONT_PRE_INVENTORY" \
     --illumina-root "$TEST_ROOT/v1/illumina/01_samurai_illumina" \
     --ont-root "$TEST_ROOT/v1/ont/01_samurai_ont"
 else
   python3 "$REPO/tests/verify_nested_samurai.py" \
     --suite quickstart2 --pins "$PINS" --runtime-out "$RUNTIME" \
     --selected-dir "$CONTEXT" --selection-out "$SELECTION" \
+    --hcc-pre-inventory "$HCC_PRE_INVENTORY" \
     --hcc-root "$TEST_ROOT/v1/hcc1143/01_samurai_illumina"
 fi
 
