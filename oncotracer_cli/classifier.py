@@ -14,9 +14,9 @@ from .runtime import (
     StageLedger,
     atomic_write_json,
     atomic_write_text,
+    atomic_write_workflow_summary,
     require_directory,
     require_file,
-    render_key_value_summary,
     utc_now,
 )
 
@@ -384,11 +384,7 @@ def _update_summary(analysis_outdir: Path, classifier_out: Path) -> None:
     value["cna_classifier"] = str(classifier_out)
     value["cna_classifier_completed"] = True
     value["completed_at"] = utc_now()
-    atomic_write_json(json_path, value)
-    atomic_write_text(
-        summary_dir / "workflow_summary.txt",
-        render_key_value_summary(value),
-    )
+    atomic_write_workflow_summary(summary_dir, value)
 
 
 def run_native_classifier(

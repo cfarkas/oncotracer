@@ -27,6 +27,7 @@ from oncotracer_cli.cli import (  # noqa: E402
     prepare_quickstart1,
 )
 from oncotracer_cli.runtime import (  # noqa: E402
+    atomic_write_workflow_summary,
     load_flat_yaml,
     render_flat_yaml,
     render_key_value_summary,
@@ -70,6 +71,23 @@ class NativeCliTests(unittest.TestCase):
             rendered,
             "engine=native\nnextflow_used=false\ncomplete=true\n",
         )
+
+    def test_workflow_summary_preserves_typed_json_and_lowercase_text(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            summary_dir = Path(directory) / "06_workflow_summary"
+            atomic_write_workflow_summary(
+                summary_dir,
+                {"engine": "native", "nextflow_used": False, "complete": True},
+            )
+            parsed = json.loads(
+                (summary_dir / "workflow_summary.json").read_text(encoding="utf-8")
+            )
+            self.assertIs(parsed["nextflow_used"], False)
+            self.assertIs(parsed["complete"], True)
+            self.assertEqual(
+                (summary_dir / "workflow_summary.txt").read_text(encoding="utf-8"),
+                "engine=native\nnextflow_used=false\ncomplete=true\n",
+            )
 
     def test_conda_prefixes_are_isolated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

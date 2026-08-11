@@ -30,12 +30,12 @@ from .runtime import (
     StageLedger,
     atomic_write_json,
     atomic_write_text,
+    atomic_write_workflow_summary,
     download,
     load_flat_yaml,
     require_command,
     require_directory,
     require_file,
-    render_key_value_summary,
     runtime_root,
     sha256_file,
     utc_now,
@@ -1318,11 +1318,7 @@ def run_refinement_and_outputs(
                 "failed_samples": sample_status.get("failed_samples", []),
             }
         )
-    atomic_write_json(summary_dir / "workflow_summary.json", summary)
-    atomic_write_text(
-        summary_dir / "workflow_summary.txt",
-        render_key_value_summary(summary),
-    )
+    atomic_write_workflow_summary(summary_dir, summary)
 
 
 def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> None:
@@ -1435,11 +1431,7 @@ def _merge_methylation_summary(
     )
     if cna_error is not None:
         summary["cna_error"] = _sanitize_sample_error(cna_error)
-    atomic_write_json(summary_path, summary)
-    atomic_write_text(
-        summary_dir / "workflow_summary.txt",
-        render_key_value_summary(summary),
-    )
+    atomic_write_workflow_summary(summary_dir, summary)
     return summary
 
 

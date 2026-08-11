@@ -626,7 +626,14 @@ class NativeMethylationTests(unittest.TestCase):
             summary_dir = outdir / "06_workflow_summary"
             summary_dir.mkdir(parents=True)
             (summary_dir / "workflow_summary.json").write_text(
-                json.dumps({"workflow_status": "complete"}), encoding="utf-8"
+                json.dumps(
+                    {
+                        "engine": "native",
+                        "nextflow_used": False,
+                        "workflow_status": "complete",
+                    }
+                ),
+                encoding="utf-8",
             )
             no_cpg = {
                 "overall_status": "no_cpg_modifications",
@@ -657,6 +664,15 @@ class NativeMethylationTests(unittest.TestCase):
             self.assertEqual(merged["methylation_status"], "complete")
             self.assertEqual(merged["workflow_status"], "partial_failure")
             self.assertNotIn("patient-secret", str(merged["cna_error"]))
+            summary_text = (summary_dir / "workflow_summary.txt").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("nextflow_used=false", summary_text)
+            self.assertNotIn("nextflow_used=False", summary_text)
+            summary_json = json.loads(
+                (summary_dir / "workflow_summary.json").read_text(encoding="utf-8")
+            )
+            self.assertIs(summary_json["nextflow_used"], False)
 
 
 if __name__ == "__main__":

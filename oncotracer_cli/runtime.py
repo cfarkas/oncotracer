@@ -245,6 +245,18 @@ def render_key_value_summary(values: Mapping[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def atomic_write_workflow_summary(
+    summary_dir: Path, values: Mapping[str, object]
+) -> None:
+    """Atomically write the typed JSON and stable text summary pair."""
+    summary_dir.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(summary_dir / "workflow_summary.json", values)
+    atomic_write_text(
+        summary_dir / "workflow_summary.txt",
+        render_key_value_summary(values),
+    )
+
+
 def require_file(path: Path, label: str) -> Path:
     path = path.expanduser().resolve()
     if not path.is_file() or path.stat().st_size == 0:

@@ -167,6 +167,11 @@ class NativeClassifierTests(unittest.TestCase):
             workflow_summary = (summary / "workflow_summary.txt").read_text(encoding="utf-8")
             self.assertIn("nextflow_used=false", workflow_summary)
             self.assertIn("cna_classifier_completed=true", workflow_summary)
+            workflow_summary_json = json.loads(
+                (summary / "workflow_summary.json").read_text(encoding="utf-8")
+            )
+            self.assertIs(workflow_summary_json["nextflow_used"], False)
+            self.assertIs(workflow_summary_json["cna_classifier_completed"], True)
 
 
 if __name__ == "__main__":
