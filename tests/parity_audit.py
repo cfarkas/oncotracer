@@ -6,8 +6,10 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import re
+import stat
 import sys
 from pathlib import Path, PurePosixPath
 
@@ -265,11 +267,13 @@ def read_trace_inventory_audit(path: Path) -> list[tuple[str, int, int, str]]:
     return identities
 
 
-def read_trace_source_audit(path: Path) -> list[tuple[str, int, int, str]]:
+def read_trace_source_audit(
+    path: Path,
+) -> list[tuple[str, int, int, int, int, str]]:
     table = read_tsv(path)
     if not table or table[0] != TRACE_SOURCE_HEADER:
         raise AuditError(f"invalid nested trace source manifest: {path}")
-    identities: list[tuple[str, int, int, str]] = []
+    records: list[tuple[str, int, int, int, int, str]] = []
     seen: set[str] = set()
     for record in table[1:]:
         if len(record) != 6:
@@ -289,10 +293,190 @@ def read_trace_source_audit(path: Path) -> list[tuple[str, int, int, str]]:
         ):
             raise AuditError(f"invalid nested trace source row: {record!r}")
         seen.add(identity[0])
-        identities.append(identity)
-    if identities != sorted(identities, key=lambda row: (row[1], row[0])):
+        records.append(
+            (
+                identity[0],
+                identity[1],
+                identity[2],
+                row_count,
+                successful_rows,
+                identity[3],
+            )
+        )
+    if records != sorted(records, key=lambda row: (row[1], row[0])):
         raise AuditError(f"nested trace source manifest is not sorted: {path}")
-    return identities
+    if not records:
+        raise AuditError(f"nested trace source manifest is empty: {path}")
+    return records
+
+
+def canonical_audit_task(name: str) -> str:
+    value = re.sub(r"\s+", " ", name.strip())
+    if ":SAMURAI:" in value:
+        value = "SAMURAI:" + value.rsplit(":SAMURAI:", 1)[1]
+    return value
+
+
+def render_preserved_combined_trace(
+    raw_root: Path,
+    source_records: list[tuple[str, int, int, int, int, str]],
+) -> bytes:
+    """Independently render latest-task evidence from sealed raw trace bytes."""
+    absolute_root = raw_root.expanduser().absolute()
+    if absolute_root.is_symlink():
+        raise AuditError(f"raw trace artifact root is a symbolic link: {raw_root}")
+    try:
+        root = absolute_root.resolve(strict=True)
+    except OSError as error:
+        raise AuditError(f"raw trace artifact root is missing: {raw_root}") from error
+    if root != absolute_root or not root.is_dir():
+        raise AuditError(f"unsafe raw trace artifact root: {raw_root}")
+
+    expected = {record[0] for record in source_records}
+    expected_directories = {
+        parent.as_posix()
+        for relative in expected
+        for parent in PurePosixPath(relative).parents
+        if parent != PurePosixPath(".")
+    }
+    actual: set[str] = set()
+    for item in sorted(root.rglob("*")):
+        if item.is_symlink():
+            raise AuditError(f"raw trace artifact contains a symbolic link: {item}")
+        resolved = item.resolve(strict=True)
+        if resolved != item:
+            raise AuditError(f"raw trace artifact has a linked path component: {item}")
+        relative = resolved.relative_to(root).as_posix()
+        metadata = resolved.stat(follow_symlinks=False)
+        if stat.S_ISREG(metadata.st_mode):
+            if relative not in expected:
+                raise AuditError(f"unexpected raw trace artifact: {relative}")
+            actual.add(relative)
+        elif stat.S_ISDIR(metadata.st_mode):
+            if relative not in expected_directories:
+                raise AuditError(f"unexpected raw trace directory: {relative}")
+        else:
+            raise AuditError(f"unsupported raw trace artifact object: {relative}")
+    if actual != expected:
+        raise AuditError(
+            "raw trace artifact inventory mismatch: "
+            f"missing={sorted(expected - actual)!r} extra={sorted(actual - expected)!r}"
+        )
+
+    selected: dict[str, tuple[tuple[int, str, int], dict[str, str]]] = {}
+    for (
+        relative,
+        mtime_ns,
+        expected_bytes,
+        expected_rows,
+        expected_success,
+        digest,
+    ) in source_records:
+        path = root.joinpath(*PurePosixPath(relative).parts)
+        before = path.stat(follow_symlinks=False)
+        content = path.read_bytes()
+        after = path.stat(follow_symlinks=False)
+        before_key = (
+            before.st_dev,
+            before.st_ino,
+            before.st_mode,
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        )
+        after_key = (
+            after.st_dev,
+            after.st_ino,
+            after.st_mode,
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+        )
+        if before_key != after_key:
+            raise AuditError(
+                f"raw trace changed during sealed verification: {relative}"
+            )
+        if (
+            len(content) != expected_bytes
+            or hashlib.sha256(content).hexdigest() != digest
+        ):
+            raise AuditError(f"raw trace identity mismatch: {relative}")
+        try:
+            text = content.decode("utf-8")
+            reader = csv.DictReader(io.StringIO(text, newline=""), delimiter="\t")
+            header = list(reader.fieldnames or [])
+            rows = list(reader)
+        except (UnicodeDecodeError, csv.Error) as error:
+            raise AuditError(f"cannot parse raw trace {relative}: {error}") from error
+        required = {"hash", "name", "status", "exit", "container"}
+        if not required <= set(header):
+            raise AuditError(
+                f"raw trace lacks required columns {sorted(required - set(header))}: {relative}"
+            )
+        successful = 0
+        for row_number, row in enumerate(rows, start=2):
+            values = {column: (row.get(column) or "").strip() for column in header}
+            if (
+                values["status"] in {"COMPLETED", "CACHED"}
+                and values["exit"] == "0"
+                and values["container"]
+            ):
+                successful += 1
+            key = canonical_audit_task(values["name"])
+            order = (mtime_ns, relative, row_number)
+            previous = selected.get(key)
+            if previous is None or order >= previous[0]:
+                selected[key] = (order, values)
+        if len(rows) != expected_rows or successful != expected_success:
+            raise AuditError(
+                f"raw trace row-count evidence mismatch: {relative}: "
+                f"rows={len(rows)}/{expected_rows} successful={successful}/{expected_success}"
+            )
+    if not selected:
+        raise AuditError("preserved raw traces contain no task occurrences")
+
+    output = io.StringIO(newline="")
+    fields = (
+        "task_id",
+        "hash",
+        "name",
+        "status",
+        "exit",
+        "container",
+        "source_trace",
+        "source_row",
+    )
+    writer = csv.DictWriter(
+        output, fieldnames=fields, delimiter="\t", lineterminator="\n"
+    )
+    writer.writeheader()
+    for task_id, key in enumerate(sorted(selected), start=1):
+        order, values = selected[key]
+        writer.writerow(
+            {
+                "task_id": str(task_id),
+                "hash": values.get("hash", ""),
+                "name": values["name"],
+                "status": values["status"],
+                "exit": values["exit"],
+                "container": values["container"],
+                "source_trace": order[1],
+                "source_row": str(order[2]),
+            }
+        )
+    return output.getvalue().encode("utf-8")
+
+
+def verify_preserved_trace_render(
+    raw_root: Path, source_manifest: Path, combined_trace: Path
+) -> list[tuple[str, int, int, int, int, str]]:
+    records = read_trace_source_audit(source_manifest)
+    rendered = render_preserved_combined_trace(raw_root, records)
+    if rendered != require_file(combined_trace).read_bytes():
+        raise AuditError(
+            "sealed combined trace is not the deterministic rendering of raw sources"
+        )
+    return records
 
 
 def audit_trace_delta(
@@ -328,15 +512,25 @@ def verify_trace_invocation(
     post_path = context / f"nested-v1-{suffix}-trace-post.tsv"
     delta_path = context / f"nested-v1-{suffix}-trace-delta.tsv"
     source_path = context / f"candidate-{suffix}-trace-sources.tsv"
+    raw_source_root = context / f"candidate-{suffix}-trace-source-files"
+    candidate_trace_path = context / f"candidate-{suffix}-combined-trace.tsv"
     invocation_name = f"nested-v1-{suffix}-trace-invocation.json"
     invocation_path = context / invocation_name
 
     pre = read_trace_inventory_audit(pre_path)
     post = read_trace_inventory_audit(post_path)
     delta = read_trace_inventory_audit(delta_path)
-    sources = read_trace_source_audit(source_path)
+    source_records = verify_preserved_trace_render(
+        raw_source_root, source_path, trace_path
+    )
+    sources = [
+        (record[0], record[1], record[2], record[5]) for record in source_records
+    ]
     if not post or sources != post:
         raise AuditError("source manifest is not the complete post-run trace inventory")
+    expected_trace = require_file(trace_path).read_bytes()
+    if require_file(candidate_trace_path).read_bytes() != expected_trace:
+        raise AuditError("candidate and selected combined trace copies differ")
     expected_delta = audit_trace_delta(pre, post)
     if not expected_delta or delta != expected_delta:
         raise AuditError("nested current-invocation trace delta is empty or forged")
@@ -352,6 +546,8 @@ def verify_trace_invocation(
         != {
             "schema",
             "newest_source_trace",
+            "selected_contract_source_trace",
+            "selected_contract_row_count",
             "selected_ichorcna_source_trace",
             "pre",
             "post",
@@ -375,16 +571,42 @@ def verify_trace_invocation(
     if payload["newest_source_trace"] != newest[0]:
         raise AuditError("nested invocation JSON does not identify the newest trace")
 
+    combined_rows = parse_trace(trace_path)
+    contracted_rows = [
+        row
+        for row in combined_rows
+        if normalize_process(row.get("name", "")) in contract.processes
+    ]
+    post_paths = {row[0] for row in post}
+    contracted_sources: list[str] = []
+    for row in contracted_rows:
+        source_trace = row.get("source_trace", "").strip()
+        validate_audit_trace_relative(source_trace)
+        if source_trace not in post_paths:
+            raise AuditError(
+                "selected contracted row is absent from post-run trace inventory"
+            )
+        contracted_sources.append(source_trace)
+    current_contract_rows = sum(
+        source_trace == newest[0] for source_trace in contracted_sources
+    )
+    if current_contract_rows < 1:
+        raise AuditError("newest current trace contributes no selected contracted task")
+    if (
+        payload["selected_contract_source_trace"] != newest[0]
+        or payload["selected_contract_row_count"] != current_contract_rows
+    ):
+        raise AuditError("nested invocation JSON has the wrong contract binding")
+
     ichorcna_source: str | None = None
     if contract.require_ichorcna_compat:
-        rows = parse_trace(trace_path)
         try:
-            require_ichorcna_task_hash(rows)
+            require_ichorcna_task_hash(contracted_rows)
         except SystemExit as error:
             raise AuditError(str(error)) from error
         matches = [
             row
-            for row in rows
+            for row in contracted_rows
             if normalize_process(row.get("name", "")) == ICHORCNA_RUN_PROCESS
         ]
         if len(matches) != 1:
@@ -818,6 +1040,11 @@ def build_parser() -> argparse.ArgumentParser:
     checksums = subparsers.add_parser("checksums")
     checksums.add_argument("audit", type=Path)
 
+    trace_proof = subparsers.add_parser("verify-trace-proof")
+    trace_proof.add_argument("--raw-root", type=Path, required=True)
+    trace_proof.add_argument("--source-manifest", type=Path, required=True)
+    trace_proof.add_argument("--combined-trace", type=Path, required=True)
+
     verify = subparsers.add_parser("verify")
     verify.add_argument("--suite", choices=sorted(CONTRACTS), required=True)
     verify.add_argument("--audit", type=Path, required=True)
@@ -836,6 +1063,23 @@ def main() -> int:
             write_manifest(args.root, args.destination)
         elif args.command == "checksums":
             write_checksums(args.audit)
+        elif args.command == "verify-trace-proof":
+            records = verify_preserved_trace_render(
+                args.raw_root, args.source_manifest, args.combined_trace
+            )
+            print(
+                json.dumps(
+                    {
+                        "schema": "oncotracer-preserved-nested-trace-proof-v1",
+                        "passed": True,
+                        "source_trace_count": len(records),
+                        "source_manifest_sha256": sha256(args.source_manifest),
+                        "combined_trace_sha256": sha256(args.combined_trace),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
         else:
             if re.fullmatch(r"[0-9a-f]{40}", args.candidate_sha) is None:
                 raise AuditError(f"invalid candidate SHA: {args.candidate_sha}")

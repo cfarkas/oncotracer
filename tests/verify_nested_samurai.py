@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,7 +22,10 @@ from combine_nested_samurai_traces import (
     TraceIdentity,
     capture_trace_inventory,
     combine_root,
+    materialize_trace_sources,
+    read_source_manifest,
     read_trace_inventory,
+    recompute_preserved_trace_artifact,
     snapshot_trace_inventory,
     trace_identity,
     trace_inventory_delta,
@@ -428,9 +432,34 @@ def verify_current_trace_invocation(
             f"{newest.source_trace}"
         )
 
+    selected = list(selected_rows)
+    post_by_path = {row.source_trace: row for row in post}
+    selected_sources: list[str] = []
+    for row in selected:
+        source_trace = row.get("source_trace", "").strip()
+        try:
+            validate_trace_relative(source_trace)
+        except ValueError as error:
+            raise SystemExit(
+                f"selected contracted row has unsafe source trace: {error}"
+            ) from error
+        if source_trace not in post_by_path:
+            raise SystemExit(
+                "selected contracted row is absent from the complete post-run "
+                f"inventory: {source_trace}"
+            )
+        selected_sources.append(source_trace)
+    current_contract_rows = sum(
+        source_trace == newest.source_trace for source_trace in selected_sources
+    )
+    if current_contract_rows < 1:
+        raise SystemExit(
+            "deterministic newest current-invocation trace contributes no selected "
+            "contracted scientific task"
+        )
+
     selected_ichorcna_source: str | None = None
     if require_ichorcna:
-        selected = list(selected_rows)
         require_ichorcna_task_hash(selected)
         ichorcna_rows = [
             row
@@ -474,6 +503,8 @@ def verify_current_trace_invocation(
     return {
         "schema": "oncotracer-nested-trace-invocation-v1",
         "newest_source_trace": newest.source_trace,
+        "selected_contract_source_trace": newest.source_trace,
+        "selected_contract_row_count": current_contract_rows,
         "selected_ichorcna_source_trace": selected_ichorcna_source,
         "pre": {
             "sha256": sha256(pre_inventory_path),
@@ -488,6 +519,389 @@ def verify_current_trace_invocation(
             "entries": [identity_record(row) for row in delta],
         },
     }
+
+
+SERVER_ILLUMINA_PROCESSES = frozenset(
+    {
+        "SAMURAI:FASTQ_TRIM_FASTP_FASTQC:FASTQC_RAW",
+        "SAMURAI:FASTQ_ALIGN_DNA:BWAMEM1_MEM",
+        "SAMURAI:BAM_MARKDUPLICATES_PICARD:PICARD_MARKDUPLICATES",
+        "SAMURAI:BAM_MARKDUPLICATES_PICARD:SAMTOOLS_INDEX",
+        "SAMURAI:BAM_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS",
+        "SAMURAI:BAM_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT",
+        "SAMURAI:BAM_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS",
+        "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTMULTIPLEMETRICS",
+        "SAMURAI:BAM_QC_PICARD:PICARD_COLLECTWGSMETRICS",
+        "SAMURAI:SOLID_BIOPSY:QDNASEQ",
+        "SAMURAI:SOLID_BIOPSY:CONCATENATE_QDNASEQ_PLOTS",
+        "SAMURAI:MULTIQC",
+    }
+)
+SERVER_ONT_PROCESSES = ONT_PROCESSES
+SERVER_ILLUMINA_IMAGES = frozenset(
+    {
+        "quay.io/biocontainers/fastqc:0.12.1--hdfd78af_0",
+        "community.wave.seqera.io/library/bwa_htslib_samtools:83b50ff84ead50d0",
+        "community.wave.seqera.io/library/picard:3.4.0--e9963040df0a9bf6",
+        "quay.io/biocontainers/samtools:1.22.1--h96c455f_0",
+        "quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1",
+        "docker.io/t0shy/qpdf-docker:11.3.0",
+        "community.wave.seqera.io/library/multiqc:1.32--d58f60e4deb769bf",
+    }
+)
+SERVER_ONT_IMAGES = ONT_IMAGES
+SERVER_IMAGE_DIGESTS = {
+    "quay.io/biocontainers/fastqc:0.12.1--hdfd78af_0": "sha256:e194048df39c3145d9b4e0a14f4da20b59d59250465b6f2a9cb698445fd45900",
+    "community.wave.seqera.io/library/bwa_htslib_samtools:83b50ff84ead50d0": "sha256:48812e48a9462145c065d1b8e15d996c4a2c4c69469f1249fb601f25939cd48e",
+    "community.wave.seqera.io/library/picard:3.4.0--e9963040df0a9bf6": "sha256:e269216786463d44f9d83a0d6e877b34bca2c7b4d35211b4b369fe98e39ef1a5",
+    "quay.io/biocontainers/samtools:1.22.1--h96c455f_0": "sha256:23dc2c29f457a448a0d341fb97b2632a2c8004925214cb6420562a5b12adf8a2",
+    "quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1": "sha256:fb6135876beca3059ed1414d5082833d5bbf1fb3f0f64e51ca8b29fb47adaa75",
+    "docker.io/t0shy/qpdf-docker:11.3.0": "sha256:744f00189f4b0f3f1273073212102b32e0505fea528c9516e4252b9345e482d3",
+    "community.wave.seqera.io/library/multiqc:1.32--d58f60e4deb769bf": "sha256:677f4c8e38cfd741926e5bd1e80d96b756540bc6a9e9c5ed520aa7a98358d11d",
+    "community.wave.seqera.io/library/hmmcopy_samtools:875db3767c6d4ea2": "sha256:209b7aeca568155a099873da6e830427bf0a9d5418426b39f913db736d53e20b",
+    "community.wave.seqera.io/library/r-ichorcna:0.5.1--eed4be826f05c9d4": "sha256:c6240b1bcc57de07d9a92373f6fad080870bba0075be6cd25c6d37179d928c72",
+    "community.wave.seqera.io/library/polars_procps-ng_typer:d1a53d7945a021e3": "sha256:3b7464a65a9b23f0969b19767303b8727ab9f7dce83b1885cd8f6334d75ed59e",
+    "community.wave.seqera.io/library/procps-ng_r-argparser_r-dplyr_r-ggplot2_pruned:10da72fa04bcba1a": "sha256:28626b999449abe6ddc2167228023ec93e90d109a540be97d0a789d2093b4e8b",
+    "quay.io/einar_rainhart/pandas-pandera:1.5.3": "sha256:39fae3f3a2edb8cb174b3ffade1741b6b1ec850a323b4f7a0dca6908f2e49cf8",
+}
+SERVER_TRACE_CONTRACTS = {
+    ("v1-illumina-samurai", "illumina", 12): (
+        SERVER_ILLUMINA_PROCESSES,
+        SERVER_ILLUMINA_IMAGES,
+    ),
+    ("v1-ont-samurai", "ont", 10): (SERVER_ONT_PROCESSES, SERVER_ONT_IMAGES),
+    ("v1-hcc1143-samurai", "illumina", 32): (
+        SERVER_ILLUMINA_PROCESSES,
+        SERVER_ILLUMINA_IMAGES,
+    ),
+}
+SERVER_EVIDENCE_KEYS = {
+    "schema",
+    "mode",
+    "evidence_mode",
+    "source_trace",
+    "source_trace_sha256",
+    "source_manifest",
+    "source_manifest_sha256",
+    "source_files",
+    "available_traces",
+    "contract_row_count",
+    "row_count",
+    "processes",
+    "contract_processes",
+    "containers",
+    "contract_containers",
+    "ichorcna_plot_compat",
+    "rows",
+    "trace_invocation",
+}
+SERVER_ROW_KEYS = {
+    "hash",
+    "name",
+    "normalized_process",
+    "status",
+    "exit",
+    "container",
+    "canonical_container",
+    "repo_digest",
+    "source_trace",
+    "source_row",
+}
+
+
+def _absolute_json_strings(value: object) -> list[str]:
+    found: list[str] = []
+    if isinstance(value, str):
+        if value.startswith("/") or re.match(r"^[A-Za-z]:[\\/]", value):
+            found.append(value)
+    elif isinstance(value, list):
+        for item in value:
+            found.extend(_absolute_json_strings(item))
+    elif isinstance(value, dict):
+        for item in value.values():
+            found.extend(_absolute_json_strings(item))
+    return found
+
+
+def _read_server_container_pins(path: Path) -> dict[str, str]:
+    pins: dict[str, str] = {}
+    with path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.reader(handle, delimiter="\t"):
+            if (
+                len(row) != 2
+                or row[0] in pins
+                or re.fullmatch(r"sha256:[0-9a-f]{64}", row[1]) is None
+            ):
+                raise SystemExit(f"invalid sealed SAMURAI container pin: {row!r}")
+            pins[row[0]] = row[1]
+    if pins != SERVER_IMAGE_DIGESTS:
+        raise SystemExit("sealed SAMURAI container pins differ from release policy")
+    return pins
+
+
+def _verify_server_container_identities(context: Path) -> None:
+    path = context / "samurai-container-identities.tsv"
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.reader(handle, delimiter="\t"))
+    if not rows or rows[0] != ["tag", "pinned_reference", "image_id", "repo_digests"]:
+        raise SystemExit("invalid sealed SAMURAI container identity header")
+    observed: dict[str, tuple[str, str, str]] = {}
+    for row in rows[1:]:
+        if len(row) != 4 or row[0] in observed:
+            raise SystemExit(f"invalid sealed SAMURAI container identity: {row!r}")
+        tag, pinned, image_id, repo_digests = row
+        digest = SERVER_IMAGE_DIGESTS.get(tag)
+        if (
+            digest is None
+            or pinned != f"{tag}@{digest}"
+            or re.fullmatch(r"sha256:[0-9a-f]{64}", image_id) is None
+            or not any(
+                value.endswith(f"@{digest}") for value in repo_digests.split(",")
+            )
+        ):
+            raise SystemExit(f"unauthenticated sealed SAMURAI identity: {tag!r}")
+        observed[tag] = (pinned, image_id, repo_digests)
+    if set(observed) != set(SERVER_IMAGE_DIGESTS):
+        raise SystemExit("sealed SAMURAI container identity inventory is incomplete")
+
+
+def _resolve_server_container(value: str, pins: dict[str, str]) -> tuple[str, str]:
+    normalized = value.strip().removeprefix("docker://")
+    matches: list[tuple[str, str]] = []
+    for tag, digest in pins.items():
+        aliases = {tag, f"{tag}@{digest}"}
+        if tag.startswith("quay.io/biocontainers/"):
+            aliases.add(tag.removeprefix("quay.io/"))
+        if tag.startswith("docker.io/"):
+            aliases.add(tag.removeprefix("docker.io/"))
+        if normalized in aliases:
+            matches.append((tag, digest))
+    if len(matches) != 1:
+        raise SystemExit(f"unresolved sealed SAMURAI container: {value!r}")
+    return matches[0]
+
+
+def verify_preserved_server_trace_proof(
+    context: Path, prefix: str, mode: str, expected_rows: int
+) -> dict[str, object]:
+    """Reverify one extracted server trace proof without its live analysis root."""
+    contract = SERVER_TRACE_CONTRACTS.get((prefix, mode, expected_rows))
+    if contract is None:
+        raise SystemExit(
+            f"unsupported server trace artifact contract: {(prefix, mode, expected_rows)!r}"
+        )
+    expected_processes, expected_images = contract
+    context = context.expanduser().resolve()
+    if not context.is_dir():
+        raise SystemExit(f"server trace artifact context is missing: {context}")
+    manifest = context / f"{prefix}-trace-sources.tsv"
+    raw_root = context / f"{prefix}-trace-source-files"
+    combined = context / f"{prefix}-execution-trace.txt"
+    evidence_path = context / f"{prefix}-trace-audit.json"
+    pre_path = context / f"{prefix}-trace-pre.tsv"
+    post_path = context / f"{prefix}-trace-post.tsv"
+    delta_path = context / f"{prefix}-trace-delta.tsv"
+
+    pins = _read_server_container_pins(context / "samurai-container-pins.tsv")
+    _verify_server_container_identities(context)
+    with tempfile.TemporaryDirectory(
+        prefix=f"oncotracer-{prefix}-sealed-"
+    ) as directory:
+        recomputed, regenerated, _ = recompute_preserved_trace_artifact(
+            raw_root, manifest, Path(directory)
+        )
+        if recomputed.read_bytes() != combined.read_bytes():
+            raise SystemExit(
+                f"preserved raw traces do not reproduce server proof {prefix}"
+            )
+        if regenerated.read_bytes() != manifest.read_bytes():
+            raise SystemExit(f"preserved source manifest changed for {prefix}")
+
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    if (
+        not isinstance(evidence, dict)
+        or set(evidence) != SERVER_EVIDENCE_KEYS
+        or evidence.get("schema") != "oncotracer-samurai-trace-audit-v1"
+        or evidence.get("evidence_mode") != "complete-combined-trace"
+    ):
+        raise SystemExit("invalid sealed server trace proof schema")
+    absolute_values = _absolute_json_strings(evidence)
+    if absolute_values:
+        raise SystemExit(
+            f"server trace proof leaks absolute paths: {absolute_values[:3]!r}"
+        )
+    records = read_source_manifest(manifest)
+    post = read_trace_inventory(post_path)
+    pre = read_trace_inventory(pre_path)
+    delta = read_trace_inventory(delta_path)
+    if [record.identity for record in records] != post:
+        raise SystemExit("server source manifest is not the complete post inventory")
+    expected_delta = trace_inventory_delta(pre, post)
+    if not expected_delta or delta != expected_delta:
+        raise SystemExit("server trace proof has an empty or forged current delta")
+    newest = max(post, key=lambda row: (row.mtime_ns, row.source_trace))
+    if newest not in delta:
+        raise SystemExit("server trace proof newest trace is not current")
+
+    combined_rows = parse_trace(combined)
+    contracted = [
+        row
+        for row in combined_rows
+        if normalize_process(row.get("name", "")) in expected_processes
+    ]
+    if (
+        len(contracted) != expected_rows
+        or {normalize_process(row.get("name", "")) for row in contracted}
+        != expected_processes
+    ):
+        raise SystemExit("server combined trace process contract mismatch")
+    recomputed_rows: list[dict[str, str]] = []
+    for raw_row in contracted:
+        process = normalize_process(raw_row.get("name", ""))
+        status = (raw_row.get("status") or "").strip().upper()
+        exit_code = (raw_row.get("exit") or "").strip()
+        task_hash = (raw_row.get("hash") or "").strip().lower()
+        container = (raw_row.get("container") or "").strip().removeprefix("docker://")
+        canonical, digest = _resolve_server_container(container, pins)
+        if (
+            status not in {"COMPLETED", "CACHED"}
+            or exit_code != "0"
+            or re.fullmatch(r"[0-9a-f]{2}/[0-9a-f]{6,}", task_hash) is None
+        ):
+            raise SystemExit(
+                "server combined trace contains a non-passing contracted task"
+            )
+        recomputed_rows.append(
+            {
+                "hash": task_hash,
+                "name": (raw_row.get("name") or "").strip(),
+                "normalized_process": process,
+                "status": status,
+                "exit": exit_code,
+                "container": container,
+                "canonical_container": canonical,
+                "repo_digest": digest,
+                "source_trace": (raw_row.get("source_trace") or "").strip(),
+                "source_row": (raw_row.get("source_row") or "").strip(),
+            }
+        )
+    selected = evidence.get("rows")
+    if (
+        not isinstance(selected, list)
+        or any(
+            not isinstance(row, dict) or set(row) != SERVER_ROW_KEYS for row in selected
+        )
+        or selected != recomputed_rows
+    ):
+        raise SystemExit("server trace proof rows do not independently recompute")
+
+    post_by_path = {row.source_trace: row for row in post}
+    selected_sources: list[str] = []
+    for row in recomputed_rows:
+        source_trace = row["source_trace"]
+        try:
+            validate_trace_relative(source_trace)
+        except ValueError as error:
+            raise SystemExit(f"unsafe server selected trace source: {error}") from error
+        if source_trace not in post_by_path:
+            raise SystemExit("server selected row is absent from post inventory")
+        selected_sources.append(source_trace)
+    current_count = sum(source == newest.source_trace for source in selected_sources)
+    if current_count < 1:
+        raise SystemExit("server newest trace contributes no contracted task")
+    require_ichor = mode == "ont"
+    selected_ichor: str | None = None
+    selected_ichor_hash: str | None = None
+    if require_ichor:
+        selected_ichor_hash = require_ichorcna_task_hash(recomputed_rows)
+        ichor_rows = [
+            row
+            for row in recomputed_rows
+            if normalize_process(row["name"]) == ICHORCNA_RUN_PROCESS
+        ]
+        if len(ichor_rows) != 1:
+            raise SystemExit("server proof has ambiguous ICHORCNA_RUN evidence")
+        selected_ichor = ichor_rows[0]["source_trace"]
+        if selected_ichor != newest.source_trace:
+            raise SystemExit("server ICHORCNA_RUN is not from the newest trace")
+
+    invocation = evidence.get("trace_invocation")
+    expected_invocation = {
+        "schema": "oncotracer-nested-trace-invocation-v1",
+        "newest_source_trace": newest.source_trace,
+        "selected_contract_source_trace": newest.source_trace,
+        "selected_contract_row_count": current_count,
+        "selected_ichorcna_source_trace": selected_ichor,
+        "pre": {
+            "sha256": sha256(pre_path),
+            "entries": [identity_record(row) for row in pre],
+        },
+        "post": {
+            "sha256": sha256(post_path),
+            "entries": [identity_record(row) for row in post],
+        },
+        "delta": {
+            "sha256": sha256(delta_path),
+            "entries": [identity_record(row) for row in delta],
+        },
+    }
+    if invocation != expected_invocation:
+        raise SystemExit("server current-invocation evidence does not recompute")
+    if evidence.get("source_trace") != combined.name:
+        raise SystemExit("server proof has the wrong context-relative combined trace")
+    if evidence.get("source_manifest") != manifest.name:
+        raise SystemExit("server proof has the wrong context-relative source manifest")
+    if evidence.get("source_files") != raw_root.name:
+        raise SystemExit("server proof has the wrong context-relative raw source root")
+    if evidence.get("source_trace_sha256") != sha256(combined):
+        raise SystemExit("server combined trace checksum mismatch")
+    if evidence.get("source_manifest_sha256") != sha256(manifest):
+        raise SystemExit("server source manifest checksum mismatch")
+    if (
+        evidence.get("mode") != mode
+        or evidence.get("contract_row_count") != expected_rows
+        or evidence.get("row_count") != expected_rows
+        or evidence.get("processes") != sorted(expected_processes)
+        or evidence.get("contract_processes") != sorted(expected_processes)
+        or evidence.get("containers") != sorted(expected_images)
+        or evidence.get("contract_containers") != sorted(expected_images)
+        or {row["canonical_container"] for row in recomputed_rows} != expected_images
+    ):
+        raise SystemExit("server trace proof scientific/runtime contract mismatch")
+    available = evidence.get("available_traces")
+    expected_available = [
+        {
+            "relative_path": record.identity.source_trace,
+            "artifact_path": f"{raw_root.name}/{record.identity.source_trace}",
+            "mtime_ns": record.identity.mtime_ns,
+            "bytes": record.identity.bytes,
+            "rows": record.rows,
+            "successful_rows": record.successful_rows,
+            "sha256": record.identity.sha256,
+        }
+        for record in records
+    ]
+    if available != expected_available:
+        raise SystemExit("server trace proof raw-source inventory does not recompute")
+    compatibility = evidence.get("ichorcna_plot_compat")
+    if mode == "ont":
+        marker = context / f"{prefix}-ichorcna-plot-compat.tsv"
+        if not isinstance(compatibility, dict):
+            raise SystemExit("server ONT proof lacks compatibility evidence")
+        task_hash = compatibility.get("task_hash", "")
+        relative_work = Path(compatibility.get("relative_path", ""))
+        if (
+            task_hash != selected_ichor_hash
+            or compatibility.get("artifact") != marker.name
+            or compatibility.get("sha256") != sha256(marker)
+            or compatibility.get("metadata") != parse_compat(marker)
+            or not marker_path_matches_task_hash(relative_work, task_hash)
+        ):
+            raise SystemExit("server ONT compatibility evidence does not recompute")
+    elif compatibility is not None:
+        raise SystemExit("non-ONT server proof contains compatibility evidence")
+    print(f"verified preserved server trace proof: {prefix}")
+    return evidence
 
 
 def marker_path_matches_task_hash(relative: Path, task_hash: str) -> bool:
@@ -565,6 +979,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--snapshot-root", type=Path)
     parser.add_argument("--snapshot-out", type=Path)
+    parser.add_argument("--verify-artifact-context", type=Path)
+    parser.add_argument("--artifact-prefix")
+    parser.add_argument("--artifact-mode", choices=("illumina", "ont"))
+    parser.add_argument("--artifact-expected-rows", type=int)
     parser.add_argument("--suite", choices=sorted(CONTRACTS))
     parser.add_argument("--pins", type=Path)
     parser.add_argument("--runtime-out", type=Path)
@@ -581,6 +999,24 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    artifact_values = (
+        args.verify_artifact_context,
+        args.artifact_prefix,
+        args.artifact_mode,
+        args.artifact_expected_rows,
+    )
+    if any(value is not None for value in artifact_values):
+        if any(value is None for value in artifact_values):
+            raise SystemExit(
+                "all preserved server trace artifact arguments are required"
+            )
+        verify_preserved_server_trace_proof(
+            args.verify_artifact_context,
+            args.artifact_prefix,
+            args.artifact_mode,
+            args.artifact_expected_rows,
+        )
+        return 0
     if args.snapshot_root is not None or args.snapshot_out is not None:
         if args.snapshot_root is None or args.snapshot_out is None:
             raise SystemExit(
@@ -646,6 +1082,26 @@ def main() -> int:
         )
         shutil.copyfile(combined_trace, combined_audit)
         shutil.copyfile(source_manifest, source_audit)
+        raw_source_audit = (
+            args.selected_dir / f"candidate-{diagnostic_prefix}-trace-source-files"
+        )
+        materialize_trace_sources(root, source_manifest, raw_source_audit)
+        with tempfile.TemporaryDirectory(
+            prefix=f"oncotracer-{diagnostic_prefix}-trace-recompute-"
+        ) as recompute_directory:
+            recomputed_trace, recomputed_manifest, _ = (
+                recompute_preserved_trace_artifact(
+                    raw_source_audit, source_audit, Path(recompute_directory)
+                )
+            )
+            if recomputed_trace.read_bytes() != combined_audit.read_bytes():
+                raise SystemExit(
+                    f"preserved raw traces do not reproduce {contract.label}"
+                )
+            if recomputed_manifest.read_bytes() != source_audit.read_bytes():
+                raise SystemExit(
+                    f"preserved source manifest changed for {contract.label}"
+                )
 
         ok, reason, selected_rows, observed_images = evaluate_trace(
             combined_trace, contract, pins
@@ -685,7 +1141,7 @@ def main() -> int:
                 contract.label,
                 str(trace_count),
                 "1",
-                f"complete-combined-trace:{combined_trace.as_posix()};current:{invocation['newest_source_trace']}",
+                f"complete-combined-trace:{combined_audit.name};current:{invocation['newest_source_trace']}",
                 selected_destination.name,
                 sha256(selected_destination),
             ]

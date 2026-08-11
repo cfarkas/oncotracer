@@ -75,22 +75,34 @@ before SAMURAI is called.
 Nested Nextflow resumes can distribute successful tasks across several trace
 files. Both the hosted release gate and the standalone validation-server driver
 therefore build a deterministic combined trace from the latest occurrence of
-each canonical task, require every contracted latest occurrence to be
-successful or cached with exit status zero, and retain the complete source-trace
-manifest with each real trace's relative path, nanosecond mtime, byte size, and
-full SHA-256. Immediately before every outer comparator, the gate records that
-root's trace inventory. The sealed audit preserves the pre-run inventory, the
-post-run inventory, and their content delta. A successful run must create a new
-trace path or change trace content; touching an old file is not sufficient.
-The deterministic newest post-run trace is selected by `(mtime_ns, path)`.
-The ONT audit requires the complete ten-process contract, including a
-freshly `COMPLETED`, exit-zero `ICHORCNA_RUN`; `CACHED` is rejected for this one
-deliberately non-cacheable task. Its compatibility marker must be inside the
-exact Nextflow work directory identified by that task's trace hash. That fresh
-task must come from the newest trace and the trace must be in the current
-invocation's content delta.
+each canonical task and require every contracted latest occurrence to be
+successful or cached with exit status zero. The audit preserves every regular,
+non-symlink source trace at its complete root-relative path, so equal basenames
+cannot collide, together with a manifest containing each trace's recorded
+nanosecond mtime, byte size, row counts, and full SHA-256. Hosted verification
+and the extracted server-bundle verifier independently render the combined
+trace again from those copied bytes and the manifest's ordering metadata; they
+do not trust the precomputed combined trace or archive-reset filesystem mtimes.
+
+Immediately before every outer comparator, the gate records that root's trace
+inventory. The sealed audit preserves the pre-run inventory, the post-run
+inventory, and their content delta. A successful run must create a new trace
+path or change trace content; touching an old file is not sufficient. The
+deterministic newest post-run trace is selected by `(mtime_ns, path)`, must be
+in the current invocation's content delta, and must contribute at least one
+selected contracted scientific task for every Illumina, ONT, and HCC1143
+contract. A stale contracted selection accompanied only by a newer unrelated
+startup or failure trace therefore fails closed.
+
+The ONT audit additionally requires the complete ten-process contract, including
+a freshly `COMPLETED`, exit-zero `ICHORCNA_RUN`; `CACHED` is rejected for this
+one deliberately non-cacheable task. Its compatibility marker must be inside
+the exact Nextflow work directory identified by that selected task's trace
+hash. That fresh task itself must come from the deterministic newest trace.
 An early failure with a new trace or a startup failure with no trace fails closed.
-An incomplete resume fragment, an unbound marker, or a smaller process subset
-fails closed. Outer comparator sessions do not use `-resume`. A content-derived
-audit-policy digest seals the nested config and mounted compatibility sources,
-and ICHORCNA_RUN caching is disabled so a changed shim cannot reuse stale work.
+An incomplete resume fragment, an unbound marker, a missing or modified raw
+trace, or a smaller process subset fails closed. Outer comparator sessions do
+not use `-resume`. A content-derived audit-policy digest seals the nested config
+and mounted compatibility sources, and ICHORCNA_RUN caching is disabled so a
+changed shim cannot reuse stale work. Release audit archives use sorted paths,
+fixed ownership and mtimes, and timestamp-free gzip output.

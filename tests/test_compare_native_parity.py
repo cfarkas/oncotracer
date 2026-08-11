@@ -35,25 +35,72 @@ def write_run(root: Path, *, native: bool) -> None:
         f"engine={'native' if native else 'nextflow'}",
         f"nextflow_used={'false' if native else 'true'}",
     ]
-    (root / "06_workflow_summary/workflow_summary.txt").write_text("\n".join(summary) + "\n")
+    (root / "06_workflow_summary/workflow_summary.txt").write_text(
+        "\n".join(summary) + "\n"
+    )
     with (root / "03_cna_codification/cna_events.tsv").open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, ["sample", "state", "chrom", "start", "end", "mean_log2"], delimiter="\t")
+        writer = csv.DictWriter(
+            handle,
+            ["sample", "state", "chrom", "start", "end", "mean_log2"],
+            delimiter="\t",
+        )
         writer.writeheader()
-        writer.writerow({"sample": "S1", "state": "gain", "chrom": "1", "start": 0, "end": 100, "mean_log2": 0.5})
-    with (root / "03_cna_codification/cna_cytogenomic_notation.tsv").open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, ["sample", "n_cna_events", "molecular_cytogenomic_notation", "cna_shorthand", "caller"], delimiter="\t")
+        writer.writerow(
+            {
+                "sample": "S1",
+                "state": "gain",
+                "chrom": "1",
+                "start": 0,
+                "end": 100,
+                "mean_log2": 0.5,
+            }
+        )
+    with (root / "03_cna_codification/cna_cytogenomic_notation.tsv").open(
+        "w", newline=""
+    ) as handle:
+        writer = csv.DictWriter(
+            handle,
+            [
+                "sample",
+                "n_cna_events",
+                "molecular_cytogenomic_notation",
+                "cna_shorthand",
+                "caller",
+            ],
+            delimiter="\t",
+        )
         writer.writeheader()
-        writer.writerow({"sample": "S1", "n_cna_events": 1, "molecular_cytogenomic_notation": "x", "cna_shorthand": "x", "caller": "qdnaseq"})
+        writer.writerow(
+            {
+                "sample": "S1",
+                "n_cna_events": 1,
+                "molecular_cytogenomic_notation": "x",
+                "cna_shorthand": "x",
+                "caller": "qdnaseq",
+            }
+        )
     for name in ("cna_per_sample_pages.pdf", "cna_log2_ratio_profiles_all_samples.pdf"):
         (root / "04_cna_custom_plots" / name).write_bytes(b"%PDF-1.4\n")
     with gzip.open(root / PROFILE_RELATIVE, "wt") as handle:
-        writer = csv.DictWriter(handle, ["sample", "chrom", "start", "end", "log2"], delimiter="\t")
+        writer = csv.DictWriter(
+            handle, ["sample", "chrom", "start", "end", "log2"], delimiter="\t"
+        )
         writer.writeheader()
         for index, value in enumerate((0.1, 0.2, 0.3, 0.4)):
-            writer.writerow({"sample": "S1", "chrom": "chr1", "start": index * 100, "end": (index + 1) * 100, "log2": value})
+            writer.writerow(
+                {
+                    "sample": "S1",
+                    "chrom": "chr1",
+                    "start": index * 100,
+                    "end": (index + 1) * 100,
+                    "log2": value,
+                }
+            )
     if native:
         (root / ".oncotracer-native").mkdir()
-        (root / ".oncotracer-native/trace.tsv").write_text("stage\tcommand\nrun\tRscript native.R\n")
+        (root / ".oncotracer-native/trace.tsv").write_text(
+            "stage\tcommand\nrun\tRscript native.R\n"
+        )
 
 
 def comparator_command(
@@ -164,7 +211,9 @@ class ParityComparatorTests(unittest.TestCase):
             write_run(v1, native=False)
             write_run(v2, native=True)
             completed = run_comparator(v1, v2, report)
-            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + completed.stderr
+            )
             self.assertTrue((report / "parity_report.json").is_file())
             self.assertTrue((report / "SHA256SUMS").is_file())
             payload = report_payload(report)
@@ -292,7 +341,9 @@ class ParityComparatorTests(unittest.TestCase):
             write_run(v2, native=True)
 
             def write_events(run_root: Path, intervals: list[tuple[int, int]]) -> None:
-                with (run_root / "03_cna_codification/cna_events.tsv").open("w", newline="") as handle:
+                with (run_root / "03_cna_codification/cna_events.tsv").open(
+                    "w", newline=""
+                ) as handle:
                     writer = csv.DictWriter(
                         handle,
                         ["sample", "state", "chrom", "start", "end", "mean_log2"],
@@ -311,12 +362,20 @@ class ParityComparatorTests(unittest.TestCase):
                             }
                         )
 
-            reference = [(0, 1000), (2000, 3000), (4000, 5000), (6000, 7000), (8000, 8001)]
+            reference = [
+                (0, 1000),
+                (2000, 3000),
+                (4000, 5000),
+                (6000, 7000),
+                (8000, 8001),
+            ]
             candidate = reference[:-1]
             write_events(v1, reference)
             write_events(v2, candidate)
             completed = run_comparator(v1, v2, report)
-            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + completed.stderr
+            )
             payload = report_payload(report)
             self.assertEqual(payload["events"]["recall"], 0.8)
             self.assertGreater(payload["events"]["coverage_recall"], 0.99)
@@ -335,15 +394,22 @@ class ParityComparatorTests(unittest.TestCase):
                     writer = csv.DictWriter(
                         handle,
                         [
-                            "sample", "chrom", "start", "end",
-                            "original_bin_start", "original_bin_end",
-                            "input_log2", "final_log2",
+                            "sample",
+                            "chrom",
+                            "start",
+                            "end",
+                            "original_bin_start",
+                            "original_bin_end",
+                            "input_log2",
+                            "final_log2",
                         ],
                         delimiter="	",
                     )
                     writer.writeheader()
                     finals = list(reversed(values)) if reverse_final else values
-                    for index, (input_value, final_value) in enumerate(zip(values, finals, strict=True)):
+                    for index, (input_value, final_value) in enumerate(
+                        zip(values, finals, strict=True)
+                    ):
                         original_start = index * 100
                         original_end = (index + 1) * 100
                         writer.writerow(
@@ -362,7 +428,9 @@ class ParityComparatorTests(unittest.TestCase):
             write_profile(v1, shift=0, reverse_final=False)
             write_profile(v2, shift=7, reverse_final=True)
             completed = run_comparator(v1, v2, report)
-            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + completed.stderr
+            )
             payload = report_payload(report)
             self.assertEqual(payload["profiles"]["shared_bins"], 4)
             self.assertAlmostEqual(payload["profiles"]["pearson"], 1.0)
@@ -377,7 +445,9 @@ class ParityComparatorTests(unittest.TestCase):
             write_profile_values(v2, [0.1, 0.2, 0.3, 0.4])
 
             completed = run_comparator(v1, v2, report)
-            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + completed.stderr
+            )
             payload = report_payload(report)
             profiles = payload["profiles"]
             self.assertEqual(profiles["shared_bins"], 4)
@@ -403,7 +473,9 @@ class ParityComparatorTests(unittest.TestCase):
             write_profile_values(v2, [0.1, 0.3, 0.2, 0.4])
 
             completed = run_comparator(v1, v2, report)
-            self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+            self.assertEqual(
+                completed.returncode, 1, completed.stdout + completed.stderr
+            )
             payload = report_payload(report)
             profiles = payload["profiles"]
             self.assertEqual(profiles["excluded_ieee_log2_floor_bins"], 0)
@@ -421,7 +493,9 @@ class ParityComparatorTests(unittest.TestCase):
             write_profile_values(v2, [-1022.0] * 4)
 
             completed = run_comparator(v1, v2, report)
-            self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+            self.assertEqual(
+                completed.returncode, 1, completed.stdout + completed.stderr
+            )
             payload = report_payload(report)
             profiles = payload["profiles"]
             self.assertEqual(profiles["shared_bins"], 4)
@@ -436,7 +510,9 @@ class ParityComparatorTests(unittest.TestCase):
                 (report / "parity_report.md").read_text(encoding="utf-8"),
             )
 
-    def test_combined_trace_accepts_contract_rows_and_ignores_unrelated_tasks(self) -> None:
+    def test_combined_trace_accepts_contract_rows_and_ignores_unrelated_tasks(
+        self,
+    ) -> None:
         spec = importlib.util.spec_from_file_location(
             "verify_nested_samurai", ROOT / "tests" / "verify_nested_samurai.py"
         )
@@ -669,9 +745,7 @@ class ParityComparatorTests(unittest.TestCase):
             self.assertEqual(metadata["status"], "patched")
 
             wrong_hash_row = list(marker_row)
-            wrong_hash_row[3] = (
-                f"task-hash:ff/ffffff;marker:{relative.as_posix()}"
-            )
+            wrong_hash_row[3] = f"task-hash:ff/ffffff;marker:{relative.as_posix()}"
             with self.assertRaises(audit_module.AuditError):
                 audit_module.verify_compat_selection(
                     root,
@@ -951,7 +1025,8 @@ class ParityComparatorTests(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            temporary_root = Path(directory)
+            root = temporary_root / "live"
             trace_dir = root / "results" / "pipeline_info"
             evidence = root / "evidence"
             trace_dir.mkdir(parents=True)
@@ -1048,7 +1123,7 @@ class ParityComparatorTests(unittest.TestCase):
             self.assertEqual(marker, old_marker)
             self.assertEqual(task_hash, old_hash)
             with self.assertRaisesRegex(
-                SystemExit, "deterministic newest nested trace"
+                SystemExit, "newest current-invocation trace contributes no selected"
             ):
                 verify_module.verify_current_trace_invocation(
                     root,
@@ -1098,7 +1173,7 @@ class ParityComparatorTests(unittest.TestCase):
                 [recovered_relative],
             )
 
-            context = root / "audit-context"
+            context = temporary_root / "audit-context"
             context.mkdir()
             file_copies = {
                 recovery_pre: context / "nested-v1-ont-trace-pre.tsv",
@@ -1109,6 +1184,12 @@ class ParityComparatorTests(unittest.TestCase):
             }
             for source, destination in file_copies.items():
                 shutil.copyfile(source, destination)
+            shutil.copyfile(combined, context / "candidate-ont-combined-trace.tsv")
+            verify_module.materialize_trace_sources(
+                root,
+                sources,
+                context / "candidate-ont-trace-source-files",
+            )
             invocation_name = "nested-v1-ont-trace-invocation.json"
             invocation_path = context / invocation_name
             invocation_path.write_text(
@@ -1237,6 +1318,662 @@ class ParityComparatorTests(unittest.TestCase):
                 "results/pipeline_info/execution_trace_same.txt",
             )
             self.assertNotEqual(delta[0].sha256, before[0].sha256)
+
+    def test_every_contract_binds_to_the_current_newest_trace_live_and_sealed(
+        self,
+    ) -> None:
+        sys.path.insert(0, str(ROOT / "tests"))
+        try:
+            import parity_audit as audit_module
+            import verify_nested_samurai as verify_module
+        finally:
+            sys.path.pop(0)
+
+        image = "quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1"
+        process = "SAMURAI:SOLID_BIOPSY:QDNASEQ"
+        contract = verify_module.Contract(
+            label="quickstart1-illumina",
+            root_arg="illumina_root",
+            expected_rows=1,
+            processes=frozenset({process}),
+            images=frozenset({image}),
+        )
+        pins = {image: "sha256:" + "1" * 64}
+
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            root = workspace / "live"
+            trace_dir = root / "results" / "pipeline_info"
+            trace_dir.mkdir(parents=True)
+
+            def write_trace(
+                name: str, task_process: str, task_hash: str, mtime_ns: int
+            ) -> Path:
+                path = trace_dir / f"execution_trace_{name}.txt"
+                with path.open("w", newline="", encoding="utf-8") as handle:
+                    writer = csv.DictWriter(
+                        handle,
+                        ["task_id", "hash", "name", "status", "exit", "container"],
+                        delimiter="\t",
+                    )
+                    writer.writeheader()
+                    writer.writerow(
+                        {
+                            "task_id": "1",
+                            "hash": task_hash,
+                            "name": f"DINCALCILAB_SAMURAI:{task_process} (S1)",
+                            "status": "COMPLETED",
+                            "exit": "0",
+                            "container": image,
+                        }
+                    )
+                os.utime(path, ns=(mtime_ns, mtime_ns))
+                return path
+
+            def seal_context(
+                context: Path,
+                combined: Path,
+                source_manifest: Path,
+                pre_path: Path,
+                post_path: Path,
+                delta_path: Path,
+                invocation: dict[str, object],
+            ) -> dict[str, list[str]]:
+                context.mkdir()
+                copies = {
+                    combined: context / "nested-v1-illumina-trace.tsv",
+                    source_manifest: context / "candidate-illumina-trace-sources.tsv",
+                    pre_path: context / "nested-v1-illumina-trace-pre.tsv",
+                    post_path: context / "nested-v1-illumina-trace-post.tsv",
+                    delta_path: context / "nested-v1-illumina-trace-delta.tsv",
+                }
+                for source, destination in copies.items():
+                    shutil.copyfile(source, destination)
+                shutil.copyfile(
+                    combined, context / "candidate-illumina-combined-trace.tsv"
+                )
+                verify_module.materialize_trace_sources(
+                    root,
+                    source_manifest,
+                    context / "candidate-illumina-trace-source-files",
+                )
+                invocation_name = "nested-v1-illumina-trace-invocation.json"
+                invocation_path = context / invocation_name
+                invocation_path.write_text(
+                    json.dumps(invocation, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+                row = [
+                    contract.label + "-current-invocation",
+                    "",
+                    "",
+                    f"newest-trace:{invocation['newest_source_trace']}",
+                    invocation_name,
+                    audit_module.sha256(invocation_path),
+                ]
+                return {row[0]: row}
+
+            base_mtime = 1_700_000_000_000_000_000
+            write_trace("old-contract", process, "aa/000001", base_mtime)
+            stale_pre = workspace / "stale-pre.tsv"
+            verify_module.snapshot_trace_inventory(root, stale_pre)
+            write_trace(
+                "new-unrelated",
+                "SAMURAI:STARTUP_PROBE",
+                "bb/000002",
+                base_mtime + 100,
+            )
+            combined, manifest, _ = verify_module.combine_root(root)
+            ok, reason, selected, _ = verify_module.evaluate_trace(
+                combined, contract, pins
+            )
+            self.assertTrue(ok, reason)
+            with self.assertRaisesRegex(
+                SystemExit, "newest current-invocation trace contributes no selected"
+            ):
+                verify_module.verify_current_trace_invocation(
+                    root,
+                    stale_pre,
+                    manifest,
+                    selected,
+                    workspace / "rejected-post.tsv",
+                    workspace / "rejected-delta.tsv",
+                    require_ichorcna=False,
+                )
+
+            stale_post_rows = verify_module.capture_trace_inventory(root)
+            stale_delta_rows = verify_module.trace_inventory_delta(
+                verify_module.read_trace_inventory(stale_pre), stale_post_rows
+            )
+            stale_post = workspace / "stale-post.tsv"
+            stale_delta = workspace / "stale-delta.tsv"
+            verify_module.write_trace_inventory(stale_post, stale_post_rows)
+            verify_module.write_trace_inventory(stale_delta, stale_delta_rows)
+            newest = max(
+                stale_post_rows, key=lambda row: (row.mtime_ns, row.source_trace)
+            )
+            forged_invocation = {
+                "schema": "oncotracer-nested-trace-invocation-v1",
+                "newest_source_trace": newest.source_trace,
+                "selected_contract_source_trace": newest.source_trace,
+                "selected_contract_row_count": 1,
+                "selected_ichorcna_source_trace": None,
+                "pre": {
+                    "sha256": verify_module.sha256(stale_pre),
+                    "entries": [
+                        verify_module.identity_record(row)
+                        for row in verify_module.read_trace_inventory(stale_pre)
+                    ],
+                },
+                "post": {
+                    "sha256": verify_module.sha256(stale_post),
+                    "entries": [
+                        verify_module.identity_record(row) for row in stale_post_rows
+                    ],
+                },
+                "delta": {
+                    "sha256": verify_module.sha256(stale_delta),
+                    "entries": [
+                        verify_module.identity_record(row) for row in stale_delta_rows
+                    ],
+                },
+            }
+            stale_context = workspace / "sealed-stale"
+            stale_selection = seal_context(
+                stale_context,
+                combined,
+                manifest,
+                stale_pre,
+                stale_post,
+                stale_delta,
+                forged_invocation,
+            )
+            with self.assertRaisesRegex(
+                audit_module.AuditError,
+                "newest current trace contributes no selected contracted task",
+            ):
+                audit_module.verify_trace_invocation(
+                    stale_context,
+                    stale_context / "nested-v1-illumina-trace.tsv",
+                    contract,
+                    stale_selection,
+                )
+
+            current_pre = workspace / "current-pre.tsv"
+            verify_module.snapshot_trace_inventory(root, current_pre)
+            current_trace = write_trace(
+                "new-contract", process, "cc/000003", base_mtime + 200
+            )
+            combined, manifest, _ = verify_module.combine_root(root)
+            ok, reason, selected, _ = verify_module.evaluate_trace(
+                combined, contract, pins
+            )
+            self.assertTrue(ok, reason)
+            current_post = workspace / "current-post.tsv"
+            current_delta = workspace / "current-delta.tsv"
+            invocation = verify_module.verify_current_trace_invocation(
+                root,
+                current_pre,
+                manifest,
+                selected,
+                current_post,
+                current_delta,
+                require_ichorcna=False,
+            )
+            current_relative = current_trace.relative_to(root).as_posix()
+            self.assertEqual(
+                invocation["selected_contract_source_trace"], current_relative
+            )
+            self.assertEqual(invocation["selected_contract_row_count"], 1)
+            current_context = workspace / "sealed-current"
+            current_selection = seal_context(
+                current_context,
+                combined,
+                manifest,
+                current_pre,
+                current_post,
+                current_delta,
+                invocation,
+            )
+            verified = audit_module.verify_trace_invocation(
+                current_context,
+                current_context / "nested-v1-illumina-trace.tsv",
+                contract,
+                current_selection,
+            )
+            self.assertEqual(
+                verified["selected_contract_source_trace"], current_relative
+            )
+
+    def test_preserved_raw_traces_recompute_with_collision_safe_determinism(
+        self,
+    ) -> None:
+        sys.path.insert(0, str(ROOT / "tests"))
+        try:
+            import combine_nested_samurai_traces as combine_module
+            import parity_audit as audit_module
+        finally:
+            sys.path.pop(0)
+
+        header = ["task_id", "hash", "name", "status", "exit", "container"]
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            root = workspace / "live"
+            first = root / "attempt-a" / "pipeline_info" / "execution_trace_same.txt"
+            second = root / "attempt-b" / "pipeline_info" / "execution_trace_same.txt"
+            first.parent.mkdir(parents=True)
+            second.parent.mkdir(parents=True)
+
+            def write_rows(path: Path, rows: list[dict[str, str]]) -> None:
+                with path.open("w", newline="", encoding="utf-8") as handle:
+                    writer = csv.DictWriter(handle, header, delimiter="\t")
+                    writer.writeheader()
+                    writer.writerows(rows)
+
+            def row(task_id: str, task_hash: str, name: str) -> dict[str, str]:
+                return {
+                    "task_id": task_id,
+                    "hash": task_hash,
+                    "name": name,
+                    "status": "COMPLETED",
+                    "exit": "0",
+                    "container": "image:1",
+                }
+
+            write_rows(
+                first,
+                [
+                    row("1", "aa/000001", "SAMURAI:TASK_X (S1)"),
+                    row("2", "dd/000004", "SAMURAI:TASK_Y (S1)"),
+                ],
+            )
+            write_rows(
+                second,
+                [
+                    row("1", "bb/000002", "SAMURAI:TASK_X (S1)"),
+                    row("2", "cc/000003", "SAMURAI:TASK_X (S1)"),
+                ],
+            )
+            tied_mtime = 1_700_000_000_000_000_000
+            os.utime(first, ns=(tied_mtime, tied_mtime))
+            os.utime(second, ns=(tied_mtime, tied_mtime))
+            combined, manifest, _ = combine_module.combine_root(root)
+            with combined.open(newline="", encoding="utf-8") as handle:
+                combined_rows = list(csv.DictReader(handle, delimiter="\t"))
+            task_x = next(row for row in combined_rows if "TASK_X" in row["name"])
+            self.assertEqual(task_x["hash"], "cc/000003")
+            self.assertEqual(
+                task_x["source_trace"],
+                "attempt-b/pipeline_info/execution_trace_same.txt",
+            )
+            self.assertEqual(task_x["source_row"], "3")
+
+            raw_root = workspace / "artifact" / "raw"
+            manifest_copy = workspace / "artifact" / "source-manifest.tsv"
+            manifest_copy.parent.mkdir()
+            shutil.copyfile(manifest, manifest_copy)
+            combine_module.materialize_trace_sources(root, manifest, raw_root)
+            copied_first = raw_root / first.relative_to(root)
+            copied_second = raw_root / second.relative_to(root)
+            self.assertTrue(copied_first.is_file())
+            self.assertTrue(copied_second.is_file())
+            self.assertEqual(copied_first.name, copied_second.name)
+            self.assertNotEqual(copied_first, copied_second)
+            self.assertEqual(copied_first.stat().st_mtime_ns, 0)
+            self.assertEqual(copied_second.stat().st_mtime_ns, 0)
+
+            recomputed, regenerated, _ = (
+                combine_module.recompute_preserved_trace_artifact(
+                    raw_root, manifest_copy, workspace / "shared-recompute"
+                )
+            )
+            self.assertEqual(recomputed.read_bytes(), combined.read_bytes())
+            self.assertEqual(regenerated.read_bytes(), manifest_copy.read_bytes())
+            audit_module.verify_preserved_trace_render(
+                raw_root, manifest_copy, combined
+            )
+
+            os.utime(copied_first, ns=(999, 999))
+            os.utime(copied_second, ns=(1, 1))
+            recomputed, _regenerated, _ = (
+                combine_module.recompute_preserved_trace_artifact(
+                    raw_root, manifest_copy, workspace / "mtime-recompute"
+                )
+            )
+            self.assertEqual(recomputed.read_bytes(), combined.read_bytes())
+            audit_module.verify_preserved_trace_render(
+                raw_root, manifest_copy, combined
+            )
+
+            copied_first.unlink()
+            with self.assertRaisesRegex(SystemExit, "inventory does not match"):
+                combine_module.recompute_preserved_trace_artifact(
+                    raw_root, manifest_copy, workspace / "missing-recompute"
+                )
+            with self.assertRaisesRegex(audit_module.AuditError, "inventory mismatch"):
+                audit_module.verify_preserved_trace_render(
+                    raw_root, manifest_copy, combined
+                )
+            combine_module.materialize_trace_sources(root, manifest, raw_root)
+
+            with copied_first.open("ab") as handle:
+                handle.write(b"tampered\n")
+            with self.assertRaisesRegex(SystemExit, "recorded identity"):
+                combine_module.recompute_preserved_trace_artifact(
+                    raw_root, manifest_copy, workspace / "modified-recompute"
+                )
+            with self.assertRaisesRegex(audit_module.AuditError, "identity mismatch"):
+                audit_module.verify_preserved_trace_render(
+                    raw_root, manifest_copy, combined
+                )
+            combine_module.materialize_trace_sources(root, manifest, raw_root)
+
+            tampered_manifest = workspace / "tampered-manifest.tsv"
+            with manifest_copy.open(newline="", encoding="utf-8") as handle:
+                manifest_rows = list(csv.reader(handle, delimiter="\t"))
+            manifest_rows[1][3] = str(int(manifest_rows[1][3]) + 1)
+            with tampered_manifest.open("w", newline="", encoding="utf-8") as handle:
+                csv.writer(handle, delimiter="\t", lineterminator="\n").writerows(
+                    manifest_rows
+                )
+            with self.assertRaisesRegex(
+                audit_module.AuditError, "row-count evidence mismatch"
+            ):
+                audit_module.verify_preserved_trace_render(
+                    raw_root, tampered_manifest, combined
+                )
+
+            tampered_combined = workspace / "tampered-combined.tsv"
+            with combined.open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle, delimiter="\t"))
+            rows[0]["source_row"] = str(int(rows[0]["source_row"]) + 10)
+            with tampered_combined.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    combine_module.OUTPUT_COLUMNS,
+                    delimiter="\t",
+                    lineterminator="\n",
+                )
+                writer.writeheader()
+                writer.writerows(rows)
+            with self.assertRaisesRegex(
+                audit_module.AuditError, "not the deterministic rendering"
+            ):
+                audit_module.verify_preserved_trace_render(
+                    raw_root, manifest_copy, tampered_combined
+                )
+
+            copied_first.unlink()
+            copied_first.symlink_to(first)
+            with self.assertRaisesRegex(audit_module.AuditError, "symbolic link"):
+                audit_module.verify_preserved_trace_render(
+                    raw_root, manifest_copy, combined
+                )
+            copied_first.unlink()
+            combine_module.materialize_trace_sources(root, manifest, raw_root)
+            extra = raw_root / "unexpected.txt"
+            extra.write_text("unexpected\n", encoding="utf-8")
+            with self.assertRaisesRegex(audit_module.AuditError, "unexpected raw"):
+                audit_module.verify_preserved_trace_render(
+                    raw_root, manifest_copy, combined
+                )
+
+    def test_server_sealed_trace_proof_recomputes_and_bundle_wiring_is_complete(
+        self,
+    ) -> None:
+        sys.path.insert(0, str(ROOT / "tests"))
+        try:
+            import verify_nested_samurai as verify_module
+        finally:
+            sys.path.pop(0)
+
+        prefix = "v1-ont-samurai"
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            root = workspace / "live"
+            trace_dir = root / "results" / "pipeline_info"
+            trace_dir.mkdir(parents=True)
+            pre_live = workspace / "pre-live.tsv"
+            verify_module.snapshot_trace_inventory(root, pre_live)
+            trace = trace_dir / "execution_trace_current.txt"
+            processes = sorted(verify_module.SERVER_ONT_PROCESSES)
+            images = sorted(verify_module.SERVER_ONT_IMAGES)
+            with trace.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    ["task_id", "hash", "name", "status", "exit", "container"],
+                    delimiter="\t",
+                )
+                writer.writeheader()
+                for index, process in enumerate(processes, start=1):
+                    writer.writerow(
+                        {
+                            "task_id": str(index),
+                            "hash": f"{index:02x}/{index:06x}",
+                            "name": f"DINCALCILAB_SAMURAI:{process} (S1)",
+                            "status": "COMPLETED",
+                            "exit": "0",
+                            "container": images[(index - 1) % len(images)],
+                        }
+                    )
+            ichor_index = processes.index(verify_module.ICHORCNA_RUN_PROCESS) + 1
+            ichor_hash = f"{ichor_index:02x}/{ichor_index:06x}"
+            hash_prefix, hash_suffix = ichor_hash.split("/", 1)
+            marker_relative = (
+                Path("work")
+                / hash_prefix
+                / (hash_suffix + "a" * (30 - len(hash_suffix)))
+                / ".oncotracer-ichorcna-plot-compat.tsv"
+            )
+            marker = root / marker_relative
+            marker.parent.mkdir(parents=True)
+            marker.write_text(
+                "key\tvalue\n"
+                "schema\toncotracer-ichorcna-plot-compat-v1\n"
+                "status\tpatched\n"
+                "target_quantile_calls\t2\n"
+                "zero_median_plot_guard\tplaceholder\n",
+                encoding="utf-8",
+            )
+            os.utime(trace, ns=(1_700_000_000_000_000_000,) * 2)
+            combined, manifest, _ = verify_module.combine_root(root)
+            contract = verify_module.Contract(
+                label="server-ont",
+                root_arg="root",
+                expected_rows=10,
+                processes=verify_module.SERVER_ONT_PROCESSES,
+                images=verify_module.SERVER_ONT_IMAGES,
+                require_ichorcna_compat=True,
+            )
+            ok, reason, selected, _ = verify_module.evaluate_trace(
+                combined, contract, verify_module.SERVER_IMAGE_DIGESTS
+            )
+            self.assertTrue(ok, reason)
+            post_live = workspace / "post-live.tsv"
+            delta_live = workspace / "delta-live.tsv"
+            invocation = verify_module.verify_current_trace_invocation(
+                root,
+                pre_live,
+                manifest,
+                selected,
+                post_live,
+                delta_live,
+                require_ichorcna=True,
+            )
+
+            context = workspace / "context"
+            context.mkdir()
+            paths = {
+                combined: context / f"{prefix}-execution-trace.txt",
+                manifest: context / f"{prefix}-trace-sources.tsv",
+                pre_live: context / f"{prefix}-trace-pre.tsv",
+                post_live: context / f"{prefix}-trace-post.tsv",
+                delta_live: context / f"{prefix}-trace-delta.tsv",
+            }
+            for source, destination in paths.items():
+                shutil.copyfile(source, destination)
+            raw_root = context / f"{prefix}-trace-source-files"
+            verify_module.materialize_trace_sources(root, manifest, raw_root)
+            marker_copy = context / f"{prefix}-ichorcna-plot-compat.tsv"
+            shutil.copyfile(marker, marker_copy)
+            compatibility = {
+                "artifact": marker_copy.name,
+                "relative_path": marker_relative.as_posix(),
+                "task_hash": ichor_hash,
+                "sha256": verify_module.sha256(marker_copy),
+                "metadata": verify_module.parse_compat(marker_copy),
+            }
+            pins_path = context / "samurai-container-pins.tsv"
+            with pins_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+                writer.writerows(verify_module.SERVER_IMAGE_DIGESTS.items())
+            identities_path = context / "samurai-container-identities.tsv"
+            with identities_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+                writer.writerow(["tag", "pinned_reference", "image_id", "repo_digests"])
+                for tag, digest in verify_module.SERVER_IMAGE_DIGESTS.items():
+                    writer.writerow(
+                        [
+                            tag,
+                            f"{tag}@{digest}",
+                            "sha256:" + hashlib.sha256(tag.encode()).hexdigest(),
+                            f"{tag}@{digest}",
+                        ]
+                    )
+            combined_rows = verify_module.parse_trace(
+                context / f"{prefix}-execution-trace.txt"
+            )
+            proof_rows = []
+            for row in combined_rows:
+                process = verify_module.normalize_process(row["name"])
+                if process not in verify_module.SERVER_ONT_PROCESSES:
+                    continue
+                canonical, digest = verify_module._resolve_server_container(
+                    row["container"], verify_module.SERVER_IMAGE_DIGESTS
+                )
+                proof_rows.append(
+                    {
+                        "hash": row["hash"].lower(),
+                        "name": row["name"].strip(),
+                        "normalized_process": process,
+                        "status": row["status"].upper(),
+                        "exit": row["exit"],
+                        "container": row["container"],
+                        "canonical_container": canonical,
+                        "repo_digest": digest,
+                        "source_trace": row["source_trace"],
+                        "source_row": row["source_row"],
+                    }
+                )
+            records = verify_module.read_source_manifest(
+                context / f"{prefix}-trace-sources.tsv"
+            )
+            evidence = {
+                "schema": "oncotracer-samurai-trace-audit-v1",
+                "mode": "ont",
+                "evidence_mode": "complete-combined-trace",
+                "source_trace": f"{prefix}-execution-trace.txt",
+                "source_trace_sha256": verify_module.sha256(
+                    context / f"{prefix}-execution-trace.txt"
+                ),
+                "source_manifest": f"{prefix}-trace-sources.tsv",
+                "source_manifest_sha256": verify_module.sha256(
+                    context / f"{prefix}-trace-sources.tsv"
+                ),
+                "source_files": raw_root.name,
+                "available_traces": [
+                    {
+                        "relative_path": record.identity.source_trace,
+                        "artifact_path": f"{raw_root.name}/{record.identity.source_trace}",
+                        "mtime_ns": record.identity.mtime_ns,
+                        "bytes": record.identity.bytes,
+                        "rows": record.rows,
+                        "successful_rows": record.successful_rows,
+                        "sha256": record.identity.sha256,
+                    }
+                    for record in records
+                ],
+                "contract_row_count": 10,
+                "row_count": 10,
+                "processes": processes,
+                "contract_processes": processes,
+                "containers": images,
+                "contract_containers": images,
+                "ichorcna_plot_compat": compatibility,
+                "rows": proof_rows,
+                "trace_invocation": invocation,
+            }
+            evidence_path = context / f"{prefix}-trace-audit.json"
+            evidence_path.write_text(
+                json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            verify_module.verify_preserved_server_trace_proof(
+                context, prefix, "ont", 10
+            )
+            evidence["ichorcna_plot_compat"]["task_hash"] = "ff/ffffff"
+            evidence_path.write_text(
+                json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(SystemExit, "compatibility evidence"):
+                verify_module.verify_preserved_server_trace_proof(
+                    context, prefix, "ont", 10
+                )
+            evidence["ichorcna_plot_compat"] = compatibility
+            evidence_path.write_text(
+                json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            raw_trace = raw_root / trace.relative_to(root)
+            raw_trace.unlink()
+            with self.assertRaisesRegex(SystemExit, "inventory does not match"):
+                verify_module.verify_preserved_server_trace_proof(
+                    context, prefix, "ont", 10
+                )
+            verify_module.materialize_trace_sources(root, manifest, raw_root)
+            with raw_trace.open("ab") as handle:
+                handle.write(b"modified\n")
+            with self.assertRaisesRegex(SystemExit, "recorded identity"):
+                verify_module.verify_preserved_server_trace_proof(
+                    context, prefix, "ont", 10
+                )
+            verify_module.materialize_trace_sources(root, manifest, raw_root)
+
+            combined_copy = context / f"{prefix}-execution-trace.txt"
+            original_combined = combined_copy.read_bytes()
+            combined_copy.write_bytes(original_combined.replace(b"\t2\n", b"\t99\n", 1))
+            with self.assertRaisesRegex(SystemExit, "do not reproduce"):
+                verify_module.verify_preserved_server_trace_proof(
+                    context, prefix, "ont", 10
+                )
+            combined_copy.write_bytes(original_combined)
+            evidence["source_trace"] = "/private/server/execution_trace.txt"
+            evidence_path.write_text(
+                json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(SystemExit, "absolute paths"):
+                verify_module.verify_preserved_server_trace_proof(
+                    context, prefix, "ont", 10
+                )
+
+        driver = (ROOT / "scripts/validate_v2_release.sh").read_text(encoding="utf-8")
+        for expected in (
+            "v1-illumina-samurai illumina 12",
+            "v1-ont-samurai ont 10",
+            "v1-hcc1143-samurai illumina 32",
+        ):
+            self.assertIn(expected, driver)
+        for tag, digest in verify_module.SERVER_IMAGE_DIGESTS.items():
+            self.assertIn(f"{tag}\t{digest}", driver)
+        self.assertGreaterEqual(
+            driver.count("verify_preserved_trace_bundle_context"), 4
+        )
+        self.assertIn('tests/parity_audit.py" verify-trace-proof', driver)
+        self.assertIn("tar --sort=name --mtime='@0' --owner=0 --group=0", driver)
+        self.assertIn("gzip -n >", driver)
 
 
 if __name__ == "__main__":

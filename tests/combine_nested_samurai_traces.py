@@ -16,6 +16,7 @@ import csv
 import hashlib
 import os
 import re
+import shutil
 import stat
 import tempfile
 from dataclasses import dataclass
@@ -59,6 +60,13 @@ class TraceIdentity:
     mtime_ns: int
     bytes: int
     sha256: str
+
+
+@dataclass(frozen=True)
+class SourceManifestRecord:
+    identity: TraceIdentity
+    rows: int
+    successful_rows: int
 
 
 def sha256(path: Path) -> str:
@@ -263,19 +271,189 @@ def trace_inventory_delta(
     return sorted(changed, key=lambda item: (item.mtime_ns, item.source_trace))
 
 
-def combine_root(root: Path) -> tuple[Path, Path, int]:
+def read_source_manifest(path: Path) -> list[SourceManifestRecord]:
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            table = list(csv.reader(handle, delimiter="\t"))
+    except (OSError, csv.Error) as error:
+        raise SystemExit(
+            f"cannot read nested trace source manifest {path}: {error}"
+        ) from error
+    if len(table) < 2 or table[0] != list(SOURCE_MANIFEST_COLUMNS):
+        raise SystemExit(f"invalid nested trace source manifest header: {path}")
+    records: list[SourceManifestRecord] = []
+    seen: set[str] = set()
+    for row in table[1:]:
+        if len(row) != len(SOURCE_MANIFEST_COLUMNS):
+            raise SystemExit(f"invalid nested trace source manifest row: {row!r}")
+        source_trace, mtime_text, bytes_text, rows_text, successful_text, digest = row
+        try:
+            validate_trace_relative(source_trace)
+            mtime_ns = int(mtime_text)
+            size = int(bytes_text)
+            row_count = int(rows_text)
+            successful_rows = int(successful_text)
+        except (TypeError, ValueError) as error:
+            raise SystemExit(
+                f"invalid nested trace source manifest row: {row!r}: {error}"
+            ) from error
+        if (
+            source_trace in seen
+            or mtime_ns < 0
+            or size < 0
+            or row_count < 0
+            or not 0 <= successful_rows <= row_count
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            or str(mtime_ns) != mtime_text
+            or str(size) != bytes_text
+            or str(row_count) != rows_text
+            or str(successful_rows) != successful_text
+        ):
+            raise SystemExit(f"invalid nested trace source manifest row: {row!r}")
+        seen.add(source_trace)
+        records.append(
+            SourceManifestRecord(
+                TraceIdentity(source_trace, mtime_ns, size, digest),
+                row_count,
+                successful_rows,
+            )
+        )
+    if records != sorted(
+        records,
+        key=lambda record: (
+            record.identity.mtime_ns,
+            record.identity.source_trace,
+        ),
+    ):
+        raise SystemExit(
+            f"nested trace source manifest is not deterministically sorted: {path}"
+        )
+    return records
+
+
+def _safe_artifact_root(path: Path, *, live_root: Path | None = None) -> Path:
+    absolute = path.expanduser().absolute()
+    if absolute.is_symlink():
+        raise SystemExit(f"trace artifact root is a symbolic link: {absolute}")
+    resolved = absolute.resolve(strict=False)
+    if resolved != absolute:
+        raise SystemExit(
+            f"trace artifact root contains a symbolic-link component: {absolute}"
+        )
+    if resolved == Path(resolved.anchor) or resolved == resolved.parent:
+        raise SystemExit(f"unsafe trace artifact root: {resolved}")
+    if live_root is not None:
+        live_root = live_root.resolve()
+        if resolved == live_root or live_root in resolved.parents:
+            raise SystemExit("trace artifact root must be outside the live trace root")
+    return resolved
+
+
+def materialize_trace_sources(
+    root: Path, source_manifest: Path, destination: Path
+) -> list[SourceManifestRecord]:
+    """Copy every authenticated raw trace into one deterministic safe subtree."""
+    root = root.expanduser().resolve()
+    destination = _safe_artifact_root(destination, live_root=root)
+    records = read_source_manifest(source_manifest)
+    expected = {record.identity.source_trace for record in records}
+    expected_directories = {
+        parent.as_posix()
+        for relative in expected
+        for parent in PurePosixPath(relative).parents
+        if parent != PurePosixPath(".")
+    }
+    observed_live = capture_trace_inventory(root)
+    if [record.identity for record in records] != observed_live:
+        raise SystemExit(
+            "source manifest no longer matches the complete live trace inventory"
+        )
+    destination.mkdir(parents=True, exist_ok=True)
+    for item in sorted(destination.rglob("*")):
+        if item.is_symlink():
+            raise SystemExit(f"trace artifact subtree contains a symbolic link: {item}")
+        relative = item.relative_to(destination).as_posix()
+        if item.is_file() and relative not in expected:
+            raise SystemExit(f"unexpected file in trace artifact subtree: {relative}")
+        if item.is_dir() and relative not in expected_directories:
+            raise SystemExit(
+                f"unexpected directory in trace artifact subtree: {relative}"
+            )
+        if not item.is_file() and not item.is_dir():
+            raise SystemExit(f"unsupported object in trace artifact subtree: {item}")
+    for record in records:
+        identity = record.identity
+        source_path = root / identity.source_trace
+        if trace_identity(root, source_path) != identity:
+            raise SystemExit(
+                f"live nested trace identity changed before copy: {source_path}"
+            )
+        target = destination.joinpath(*PurePosixPath(identity.source_trace).parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.is_symlink() or target.parent.resolve() != target.parent:
+            raise SystemExit(f"unsafe trace artifact destination: {target}")
+        temporary_name: str | None = None
+        try:
+            with (
+                tempfile.NamedTemporaryFile(
+                    "wb", dir=target.parent, prefix=f".{target.name}.", delete=False
+                ) as output,
+                source_path.open("rb") as input_handle,
+            ):
+                temporary_name = output.name
+                shutil.copyfileobj(input_handle, output, length=8 * 1024 * 1024)
+            temporary = Path(temporary_name)
+            if (
+                temporary.stat().st_size != identity.bytes
+                or sha256(temporary) != identity.sha256
+            ):
+                raise SystemExit(
+                    f"nested trace changed while preserving it: {source_path}"
+                )
+            temporary.chmod(0o644)
+            os.utime(temporary, ns=(0, 0), follow_symlinks=False)
+            os.replace(temporary, target)
+            temporary_name = None
+        finally:
+            if temporary_name is not None and Path(temporary_name).exists():
+                Path(temporary_name).unlink()
+    actual = {
+        item.relative_to(destination).as_posix()
+        for item in destination.rglob("*")
+        if item.is_file()
+    }
+    if actual != expected:
+        raise SystemExit(
+            "preserved trace artifact inventory mismatch: "
+            f"missing={sorted(expected - actual)!r} "
+            f"extra={sorted(actual - expected)!r}"
+        )
+    return records
+
+
+def _combine_identities(
+    root: Path,
+    identities: list[TraceIdentity],
+    destination_dir: Path,
+    *,
+    require_recorded_mtime: bool,
+) -> tuple[Path, Path, int]:
     root = root.expanduser().resolve()
     if not root.is_dir():
         raise SystemExit(f"nested SAMURAI root is missing: {root}")
-
-    traces = discover_traces(root)
-    identities = [trace_identity(root, trace) for trace in traces]
-    identities.sort(key=lambda item: (item.mtime_ns, item.source_trace))
     selected: dict[str, SourceRow] = {}
     manifest_rows: list[list[str]] = []
 
     for identity in identities:
         trace = root / identity.source_trace
+        observed = trace_identity(root, trace)
+        if (
+            observed.source_trace != identity.source_trace
+            or observed.bytes != identity.bytes
+            or observed.sha256 != identity.sha256
+            or (require_recorded_mtime and observed.mtime_ns != identity.mtime_ns)
+        ):
+            raise SystemExit(f"nested trace disagrees with recorded identity: {trace}")
         _, rows = parse_trace(trace)
         successful = 0
         for row_number, row in enumerate(rows, start=2):
@@ -317,7 +495,7 @@ def combine_root(root: Path) -> tuple[Path, Path, int]:
     if not selected:
         raise SystemExit(f"no nested task occurrences found under {root}")
 
-    destination_dir = root / ".oncotracer-parity" / "pipeline_info"
+    destination_dir = destination_dir.expanduser().resolve()
     destination_dir.mkdir(parents=True, exist_ok=True)
     combined = destination_dir / COMBINED_NAME
     manifest = destination_dir / MANIFEST_NAME
@@ -328,17 +506,17 @@ def combine_root(root: Path) -> tuple[Path, Path, int]:
             handle, fieldnames=OUTPUT_COLUMNS, delimiter="\t", lineterminator="\n"
         )
         writer.writeheader()
-        for task_id, (_, source) in enumerate(ordered, start=1):
+        for task_id, (_, source_row) in enumerate(ordered, start=1):
             writer.writerow(
                 {
                     "task_id": str(task_id),
-                    "hash": source.values.get("hash", ""),
-                    "name": source.values["name"],
-                    "status": source.values["status"],
-                    "exit": source.values["exit"],
-                    "container": source.values["container"],
-                    "source_trace": source.trace.relative_to(root).as_posix(),
-                    "source_row": str(source.row_number),
+                    "hash": source_row.values.get("hash", ""),
+                    "name": source_row.values["name"],
+                    "status": source_row.values["status"],
+                    "exit": source_row.values["exit"],
+                    "container": source_row.values["container"],
+                    "source_trace": source_row.trace.relative_to(root).as_posix(),
+                    "source_row": str(source_row.row_number),
                 }
             )
 
@@ -348,10 +526,51 @@ def combine_root(root: Path) -> tuple[Path, Path, int]:
         writer.writerows(manifest_rows)
 
     print(
-        f"Combined {len(traces)} nested trace file(s) into {len(ordered)} "
+        f"Combined {len(identities)} nested trace file(s) into {len(ordered)} "
         f"latest task occurrence(s): {combined}"
     )
     return combined, manifest, len(ordered)
+
+
+def combine_root(root: Path) -> tuple[Path, Path, int]:
+    root = root.expanduser().resolve()
+    traces = discover_traces(root)
+    identities = [trace_identity(root, trace) for trace in traces]
+    identities.sort(key=lambda item: (item.mtime_ns, item.source_trace))
+    return _combine_identities(
+        root,
+        identities,
+        root / ".oncotracer-parity" / "pipeline_info",
+        require_recorded_mtime=True,
+    )
+
+
+def recompute_preserved_trace_artifact(
+    source_root: Path, source_manifest: Path, destination_dir: Path
+) -> tuple[Path, Path, int]:
+    """Rebuild latest-task evidence using copied bytes and recorded source ordering."""
+    source_root = _safe_artifact_root(source_root)
+    records = read_source_manifest(source_manifest)
+    expected = {record.identity.source_trace for record in records}
+    observed_paths = {
+        trace.relative_to(source_root).as_posix()
+        for trace in discover_traces(source_root, require_nonempty=False)
+    }
+    if observed_paths != expected:
+        raise SystemExit(
+            "preserved raw trace inventory does not match source manifest: "
+            f"missing={sorted(expected - observed_paths)!r} "
+            f"extra={sorted(observed_paths - expected)!r}"
+        )
+    combined, regenerated, count = _combine_identities(
+        source_root,
+        [record.identity for record in records],
+        destination_dir,
+        require_recorded_mtime=False,
+    )
+    if regenerated.read_bytes() != source_manifest.read_bytes():
+        raise SystemExit("preserved traces do not regenerate the exact source manifest")
+    return combined, regenerated, count
 
 
 def build_parser() -> argparse.ArgumentParser:
