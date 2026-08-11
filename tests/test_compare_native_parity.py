@@ -128,6 +128,33 @@ def write_profile_values(root: Path, values: list[float]) -> None:
 
 
 class ParityComparatorTests(unittest.TestCase):
+    def test_audit_manifest_uses_posix_lexicographic_path_order(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            root = workspace / "tree"
+            (root / "prefix").mkdir(parents=True)
+            (root / "prefix/child.txt").write_text("child\n", encoding="utf-8")
+            (root / "prefix.txt").write_text("peer\n", encoding="utf-8")
+            manifest = workspace / "manifest.tsv"
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    ROOT / "tests/parity_audit.py",
+                    "manifest",
+                    root,
+                    manifest,
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with manifest.open(newline="", encoding="utf-8") as handle:
+                paths = [row["path"] for row in csv.DictReader(handle, delimiter="\t")]
+            self.assertEqual(paths, sorted(paths))
+
     def test_identical_semantic_outputs_pass(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

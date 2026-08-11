@@ -55,6 +55,18 @@ oncotracer_patch_ichorcna_plot_correction <- function() {
   namespace <- asNamespace("ichorCNA")
   function_name <- "plotCorrectionGenomeWide"
   original <- get(function_name, envir = namespace, inherits = FALSE)
+  metadata <- c(
+    schema = "oncotracer-ichorcna-plot-compat-v1",
+    status = "patched",
+    package_version = as.character(utils::packageVersion("ichorCNA")),
+    target_quantile_calls = "2",
+    zero_median_plot_guard = "placeholder"
+  )
+
+  if (isTRUE(attr(original, "oncotracer_ichorcna_plot_compat_v1"))) {
+    return(metadata)
+  }
+
   calls <- oncotracer_ichorcna_collect_copy_quantiles(body(original))
 
   if (length(calls) != 2L) {
@@ -71,27 +83,19 @@ oncotracer_patch_ichorcna_plot_correction <- function() {
     logical(1L)
   )
   if (all(safe)) {
-    return(c(
-      schema = "oncotracer-ichorcna-plot-compat-v1",
-      status = "upstream-safe",
-      package_version = as.character(utils::packageVersion("ichorCNA")),
-      target_quantile_calls = "2"
-    ))
-  }
-  if (any(safe)) {
+    patched <- original
+  } else if (any(safe)) {
     stop(
       "Unexpected partially patched ichorCNA::plotCorrectionGenomeWide function",
       call. = FALSE
     )
+  } else {
+    patched <- original
+    body(patched) <- oncotracer_ichorcna_rewrite_copy_quantiles(body(original))
+    environment(patched) <- environment(original)
   }
 
-  patched <- original
-  body(patched) <- oncotracer_ichorcna_rewrite_copy_quantiles(body(original))
-  environment(patched) <- environment(original)
-  utils::assignInNamespace(function_name, patched, ns = "ichorCNA")
-
-  verified <- get(function_name, envir = asNamespace("ichorCNA"), inherits = FALSE)
-  verified_calls <- oncotracer_ichorcna_collect_copy_quantiles(body(verified))
+  verified_calls <- oncotracer_ichorcna_collect_copy_quantiles(body(patched))
   verified_safe <- vapply(
     verified_calls,
     function(call) !is.null(call[["na.rm"]]) && identical(call[["na.rm"]], TRUE),
@@ -101,12 +105,71 @@ oncotracer_patch_ichorcna_plot_correction <- function() {
     stop("Failed to verify ichorCNA plotting compatibility patch", call. = FALSE)
   }
 
-  c(
-    schema = "oncotracer-ichorcna-plot-compat-v1",
-    status = "patched",
-    package_version = as.character(utils::packageVersion("ichorCNA")),
-    target_quantile_calls = "2"
-  )
+  guarded <- local({
+    delegate <- patched
+    function(correctOutput, seqinfo = NULL, chr = NULL, ...) {
+      candidate <- correctOutput
+      if (!is.null(chr)) {
+        candidate <- candidate[
+          as.character(GenomeInfoDb::seqnames(candidate)) == as.character(chr)
+        ]
+      }
+      reads <- suppressWarnings(as.numeric(candidate$reads))
+      valid <- !is.na(candidate$valid) & as.logical(candidate$valid)
+      median_reads <- if (length(reads)) {
+        stats::median(reads, na.rm = TRUE)
+      } else {
+        NA_real_
+      }
+      reason <- NULL
+      if (!length(reads)) {
+        reason <- "No read-count bins are available."
+      } else if (!is.finite(median_reads)) {
+        reason <- "The median raw read count is not finite."
+      } else if (median_reads == 0) {
+        reason <- "The median raw read count is zero."
+      } else {
+        copy <- reads / median_reads
+        if (any(is.infinite(copy))) {
+          reason <- "The uncorrected copy ratio contains infinite values."
+        } else {
+          limits <- stats::quantile(
+            copy,
+            c(0.01, 0.99),
+            na.rm = TRUE,
+            names = FALSE
+          )
+          selected <- valid & is.finite(copy) &
+            copy >= limits[[1L]] & copy <= limits[[2L]]
+          if (length(limits) != 2L || !all(is.finite(limits))) {
+            reason <- "Finite correction-plot limits are unavailable."
+          } else if (!any(selected)) {
+            reason <- "No finite valid bins remain for the correction plot."
+          }
+        }
+      }
+
+      if (!is.null(reason)) {
+        label <- if (is.null(chr)) "genome-wide" else paste("chromosome", chr)
+        graphics::plot.new()
+        graphics::title(main = paste("Correction diagnostic unavailable:", label))
+        graphics::text(0.5, 0.56, reason)
+        graphics::text(0.5, 0.44, "No CNA values were changed.", cex = 0.85)
+        return(invisible(NULL))
+      }
+
+      delegate(correctOutput = correctOutput, seqinfo = seqinfo, chr = chr, ...)
+    }
+  })
+  attr(guarded, "oncotracer_ichorcna_plot_compat_v1") <- TRUE
+  utils::assignInNamespace(function_name, guarded, ns = "ichorCNA")
+
+  verified <- get(function_name, envir = namespace, inherits = FALSE)
+  if (!isTRUE(attr(verified, "oncotracer_ichorcna_plot_compat_v1"))) {
+    stop("Failed to verify ichorCNA zero-median plotting guard", call. = FALSE)
+  }
+
+  metadata
 }
 
 oncotracer_write_ichorcna_plot_compat <- function(metadata, path) {

@@ -11,10 +11,24 @@ class IchorCnaPlotCompatibilityTests(unittest.TestCase):
         self.assertIn("utils::assignInNamespace", helper)
         self.assertIn('node[["na.rm"]] <- TRUE', helper)
         self.assertIn("target_quantile_calls", helper)
+        self.assertIn('zero_median_plot_guard = "placeholder"', helper)
+        self.assertIn("median_reads == 0", helper)
+        self.assertIn("Correction diagnostic unavailable:", helper)
+        self.assertIn("No CNA values were changed.", helper)
         self.assertIn("source(", native)
         self.assertIn('"ichorcna_plot_compat.R"', native)
         self.assertIn(".ichorcna_plot_compat.tsv", native)
         self.assertIn("compat_path", native)
+        for expression in (
+            'chrTrain = "paste0(\'chr\', c(1:22))"',
+            'chrs = "paste0(\'chr\', c(1:22))"',
+            'chrNormalize = "paste0(\'chr\', c(1:22))"',
+            'plotYLim = "c(-2, 4)"',
+            'normal = "c(0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99)"',
+            'ploidy = "c(2, 3, 4, 5)"',
+            'scStates = "c()"',
+        ):
+            self.assertIn(expression, native)
 
     def test_frozen_v1_profile_uses_samurai_expected_startup_path(self) -> None:
         root = Path(__file__).resolve().parents[1]

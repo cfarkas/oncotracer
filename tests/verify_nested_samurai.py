@@ -264,6 +264,8 @@ def parse_compat(path: Path) -> dict[str, str]:
         raise ValueError("invalid compatibility status")
     if metadata.get("target_quantile_calls") != "2":
         raise ValueError("unexpected quantile target count")
+    if metadata.get("zero_median_plot_guard") != "placeholder":
+        raise ValueError("missing zero-median plotting guard")
     return metadata
 
 

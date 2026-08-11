@@ -91,6 +91,8 @@ run_analysis <- function(options) {
   compat_path <- paste0(options$sample, ".ichorcna_plot_compat.tsv")
   oncotracer_write_ichorcna_plot_compat(compat, compat_path)
 
+  # ichorCNA 0.5.1 evaluates these multi-value arguments with
+  # eval(parse(text = ...)); keep the SAMURAI expressions as strings.
   run_ichorCNA(
     tumor_wig = options$wig,
     id = options$sample,
@@ -102,9 +104,9 @@ run_analysis <- function(options) {
     centromere = if (nzchar(options$centromere)) options$centromere else NULL,
     repTimeWig = if (nzchar(options$reptime)) options$reptime else NULL,
     maxCN = 5,
-    chrTrain = paste0("chr", 1:22),
-    chrs = paste0("chr", 1:22),
-    chrNormalize = paste0("chr", 1:22),
+    chrTrain = "paste0('chr', c(1:22))",
+    chrs = "paste0('chr', c(1:22))",
+    chrNormalize = "paste0('chr', c(1:22))",
     txnE = 0.9999,
     txnStrength = 10000,
     minMapScore = 0.75,
@@ -115,14 +117,14 @@ run_analysis <- function(options) {
     altFracThreshold = 0.05,
     genomeStyle = "UCSC",
     plotFileType = "pdf",
-    plotYLim = c(-2, 4),
-    normal = c(0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99),
+    plotYLim = "c(-2, 4)",
+    normal = "c(0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99)",
     genomeBuild = "hg38",
     estimateNormal = TRUE,
-    ploidy = c(2, 3, 4, 5),
+    ploidy = "c(2, 3, 4, 5)",
     estimatePloidy = TRUE,
     estimateScPrevalence = FALSE,
-    scStates = c(),
+    scStates = "c()",
     outDir = "."
   )
 

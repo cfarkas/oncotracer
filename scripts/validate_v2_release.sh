@@ -1523,6 +1523,11 @@ action_install_environments() {
   env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
     "$ENV_ROOT/ichorcna/bin/Rscript" --vanilla -e \
     'library(ichorCNA); cat("ICHORCNA_R_OK\n")'
+  env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+    "$ENV_ROOT/ichorcna/bin/Rscript" --vanilla \
+    "$REPOSITORY_ROOT/tests/test_ichorcna_plot_compat.R" \
+    "$CONTEXT_DIR/ichorcna-zero-median-guard.pdf" \
+    | tee "$CONTEXT_DIR/ichorcna-plot-compat-probe.txt"
   test -x "$ENV_ROOT/ichorcna/bin/readCounter"
   probe_readcounter
 
@@ -1575,6 +1580,9 @@ PY
   test -x "$ENV_ROOT/qdnaseq/bin/Rscript"
   test -x "$ENV_ROOT/ichorcna/bin/Rscript"
   test -x "$ENV_ROOT/ichorcna/bin/readCounter"
+  test -s "$CONTEXT_DIR/ichorcna-zero-median-guard.pdf"
+  grep -Fx "ICHORCNA_ZERO_MEDIAN_PLOT_GUARD_OK" \
+    "$CONTEXT_DIR/ichorcna-plot-compat-probe.txt"
   test -x "$ENV_ROOT/classifier/bin/python"
   test -x "$ENV_ROOT/gistic/bin/gistic2"
   probe_bwa

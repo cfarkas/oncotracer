@@ -65,10 +65,14 @@ def write_manifest(root: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination_resolved = destination.resolve(strict=False)
     rows: list[tuple[str, int, str]] = []
-    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+    paths = sorted(
+        (safe_relative(item, root), item)
+        for item in root.rglob("*")
+        if item.is_file()
+    )
+    for relative, path in paths:
         if path.resolve() == destination_resolved:
             continue
-        relative = safe_relative(path, root)
         rows.append((sha256(path), path.stat().st_size, relative))
     if not rows:
         raise AuditError(f"manifest root contains no files: {root}")
