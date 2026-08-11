@@ -253,12 +253,21 @@ EOF
 cat > "$CONTEXT_DIR/samurai-nextflow-audit.config" <<EOF
 process {
   resourceLimits = [cpus: $THREADS, memory: '96.GB', time: '48.h']
+  withName: ICHORCNA_RUN {
+    containerOptions = '-v $REPOSITORY_ROOT/bin/scripts:/opt/oncotracer/scripts:ro -v $REPOSITORY_ROOT/bin/scripts/v1_ichorcna_profile.R:/.Rprofile:ro'
+  }
 }
 conda { useMamba = false }
 trace {
   fields = 'task_id,hash,native_id,name,status,exit,submit,duration,realtime,%cpu,peak_rss,peak_vmem,rchar,wchar,container'
 }
 EOF
+(
+  cd "$REPOSITORY_ROOT"
+  sha256sum \
+    bin/scripts/ichorcna_plot_compat.R \
+    bin/scripts/v1_ichorcna_profile.R
+) > "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS"
 
 git -C "$REPOSITORY_ROOT" status --short > "$CONTEXT_DIR/git-status-${SESSION_ID}.txt"
 git -C "$REPOSITORY_ROOT" log -1 --format=fuller "$SOURCE_COMMIT" > "$CONTEXT_DIR/source-commit-${SESSION_ID}.txt"
@@ -1743,6 +1752,8 @@ verify_prepare_configs() {
     "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina/.nextflow"; do
     cmp -s "$nested_home/config" "$CONTEXT_DIR/samurai-nextflow-audit.config"
   done
+  (cd "$REPOSITORY_ROOT" &&
+    sha256sum -c "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS")
   verify_tree_manifest "$CONFIG_DIR" "$CONTEXT_DIR/parity-config-SHA256SUMS"
 }
 
@@ -1751,6 +1762,7 @@ run_stage \
   "rewrite only lpwgs_root/outdir/force for separate frozen-v1.1 and copied-native-v2 QuickStart configurations; create nested v1 resource limits and container-aware trace fields" \
   action_prepare_configs verify_prepare_configs \
   "$CONTEXT_DIR/public-input-SHA256SUMS" "$CONTEXT_DIR/samurai-nextflow-audit.config" \
+  "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS" \
   "$REPOSITORY_ROOT/tests/make_parity_config.py"
 
 required_output_paths() {
@@ -1821,6 +1833,7 @@ import json
 import re
 import sys
 from collections import Counter
+from contextlib import redirect_stdout
 from pathlib import Path
 
 root = Path(sys.argv[1]).resolve()
@@ -1832,6 +1845,7 @@ selected_arg = sys.argv[6]
 tests_dir = Path(sys.argv[7]).resolve()
 sys.path.insert(0, str(tests_dir))
 from combine_nested_samurai_traces import combine_root  # noqa: E402
+from verify_nested_samurai import parse_compat  # noqa: E402
 
 expected_processes = {
     "illumina": {
@@ -1911,7 +1925,8 @@ with pins_path.open(encoding="utf-8") as handle:
                 raise SystemExit(f"ambiguous SAMURAI image alias: {alias}")
             pins[alias] = (tag, digest)
 
-selected, source_manifest, _ = combine_root(root)
+with redirect_stdout(sys.stderr):
+    selected, source_manifest, _ = combine_root(root)
 selected = selected.resolve()
 source_manifest = source_manifest.resolve()
 if selected_arg and Path(selected_arg).resolve() != selected:
@@ -2015,6 +2030,33 @@ for source in source_rows:
         }
     )
 
+compatibility = None
+if mode == "ont":
+    valid_markers = []
+    diagnostics = []
+    for marker in sorted(root.rglob(".oncotracer-ichorcna-plot-compat.tsv")):
+        try:
+            valid_markers.append((marker, parse_compat(marker)))
+        except (OSError, ValueError, csv.Error) as error:
+            diagnostics.append(f"{marker}: {error}")
+    if not valid_markers:
+        details = "\n".join(diagnostics) if diagnostics else "no marker files found"
+        raise SystemExit(
+            f"no valid nested ichorCNA compatibility marker under {root}:\n{details}"
+        )
+    canonical = valid_markers[0][1]
+    if any(metadata != canonical for _, metadata in valid_markers[1:]):
+        raise SystemExit("nested ichorCNA compatibility markers disagree")
+    selected_marker = max(
+        valid_markers,
+        key=lambda item: (item[0].stat().st_mtime_ns, item[0].as_posix()),
+    )[0]
+    compatibility = {
+        "path": str(selected_marker.resolve()),
+        "sha256": sha256(selected_marker),
+        "metadata": canonical,
+    }
+
 record = {
     "schema": "oncotracer-samurai-trace-audit-v1",
     "mode": mode,
@@ -2030,6 +2072,7 @@ record = {
     "contract_processes": sorted(expected_processes[mode]),
     "containers": sorted(containers),
     "contract_containers": sorted(expected_images[mode]),
+    "ichorcna_plot_compat": compatibility,
     "rows": rows,
 }
 destination.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -2133,8 +2176,10 @@ run_stage \
   "$CONTEXT_DIR/samurai-container-pins.tsv" \
   "$CONTEXT_DIR/samurai-container-identities.tsv" \
   "$CONTEXT_DIR/samurai-nextflow-audit.config" \
+  "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS" \
   "$CONTEXT_DIR/public-input-SHA256SUMS" "$CONTEXT_DIR/validation-reference-SHA256SUMS" \
-  "$CONFIG_DIR/v1-illumina.yml" "$CONFIG_DIR/v1-ont.yml"
+  "$CONFIG_DIR/v1-illumina.yml" "$CONFIG_DIR/v1-ont.yml" \
+  "$REPOSITORY_ROOT/tests/verify_nested_samurai.py"
 
 action_v1_quickstart2() {
   verify_prepare_pinned_nextflow
@@ -2187,8 +2232,9 @@ run_stage \
   "$CONTEXT_DIR/samurai-container-pins.tsv" \
   "$CONTEXT_DIR/samurai-container-identities.tsv" \
   "$CONTEXT_DIR/samurai-nextflow-audit.config" \
+  "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS" \
   "$CONTEXT_DIR/public-input-SHA256SUMS" "$CONTEXT_DIR/validation-reference-SHA256SUMS" \
-  "$CONFIG_DIR/v1-hcc1143.yml"
+  "$CONFIG_DIR/v1-hcc1143.yml" "$REPOSITORY_ROOT/tests/verify_nested_samurai.py"
 
 action_v2_quickstart1() {
   run_copied_binary run --backend conda --config "$CONFIG_DIR/v2-illumina.yml" --threads "$THREADS"

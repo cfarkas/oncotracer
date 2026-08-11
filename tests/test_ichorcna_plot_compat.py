@@ -33,12 +33,24 @@ class IchorCnaPlotCompatibilityTests(unittest.TestCase):
     def test_frozen_v1_profile_uses_samurai_expected_startup_path(self) -> None:
         root = Path(__file__).resolve().parents[1]
         driver = (root / "scripts/ci_native_parity.sh").read_text(encoding="utf-8")
+        server_driver = (root / "scripts/validate_v2_release.sh").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn(
             "-v $REPO/bin/scripts/v1_ichorcna_profile.R:/.Rprofile:ro",
             driver,
         )
         self.assertNotIn("-e R_PROFILE_USER=", driver)
+        self.assertIn(
+            "-v $REPOSITORY_ROOT/bin/scripts/v1_ichorcna_profile.R:/.Rprofile:ro",
+            server_driver,
+        )
+        self.assertIn(
+            'root.rglob(".oncotracer-ichorcna-plot-compat.tsv")',
+            server_driver,
+        )
+        self.assertIn('"ichorcna_plot_compat": compatibility', server_driver)
 
 
 if __name__ == "__main__":
