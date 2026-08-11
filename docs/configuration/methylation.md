@@ -119,7 +119,7 @@ oncotracer run \
   --gpu
 ```
 
-The explicit Python must already provide `h5py`, NumPy, and TensorFlow. OncoTracer disables reticulate's managed environments and offline-locks its cache, so a missing dependency fails before POD5 basecalling instead of triggering a download. The native adapter preserves the preprocessing defined by the supported MARLIN source commit: per-probe beta is modified coverage divided by valid coverage; model features are ordered exactly, binarized at beta `0.5`, and uncovered features remain zero. OncoTracer does not alter classifier thresholds.
+The explicit Python must already provide `h5py`, NumPy, and TensorFlow. OncoTracer disables reticulate's managed environments and offline-locks its cache, so a missing dependency fails before POD5 basecalling instead of triggering a download. The native adapter preserves the preprocessing defined by the supported MARLIN interface-contract commit: per-probe beta is modified coverage divided by valid coverage; model features are ordered exactly, binarized at beta `0.5`, and uncovered features remain zero. OncoTracer does not alter classifier thresholds.
 
 The adapted MARLIN preprocessing code retains its upstream MIT terms; the complete copyright and permission notice is shipped in the executable payload as `bin/scripts/MARLIN-MIT-LICENSE.txt`.
 
