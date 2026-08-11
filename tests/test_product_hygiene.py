@@ -105,22 +105,26 @@ def readable_text(path: Path) -> str | None:
         return None
 
 
-def static_python_text(node: ast.AST) -> str | None:
-    """Return text for literals and simple compile-time string composition."""
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+def static_python_text(node: ast.AST) -> str | bytes | None:
+    """Return static str/bytes composition without lossy bytes decoding."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, (str, bytes)):
         return node.value
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
         left = static_python_text(node.left)
         right = static_python_text(node.right)
-        return None if left is None or right is None else left + right
+        if type(left) is not type(right) or left is None or right is None:
+            return None
+        return left + right
     if isinstance(node, ast.JoinedStr):
         parts: list[str] = []
         for value in node.values:
             if isinstance(value, ast.FormattedValue):
                 part = static_python_text(value.value)
+                if isinstance(part, bytes):
+                    part = str(part)
             else:
                 part = static_python_text(value)
-            if part is None:
+            if part is None or isinstance(part, bytes):
                 return None
             parts.append(part)
         return "".join(parts)
@@ -151,9 +155,23 @@ def python_nextflow_command_violations(relative: str, text: str) -> list[str]:
     allowed = INTENTIONAL_PYTHON_NEXTFLOW_AUDIT_LINES.get(relative, set())
     violations: set[str] = set()
     for node in ast.walk(syntax):
-        value = static_python_text(node)
-        if value is None or not hasattr(node, "lineno"):
+        static_value = static_python_text(node)
+        if static_value is None or not hasattr(node, "lineno"):
             continue
+        if isinstance(static_value, bytes):
+            # subprocess accepts bytes argv. Undecodable literals cannot be
+            # classified safely, so never normalize them with lossy decoding.
+            try:
+                value = static_value.decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
+                line = lines[node.lineno - 1].strip()
+                violations.add(
+                    f"{relative}:{node.lineno}: non-UTF-8 static bytes literal "
+                    f"cannot be safely audited: {line}"
+                )
+                continue
+        else:
+            value = static_value
         stripped = value.strip()
         executable = PurePosixPath(stripped.replace("\\", "/")).name.casefold()
         standalone = executable in {"nextflow", "nextflow.exe"}
@@ -273,6 +291,62 @@ class ProductHygieneTests(unittest.TestCase):
                 ),
                 violations,
             )
+
+    def test_materialized_tree_rejects_python_nextflow_bytes_argv(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            staging = Path(directory) / "staging"
+            builder.copy_payload_from_tree(ROOT, staging)
+            adversarial = staging / "oncotracer_cli" / "adversarial_bytes.py"
+            adversarial.write_text(
+                "import subprocess\n"
+                'subprocess.run([b"/usr/bin/nextflow", b"run", b"main.nf"])\n'
+                'subprocess.Popen([b"nextflow", b"run", b"main.nf"])\n'
+                'subprocess.run([b"./nextflow", b"run", b"main.nf"])\n'
+                'subprocess.Popen([br"C:\\tools\\nextflow.exe", b"run", '
+                'b"main.nf"])\n',
+                encoding="utf-8",
+            )
+            violations = materialized_tree_violations(staging)
+            for line_number in range(2, 6):
+                with self.subTest(line_number=line_number):
+                    self.assertTrue(
+                        any(
+                            f"oncotracer_cli/adversarial_bytes.py:{line_number}: "
+                            "forbidden static Nextflow command token" in violation
+                            for violation in violations
+                        ),
+                        violations,
+                    )
+
+    def test_malformed_and_non_utf8_python_bytes_fail_closed(self) -> None:
+        malformed = (
+            "import subprocess\n"
+            'subprocess.run([b"\\xff\\xfe", b"run"], check=True)\n'
+        )
+        violations = python_nextflow_command_violations(
+            "oncotracer_cli/malformed_bytes.py",
+            malformed,
+        )
+        self.assertTrue(
+            any(
+                "oncotracer_cli/malformed_bytes.py:2: non-UTF-8 static bytes "
+                "literal cannot be safely audited" in violation
+                for violation in violations
+            ),
+            violations,
+        )
+        invalid_escape = (
+            "import subprocess\n"
+            'subprocess.Popen([b"\\xZZ", b"run", b"main.nf"])\n'
+        )
+        syntax_violations = python_nextflow_command_violations(
+            "oncotracer_cli/malformed_bytes_syntax.py",
+            invalid_escape,
+        )
+        self.assertTrue(
+            any("Python payload does not parse" in item for item in syntax_violations),
+            syntax_violations,
+        )
 
     def test_python_nextflow_audit_allowlist_is_exact(self) -> None:
         audit = (
