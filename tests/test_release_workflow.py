@@ -55,6 +55,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         )
         publish_index = text.index("docker buildx imagetools create", recheck_index)
         self.assertLess(recheck_index, publish_index)
+        self.assertNotIn("commits/main", text[publish_index:])
 
     def test_existing_release_assets_are_hash_checked_without_clobber(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")

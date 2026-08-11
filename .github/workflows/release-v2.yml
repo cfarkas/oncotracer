@@ -499,7 +499,7 @@ jobs:
             sha256sum --strict -c SHA256SUMS
           )
 
-      - name: Reconfirm main and publish or verify GitHub release
+      - name: Publish or verify GitHub release for captured main SHA
         if: steps.gate.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -507,7 +507,6 @@ jobs:
           RELEASE_EXISTS: ${{ steps.source.outputs.release_exists }}
         run: |
           set -Eeuo pipefail
-          test "$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')" = "$MAIN_SHA"
           assets=(
             release/oncotracer
             release/oncotracer-v2.0.0-parity-audit.tar.gz
