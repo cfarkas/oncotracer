@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import py_compile
 import re
 import shlex
 import subprocess
@@ -83,6 +84,15 @@ INTENTIONAL_PYTHON_NEXTFLOW_AUDIT_LINES = {
         'if "nextflow" in trace_text.lower():',
     },
 }
+PYTHON_SOURCE_SUFFIXES = frozenset({".py", ".pyw"})
+SHIPPED_SOURCE_SUFFIXES = frozenset(
+    {
+        *PYTHON_SOURCE_SUFFIXES,
+        ".sh",
+        ".bash",
+        ".r",
+    }
+)
 
 
 def tracked_paths() -> list[Path]:
@@ -192,10 +202,15 @@ def materialized_tree_violations(staging: Path) -> list[str]:
     for path in sorted(item for item in staging.rglob("*") if item.is_file()):
         relative = path.relative_to(staging).as_posix()
         name = PurePosixPath(relative)
-        if name.suffix == ".nf" or name.name == "nextflow.config":
+        suffix = name.suffix.casefold()
+        if suffix == ".nf" or name.name.casefold() == "nextflow.config":
             violations.append(f"legacy workflow file leaked by {relative}")
         text = readable_text(path)
         if text is None:
+            if suffix in SHIPPED_SOURCE_SUFFIXES:
+                violations.append(
+                    f"shipped source is not readable as strict UTF-8: {relative}"
+                )
             continue
         for marker in FORBIDDEN_LOCAL_TEXT:
             if marker in text:
@@ -211,7 +226,7 @@ def materialized_tree_violations(staging: Path) -> list[str]:
                 violations.append(
                     f"legacy workflow command leaked by {relative}: {command}"
                 )
-        if path.suffix == ".py":
+        if suffix in PYTHON_SOURCE_SUFFIXES:
             violations.extend(python_nextflow_command_violations(relative, text))
     return violations
 
@@ -317,6 +332,90 @@ class ProductHygieneTests(unittest.TestCase):
                         ),
                         violations,
                     )
+
+    def test_source_utf8_policy_is_fail_closed_and_case_insensitive(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            staging = temporary / "staging"
+            builder.copy_payload_from_tree(ROOT, staging)
+
+            latin1_python = staging / "oncotracer_cli" / "latin1_adversarial.PY"
+            latin1_python.write_bytes(
+                b"# -*- coding: latin-1 -*-\n"
+                b"import subprocess\n"
+                b"label = 'caf\xe9'\n"
+                b"subprocess.run(['/usr/bin/nextflow', 'run', 'main.nf'])\n"
+            )
+            compiled = temporary / "latin1.pyc"
+            py_compile.compile(
+                str(latin1_python),
+                cfile=str(compiled),
+                doraise=True,
+            )
+            self.assertTrue(compiled.is_file())
+
+            pythonw = staging / "oncotracer_cli" / "launcher.PyW"
+            pythonw.write_text(
+                "import subprocess\n"
+                'subprocess.Popen(["nextflow", "run", "main.nf"])\n',
+                encoding="utf-8",
+            )
+
+            scripts = staging / "payload" / "bin" / "scripts"
+            (scripts / "legacy.NF").write_text("workflow {}\n", encoding="utf-8")
+            (scripts / "NextFlow.Config").write_text(
+                "process.executor = 'local'\n",
+                encoding="utf-8",
+            )
+            invalid_sources = {
+                "adversarial.SH": (
+                    b"#!/usr/bin/env bash\n# invalid: \xff\nnextflow run main.nf\n"
+                ),
+                "adversarial.BaSh": (
+                    b"#!/usr/bin/env bash\n# invalid: \xff\nnextflow run main.nf\n"
+                ),
+                "adversarial.R": b"# invalid: \xff\nsystem('nextflow run main.nf')\n",
+            }
+            for name, content in invalid_sources.items():
+                (scripts / name).write_bytes(content)
+
+            binary = staging / "payload" / "bin" / "resources" / "opaque.bin"
+            binary.parent.mkdir(parents=True, exist_ok=True)
+            binary.write_bytes(b"\xff\xfe\x00\x80")
+
+            violations = materialized_tree_violations(staging)
+            self.assertIn(
+                "shipped source is not readable as strict UTF-8: "
+                "oncotracer_cli/latin1_adversarial.PY",
+                violations,
+            )
+            self.assertTrue(
+                any(
+                    "oncotracer_cli/launcher.PyW:2: forbidden static Nextflow "
+                    "command token" in item
+                    for item in violations
+                ),
+                violations,
+            )
+            for name in invalid_sources:
+                with self.subTest(name=name):
+                    self.assertIn(
+                        "shipped source is not readable as strict UTF-8: "
+                        f"payload/bin/scripts/{name}",
+                        violations,
+                    )
+            self.assertIn(
+                "legacy workflow file leaked by payload/bin/scripts/legacy.NF",
+                violations,
+            )
+            self.assertIn(
+                "legacy workflow file leaked by payload/bin/scripts/NextFlow.Config",
+                violations,
+            )
+            self.assertFalse(
+                any("opaque.bin" in item for item in violations),
+                violations,
+            )
 
     def test_malformed_and_non_utf8_python_bytes_fail_closed(self) -> None:
         malformed = (
