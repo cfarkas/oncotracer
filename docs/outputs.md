@@ -154,7 +154,7 @@ cat "$OUT/07_methylation/methylation_provenance.json"
 find "$OUT/07_methylation" -maxdepth 3 -type f | sort | sed -n '1,120p'
 ```
 
-Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, or `failed`. A zero-call sample is not sent to Sturgeon or MARLIN. `methylation_provenance.json` records the explicit POD5 inventory digest, executable and resource hashes, classifier source identity, and Dorado device.
+Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, or `failed`. A zero-call sample is not sent to Sturgeon or MARLIN. `methylation_provenance.json` records the explicit POD5 inventory digest, executable and resource hashes, Dorado device, and the tested classifier interface-contract commit. It explicitly marks the classifier runtime as external and its installed source as unauthenticated; the commit is not installed-package identity.
 
 Methylation and CNA are independent branches: stage 07 remains valid when CNA fails, and stages 01–06 may remain valid when methylation is incomplete. In either partial case, the final command exits nonzero and `workflow_summary.json` records `cna_status`, `methylation_status`, and the relevant sample lists. Do not present a missing classifier output as a negative classification.
 

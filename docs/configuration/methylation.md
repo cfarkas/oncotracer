@@ -62,7 +62,7 @@ methylation_dorado_model_sha256: replace_with_model_tree_sha256
 methylation_dorado_modbase_model: /opt/ont/models/dna_r10.4.1_e8.2_400bps_sup_5mCG_5hmCG
 methylation_dorado_modbase_model_sha256: replace_with_modbase_model_tree_sha256
 
-sturgeon_source_commit: 4c742ddea49b0077a8f8ff3d99daafb238d00706
+sturgeon_interface_contract_commit: 4c742ddea49b0077a8f8ff3d99daafb238d00706
 sturgeon_license_acknowledged: true
 sturgeon_executable: /opt/sturgeon/bin/sturgeon
 sturgeon_model: /opt/sturgeon/models/general.zip
@@ -85,14 +85,14 @@ oncotracer run \
   --gpu
 ```
 
-Sturgeon is not distributed by OncoTracer. Its tested source identity is fixed above, and the user must separately obtain, install, and accept the applicable Sturgeon license. `sturgeon_license_acknowledged: true` is an explicit user attestation; it does not grant or replace that license.
+Sturgeon is not distributed by OncoTracer. The pinned commit above identifies the upstream interface contract against which this adapter was developed; it does **not** authenticate the source of the separately installed Sturgeon package. OncoTracer records the explicit external launcher path and SHA-256 and marks its installed source as unauthenticated. The user must separately obtain, install, and accept the applicable Sturgeon license. `sturgeon_license_acknowledged: true` is an explicit user attestation; it does not grant or replace that license.
 
 ## Leukemia example: MARLIN
 
 Use the same Dorado/Modkit fields and add:
 
 ```yaml
-marlin_source_commit: 37c9836cc325ff2edccbdff06736604163db2c15
+marlin_interface_contract_commit: 37c9836cc325ff2edccbdff06736604163db2c15
 marlin_rscript: /opt/marlin/bin/Rscript
 marlin_python: /opt/marlin/bin/python
 marlin_model: /opt/marlin/assets/MARLIN_model.h5
@@ -178,4 +178,4 @@ Use `--force` only to deliberately invalidate these outputs. For a different POD
 └── methylation_provenance.json
 ```
 
-`methylation_status.json` reports each sample as `complete`, `no_cpg_modifications`, or `failed`. `methylation_provenance.json` records the explicit POD5 inventory digest, device choice, supported classifier source commit, executable SHA-256 values, resource SHA-256 values, and final status. Review these files before interpreting any prediction.
+`methylation_status.json` reports each sample as `complete`, `no_cpg_modifications`, or `failed`. `methylation_provenance.json` records the explicit POD5 inventory digest, device choice, supported classifier interface-contract commit, external-runtime disclosure, executable SHA-256 values, resource SHA-256 values, and final status. The interface commit is not an assertion about the installed external package's source. Review these files before interpreting any prediction.

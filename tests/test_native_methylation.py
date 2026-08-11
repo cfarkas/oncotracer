@@ -20,7 +20,7 @@ from oncotracer_cli.engine import (
     run_native,
 )  # noqa: E402
 from oncotracer_cli.methylation import (  # noqa: E402
-    SUPPORTED_CLASSIFIER_COMMITS,
+    SUPPORTED_CLASSIFIER_INTERFACE_COMMITS,
     _accelerator_environment,
     _bedmethyl_counts,
     resolve_methylation_request,
@@ -108,9 +108,9 @@ class Fixture:
             "methylation_samtools_executable": str(self.executables["samtools"]),
             "methylation_dorado_model": str(self.base_model),
             "methylation_dorado_modbase_model": str(self.mod_model),
-            f"{self.classifier}_source_commit": SUPPORTED_CLASSIFIER_COMMITS[
-                self.classifier
-            ],
+            f"{self.classifier}_interface_contract_commit": (
+                SUPPORTED_CLASSIFIER_INTERFACE_COMMITS[self.classifier]
+            ),
         }
         if self.classifier == "sturgeon":
             values.update(
@@ -256,7 +256,7 @@ class NativeMethylationTests(unittest.TestCase):
             with self.assertRaisesRegex(OncoTracerError, "empty POD5 file"):
                 resolve_methylation_request(config, mode="ont", pod5_override=mixed)
 
-    def test_assets_and_supported_classifier_commit_are_exactly_pinned(self) -> None:
+    def test_assets_and_classifier_interface_contract_are_exactly_pinned(self) -> None:
         for classifier in ("sturgeon", "marlin"):
             with (
                 self.subTest(classifier=classifier),
@@ -267,17 +267,26 @@ class NativeMethylationTests(unittest.TestCase):
                 request = resolve_methylation_request(config, mode="ont")
                 assert request is not None
                 self.assertEqual(
-                    request.classifier_source_commit,
-                    SUPPORTED_CLASSIFIER_COMMITS[classifier],
+                    request.classifier_interface_contract_commit,
+                    SUPPORTED_CLASSIFIER_INTERFACE_COMMITS[classifier],
                 )
-                config[f"{classifier}_source_commit"] = "f" * 40
+                contract_key = f"{classifier}_interface_contract_commit"
+                config[contract_key] = "f" * 40
                 with self.assertRaisesRegex(
-                    OncoTracerError, "supports exact source commit"
+                    OncoTracerError, "supports exact interface contract"
                 ):
                     resolve_methylation_request(config, mode="ont")
-                config[f"{classifier}_source_commit"] = SUPPORTED_CLASSIFIER_COMMITS[
+                config[contract_key] = SUPPORTED_CLASSIFIER_INTERFACE_COMMITS[
                     classifier
                 ]
+                legacy = dict(config)
+                legacy[f"{classifier}_source_commit"] = legacy.pop(contract_key)
+                with self.assertRaisesRegex(
+                    OncoTracerError,
+                    "identifies the tested interface contract rather than "
+                    "authenticating the external installation",
+                ):
+                    resolve_methylation_request(legacy, mode="ont")
                 hash_key = (
                     "sturgeon_model_sha256"
                     if classifier == "sturgeon"
@@ -400,7 +409,7 @@ class NativeMethylationTests(unittest.TestCase):
         pileup = (
             "chr1\t100\t101\tm\t0\t+\t100\t101\t0,0,0\t10\t80.0\t8\t2\t0\t0\t0\t0\t0\n"
         )
-        temporary, _fixture, outdir, runner, status = self._run_fixture(
+        temporary, fixture, outdir, runner, status = self._run_fixture(
             pileup, gpu=True
         )
         self.addCleanup(temporary.cleanup)
@@ -425,6 +434,22 @@ class NativeMethylationTests(unittest.TestCase):
             (outdir / "07_methylation" / "methylation_provenance.json").read_text(
                 encoding="utf-8"
             )
+        )
+        self.assertEqual(
+            provenance["schema"],
+            "oncotracer-native-ont-methylation-provenance-v2",
+        )
+        self.assertNotIn("classifier_source_commit", provenance)
+        self.assertNotIn("installed_classifier_source_commit", provenance)
+        self.assertEqual(
+            provenance["classifier_interface_contract_commit"],
+            SUPPORTED_CLASSIFIER_INTERFACE_COMMITS["sturgeon"],
+        )
+        self.assertTrue(provenance["classifier_runtime_external"])
+        self.assertFalse(provenance["classifier_runtime_source_authenticated"])
+        self.assertEqual(
+            provenance["executables"]["sturgeon"]["sha256"],
+            sha256_file(fixture.executables["sturgeon"]),
         )
         self.assertTrue(provenance["gpu_requested"])
         self.assertEqual(provenance["modkit_acceleration"], "cpu_threads")
@@ -561,6 +586,14 @@ class NativeMethylationTests(unittest.TestCase):
             self.assertFalse(result.exists())
             plan = json.loads(output.getvalue())
             self.assertEqual(plan["methylation"]["pod5_file_count"], 1)
+            self.assertNotIn("classifier_source_commit", plan["methylation"])
+            self.assertTrue(plan["methylation"]["classifier_runtime_external"])
+            self.assertFalse(
+                plan["methylation"]["classifier_runtime_source_authenticated"]
+            )
+            self.assertIn(
+                "classifier_interface_contract_commit", plan["methylation"]
+            )
             stages = plan["stages"]
             self.assertLess(
                 stages.index("dorado-modified-base-basecalling"),

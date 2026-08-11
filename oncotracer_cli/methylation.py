@@ -32,7 +32,7 @@ from .runtime import (
 
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
-SUPPORTED_CLASSIFIER_COMMITS = {
+SUPPORTED_CLASSIFIER_INTERFACE_COMMITS = {
     "sturgeon": "4c742ddea49b0077a8f8ff3d99daafb238d00706",
     "marlin": "37c9836cc325ff2edccbdff06736604163db2c15",
 }
@@ -56,7 +56,7 @@ class MethylationRequest:
     executable_sha256: Mapping[str, str]
     asset_sha256: Mapping[str, str]
     pod5_inventory_sha256: str
-    classifier_source_commit: str
+    classifier_interface_contract_commit: str
 
     @property
     def dorado_device(self) -> str:
@@ -306,19 +306,27 @@ def resolve_methylation_request(
     }
     classifier_paths: dict[str, Path] = {}
     classifier_executable: Path | None
-    supported_commit = SUPPORTED_CLASSIFIER_COMMITS[classifier]
+    supported_commit = SUPPORTED_CLASSIFIER_INTERFACE_COMMITS[classifier]
+    legacy_commit_key = f"{classifier}_source_commit"
+    interface_commit_key = f"{classifier}_interface_contract_commit"
+    if legacy_commit_key in config:
+        raise OncoTracerError(
+            f"{legacy_commit_key} is misleading and unsupported; use "
+            f"{interface_commit_key}, which identifies the tested interface "
+            "contract rather than authenticating the external installation"
+        )
     configured_commit = (
-        str(config.get(f"{classifier}_source_commit") or supported_commit)
+        str(config.get(interface_commit_key) or supported_commit)
         .strip()
         .lower()
     )
     if not COMMIT_PATTERN.fullmatch(configured_commit):
         raise OncoTracerError(
-            f"{classifier}_source_commit must be a full 40-character Git commit"
+            f"{interface_commit_key} must be a full 40-character Git commit"
         )
     if configured_commit != supported_commit:
         raise OncoTracerError(
-            f"native v2 {classifier} integration supports exact source commit "
+            f"native v2 {classifier} integration supports exact interface contract "
             f"{supported_commit}, found {configured_commit}"
         )
     if classifier == "sturgeon":
@@ -398,7 +406,7 @@ def resolve_methylation_request(
         executable_sha256=executable_sha256,
         asset_sha256=asset_sha256,
         pod5_inventory_sha256=_pod5_inventory_sha256(pod5_dir, pod5_files),
-        classifier_source_commit=configured_commit,
+        classifier_interface_contract_commit=configured_commit,
     )
 
 
@@ -417,7 +425,11 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
         ),
         "zero_cpg_action": "abort_methylation_continue_cna",
         "asset_sha256": dict(request.asset_sha256),
-        "classifier_source_commit": request.classifier_source_commit,
+        "classifier_interface_contract_commit": (
+            request.classifier_interface_contract_commit
+        ),
+        "classifier_runtime_source_authenticated": False,
+        "classifier_runtime_external": True,
         "stages": [
             "pod5-read-id-selection",
             "dorado-modified-base-basecalling",
@@ -515,9 +527,13 @@ def _provenance_payload(
     failure: BaseException | None = None,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
-        "schema": "oncotracer-native-ont-methylation-provenance-v1",
+        "schema": "oncotracer-native-ont-methylation-provenance-v2",
         "classifier": request.classifier,
-        "classifier_source_commit": request.classifier_source_commit,
+        "classifier_interface_contract_commit": (
+            request.classifier_interface_contract_commit
+        ),
+        "classifier_runtime_external": True,
+        "classifier_runtime_source_authenticated": False,
         "pod5_dir": str(request.pod5_dir),
         "pod5_file_count": len(request.pod5_files),
         "pod5_inventory_sha256": request.pod5_inventory_sha256,
@@ -1084,7 +1100,7 @@ def run_methylation(
             [
                 "native-ont-methylation-v1",
                 request.classifier,
-                request.classifier_source_commit,
+                request.classifier_interface_contract_commit,
                 f"threads={max(1, threads)}",
                 f"gpu={str(request.gpu).lower()}",
             ],

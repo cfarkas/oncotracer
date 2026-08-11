@@ -194,12 +194,12 @@ CLI values override `methylation`, classifier, POD5, and GPU YAML values. There 
 | `methylation_dorado_model_sha256` | optional expected digest | OncoTracer directory-tree digest; always recorded |
 | `methylation_dorado_modbase_model` | required directory | Explicit compatible 5mCG/5hmCG model |
 | `methylation_dorado_modbase_model_sha256` | optional expected digest | OncoTracer directory-tree digest; always recorded |
-| `sturgeon_source_commit` | fixed supported commit | `4c742ddea49b0077a8f8ff3d99daafb238d00706` |
+| `sturgeon_interface_contract_commit` | fixed supported upstream interface commit; does not authenticate the installed package | `4c742ddea49b0077a8f8ff3d99daafb238d00706` |
 | `sturgeon_license_acknowledged` | required `true` | User attests to separately obtaining/accepting the Sturgeon license |
 | `sturgeon_executable` | required | User-installed Sturgeon executable |
 | `sturgeon_model`, `sturgeon_model_sha256` | required pair | Explicit model and exact file SHA-256 |
 | `sturgeon_probes`, `sturgeon_probes_sha256` | required pair | Explicit hg38 probes and exact file SHA-256 |
-| `marlin_source_commit` | fixed supported commit | `37c9836cc325ff2edccbdff06736604163db2c15` |
+| `marlin_interface_contract_commit` | fixed supported upstream interface commit; does not authenticate an external runtime | `37c9836cc325ff2edccbdff06736604163db2c15` |
 | `marlin_rscript` | required | Rscript from the user-prepared MARLIN environment |
 | `marlin_python` | required | Exact Python with h5py, NumPy, and TensorFlow; automatic environments are forbidden |
 | `marlin_model`, `marlin_model_sha256` | required pair | Explicit MARLIN model and exact file SHA-256 |
