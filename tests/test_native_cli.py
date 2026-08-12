@@ -493,6 +493,95 @@ class NativeCliTests(unittest.TestCase):
             self.assertEqual(illumina_values["outdir"], str(root / "runs" / "illumina"))
             self.assertEqual(ont_values["outdir"], str(root / "runs" / "ont"))
 
+    def test_host_doctor_accepts_semantic_external_container_prefix_matrix(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prefixes = {
+                "core": root / "opt" / "conda",
+                **{
+                    name: root / "opt" / "oncotracer-envs" / name
+                    for name in ("qdnaseq", "ichorcna", "classifier", "gistic")
+                },
+            }
+            for prefix in prefixes.values():
+                prefix.mkdir(parents=True)
+            variables = {
+                f"ONCOTRACER_{name.upper()}_PREFIX": str(prefix)
+                for name, prefix in prefixes.items()
+            }
+            provenance = {
+                "source_commit": "a" * 40,
+                "source_sha256": "b" * 64,
+                "source_sha256_definition": "git archive tar",
+                "source_metadata_origin": "embedded",
+                "source_tree_dirty": False,
+            }
+            environments = {name: {"success": True, "probes": {}} for name in prefixes}
+            args = build_parser().parse_args(["doctor", "--backend", "host"])
+            output = io.StringIO()
+            with (
+                patch.dict(os.environ, variables, clear=False),
+                patch("oncotracer_cli.cli._load_install_config", return_value={}),
+                patch(
+                    "oncotracer_cli.cli._probe_native_prefixes",
+                    return_value=environments,
+                ),
+                patch(
+                    "oncotracer_cli.cli._managed_conda_base",
+                    side_effect=AssertionError(
+                        "external prefixes are not installer-owned"
+                    ),
+                ),
+                patch(
+                    "oncotracer_cli.cli.verify_managed_conda_runtime",
+                    side_effect=AssertionError(
+                        "external prefixes are not installer-owned"
+                    ),
+                ),
+                patch("oncotracer_cli.cli.get_provenance", return_value=provenance),
+                patch("sys.stdout", output),
+            ):
+                returncode = command_doctor(args)
+            record = json.loads(output.getvalue())
+            self.assertEqual(returncode, 0)
+            self.assertTrue(record["success"])
+            self.assertEqual(record["managed_install"]["provisioning"], "external")
+            self.assertFalse(record["managed_install"]["required"])
+
+    def test_host_external_prefixes_do_not_claim_installer_consumer_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config_path = root / "analysis.yml"
+            config_path.write_text("mode: illumina\n", encoding="utf-8")
+            arguments = SimpleNamespace(
+                backend="host",
+                root=None,
+                threads=None,
+                force=False,
+                dry_run=False,
+                methylation=None,
+                methylation_classifier=None,
+                pod5_dir=None,
+                gpu=False,
+            )
+            with (
+                patch("oncotracer_cli.cli._load_install_config", return_value={}),
+                patch(
+                    "oncotracer_cli.cli.managed_conda_runtime_lock",
+                    side_effect=AssertionError(
+                        "external layout must not use managed lock"
+                    ),
+                ),
+                patch(
+                    "oncotracer_cli.cli.run_native", return_value=root / "results"
+                ) as native,
+            ):
+                result = execute_run(config_path, arguments)
+            self.assertEqual(result, root / "results")
+            native.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

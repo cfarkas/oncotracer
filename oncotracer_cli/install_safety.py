@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import fcntl
 import hashlib
+import io
 import itertools
 import json
 import os
@@ -13,11 +14,14 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import time
 import uuid
 import venv
 import zipfile
 from collections.abc import Iterator, Mapping, Sequence
+from contextvars import ContextVar
+from dataclasses import dataclass
 from pathlib import Path
 
 from . import __version__
@@ -43,6 +47,9 @@ CHILD_INVENTORY = ".oncotracer-install-inventory.json"
 _HEX_32 = re.compile(r"[0-9a-f]{32}")
 _HEX_40 = re.compile(r"[0-9a-f]{40}")
 _HEX_64 = re.compile(r"[0-9a-f]{64}")
+_CLI_INSTALL_TARGET_ARGUMENTS: ContextVar[frozenset[Path]] = ContextVar(
+    "oncotracer_cli_install_target_arguments", default=frozenset()
+)
 
 
 def _absolute(path: Path) -> Path:
@@ -307,12 +314,30 @@ def _path_contains(root: Path, candidate: Path) -> bool:
     return candidate == root or root in candidate.parents
 
 
+@contextlib.contextmanager
+def installer_cli_target_arguments(*paths: Path) -> Iterator[None]:
+    """Ignore only this process's exact installer target argv entries.
+
+    The current process remains visible through its cwd, executable, open file
+    descriptors, memory maps, and every other absolute argv entry. Child
+    processes never inherit this PID-scoped exception.
+    """
+    token = _CLI_INSTALL_TARGET_ARGUMENTS.set(
+        frozenset(_absolute(path) for path in paths)
+    )
+    try:
+        yield
+    finally:
+        _CLI_INSTALL_TARGET_ARGUMENTS.reset(token)
+
+
 def _active_processes(
     path: Path, *, proc: Path = Path("/proc"), timeout: float = 5.0
 ) -> list[int]:
     """Return processes whose cwd/executable/fd/argv uses *path*."""
     deadline = time.monotonic() + timeout
     target = _absolute(path)
+    ignored_self_arguments = _CLI_INSTALL_TARGET_ARGUMENTS.get()
     observed: set[int] = set()
     if not proc.is_dir():
         raise OncoTracerError(
@@ -378,6 +403,8 @@ def _active_processes(
                 continue
             with contextlib.suppress(OSError, UnicodeDecodeError):
                 used = _absolute(Path(os.fsdecode(argument)))
+                if pid == os.getpid() and used in ignored_self_arguments:
+                    continue
                 if _path_contains(target, used):
                     observed.add(pid)
                     break
@@ -941,8 +968,65 @@ def _require_poetry_v2(poetry: str) -> None:
         )
 
 
-def _verify_poetry_source_checkout(root: Path, source: Mapping[str, object]) -> None:
-    """Bind the tree copied into the wheel to the executable source identity."""
+@dataclass(frozen=True)
+class _PoetrySourceSnapshot:
+    archive: bytes
+    pyproject_sha256: str
+    lock_sha256: str
+
+
+def _safe_tar_path(name: str) -> Path:
+    if not name or name.startswith("/") or "\\" in name:
+        raise OncoTracerError(f"Poetry source archive has unsafe member name: {name!r}")
+    path = Path(name)
+    if any(part in {"", ".", ".."} for part in path.parts):
+        raise OncoTracerError(f"Poetry source archive has unsafe member name: {name!r}")
+    return path
+
+
+def _poetry_snapshot_from_archive(archive: bytes) -> _PoetrySourceSnapshot:
+    required: dict[str, bytes] = {}
+    observed: set[str] = set()
+    try:
+        with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as source:
+            for member in source:
+                relative = _safe_tar_path(member.name)
+                rendered = relative.as_posix()
+                if rendered in observed:
+                    raise OncoTracerError(
+                        f"Poetry source archive has duplicate member: {rendered}"
+                    )
+                observed.add(rendered)
+                if rendered not in {"pyproject.toml", "poetry.lock"}:
+                    continue
+                if not member.isreg():
+                    raise OncoTracerError(
+                        f"Poetry source archive member is not regular: {rendered}"
+                    )
+                handle = source.extractfile(member)
+                if handle is None:
+                    raise OncoTracerError(
+                        f"Poetry source archive member cannot be read: {rendered}"
+                    )
+                required[rendered] = handle.read()
+    except (OSError, tarfile.TarError) as error:
+        raise OncoTracerError(f"Poetry source archive is invalid: {error}") from error
+    missing = {"pyproject.toml", "poetry.lock"} - set(required)
+    if missing:
+        raise OncoTracerError(
+            f"Poetry source archive lacks required input: {sorted(missing)[0]}"
+        )
+    return _PoetrySourceSnapshot(
+        archive=archive,
+        pyproject_sha256=hashlib.sha256(required["pyproject.toml"]).hexdigest(),
+        lock_sha256=hashlib.sha256(required["poetry.lock"]).hexdigest(),
+    )
+
+
+def _verify_poetry_source_checkout(
+    root: Path, source: Mapping[str, object]
+) -> _PoetrySourceSnapshot:
+    """Return an immutable archive bound to the executable source identity."""
 
     def git(*arguments: str, binary: bool = False) -> bytes | str:
         result = subprocess.run(
@@ -983,6 +1067,7 @@ def _verify_poetry_source_checkout(root: Path, source: Mapping[str, object]) -> 
         raise OncoTracerError(
             "Poetry checkout archive does not match this executable source identity"
         )
+    return _poetry_snapshot_from_archive(archive)
 
 
 def _poetry_payload_allowed(relative: Path) -> bool:
@@ -1000,47 +1085,69 @@ def _poetry_payload_allowed(relative: Path) -> bool:
     )
 
 
-def _copy_poetry_project(root: Path, staging: Path) -> None:
-    """Copy only fixed product roots into an isolated Poetry build tree."""
-    roots = (
-        "pyproject.toml",
-        "poetry.lock",
-        "README.md",
-        "oncotracer_cli",
-        *_POETRY_PAYLOAD_ROOTS,
-    )
-    for name in roots:
-        source = root / name
-        if not os.path.lexists(source):
-            raise OncoTracerError(f"Poetry build input is missing: {source}")
-        metadata = source.lstat()
-        destination = staging / name
-        if stat.S_ISREG(metadata.st_mode):
-            if metadata.st_nlink < 1:
-                raise OncoTracerError(f"Poetry build input is unsafe: {source}")
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, destination, follow_symlinks=False)
-            continue
-        if not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
-            raise OncoTracerError(
-                f"Poetry build input is not a physical tree: {source}"
-            )
-        destination.mkdir(parents=True)
-        for member in sorted(source.rglob("*")):
-            relative = member.relative_to(root)
-            if not _poetry_payload_allowed(relative):
-                continue
-            observed = member.lstat()
-            target = staging / relative
-            if stat.S_ISDIR(observed.st_mode) and not stat.S_ISLNK(observed.st_mode):
-                target.mkdir(parents=True, exist_ok=True)
-            elif stat.S_ISREG(observed.st_mode):
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(member, target, follow_symlinks=False)
-            else:
-                raise OncoTracerError(
-                    f"Poetry build input contains a symlink or special file: {member}"
-                )
+def _copy_poetry_project(snapshot: _PoetrySourceSnapshot, staging: Path) -> None:
+    """Materialize fixed product roots from one authenticated Git archive."""
+    file_roots = {"pyproject.toml", "poetry.lock", "README.md"}
+    directory_roots = {"oncotracer_cli", *_POETRY_PAYLOAD_ROOTS}
+    required_roots = file_roots | directory_roots
+    observed_roots: set[str] = set()
+    observed_members: set[str] = set()
+    try:
+        with tarfile.open(fileobj=io.BytesIO(snapshot.archive), mode="r:") as source:
+            for member in source:
+                relative = _safe_tar_path(member.name)
+                rendered = relative.as_posix()
+                if rendered in observed_members:
+                    raise OncoTracerError(
+                        f"Poetry source archive has duplicate member: {rendered}"
+                    )
+                observed_members.add(rendered)
+                root_name = relative.parts[0]
+                selected = rendered in file_roots or root_name in directory_roots
+                if not selected or not _poetry_payload_allowed(relative):
+                    continue
+                if root_name in file_roots and rendered != root_name:
+                    raise OncoTracerError(
+                        f"Poetry source archive nests content below a file: {rendered}"
+                    )
+                observed_roots.add(root_name)
+                destination = staging / relative
+                if member.isdir():
+                    destination.mkdir(parents=True, exist_ok=True)
+                elif member.isreg():
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    handle = source.extractfile(member)
+                    if handle is None:
+                        raise OncoTracerError(
+                            f"Poetry source archive member cannot be read: {rendered}"
+                        )
+                    flags = (
+                        os.O_WRONLY
+                        | os.O_CREAT
+                        | os.O_EXCL
+                        | getattr(os, "O_NOFOLLOW", 0)
+                    )
+                    descriptor = os.open(destination, flags, member.mode & 0o777)
+                    with os.fdopen(descriptor, "wb") as output:
+                        output.write(handle.read())
+                    os.chmod(destination, member.mode & 0o777, follow_symlinks=False)
+                    os.utime(
+                        destination,
+                        (member.mtime, member.mtime),
+                        follow_symlinks=False,
+                    )
+                else:
+                    raise OncoTracerError(
+                        "Poetry source archive contains a selected symlink, hardlink, "
+                        f"or special file: {rendered}"
+                    )
+    except (OSError, tarfile.TarError) as error:
+        raise OncoTracerError(f"Poetry source archive is invalid: {error}") from error
+    missing = required_roots - observed_roots
+    if missing:
+        raise OncoTracerError(
+            f"Poetry source archive lacks required product root: {sorted(missing)[0]}"
+        )
 
 
 def _write_poetry_build_metadata(staging: Path, source: Mapping[str, object]) -> None:
@@ -1105,7 +1212,7 @@ def _verify_poetry_wheel(wheel: Path) -> None:
 
 
 def _build_poetry_wheel(
-    root: Path,
+    snapshot: _PoetrySourceSnapshot,
     transaction: Path,
     poetry: str,
     source: Mapping[str, object],
@@ -1115,7 +1222,7 @@ def _build_poetry_wheel(
     wheels = state / "wheels"
     staging.mkdir(mode=0o700)
     wheels.mkdir(mode=0o700)
-    _copy_poetry_project(root, staging)
+    _copy_poetry_project(snapshot, staging)
     _write_poetry_build_metadata(staging, source)
     environment = os.environ.copy()
     environment.update(
@@ -1468,6 +1575,112 @@ def _remove_transaction(
     shutil.rmtree(transaction)
 
 
+def _committed_cleanup_path(transaction: Path) -> Path:
+    return transaction.with_name(f"{transaction.name}.oncotracer-cleanup")
+
+
+def _require_committed_cleanup_root(
+    cleanup: Path,
+    transaction: Path,
+    target: Path,
+    transaction_id: str,
+    kind: str,
+) -> bool:
+    """Authenticate a partially removed, atomically claimed cleanup tree.
+
+    Returns whether the ownership marker is still present. Its absence is only
+    valid after every other entry has already been removed.
+    """
+    expected = _committed_cleanup_path(transaction)
+    if cleanup != expected:
+        raise OncoTracerError(f"installer cleanup path is not exact: {cleanup}")
+    try:
+        parent_metadata = target.parent.lstat()
+        metadata = cleanup.lstat()
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not inspect committed installer cleanup {cleanup}: {error}"
+        ) from error
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or metadata.st_dev != parent_metadata.st_dev
+    ):
+        raise OncoTracerError(
+            f"committed installer cleanup is not a physical same-filesystem tree: {cleanup}"
+        )
+    owner_path = cleanup / ".oncotracer-transaction-owner.json"
+    if not os.path.lexists(owner_path):
+        if any(cleanup.iterdir()):
+            raise OncoTracerError(
+                "committed installer cleanup lost ownership before its contents; "
+                f"preserving it: {cleanup}"
+            )
+        return False
+    owner = _safe_read_json(owner_path, "committed installer cleanup ownership")
+    if not _valid_transaction_owner(owner, transaction, target, transaction_id, kind):
+        raise OncoTracerError(f"refusing an unowned installer cleanup: {cleanup}")
+    return True
+
+
+def _remove_committed_transaction(
+    transaction: Path,
+    target: Path,
+    transaction_id: str,
+    kind: str,
+    expected_top_level: set[str],
+) -> None:
+    """Atomically claim then idempotently remove an authenticated transaction."""
+    cleanup = _committed_cleanup_path(transaction)
+    if os.path.lexists(transaction):
+        _require_transaction(transaction, target, transaction_id, kind)
+        if os.path.lexists(cleanup):
+            raise OncoTracerError(
+                f"committed installer cleanup destination already exists: {cleanup}"
+            )
+        _assert_inactive(transaction)
+        _assert_single_filesystem_tree(transaction, target.parent)
+        os.replace(transaction, cleanup)
+        _fsync_directory(target.parent)
+    if not os.path.lexists(cleanup):
+        return
+    owner_present = _require_committed_cleanup_root(
+        cleanup, transaction, target, transaction_id, kind
+    )
+    _assert_inactive(cleanup)
+    _assert_single_filesystem_tree(cleanup, target.parent)
+    owner_name = ".oncotracer-transaction-owner.json"
+    observed = {entry.name for entry in cleanup.iterdir()}
+    if not observed.issubset(expected_top_level):
+        raise OncoTracerError(
+            "committed installer cleanup contains an unexpected entry and will be "
+            f"preserved: {cleanup}"
+        )
+    if owner_present and owner_name not in observed:
+        raise OncoTracerError(
+            f"committed installer cleanup ownership vanished: {cleanup}"
+        )
+    for entry in sorted(cleanup.iterdir(), key=lambda item: item.name):
+        if entry.name == owner_name:
+            continue
+        metadata = entry.lstat()
+        if stat.S_ISDIR(metadata.st_mode) and not stat.S_ISLNK(metadata.st_mode):
+            shutil.rmtree(entry)
+        elif stat.S_ISREG(metadata.st_mode) and metadata.st_nlink == 1:
+            entry.unlink()
+        else:
+            raise OncoTracerError(
+                f"refusing unsafe member in committed installer cleanup: {entry}"
+            )
+        _fsync_directory(cleanup)
+    owner_path = cleanup / owner_name
+    if os.path.lexists(owner_path):
+        _safe_unlink(owner_path, "committed installer cleanup ownership")
+        _fsync_directory(cleanup)
+    cleanup.rmdir()
+    _fsync_directory(target.parent)
+
+
 def _transaction_path(target: Path, kind: str, transaction_id: str) -> Path:
     return target.parent / f".{target.name}.oncotracer-{kind}-txn-{transaction_id}"
 
@@ -1665,26 +1878,24 @@ def _restore_conda_transaction(
             else:
                 _verify_conda_runtime(base / name, name)
             _verify_child_inventory(base / name, observed)
+        expected_top_level = {
+            ".oncotracer-transaction-owner.json",
+            "backups",
+            "claims",
+            "empty",
+            "discarded",
+        }
+        if "poetry-runtime" in journal["assets"]:
+            expected_top_level.add("poetry-state")
         if os.path.lexists(transaction):
             _require_transaction(transaction, base, transaction_id, "conda")
             backups = _require_transaction_subdir(transaction, "backups")
             claims = _require_transaction_subdir(transaction, "claims")
             empty = _require_transaction_subdir(transaction, "empty")
             discarded = _require_transaction_subdir(transaction, "discarded")
-            expected_top_level = {
-                ".oncotracer-transaction-owner.json",
-                "backups",
-                "claims",
-                "empty",
-                "discarded",
-            }
-            observed_top_level = {path.name for path in transaction.iterdir()}
-            if (
-                "poetry-runtime" in journal["assets"]
-                and "poetry-state" in observed_top_level
-            ):
+            if "poetry-state" in expected_top_level:
                 _require_transaction_subdir(transaction, "poetry-state")
-                expected_top_level.add("poetry-state")
+            observed_top_level = {path.name for path in transaction.iterdir()}
             if observed_top_level != expected_top_level:
                 raise OncoTracerError(
                     "Conda transaction contains unexpected entries and will be "
@@ -1735,7 +1946,13 @@ def _restore_conda_transaction(
                     raise OncoTracerError(
                         f"Conda backup changed before cleanup; preserving it: {backup}"
                     )
-            _remove_transaction(transaction, base, transaction_id, "conda")
+        _remove_committed_transaction(
+            transaction,
+            base,
+            transaction_id,
+            "conda",
+            expected_top_level,
+        )
         _safe_unlink(journal_path, "Conda transaction journal")
         return
 
@@ -1959,6 +2176,7 @@ def install_conda_managed(
     source = _source_identity()
     project = root / "pyproject.toml"
     lock = root / "poetry.lock"
+    poetry_snapshot: _PoetrySourceSnapshot | None = None
     if include_poetry:
         if not project.is_file() or not lock.is_file():
             raise OncoTracerError(
@@ -1966,7 +2184,7 @@ def install_conda_managed(
             )
         assert poetry is not None
         _require_poetry_v2(poetry)
-        _verify_poetry_source_checkout(root, source)
+        poetry_snapshot = _verify_poetry_source_checkout(root, source)
     base.parent.mkdir(parents=True, exist_ok=True)
     base = _guard_dedicated(base, "Conda install root")
     with _exclusive_install_lock(_lock_path(base, "conda"), base, "conda"):
@@ -2021,8 +2239,8 @@ def install_conda_managed(
                 planned = _poetry_marker(
                     base / name,
                     install_id,
-                    sha256_file(project),
-                    sha256_file(lock),
+                    poetry_snapshot.pyproject_sha256,
+                    poetry_snapshot.lock_sha256,
                     str(prior["launcher_sha256"]) if prior else "0" * 64,
                     source,
                     prior_inventory,
@@ -2148,7 +2366,13 @@ def install_conda_managed(
                 try:
                     if name == "poetry-runtime":
                         assert poetry is not None
-                        wheel = _build_poetry_wheel(root, transaction, poetry, source)
+                        if poetry_snapshot is None:
+                            raise OncoTracerError(
+                                "Poetry source snapshot is unavailable"
+                            )
+                        wheel = _build_poetry_wheel(
+                            poetry_snapshot, transaction, poetry, source
+                        )
                         venv.EnvBuilder(with_pip=True, symlinks=False).create(target)
                         _assert_claimed_identity(
                             transaction, transaction_id, name, target
@@ -2166,8 +2390,8 @@ def install_conda_managed(
                         final_marker = _poetry_marker(
                             target,
                             install_id,
-                            sha256_file(project),
-                            sha256_file(lock),
+                            poetry_snapshot.pyproject_sha256,
+                            poetry_snapshot.lock_sha256,
                             sha256_file(target / "bin" / "oncotracer"),
                             source,
                             inventory_sha256,
@@ -2479,13 +2703,14 @@ def _restore_sif_transaction(
             raise OncoTracerError(
                 f"committed SIF transaction does not match its target: {destination}"
             )
+        owner_name = ".oncotracer-transaction-owner.json"
+        expected_entries = {owner_name}
+        old_marker = journal.get("old_marker")
+        if old_marker is not None:
+            expected_entries.update({"backup.sif", "backup.sidecar.json"})
         if os.path.lexists(transaction):
             _require_transaction(transaction, destination, transaction_id, "sif")
-            owner_name = ".oncotracer-transaction-owner.json"
-            expected_entries = {owner_name}
-            old_marker = journal.get("old_marker")
             if old_marker is not None:
-                expected_entries.update({"backup.sif", "backup.sidecar.json"})
                 _require_sif_bytes(
                     transaction / "backup.sif",
                     old_marker["sif_sha256"],
@@ -2505,7 +2730,13 @@ def _restore_sif_transaction(
                     "SIF transaction contains unexpected entries and will be preserved: "
                     f"{transaction}"
                 )
-            _remove_transaction(transaction, destination, transaction_id, "sif")
+        _remove_committed_transaction(
+            transaction,
+            destination,
+            transaction_id,
+            "sif",
+            expected_entries,
+        )
         _safe_unlink(journal_path, "SIF transaction journal")
         return
 

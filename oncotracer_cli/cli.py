@@ -21,6 +21,7 @@ from .engine import Toolchain, run_native
 from .install_safety import (
     install_conda_managed,
     install_sif_managed,
+    installer_cli_target_arguments,
     managed_conda_runtime_lock,
     managed_sif_runtime_lock,
     verify_managed_conda_runtime,
@@ -116,13 +117,14 @@ def _install_conda(
         "conda" if args.dry_run else require_command("conda")
     )
     base = Path(args.prefix) if args.prefix else (_data_home() / "envs")
-    prefixes = install_conda_managed(
-        root,
-        base,
-        conda=conda,
-        force=args.force,
-        dry_run=args.dry_run,
-    )
+    with installer_cli_target_arguments(base):
+        prefixes = install_conda_managed(
+            root,
+            base,
+            conda=conda,
+            force=args.force,
+            dry_run=args.dry_run,
+        )
     result: dict[str, object] = {
         "backend": "conda",
         "core_prefix": str(prefixes["core"]),
@@ -167,13 +169,14 @@ def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
         if args.sif
         else (_data_home() / "images" / "oncotracer-2.0.0.sif")
     )
-    installed = install_sif_managed(
-        destination,
-        executable=executable,
-        image=image,
-        force=args.force,
-        dry_run=args.dry_run,
-    )
+    with installer_cli_target_arguments(destination):
+        installed = install_sif_managed(
+            destination,
+            executable=executable,
+            image=image,
+            force=args.force,
+            dry_run=args.dry_run,
+        )
     result: dict[str, object] = {
         **installed,
         "backend": "singularity",
@@ -192,14 +195,15 @@ def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
         "conda" if args.dry_run else require_command("conda")
     )
     base = Path(args.prefix) if args.prefix else (_data_home() / "envs")
-    prefixes = install_conda_managed(
-        root,
-        base,
-        conda=conda,
-        force=args.force,
-        dry_run=args.dry_run,
-        poetry=poetry,
-    )
+    with installer_cli_target_arguments(base):
+        prefixes = install_conda_managed(
+            root,
+            base,
+            conda=conda,
+            force=args.force,
+            dry_run=args.dry_run,
+            poetry=poetry,
+        )
     result: dict[str, object] = {
         "backend": "poetry",
         "repository": str(root),
@@ -325,6 +329,16 @@ def _managed_conda_base(config: dict[str, object], *, require_poetry: bool) -> P
     return base
 
 
+def _managed_install_backend(
+    config: dict[str, object], requested_backend: str
+) -> str | None:
+    """Return the ownership-managed backend, excluding external/container layouts."""
+    if requested_backend in {"conda", "poetry"}:
+        return requested_backend
+    configured = config.get("backend")
+    return str(configured) if configured in {"conda", "poetry"} else None
+
+
 def _native_environment(config: dict[str, object]) -> dict[str, str]:
     environment = os.environ.copy()
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -347,14 +361,12 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
     install = _load_install_config()
     backend = _backend_from(args)
     lock = contextlib.nullcontext()
-    configured_prefix = any(
-        install.get(f"{name}_prefix")
-        for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
-    )
-    if not args.dry_run and (backend in {"conda", "poetry"} or configured_prefix):
-        base = _managed_conda_base(install, require_poetry=backend == "poetry")
+    managed_backend = _managed_install_backend(install, backend)
+    if not args.dry_run and managed_backend is not None:
+        require_poetry = managed_backend == "poetry"
+        base = _managed_conda_base(install, require_poetry=require_poetry)
         lock = managed_conda_runtime_lock(
-            base, require_poetry=backend == "poetry", semantic=False
+            base, require_poetry=require_poetry, semantic=False
         )
     with lock:
         old = os.environ.copy()
@@ -1060,16 +1072,17 @@ def command_doctor(args: argparse.Namespace) -> int:
         require_matrix = backend in {"poetry", "conda"} or any_prefix
         if require_matrix:
             managed_success = True
-            if backend in {"conda", "poetry"} or any_prefix:
+            managed_backend = _managed_install_backend(install, backend)
+            if managed_backend is not None:
                 try:
-                    base = _managed_conda_base(
-                        install, require_poetry=backend == "poetry"
-                    )
+                    require_poetry = managed_backend == "poetry"
+                    base = _managed_conda_base(install, require_poetry=require_poetry)
                     managed = verify_managed_conda_runtime(
-                        base, require_poetry=backend == "poetry"
+                        base, require_poetry=require_poetry
                     )
                     checks["managed_install"] = {
                         "success": True,
+                        "backend": managed_backend,
                         "base": str(base),
                         "children": {name: str(path) for name, path in managed.items()},
                     }
@@ -1077,8 +1090,15 @@ def command_doctor(args: argparse.Namespace) -> int:
                     managed_success = False
                     checks["managed_install"] = {
                         "success": False,
+                        "backend": managed_backend,
                         "error": str(error),
                     }
+            else:
+                checks["managed_install"] = {
+                    "success": True,
+                    "required": False,
+                    "provisioning": "external",
+                }
             prefix_checks = {
                 group: {
                     "path": str(prefix) if prefix is not None else "",

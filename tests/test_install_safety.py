@@ -218,8 +218,35 @@ else:
         self.enterContext(
             mock.patch.object(install_safety, "_active_processes", return_value=[])
         )
+        self.poetry_snapshot: install_safety._PoetrySourceSnapshot | None = None
+
+        def verified_poetry_snapshot(*_args, **_kwargs):
+            if self.poetry_snapshot is None:
+                archive = subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(ROOT),
+                        "-c",
+                        "tar.umask=0002",
+                        "archive",
+                        "--format=tar",
+                        "HEAD",
+                    ],
+                    check=True,
+                    capture_output=True,
+                ).stdout
+                self.poetry_snapshot = install_safety._poetry_snapshot_from_archive(
+                    archive
+                )
+            return self.poetry_snapshot
+
         self.enterContext(
-            mock.patch.object(install_safety, "_verify_poetry_source_checkout")
+            mock.patch.object(
+                install_safety,
+                "_verify_poetry_source_checkout",
+                side_effect=verified_poetry_snapshot,
+            )
         )
 
     def _conda_install(
@@ -1361,6 +1388,339 @@ with mock.patch.object(install_safety, "_source_identity", return_value=source):
         )
         self.assertTrue((base / "core" / install_safety.ENV_MARKER).is_file())
         self.assertFalse(install_safety._journal_path(base, "conda").exists())
+
+    def _run_unmocked_cli_install(
+        self, *arguments: str
+    ) -> subprocess.CompletedProcess[str]:
+        archive = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(ROOT),
+                "-c",
+                "tar.umask=0002",
+                "archive",
+                "--format=tar",
+                "HEAD",
+            ],
+            check=True,
+            capture_output=True,
+        ).stdout
+        snapshot = self.scratch / "source-snapshot.tar"
+        snapshot.write_bytes(archive)
+        code = r"""
+import pathlib, shutil, sys
+from unittest import mock
+from oncotracer_cli import cli, install_safety
+source = {
+    "oncotracer_version": "2.0.0",
+    "source_commit": "a" * 40,
+    "source_sha256": "b" * 64,
+}
+snapshot = install_safety._poetry_snapshot_from_archive(
+    pathlib.Path(sys.argv.pop(1)).read_bytes()
+)
+mapping = {
+    "conda": sys.argv.pop(1),
+    "poetry": sys.argv.pop(1),
+    "apptainer": sys.argv.pop(1),
+}
+real_which = shutil.which
+def exact_which(name):
+    return mapping.get(name) or real_which(name)
+with (
+    mock.patch.object(install_safety, "_source_identity", return_value=source),
+    mock.patch.object(
+        install_safety, "_verify_poetry_source_checkout", return_value=snapshot
+    ),
+    mock.patch.object(cli.shutil, "which", side_effect=exact_which),
+):
+    raise SystemExit(cli.main())
+"""
+        environment = os.environ.copy()
+        environment.update(self.environment)
+        environment["XDG_CONFIG_HOME"] = str(self.scratch / "cli-config")
+        environment["XDG_DATA_HOME"] = str(self.scratch / "cli-data")
+        return subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                code,
+                str(snapshot),
+                str(self.conda),
+                str(self.poetry),
+                str(self.apptainer),
+                *arguments,
+            ],
+            cwd=ROOT,
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_real_cli_target_arguments_do_not_mask_true_active_use_scan(self) -> None:
+        cases = [
+            (
+                "conda",
+                [
+                    "install",
+                    "--conda",
+                    "--root",
+                    str(ROOT),
+                    "--prefix",
+                    str(self.scratch / "cli-conda"),
+                ],
+            ),
+            (
+                "poetry",
+                [
+                    "install",
+                    "--poetry",
+                    "--root",
+                    str(ROOT),
+                    "--prefix",
+                    str(self.scratch / "cli-poetry"),
+                ],
+            ),
+            (
+                "sif",
+                ["install", "--singularity", "--sif", str(self.scratch / "cli.sif")],
+            ),
+        ]
+        for label, command in cases:
+            with self.subTest(label=label):
+                first = self._run_unmocked_cli_install(*command)
+                self.assertEqual(first.returncode, 0, first.stderr)
+                second = self._run_unmocked_cli_install(*command, "--force")
+                self.assertEqual(second.returncode, 0, second.stderr)
+                self.assertNotIn("used by active process", second.stderr)
+
+    def test_conda_committed_cleanup_resumes_after_partial_recursive_removal(
+        self,
+    ) -> None:
+        base = self.scratch / "partial-cleanup-envs"
+        crashes = 0
+        real_fsync = install_safety._fsync_directory
+
+        def crash_after_durable_partial_cleanup(path):
+            nonlocal crashes
+            real_fsync(path)
+            if Path(path).name.endswith(".oncotracer-cleanup") and crashes < 2:
+                crashes += 1
+                raise KeyboardInterrupt
+
+        with (
+            mock.patch.object(
+                install_safety,
+                "_fsync_directory",
+                side_effect=crash_after_durable_partial_cleanup,
+            ),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self._conda_install(base)
+        journal_path = install_safety._journal_path(base, "conda")
+        journal = json.loads(journal_path.read_text(encoding="utf-8"))
+        transaction = Path(journal["canonical_transaction"])
+        cleanup = install_safety._committed_cleanup_path(transaction)
+        self.assertFalse(transaction.exists())
+        self.assertTrue(cleanup.is_dir())
+        self.assertEqual(crashes, 2)
+
+        sentinel = cleanup / "foreign-after-crash"
+        sentinel.write_bytes(b"preserve unexpected cleanup bytes")
+        with self.assertRaisesRegex(OncoTracerError, "unexpected entry"):
+            self._conda_install(base)
+        self.assertEqual(sentinel.read_bytes(), b"preserve unexpected cleanup bytes")
+        sentinel.unlink()
+
+        self._conda_install(base)
+        self.assertFalse(journal_path.exists())
+        self.assertFalse(cleanup.exists())
+        for name in install_safety.CONDA_NAMES:
+            self.assertTrue((base / name / install_safety.ENV_MARKER).is_file())
+
+    def test_sif_committed_cleanup_resumes_after_partial_pair_removal(self) -> None:
+        destination = self.scratch / "partial-cleanup.sif"
+        self._sif_install(destination)
+        crashes = 0
+        real_fsync = install_safety._fsync_directory
+
+        def crash_after_durable_partial_cleanup(path):
+            nonlocal crashes
+            real_fsync(path)
+            if Path(path).name.endswith(".oncotracer-cleanup") and crashes < 2:
+                crashes += 1
+                raise KeyboardInterrupt
+
+        with (
+            mock.patch.object(
+                install_safety,
+                "_fsync_directory",
+                side_effect=crash_after_durable_partial_cleanup,
+            ),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self._sif_install(destination, force=True)
+        journal_path = install_safety._journal_path(destination, "sif")
+        journal = json.loads(journal_path.read_text(encoding="utf-8"))
+        transaction = Path(journal["canonical_transaction"])
+        cleanup = install_safety._committed_cleanup_path(transaction)
+        self.assertFalse(transaction.exists())
+        self.assertTrue(cleanup.is_dir())
+        self.assertEqual(crashes, 2)
+
+        self._sif_install(destination)
+        self.assertFalse(journal_path.exists())
+        self.assertFalse(cleanup.exists())
+        marker = json.loads(
+            install_safety._sif_sidecar(destination).read_text(encoding="utf-8")
+        )
+        self.assertEqual(install_safety.sha256_file(destination), marker["sif_sha256"])
+
+
+class InstallerActiveUseArgumentTests(unittest.TestCase):
+    def _process(self, proc: Path, pid: int, *, arguments: list[Path]) -> Path:
+        process = proc / str(pid)
+        (process / "fd").mkdir(parents=True)
+        (process / "cwd").symlink_to("/var/empty")
+        (process / "exe").symlink_to(sys.executable)
+        (process / "cmdline").write_bytes(
+            b"oncotracer\0--prefix\0"
+            + b"\0".join(os.fsencode(path) for path in arguments)
+            + b"\0"
+        )
+        (process / "maps").write_text("", encoding="utf-8")
+        return process
+
+    def test_only_current_pid_exact_cli_target_argument_is_ignored(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oncotracer-proc-") as directory:
+            scratch = Path(directory)
+            proc = scratch / "proc"
+            proc.mkdir()
+            target = scratch / "managed"
+            target.mkdir()
+            current = self._process(proc, os.getpid(), arguments=[target])
+            self.assertEqual(
+                install_safety._active_processes(target, proc=proc), [os.getpid()]
+            )
+            with install_safety.installer_cli_target_arguments(target):
+                self.assertEqual(
+                    install_safety._active_processes(target, proc=proc), []
+                )
+
+            nested = target / "nested"
+            nested.mkdir()
+            (current / "cmdline").write_bytes(
+                b"oncotracer\0--prefix\0"
+                + os.fsencode(target)
+                + b"\0--other\0"
+                + os.fsencode(nested)
+                + b"\0"
+            )
+            with install_safety.installer_cli_target_arguments(target):
+                self.assertEqual(
+                    install_safety._active_processes(target, proc=proc), [os.getpid()]
+                )
+
+            (current / "cmdline").write_bytes(
+                b"oncotracer\0--prefix\0" + os.fsencode(target) + b"\0"
+            )
+            (current / "cwd").unlink()
+            (current / "cwd").symlink_to(nested)
+            with install_safety.installer_cli_target_arguments(target):
+                self.assertEqual(
+                    install_safety._active_processes(target, proc=proc), [os.getpid()]
+                )
+
+            (current / "cwd").unlink()
+            (current / "cwd").symlink_to("/var/empty")
+            other_pid = os.getpid() + 100000
+            self._process(proc, other_pid, arguments=[target])
+            with install_safety.installer_cli_target_arguments(target):
+                self.assertEqual(
+                    install_safety._active_processes(target, proc=proc), [other_pid]
+                )
+
+
+class PoetryAuthenticatedSnapshotTests(unittest.TestCase):
+    def test_verified_archive_remains_bound_after_live_checkout_mutation(self) -> None:
+        with tempfile.TemporaryDirectory(
+            prefix="oncotracer-poetry-source-"
+        ) as directory:
+            root = Path(directory) / "repository"
+            root.mkdir()
+            files = {
+                "pyproject.toml": b"[tool.poetry]\nname='oncotracer'\nversion='2.0.0'\n",
+                "poetry.lock": b"lock-version = '2.1'\n",
+                "README.md": b"readme\n",
+                "oncotracer_cli/cli.py": b"ORIGINAL = True\n",
+                "bin/native": b"native\n",
+                "examples/example": b"example\n",
+                "params/default.yml": b"mode: ont\n",
+                "environments/native-core.yml": b"name: core\n",
+                "provenance/native-v2-sources.json": b"{}\n",
+            }
+            for relative, contents in files.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(contents)
+            subprocess.run(["git", "init", "-q", root], check=True)
+            subprocess.run(["git", "-C", root, "add", "."], check=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    root,
+                    "-c",
+                    "user.name=OncoTracer Test",
+                    "-c",
+                    "user.email=test@example.invalid",
+                    "commit",
+                    "-q",
+                    "-m",
+                    "fixture",
+                ],
+                check=True,
+            )
+            commit = subprocess.run(
+                ["git", "-C", root, "rev-parse", "HEAD"],
+                check=True,
+                text=True,
+                capture_output=True,
+            ).stdout.strip()
+            archive = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    root,
+                    "-c",
+                    "tar.umask=0002",
+                    "archive",
+                    "--format=tar",
+                    commit,
+                ],
+                check=True,
+                capture_output=True,
+            ).stdout
+            source = {
+                **SOURCE,
+                "source_commit": commit,
+                "source_sha256": install_safety.hashlib.sha256(archive).hexdigest(),
+            }
+            snapshot = install_safety._verify_poetry_source_checkout(root, source)
+            (root / "oncotracer_cli" / "cli.py").write_bytes(b"MUTATED = True\n")
+            staging = Path(directory) / "staging"
+            staging.mkdir()
+            install_safety._copy_poetry_project(snapshot, staging)
+            self.assertEqual(
+                (staging / "oncotracer_cli" / "cli.py").read_bytes(),
+                b"ORIGINAL = True\n",
+            )
+            self.assertEqual(
+                snapshot.pyproject_sha256,
+                install_safety.hashlib.sha256(files["pyproject.toml"]).hexdigest(),
+            )
 
 
 if __name__ == "__main__":
