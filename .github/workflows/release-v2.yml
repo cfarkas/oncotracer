@@ -711,6 +711,7 @@ jobs:
             sha256sum --strict -c SHA256SUMS
           )
           chmod 0755 "$ACCEPTANCE_RELEASE/oncotracer"
+          cd "$ACCEPTANCE_RELEASE"
           BEGINNER_CONFIG="$ACCEPTANCE_ROOT/config"
           BEGINNER_DATA="$ACCEPTANCE_ROOT/data"
           BEGINNER_CACHE="$ACCEPTANCE_ROOT/cache"

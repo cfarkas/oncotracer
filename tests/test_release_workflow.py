@@ -142,6 +142,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         version_index = text.index(
             'beginner "$ACCEPTANCE_RELEASE/oncotracer" --version', checksum_index
         )
+        isolated_cwd_index = text.index('cd "$ACCEPTANCE_RELEASE"', checksum_index)
         provenance_index = text.index(
             'beginner "$ACCEPTANCE_RELEASE/oncotracer" provenance --json',
             version_index,
@@ -152,7 +153,8 @@ class ReleaseWorkflowTests(unittest.TestCase):
         )
         quickstart_index = text.index("for quickstart in 1 2", install_index)
         self.assertLess(acceptance_index, checksum_index)
-        self.assertLess(checksum_index, version_index)
+        self.assertLess(checksum_index, isolated_cwd_index)
+        self.assertLess(isolated_cwd_index, version_index)
         self.assertLess(version_index, provenance_index)
         self.assertLess(provenance_index, install_index)
         self.assertLess(install_index, quickstart_index)
