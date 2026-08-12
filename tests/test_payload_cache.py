@@ -304,6 +304,7 @@ class PayloadCacheTests(unittest.TestCase):
             protected = self.base / "protected.txt"
             protected.write_text("preserve\n", encoding="utf-8")
             probe = root / "bin" / "scripts" / "probe.py"
+            probe = self.base / probe.absolute().relative_to(self.base.absolute())
             probe.unlink()
             probe.symlink_to(protected)
             before = _snapshot(self.base)

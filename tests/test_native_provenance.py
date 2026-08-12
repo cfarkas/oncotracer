@@ -178,6 +178,30 @@ class NativeProvenanceTests(unittest.TestCase):
             provenance.sha256_file(self.second_binary),
         )
 
+    def test_builder_refuses_to_overwrite_an_existing_output(self) -> None:
+        output = self.temp_root / "preexisting-output"
+        output.write_bytes(b"preserve foreign output")
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(BUILD_SCRIPT),
+                "--root",
+                str(self.source_root),
+                "--output",
+                str(output),
+                "--source-commit",
+                self.commit,
+                "--source-sha256",
+                self.source_sha256,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("refusing to overwrite existing output", result.stderr)
+        self.assertEqual(output.read_bytes(), b"preserve foreign output")
+
     def test_zipapp_is_normalized_and_contains_no_forbidden_payload(self) -> None:
         with zipfile.ZipFile(self.first_binary) as archive:
             names = archive.namelist()

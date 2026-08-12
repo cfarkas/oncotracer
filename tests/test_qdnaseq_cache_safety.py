@@ -169,6 +169,7 @@ class QdnaSeqCacheSafetyTests(unittest.TestCase):
         pointer = self.cache() / "current-100kb.json"
         protected = self.root / "protected-pointer-target"
         protected.write_bytes(b"must-survive")
+        pointer = self.root / pointer.absolute().relative_to(self.root.absolute())
         pointer.unlink()
         pointer.symlink_to(protected)
 
@@ -236,6 +237,7 @@ class QdnaSeqCacheSafetyTests(unittest.TestCase):
             result = self.build_bundle(command, **kwargs)
             staging = Path(command[command.index("--cache-dir") + 1])
             source = staging / "QDNAseq.hg38.100kbp.SR50.source.rda"
+            source = self.root / source.absolute().relative_to(self.root.absolute())
             source.unlink()
             source.hardlink_to(protected)
             return result

@@ -330,7 +330,7 @@ class NativeMethylationTests(unittest.TestCase):
             )
             self.assertEqual(provenance["status"], "failed")
             self.assertNotIn("/patient", provenance["failure"])
-            request.dorado.unlink()
+            (Path(directory) / "bin" / "dorado").unlink()
             second = write_global_methylation_failure(
                 fixture.root / "second-result",
                 request,

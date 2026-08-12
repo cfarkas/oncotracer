@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import compileall
 import hashlib
 import io
 import re
@@ -274,22 +273,26 @@ def copy_payload_from_git_archive(
 
 def copy_payload_from_tree(root: Path, staging: Path) -> None:
     """Copy an explicitly unbound or already-attested non-Git source tree."""
-    shutil.copytree(
-        root / "oncotracer_cli",
-        staging / "oncotracer_cli",
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
-    )
-    payload = staging / "payload"
-    payload_ignore = shutil.ignore_patterns(
-        "__pycache__", "*.pyc", "*.pyo", "*.nf", "nextflow.config", ".nextflow*", "work"
-    )
-    for name in PAYLOAD_ROOTS:
-        source = root / name
-        if not source.exists():
-            raise SystemExit(f"required payload path is missing: {source}")
-        shutil.copytree(source, payload / name, ignore=payload_ignore)
-    for relative in NATIVE_PAYLOAD_EXCLUDED_PATHS:
-        (payload / relative).unlink(missing_ok=True)
+    for name in ("oncotracer_cli", *PAYLOAD_ROOTS):
+        source_root = root / name
+        if not source_root.is_dir() or source_root.is_symlink():
+            raise SystemExit(
+                f"required payload path is missing or unsafe: {source_root}"
+            )
+        for source in (source_root, *sorted(source_root.rglob("*"))):
+            relative = source.relative_to(root).as_posix()
+            target = _payload_member_target(staging, relative)
+            if target is None:
+                continue
+            if source.is_symlink():
+                raise SystemExit(f"payload source must not be a symlink: {source}")
+            if source.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+            elif source.is_file():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+            else:
+                raise SystemExit(f"unsupported payload source object: {source}")
     _write_main_module(staging)
 
 
@@ -334,35 +337,42 @@ def write_build_metadata(
     metadata_path.chmod(0o644)
 
 
-def remove_bytecode(staging: Path) -> None:
-    for bytecode in staging.rglob("*.py[co]"):
-        bytecode.unlink()
-    for cache in sorted(staging.rglob("__pycache__"), reverse=True):
-        shutil.rmtree(cache)
+def validate_python_sources(staging: Path) -> None:
+    """Compile native sources in memory without creating cleanup artifacts."""
+    for source in sorted((staging / "oncotracer_cli").rglob("*.py")):
+        try:
+            compile(source.read_bytes(), str(source), "exec")
+        except (SyntaxError, ValueError) as error:
+            raise SystemExit(
+                f"Python compilation failed for {source}: {error}"
+            ) from error
 
 
 def write_deterministic_zipapp(staging: Path, output: Path) -> None:
     """Write a byte-reproducible zipapp with normalized order, times, and modes."""
-    with output.open("wb") as target:
-        target.write(b"#!/usr/bin/env python3\n")
-        with zipfile.ZipFile(
-            target,
-            mode="w",
-            compression=zipfile.ZIP_DEFLATED,
-            compresslevel=9,
-        ) as archive:
-            for source in sorted(
-                (path for path in staging.rglob("*") if path.is_file()),
-                key=lambda path: path.relative_to(staging).as_posix(),
-            ):
-                relative = source.relative_to(staging).as_posix()
-                executable = bool(source.stat().st_mode & stat.S_IXUSR)
-                mode = 0o755 if executable else 0o644
-                info = zipfile.ZipInfo(relative, date_time=ZIP_TIMESTAMP)
-                info.compress_type = zipfile.ZIP_DEFLATED
-                info.create_system = 3
-                info.external_attr = (stat.S_IFREG | mode) << 16
-                archive.writestr(info, source.read_bytes(), compresslevel=9)
+    try:
+        with output.open("xb") as target:
+            target.write(b"#!/usr/bin/env python3\n")
+            with zipfile.ZipFile(
+                target,
+                mode="w",
+                compression=zipfile.ZIP_DEFLATED,
+                compresslevel=9,
+            ) as archive:
+                for source in sorted(
+                    (path for path in staging.rglob("*") if path.is_file()),
+                    key=lambda path: path.relative_to(staging).as_posix(),
+                ):
+                    relative = source.relative_to(staging).as_posix()
+                    executable = bool(source.stat().st_mode & stat.S_IXUSR)
+                    mode = 0o755 if executable else 0o644
+                    info = zipfile.ZipInfo(relative, date_time=ZIP_TIMESTAMP)
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    info.create_system = 3
+                    info.external_attr = (stat.S_IFREG | mode) << 16
+                    archive.writestr(info, source.read_bytes(), compresslevel=9)
+    except FileExistsError as error:
+        raise SystemExit(f"refusing to overwrite existing output: {output}") from error
 
 
 def main() -> int:
@@ -407,9 +417,7 @@ def main() -> int:
             source_tree_dirty,
             source_metadata_origin,
         )
-        if not compileall.compile_dir(staging / "oncotracer_cli", quiet=1, force=True):
-            raise SystemExit("Python compilation failed")
-        remove_bytecode(staging)
+        validate_python_sources(staging)
         write_deterministic_zipapp(staging, output)
     output.chmod(output.stat().st_mode | 0o755)
     print(output)

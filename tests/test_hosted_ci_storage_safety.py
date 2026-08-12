@@ -631,16 +631,221 @@ def git_clean_invocation(args: list[str]) -> list[str]:
     return []
 
 
+PYTHON_UNKNOWN_PATH = "\0oncotracer-unproved-path"
+PYTHON_OWNED_TEMP_PREFIX = "\0oncotracer-secure-temp-object/"
+
+
 class PythonCleanupVisitor(ast.NodeVisitor):
+    _ALIAS_ATTRIBUTES = (
+        "shutil_aliases",
+        "rmtree_aliases",
+        "os_aliases",
+        "remove_aliases",
+        "unlink_aliases",
+        "path_aliases",
+        "tempfile_aliases",
+        "temporary_directory_aliases",
+        "named_temporary_file_aliases",
+        "mkdtemp_aliases",
+    )
+
     def __init__(self) -> None:
-        self.shutil_aliases = {"shutil"}
+        self.shutil_aliases: set[str] = set()
         self.rmtree_aliases: set[str] = set()
-        self.os_aliases = {"os"}
+        self.os_aliases: set[str] = set()
         self.remove_aliases: set[str] = set()
         self.unlink_aliases: set[str] = set()
-        self.path_aliases = {"Path"}
+        self.path_aliases: set[str] = set()
+        self.tempfile_aliases: set[str] = set()
+        self.temporary_directory_aliases: set[str] = set()
+        self.named_temporary_file_aliases: set[str] = set()
+        self.mkdtemp_aliases: set[str] = set()
         self.calls: list[tuple[int, str, str | None]] = []
         self.symbols: dict[str, str] = {}
+
+    def _temporary_placeholder(self, name: str) -> str:
+        # The stdlib tempfile APIs create a new exact object with O_EXCL-style
+        # ownership; only paths derived from that returned object get this token.
+        return f"{PYTHON_OWNED_TEMP_PREFIX}{name}"
+
+    def _temporary_call_kind(self, node: ast.Call) -> str | None:
+        function = node.func
+        if isinstance(function, ast.Attribute) and isinstance(function.value, ast.Name):
+            if function.value.id not in self.tempfile_aliases:
+                return None
+            return {
+                "TemporaryDirectory": "temporary-directory",
+                "NamedTemporaryFile": "named-temporary-file",
+                "mkdtemp": "temporary-directory",
+            }.get(function.attr)
+        if not isinstance(function, ast.Name):
+            return None
+        if function.id in self.temporary_directory_aliases | self.mkdtemp_aliases:
+            return "temporary-directory"
+        if function.id in self.named_temporary_file_aliases:
+            return "named-temporary-file"
+        return None
+
+    @staticmethod
+    def _target_key(node: ast.AST) -> str | None:
+        if isinstance(node, (ast.Name, ast.Attribute)):
+            return ast.unparse(node)
+        return None
+
+    def _assign_symbol(self, target: ast.AST, rendered: str | None) -> None:
+        key = self._target_key(target)
+        if key is None:
+            return
+        if rendered is None:
+            # A later unproved assignment must revoke an earlier proof.
+            self.symbols[key] = PYTHON_UNKNOWN_PATH
+        else:
+            self.symbols[key] = rendered
+
+    def _invalidate_import_alias(self, target: ast.AST) -> None:
+        if not isinstance(target, ast.Name):
+            return
+        for aliases in (
+            self.shutil_aliases,
+            self.rmtree_aliases,
+            self.os_aliases,
+            self.remove_aliases,
+            self.unlink_aliases,
+            self.path_aliases,
+            self.tempfile_aliases,
+            self.temporary_directory_aliases,
+            self.named_temporary_file_aliases,
+            self.mkdtemp_aliases,
+        ):
+            aliases.discard(target.id)
+
+    def _alias_snapshot(self) -> dict[str, set[str]]:
+        return {
+            attribute: getattr(self, attribute).copy()
+            for attribute in self._ALIAS_ATTRIBUTES
+        }
+
+    def _restore_aliases(self, snapshot: dict[str, set[str]]) -> None:
+        for attribute, aliases in snapshot.items():
+            setattr(self, attribute, aliases)
+
+    def _visit_branch(
+        self,
+        statements: list[ast.stmt],
+        symbols: dict[str, str],
+        aliases: dict[str, set[str]],
+    ) -> tuple[dict[str, str], dict[str, set[str]]]:
+        outer_symbols = self.symbols
+        outer_aliases = self._alias_snapshot()
+        self.symbols = symbols.copy()
+        self._restore_aliases(
+            {attribute: values.copy() for attribute, values in aliases.items()}
+        )
+        for statement in statements:
+            self.visit(statement)
+        result = self.symbols.copy(), self._alias_snapshot()
+        self.symbols = outer_symbols
+        self._restore_aliases(outer_aliases)
+        return result
+
+    def _merge_branches(
+        self,
+        branches: list[tuple[dict[str, str], dict[str, set[str]]]],
+    ) -> None:
+        symbol_keys = set().union(*(symbols for symbols, _ in branches))
+        merged_symbols: dict[str, str] = {}
+        for key in symbol_keys:
+            values = {symbols.get(key, PYTHON_UNKNOWN_PATH) for symbols, _ in branches}
+            merged_symbols[key] = values.pop() if len(values) == 1 else PYTHON_UNKNOWN_PATH
+        self.symbols = merged_symbols
+        for attribute in self._ALIAS_ATTRIBUTES:
+            common = set.intersection(
+                *(aliases[attribute] for _, aliases in branches)
+            )
+            setattr(self, attribute, common)
+
+    def _visit_isolated_function(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> dict[str, str]:
+        inherited = self.symbols
+        inherited_aliases = self._alias_snapshot()
+        self.symbols = inherited.copy()
+        for statement in node.body:
+            self.visit(statement)
+        result = self.symbols
+        self.symbols = inherited
+        self._restore_aliases(inherited_aliases)
+        return result
+
+    def _visit_function_definition_surface(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> None:
+        for expression in (
+            *node.decorator_list,
+            *node.args.defaults,
+            *(item for item in node.args.kw_defaults if item is not None),
+        ):
+            self.visit(expression)
+        annotations = [
+            argument.annotation
+            for argument in (*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs)
+            if argument.annotation is not None
+        ]
+        if node.args.vararg is not None and node.args.vararg.annotation is not None:
+            annotations.append(node.args.vararg.annotation)
+        if node.args.kwarg is not None and node.args.kwarg.annotation is not None:
+            annotations.append(node.args.kwarg.annotation)
+        if node.returns is not None:
+            annotations.append(node.returns)
+        for annotation in annotations:
+            self.visit(annotation)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self._visit_function_definition_surface(node)
+        self._visit_isolated_function(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self._visit_function_definition_surface(node)
+        self._visit_isolated_function(node)
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        outer = self.symbols
+        outer_aliases = self._alias_snapshot()
+        for expression in (*node.decorator_list, *node.bases):
+            self.visit(expression)
+        for keyword in node.keywords:
+            self.visit(keyword.value)
+        class_symbols = outer.copy()
+        for statement in node.body:
+            self.symbols = class_symbols.copy()
+            if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                self._visit_function_definition_surface(statement)
+                result = self._visit_isolated_function(statement)
+                if statement.name in {"setUp", "setUpClass"}:
+                    for key, rendered in result.items():
+                        if key.startswith("self."):
+                            class_symbols[key] = rendered
+                        elif key.startswith("cls."):
+                            suffix = key.removeprefix("cls.")
+                            class_symbols[key] = rendered
+                            class_symbols[f"self.{suffix}"] = rendered
+            else:
+                self.visit(statement)
+                class_symbols = self.symbols.copy()
+        self.symbols = outer
+        self._restore_aliases(outer_aliases)
+
+    def visit_If(self, node: ast.If) -> None:
+        self.visit(node.test)
+        base_symbols = self.symbols.copy()
+        base_aliases = self._alias_snapshot()
+        branches = [self._visit_branch(node.body, base_symbols, base_aliases)]
+        branches.append(
+            self._visit_branch(node.orelse, base_symbols, base_aliases)
+            if node.orelse
+            else (base_symbols, base_aliases)
+        )
+        self._merge_branches(branches)
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
@@ -648,6 +853,8 @@ class PythonCleanupVisitor(ast.NodeVisitor):
                 self.shutil_aliases.add(alias.asname or alias.name)
             elif alias.name == "os":
                 self.os_aliases.add(alias.asname or alias.name)
+            elif alias.name == "tempfile":
+                self.tempfile_aliases.add(alias.asname or alias.name)
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -665,6 +872,15 @@ class PythonCleanupVisitor(ast.NodeVisitor):
             for alias in node.names:
                 if alias.name == "Path":
                     self.path_aliases.add(alias.asname or alias.name)
+        elif node.module == "tempfile":
+            for alias in node.names:
+                imported = alias.asname or alias.name
+                if alias.name == "TemporaryDirectory":
+                    self.temporary_directory_aliases.add(imported)
+                elif alias.name == "NamedTemporaryFile":
+                    self.named_temporary_file_aliases.add(imported)
+                elif alias.name == "mkdtemp":
+                    self.mkdtemp_aliases.add(imported)
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
@@ -726,11 +942,45 @@ class PythonCleanupVisitor(ast.NodeVisitor):
 
     def visit_Assign(self, node: ast.Assign) -> None:
         rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
-        if rendered is not None:
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    self.symbols[target.id] = rendered
+        if rendered is None and isinstance(node.value, ast.Call):
+            temporary_kind = self._temporary_call_kind(node.value)
+            if temporary_kind == "temporary-directory":
+                rendered = self._temporary_placeholder(temporary_kind)
+        for target in node.targets:
+            self._assign_symbol(target, rendered)
+            self._invalidate_import_alias(target)
         self.generic_visit(node)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
+        self._assign_symbol(node.target, rendered)
+        self._invalidate_import_alias(node.target)
+        self.generic_visit(node)
+
+    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
+        rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
+        self._assign_symbol(node.target, rendered)
+        self._invalidate_import_alias(node.target)
+        self.generic_visit(node)
+
+    def visit_With(self, node: ast.With) -> None:
+        temporary_names: list[str] = []
+        for item in node.items:
+            if not isinstance(item.context_expr, ast.Call):
+                continue
+            temporary_kind = self._temporary_call_kind(item.context_expr)
+            if temporary_kind is None:
+                continue
+            optional = item.optional_vars
+            key = self._target_key(optional) if optional is not None else None
+            if key is not None:
+                self.symbols[key] = self._temporary_placeholder(
+                    f"{temporary_kind}-{key}"
+                )
+                temporary_names.append(key)
+        self.generic_visit(node)
+        for name in temporary_names:
+            self.symbols.pop(name, None)
 
     def visit_For(self, node: ast.For) -> None:
         iterator = node.iter
@@ -786,12 +1036,24 @@ def _python_path_symbol(
         return None
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
-    if isinstance(node, ast.Name) and symbols is not None:
-        return symbols.get(node.id)
+    if isinstance(node, (ast.Name, ast.Attribute)) and symbols is not None:
+        rendered = symbols.get(ast.unparse(node))
+        if rendered == PYTHON_UNKNOWN_PATH:
+            return None
+        if rendered is not None:
+            return rendered
+    if isinstance(node, ast.Attribute) and symbols is not None:
+        base = _python_path_symbol(node.value, symbols, path_aliases)
+        if base is not None:
+            return f"{base}/{node.attr}"
     environment = _python_environment_name(node)
     if environment is not None:
         return "${" + environment + "}"
-    aliases = path_aliases or {"Path", "PurePath", "PurePosixPath"}
+    aliases = (
+        path_aliases
+        if path_aliases is not None
+        else {"Path", "PurePath", "PurePosixPath"}
+    )
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
         if node.func.id in aliases and len(node.args) == 1:
             return _python_path_symbol(node.args[0], symbols, path_aliases)
@@ -803,14 +1065,34 @@ def _python_path_symbol(
             pieces = [
                 _python_path_symbol(item, symbols, path_aliases) for item in node.args
             ]
-            if pieces and all(item is not None for item in pieces):
+            if (
+                pieces
+                and all(item is not None for item in pieces)
+                and all(not str(item).startswith("/") for item in pieces[1:])
+            ):
                 return str(pieces[0]).rstrip("/") + "".join(
                     "/" + str(item).strip("/") for item in pieces[1:]
                 )
+        if node.func.attr in {"absolute", "expanduser", "resolve"} and not node.args:
+            return _python_path_symbol(node.func.value, symbols, path_aliases)
+        if node.func.attr == "relative_to" and node.args:
+            root = _python_path_symbol(node.args[0], symbols, path_aliases)
+            if root is not None and (
+                exact_job_path(root) or root.startswith(PYTHON_OWNED_TEMP_PREFIX)
+            ):
+                # pathlib rejects paths outside root and never returns '..'.
+                return "verified-relative-child"
+        if node.func.attr in {"with_name", "with_suffix"} and node.args:
+            base = _python_path_symbol(node.func.value, symbols, path_aliases)
+            replacement = _python_path_symbol(node.args[0], symbols, path_aliases)
+            if base is not None and replacement is not None:
+                return f"{base}/{replacement.strip('/')}"
     if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Div, ast.Add)):
         left = _python_path_symbol(node.left, symbols, path_aliases)
         right = _python_path_symbol(node.right, symbols, path_aliases)
         if left is None or right is None:
+            return None
+        if isinstance(node.op, ast.Div) and right.startswith("/"):
             return None
         separator = "/" if isinstance(node.op, ast.Div) else ""
         return f"{left}{separator}{right}"
@@ -840,7 +1122,14 @@ def python_cleanup_violations(source: str, start_line: int) -> list[str]:
     visitor.visit(tree)
     findings: list[str] = []
     for line, operation, rendered in visitor.calls:
-        if rendered is not None and not exact_job_path(rendered):
+        if rendered is None:
+            findings.append(
+                f"line {start_line + line - 1}: Python {operation} target cannot "
+                "be statically proven as an exact run-ID-qualified job path"
+            )
+        elif not (
+            exact_job_path(rendered) or rendered.startswith(PYTHON_OWNED_TEMP_PREFIX)
+        ):
             findings.append(
                 f"line {start_line + line - 1}: Python {operation} is not bound "
                 "to an exact run-ID-qualified job path"
@@ -1379,6 +1668,87 @@ def verified_image_helper_violations(source: str) -> list[str]:
             "verified image cleanup must contain exactly one exact-reference deletion"
         )
     else:
+        lines = helper.splitlines()
+        stripped = [line.strip() for line in lines]
+        deletion_index = stripped.index(deletion)
+        ordered_guards = (
+            "while IFS=$'\\t' read -r reference image_id created_by_job extra; do",
+            '[[ -n "$reference" && -z "$extra" ]]',
+            '[[ -n "${allowed[$reference]+present}" ]] || {',
+            '[[ -z "${seen[$reference]+present}" ]] || {',
+            '[[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]',
+            '[[ "$created_by_job" == 0 || "$created_by_job" == 1 ]]',
+            'observed_id="$(docker image inspect "$reference" --format',
+            '[[ "$observed_id" == "$image_id" ]] || {',
+            'if [[ "$created_by_job" == 1 ]]; then',
+            'containers="$(docker ps --all --quiet --filter "ancestor=$reference")"',
+            '[[ -z "$containers" ]] || {',
+            deletion,
+        )
+        positions: list[int] = []
+        for marker in ordered_guards:
+            matches = [
+                index for index, line in enumerate(stripped) if line.startswith(marker)
+            ]
+            if len(matches) != 1:
+                findings.append(
+                    f"verified image cleanup guard is missing or ambiguous: {marker}"
+                )
+                break
+            positions.append(matches[0])
+        if positions and positions != sorted(positions):
+            findings.append(
+                "verified image deletion precedes an ownership, identity, or active-use guard"
+            )
+
+        created_if = next(
+            (
+                index
+                for index, line in enumerate(stripped)
+                if line == 'if [[ "$created_by_job" == 1 ]]; then'
+            ),
+            -1,
+        )
+        matching_fi = -1
+        if created_if >= 0:
+            depth = 0
+            for index in range(created_if, len(stripped)):
+                line = stripped[index]
+                if re.match(r"^if\b.*\bthen$", line):
+                    depth += 1
+                elif line == "fi":
+                    depth -= 1
+                    if depth == 0:
+                        matching_fi = index
+                        break
+        if not (created_if < deletion_index < matching_fi):
+            findings.append(
+                "verified image deletion is outside the created-by-this-job branch"
+            )
+
+        active_use_guard = next(
+            (
+                index
+                for index, line in enumerate(stripped)
+                if line == '[[ -z "$containers" ]] || {'
+            ),
+            -1,
+        )
+        active_use_guard_close = -1
+        if active_use_guard >= 0:
+            depth = 0
+            for index in range(active_use_guard, len(stripped)):
+                line = stripped[index]
+                depth += line.count("{")
+                depth -= line.count("}")
+                if depth == 0:
+                    active_use_guard_close = index
+                    break
+        if deletion_index <= active_use_guard_close:
+            findings.append(
+                "verified image deletion occurs inside the active-use rejection branch"
+            )
+
         helper_without_delete = helper.replace(deletion, "true", 1)
         findings.extend(
             f"verified image cleanup contains another unsafe command: {finding}"
@@ -1543,18 +1913,91 @@ PY
             "from pathlib import Path\nfor target in Path('/opt/hostedtoolcache').glob('*'):\n    target.unlink()\n",
             "from pathlib import Path\n(Path.home() / '.nextflow').unlink()\n",
             "import os\nos.remove(os.path.join('/opt/hostedtoolcache', 'file'))\n",
+            "import shutil, sys\nshutil.rmtree(sys.argv[1])\n",
+            "from pathlib import Path\nPath(input()).unlink()\n",
         )
         for source in variants:
             with self.subTest(source=source):
                 self.assertTrue(
                     shell_cleanup_violations("python3 - <<'PY'\n" + source + "PY\n")
                 )
+        dynamic_inline = (
+            "python3 -c 'import shutil, sys; shutil.rmtree(sys.argv[1])' "
+            "/opt/hostedtoolcache"
+        )
+        self.assertTrue(shell_cleanup_violations(dynamic_inline))
         self.assertTrue(
             python_process_cleanup_violations(
                 "import subprocess\n"
                 "subprocess.run(['rm', '-rf', '/opt/hostedtoolcache'])\n"
             )
         )
+
+    def test_python_cleanup_proof_is_scoped_and_revoked_on_reassignment(self) -> None:
+        secure_temporary_objects = """import shutil
+import tempfile
+from pathlib import Path
+with tempfile.NamedTemporaryFile(delete=False) as handle:
+    target = Path(handle.name)
+target.unlink()
+with tempfile.TemporaryDirectory() as directory:
+    nested = Path(directory) / 'oncotracer-owned-child'
+    shutil.rmtree(nested)
+"""
+        self.assertEqual(python_cleanup_violations(secure_temporary_objects, 1), [])
+
+        adversarial = (
+            "import shutil, sys, tempfile\n"
+            "from pathlib import Path\n"
+            "with tempfile.NamedTemporaryFile(delete=False) as handle:\n"
+            "    handle.name = sys.argv[1]\n"
+            "    Path(handle.name).unlink()\n",
+            "import shutil, sys, tempfile\n"
+            "from pathlib import Path\n"
+            "with tempfile.TemporaryDirectory() as directory:\n"
+            "    target = Path(directory) / 'owned'\n"
+            "    target = Path(sys.argv[1])\n"
+            "    shutil.rmtree(target)\n",
+            "import shutil, sys, tempfile\n"
+            "from pathlib import Path\n"
+            "with tempfile.TemporaryDirectory() as directory:\n"
+            "    target = Path(directory) / 'owned'\n"
+            "    if input():\n"
+            "        target = Path(sys.argv[1])\n"
+            "    shutil.rmtree(target)\n",
+            "import tempfile\n"
+            "from pathlib import Path\n"
+            "with tempfile.TemporaryDirectory() as directory:\n"
+            "    target = Path(directory) / '/opt/hostedtoolcache'\n"
+            "    target.unlink()\n",
+            "import shutil\n"
+            "def TemporaryDirectory():\n"
+            "    return '/opt/hostedtoolcache'\n"
+            "target = TemporaryDirectory()\n"
+            "shutil.rmtree(target)\n",
+            "import shutil, tempfile\n"
+            "class FakeTempfile:\n"
+            "    def TemporaryDirectory(self):\n"
+            "        return '/opt/hostedtoolcache'\n"
+            "tempfile = FakeTempfile()\n"
+            "target = tempfile.TemporaryDirectory()\n"
+            "shutil.rmtree(target)\n",
+            "import tempfile\n"
+            "from pathlib import Path\n"
+            "class Safe:\n"
+            "    def setUp(self):\n"
+            "        self.tmp = tempfile.TemporaryDirectory()\n"
+            "        self.root = Path(self.tmp.name)\n"
+            "class Unsafe:\n"
+            "    def test_delete(self):\n"
+            "        self.root.unlink()\n",
+            "from pathlib import Path\n"
+            "def active_default(value=Path('/opt/hostedtoolcache').unlink()):\n"
+            "    return value\n",
+        )
+        for source in adversarial:
+            with self.subTest(source=source):
+                self.assertTrue(python_cleanup_violations(source, 1))
 
     def test_shell_heredoc_is_executable_but_data_heredoc_is_not(self) -> None:
         executable = """bash <<'SHELL'
@@ -1702,6 +2145,21 @@ SHELL
             source.replace(
                 dynamic_delete,
                 'docker image rm --force -- "$reference"',
+            ),
+            source.replace(
+                dynamic_delete,
+                "true",
+            ).replace(
+                '    [[ -n "$reference" && -z "$extra" ]]',
+                '    docker image rm -- "$reference"\n'
+                '    [[ -n "$reference" && -z "$extra" ]]',
+                1,
+            ),
+            source.replace(dynamic_delete, "true", 1).replace(
+                '      [[ -z "$containers" ]] || {',
+                '      docker image rm -- "$reference"\n'
+                '      [[ -z "$containers" ]] || {',
+                1,
             ),
         )
         for mutation in mutations:

@@ -540,6 +540,9 @@ else:
                 transaction, target, transaction_id, "conda"
             )
         self.assertEqual(_snapshot(external), external_before)
+        transaction = self.scratch / transaction.absolute().relative_to(
+            self.scratch.absolute()
+        )
         transaction.unlink()
         saved.rename(transaction)
 
@@ -550,6 +553,9 @@ else:
                 with self.assertRaisesRegex(OncoTracerError, "physical directory"):
                     install_safety._require_transaction_subdir(transaction, name)
                 self.assertEqual(_snapshot(external), external_before)
+                path = self.scratch / path.absolute().relative_to(
+                    self.scratch.absolute()
+                )
                 path.unlink()
 
         install_safety._remove_transaction(transaction, target, transaction_id, "conda")
@@ -1532,6 +1538,9 @@ with (
         with self.assertRaisesRegex(OncoTracerError, "unexpected entry"):
             self._conda_install(base)
         self.assertEqual(sentinel.read_bytes(), b"preserve unexpected cleanup bytes")
+        sentinel = self.scratch / sentinel.absolute().relative_to(
+            self.scratch.absolute()
+        )
         sentinel.unlink()
 
         self._conda_install(base)
@@ -1626,6 +1635,7 @@ class InstallerActiveUseArgumentTests(unittest.TestCase):
             (current / "cmdline").write_bytes(
                 b"oncotracer\0--prefix\0" + os.fsencode(target) + b"\0"
             )
+            current = proc / current.absolute().relative_to(proc.absolute())
             (current / "cwd").unlink()
             (current / "cwd").symlink_to(nested)
             with install_safety.installer_cli_target_arguments(target):

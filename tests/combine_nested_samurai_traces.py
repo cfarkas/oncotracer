@@ -392,7 +392,7 @@ def materialize_trace_sources(
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.is_symlink() or target.parent.resolve() != target.parent:
             raise SystemExit(f"unsafe trace artifact destination: {target}")
-        temporary_name: str | None = None
+        temporary: Path | None = None
         try:
             with (
                 tempfile.NamedTemporaryFile(
@@ -400,9 +400,9 @@ def materialize_trace_sources(
                 ) as output,
                 source_path.open("rb") as input_handle,
             ):
-                temporary_name = output.name
+                temporary = Path(output.name)
                 shutil.copyfileobj(input_handle, output, length=8 * 1024 * 1024)
-            temporary = Path(temporary_name)
+            assert temporary is not None
             if (
                 temporary.stat().st_size != identity.bytes
                 or sha256(temporary) != identity.sha256
@@ -413,10 +413,9 @@ def materialize_trace_sources(
             temporary.chmod(0o644)
             os.utime(temporary, ns=(0, 0), follow_symlinks=False)
             os.replace(temporary, target)
-            temporary_name = None
         finally:
-            if temporary_name is not None and Path(temporary_name).exists():
-                Path(temporary_name).unlink()
+            if temporary is not None and temporary.exists():
+                temporary.unlink()
     actual = {
         item.relative_to(destination).as_posix()
         for item in destination.rglob("*")
