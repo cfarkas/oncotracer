@@ -561,7 +561,9 @@ def _atomic_write_owned_json(
 
 
 @contextlib.contextmanager
-def _physical_directory_lock(path: Path, label: str) -> Iterator[None]:
+def _physical_directory_lock(
+    path: Path, label: str, *, exclusive: bool = True
+) -> Iterator[None]:
     """Serialize a claim without creating a lock object in an unowned parent."""
     _require_physical_directory(path, label)
     flags = os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_DIRECTORY", 0)
@@ -579,7 +581,14 @@ def _physical_directory_lock(path: Path, label: str) -> Iterator[None]:
             or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
         ):
             raise OncoTracerError(f"{label} is not a stable physical directory: {path}")
-        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        fcntl.flock(descriptor, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        named = _lstat(path, label)
+        if (
+            named is None
+            or stat.S_ISLNK(named.st_mode)
+            or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
+        ):
+            raise OncoTracerError(f"{label} changed while acquiring its lock: {path}")
         yield
     finally:
         with contextlib.suppress(OSError):
@@ -2355,21 +2364,60 @@ def prepare_ichor_assets(lpwgs_root: Path, binsize: int) -> dict[str, Path]:
         owned = True
 
     resolved: dict[str, Path] = {}
-    for key, (filename, expected_sha256) in ICHOR_ASSETS.items():
-        path = directory / filename
-        if owned:
-            resolved[key] = _ensure_owned_pinned_file(
-                directory,
-                path,
-                f"{ICHOR_ASSET_BASE}/{filename}",
-                expected_sha256,
-                f"ichorCNA {key} asset",
-            )
-        else:
-            resolved[key] = _validate_pinned_file(
-                path, expected_sha256, f"external ichorCNA {key} asset"
-            )
+    with _physical_directory_lock(
+        directory,
+        "ichorCNA reference root",
+        exclusive=owned,
+    ):
+        for key, (filename, expected_sha256) in ICHOR_ASSETS.items():
+            path = directory / filename
+            if owned:
+                resolved[key] = _ensure_owned_pinned_file(
+                    directory,
+                    path,
+                    f"{ICHOR_ASSET_BASE}/{filename}",
+                    expected_sha256,
+                    f"ichorCNA {key} asset",
+                )
+            else:
+                resolved[key] = _validate_pinned_file(
+                    path, expected_sha256, f"external ichorCNA {key} asset"
+                )
     return resolved
+
+
+@contextlib.contextmanager
+def _validated_ichor_asset_reader(
+    assets: Mapping[str, Path], runner: CommandRunner
+) -> Iterator[None]:
+    if runner.dry_run:
+        yield
+        return
+    if set(assets) != set(ICHOR_ASSETS):
+        raise OncoTracerError("prepared ichorCNA asset set is incomplete")
+    directories = {Path(path).parent for path in assets.values()}
+    if len(directories) != 1:
+        raise OncoTracerError("prepared ichorCNA assets escaped their physical root")
+    directory = directories.pop()
+    _require_physical_directory(directory, "prepared ichorCNA reference root")
+
+    def require_current() -> None:
+        for key, (filename, expected_sha256) in ICHOR_ASSETS.items():
+            path = Path(assets[key])
+            if path != directory / filename:
+                raise OncoTracerError(
+                    f"prepared ichorCNA {key} asset escaped its physical root"
+                )
+            _validate_pinned_file(path, expected_sha256, f"ichorCNA {key} asset")
+
+    with _physical_directory_lock(
+        directory, "ichorCNA reference root", exclusive=False
+    ):
+        require_current()
+        try:
+            yield
+        finally:
+            require_current()
 
 
 def _parse_ichor_params(path: Path) -> dict[str, str]:
@@ -2514,6 +2562,36 @@ def run_ichorcna(
     force: bool,
 ) -> Path:
     assets = prepare_ichor_assets(lpwgs_root, binsize)
+    with _validated_ichor_asset_reader(assets, runner):
+        return _run_ichorcna_with_assets(
+            root,
+            samples,
+            bams,
+            samurai_outdir,
+            binsize,
+            runner,
+            ledger,
+            toolchain,
+            assets,
+            threads=threads,
+            force=force,
+        )
+
+
+def _run_ichorcna_with_assets(
+    root: Path,
+    samples: list[OntSample],
+    bams: Mapping[str, Path],
+    samurai_outdir: Path,
+    binsize: int,
+    runner: CommandRunner,
+    ledger: StageLedger,
+    toolchain: Toolchain,
+    assets: Mapping[str, Path],
+    *,
+    threads: int,
+    force: bool,
+) -> Path:
     ichor_out = samurai_outdir / "results" / "ichorcna"
     wig_dir = ichor_out / "wigfiles_samples"
     ichor_out.mkdir(parents=True, exist_ok=True)

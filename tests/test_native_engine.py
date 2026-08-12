@@ -536,10 +536,14 @@ class NativeEngineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             assets = {}
+            fixture_assets = {}
             for name in ("gc", "map", "centromere", "reptime", "pon"):
-                asset = temporary / f"{name}.asset"
-                asset.write_text(name, encoding="utf-8")
+                filename = f"{name}.asset"
+                payload = name.encode("utf-8")
+                asset = temporary / filename
+                asset.write_bytes(payload)
                 assets[name] = asset
+                fixture_assets[name] = (filename, hashlib.sha256(payload).hexdigest())
             bams = {}
             samples = []
             fastq_dir = temporary / "fastq"
@@ -557,7 +561,12 @@ class NativeEngineTests(unittest.TestCase):
             runner = SampleRunner()
             ledger = StageLedger(temporary / "state.json")
 
-            with patch("oncotracer_cli.engine.prepare_ichor_assets", return_value=assets):
+            with (
+                patch(
+                    "oncotracer_cli.engine.prepare_ichor_assets", return_value=assets
+                ),
+                patch.object(engine, "ICHOR_ASSETS", fixture_assets),
+            ):
                 observed = run_ichorcna(
                     ROOT,
                     temporary / "project",

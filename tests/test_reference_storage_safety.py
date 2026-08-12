@@ -21,6 +21,7 @@ from oncotracer_cli.engine import (
     _index_build_identity,
     _validated_bwa_reader,
     _validated_fasta_reader,
+    _validated_ichor_asset_reader,
     _validated_minimap_reader,
     prepare_ichor_assets,
     prepare_reference,
@@ -584,6 +585,87 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
         self.assertIn(self.project / ".oncotracer" / "reference-cache", root.parents)
         self.assertTrue((root / ".oncotracer-reference-owner.json").is_file())
         self.assertFalse((self.project / "references").exists())
+
+    def test_directory_lock_rejects_path_replacement_while_waiting(self) -> None:
+        reference = self.project / "lock-replacement"
+        reference.mkdir()
+        displaced = self.project / "lock-replacement-old"
+        changed = False
+
+        def replace_after_open(_descriptor: int, operation: int) -> None:
+            nonlocal changed
+            if operation == engine.fcntl.LOCK_UN or changed:
+                return
+            reference.rename(displaced)
+            reference.mkdir()
+            changed = True
+
+        with patch.object(engine.fcntl, "flock", side_effect=replace_after_open):
+            with self.assertRaisesRegex(
+                OncoTracerError, "changed while acquiring its lock"
+            ):
+                with engine._physical_directory_lock(
+                    reference, "replacement fixture", exclusive=False
+                ):
+                    self.fail("replaced directory must not be yielded")
+        self.assertTrue(changed)
+
+    def test_ichor_asset_reader_detects_mid_use_byte_change(self) -> None:
+        reference = self.project / "ichor-reader"
+        reference.mkdir()
+        fixture_assets = {
+            "gc": ("gc.wig", digest(b"gc")),
+            "map": ("map.wig", digest(b"map")),
+            "centromere": ("centromere.txt", digest(b"centromere")),
+            "reptime": ("reptime.wig", digest(b"reptime")),
+            "pon": ("pon.rds", digest(b"pon")),
+        }
+        assets = {}
+        for key, (name, _expected) in fixture_assets.items():
+            path = reference / name
+            path.write_bytes(key.encode("utf-8"))
+            assets[key] = path
+
+        with patch.object(engine, "ICHOR_ASSETS", fixture_assets):
+            with self.assertRaisesRegex(OncoTracerError, "SHA-256 mismatch"):
+                with _validated_ichor_asset_reader(assets, FixtureRunner()):
+                    assets["pon"].write_bytes(b"changed")
+
+    def test_ichor_asset_reader_blocks_cooperating_owned_repair(self) -> None:
+        reference = self.project / "ichor-reader-lock"
+        reference.mkdir()
+        fixture_assets = {
+            "gc": ("gc.wig", digest(b"gc")),
+            "map": ("map.wig", digest(b"map")),
+            "centromere": ("centromere.txt", digest(b"centromere")),
+            "reptime": ("reptime.wig", digest(b"reptime")),
+            "pon": ("pon.rds", digest(b"pon")),
+        }
+        assets = {}
+        for key, (name, _expected) in fixture_assets.items():
+            path = reference / name
+            path.write_bytes(key.encode("utf-8"))
+            assets[key] = path
+
+        attempted = threading.Event()
+        acquired = threading.Event()
+
+        def writer() -> None:
+            attempted.set()
+            with engine._physical_directory_lock(
+                reference, "ichor writer fixture", exclusive=True
+            ):
+                acquired.set()
+
+        worker = threading.Thread(target=writer)
+        with patch.object(engine, "ICHOR_ASSETS", fixture_assets):
+            with _validated_ichor_asset_reader(assets, FixtureRunner()):
+                worker.start()
+                self.assertTrue(attempted.wait(1))
+                self.assertFalse(acquired.wait(0.1))
+        self.assertTrue(acquired.wait(1))
+        worker.join(timeout=1)
+        self.assertFalse(worker.is_alive())
 
 
 if __name__ == "__main__":
