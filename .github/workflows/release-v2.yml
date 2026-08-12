@@ -344,6 +344,60 @@ jobs:
           docker tag oncotracer:v2.0.0-release-candidate "$CANDIDATE_TAG"
           docker push "$CANDIDATE_TAG"
           CANDIDATE_DIGEST="$(scripts/release_registry_digest.sh "$CANDIDATE_TAG")"
+          [[ "$CANDIDATE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          CANDIDATE_IMAGE="$IMAGE_NAME@$CANDIDATE_DIGEST"
+
+          # A new personal GHCR package is private by default. An authenticated
+          # pull would therefore be insufficient release evidence: the stable
+          # image must work for a beginner with no GitHub credentials. Remove
+          # the exact run-owned candidate tag before pulling the immutable
+          # digest with a fresh, credential-free Docker config. `docker pull`
+          # must query GHCR for that manifest even when its layers are cached.
+          # On the first run this intentionally stops after the candidate push;
+          # an administrator can make the package Public and retry the workflow.
+          test "$CANDIDATE_TAG" = \
+            "ghcr.io/cfarkas/oncotracer:v2.0.0-candidate-$GITHUB_RUN_ID"
+          docker image rm "ghcr.io/cfarkas/oncotracer:v2.0.0-candidate-${GITHUB_RUN_ID}"
+          if docker image inspect \
+            "ghcr.io/cfarkas/oncotracer:v2.0.0-candidate-${GITHUB_RUN_ID}" \
+            >/dev/null 2>&1; then
+            echo "run-owned candidate tag is still available locally" >&2
+            exit 1
+          fi
+          ANONYMOUS_DOCKER_CONFIG="$RUNNER_TEMP/oncotracer-anonymous-docker-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test ! -e "$ANONYMOUS_DOCKER_CONFIG"
+          install -d -m 0700 "$ANONYMOUS_DOCKER_CONFIG"
+          test -z "$(find "$ANONYMOUS_DOCKER_CONFIG" -mindepth 1 -print -quit)"
+          env -u DOCKER_AUTH_CONFIG -u REGISTRY_AUTH_FILE \
+            DOCKER_CONFIG="$ANONYMOUS_DOCKER_CONFIG" \
+            docker pull "$CANDIDATE_IMAGE"
+          test ! -e "$ANONYMOUS_DOCKER_CONFIG/config.json"
+          docker run --rm "$CANDIDATE_IMAGE" --version | grep -F 'OncoTracer 2.0.0'
+          ANONYMOUS_BINARY_SHA256="$(docker run --rm --entrypoint sha256sum \
+            "$CANDIDATE_IMAGE" /usr/local/bin/oncotracer | awk 'NR == 1 {print $1}')"
+          test "$ANONYMOUS_BINARY_SHA256" = "$RELEASE_BINARY_SHA256"
+          docker run --rm "$CANDIDATE_IMAGE" provenance --json \
+            > "$RUNNER_TEMP/anonymous-container-provenance.json"
+          jq -e \
+            --arg commit "$MAIN_SHA" \
+            --arg source "$SOURCE_SHA256" \
+            --arg binary "$RELEASE_BINARY_SHA256" '
+              .source_commit == $commit and .source_sha256 == $source and
+              .source_tree_dirty == false and .binary_sha256 == $binary
+            ' "$RUNNER_TEMP/anonymous-container-provenance.json"
+          cmp "$RUNNER_TEMP/container-provenance.json" \
+            "$RUNNER_TEMP/anonymous-container-provenance.json"
+          docker run --rm "$CANDIDATE_IMAGE" doctor --backend host \
+            > "$RUNNER_TEMP/anonymous-container-doctor.json"
+          jq -e '.success == true' "$RUNNER_TEMP/anonymous-container-doctor.json"
+          docker run --rm --entrypoint bash "$CANDIDATE_IMAGE" \
+            -c '! command -v nextflow'
+
+          # The anonymous scope is never reused for publishing. Authenticate
+          # the normal Docker config explicitly only after public pullability
+          # and exact runtime provenance have passed.
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io \
+            --username "$GITHUB_ACTOR" --password-stdin
 
           REGISTRY_STATE="$(scripts/release_registry_pair.sh \
             "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
@@ -552,6 +606,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
           RELEASE_EXISTS: ${{ steps.source.outputs.release_exists }}
+          SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
+          BINARY_SHA256: ${{ steps.binary.outputs.sha256 }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           set -Eeuo pipefail
           assets=(
@@ -634,3 +691,86 @@ jobs:
               exit 1
             }
           done
+
+          # Re-download the release as an unaffiliated beginner would. This is
+          # intentionally a fresh directory with fresh HOME/XDG roots and no
+          # source checkout path. The dry runs exercise embedded-payload setup
+          # while proving that installation state, caches, environments, and
+          # analysis outputs are not created.
+          ACCEPTANCE_ROOT="$RUNNER_TEMP/oncotracer-released-beginner-acceptance-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ACCEPTANCE_RELEASE="$ACCEPTANCE_ROOT/release"
+          ACCEPTANCE_HOME="$ACCEPTANCE_ROOT/home"
+          ACCEPTANCE_TMP="$ACCEPTANCE_ROOT/tmp"
+          test ! -e "$ACCEPTANCE_ROOT"
+          install -d -m 0700 "$ACCEPTANCE_RELEASE" "$ACCEPTANCE_HOME" "$ACCEPTANCE_TMP"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --dir "$ACCEPTANCE_RELEASE"
+          test "$(find "$ACCEPTANCE_RELEASE" -maxdepth 1 -type f | wc -l)" -eq 4
+          (
+            cd "$ACCEPTANCE_RELEASE"
+            sha256sum --strict -c SHA256SUMS
+          )
+          chmod 0755 "$ACCEPTANCE_RELEASE/oncotracer"
+          BEGINNER_CONFIG="$ACCEPTANCE_ROOT/config"
+          BEGINNER_DATA="$ACCEPTANCE_ROOT/data"
+          BEGINNER_CACHE="$ACCEPTANCE_ROOT/cache"
+          BEGINNER_ENVS="$ACCEPTANCE_ROOT/envs"
+          beginner() {
+            env \
+              -u ONCOTRACER_ROOT \
+              -u ONCOTRACER_HOME \
+              -u ONCOTRACER_PAYLOAD_CACHE \
+              -u ONCOTRACER_CORE_PREFIX \
+              -u ONCOTRACER_QDNASEQ_PREFIX \
+              -u ONCOTRACER_ICHORCNA_PREFIX \
+              -u ONCOTRACER_CLASSIFIER_PREFIX \
+              -u ONCOTRACER_GISTIC_PREFIX \
+              HOME="$ACCEPTANCE_HOME" \
+              XDG_CONFIG_HOME="$BEGINNER_CONFIG" \
+              XDG_DATA_HOME="$BEGINNER_DATA" \
+              XDG_CACHE_HOME="$BEGINNER_CACHE" \
+              TMPDIR="$ACCEPTANCE_TMP" \
+              PYTHONNOUSERSITE=1 \
+              PATH=/usr/local/bin:/usr/bin:/bin \
+              "$@"
+          }
+          beginner "$ACCEPTANCE_RELEASE/oncotracer" --version \
+            | grep -Fx 'OncoTracer 2.0.0'
+          beginner "$ACCEPTANCE_RELEASE/oncotracer" --help \
+            | grep -F 'Native LP-WGS CNA analysis.'
+          beginner "$ACCEPTANCE_RELEASE/oncotracer" provenance --json \
+            > "$ACCEPTANCE_ROOT/executable-provenance.json"
+          jq -e \
+            --arg commit "$MAIN_SHA" \
+            --arg source "$SOURCE_SHA256" \
+            --arg binary "$BINARY_SHA256" '
+              .source_commit == $commit and .source_sha256 == $source and
+              .source_tree_dirty == false and .binary_sha256 == $binary
+            ' "$ACCEPTANCE_ROOT/executable-provenance.json"
+          jq -e \
+            --arg commit "$MAIN_SHA" \
+            --arg source "$SOURCE_SHA256" \
+            --arg binary "$BINARY_SHA256" \
+            --arg digest "$IMAGE_DIGEST" '
+              .source_commit == $commit and .source_sha256 == $source and
+              .source_tree_dirty == false and .binary_sha256 == $binary and
+              .container.digest == $digest and .container.nextflow_present == false
+            ' "$ACCEPTANCE_RELEASE/release-provenance.json"
+          beginner "$ACCEPTANCE_RELEASE/oncotracer" install --conda \
+            --prefix "$BEGINNER_ENVS" --dry-run \
+            > "$ACCEPTANCE_ROOT/install-dry-run.txt"
+          for quickstart in 1 2; do
+            beginner "$ACCEPTANCE_RELEASE/oncotracer" quickstart "$quickstart" \
+              --backend conda \
+              --test-root "$ACCEPTANCE_ROOT/quickstart-$quickstart" \
+              --dry-run \
+              > "$ACCEPTANCE_ROOT/quickstart-$quickstart-dry-run.json"
+            grep -F 'dry-run completed without writing files' \
+              "$ACCEPTANCE_ROOT/quickstart-$quickstart-dry-run.json"
+            test ! -e "$ACCEPTANCE_ROOT/quickstart-$quickstart"
+          done
+          test ! -e "$BEGINNER_CONFIG"
+          test ! -e "$BEGINNER_DATA"
+          test ! -e "$BEGINNER_CACHE"
+          test ! -e "$BEGINNER_ENVS"
+          test -z "$(find "$ACCEPTANCE_TMP" -mindepth 1 -print -quit)"
