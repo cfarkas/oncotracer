@@ -310,7 +310,9 @@ jobs:
             ${{ runner.temp }}/*-probe.txt
 
   docker-build:
-    runs-on: ubuntu-24.04
+    # A repository variable is the only opt-in to a configured heavy runner.
+    # Fork pull requests always remain on GitHub's isolated standard runner.
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-24.04' || vars.ONCOTRACER_HEAVY_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
@@ -328,8 +330,33 @@ jobs:
             echo "source_commit=$SOURCE_COMMIT"
             echo "source_sha256=$SOURCE_SHA256"
           } >> "$GITHUB_OUTPUT"
-      - name: Record runner disk space
-        run: df -h
+      - name: Require safe Docker build capacity
+        run: |
+          set -Eeuo pipefail
+          # 14 GiB final scientific environments + 18 GiB transient solve/export
+          # space + 8 GiB runner reserve = 40 GiB free before the build.
+          FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=14
+          TRANSIENT_SOLVE_AND_EXPORT_GIB=18
+          RUNNER_RESERVE_GIB=8
+          MIN_PHYSICAL_GIB=15
+          MIN_FREE_GIB=$((
+            FINAL_SCIENTIFIC_ENVIRONMENTS_GIB +
+            TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB
+          ))
+          DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
+          bash scripts/ci_resource_preflight.sh \
+            --purpose 'OncoTracer native five-environment Docker build' \
+            --min-free-gib "$MIN_FREE_GIB" \
+            --min-physical-gib "$MIN_PHYSICAL_GIB" \
+            --min-addressable-gib "$MIN_PHYSICAL_GIB" \
+            --planned-swap-gib 0 \
+            --standard-contract-free-gib 14 \
+            --path "$GITHUB_WORKSPACE" \
+            --path "$RUNNER_TEMP" \
+            --path /tmp \
+            --path "$DOCKER_ROOT_DIR" \
+            2>&1 | tee "$RUNNER_TEMP/docker-resource-preflight.txt"
+          df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp "$DOCKER_ROOT_DIR"
       - name: Build native image
         run: |
           docker build \
@@ -412,5 +439,6 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
           path: |
+            ${{ runner.temp }}/docker-resource-preflight.txt
             ${{ runner.temp }}/docker-provenance.json
             ${{ runner.temp }}/docker-doctor.json

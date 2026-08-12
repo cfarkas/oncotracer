@@ -812,6 +812,195 @@ def verify_parity_reports(audit: Path, suite: str) -> dict[str, object]:
     return metrics
 
 
+def verify_minimal_native_environments(context: Path, suite: str) -> dict[str, object]:
+    required_probes = {
+        "core": {"bwa", "samtools", "minimap2", "pigz", "picard"},
+        "qdnaseq": {"rscript"},
+    }
+    if suite == "quickstart1":
+        required_probes["ichorcna"] = {"rscript", "readcounter"}
+    required_environments = set(required_probes)
+
+    inventory = read_tsv(context / "native-environment-inventory.tsv")
+    if not inventory or inventory[0] != [
+        "environment",
+        "definition_sha256",
+        "explicit_sha256",
+    ]:
+        raise AuditError("invalid native environment inventory header")
+    if any(len(row) != 3 for row in inventory[1:]):
+        raise AuditError("invalid native environment inventory row")
+    inventory_by_environment = {row[0]: row[1:] for row in inventory[1:]}
+    if (
+        set(inventory_by_environment) != required_environments
+        or len(inventory) != len(required_environments) + 1
+    ):
+        raise AuditError(
+            f"native environment inventory mismatch: {set(inventory_by_environment)!r}"
+        )
+    for environment, (definition_digest, explicit_digest) in sorted(
+        inventory_by_environment.items()
+    ):
+        if any(
+            re.fullmatch(r"[0-9a-f]{64}", value) is None
+            for value in (definition_digest, explicit_digest)
+        ):
+            raise AuditError(f"invalid native environment digest: {environment}")
+        definition = require_file(
+            context / "native-environments" / f"{environment}.yml"
+        )
+        explicit = require_file(context / f"native-{environment}.explicit.txt")
+        if (
+            sha256(definition) != definition_digest
+            or sha256(explicit) != explicit_digest
+        ):
+            raise AuditError(f"native environment evidence mismatch: {environment}")
+
+    forbidden_environments = {"classifier", "gistic"} | (
+        {"ichorcna"} if suite == "quickstart2" else set()
+    )
+    for environment in forbidden_environments:
+        for path in (
+            context / "native-environments" / f"{environment}.yml",
+            context / f"native-{environment}.explicit.txt",
+        ):
+            if path.exists() or path.is_symlink():
+                raise AuditError(
+                    f"unused environment leaked into {suite} parity evidence: {path.name}"
+                )
+
+    probes = read_tsv(context / "native-environment-probes.tsv")
+    if not probes or probes[0] != [
+        "environment",
+        "probe",
+        "result",
+        "evidence_sha256",
+    ]:
+        raise AuditError("invalid native environment probe header")
+    if any(len(row) != 4 for row in probes[1:]):
+        raise AuditError("invalid native environment probe row")
+    expected = {
+        (environment, probe)
+        for environment, names in required_probes.items()
+        for probe in names
+    }
+    observed: dict[tuple[str, str], tuple[str, str]] = {}
+    for environment, probe, result, evidence_digest in probes[1:]:
+        key = (environment, probe)
+        if key in observed:
+            raise AuditError(f"duplicate native environment probe: {key!r}")
+        if result != "PASS" or re.fullmatch(r"[0-9a-f]{64}", evidence_digest) is None:
+            raise AuditError(f"failed native environment probe: {key!r}")
+        evidence = require_file(
+            context / "native-environment-probes" / f"{environment}-{probe}.txt"
+        )
+        if sha256(evidence) != evidence_digest:
+            raise AuditError(f"native environment probe checksum mismatch: {key!r}")
+        observed[key] = (result, evidence_digest)
+    if set(observed) != expected:
+        raise AuditError(
+            f"native environment probe inventory mismatch: {set(observed)!r}"
+        )
+
+    phase_names = {
+        "preflight-passed",
+        "swap-active",
+        "public-inputs-ready",
+        "frozen-images-ready",
+        "frozen-traces-authenticated",
+        "frozen-images-released",
+        "native-environments-with-cache",
+        "native-package-cache-released",
+        "native-runs-complete",
+    }
+    phase_root = context / "hosted-resource-phases"
+    observed_phases = {path.stem for path in phase_root.glob("*.txt") if path.is_file()}
+    if observed_phases != phase_names:
+        raise AuditError(f"resource phase evidence mismatch: {observed_phases!r}")
+    for phase in sorted(phase_names):
+        text = require_file(phase_root / f"{phase}.txt").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        for marker in (
+            "schema\toncotracer-hosted-resource-phase-v1",
+            f"phase\t{phase}",
+            "[df-kibibytes]",
+            "[memory-kibibytes]",
+            "[active-swap]",
+            "[docker]",
+            "[path-bytes]",
+        ):
+            if marker not in text:
+                raise AuditError(
+                    f"resource phase {phase!r} lacks required marker {marker!r}"
+                )
+    return {
+        "environments": sorted(required_environments),
+        "probe_count": len(expected),
+        "inventory_sha256": sha256(context / "native-environment-inventory.tsv"),
+        "probes_sha256": sha256(context / "native-environment-probes.tsv"),
+    }
+
+
+def verify_job_image_actions(context: Path) -> dict[str, object]:
+    pin_rows = read_tsv(context / "nested-v1-container-pins.tsv")
+    if not pin_rows or pin_rows[0] != ["container", "manifest_digest"]:
+        raise AuditError("invalid nested pin manifest for image action audit")
+    pins = dict(pin_rows[1:])
+    expected_references = {V1_IMAGE}
+    for container, digest in pins.items():
+        expected_references.add(container)
+        expected_references.add(f"{container.rsplit(':', 1)[0]}@{digest}")
+
+    ownership = read_tsv(context / "job-image-reference-ownership.tsv")
+    if not ownership or ownership[0] != [
+        "reference",
+        "image_id",
+        "created_by_job",
+    ]:
+        raise AuditError("invalid job image ownership header")
+    if any(len(row) != 3 for row in ownership[1:]):
+        raise AuditError("invalid job image ownership row")
+    owned: dict[str, tuple[str, str]] = {}
+    for reference, image_id, created_by_job in ownership[1:]:
+        if (
+            reference in owned
+            or re.fullmatch(r"sha256:[0-9a-f]{64}", image_id) is None
+            or created_by_job not in {"0", "1"}
+        ):
+            raise AuditError(f"invalid job image ownership: {reference!r}")
+        owned[reference] = (image_id, created_by_job)
+    if set(owned) != expected_references:
+        raise AuditError(f"job image ownership inventory mismatch: {set(owned)!r}")
+
+    actions = read_tsv(context / "job-image-reference-actions.tsv")
+    if not actions or actions[0] != ["reference", "image_id", "action"]:
+        raise AuditError("invalid job image action header")
+    if any(len(row) != 3 for row in actions[1:]):
+        raise AuditError("invalid job image action row")
+    observed_actions: dict[str, tuple[str, str]] = {}
+    for reference, image_id, action in actions[1:]:
+        expected = owned.get(reference)
+        if reference in observed_actions or expected is None or image_id != expected[0]:
+            raise AuditError(f"invalid job image action identity: {reference!r}")
+        expected_action = (
+            "REMOVED_JOB_CREATED" if expected[1] == "1" else "PRESERVED_PREEXISTING"
+        )
+        if action != expected_action:
+            raise AuditError(f"invalid job image action: {reference!r}")
+        observed_actions[reference] = (image_id, action)
+    if set(observed_actions) != expected_references:
+        raise AuditError("job image action inventory is incomplete")
+    return {
+        "reference_count": len(expected_references),
+        "removed_count": sum(
+            action == "REMOVED_JOB_CREATED" for _, action in observed_actions.values()
+        ),
+        "ownership_sha256": sha256(context / "job-image-reference-ownership.tsv"),
+        "actions_sha256": sha256(context / "job-image-reference-actions.tsv"),
+    }
+
+
 def verify_context(
     audit: Path,
     suite: str,
@@ -873,13 +1062,8 @@ def verify_context(
         and provenance.get("binary_sha256") == binary_sha256
     ):
         raise AuditError("native binary provenance mismatch")
-    doctor = json.loads(
-        require_file(context / "native-doctor.json").read_text(encoding="utf-8")
-    )
-    if doctor.get("success") is not True:
-        raise AuditError("native doctor did not pass")
-    for environment in ("core", "qdnaseq", "ichorcna", "classifier", "gistic"):
-        require_file(context / f"native-{environment}.explicit.txt")
+    native_environments = verify_minimal_native_environments(context, suite)
+    image_actions = verify_job_image_actions(context)
 
     input_manifest = read_manifest(context / "manifests/public-input-manifest.tsv")
     reference_manifest = read_manifest(
@@ -970,6 +1154,8 @@ def verify_context(
     if suite == "quickstart1":
         parse_compat(context / "v2-ont-ichorcna-plot-compat.tsv")
     return {
+        "native_environments": native_environments,
+        "job_image_actions": image_actions,
         "input_manifest_sha256": sha256(
             context / "manifests/public-input-manifest.tsv"
         ),

@@ -35,7 +35,9 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'main')
-    runs-on: ubuntu-24.04
+    # Publishing opts in to a configured heavy runner only when an
+    # administrator explicitly sets the repository variable.
+    runs-on: ${{ vars.ONCOTRACER_HEAVY_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 360
 
     steps:
@@ -90,6 +92,35 @@ jobs:
         with:
           ref: ${{ steps.gate.outputs.main_sha }}
           fetch-depth: 0
+
+      - name: Require safe release-container build capacity
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          set -Eeuo pipefail
+          # The release rebuilds the same five-environment image as Native v2
+          # CI: 14 GiB final environments + 18 GiB transient solve/export
+          # space + 8 GiB reserve = 40 GiB free before any publication step.
+          FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=14
+          TRANSIENT_SOLVE_AND_EXPORT_GIB=18
+          RUNNER_RESERVE_GIB=8
+          MIN_PHYSICAL_GIB=15
+          MIN_FREE_GIB=$((
+            FINAL_SCIENTIFIC_ENVIRONMENTS_GIB +
+            TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB
+          ))
+          DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
+          bash scripts/ci_resource_preflight.sh \
+            --purpose 'OncoTracer stable five-environment container publication' \
+            --min-free-gib "$MIN_FREE_GIB" \
+            --min-physical-gib "$MIN_PHYSICAL_GIB" \
+            --min-addressable-gib "$MIN_PHYSICAL_GIB" \
+            --planned-swap-gib 0 \
+            --standard-contract-free-gib 14 \
+            --path "$GITHUB_WORKSPACE" \
+            --path "$RUNNER_TEMP" \
+            --path /tmp \
+            --path "$DOCKER_ROOT_DIR" \
+            2>&1 | tee "$RUNNER_TEMP/release-resource-preflight.txt"
 
       - name: Verify immutable source identity and release namespace
         if: steps.gate.outputs.ready == 'true'

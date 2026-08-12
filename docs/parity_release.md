@@ -31,6 +31,63 @@ Each artifact includes `parity_report.json`, `parity_report.md`, `event_matches.
 
 The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v2.0.0`. A release cannot be created from a stale or partially validated commit.
 
+## Hosted-runner capacity contract
+
+The full parity gates and five-environment container build are intentionally
+fail-closed before they download public reads, install scientific environments,
+pull pinned images, or publish anything. GitHub's documented standard public
+`ubuntu-24.04` runner contract is 4 CPUs, 16 GB RAM, and 14 GB SSD storage.
+Observed free space above that contract is incidental runner-image capacity and
+must not be made available by deleting runner tools, unrelated images, or global
+caches.
+
+The parity preflight requires all checked paths to resolve to one filesystem
+with at least 72 GiB free, at least 15 GiB physical RAM, and at least 47 GiB
+addressable memory after its job-owned swap is added. This is a phase peak, not
+a sum of mutually exclusive Docker and Conda material. Frozen v1.1 runs first;
+only after its nested traces are authenticated does the job release exact image
+references proven absent before this run. It then creates only `core`, `qdnaseq`,
+and (for QuickStart 1) `ichorcna` from the committed definitions, records
+explicit exports and executable probes, and deletes only its run-ID-owned Conda
+package cache. Native execution uses those exact prefixes with the host backend.
+
+The measured shared reference is 15,852,699,648 bytes (rounded to 16 GiB).
+QuickStart 1 pinned image virtual sizes total 14,850,685,496 bytes (14 GiB),
+and its frozen outputs and inputs each round to 1 GiB. QuickStart 2 images total
+8,188,638,552 bytes (8 GiB), frozen output rounds to 6 GiB, and inputs round to
+2 GiB. The measured minimal native prefixes round to 3 GiB for QuickStart 1 and
+1 GiB for QuickStart 2. The 8 GiB and 7 GiB native transient allowances bound
+the larger mutually exclusive footprint: package solve/cache before its exact
+removal, or native-output growth afterwards. With 32 GiB job-owned swap and an
+8 GiB reserve, both frozen and native
+phase models peak at 72 GiB. Each boundary records `df`, `du`, memory, swap, and
+Docker evidence in the sealed audit. Earlier hosted logs recorded 15.61 GiB
+physical RAM and 34 GiB total swap after adding the 32 GiB file, but no peak
+swap use, so reducing that allocation is not evidence-supported.
+
+The Native v2 CI Docker job and permanent release publisher each require 40 GiB
+free and 15 GiB physical RAM: 14 GiB for the final five scientific environments,
+18 GiB for transient solves, package downloads, and image export, plus an 8 GiB
+reserve. Their preflight runs before the Docker build, and the publisher runs it
+before any registry or release mutation.
+
+These requirements exceed the standard runner's guaranteed storage. A
+repository administrator may explicitly set `ONCOTRACER_HEAVY_RUNNER` to the
+label of a preconfigured runner satisfying the preflight. The variable only
+selects an existing runner; it does not provision, purchase, resize, or clean
+one. Leave it unset to use `ubuntu-24.04` and receive an actionable early
+failure when the observed machine is insufficient. Fork pull requests always
+remain on GitHub's isolated standard runner, even when the variable is set. If
+a self-hosted label is used, it must identify a dedicated ephemeral runner for
+trusted in-repository refs; never expose a persistent scientific server or a
+runner containing protected data to pull-request code.
+
+Until such a runner is configured, the exact-head hosted parity and release
+gates have a genuine infrastructure blocker. Broad Docker pruning, global Conda
+or Nextflow cleanup, and deletion of preinstalled runner software are not
+accepted remedies. The current public-runner specifications are maintained in
+the [GitHub-hosted runners reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+
 ## Repeat the complete gate on a validation server
 
 Run the auditable driver from a clean checkout in a dedicated tmux session. The shared reference is copied or reflinked into the validation root, so the source cache is never modified:

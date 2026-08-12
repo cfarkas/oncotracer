@@ -1975,6 +1975,181 @@ class ParityComparatorTests(unittest.TestCase):
         self.assertIn("tar --sort=name --mtime='@0' --owner=0 --group=0", driver)
         self.assertIn("gzip -n >", driver)
 
+    def test_minimal_native_environment_audit_is_suite_exact_and_sealed(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "parity_audit_minimal_env_test", ROOT / "tests" / "parity_audit.py"
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        audit_module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = audit_module
+        try:
+            spec.loader.exec_module(audit_module)
+        finally:
+            sys.modules.pop(spec.name, None)
+
+        with tempfile.TemporaryDirectory() as directory:
+            context = Path(directory)
+            (context / "native-environments").mkdir()
+            (context / "native-environment-probes").mkdir()
+            required_probes = {
+                "core": {"bwa", "samtools", "minimap2", "pigz", "picard"},
+                "qdnaseq": {"rscript"},
+            }
+            inventory_rows = ["environment\tdefinition_sha256\texplicit_sha256"]
+            probe_rows = ["environment\tprobe\tresult\tevidence_sha256"]
+            for environment, probes in required_probes.items():
+                definition = context / "native-environments" / f"{environment}.yml"
+                explicit = context / f"native-{environment}.explicit.txt"
+                definition.write_text(
+                    f"name: oncotracer-v2-{environment}\n", encoding="utf-8"
+                )
+                explicit.write_text(
+                    f"@EXPLICIT\nhttps://example.invalid/{environment}.conda\n",
+                    encoding="utf-8",
+                )
+                inventory_rows.append(
+                    "\t".join(
+                        (
+                            environment,
+                            hashlib.sha256(definition.read_bytes()).hexdigest(),
+                            hashlib.sha256(explicit.read_bytes()).hexdigest(),
+                        )
+                    )
+                )
+                for probe in sorted(probes):
+                    evidence = (
+                        context
+                        / "native-environment-probes"
+                        / f"{environment}-{probe}.txt"
+                    )
+                    evidence.write_text(f"{environment}/{probe} OK\n", encoding="utf-8")
+                    probe_rows.append(
+                        "\t".join(
+                            (
+                                environment,
+                                probe,
+                                "PASS",
+                                hashlib.sha256(evidence.read_bytes()).hexdigest(),
+                            )
+                        )
+                    )
+            (context / "native-environment-inventory.tsv").write_text(
+                "\n".join(inventory_rows) + "\n", encoding="utf-8"
+            )
+            (context / "native-environment-probes.tsv").write_text(
+                "\n".join(probe_rows) + "\n", encoding="utf-8"
+            )
+            phase_names = {
+                "preflight-passed",
+                "swap-active",
+                "public-inputs-ready",
+                "frozen-images-ready",
+                "frozen-traces-authenticated",
+                "frozen-images-released",
+                "native-environments-with-cache",
+                "native-package-cache-released",
+                "native-runs-complete",
+            }
+            phase_root = context / "hosted-resource-phases"
+            phase_root.mkdir()
+            for phase in phase_names:
+                (phase_root / f"{phase}.txt").write_text(
+                    "\n".join(
+                        (
+                            "schema\toncotracer-hosted-resource-phase-v1",
+                            f"phase\t{phase}",
+                            "[df-kibibytes]",
+                            "[memory-kibibytes]",
+                            "[active-swap]",
+                            "[docker]",
+                            "[path-bytes]",
+                        )
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+            verified = audit_module.verify_minimal_native_environments(
+                context, "quickstart2"
+            )
+            self.assertEqual(verified["environments"], ["core", "qdnaseq"])
+            with self.assertRaisesRegex(audit_module.AuditError, "inventory mismatch"):
+                audit_module.verify_minimal_native_environments(context, "quickstart1")
+            (context / "native-classifier.explicit.txt").write_text(
+                "@EXPLICIT\n", encoding="utf-8"
+            )
+            with self.assertRaisesRegex(audit_module.AuditError, "unused environment"):
+                audit_module.verify_minimal_native_environments(context, "quickstart2")
+
+    def test_job_image_action_audit_rejects_mismatched_ownership(self) -> None:
+        spec = importlib.util.spec_from_file_location(
+            "parity_audit_image_action_test", ROOT / "tests" / "parity_audit.py"
+        )
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        audit_module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = audit_module
+        try:
+            spec.loader.exec_module(audit_module)
+        finally:
+            sys.modules.pop(spec.name, None)
+
+        with tempfile.TemporaryDirectory() as directory:
+            context = Path(directory)
+            pins = {
+                image: "sha256:" + f"{index:064x}"
+                for index, image in enumerate(
+                    sorted(
+                        set().union(
+                            *(
+                                set(contract.images)
+                                for contract in audit_module.CONTRACTS["quickstart2"]
+                            )
+                        )
+                    ),
+                    start=1,
+                )
+            }
+            pin_lines = ["container\tmanifest_digest"] + [
+                f"{container}\t{digest}" for container, digest in sorted(pins.items())
+            ]
+            (context / "nested-v1-container-pins.tsv").write_text(
+                "\n".join(pin_lines) + "\n", encoding="utf-8"
+            )
+            references = {audit_module.V1_IMAGE}
+            for container, digest in pins.items():
+                references.add(container)
+                references.add(f"{container.rsplit(':', 1)[0]}@{digest}")
+            ownership_lines = ["reference\timage_id\tcreated_by_job"]
+            action_lines = ["reference\timage_id\taction"]
+            for index, reference in enumerate(sorted(references), start=1):
+                image_id = "sha256:" + f"{index + 100:064x}"
+                created = str(index % 2)
+                action = (
+                    "REMOVED_JOB_CREATED" if created == "1" else "PRESERVED_PREEXISTING"
+                )
+                ownership_lines.append(f"{reference}\t{image_id}\t{created}")
+                action_lines.append(f"{reference}\t{image_id}\t{action}")
+            (context / "job-image-reference-ownership.tsv").write_text(
+                "\n".join(ownership_lines) + "\n", encoding="utf-8"
+            )
+            actions_path = context / "job-image-reference-actions.tsv"
+            actions_path.write_text("\n".join(action_lines) + "\n", encoding="utf-8")
+
+            verified = audit_module.verify_job_image_actions(context)
+            self.assertEqual(verified["reference_count"], len(references))
+            actions_path.write_text(
+                actions_path.read_text(encoding="utf-8").replace(
+                    "REMOVED_JOB_CREATED", "PRESERVED_PREEXISTING", 1
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                audit_module.AuditError, "invalid job image action"
+            ):
+                audit_module.verify_job_image_actions(context)
+
 
 if __name__ == "__main__":
     unittest.main()

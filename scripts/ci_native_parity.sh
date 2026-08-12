@@ -15,6 +15,8 @@ SUITE="$1"
 : "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"
 : "${RUNNER_TEMP:?RUNNER_TEMP is required}"
 : "${CANDIDATE_SHA:?CANDIDATE_SHA is required}"
+: "${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
+: "${GITHUB_RUN_ATTEMPT:?GITHUB_RUN_ATTEMPT is required}"
 
 readonly V1_1_COMMIT="032c1268fa7fdcadc48087055066d7a9fc59bd89"
 readonly V1_DOCKER_IMAGE="carlosfarkas/oncotracer@sha256:4856aed020e1102f891b91de54d6acf365d6b8a57e2283a4f7b670b0bd5b07ed"
@@ -31,22 +33,85 @@ readonly PARITY_SESSION_ID="$(date -u +%Y%m%dT%H%M%SZ).$$"
 readonly NEXTFLOW_REPORT_ROOT="$REPORT_ROOT/frozen-v1.1-$PARITY_SESSION_ID"
 readonly AUDIT_ROOT="$TEST_ROOT/audit"
 readonly CONTEXT="$AUDIT_ROOT/context"
-readonly V2_ENV_PREFIX="/tmp/oncotracer-v2-envs-$SUITE"
-readonly PAYLOAD_CACHE="/tmp/oncotracer-v2-payload-$SUITE"
-readonly CONFIG_HOME="/tmp/oncotracer-v2-config-$SUITE"
+readonly JOB_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${SUITE}"
+readonly V2_ENV_PREFIX="$RUNNER_TEMP/oncotracer-envs-$JOB_ID"
+readonly CONDA_PACKAGE_CACHE="$RUNNER_TEMP/oncotracer-conda-pkgs-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+readonly PAYLOAD_CACHE="$RUNNER_TEMP/oncotracer-v2-payload-$JOB_ID"
+readonly CONFIG_HOME="$RUNNER_TEMP/oncotracer-v2-config-$JOB_ID"
 readonly PINNED_NEXTFLOW_DIR="$TEST_ROOT/.release-tools/bin"
 readonly NEXTFLOW="$PINNED_NEXTFLOW_DIR/nextflow"
 readonly PINS="$RUNNER_TEMP/$SUITE-samurai-container-pins.tsv"
 readonly PREFLIGHT="$RUNNER_TEMP/$SUITE-samurai-container-preflight.tsv"
+readonly IMAGE_OWNERSHIP="$RUNNER_TEMP/oncotracer-image-ownership-$JOB_ID.tsv"
 readonly RUNTIME="$CONTEXT/nested-v1-container-runtime.tsv"
 readonly SELECTION="$CONTEXT/nested-v1-trace-selection.tsv"
+readonly RESOURCE_PREFLIGHT="$CONTEXT/hosted-resource-preflight.txt"
+readonly RESOURCE_PHASE_ROOT="$CONTEXT/hosted-resource-phases"
+
+# Prior hosted logs record 34 GiB total swap but no peak-swap telemetry, so the
+# 32 GiB job allocation cannot yet be reduced without weakening the gate. The
+# reference and indices are shared by frozen v1.1 and native v2. Native Conda
+# environments are created only after authenticated frozen traces allow exact
+# job-pulled image references to be released. Both phase peaks are calculated
+# from measured completed validation material, rounded up:
+#
+#   QS1 frozen: 32 swap + 16 reference + 14 images + 1 input + 1 output + 8 reserve
+#   QS2 frozen: 32 swap + 16 reference +  8 images + 2 input + 6 output + 8 reserve
+#   QS1 native: 32 swap + 16 reference + 1 input + 1 frozen output +
+#               3 minimal envs + 8 solve/cache-or-output + 8 reserve
+#   QS2 native: 32 swap + 16 reference + 2 input + 6 frozen output +
+#               1 minimal env + 7 solve/cache-or-output + 8 reserve
+#
+# Every phase therefore requires 72 GiB free at job start, rather than summing
+# mutually exclusive Docker and Conda peaks.
+readonly SHARED_REFERENCE_GIB=16
+readonly PARITY_SWAP_GIB=32
+readonly FILESYSTEM_RESERVE_GIB=8
+if [[ "$SUITE" == quickstart1 ]]; then
+  readonly PINNED_IMAGES_GIB=14
+  readonly PUBLIC_INPUTS_GIB=1
+  readonly FROZEN_OUTPUT_GIB=1
+  readonly MINIMAL_ENVIRONMENTS_GIB=3
+  readonly NATIVE_TRANSIENT_GIB=8
+else
+  readonly PINNED_IMAGES_GIB=8
+  readonly PUBLIC_INPUTS_GIB=2
+  readonly FROZEN_OUTPUT_GIB=6
+  readonly MINIMAL_ENVIRONMENTS_GIB=1
+  readonly NATIVE_TRANSIENT_GIB=7
+fi
+readonly FROZEN_PHASE_GIB=$((
+  PARITY_SWAP_GIB + SHARED_REFERENCE_GIB + PINNED_IMAGES_GIB +
+  PUBLIC_INPUTS_GIB + FROZEN_OUTPUT_GIB + FILESYSTEM_RESERVE_GIB
+))
+readonly NATIVE_PHASE_GIB=$((
+  PARITY_SWAP_GIB + SHARED_REFERENCE_GIB + PUBLIC_INPUTS_GIB +
+  FROZEN_OUTPUT_GIB + MINIMAL_ENVIRONMENTS_GIB +
+  NATIVE_TRANSIENT_GIB + FILESYSTEM_RESERVE_GIB
+))
+if (( FROZEN_PHASE_GIB > NATIVE_PHASE_GIB )); then
+  readonly MIN_FREE_GIB="$FROZEN_PHASE_GIB"
+else
+  readonly MIN_FREE_GIB="$NATIVE_PHASE_GIB"
+fi
+[[ "$MIN_FREE_GIB" -eq 72 ]]
+# The scientific task cap is 14 GB (13.04 GiB). Previous hosted evidence
+# reported 15.61 GiB physical RAM, so 15 GiB is the highest evidence-backed
+# whole-GiB floor that preserves operating-system headroom on that runner.
+readonly MIN_PHYSICAL_GIB=15
+readonly MIN_ADDRESSABLE_GIB=$((MIN_PHYSICAL_GIB + PARITY_SWAP_GIB))
+readonly STANDARD_RUNNER_CONTRACT_FREE_GIB=14
+readonly SWAP_FILE="$RUNNER_TEMP/oncotracer-swap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
 readonly ILLUMINA_PRE_INVENTORY="$RUNNER_TEMP/$SUITE-illumina-nested-traces-pre.tsv"
 readonly ONT_PRE_INVENTORY="$RUNNER_TEMP/$SUITE-ont-nested-traces-pre.tsv"
 readonly HCC_PRE_INVENTORY="$RUNNER_TEMP/$SUITE-hcc1143-nested-traces-pre.tsv"
 export XDG_CONFIG_HOME="$CONFIG_HOME"
 export ONCOTRACER_PAYLOAD_CACHE="$PAYLOAD_CACHE"
+export CONDA_PKGS_DIRS="$CONDA_PACKAGE_CACHE"
 export PIP_NO_CACHE_DIR=1
+export CONDA_SOLVER=libmamba
+export CONDA_CHANNEL_PRIORITY=strict
 export NXF_ANSI_LOG=false
 export NXF_DISABLE_CHECK_LATEST=true
 export NXF_OPTS="-Xms256m -Xmx2g"
@@ -60,9 +125,272 @@ require_file() {
   [[ -s "$1" ]] || { echo "missing or empty file: $1" >&2; exit 1; }
 }
 
+record_phase_resources() {
+  local phase="$1" output path
+  [[ "$phase" =~ ^[a-z0-9][a-z0-9-]*$ ]] || {
+    echo "invalid resource-evidence phase: $phase" >&2
+    exit 1
+  }
+  output="$RESOURCE_PHASE_ROOT/$phase.txt"
+  {
+    printf 'schema\toncotracer-hosted-resource-phase-v1\n'
+    printf 'phase\t%s\n' "$phase"
+    printf 'recorded_at\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf '\n[df-kibibytes]\n'
+    LC_ALL=C df -Pk "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp "$DOCKER_ROOT_DIR"
+    printf '\n[memory-kibibytes]\n'
+    free -k
+    printf '\n[active-swap]\n'
+    sudo swapon --show --bytes --output=NAME,SIZE,USED,PRIO
+    printf '\n[docker]\n'
+    docker system df
+    printf '\n[path-bytes]\n'
+    for path in "$TEST_ROOT" "$INPUT_ROOT" "$TEST_ROOT/references" \
+      "$TEST_ROOT/v1" "$TEST_ROOT/v2" "$V2_ENV_PREFIX" \
+      "$CONDA_PACKAGE_CACHE"; do
+      if [[ -e "$path" || -L "$path" ]]; then
+        du -sx -B1 -- "$path"
+      else
+        printf 'absent\t%s\n' "$path"
+      fi
+    done
+  } > "$output"
+}
+
+record_image_ownership() {
+  local reference="$1" image_id="$2" created_by_job="$3"
+  [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+  [[ "$created_by_job" == 0 || "$created_by_job" == 1 ]]
+  printf '%s\t%s\t%s\n' "$reference" "$image_id" "$created_by_job" \
+    >> "$IMAGE_OWNERSHIP"
+}
+
+remove_owned_image_references() {
+  local expected_manifest reference image_id created_by_job extra observed_id containers action
+  local line_number=0 expected_count=1 observed_count=0
+  declare -A allowed=()
+  declare -A seen=()
+
+  expected_manifest="$RUNNER_TEMP/oncotracer-image-ownership-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${SUITE}.tsv"
+  [[ "$IMAGE_OWNERSHIP" == "$expected_manifest" ]] || {
+    echo "Refusing image cleanup from unexpected ownership manifest: $IMAGE_OWNERSHIP" >&2
+    exit 1
+  }
+  [[ -f "$IMAGE_OWNERSHIP" && ! -L "$IMAGE_OWNERSHIP" ]] || {
+    echo "Image ownership manifest must be a regular non-symlink: $IMAGE_OWNERSHIP" >&2
+    exit 1
+  }
+  printf 'reference\timage_id\taction\n' \
+    > "$CONTEXT/job-image-reference-actions.tsv"
+
+  allowed["$V1_DOCKER_IMAGE"]=1
+  while IFS=$'\t' read -r reference image_id extra; do
+    [[ "$reference" == container ]] && continue
+    [[ -z "$extra" && "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+    allowed["$reference"]=1
+    allowed["${reference%:*}@$image_id"]=1
+    expected_count=$((expected_count + 2))
+  done < "$PINS"
+
+  while IFS=$'\t' read -r reference image_id created_by_job extra; do
+    line_number=$((line_number + 1))
+    if (( line_number == 1 )); then
+      [[ "$reference" == reference && "$image_id" == image_id &&
+        "$created_by_job" == created_by_job && -z "$extra" ]]
+      continue
+    fi
+    [[ -n "$reference" && -z "$extra" ]]
+    [[ -n "${allowed[$reference]+present}" ]] || {
+      echo "Ownership manifest contains an unapproved image reference: $reference" >&2
+      exit 1
+    }
+    [[ -z "${seen[$reference]+present}" ]] || {
+      echo "Ownership manifest repeats image reference: $reference" >&2
+      exit 1
+    }
+    seen["$reference"]=1
+    observed_count=$((observed_count + 1))
+    [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+    [[ "$created_by_job" == 0 || "$created_by_job" == 1 ]]
+    observed_id="$(docker image inspect "$reference" --format '{{.Id}}')"
+    [[ "$observed_id" == "$image_id" ]] || {
+      echo "Refusing cleanup after image identity changed: $reference" >&2
+      exit 1
+    }
+    action=PRESERVED_PREEXISTING
+    if [[ "$created_by_job" == 1 ]]; then
+      containers="$(docker ps --all --quiet --filter "ancestor=$reference")"
+      [[ -z "$containers" ]] || {
+        echo "Refusing to remove an image reference used by a container: $reference" >&2
+        exit 1
+      }
+      docker image rm -- "$reference"
+      if docker image inspect "$reference" >/dev/null 2>&1; then
+        echo "Job-created image reference remains after exact removal: $reference" >&2
+        exit 1
+      fi
+      action=REMOVED_JOB_CREATED
+    fi
+    printf '%s\t%s\t%s\n' "$reference" "$image_id" "$action" \
+      >> "$CONTEXT/job-image-reference-actions.tsv"
+  done < "$IMAGE_OWNERSHIP"
+
+  [[ "$line_number" -gt 1 && "$observed_count" -eq "$expected_count" ]]
+  for reference in "${!allowed[@]}"; do
+    [[ -n "${seen[$reference]+present}" ]] || {
+      echo "Ownership manifest omitted expected image reference: $reference" >&2
+      exit 1
+    }
+  done
+}
+
+run_native_environment_probe() {
+  local environment="$1" probe="$2" expected_status="$3" pattern="$4"
+  local output status digest
+  shift 4
+  output="$CONTEXT/native-environment-probes/$environment-$probe.txt"
+  set +e
+  "$@" > "$output" 2>&1
+  status=$?
+  set -e
+  if [[ "$status" -ne "$expected_status" ]] || ! grep -Eq "$pattern" "$output"; then
+    echo "Native environment probe failed: $environment/$probe (status=$status)" >&2
+    cat "$output" >&2
+    exit 1
+  fi
+  digest="$(sha256sum "$output" | awk '{print $1}')"
+  printf '%s\t%s\tPASS\t%s\n' "$environment" "$probe" "$digest" \
+    >> "$CONTEXT/native-environment-probes.tsv"
+}
+
+create_native_environment() {
+  local environment="$1" definition="$2" prefix definition_sha explicit_sha
+  prefix="$V2_ENV_PREFIX/$environment"
+  [[ "$definition" == "$REPO/environments/native-"*.yml ]]
+  [[ -f "$definition" && ! -L "$definition" ]]
+  [[ ! -e "$prefix" && ! -L "$prefix" ]] || {
+    echo "Refusing to replace pre-existing native environment prefix: $prefix" >&2
+    exit 1
+  }
+  conda env create --yes --prefix "$prefix" --file "$definition"
+  conda list --explicit --prefix "$prefix" \
+    > "$RUNNER_TEMP/native-$environment.explicit.txt"
+  cp "$definition" "$CONTEXT/native-environments/$environment.yml"
+  definition_sha="$(sha256sum "$definition" | awk '{print $1}')"
+  explicit_sha="$(sha256sum "$RUNNER_TEMP/native-$environment.explicit.txt" | awk '{print $1}')"
+  printf '%s\t%s\t%s\n' "$environment" "$definition_sha" "$explicit_sha" \
+    >> "$CONTEXT/native-environment-inventory.tsv"
+  case "$environment" in
+    core) export ONCOTRACER_CORE_PREFIX="$prefix" ;;
+    qdnaseq) export ONCOTRACER_QDNASEQ_PREFIX="$prefix" ;;
+    ichorcna) export ONCOTRACER_ICHORCNA_PREFIX="$prefix" ;;
+    *)
+      echo "Unexpected parity environment: $environment" >&2
+      exit 1
+      ;;
+  esac
+}
+
+create_minimal_native_environments() {
+  [[ ! -e "$V2_ENV_PREFIX" && ! -L "$V2_ENV_PREFIX" ]]
+  [[ ! -e "$CONDA_PACKAGE_CACHE" && ! -L "$CONDA_PACKAGE_CACHE" ]]
+  mkdir -p "$V2_ENV_PREFIX" "$CONDA_PACKAGE_CACHE"
+  printf 'environment\tdefinition_sha256\texplicit_sha256\n' \
+    > "$CONTEXT/native-environment-inventory.tsv"
+  printf 'environment\tprobe\tresult\tevidence_sha256\n' \
+    > "$CONTEXT/native-environment-probes.tsv"
+
+  create_native_environment core "$REPO/environments/native-core.yml"
+  create_native_environment qdnaseq "$REPO/environments/native-qdnaseq.yml"
+  if [[ "$SUITE" == quickstart1 ]]; then
+    create_native_environment ichorcna "$REPO/environments/native-ichorcna.yml"
+  fi
+
+  record_phase_resources native-environments-with-cache
+  [[ "$CONDA_PACKAGE_CACHE" == "$RUNNER_TEMP/oncotracer-conda-pkgs-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" ]]
+  [[ -d "$CONDA_PACKAGE_CACHE" && ! -L "$CONDA_PACKAGE_CACHE" ]]
+  rm -rf -- "$RUNNER_TEMP/oncotracer-conda-pkgs-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+  [[ ! -e "$CONDA_PACKAGE_CACHE" && ! -L "$CONDA_PACKAGE_CACHE" ]]
+  record_phase_resources native-package-cache-released
+
+  run_native_environment_probe core bwa 1 'Program:[[:space:]]+bwa' \
+    "$ONCOTRACER_CORE_PREFIX/bin/bwa"
+  run_native_environment_probe core samtools 0 'samtools' \
+    "$ONCOTRACER_CORE_PREFIX/bin/samtools" --version
+  run_native_environment_probe core minimap2 0 '(minimap2|^[0-9]+[.][0-9]+)' \
+    "$ONCOTRACER_CORE_PREFIX/bin/minimap2" --version
+  run_native_environment_probe core pigz 0 'pigz' \
+    "$ONCOTRACER_CORE_PREFIX/bin/pigz" --version
+  run_native_environment_probe core picard 1 '(Picard|USAGE|CommandLineProgram)' \
+    "$ONCOTRACER_CORE_PREFIX/bin/picard" -h
+  run_native_environment_probe qdnaseq rscript 0 'QDNASEQ_OK' \
+    env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+    "$ONCOTRACER_QDNASEQ_PREFIX/bin/Rscript" --vanilla -e \
+    'suppressPackageStartupMessages(library(Biobase)); suppressPackageStartupMessages(library(QDNAseq)); cat("QDNASEQ_OK\n")'
+  if [[ "$SUITE" == quickstart1 ]]; then
+    run_native_environment_probe ichorcna rscript 0 'ICHORCNA_OK' \
+      env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+      "$ONCOTRACER_ICHORCNA_PREFIX/bin/Rscript" --vanilla -e \
+      'suppressPackageStartupMessages(library(ichorCNA)); cat("ICHORCNA_OK\n")'
+    run_native_environment_probe ichorcna readcounter 255 \
+      'Please specify a BAM file[.][[:space:]]*Usage:' \
+      "$ONCOTRACER_ICHORCNA_PREFIX/bin/readCounter"
+  fi
+}
+cleanup_job_swap() {
+  local status=$? expected active_swap_names cleanup_status=0
+  expected="$RUNNER_TEMP/oncotracer-swap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+  set +e
+  if [[ "$SWAP_FILE" != "$expected" ]]; then
+    echo "Refusing to clean unexpected swap path: $SWAP_FILE" >&2
+    cleanup_status=1
+  elif ! active_swap_names="$(sudo swapon --show=NAME --noheadings --raw 2>/dev/null)"; then
+    echo "Refusing to remove $SWAP_FILE because active swap could not be established" >&2
+    cleanup_status=1
+  elif grep -Fx -- "$SWAP_FILE" <<< "$active_swap_names" >/dev/null; then
+    if ! sudo swapoff -- "$SWAP_FILE"; then
+      echo "Refusing to remove active swap after swapoff failed: $SWAP_FILE" >&2
+      cleanup_status=1
+    fi
+  fi
+  if (( cleanup_status != 0 )); then
+    (( status != 0 )) && return "$status"
+    return "$cleanup_status"
+  fi
+  if [[ -e "$SWAP_FILE" || -L "$SWAP_FILE" ]]; then
+    if [[ ! -f "$SWAP_FILE" || -L "$SWAP_FILE" ]]; then
+      echo "Refusing to remove non-regular job swap path: $SWAP_FILE" >&2
+      cleanup_status=1
+    elif ! sudo rm -f -- "$RUNNER_TEMP/oncotracer-swap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; then
+      echo "Failed to remove inactive job-owned swap file: $SWAP_FILE" >&2
+      cleanup_status=1
+    fi
+  fi
+  (( status != 0 )) && return "$status"
+  return "$cleanup_status"
+}
+
 mkdir -p "$TEST_ROOT/configs" "$REPORT_ROOT" "$NEXTFLOW_REPORT_ROOT" \
   "$CONTEXT/manifests" "$CONTEXT/configs/parity" "$CONTEXT/configs/input" \
-  "$CONTEXT/qdnaseq-annotation"
+  "$CONTEXT/qdnaseq-annotation" "$CONTEXT/native-environment-probes" \
+  "$CONTEXT/native-environments" "$RESOURCE_PHASE_ROOT"
+printf 'reference\timage_id\tcreated_by_job\n' > "$IMAGE_OWNERSHIP"
+
+log "Require safe hosted-runner capacity"
+DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
+bash "$REPO/scripts/ci_resource_preflight.sh" \
+  --purpose "OncoTracer $SUITE frozen-v1.1/native-v2 parity" \
+  --min-free-gib "$MIN_FREE_GIB" \
+  --min-physical-gib "$MIN_PHYSICAL_GIB" \
+  --min-addressable-gib "$MIN_ADDRESSABLE_GIB" \
+  --planned-swap-gib "$PARITY_SWAP_GIB" \
+  --standard-contract-free-gib "$STANDARD_RUNNER_CONTRACT_FREE_GIB" \
+  --path "$GITHUB_WORKSPACE" \
+  --path "$RUNNER_TEMP" \
+  --path /tmp \
+  --path "$DOCKER_ROOT_DIR" \
+  2>&1 | tee "$RESOURCE_PREFLIGHT"
+record_phase_resources preflight-passed
 
 log "Install frozen-comparator prerequisites"
 sudo apt-get update
@@ -87,7 +415,13 @@ printf 'version=%s\nurl=%s\nsha256=%s\n' \
 
 log "Authenticate frozen v1.1 container"
 docker info
+v1_created_by_job=1
+if docker image inspect "$V1_DOCKER_IMAGE" >/dev/null 2>&1; then
+  v1_created_by_job=0
+fi
 docker pull "$V1_DOCKER_IMAGE"
+v1_image_id="$(docker image inspect "$V1_DOCKER_IMAGE" --format '{{.Id}}')"
+record_image_ownership "$V1_DOCKER_IMAGE" "$v1_image_id" "$v1_created_by_job"
 docker image inspect "$V1_DOCKER_IMAGE" \
   --format '{{range .RepoDigests}}{{println .}}{{end}}' \
   | tee "$RUNNER_TEMP/v1-docker-repodigests.txt"
@@ -95,18 +429,19 @@ grep -Fx "$V1_DOCKER_IMAGE" "$RUNNER_TEMP/v1-docker-repodigests.txt"
 printf '%s\n' "$V1_DOCKER_IMAGE" > "$RUNNER_TEMP/v1-docker-digest.txt"
 
 log "Add addressable-memory headroom"
-if [[ ! -e "/swapfile.oncotracer-$SUITE" ]]; then
-  sudo fallocate -l 32G "/swapfile.oncotracer-$SUITE"
-  sudo chmod 600 "/swapfile.oncotracer-$SUITE"
-  sudo mkswap "/swapfile.oncotracer-$SUITE"
-fi
-sudo swapon "/swapfile.oncotracer-$SUITE" || true
-sudo sysctl -w vm.swappiness=100 || true
+[[ ! -e "$SWAP_FILE" && ! -L "$SWAP_FILE" ]] || {
+  echo "Refusing to replace pre-existing job swap path: $SWAP_FILE" >&2
+  exit 1
+}
+trap cleanup_job_swap EXIT
+sudo fallocate -l "${PARITY_SWAP_GIB}G" "$SWAP_FILE"
+sudo chmod 600 "$SWAP_FILE"
+sudo mkswap "$SWAP_FILE"
+sudo swapon "$SWAP_FILE"
 free -h
+record_phase_resources swap-active
 
-log "Build copied native v2 executable and install isolated Conda backend"
-conda config --set channel_priority strict
-conda config --set solver libmamba
+log "Build copied native v2 executable and authenticate source identities"
 SOURCE_COMMIT="$(git -C "$REPO" rev-parse HEAD)"
 test "$SOURCE_COMMIT" = "$CANDIDATE_SHA"
 SOURCE_SHA256="$(git -C "$REPO" -c tar.umask=0002 archive --format=tar "$SOURCE_COMMIT" | sha256sum | awk '{print $1}')"
@@ -132,17 +467,6 @@ V1_TAG_COMMIT="$(git -C "$V1_REPO" rev-list -n 1 v1.1)"
 test "$V1_TAG_COMMIT" = "$V1_1_COMMIT"
 printf '%s\n' "$V1_BASELINE_COMMIT" > "$RUNNER_TEMP/v1-baseline-commit.txt"
 printf '%s\n' "$V1_TAG_COMMIT" > "$RUNNER_TEMP/v1-tag-commit.txt"
-
-"$REPO/dist/oncotracer" install --conda --prefix "$V2_ENV_PREFIX" \
-  > "$RUNNER_TEMP/native-install.json" 2> "$RUNNER_TEMP/native-install.stderr.log"
-jq -e '.backend == "conda"' "$RUNNER_TEMP/native-install.json"
-"$REPO/dist/oncotracer" doctor --backend conda \
-  > "$RUNNER_TEMP/native-doctor.json" 2> "$RUNNER_TEMP/native-doctor.stderr.log"
-jq -e '.success == true' "$RUNNER_TEMP/native-doctor.json"
-for environment in core qdnaseq ichorcna classifier gistic; do
-  conda list --explicit --prefix "$V2_ENV_PREFIX/$environment" \
-    > "$RUNNER_TEMP/native-$environment.explicit.txt"
-done
 
 log "Prepare public inputs and isolated v1/v2 configs"
 if [[ "$SUITE" == quickstart1 ]]; then
@@ -174,6 +498,7 @@ else
     --destination "$TEST_ROOT/configs/v2-hcc1143.yml" \
     --lpwgs-root "$TEST_ROOT" --outdir "$TEST_ROOT/v2/hcc1143"
 fi
+record_phase_resources public-inputs-ready
 
 log "Pin every nested SAMURAI runtime image by immutable digest"
 if [[ "$SUITE" == quickstart1 ]]; then
@@ -206,9 +531,16 @@ while IFS=$'\t' read -r container digest; do
   [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
   repository="${container%:*}"
   immutable="$repository@$digest"
+  immutable_created_by_job=1
+  if docker image inspect "$immutable" >/dev/null 2>&1; then
+    immutable_created_by_job=0
+  fi
   docker pull "$immutable"
   expected_id="$(docker image inspect "$immutable" --format '{{.Id}}')"
+  record_image_ownership "$immutable" "$expected_id" "$immutable_created_by_job"
+  mutable_created_by_job=1
   if docker image inspect "$container" >/dev/null 2>&1; then
+    mutable_created_by_job=0
     existing_id="$(docker image inspect "$container" --format '{{.Id}}')"
     test "$existing_id" = "$expected_id" || {
       echo "mutable SAMURAI tag $container resolves to unexpected $existing_id" >&2
@@ -219,10 +551,12 @@ while IFS=$'\t' read -r container digest; do
   fi
   observed_id="$(docker image inspect "$container" --format '{{.Id}}')"
   test "$observed_id" = "$expected_id"
+  record_image_ownership "$container" "$observed_id" "$mutable_created_by_job"
   docker image inspect "$container" --format '{{range .RepoDigests}}{{println .}}{{end}}' \
     | grep -E "@${digest}$"
   printf '%s\t%s\t%s\n' "$container" "$digest" "$observed_id" >> "$PREFLIGHT"
 done < "$PINS"
+record_phase_resources frozen-images-ready
 
 log "Configure nested SAMURAI tracing and comparator resources"
 cat > "$TEST_ROOT/configs/v1-pinned-nextflow.config" <<EOF
@@ -359,20 +693,29 @@ else
     --hcc-pre-inventory "$HCC_PRE_INVENTORY" \
     --hcc-root "$TEST_ROOT/v1/hcc1143/01_samurai_illumina"
 fi
+record_phase_resources frozen-traces-authenticated
+
+log "Release only image references proven to have been created by this job"
+remove_owned_image_references
+record_phase_resources frozen-images-released
+
+log "Create and probe only the native environments exercised by $SUITE"
+create_minimal_native_environments
 
 log "Run complete copied native v2 executable"
 if [[ "$SUITE" == quickstart1 ]]; then
-  "$REPO/dist/oncotracer" run --backend conda \
+  "$REPO/dist/oncotracer" run --backend host \
     --config "$TEST_ROOT/configs/v2-illumina.yml" --threads 4 \
     2>&1 | tee "$REPORT_ROOT/v2-illumina.log"
-  "$REPO/dist/oncotracer" run --backend conda \
+  "$REPO/dist/oncotracer" run --backend host \
     --config "$TEST_ROOT/configs/v2-ont.yml" --threads 4 \
     2>&1 | tee "$REPORT_ROOT/v2-ont.log"
 else
-  "$REPO/dist/oncotracer" run --backend conda \
+  "$REPO/dist/oncotracer" run --backend host \
     --config "$TEST_ROOT/configs/v2-hcc1143.yml" --threads 4 \
     2>&1 | tee "$REPORT_ROOT/v2-hcc1143.log"
 fi
+record_phase_resources native-runs-complete
 
 log "Produce semantic parity reports"
 if [[ "$SUITE" == quickstart1 ]]; then
@@ -422,13 +765,10 @@ cp "$RUNNER_TEMP/v1-docker-repodigests.txt" "$CONTEXT/"
 cp "$RUNNER_TEMP/nextflow-version.txt" "$CONTEXT/"
 cp "$RUNNER_TEMP/nextflow-identity.txt" "$CONTEXT/"
 cp "$RUNNER_TEMP/samurai.oncotracer-source" "$CONTEXT/"
-cp "$RUNNER_TEMP/native-install.json" "$CONTEXT/"
-cp "$RUNNER_TEMP/native-install.stderr.log" "$CONTEXT/"
-cp "$RUNNER_TEMP/native-doctor.json" "$CONTEXT/"
-cp "$RUNNER_TEMP/native-doctor.stderr.log" "$CONTEXT/"
 cp "$RUNNER_TEMP/native-binary.sha256" "$CONTEXT/"
 cp "$RUNNER_TEMP/native-binary-provenance.json" "$CONTEXT/"
 cp "$RUNNER_TEMP"/native-*.explicit.txt "$CONTEXT/"
+cp "$IMAGE_OWNERSHIP" "$CONTEXT/job-image-reference-ownership.tsv"
 cp "$PINS" "$CONTEXT/nested-v1-container-pins.tsv"
 cp "$PREFLIGHT" "$CONTEXT/nested-v1-container-preflight.tsv"
 cp "$TEST_ROOT/configs/v1-pinned-nextflow.config" "$CONTEXT/"
@@ -508,6 +848,14 @@ PY
 cp -a "$QDNASEQ_GENERATION/." "$CONTEXT/qdnaseq-annotation/"
 python3 "$REPO/tests/parity_audit.py" manifest \
   "$CONTEXT/qdnaseq-annotation" "$CONTEXT/manifests/qdnaseq-annotation-manifest.tsv"
+
+{
+  printf 'final_test_root_bytes\t'
+  du -sx -B1 "$TEST_ROOT" | awk '{print $1}'
+  LC_ALL=C df -Pk "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp "$DOCKER_ROOT_DIR"
+  free -k
+  docker system df
+} > "$CONTEXT/hosted-resource-final.txt"
 
 log "Enforce audit contract, finalize checksums, and verify from artifact shape"
 python3 "$REPO/tests/parity_audit.py" verify \
