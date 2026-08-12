@@ -281,6 +281,77 @@ class StandaloneDryRunTests(unittest.TestCase):
         completed = self._run_case(prepare)
         self.assertIn("explicit-root/environments/native-core.yml", completed.stderr)
 
+    def test_standalone_ignores_an_adjacent_checkout_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            checkout = base / "adjacent-checkout"
+            (checkout / "bin" / "scripts").mkdir(parents=True)
+            (checkout / "bin" / "scripts" / "adjacent-sentinel").write_text(
+                "must not be used\n", encoding="utf-8"
+            )
+            adjacent_environments = checkout / "environments"
+            adjacent_environments.mkdir()
+            for name in (
+                "native-core.yml",
+                "native-qdnaseq.yml",
+                "native-ichorcna.yml",
+                "native-classifier.yml",
+                "native-gistic2.yml",
+            ):
+                (adjacent_environments / name).write_text(
+                    "name: adjacent-sentinel\n", encoding="utf-8"
+                )
+
+            executable = checkout / "oncotracer"
+            executable.write_bytes(self.binary.read_bytes())
+            executable.chmod(0o755)
+            fake_bin = base / "fake-bin"
+            fake_bin.mkdir()
+            conda_ran = base / "conda-ran"
+            conda = fake_bin / "conda"
+            conda.write_text(
+                "#!/bin/sh\n" ': > "$ONCOTRACER_CONDA_SENTINEL"\n' "exit 97\n",
+                encoding="utf-8",
+            )
+            conda.chmod(0o755)
+            payload = base / "verified-embedded-payload"
+            environment = os.environ.copy()
+            environment.pop("ONCOTRACER_ROOT", None)
+            environment.update(
+                {
+                    "HOME": str(base / "home"),
+                    "XDG_CONFIG_HOME": str(base / "config-home"),
+                    "XDG_DATA_HOME": str(base / "data-home"),
+                    "XDG_CACHE_HOME": str(base / "cache-home"),
+                    "ONCOTRACER_PAYLOAD_CACHE": str(payload),
+                    "ONCOTRACER_CONDA_SENTINEL": str(conda_ran),
+                    "PATH": f"{fake_bin}{os.pathsep}{environment.get('PATH', '')}",
+                    "PYTHONDONTWRITEBYTECODE": "1",
+                }
+            )
+            completed = subprocess.run(
+                [
+                    str(executable),
+                    "install",
+                    "--conda",
+                    "--prefix",
+                    str(base / "envs"),
+                ],
+                text=True,
+                capture_output=True,
+                env=environment,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 2)
+            self.assertTrue(conda_ran.is_file())
+            self.assertTrue((payload / ".complete.json").is_file())
+            embedded_core = payload / "environments" / "native-core.yml"
+            self.assertTrue(embedded_core.is_file())
+            self.assertNotIn("adjacent-sentinel", embedded_core.read_text())
+            self.assertIn(str(embedded_core), completed.stderr)
+            self.assertNotIn(str(adjacent_environments), completed.stderr)
+
     def test_normal_standalone_command_keeps_reusable_payload_cache(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)

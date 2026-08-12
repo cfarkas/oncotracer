@@ -510,26 +510,34 @@ def _extract_zipapp_payload(archive: Path) -> Path:
 
 def runtime_root(explicit: str | Path | None = None) -> Path:
     """Return a repository/payload root containing ``bin/scripts``."""
-    candidates: list[Path] = []
+    configured: list[Path] = []
     if explicit:
-        candidates.append(Path(explicit).expanduser())
+        configured.append(Path(explicit).expanduser())
     if value := os.environ.get("ONCOTRACER_ROOT"):
-        candidates.append(Path(value).expanduser())
-    package = Path(__file__).resolve()
-    candidates.extend(
-        [
-            package.parents[1],
-            package.parents[2] if len(package.parents) > 2 else package.parent,
-        ]
-    )
-    for candidate in candidates:
+        configured.append(Path(value).expanduser())
+    for candidate in configured:
         with contextlib.suppress(OSError):
             resolved = candidate.resolve()
             if (resolved / "bin" / "scripts").is_dir():
                 return resolved
+
+    # A copied release executable must use its own embedded, verified payload
+    # even when it happens to sit inside a source checkout. Inferred package
+    # parents are meaningful only for a normal source import.
     executable = Path(sys.argv[0]).expanduser()
     if executable.exists() and zipfile.is_zipfile(executable):
         return _extract_zipapp_payload(executable.resolve())
+
+    package = Path(__file__).resolve()
+    inferred = [
+        package.parents[1],
+        package.parents[2] if len(package.parents) > 2 else package.parent,
+    ]
+    for candidate in inferred:
+        with contextlib.suppress(OSError):
+            resolved = candidate.resolve()
+            if (resolved / "bin" / "scripts").is_dir():
+                return resolved
     raise OncoTracerError(
         "OncoTracer payload was not found. Run from a repository clone, use the "
         "standalone release executable, or set ONCOTRACER_ROOT."
