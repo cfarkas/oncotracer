@@ -748,6 +748,46 @@ class PythonCleanupVisitor(ast.NodeVisitor):
         for attribute in attributes:
             getattr(self, attribute).add(target.id)
 
+    @classmethod
+    def _target_nodes(cls, target: ast.AST) -> tuple[ast.AST, ...]:
+        if isinstance(target, ast.Starred):
+            return cls._target_nodes(target.value)
+        if isinstance(target, (ast.Tuple, ast.List)):
+            return tuple(
+                child for element in target.elts for child in cls._target_nodes(element)
+            )
+        return (target,)
+
+    def _bind_assignment(self, target: ast.AST, value: ast.AST | None) -> None:
+        if isinstance(target, (ast.Tuple, ast.List)):
+            values: tuple[ast.AST | None, ...]
+            if (
+                isinstance(value, (ast.Tuple, ast.List))
+                and len(target.elts) == len(value.elts)
+                and not any(isinstance(item, ast.Starred) for item in target.elts)
+            ):
+                values = tuple(value.elts)
+            else:
+                values = (None,) * len(target.elts)
+            for child, child_value in zip(target.elts, values, strict=True):
+                self._bind_assignment(child, child_value)
+            return
+        if isinstance(target, ast.Starred):
+            self._bind_assignment(target.value, None)
+            return
+
+        callable_aliases = (
+            self._callable_alias_attributes(value) if value is not None else ()
+        )
+        rendered = _python_path_symbol(value, self.symbols, self.path_aliases)
+        if rendered is None and isinstance(value, ast.Call):
+            temporary_kind = self._temporary_call_kind(value)
+            if temporary_kind == "temporary-directory":
+                rendered = self._temporary_placeholder(temporary_kind)
+        self._invalidate_import_alias(target)
+        self._assign_symbol(target, rendered)
+        self._assign_callable_aliases(target, callable_aliases)
+
     def _alias_snapshot(self) -> dict[str, set[str]]:
         return {
             attribute: getattr(self, attribute).copy()
@@ -799,6 +839,17 @@ class PythonCleanupVisitor(ast.NodeVisitor):
         inherited = self.symbols
         inherited_aliases = self._alias_snapshot()
         self.symbols = inherited.copy()
+        parameters: list[ast.arg] = [
+            *node.args.posonlyargs,
+            *node.args.args,
+            *node.args.kwonlyargs,
+        ]
+        if node.args.vararg is not None:
+            parameters.append(node.args.vararg)
+        if node.args.kwarg is not None:
+            parameters.append(node.args.kwarg)
+        for parameter in parameters:
+            self._bind_assignment(ast.Name(id=parameter.arg), None)
         for statement in node.body:
             self.visit(statement)
         result = self.symbols
@@ -974,36 +1025,23 @@ class PythonCleanupVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign) -> None:
-        callable_aliases = self._callable_alias_attributes(node.value)
-        rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
-        if rendered is None and isinstance(node.value, ast.Call):
-            temporary_kind = self._temporary_call_kind(node.value)
-            if temporary_kind == "temporary-directory":
-                rendered = self._temporary_placeholder(temporary_kind)
         for target in node.targets:
-            self._invalidate_import_alias(target)
-            self._assign_symbol(target, rendered)
-            self._assign_callable_aliases(target, callable_aliases)
+            self._bind_assignment(target, node.value)
         self.generic_visit(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        callable_aliases = (
-            self._callable_alias_attributes(node.value)
-            if node.value is not None
-            else ()
-        )
-        rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
-        self._invalidate_import_alias(node.target)
-        self._assign_symbol(node.target, rendered)
-        self._assign_callable_aliases(node.target, callable_aliases)
+        self._bind_assignment(node.target, node.value)
         self.generic_visit(node)
 
     def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
-        callable_aliases = self._callable_alias_attributes(node.value)
-        rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
-        self._invalidate_import_alias(node.target)
-        self._assign_symbol(node.target, rendered)
-        self._assign_callable_aliases(node.target, callable_aliases)
+        self._bind_assignment(node.target, node.value)
+        self.generic_visit(node)
+
+    def visit_AugAssign(self, node: ast.AugAssign) -> None:
+        # Even `safe += dynamic` can redirect a string path.  Treat every
+        # augmented result as unproved; the active scanner is intentionally
+        # fail-closed rather than trying to model arbitrary __iadd__ methods.
+        self._bind_assignment(node.target, None)
         self.generic_visit(node)
 
     def visit_With(self, node: ast.With) -> None:
@@ -1049,8 +1087,11 @@ class PythonCleanupVisitor(ast.NodeVisitor):
                 body_symbols[node.target.id] = f"{base}/{pattern}"
             else:
                 body_symbols[node.target.id] = PYTHON_UNKNOWN_PATH
-        elif isinstance(node.target, ast.Name):
-            body_symbols[node.target.id] = PYTHON_UNKNOWN_PATH
+        else:
+            for target in self._target_nodes(node.target):
+                key = self._target_key(target)
+                if key is not None:
+                    body_symbols[key] = PYTHON_UNKNOWN_PATH
         body_result = self._visit_branch(node.body, body_symbols, base_aliases)
         self._merge_branches([(base_symbols, base_aliases), body_result])
         if node.orelse:
@@ -2082,6 +2123,19 @@ with tempfile.TemporaryDirectory() as directory:
             "from pathlib import Path\n"
             "def active_default(value=Path('/opt/hostedtoolcache').unlink()):\n"
             "    return value\n",
+            "from pathlib import Path\n"
+            "target = '$RUNNER_TEMP/oncotracer-${GITHUB_RUN_ID}/owned'\n"
+            "def cleanup(target):\n"
+            "    Path(target).unlink()\n"
+            "cleanup(input())\n",
+            "from pathlib import Path\n"
+            "target = '$RUNNER_TEMP/oncotracer-${GITHUB_RUN_ID}/owned'\n"
+            "target += input()\n"
+            "Path(target).unlink()\n",
+            "from pathlib import Path\n"
+            "target = '$RUNNER_TEMP/oncotracer-${GITHUB_RUN_ID}/owned'\n"
+            "target, other = input(), 'value'\n"
+            "Path(target).unlink()\n",
         )
         for source in adversarial:
             with self.subTest(source=source):
