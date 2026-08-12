@@ -380,6 +380,19 @@ class OutputSafetyTests(unittest.TestCase):
                 with self.assertRaisesRegex(OncoTracerError, "owner changed"):
                     lease.validate()
 
+    def test_configuration_change_is_detected_before_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "config.yml"
+            config.write_text("mode: illumina\n", encoding="utf-8")
+            output = root / "run"
+            with claim_output_run(
+                output, config_path=config, identity=IDENTITY
+            ) as lease:
+                config.write_text("mode: ont\n", encoding="utf-8")
+                with self.assertRaisesRegex(OncoTracerError, "configuration changed"):
+                    lease.validate()
+
 
 if __name__ == "__main__":
     unittest.main()

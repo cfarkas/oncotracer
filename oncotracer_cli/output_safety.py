@@ -439,8 +439,20 @@ class OutputRunLease:
     owner: dict[str, object]
     _lock_handle: object
     active_path: Path
+    config_path: Path
+    config_sha256: str
 
     def validate(self) -> None:
+        try:
+            current_config_sha256 = _file_sha256(self.config_path)
+        except OSError as error:
+            raise OncoTracerError(
+                f"native run configuration disappeared during execution: {self.config_path}"
+            ) from error
+        if current_config_sha256 != self.config_sha256:
+            raise OncoTracerError(
+                f"native run configuration changed during execution: {self.config_path}"
+            )
         state, owner = _inspect_existing_target(
             self.path, self.owner["runtime_identity"]
         )
@@ -482,6 +494,8 @@ def claim_output_run(
     _reject_broad_target(path)
     _reject_symlink_components(path)
     runtime_identity = dict(identity or current_runtime_identity(runtime_root_path))
+    config_path = config_path.expanduser().resolve(strict=True)
+    config_digest = _file_sha256(config_path)
 
     # Read-only preflight ensures a typo naming protected nonempty data does not
     # even create an adjacent lock file or ownership marker.
@@ -538,11 +552,13 @@ def claim_output_run(
                 "hostname": socket.gethostname(),
                 "started_at": utc_now(),
                 "config_name": config_path.name,
-                "config_sha256": _file_sha256(config_path),
+                "config_sha256": config_digest,
                 "runtime_identity": runtime_identity,
             },
         )
-        return OutputRunLease(path, owner, handle, active_path)
+        return OutputRunLease(
+            path, owner, handle, active_path, config_path, config_digest
+        )
     except BaseException:
         handle.close()
         raise
