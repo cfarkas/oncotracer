@@ -719,6 +719,35 @@ class PythonCleanupVisitor(ast.NodeVisitor):
         ):
             aliases.discard(target.id)
 
+    def _callable_alias_attributes(self, node: ast.AST) -> tuple[str, ...]:
+        if isinstance(node, ast.Name):
+            return tuple(
+                attribute
+                for attribute in (
+                    "rmtree_aliases",
+                    "remove_aliases",
+                    "unlink_aliases",
+                )
+                if node.id in getattr(self, attribute)
+            )
+        if not isinstance(node, ast.Attribute) or not isinstance(node.value, ast.Name):
+            return ()
+        if node.value.id in self.shutil_aliases and node.attr == "rmtree":
+            return ("rmtree_aliases",)
+        if node.value.id in self.os_aliases and node.attr == "remove":
+            return ("remove_aliases",)
+        if node.value.id in self.os_aliases and node.attr == "unlink":
+            return ("unlink_aliases",)
+        return ()
+
+    def _assign_callable_aliases(
+        self, target: ast.AST, attributes: tuple[str, ...]
+    ) -> None:
+        if not isinstance(target, ast.Name):
+            return
+        for attribute in attributes:
+            getattr(self, attribute).add(target.id)
+
     def _alias_snapshot(self) -> dict[str, set[str]]:
         return {
             attribute: getattr(self, attribute).copy()
@@ -945,26 +974,36 @@ class PythonCleanupVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign) -> None:
+        callable_aliases = self._callable_alias_attributes(node.value)
         rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
         if rendered is None and isinstance(node.value, ast.Call):
             temporary_kind = self._temporary_call_kind(node.value)
             if temporary_kind == "temporary-directory":
                 rendered = self._temporary_placeholder(temporary_kind)
         for target in node.targets:
-            self._assign_symbol(target, rendered)
             self._invalidate_import_alias(target)
+            self._assign_symbol(target, rendered)
+            self._assign_callable_aliases(target, callable_aliases)
         self.generic_visit(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        callable_aliases = (
+            self._callable_alias_attributes(node.value)
+            if node.value is not None
+            else ()
+        )
         rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
-        self._assign_symbol(node.target, rendered)
         self._invalidate_import_alias(node.target)
+        self._assign_symbol(node.target, rendered)
+        self._assign_callable_aliases(node.target, callable_aliases)
         self.generic_visit(node)
 
     def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
+        callable_aliases = self._callable_alias_attributes(node.value)
         rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
-        self._assign_symbol(node.target, rendered)
         self._invalidate_import_alias(node.target)
+        self._assign_symbol(node.target, rendered)
+        self._assign_callable_aliases(node.target, callable_aliases)
         self.generic_visit(node)
 
     def visit_With(self, node: ast.With) -> None:
@@ -987,6 +1026,10 @@ class PythonCleanupVisitor(ast.NodeVisitor):
             self.symbols.pop(name, None)
 
     def visit_For(self, node: ast.For) -> None:
+        self.visit(node.iter)
+        base_symbols = self.symbols.copy()
+        base_aliases = self._alias_snapshot()
+        body_symbols = base_symbols.copy()
         iterator = node.iter
         if (
             isinstance(node.target, ast.Name)
@@ -1003,8 +1046,34 @@ class PythonCleanupVisitor(ast.NodeVisitor):
                 self.path_aliases,
             )
             if base is not None and pattern is not None:
-                self.symbols[node.target.id] = f"{base}/{pattern}"
-        self.generic_visit(node)
+                body_symbols[node.target.id] = f"{base}/{pattern}"
+            else:
+                body_symbols[node.target.id] = PYTHON_UNKNOWN_PATH
+        elif isinstance(node.target, ast.Name):
+            body_symbols[node.target.id] = PYTHON_UNKNOWN_PATH
+        body_result = self._visit_branch(node.body, body_symbols, base_aliases)
+        self._merge_branches([(base_symbols, base_aliases), body_result])
+        if node.orelse:
+            merged_symbols = self.symbols.copy()
+            merged_aliases = self._alias_snapshot()
+            else_result = self._visit_branch(
+                node.orelse, merged_symbols, merged_aliases
+            )
+            self._merge_branches([(merged_symbols, merged_aliases), else_result])
+
+    def visit_While(self, node: ast.While) -> None:
+        self.visit(node.test)
+        base_symbols = self.symbols.copy()
+        base_aliases = self._alias_snapshot()
+        body_result = self._visit_branch(node.body, base_symbols, base_aliases)
+        self._merge_branches([(base_symbols, base_aliases), body_result])
+        if node.orelse:
+            merged_symbols = self.symbols.copy()
+            merged_aliases = self._alias_snapshot()
+            else_result = self._visit_branch(
+                node.orelse, merged_symbols, merged_aliases
+            )
+            self._merge_branches([(merged_symbols, merged_aliases), else_result])
 
 
 def _python_environment_name(node: ast.AST) -> str | None:
@@ -1714,12 +1783,15 @@ def verified_image_helper_violations(source: str) -> list[str]:
             -1,
         )
         matching_fi = -1
+        created_else = -1
         if created_if >= 0:
             depth = 0
             for index in range(created_if, len(stripped)):
                 line = stripped[index]
                 if re.match(r"^if\b.*\bthen$", line):
                     depth += 1
+                elif line == "else" and depth == 1:
+                    created_else = index
                 elif line == "fi":
                     depth -= 1
                     if depth == 0:
@@ -1728,6 +1800,10 @@ def verified_image_helper_violations(source: str) -> list[str]:
         if not (created_if < deletion_index < matching_fi):
             findings.append(
                 "verified image deletion is outside the created-by-this-job branch"
+            )
+        if created_else >= 0 and deletion_index > created_else:
+            findings.append(
+                "verified image deletion occurs in the pre-existing-image else branch"
             )
 
         active_use_guard = next(
@@ -1918,6 +1994,7 @@ PY
             "from pathlib import Path\n(Path.home() / '.nextflow').unlink()\n",
             "import os\nos.remove(os.path.join('/opt/hostedtoolcache', 'file'))\n",
             "import shutil, sys\nshutil.rmtree(sys.argv[1])\n",
+            "import shutil, sys\nwipe = shutil.rmtree\nwipe(sys.argv[1])\n",
             "from pathlib import Path\nPath(input()).unlink()\n",
         )
         for source in variants:
@@ -1969,6 +2046,13 @@ with tempfile.TemporaryDirectory() as directory:
             "    if input():\n"
             "        target = Path(sys.argv[1])\n"
             "    shutil.rmtree(target)\n",
+            "import sys, tempfile\n"
+            "from pathlib import Path\n"
+            "with tempfile.TemporaryDirectory() as directory:\n"
+            "    target = Path(sys.argv[1])\n"
+            "    for _item in []:\n"
+            "        target = Path(directory) / 'owned'\n"
+            "    target.unlink()\n",
             "import tempfile\n"
             "from pathlib import Path\n"
             "with tempfile.TemporaryDirectory() as directory:\n"
@@ -2163,6 +2247,11 @@ SHELL
                 '      [[ -z "$containers" ]] || {',
                 '      docker image rm -- "$reference"\n'
                 '      [[ -z "$containers" ]] || {',
+                1,
+            ),
+            source.replace(
+                dynamic_delete,
+                'else\n      docker image rm -- "$reference"',
                 1,
             ),
         )
