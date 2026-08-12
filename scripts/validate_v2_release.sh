@@ -206,7 +206,6 @@ fi
 export TMPDIR="$TMP_DIR"
 export XDG_CONFIG_HOME="$VALIDATION_ROOT/config"
 export XDG_DATA_HOME="$VALIDATION_ROOT/data"
-export ONCOTRACER_PAYLOAD_CACHE="$VALIDATION_ROOT/payload-cache"
 # Release parity is CPU-only on the validation server. Do not discover,
 # configure, reset, or place load on GPUs used by active sequencing services.
 export CUDA_VISIBLE_DEVICES=""

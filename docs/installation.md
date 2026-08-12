@@ -34,6 +34,8 @@ oncotracer provenance --json
 
 The copied executable is a deterministic Python zipapp containing the versioned OncoTracer source payload. It does not require a Git clone after installation.
 
+Normal commands that need bundled scripts verify and reuse a content-addressed cache at `$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload` (or `$HOME/.cache` when `XDG_CACHE_HOME` is unset). Each executable digest is isolated, and the exact payload inventory is checked before reuse. `--dry-run` instead uses an automatically removed temporary payload: it does not populate the persistent cache, save installation state, create results or environments, or pull an image/SIF.
+
 Keep these release files together for audit:
 
 ```text

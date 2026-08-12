@@ -69,6 +69,35 @@ class NativeDocumentationTests(unittest.TestCase):
         for page in ("native_architecture.md", "parity_release.md", "migration_v1_to_v2.md"):
             self.assertIn(page, text)
 
+    def test_standalone_payload_cache_contract_is_documented(self) -> None:
+        architecture = (ROOT / "docs/native_architecture.md").read_text(
+            encoding="utf-8"
+        )
+        installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
+        troubleshooting = (ROOT / "docs/troubleshooting.md").read_text(
+            encoding="utf-8"
+        )
+
+        cache_layout = (
+            "$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload"
+        )
+        self.assertIn(cache_layout, architecture)
+        self.assertIn(cache_layout, installation)
+        for required in (
+            "canonical path",
+            "normalized mode",
+            "size",
+            "SHA-256",
+            "Symlinks",
+            "special files",
+        ):
+            self.assertIn(required, architecture)
+        self.assertIn("process-scoped temporary payload", architecture)
+        self.assertIn("does not populate the persistent cache", installation)
+        self.assertIn("unset ONCOTRACER_PAYLOAD_CACHE", troubleshooting)
+        self.assertIn("preserves them rather than recursively deleting", troubleshooting)
+        self.assertIn("success, error, or interruption", troubleshooting)
+
     def test_native_ci_uses_exact_semantic_tool_probes(self) -> None:
         workflow = (ROOT / ".github/workflows/native-v2-ci.yml").read_text(
             encoding="utf-8"

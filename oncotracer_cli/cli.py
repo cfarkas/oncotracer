@@ -23,6 +23,7 @@ from .runtime import (
     atomic_write_json,
     atomic_write_text,
     download,
+    isolated_payload_cache,
     load_flat_yaml,
     require_command,
     require_file,
@@ -181,7 +182,6 @@ def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
 
 
 def command_install(args: argparse.Namespace) -> int:
-    root = runtime_root(args.root)
     selected = [name for name in ("docker", "singularity", "poetry", "conda") if getattr(args, name)]
     if len(selected) != 1:
         raise OncoTracerError(
@@ -189,13 +189,13 @@ def command_install(args: argparse.Namespace) -> int:
         )
     backend = selected[0]
     if backend == "conda":
-        result = _install_conda(root, args)
+        result = _install_conda(runtime_root(args.root), args)
     elif backend == "docker":
         result = _install_docker(args)
     elif backend == "singularity":
         result = _install_singularity(args)
     else:
-        result = _install_poetry(root, args)
+        result = _install_poetry(runtime_root(args.root), args)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 
@@ -1084,7 +1084,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not hasattr(args, "func"):
             parser.print_help()
             return 2
-        return int(args.func(args))
+        with isolated_payload_cache(bool(getattr(args, "dry_run", False))):
+            return int(args.func(args))
     except OncoTracerError as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2

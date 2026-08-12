@@ -267,7 +267,26 @@ sha256sum oncotracer 2>/dev/null || true
 
 For a stable asset, `source_commit`, `source_sha256`, and binary checksum must agree with `release-provenance.json` and `SHA256SUMS` from the same release.
 
-## 15. Report a reproducible problem
+## 15. Standalone payload-cache safety
+
+The copied executable normally manages its own content-addressed directory below the XDG cache. If `ONCOTRACER_PAYLOAD_CACHE` is set accidentally, return to the safe default before retrying:
+
+```bash
+unset ONCOTRACER_PAYLOAD_CACHE
+oncotracer --version
+```
+
+The override is an advanced integration option. It must name an absent or empty dedicated path, or a complete cache already owned by that exact executable archive. Never point it at a home directory, XDG root, shared reference, analysis, or scientific-data directory. OncoTracer rejects symlinked, unowned, mismatched, or unexpectedly populated paths and preserves them rather than recursively deleting them. Inspect an ownership or integrity error; do not respond with a broad cache deletion.
+
+The default cache layout is:
+
+```text
+${XDG_CACHE_HOME:-$HOME/.cache}/oncotracer/2.0.0/<executable-sha256>/payload
+```
+
+Every `--dry-run` uses a separate temporary payload and removes it on success, error, or interruption. A dry-run must not create persistent XDG state, outputs, environments, images, or SIF files.
+
+## 16. Report a reproducible problem
 
 Include only de-identified information:
 

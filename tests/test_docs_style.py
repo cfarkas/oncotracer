@@ -72,6 +72,8 @@ REQUIRED_TEXT = {
         "oncotracer doctor --backend conda",
         "oncotracer doctor --backend docker",
         "oncotracer doctor --backend singularity",
+        "$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload",
+        "does not populate the persistent cache",
     ),
     "docs/quick_start.md": (
         "complete native analysis",
@@ -157,6 +159,8 @@ REQUIRED_TEXT = {
         "file is present in the release executable or container",
         "exact Git commit and deterministic",
         "Normal v2 execution does not invoke Nextflow",
+        "canonical path, file type, normalized mode, size, and SHA-256",
+        "process-scoped temporary payload",
     ),
     "docs/parity_release.md": (
         "Illumina ERR12341627",
@@ -191,6 +195,8 @@ REQUIRED_TEXT = {
         "exact",
         "Rscript",
         "do not substitute a login-shell",
+        "unset ONCOTRACER_PAYLOAD_CACHE",
+        "preserves them rather than recursively deleting",
     ),
 }
 

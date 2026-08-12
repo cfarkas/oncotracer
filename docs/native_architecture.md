@@ -17,7 +17,11 @@ The optional classifier is a direct native stage graph over its versioned Python
 
 ## Single-file executable
 
-`scripts/build_native_binary.py` creates a compressed Python zipapp containing the CLI and the complete versioned payload (`bin`, examples, parameter templates, environment definitions, and stable source-input provenance). The build embeds the exact Git commit and deterministic `git archive` SHA-256. At first use, payload files are extracted atomically into a versioned user cache and verified against the executable SHA-256.
+`scripts/build_native_binary.py` creates a compressed Python zipapp containing the CLI and the complete versioned payload (`bin`, examples, parameter templates, environment definitions, and stable source-input provenance). The build embeds the exact Git commit and deterministic `git archive` SHA-256. At first use, payload files are staged and published atomically under `$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload`. The complete executable SHA-256 gives two different v2.0.0 binaries separate cache roots and locks.
+
+On every reuse, OncoTracer independently derives the expected payload inventory from the executable and verifies each canonical path, file type, normalized mode, size, and SHA-256. Symlinks, special files, missing paths, and extras cannot be accepted as a valid cache. An explicit `--root` or `ONCOTRACER_ROOT` containing `bin/scripts` takes precedence over extraction.
+
+All standalone `--dry-run` commands use a process-scoped temporary payload and remove it after success, validation failure, or interruption. They do not populate the persistent XDG cache or create installation configuration, result directories, Conda environments, container images, or SIF files.
 
 The release file can therefore be installed directly:
 

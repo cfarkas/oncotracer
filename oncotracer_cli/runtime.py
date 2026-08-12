@@ -11,21 +11,29 @@ import json
 import os
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
 import zipfile
+from contextvars import ContextVar
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Iterable, Mapping, Sequence, TextIO
+from pathlib import Path, PurePosixPath
+from typing import Iterable, Iterator, Mapping, Sequence, TextIO
 
 from . import __version__
 
 
 class OncoTracerError(RuntimeError):
     """Base exception for clear user-facing failures."""
+
+
+_SCOPED_PAYLOAD_CACHE: ContextVar[Path | None] = ContextVar(
+    "oncotracer_scoped_payload_cache", default=None
+)
 
 
 def utc_now() -> str:
@@ -66,55 +74,437 @@ def exclusive_lock(path: Path):
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-def _payload_cache() -> Path:
+@dataclass(frozen=True)
+class _PayloadCacheLocation:
+    path: Path
+    ownership: str
+    base: Path | None = None
+
+
+def _absolute_lexical(path: Path) -> Path:
+    return Path(os.path.abspath(os.fspath(path.expanduser())))
+
+
+def _reject_symlink_components(path: Path) -> None:
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current /= part
+        try:
+            metadata = current.lstat()
+        except FileNotFoundError:
+            break
+        except OSError as error:
+            raise OncoTracerError(
+                f"could not inspect payload-cache path component {current}: {error}"
+            ) from error
+        if stat.S_ISLNK(metadata.st_mode):
+            raise OncoTracerError(
+                f"payload-cache path must not contain symlinks: {current}"
+            )
+
+
+def _payload_cache_location(archive_sha256: str | None = None) -> _PayloadCacheLocation:
+    if scoped := _SCOPED_PAYLOAD_CACHE.get():
+        return _PayloadCacheLocation(_absolute_lexical(scoped), "context")
+
     override = os.environ.get("ONCOTRACER_PAYLOAD_CACHE")
     if override:
-        return Path(override).expanduser().resolve()
-    base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-    return (base / "oncotracer" / __version__ / "payload").resolve()
+        destination = _absolute_lexical(Path(override))
+        broad = {
+            Path(destination.anchor),
+            _absolute_lexical(Path.home()),
+        }
+        for name in ("XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"):
+            if value := os.environ.get(name):
+                broad.add(_absolute_lexical(Path(value)))
+        if destination in broad:
+            raise OncoTracerError(
+                "ONCOTRACER_PAYLOAD_CACHE must name a dedicated child path, not "
+                f"a filesystem, home, or XDG root: {destination}"
+            )
+        _reject_symlink_components(destination)
+        return _PayloadCacheLocation(destination, "explicit")
+
+    if not archive_sha256:
+        raise OncoTracerError(
+            "the standalone archive SHA-256 is required for the default payload cache"
+        )
+    base = _absolute_lexical(
+        Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    )
+    _reject_symlink_components(base)
+    destination = base / "oncotracer" / __version__ / archive_sha256 / "payload"
+    if destination.parent.parent.parent.parent != base:
+        raise OncoTracerError(f"invalid content-addressed payload-cache path: {destination}")
+    return _PayloadCacheLocation(destination, "default", base)
+
+
+def _payload_cache(archive_sha256: str | None = None) -> Path:
+    return _payload_cache_location(archive_sha256).path
+
+
+@contextlib.contextmanager
+def isolated_payload_cache(enabled: bool = True) -> Iterator[None]:
+    """Use an automatically removed, context-local payload cache when enabled."""
+    if not enabled:
+        yield
+        return
+    with tempfile.TemporaryDirectory(prefix="oncotracer-dry-run-payload-") as directory:
+        token = _SCOPED_PAYLOAD_CACHE.set(Path(directory) / "payload")
+        try:
+            yield
+        finally:
+            _SCOPED_PAYLOAD_CACHE.reset(token)
+
+
+def _payload_relative(member_name: str, *, directory: bool) -> PurePosixPath | None:
+    if not member_name.startswith("payload/"):
+        return None
+    if "\\" in member_name or any(ord(character) < 32 or ord(character) == 127 for character in member_name):
+        raise OncoTracerError(
+            f"standalone executable has an unsafe payload path: {member_name!r}"
+        )
+    raw = member_name[len("payload/") :]
+    if directory and raw.endswith("/"):
+        raw = raw[:-1]
+    parts = raw.split("/")
+    if not raw:
+        return None
+    if any(part in {"", ".", ".."} for part in parts):
+        raise OncoTracerError(
+            f"standalone executable has an unsafe payload path: {member_name!r}"
+        )
+    return PurePosixPath(*parts)
+
+
+def _zip_member_kind_mode(info: zipfile.ZipInfo) -> tuple[str, int]:
+    raw_mode = info.external_attr >> 16
+    file_type = stat.S_IFMT(raw_mode)
+    if info.is_dir():
+        if file_type not in {0, stat.S_IFDIR}:
+            raise OncoTracerError(
+                f"standalone payload directory has a special file type: {info.filename}"
+            )
+        return "directory", 0o755
+    if file_type != stat.S_IFREG:
+        raise OncoTracerError(
+            f"standalone payload member is not a regular file: {info.filename}"
+        )
+    return "file", 0o755 if stat.S_IMODE(raw_mode) & 0o111 else 0o644
+
+
+def _archive_payload_manifest(archive: Path) -> dict[str, dict[str, object]]:
+    manifest: dict[str, dict[str, object]] = {}
+    explicit_members: set[str] = set()
+    with zipfile.ZipFile(archive) as bundle:
+        for info in bundle.infolist():
+            relative = _payload_relative(info.filename, directory=info.is_dir())
+            if relative is None:
+                continue
+            name = relative.as_posix()
+            if name in explicit_members:
+                raise OncoTracerError(
+                    f"standalone executable has a duplicate payload path: {info.filename}"
+                )
+            explicit_members.add(name)
+            kind, mode = _zip_member_kind_mode(info)
+            for parent in reversed(relative.parents[:-1]):
+                parent_name = parent.as_posix()
+                previous = manifest.get(parent_name)
+                if previous and previous["kind"] != "directory":
+                    raise OncoTracerError(
+                        f"standalone payload file conflicts with directory {parent_name!r}"
+                    )
+                manifest[parent_name] = {"kind": "directory", "mode": 0o755}
+            previous = manifest.get(name)
+            if previous and previous["kind"] != kind:
+                raise OncoTracerError(
+                    f"standalone payload path has conflicting file types: {name}"
+                )
+            if kind == "directory":
+                manifest[name] = {"kind": kind, "mode": mode}
+                continue
+            digest = hashlib.sha256()
+            with bundle.open(info) as source:
+                while chunk := source.read(1024 * 1024):
+                    digest.update(chunk)
+            manifest[name] = {
+                "bytes": info.file_size,
+                "kind": kind,
+                "mode": mode,
+                "sha256": digest.hexdigest(),
+            }
+    if manifest.get("bin/scripts", {}).get("kind") != "directory":
+        raise OncoTracerError(f"standalone executable has no payload: {archive}")
+    return manifest
+
+
+def _tree_payload_manifest(path: Path) -> dict[str, dict[str, object]] | None:
+    manifest: dict[str, dict[str, object]] = {}
+    try:
+        root_metadata = path.lstat()
+    except OSError:
+        return None
+    if not stat.S_ISDIR(root_metadata.st_mode):
+        return None
+
+    pending = [path]
+    while pending:
+        directory = pending.pop()
+        try:
+            members = sorted(directory.iterdir(), key=lambda item: item.name)
+        except OSError:
+            return None
+        for member in members:
+            relative = member.relative_to(path).as_posix()
+            if relative == ".complete.json":
+                continue
+            try:
+                metadata = member.lstat()
+            except OSError:
+                return None
+            mode = stat.S_IMODE(metadata.st_mode)
+            if stat.S_ISDIR(metadata.st_mode):
+                manifest[relative] = {"kind": "directory", "mode": mode}
+                pending.append(member)
+                continue
+            if not stat.S_ISREG(metadata.st_mode):
+                return None
+            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+            try:
+                descriptor = os.open(member, flags)
+                with os.fdopen(descriptor, "rb") as handle:
+                    opened = os.fstat(handle.fileno())
+                    if not stat.S_ISREG(opened.st_mode):
+                        return None
+                    digest = hashlib.sha256()
+                    while chunk := handle.read(1024 * 1024):
+                        digest.update(chunk)
+            except OSError:
+                return None
+            manifest[relative] = {
+                "bytes": opened.st_size,
+                "kind": "file",
+                "mode": stat.S_IMODE(opened.st_mode),
+                "sha256": digest.hexdigest(),
+            }
+    return manifest
+
+
+def _manifest_sha256(manifest: Mapping[str, Mapping[str, object]]) -> str:
+    canonical = json.dumps(
+        manifest, ensure_ascii=True, separators=(",", ":"), sort_keys=True
+    )
+    return sha256_text(canonical)
+
+
+def _complete_payload(
+    path: Path,
+    expected: Mapping[str, object],
+    payload_manifest: Mapping[str, Mapping[str, object]],
+) -> bool:
+    marker = path / ".complete.json"
+    try:
+        marker_metadata = marker.lstat()
+    except OSError:
+        return False
+    if not stat.S_ISREG(marker_metadata.st_mode):
+        return False
+    try:
+        observed = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (
+        observed == expected
+        and _tree_payload_manifest(path) == payload_manifest
+    )
+
+
+def _cache_state(
+    path: Path,
+    expected: Mapping[str, object],
+    payload_manifest: Mapping[str, Mapping[str, object]],
+) -> str:
+    if not os.path.lexists(path):
+        return "absent"
+    try:
+        metadata = path.lstat()
+    except OSError:
+        return "unsafe"
+    if not stat.S_ISDIR(metadata.st_mode):
+        return "unsafe"
+    try:
+        entries = list(path.iterdir())
+    except OSError:
+        return "unsafe"
+    if not entries:
+        return "empty"
+    marker = path / ".complete.json"
+    try:
+        marker_metadata = marker.lstat()
+        if not stat.S_ISREG(marker_metadata.st_mode):
+            return "unsafe"
+        observed = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "unowned"
+    actual = _tree_payload_manifest(path)
+    if observed == expected and actual == payload_manifest:
+        return "valid"
+    if observed != expected or not actual:
+        return "unowned"
+    if set(actual) != set(payload_manifest):
+        return "unowned"
+    if any(
+        actual[name].get("kind") != payload_manifest[name].get("kind")
+        for name in actual
+    ):
+        return "unowned"
+    matching_file = any(
+        actual[name].get("kind") == "file" and actual[name] == payload_manifest[name]
+        for name in actual
+    )
+    return "owned-corrupt" if matching_file else "unowned"
+
+
+def _guard_cache_location(location: _PayloadCacheLocation) -> None:
+    destination = location.path
+    if destination == Path(destination.anchor):
+        raise OncoTracerError(f"refusing unsafe payload-cache path: {destination}")
+    _reject_symlink_components(destination)
+    if location.ownership == "default":
+        assert location.base is not None
+        expected = (
+            location.base
+            / "oncotracer"
+            / __version__
+            / destination.parent.name
+            / "payload"
+        )
+        if destination != expected or destination.name != "payload":
+            raise OncoTracerError(
+                f"refusing malformed content-addressed payload-cache path: {destination}"
+            )
+
+
+def _remove_owned_payload(path: Path, state: str, ownership: str) -> None:
+    if state == "absent":
+        return
+    if state == "empty":
+        path.rmdir()
+        return
+    if state == "owned-corrupt" or ownership == "context":
+        shutil.rmtree(path)
+        return
+    raise OncoTracerError(
+        f"refusing to replace unowned or unsafe payload-cache contents: {path}"
+    )
+
+
+def _extract_payload_to_staging(
+    archive: Path,
+    staging: Path,
+    payload_manifest: Mapping[str, Mapping[str, object]],
+) -> None:
+    for name, entry in sorted(
+        payload_manifest.items(), key=lambda item: (item[0].count("/"), item[0])
+    ):
+        if entry["kind"] == "directory":
+            directory = staging.joinpath(*PurePosixPath(name).parts)
+            directory.mkdir(parents=True, exist_ok=True)
+            directory.chmod(int(entry["mode"]))
+    with zipfile.ZipFile(archive) as bundle:
+        for info in bundle.infolist():
+            relative = _payload_relative(info.filename, directory=info.is_dir())
+            if relative is None or info.is_dir():
+                continue
+            entry = payload_manifest[relative.as_posix()]
+            target = staging.joinpath(*relative.parts)
+            with bundle.open(info) as source, target.open("xb") as sink:
+                shutil.copyfileobj(source, sink)
+            target.chmod(int(entry["mode"]))
+    for name, entry in sorted(
+        payload_manifest.items(), key=lambda item: item[0].count("/"), reverse=True
+    ):
+        if entry["kind"] == "directory":
+            staging.joinpath(*PurePosixPath(name).parts).chmod(int(entry["mode"]))
 
 
 def _extract_zipapp_payload(archive: Path) -> Path:
-    destination = _payload_cache()
-    marker = destination / ".complete.json"
-    lock = destination.parent / ".payload.lock"
+    archive_sha256 = sha256_file(archive)
+    payload_manifest = _archive_payload_manifest(archive)
+    expected = {
+        "schema": "oncotracer-payload-cache-v2",
+        "version": __version__,
+        "archive_sha256": archive_sha256,
+        "payload_entries": len(payload_manifest),
+        "payload_manifest_sha256": _manifest_sha256(payload_manifest),
+    }
+    location = _payload_cache_location(archive_sha256)
+    destination = location.path
+    _guard_cache_location(location)
+    initial_state = _cache_state(destination, expected, payload_manifest)
+    if initial_state == "valid":
+        return destination
+    if location.ownership == "explicit" and initial_state not in {
+        "absent",
+        "empty",
+        "owned-corrupt",
+    }:
+        raise OncoTracerError(
+            "ONCOTRACER_PAYLOAD_CACHE contains data not owned by this exact "
+            f"standalone executable; choose an absent or empty dedicated path: {destination}"
+        )
+    if initial_state == "unsafe":
+        raise OncoTracerError(f"payload-cache path is unsafe: {destination}")
+
+    lock = destination.parent / f".{destination.name}.oncotracer.lock"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    _guard_cache_location(location)
+    if os.path.lexists(lock) and not stat.S_ISREG(lock.lstat().st_mode):
+        raise OncoTracerError(f"payload-cache lock is not a regular file: {lock}")
     with exclusive_lock(lock):
-        expected = {"version": __version__, "archive_sha256": sha256_file(archive)}
-        if marker.is_file():
-            try:
-                observed = json.loads(marker.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                observed = None
-            if observed == expected and (destination / "bin" / "scripts").is_dir():
-                return destination
-        if destination.exists():
-            shutil.rmtree(destination)
-        destination.mkdir(parents=True, exist_ok=True)
-        with zipfile.ZipFile(archive) as bundle:
-            members = [
-                name for name in bundle.namelist() if name.startswith("payload/")
-            ]
-            if not members:
+        state = _cache_state(destination, expected, payload_manifest)
+        if state == "valid":
+            return destination
+        if state == "unsafe" or (
+            location.ownership != "context"
+            and state not in {"absent", "empty", "owned-corrupt"}
+        ):
+            raise OncoTracerError(
+                f"refusing to replace unowned or unsafe payload-cache contents: {destination}"
+            )
+
+        staging = Path(
+            tempfile.mkdtemp(prefix=".payload.tmp.", dir=str(destination.parent))
+        )
+        try:
+            _extract_payload_to_staging(archive, staging, payload_manifest)
+            atomic_write_json(staging / ".complete.json", expected)
+            if not _complete_payload(staging, expected, payload_manifest):
                 raise OncoTracerError(
-                    f"standalone executable has no payload: {archive}"
+                    f"standalone payload staging verification failed: {archive}"
                 )
-            for member in members:
-                relative = Path(member).relative_to("payload")
-                if not relative.parts:
-                    continue
-                target = destination / relative
-                if member.endswith("/"):
-                    target.mkdir(parents=True, exist_ok=True)
-                    continue
-                target.parent.mkdir(parents=True, exist_ok=True)
-                with bundle.open(member) as source, target.open("wb") as sink:
-                    shutil.copyfileobj(source, sink)
-                info = bundle.getinfo(member)
-                mode = info.external_attr >> 16
-                if mode:
-                    with contextlib.suppress(OSError):
-                        target.chmod(mode)
-        atomic_write_json(marker, expected)
+            state = _cache_state(destination, expected, payload_manifest)
+            if state == "valid":
+                return destination
+            if state == "unsafe" or (
+                location.ownership != "context"
+                and state not in {"absent", "empty", "owned-corrupt"}
+            ):
+                raise OncoTracerError(
+                    f"payload-cache contents changed during extraction: {destination}"
+                )
+            _guard_cache_location(location)
+            _remove_owned_payload(destination, state, location.ownership)
+            os.replace(staging, destination)
+            if not _complete_payload(destination, expected, payload_manifest):
+                raise OncoTracerError(
+                    "standalone payload post-publication verification failed; "
+                    f"preserving the cache for safe inspection: {destination}"
+                )
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging)
     return destination
 
 
@@ -132,14 +522,14 @@ def runtime_root(explicit: str | Path | None = None) -> Path:
             package.parents[2] if len(package.parents) > 2 else package.parent,
         ]
     )
-    executable = Path(sys.argv[0]).expanduser()
-    if executable.exists() and zipfile.is_zipfile(executable):
-        return _extract_zipapp_payload(executable.resolve())
     for candidate in candidates:
         with contextlib.suppress(OSError):
             resolved = candidate.resolve()
             if (resolved / "bin" / "scripts").is_dir():
                 return resolved
+    executable = Path(sys.argv[0]).expanduser()
+    if executable.exists() and zipfile.is_zipfile(executable):
+        return _extract_zipapp_payload(executable.resolve())
     raise OncoTracerError(
         "OncoTracer payload was not found. Run from a repository clone, use the "
         "standalone release executable, or set ONCOTRACER_ROOT."
@@ -356,6 +746,7 @@ def _command_environment(
 ) -> dict[str, str]:
     """Merge explicit overrides while allowing a caller to unset a variable."""
     environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
     for key, value in (overrides or {}).items():
         if value is None:
             environment.pop(key, None)
