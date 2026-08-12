@@ -3432,6 +3432,7 @@ def run_native(
         _output_lease=None,
         _verified_config=None,
         _config_sha256=None,
+        _execution_root=None,
     )
 
 
@@ -3449,6 +3450,7 @@ def _run_native_impl(
     _output_lease: OutputRunLease | None,
     _verified_config: Mapping[str, object] | None,
     _config_sha256: str | None,
+    _execution_root: Path | None,
 ) -> Path:
     explicit_root = root
     config_path = require_file(config_path, "OncoTracer YAML config")
@@ -3488,16 +3490,17 @@ def _run_native_impl(
     outdir = Path(os.path.abspath(os.fspath(Path(str(outdir_value)).expanduser())))
     cpu = threads or max(1, min(os.cpu_count() or 1, 16))
     force_run = _as_bool(config.get("force"), False) if force is None else force
+    execution_root = _execution_root or runtime_root(explicit_root)
     if _output_lease is None and not dry_run:
         with claim_output_run(
             outdir,
             config_path=config_path,
-            runtime_root_path=explicit_root,
+            runtime_root_path=execution_root,
             expected_config_sha256=config_digest,
         ) as output_lease:
             return _run_native_impl(
                 config_path,
-                root=explicit_root,
+                root=execution_root,
                 threads=threads,
                 force=force,
                 dry_run=False,
@@ -3508,24 +3511,16 @@ def _run_native_impl(
                 _output_lease=output_lease,
                 _verified_config=config,
                 _config_sha256=config_digest,
+                _execution_root=execution_root,
             )
 
-    payload_root: Path | None = None
     lpwgs_value = config.get("lpwgs_root")
     if lpwgs_value:
         lpwgs_root = Path(str(lpwgs_value)).expanduser().resolve()
-    elif dry_run:
-        root_hint = (
-            Path(explicit_root).expanduser().resolve()
-            if explicit_root
-            else Path.cwd().resolve()
-        )
-        lpwgs_root = (root_hint / "project").resolve()
     else:
-        payload_root = runtime_root(explicit_root)
-        lpwgs_root = (payload_root / "project").resolve()
+        lpwgs_root = (execution_root / "project").resolve()
     if dry_run:
-        inspect_output_target(outdir, runtime_root_path=explicit_root)
+        inspect_output_target(outdir, runtime_root_path=execution_root)
         _validate_native_dry_run(
             config,
             config_path,
@@ -3537,7 +3532,7 @@ def _run_native_impl(
             methylation_request,
         )
         return outdir
-    root = payload_root or runtime_root(explicit_root)
+    root = execution_root
     native_dir = outdir / ".oncotracer-native"
     trace = native_dir / "trace.tsv"
     runner = CommandRunner(trace, dry_run=dry_run)

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import shutil
@@ -64,6 +65,37 @@ def tree_snapshot(root: Path) -> list[tuple[str, str, int, str]]:
             content = ""
         records.append((relative, kind, stat.S_IMODE(metadata.st_mode), content))
     return records
+
+
+def make_runtime_root(base: Path, name: str = "runtime") -> Path:
+    root = base / name
+    script = root / "bin" / "scripts" / "runtime-sentinel.sh"
+    script.parent.mkdir(parents=True)
+    script.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    return root
+
+
+def make_illumina_config(base: Path, output: Path, name: str) -> Path:
+    first = base / f"{name}_R1.fastq.gz"
+    second = base / f"{name}_R2.fastq.gz"
+    first.write_bytes(b"reads-1")
+    second.write_bytes(b"reads-2")
+    samples = base / f"{name}.samples.csv"
+    samples.write_text(
+        "sample,fastq_1,fastq_2,status\n"
+        f"{name},{first},{second},tumor\n",
+        encoding="utf-8",
+    )
+    config = base / f"{name}.yml"
+    config.write_text(
+        "mode: illumina\n"
+        f"outdir: {output}\n"
+        f"illumina_samplesheet: {samples}\n"
+        "illumina_binsize_kb: 100\n"
+        "force: false\n",
+        encoding="utf-8",
+    )
+    return config
 
 
 class OutputSafetyTests(unittest.TestCase):
@@ -409,6 +441,164 @@ class OutputSafetyTests(unittest.TestCase):
                 script.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
                 with self.assertRaisesRegex(OncoTracerError, "runtime changed"):
                     lease.validate()
+
+    def test_dry_run_binds_the_effective_environment_runtime_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            environment_root = make_runtime_root(base)
+            invalid_explicit = base / "missing-explicit-root"
+            output = base / "dry-run-output"
+            config = make_illumina_config(base, output, "DRY")
+
+            stdout = io.StringIO()
+            with (
+                patch.dict(
+                    os.environ,
+                    {"ONCOTRACER_ROOT": str(environment_root)},
+                    clear=False,
+                ),
+                patch.object(
+                    engine, "runtime_root", wraps=engine.runtime_root
+                ) as resolver,
+                patch.object(
+                    output_safety,
+                    "current_runtime_identity",
+                    wraps=output_safety.current_runtime_identity,
+                ) as identity,
+                patch("sys.stdout", stdout),
+            ):
+                self.assertEqual(
+                    run_native(config, root=invalid_explicit, dry_run=True), output
+                )
+
+            resolver.assert_called_once_with(invalid_explicit)
+            identity.assert_called_once_with(environment_root)
+            plan = json.loads(stdout.getvalue())
+            self.assertEqual(plan["lpwgs_root"], str(environment_root / "project"))
+            self.assertFalse(os.path.lexists(output))
+
+    def test_real_run_resume_and_final_validation_share_one_runtime_root(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            environment_root = make_runtime_root(base)
+            invalid_explicit = base / "missing-explicit-root"
+            output = base / "run"
+            config = make_illumina_config(base, output, "REAL")
+            observed_execution_roots: list[Path] = []
+
+            def fake_qdnaseq(execution_root: Path, *_args, **_kwargs):
+                observed_execution_roots.append(execution_root)
+                return output / "fake-qdnaseq", output / "fake-bams"
+
+            def fake_outputs(*args, **_kwargs) -> None:
+                selected_output = args[6]
+                summary = selected_output / "06_workflow_summary"
+                summary.mkdir(parents=True, exist_ok=True)
+                (summary / "workflow_summary.json").write_text(
+                    '{"workflow_status":"complete"}\n', encoding="utf-8"
+                )
+                (summary / "workflow_summary.txt").write_text(
+                    "workflow_status=complete\n", encoding="utf-8"
+                )
+
+            with (
+                patch.dict(
+                    os.environ,
+                    {"ONCOTRACER_ROOT": str(environment_root)},
+                    clear=False,
+                ),
+                patch.object(
+                    engine, "runtime_root", wraps=engine.runtime_root
+                ) as resolver,
+                patch.object(
+                    output_safety,
+                    "current_runtime_identity",
+                    wraps=output_safety.current_runtime_identity,
+                ) as identity,
+                patch.object(engine, "prepare_reference", return_value={}),
+                patch.object(
+                    engine,
+                    "align_illumina",
+                    return_value={"REAL": base / "REAL.bam"},
+                ),
+                patch.object(engine, "run_qdnaseq", side_effect=fake_qdnaseq),
+                patch.object(
+                    engine,
+                    "run_refinement_and_outputs",
+                    side_effect=fake_outputs,
+                ),
+            ):
+                self.assertEqual(run_native(config), output)
+                first_owner = (output / OUTPUT_OWNER_RELATIVE).read_bytes()
+                self.assertEqual(run_native(config, root=invalid_explicit), output)
+                second_owner = (output / OUTPUT_OWNER_RELATIVE).read_bytes()
+
+            self.assertEqual(first_owner, second_owner)
+            self.assertEqual(
+                [args[0] for args, _kwargs in resolver.call_args_list],
+                [None, invalid_explicit],
+            )
+            self.assertEqual(observed_execution_roots, [environment_root] * 2)
+            self.assertEqual(
+                [args[0] for args, _kwargs in identity.call_args_list],
+                [environment_root] * 6,
+            )
+            self.assertFalse(os.path.lexists(output / OUTPUT_ACTIVE_RELATIVE))
+
+    def test_engine_final_validation_rehashes_selected_runtime_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            environment_root = make_runtime_root(base)
+            runtime_script = (
+                environment_root / "bin" / "scripts" / "runtime-sentinel.sh"
+            )
+            output = base / "run"
+            config = make_illumina_config(base, output, "FINAL")
+
+            def fake_outputs(*args, **_kwargs) -> None:
+                selected_output = args[6]
+                summary = selected_output / "06_workflow_summary"
+                summary.mkdir(parents=True, exist_ok=True)
+                (summary / "workflow_summary.json").write_text(
+                    '{"workflow_status":"complete"}\n', encoding="utf-8"
+                )
+                (summary / "workflow_summary.txt").write_text(
+                    "workflow_status=complete\n", encoding="utf-8"
+                )
+                runtime_script.write_text(
+                    "#!/bin/sh\nexit 9\n", encoding="utf-8"
+                )
+
+            with (
+                patch.dict(
+                    os.environ,
+                    {"ONCOTRACER_ROOT": str(environment_root)},
+                    clear=False,
+                ),
+                patch.object(engine, "prepare_reference", return_value={}),
+                patch.object(
+                    engine,
+                    "align_illumina",
+                    return_value={"FINAL": base / "FINAL.bam"},
+                ),
+                patch.object(
+                    engine,
+                    "run_qdnaseq",
+                    return_value=(output / "fake-qdnaseq", output / "fake-bams"),
+                ),
+                patch.object(
+                    engine,
+                    "run_refinement_and_outputs",
+                    side_effect=fake_outputs,
+                ),
+            ):
+                with self.assertRaisesRegex(OncoTracerError, "runtime changed"):
+                    run_native(config)
+
+            self.assertTrue((output / OUTPUT_OWNER_RELATIVE).is_file())
+            self.assertFalse(os.path.lexists(output / OUTPUT_ACTIVE_RELATIVE))
 
     def test_config_parse_race_fails_before_output_claim(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
