@@ -1528,17 +1528,17 @@ with (
         cleanup: Path | None = None
         sentinel: Path | None = None
 
-        def inject_after_cleanup_rename(source, destination):
+        def inject_after_cleanup_rename(source, destination, **kwargs):
             nonlocal cleanup, sentinel
             source_path = Path(source)
             destination_path = Path(destination)
-            result = real_replace(source, destination)
+            result = real_replace(source, destination, **kwargs)
             if (
                 cleanup is None
                 and source_path.name.startswith(f".{base.name}.oncotracer-conda-txn-")
                 and destination_path.name.endswith(".oncotracer-cleanup")
             ):
-                cleanup = destination_path
+                cleanup = base.parent / destination_path.name
                 sentinel = cleanup / "backups" / "core" / "patient-sentinel"
                 sentinel.write_bytes(b"must never be deleted")
                 raise KeyboardInterrupt
@@ -1576,11 +1576,11 @@ with (
         cleanup: Path | None = None
         backup: Path | None = None
 
-        def inject_after_cleanup_rename(source, target):
+        def inject_after_cleanup_rename(source, target, **kwargs):
             nonlocal cleanup, backup
             source_path = Path(source)
             target_path = Path(target)
-            result = real_replace(source, target)
+            result = real_replace(source, target, **kwargs)
             if (
                 cleanup is None
                 and source_path.name.startswith(
@@ -1588,7 +1588,7 @@ with (
                 )
                 and target_path.name.endswith(".oncotracer-cleanup")
             ):
-                cleanup = target_path
+                cleanup = destination.parent / target_path.name
                 backup = cleanup / "backup.sif"
                 backup.write_bytes(b"modified after atomic cleanup rename")
                 raise KeyboardInterrupt
@@ -1626,19 +1626,19 @@ with (
     ) -> None:
         base = self.scratch / "partial-cleanup-envs"
         crashes = 0
-        real_fsync = install_safety._fsync_directory
+        real_remove = install_safety._remove_cleanup_entry_at
 
-        def crash_after_durable_partial_cleanup(path):
+        def crash_after_durable_partial_cleanup(cleanup_fd, relative, expected):
             nonlocal crashes
-            real_fsync(path)
-            if Path(path).name.endswith(".oncotracer-cleanup") and crashes < 2:
+            real_remove(cleanup_fd, relative, expected)
+            if crashes < 2:
                 crashes += 1
                 raise KeyboardInterrupt
 
         with (
             mock.patch.object(
                 install_safety,
-                "_fsync_directory",
+                "_remove_cleanup_entry_at",
                 side_effect=crash_after_durable_partial_cleanup,
             ),
             self.assertRaises(KeyboardInterrupt),
@@ -1672,19 +1672,19 @@ with (
         destination = self.scratch / "partial-cleanup.sif"
         self._sif_install(destination)
         crashes = 0
-        real_fsync = install_safety._fsync_directory
+        real_remove = install_safety._remove_cleanup_entry_at
 
-        def crash_after_durable_partial_cleanup(path):
+        def crash_after_durable_partial_cleanup(cleanup_fd, relative, expected):
             nonlocal crashes
-            real_fsync(path)
-            if Path(path).name.endswith(".oncotracer-cleanup") and crashes < 2:
+            real_remove(cleanup_fd, relative, expected)
+            if crashes < 2:
                 crashes += 1
                 raise KeyboardInterrupt
 
         with (
             mock.patch.object(
                 install_safety,
-                "_fsync_directory",
+                "_remove_cleanup_entry_at",
                 side_effect=crash_after_durable_partial_cleanup,
             ),
             self.assertRaises(KeyboardInterrupt),
@@ -1705,6 +1705,70 @@ with (
             install_safety._sif_sidecar(destination).read_text(encoding="utf-8")
         )
         self.assertEqual(install_safety.sha256_file(destination), marker["sif_sha256"])
+
+    def test_cleanup_removal_pins_intermediate_parent_against_symlink_swap(
+        self,
+    ) -> None:
+        cleanup = self.scratch / "descriptor-cleanup"
+        nested = cleanup / "nested"
+        nested.mkdir(parents=True)
+        victim = nested / "victim"
+        victim.write_bytes(b"owned cleanup bytes")
+        outside = self.scratch / "outside"
+        outside.mkdir()
+        outside_victim = outside / "victim"
+        outside_victim.write_bytes(b"protected outside bytes")
+        saved_owned = self.scratch / "saved-owned-parent"
+
+        cleanup_fd = install_safety._open_pinned_directory(cleanup, "test cleanup root")
+        expected, _ = install_safety._cleanup_entry_at(cleanup_fd, "nested/victim")
+        real_entry = install_safety._cleanup_entry_from_parent
+        swapped = False
+
+        def swap_parent_after_authentication(root_device, parent_fd, name, relative):
+            nonlocal swapped
+            result = real_entry(root_device, parent_fd, name, relative)
+            if relative == "nested/victim" and not swapped:
+                nested.rename(saved_owned)
+                nested.symlink_to(outside, target_is_directory=True)
+                swapped = True
+            return result
+
+        try:
+            with mock.patch.object(
+                install_safety,
+                "_cleanup_entry_from_parent",
+                side_effect=swap_parent_after_authentication,
+            ):
+                install_safety._remove_cleanup_entry_at(
+                    cleanup_fd, "nested/victim", expected
+                )
+        finally:
+            os.close(cleanup_fd)
+
+        self.assertTrue(swapped)
+        self.assertEqual(outside_victim.read_bytes(), b"protected outside bytes")
+
+        self.assertTrue(nested.is_symlink())
+        self.assertFalse((saved_owned / "victim").exists())
+
+    def test_cleanup_rejects_same_bytes_with_a_different_inode(self) -> None:
+        cleanup = self.scratch / "inode-cleanup"
+        cleanup.mkdir()
+        victim = cleanup / "victim"
+        victim.write_bytes(b"same bytes are not the same owned file")
+        replacement = cleanup / "replacement"
+        replacement.write_bytes(b"same bytes are not the same owned file")
+        cleanup_fd = install_safety._open_pinned_directory(cleanup, "test cleanup root")
+        try:
+            expected, _ = install_safety._cleanup_entry_at(cleanup_fd, "victim")
+            victim.unlink()
+            replacement.rename(victim)
+            with self.assertRaisesRegex(OncoTracerError, "changed before removal"):
+                install_safety._remove_cleanup_entry_at(cleanup_fd, "victim", expected)
+        finally:
+            os.close(cleanup_fd)
+        self.assertEqual(victim.read_bytes(), b"same bytes are not the same owned file")
 
 
 class InstallerActiveUseArgumentTests(unittest.TestCase):
