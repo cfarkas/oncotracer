@@ -234,8 +234,7 @@ class NativeProvenanceTests(unittest.TestCase):
             }
             self.assertTrue(obsolete_methylation_launchers.isdisjoint(names))
             excluded_legacy_paths = {
-                f"payload/{name}"
-                for name in builder.NATIVE_PAYLOAD_EXCLUDED_PATHS
+                f"payload/{name}" for name in builder.NATIVE_PAYLOAD_EXCLUDED_PATHS
             }
             self.assertTrue(excluded_legacy_paths.isdisjoint(names))
 

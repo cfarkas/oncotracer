@@ -756,12 +756,12 @@ class PythonCleanupVisitor(ast.NodeVisitor):
         merged_symbols: dict[str, str] = {}
         for key in symbol_keys:
             values = {symbols.get(key, PYTHON_UNKNOWN_PATH) for symbols, _ in branches}
-            merged_symbols[key] = values.pop() if len(values) == 1 else PYTHON_UNKNOWN_PATH
+            merged_symbols[key] = (
+                values.pop() if len(values) == 1 else PYTHON_UNKNOWN_PATH
+            )
         self.symbols = merged_symbols
         for attribute in self._ALIAS_ATTRIBUTES:
-            common = set.intersection(
-                *(aliases[attribute] for _, aliases in branches)
-            )
+            common = set.intersection(*(aliases[attribute] for _, aliases in branches))
             setattr(self, attribute, common)
 
     def _visit_isolated_function(
@@ -788,7 +788,11 @@ class PythonCleanupVisitor(ast.NodeVisitor):
             self.visit(expression)
         annotations = [
             argument.annotation
-            for argument in (*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs)
+            for argument in (
+                *node.args.posonlyargs,
+                *node.args.args,
+                *node.args.kwonlyargs,
+            )
             if argument.annotation is not None
         ]
         if node.args.vararg is not None and node.args.vararg.annotation is not None:

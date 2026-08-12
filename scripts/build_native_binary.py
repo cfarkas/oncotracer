@@ -16,9 +16,7 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 
-SOURCE_SHA256_DEFINITION = (
-    "sha256(git -c tar.umask=0002 archive --format=tar COMMIT)"
-)
+SOURCE_SHA256_DEFINITION = "sha256(git -c tar.umask=0002 archive --format=tar COMMIT)"
 PROVENANCE_PAYLOAD_PATH = "payload/provenance/native-v2-sources.json"
 ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 HEX_COMMIT = re.compile(r"^[0-9a-f]{40}$")
@@ -91,7 +89,9 @@ def git_archive_sha256(root: Path, commit: str) -> str:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    if process.stdout is None or process.stderr is None:  # pragma: no cover - Popen contract
+    if (
+        process.stdout is None or process.stderr is None
+    ):  # pragma: no cover - Popen contract
         raise SystemExit("could not read git archive output")
     digest = hashlib.sha256()
     while chunk := process.stdout.read(1024 * 1024):
@@ -125,7 +125,9 @@ def resolve_source_metadata(
         return None, None, None, "unbound-development"
 
     if bool(source_commit) != bool(source_sha256):
-        raise SystemExit("--source-commit and --source-sha256 must be supplied together")
+        raise SystemExit(
+            "--source-commit and --source-sha256 must be supplied together"
+        )
 
     checkout = _is_git_checkout(root)
     if source_commit is None or source_sha256 is None:
@@ -146,7 +148,9 @@ def resolve_source_metadata(
     source_commit = source_commit.lower()
     source_sha256 = source_sha256.lower()
     if not HEX_COMMIT.fullmatch(source_commit):
-        raise SystemExit("--source-commit must be a full 40-character hexadecimal commit ID")
+        raise SystemExit(
+            "--source-commit must be a full 40-character hexadecimal commit ID"
+        )
     if not HEX_SHA256.fullmatch(source_sha256):
         raise SystemExit("--source-sha256 must be a 64-character hexadecimal SHA-256")
 
@@ -234,14 +238,17 @@ def copy_payload_from_git_archive(
     )
     if result.returncode != 0:
         detail = result.stderr.decode("utf-8", errors="replace").strip()
-        raise SystemExit(detail or f"git archive failed with exit code {result.returncode}")
+        raise SystemExit(
+            detail or f"git archive failed with exit code {result.returncode}"
+        )
 
     observed_roots: set[str] = set()
     with tarfile.open(fileobj=io.BytesIO(result.stdout), mode="r:") as archive:
         for member in archive:
             relative = PurePosixPath(member.name)
             if relative.parts and (
-                relative.parts[0] == "oncotracer_cli" or relative.parts[0] in PAYLOAD_ROOTS
+                relative.parts[0] == "oncotracer_cli"
+                or relative.parts[0] in PAYLOAD_ROOTS
             ):
                 observed_roots.add(relative.parts[0])
             target = _payload_member_target(staging, member.name)
@@ -316,21 +323,23 @@ def write_build_metadata(
 ) -> None:
     provenance_payload = staging / PROVENANCE_PAYLOAD_PATH
     if not provenance_payload.is_file():
-        raise SystemExit(f"required provenance payload is missing: {provenance_payload}")
+        raise SystemExit(
+            f"required provenance payload is missing: {provenance_payload}"
+        )
     payload_sha256 = sha256_file(provenance_payload)
     metadata = (
         '"""Generated immutable source metadata for this OncoTracer build."""\n\n'
-        'from __future__ import annotations\n\n'
+        "from __future__ import annotations\n\n"
         'BUILD_METADATA_SCHEMA = "oncotracer-build-metadata-v1"\n'
-        f'SOURCE_SHA256_DEFINITION = {SOURCE_SHA256_DEFINITION!r}\n'
-        f'SOURCE_COMMIT = {source_commit!r}\n'
-        f'SOURCE_SHA256 = {source_sha256!r}\n'
-        f'SOURCE_TREE_DIRTY = {source_tree_dirty!r}\n'
-        f'SOURCE_METADATA_ORIGIN = {source_metadata_origin!r}\n'
-        'ONCOTRACER_SOURCE_COMMIT = SOURCE_COMMIT\n'
-        'ONCOTRACER_SOURCE_SHA256 = SOURCE_SHA256\n'
-        f'PROVENANCE_PAYLOAD_PATH = {PROVENANCE_PAYLOAD_PATH!r}\n'
-        f'PROVENANCE_PAYLOAD_SHA256 = {payload_sha256!r}\n'
+        f"SOURCE_SHA256_DEFINITION = {SOURCE_SHA256_DEFINITION!r}\n"
+        f"SOURCE_COMMIT = {source_commit!r}\n"
+        f"SOURCE_SHA256 = {source_sha256!r}\n"
+        f"SOURCE_TREE_DIRTY = {source_tree_dirty!r}\n"
+        f"SOURCE_METADATA_ORIGIN = {source_metadata_origin!r}\n"
+        "ONCOTRACER_SOURCE_COMMIT = SOURCE_COMMIT\n"
+        "ONCOTRACER_SOURCE_SHA256 = SOURCE_SHA256\n"
+        f"PROVENANCE_PAYLOAD_PATH = {PROVENANCE_PAYLOAD_PATH!r}\n"
+        f"PROVENANCE_PAYLOAD_SHA256 = {payload_sha256!r}\n"
     )
     metadata_path = staging / "oncotracer_cli" / "_build_metadata.py"
     metadata_path.write_text(metadata, encoding="utf-8")
@@ -377,7 +386,9 @@ def write_deterministic_zipapp(staging: Path, output: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument(
+        "--root", type=Path, default=Path(__file__).resolve().parents[1]
+    )
     parser.add_argument("--output", type=Path, default=Path("dist/oncotracer"))
     parser.add_argument(
         "--source-commit",

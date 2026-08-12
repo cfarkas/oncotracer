@@ -409,9 +409,7 @@ class NativeMethylationTests(unittest.TestCase):
         pileup = (
             "chr1\t100\t101\tm\t0\t+\t100\t101\t0,0,0\t10\t80.0\t8\t2\t0\t0\t0\t0\t0\n"
         )
-        temporary, fixture, outdir, runner, status = self._run_fixture(
-            pileup, gpu=True
-        )
+        temporary, fixture, outdir, runner, status = self._run_fixture(pileup, gpu=True)
         self.addCleanup(temporary.cleanup)
         self.assertEqual(status["overall_status"], "complete")
         self.assertEqual(status["completed_samples"], ["SNC_F"])
@@ -591,9 +589,7 @@ class NativeMethylationTests(unittest.TestCase):
             self.assertFalse(
                 plan["methylation"]["classifier_runtime_source_authenticated"]
             )
-            self.assertIn(
-                "classifier_interface_contract_commit", plan["methylation"]
-            )
+            self.assertIn("classifier_interface_contract_commit", plan["methylation"])
             stages = plan["stages"]
             self.assertLess(
                 stages.index("dorado-modified-base-basecalling"),
@@ -656,9 +652,7 @@ class NativeMethylationTests(unittest.TestCase):
             merged = _merge_methylation_summary(
                 outdir,
                 completed,
-                cna_error=OncoTracerError(
-                    "failure in /protected/patient-secret/file"
-                ),
+                cna_error=OncoTracerError("failure in /protected/patient-secret/file"),
             )
             self.assertEqual(merged["cna_status"], "failed")
             self.assertEqual(merged["methylation_status"], "complete")
