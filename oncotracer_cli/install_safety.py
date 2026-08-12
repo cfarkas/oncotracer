@@ -191,18 +191,29 @@ def _fsync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
-def _atomic_write_json(path: Path, value: object) -> None:
-    """Write JSON without following or reusing a predictable temporary path."""
+def _atomic_write_json(
+    path: Path,
+    value: object,
+    *,
+    retention_parent: Path | None = None,
+) -> None:
+    """Publish JSON atomically while retaining any prior bytes."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(
-        f".{path.name}.oncotracer-write-{os.getpid()}-{uuid.uuid4().hex}"
-    )
+    _reject_symlink_components(path.parent)
+    temporary_name = f".{path.name}.oncotracer-write-{os.getpid()}-{uuid.uuid4().hex}"
+    temporary = path.parent / temporary_name
     payload = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
-    descriptor = os.open(temporary, flags, 0o600)
+    parent_fd = _open_pinned_directory(
+        path.parent, "installer metadata publication parent"
+    )
+    descriptor: int | None = None
     created_identity: tuple[int, int] | None = None
+    prior_retained: Path | None = None
     try:
+        descriptor = os.open(temporary_name, flags, 0o600, dir_fd=parent_fd)
         with os.fdopen(descriptor, "wb") as handle:
+            descriptor = None
             metadata = os.fstat(handle.fileno())
             if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
                 raise OncoTracerError(
@@ -212,20 +223,72 @@ def _atomic_write_json(path: Path, value: object) -> None:
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        observed = temporary.lstat()
+        observed = os.stat(temporary_name, dir_fd=parent_fd, follow_symlinks=False)
         if (observed.st_dev, observed.st_ino) != created_identity:
             raise OncoTracerError(
                 f"installer metadata staging path changed unexpectedly: {temporary}"
             )
-        os.replace(temporary, path)
-        _fsync_directory(path.parent)
+        if _exists_at(parent_fd, path.name):
+            _rename_exchange_at(
+                parent_fd,
+                temporary_name,
+                parent_fd,
+                path.name,
+                "installer metadata publication",
+            )
+            retention_parent = retention_parent or path.parent
+            retention_parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            retention_fd = _open_pinned_directory(
+                retention_parent, "installer retained metadata parent"
+            )
+            try:
+                if os.fstat(retention_fd).st_dev != os.fstat(parent_fd).st_dev:
+                    raise OncoTracerError(
+                        "installer metadata retention must remain on one filesystem"
+                    )
+                retained_name = (
+                    f".{path.name}.oncotracer-retained-metadata-" f"{uuid.uuid4().hex}"
+                )
+                _rename_noreplace_at(
+                    parent_fd,
+                    temporary_name,
+                    retention_fd,
+                    retained_name,
+                    "prior installer metadata retention",
+                )
+                os.fsync(parent_fd)
+                os.fsync(retention_fd)
+                prior_retained = retention_parent / retained_name
+            finally:
+                os.close(retention_fd)
+        else:
+            _rename_noreplace_at(
+                parent_fd,
+                temporary_name,
+                parent_fd,
+                path.name,
+                "installer metadata publication",
+            )
+        os.fsync(parent_fd)
+        published = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+        if (published.st_dev, published.st_ino) != created_identity:
+            raise OncoTracerError(f"installer metadata publication changed: {path}")
     finally:
-        if created_identity is not None and os.path.lexists(temporary):
+        if descriptor is not None:
+            os.close(descriptor)
+        if created_identity is not None and _exists_at(parent_fd, temporary_name):
             print(
-                "OncoTracer retained interrupted metadata staging at " f"{temporary}",
+                "OncoTracer retained interrupted metadata at " f"{temporary}",
                 file=sys.stderr,
                 flush=True,
             )
+        if prior_retained is not None:
+            print(
+                f"OncoTracer retained prior metadata at {prior_retained}",
+                file=sys.stderr,
+                flush=True,
+            )
+        os.close(parent_fd)
 
 
 def _lock_record(path: Path, target: Path, kind: str) -> dict[str, object]:
@@ -1497,7 +1560,10 @@ def _write_target_claim(
             dict(partial_inventory) if partial_inventory is not None else None
         ),
     }
-    _atomic_write_json(_target_claim_path(transaction, name), value)
+    history = _require_transaction_subdir(transaction, "metadata-history", create=True)
+    _atomic_write_json(
+        _target_claim_path(transaction, name), value, retention_parent=history
+    )
 
 
 def _read_target_claim(
@@ -1570,7 +1636,9 @@ def _discard_claimed_target(
             raise OncoTracerError(
                 f"installer preservation destination already exists: {preserved}"
             )
-        os.replace(target, preserved)
+        _rename_noreplace(
+            target, preserved, "interrupted installer target preservation"
+        )
         print(
             f"OncoTracer preserved interrupted installer target at {preserved}",
             file=sys.stderr,
@@ -1582,24 +1650,7 @@ def _discard_claimed_target(
         raise OncoTracerError(
             f"installer-created target marker changed; refusing removal: {target}"
         )
-    os.replace(target, discarded / name)
-
-
-def _retain_rollback_transaction(
-    transaction: Path, target: Path, transaction_id: str, kind: str
-) -> Path | None:
-    if not os.path.lexists(transaction):
-        return None
-    _require_transaction(transaction, target, transaction_id, kind)
-    _assert_inactive(transaction)
-    _assert_single_filesystem_tree(transaction, target.parent)
-    return _preserve_staging_transaction(
-        transaction,
-        target,
-        transaction_id,
-        kind,
-        reason="rollback",
-    )
+    _rename_noreplace(target, discarded / name, "claimed installer target rollback")
 
 
 def _committed_retained_path(transaction: Path) -> Path:
@@ -1649,6 +1700,79 @@ def _rename_noreplace_at(
         )
     error = OSError(error_number, os.strerror(error_number), source_name)
     raise OncoTracerError(f"could not atomically claim {label}: {error}") from error
+
+
+def _rename_exchange_at(
+    source_fd: int,
+    source_name: str,
+    destination_fd: int,
+    destination_name: str,
+    label: str,
+) -> None:
+    """Atomically exchange two names so neither prior object is destroyed."""
+    for name in (source_name, destination_name):
+        if not name or name in {".", ".."} or "/" in name or "\\" in name:
+            raise OncoTracerError(f"unsafe {label} component: {name!r}")
+    libc = ctypes.CDLL(None, use_errno=True)
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
+        raise OncoTracerError(f"{label} requires Linux renameat2 support")
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    ctypes.set_errno(0)
+    result = renameat2(
+        source_fd,
+        os.fsencode(source_name),
+        destination_fd,
+        os.fsencode(destination_name),
+        2,  # RENAME_EXCHANGE
+    )
+    if result == 0:
+        return
+    error_number = ctypes.get_errno()
+    error = OSError(error_number, os.strerror(error_number), source_name)
+    raise OncoTracerError(f"could not atomically exchange {label}: {error}") from error
+
+
+def _rename_noreplace(source: Path, destination: Path, label: str) -> None:
+    """Rename one path without overwriting any destination object."""
+    source_parent_fd = _open_pinned_directory(source.parent, f"{label} source parent")
+    destination_parent_fd: int | None = None
+    try:
+        destination_parent_fd = _open_pinned_directory(
+            destination.parent, f"{label} destination parent"
+        )
+        source_parent = os.fstat(source_parent_fd)
+        destination_parent = os.fstat(destination_parent_fd)
+        if source_parent.st_dev != destination_parent.st_dev:
+            raise OncoTracerError(
+                f"{label} rename must remain on one filesystem: {destination}"
+            )
+        _rename_noreplace_at(
+            source_parent_fd,
+            source.name,
+            destination_parent_fd,
+            destination.name,
+            label,
+        )
+        os.fsync(source_parent_fd)
+        os.fsync(destination_parent_fd)
+    except OncoTracerError:
+        raise
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not rename {label} without replacement: {source}: {error}"
+        ) from error
+    finally:
+        if destination_parent_fd is not None:
+            os.close(destination_parent_fd)
+        os.close(source_parent_fd)
 
 
 def _open_pinned_directory(path: Path, label: str) -> int:
@@ -2176,6 +2300,7 @@ def _preserve_staging_transaction(
         )
     _assert_inactive(transaction)
     preserved = _preserve_path(transaction, transaction_id, f"{kind}-{reason}")
+    _assert_single_filesystem_tree(transaction, target.parent)
     parent_fd = _open_pinned_directory(target.parent, "installer preservation parent")
     transaction_fd: int | None = None
     try:
@@ -2421,7 +2546,7 @@ def _lock_path(target: Path, kind: str) -> Path:
 
 
 def _write_journal(path: Path, value: Mapping[str, object]) -> None:
-    _atomic_write_json(path, dict(value))
+    _atomic_write_json(path, dict(value), retention_parent=path.parent)
 
 
 def _valid_conda_journal(value: object, base: Path) -> bool:
@@ -2447,7 +2572,7 @@ def _valid_conda_journal(value: object, base: Path) -> bool:
     shallow_valid = (
         value.get("schema") == TRANSACTION_SCHEMA
         and value.get("kind") == "conda"
-        and value.get("phase") in {"staging", "publishing", "committed"}
+        and value.get("phase") in {"staging", "publishing", "committed", "rolled_back"}
         and isinstance(transaction_id, str)
         and bool(_HEX_32.fullmatch(transaction_id))
         and isinstance(value.get("install_id"), str)
@@ -2467,7 +2592,7 @@ def _valid_conda_journal(value: object, base: Path) -> bool:
     if not shallow_valid:
         return False
     cleanup_inventory = value.get("cleanup_inventory")
-    if value["phase"] == "committed":
+    if value["phase"] in {"committed", "rolled_back"}:
         if not _valid_cleanup_inventory(
             cleanup_inventory,
             transaction,
@@ -2548,6 +2673,39 @@ def _restore_conda_transaction(
         _preserve_staging_transaction(transaction, base, transaction_id, "conda")
         _retain_transaction_journal(journal_path, journal, "conda")
         return
+    if journal["phase"] == "rolled_back":
+        prestate = str(journal["prestate"])
+        if prestate == "owned":
+            state, marker = _classify_base(base)
+            unchanged = state == "owned" and marker == journal["base_marker_before"]
+            if unchanged and marker is not None:
+                unchanged = all(
+                    _child_marker_value(base, marker, str(name))
+                    == journal["previous_markers"][str(name)]
+                    for name in journal["assets"]
+                )
+        else:
+            unchanged = (
+                base.is_dir() and not base.is_symlink() and not any(base.iterdir())
+            )
+        if not unchanged:
+            raise OncoTracerError(
+                f"rolled-back Conda target changed before recovery: {base}"
+            )
+        inventory = journal["cleanup_inventory"]
+        expected_top_level = {
+            str(entry["path"]).split("/", 1)[0] for entry in inventory["entries"]
+        }
+        _retain_committed_transaction(
+            transaction,
+            base,
+            transaction_id,
+            "conda",
+            expected_top_level,
+            inventory,
+        )
+        _retain_transaction_journal(journal_path, journal, "conda")
+        return
     if journal["phase"] == "committed":
         state, marker = _classify_base(base)
         if state != "owned" or marker != journal["base_marker_after"]:
@@ -2572,6 +2730,7 @@ def _restore_conda_transaction(
             "claims",
             "empty",
             "discarded",
+            "metadata-history",
         }
         if "poetry-runtime" in journal["assets"]:
             expected_top_level.add("poetry-state")
@@ -2581,6 +2740,7 @@ def _restore_conda_transaction(
             claims = _require_transaction_subdir(transaction, "claims")
             empty = _require_transaction_subdir(transaction, "empty")
             discarded = _require_transaction_subdir(transaction, "discarded")
+            _require_transaction_subdir(transaction, "metadata-history")
             if "poetry-state" in expected_top_level:
                 _require_transaction_subdir(transaction, "poetry-state")
             observed_top_level = {path.name for path in transaction.iterdir()}
@@ -2686,7 +2846,7 @@ def _restore_conda_transaction(
                     discarded,
                     base_after,
                 )
-            os.replace(backup, target)
+            _rename_noreplace(backup, target, "Conda rollback backup restoration")
             continue
 
         if previous is not None:
@@ -2713,7 +2873,8 @@ def _restore_conda_transaction(
     if prestate == "owned":
         if not _valid_base_marker(base_before, base):
             raise OncoTracerError("Conda rollback has an invalid prior base marker")
-        _atomic_write_json(marker_path, base_before)
+        history = _require_transaction_subdir(transaction, "metadata-history")
+        _atomic_write_json(marker_path, base_before, retention_parent=history)
     else:
         if os.path.lexists(marker_path):
             observed = _safe_read_json(marker_path, "Conda root ownership marker")
@@ -2727,8 +2888,25 @@ def _restore_conda_transaction(
                 base_after,
                 "Conda rollback root ownership marker",
             )
-    _retain_rollback_transaction(transaction, base, transaction_id, "conda")
-    _retain_transaction_journal(journal_path, journal, "conda")
+    rollback_inventory = _cleanup_inventory(transaction, base, transaction_id, "conda")
+    rolled_back = {
+        **journal,
+        "phase": "rolled_back",
+        "cleanup_inventory": rollback_inventory,
+    }
+    _write_journal(journal_path, rolled_back)
+    expected_top_level = {
+        str(entry["path"]).split("/", 1)[0] for entry in rollback_inventory["entries"]
+    }
+    _retain_committed_transaction(
+        transaction,
+        base,
+        transaction_id,
+        "conda",
+        expected_top_level,
+        rollback_inventory,
+    )
+    _retain_transaction_journal(journal_path, rolled_back, "conda")
 
 
 def _recover_conda_journal(base: Path) -> None:
@@ -2978,7 +3156,11 @@ def install_conda_managed(
 
         if not changed:
             if observed_base_marker != expected_base_marker:
-                _atomic_write_json(base / BASE_MARKER, expected_base_marker)
+                _atomic_write_json(
+                    base / BASE_MARKER,
+                    expected_base_marker,
+                    retention_parent=base.parent,
+                )
             return {name: base / name for name in CONDA_NAMES}
         if state == "owned":
             _assert_inactive(base)
@@ -3027,8 +3209,12 @@ def install_conda_managed(
                 base.mkdir(mode=0o700)
             elif not base.is_dir() or base.is_symlink():
                 raise OncoTracerError(f"Conda root changed before installation: {base}")
-            _atomic_write_json(base / BASE_MARKER, expected_base_marker)
-
+            history = _require_transaction_subdir(transaction, "metadata-history")
+            _atomic_write_json(
+                base / BASE_MARKER,
+                expected_base_marker,
+                retention_parent=history,
+            )
             for name in changed:
                 target = base / name
                 backup = backups / name
@@ -3042,7 +3228,7 @@ def install_conda_managed(
                             f"managed prefix changed before backup: {target}"
                         )
                     target_identity = target.lstat()
-                    os.replace(target, backup)
+                    _rename_noreplace(target, backup, "Conda prefix backup")
                     backup_identity = backup.lstat()
                     if (backup_identity.st_dev, backup_identity.st_ino) != (
                         target_identity.st_dev,
@@ -3062,7 +3248,9 @@ def install_conda_managed(
                     raise OncoTracerError(
                         f"new managed prefix appeared before creation: {target}"
                     )
-                os.replace(empty / name, target)
+                _rename_noreplace(
+                    empty / name, target, "Conda final-prefix publication"
+                )
                 _assert_claimed_identity(transaction, transaction_id, name, target)
                 try:
                     if name == "poetry-runtime":
@@ -3334,7 +3522,7 @@ def _valid_sif_journal(value: object, destination: Path) -> bool:
     shallow_valid = (
         value.get("schema") == TRANSACTION_SCHEMA
         and value.get("kind") == "sif"
-        and value.get("phase") in {"staging", "publishing", "committed"}
+        and value.get("phase") in {"staging", "publishing", "committed", "rolled_back"}
         and isinstance(transaction_id, str)
         and bool(_HEX_32.fullmatch(transaction_id))
         and isinstance(value.get("install_id"), str)
@@ -3349,7 +3537,7 @@ def _valid_sif_journal(value: object, destination: Path) -> bool:
         and (
             (value.get("phase") == "staging" and value.get("new_marker") is None)
             or (
-                value.get("phase") in {"publishing", "committed"}
+                value.get("phase") in {"publishing", "committed", "rolled_back"}
                 and _valid_sif_marker(value.get("new_marker"), destination)
             )
         )
@@ -3357,7 +3545,7 @@ def _valid_sif_journal(value: object, destination: Path) -> bool:
     if not shallow_valid:
         return False
     cleanup_inventory = value.get("cleanup_inventory")
-    if value["phase"] == "committed":
+    if value["phase"] in {"committed", "rolled_back"}:
         if not _valid_cleanup_inventory(
             cleanup_inventory,
             transaction,
@@ -3416,6 +3604,32 @@ def _restore_sif_transaction(
                 f"SIF target changed during staging recovery: {destination}"
             )
         _preserve_staging_transaction(transaction, destination, transaction_id, "sif")
+        _retain_transaction_journal(journal_path, journal, "sif")
+        return
+    if journal["phase"] == "rolled_back":
+        if journal["prestate"] == "absent":
+            unchanged = not os.path.lexists(destination) and not os.path.lexists(
+                sidecar
+            )
+        else:
+            state, marker = _classify_sif(destination)
+            unchanged = state == "owned" and marker == journal["old_marker"]
+        if not unchanged:
+            raise OncoTracerError(
+                f"rolled-back SIF target changed before recovery: {destination}"
+            )
+        inventory = journal["cleanup_inventory"]
+        expected_entries = {
+            str(entry["path"]).split("/", 1)[0] for entry in inventory["entries"]
+        }
+        _retain_committed_transaction(
+            transaction,
+            destination,
+            transaction_id,
+            "sif",
+            expected_entries,
+            inventory,
+        )
         _retain_transaction_journal(journal_path, journal, "sif")
         return
     if journal["phase"] == "committed":
@@ -3485,8 +3699,10 @@ def _restore_sif_transaction(
                     destination, new_marker["sif_sha256"], "new SIF rollback target"
                 )
                 _assert_inactive(destination)
-                os.replace(destination, discarded_sif)
-            os.replace(backup_sif, destination)
+                _rename_noreplace(
+                    destination, discarded_sif, "new SIF rollback preservation"
+                )
+            _rename_noreplace(backup_sif, destination, "prior SIF rollback restoration")
         else:
             _require_sif_bytes(destination, old_marker["sif_sha256"], "prior owned SIF")
 
@@ -3506,8 +3722,10 @@ def _restore_sif_transaction(
                     raise OncoTracerError(
                         f"SIF rollback refuses an unexpectedly changed sidecar: {sidecar}"
                     )
-                os.replace(sidecar, discarded_sidecar)
-            os.replace(backup_sidecar, sidecar)
+                _rename_noreplace(
+                    sidecar, discarded_sidecar, "new SIF sidecar preservation"
+                )
+            _rename_noreplace(backup_sidecar, sidecar, "prior SIF sidecar restoration")
         else:
             observed_sidecar = _safe_read_json(sidecar, "prior owned SIF sidecar")
             if observed_sidecar != old_marker:
@@ -3524,7 +3742,9 @@ def _restore_sif_transaction(
                 destination, new_marker["sif_sha256"], "new SIF rollback target"
             )
             _assert_inactive(destination)
-            os.replace(destination, discarded_sif)
+            _rename_noreplace(
+                destination, discarded_sif, "fresh SIF rollback preservation"
+            )
         if os.path.lexists(sidecar):
             if os.path.lexists(candidate_sidecar):
                 raise OncoTracerError(
@@ -3537,9 +3757,30 @@ def _restore_sif_transaction(
                 raise OncoTracerError(
                     f"SIF rollback refuses an unexpectedly changed sidecar: {sidecar}"
                 )
-            os.replace(sidecar, discarded_sidecar)
-    _retain_rollback_transaction(transaction, destination, transaction_id, "sif")
-    _retain_transaction_journal(journal_path, journal, "sif")
+            _rename_noreplace(
+                sidecar, discarded_sidecar, "fresh SIF sidecar preservation"
+            )
+    rollback_inventory = _cleanup_inventory(
+        transaction, destination, transaction_id, "sif"
+    )
+    rolled_back = {
+        **journal,
+        "phase": "rolled_back",
+        "cleanup_inventory": rollback_inventory,
+    }
+    _write_journal(journal_path, rolled_back)
+    expected_entries = {
+        str(entry["path"]).split("/", 1)[0] for entry in rollback_inventory["entries"]
+    }
+    _retain_committed_transaction(
+        transaction,
+        destination,
+        transaction_id,
+        "sif",
+        expected_entries,
+        rollback_inventory,
+    )
+    _retain_transaction_journal(journal_path, rolled_back, "sif")
 
 
 def _recover_sif_journal(destination: Path) -> None:
@@ -3691,7 +3932,9 @@ def install_sif_managed(
                     )
                 destination_identity = destination.lstat()
                 sidecar_identity = sidecar.lstat()
-                os.replace(destination, transaction / "backup.sif")
+                _rename_noreplace(
+                    destination, transaction / "backup.sif", "owned SIF backup"
+                )
                 backup_identity = (transaction / "backup.sif").lstat()
                 if (backup_identity.st_dev, backup_identity.st_ino) != (
                     destination_identity.st_dev,
@@ -3712,7 +3955,11 @@ def install_sif_managed(
                     raise OncoTracerError(
                         f"owned SIF sidecar changed before backup: {sidecar}"
                     )
-                os.replace(sidecar, transaction / "backup.sidecar.json")
+                _rename_noreplace(
+                    sidecar,
+                    transaction / "backup.sidecar.json",
+                    "owned SIF sidecar backup",
+                )
                 backup_sidecar_identity = (transaction / "backup.sidecar.json").lstat()
                 if (
                     backup_sidecar_identity.st_dev,
@@ -3735,8 +3982,10 @@ def install_sif_managed(
                 raise OncoTracerError(
                     f"absent SIF target changed before publication: {destination}"
                 )
-            os.replace(candidate, destination)
-            os.replace(candidate_sidecar, sidecar)
+            _rename_noreplace(candidate, destination, "verified SIF publication")
+            _rename_noreplace(
+                candidate_sidecar, sidecar, "verified SIF sidecar publication"
+            )
             state_after, marker_after = _classify_sif(destination)
             if state_after != "owned" or marker_after != new_marker:
                 raise OncoTracerError(

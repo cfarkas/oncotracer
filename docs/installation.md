@@ -164,6 +164,11 @@ retained rollback or audit material. An administrator may archive or remove an
 exact reported path only after inspecting it and confirming that no OncoTracer
 install is running; never use a wildcard cleanup command.
 
+Failed publications use the same rule: after restoring the prior target,
+OncoTracer writes a durable `rolled_back` journal, seals the exact rollback
+inventory, and retains both records. A later invocation can resume between any
+of those steps without overwriting earlier evidence.
+
 ### Poetry
 
 Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development:

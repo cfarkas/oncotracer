@@ -40,6 +40,9 @@ installer cannot publish beneath a consumer. A durable staging journal exists
 before transaction creation or package-manager execution. If SIGKILL leaves an
 unsealed final-prefix tree, recovery restores the prior state and moves the
 unknown tree to a reported sibling preservation path instead of deleting it.
+After any failed publication, recovery records the restored target in a durable
+`rolled_back` journal and seals the exact transaction inventory before retaining
+the transaction root, so interruption between root and journal retention resumes.
 After commit, the exact inventory-authenticated transaction root is atomically
 renamed with no replacement to a transaction-ID-bound retained rollback path.
 The canonical journal is then atomically renamed to a target-bound retained
@@ -52,6 +55,9 @@ archival or removal after active-use checks.
 Poetry's launcher is a fixed isolated `poetry-runtime` child built from an
 exact clean checkout in isolated state and installed only by the final target
 interpreter; it is never an ambient or checkout-local virtual environment.
+
+All final-prefix and backup publications use no-replacement renames. Metadata
+updates atomically exchange names and retain the prior bytes under a unique name.
 
 A managed SIF has an adjacent strict sidecar binding its canonical path, image
 reference, bytes, install ID, and source identity. Every reuse verifies the

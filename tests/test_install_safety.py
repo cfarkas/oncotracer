@@ -372,7 +372,7 @@ else:
             mock.patch.object(Path, "lstat", new=foreign_device),
             self.assertRaisesRegex(OncoTracerError, "crosses filesystems"),
         ):
-            install_safety._retain_rollback_transaction(
+            install_safety._preserve_staging_transaction(
                 transaction, target, transaction_id, "conda"
             )
         self.assertEqual(_snapshot(transaction), before)
@@ -481,10 +481,10 @@ else:
         base = self.scratch / "rollback-reentry-envs"
         self._conda_install(base)
         before = _snapshot(base)
-        real_replace = os.replace
+        real_rename = install_safety._rename_noreplace
         phase = "publish"
 
-        def crash_after_backup_restore(source, destination):
+        def crash_after_backup_restore(source, destination, label):
             nonlocal phase
             source_path = Path(source)
             destination_path = Path(destination)
@@ -500,15 +500,15 @@ else:
                 and source_path.parent.name == "backups"
                 and destination_path == base / "qdnaseq"
             ):
-                real_replace(source, destination)
+                real_rename(source, destination, label)
                 phase = "crashed"
                 raise KeyboardInterrupt
-            return real_replace(source, destination)
+            return real_rename(source, destination, label)
 
         with (
             mock.patch.object(
-                install_safety.os,
-                "replace",
+                install_safety,
+                "_rename_noreplace",
                 side_effect=crash_after_backup_restore,
             ),
             self.assertRaises(KeyboardInterrupt),
@@ -558,7 +558,7 @@ else:
                 )
                 path.unlink()
 
-        install_safety._retain_rollback_transaction(
+        install_safety._preserve_staging_transaction(
             transaction, target, transaction_id, "conda"
         )
 
@@ -600,7 +600,7 @@ else:
         )
         self.assertFalse(target.exists())
         self.assertEqual(_snapshot(preserved), before)
-        install_safety._retain_rollback_transaction(
+        install_safety._preserve_staging_transaction(
             transaction, target, transaction_id, "conda"
         )
 
@@ -608,10 +608,10 @@ else:
         base = self.scratch / "preexisting-empty-envs"
         base.mkdir(mode=0o711)
         before_mode = stat.S_IMODE(base.lstat().st_mode)
-        real_replace = os.replace
+        real_rename = install_safety._rename_noreplace
         fired = False
 
-        def fail_first_child(source, destination):
+        def fail_first_child(source, destination, label):
             nonlocal fired
             if (
                 not fired
@@ -620,11 +620,11 @@ else:
             ):
                 fired = True
                 raise OSError("injected first-prefix publication failure")
-            return real_replace(source, destination)
+            return real_rename(source, destination, label)
 
         with (
             mock.patch.object(
-                install_safety.os, "replace", side_effect=fail_first_child
+                install_safety, "_rename_noreplace", side_effect=fail_first_child
             ),
             self.assertRaisesRegex(OSError, "injected first-prefix"),
         ):
@@ -661,12 +661,12 @@ else:
         base = self.scratch / "rollback-envs"
         self._conda_install(base)
         before = _snapshot(base)
-        real_replace = os.replace
+        real_rename = install_safety._rename_noreplace
         for failure in (OSError("injected replace error"), KeyboardInterrupt()):
             with self.subTest(failure=type(failure).__name__):
                 fired = False
 
-                def fail_once(source, destination):
+                def fail_once(source, destination, label):
                     nonlocal fired
                     source_path = Path(source)
                     destination_path = Path(destination)
@@ -677,10 +677,10 @@ else:
                     ):
                         fired = True
                         raise failure
-                    return real_replace(source, destination)
+                    return real_rename(source, destination, label)
 
                 with mock.patch.object(
-                    install_safety.os, "replace", side_effect=fail_once
+                    install_safety, "_rename_noreplace", side_effect=fail_once
                 ):
                     with self.assertRaises(type(failure)):
                         self._conda_install(base, force=True)
@@ -943,7 +943,7 @@ else:
         sidecar = install_safety._sif_sidecar(destination)
         self._sif_install(destination)
         before = (destination.read_bytes(), sidecar.read_bytes())
-        real_replace = os.replace
+        real_rename = install_safety._rename_noreplace
         failure_points = ("old-sidecar-backup", "new-sidecar-publish")
         for point in failure_points:
             with (
@@ -954,7 +954,7 @@ else:
             ):
                 fired = False
 
-                def fail_once(source, target):
+                def fail_once(source, target, label):
                     nonlocal fired
                     source_path = Path(source)
                     target_path = Path(target)
@@ -974,10 +974,10 @@ else:
                         if point == "old-sidecar-backup":
                             raise OSError("injected partial backup failure")
                         raise KeyboardInterrupt
-                    return real_replace(source, target)
+                    return real_rename(source, target, label)
 
                 with mock.patch.object(
-                    install_safety.os, "replace", side_effect=fail_once
+                    install_safety, "_rename_noreplace", side_effect=fail_once
                 ):
                     with self.assertRaises(
                         OSError if point == "old-sidecar-backup" else KeyboardInterrupt
@@ -996,23 +996,23 @@ else:
         sidecar = install_safety._sif_sidecar(destination)
         self._sif_install(destination)
         before = (destination.read_bytes(), sidecar.read_bytes())
-        real_replace = os.replace
+        real_rename = install_safety._rename_noreplace
         failed = False
 
-        def crash_between_backup_renames(source, target):
+        def crash_between_backup_renames(source, target, label):
             nonlocal failed
             if not failed and Path(source) == sidecar:
                 failed = True
                 raise KeyboardInterrupt
-            return real_replace(source, target)
+            return real_rename(source, target, label)
 
         with (
             mock.patch.dict(
                 os.environ, {"FAKE_SIF_CONTENT": "candidate-after-crash"}, clear=False
             ),
             mock.patch.object(
-                install_safety.os,
-                "replace",
+                install_safety,
+                "_rename_noreplace",
                 side_effect=crash_between_backup_renames,
             ),
             mock.patch.object(
@@ -1797,6 +1797,144 @@ with (
         self.assertEqual(backup.read_bytes(), b"modified retained SIF backup")
         self.assertTrue(journal.is_file())
 
+    def test_fresh_sif_publication_collision_is_never_overwritten(self) -> None:
+        destination = self.scratch / "foreign-collision.sif"
+        foreign_bytes = b"FOREIGN PATIENT BYTES"
+        real_rename = install_safety._rename_noreplace_at
+        injected = False
+
+        def collide(source_fd, source, destination_fd, target, label):
+            nonlocal injected
+            if label == "verified SIF publication" and not injected:
+                destination.write_bytes(foreign_bytes)
+                injected = True
+            return real_rename(source_fd, source, destination_fd, target, label)
+
+        with (
+            mock.patch.object(
+                install_safety, "_rename_noreplace_at", side_effect=collide
+            ),
+            self.assertRaisesRegex(
+                OncoTracerError, "automatic rollback could not complete"
+            ),
+        ):
+            self._sif_install(destination)
+        self.assertTrue(injected)
+        self.assertEqual(destination.read_bytes(), foreign_bytes)
+        self.assertTrue(install_safety._journal_path(destination, "sif").is_file())
+
+    def test_conda_rolled_back_retention_interrupt_recovers(self) -> None:
+        base = self.scratch / "rolled-back-interrupt-envs"
+        self._conda_install(base)
+        before = _snapshot(base)
+        real_rename = install_safety._rename_noreplace
+        real_retain = install_safety._retain_transaction_journal
+        failed = False
+        interrupted = False
+
+        def fail_publication(source, destination, label):
+            nonlocal failed
+            if (
+                label == "Conda final-prefix publication"
+                and Path(destination) == base / "qdnaseq"
+                and not failed
+            ):
+                failed = True
+                raise OSError("injected Conda publication failure")
+            return real_rename(source, destination, label)
+
+        def interrupt_after_root_retention(path, journal, kind):
+            nonlocal interrupted
+            if journal.get("phase") == "rolled_back" and not interrupted:
+                interrupted = True
+                raise KeyboardInterrupt
+            return real_retain(path, journal, kind)
+
+        with (
+            mock.patch.object(
+                install_safety, "_rename_noreplace", side_effect=fail_publication
+            ),
+            mock.patch.object(
+                install_safety,
+                "_retain_transaction_journal",
+                side_effect=interrupt_after_root_retention,
+            ),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self._conda_install(base, force=True)
+        self.assertTrue(failed)
+        self.assertTrue(interrupted)
+        journal_path = install_safety._journal_path(base, "conda")
+        journal = json.loads(journal_path.read_text(encoding="utf-8"))
+        self.assertEqual(journal["phase"], "rolled_back")
+        transaction = Path(str(journal["canonical_transaction"]))
+        retained = install_safety._committed_retained_path(transaction)
+        self.assertFalse(transaction.exists())
+        self.assertTrue(retained.is_dir())
+        self.assertEqual(_snapshot(base), before)
+        retained_before = _snapshot(retained)
+
+        self._conda_install(base)
+        self.assertFalse(journal_path.exists())
+        self.assertEqual(_snapshot(base), before)
+        self.assertEqual(_snapshot(retained), retained_before)
+
+    def test_sif_rolled_back_retention_interrupt_recovers(self) -> None:
+        destination = self.scratch / "rolled-back-interrupt.sif"
+        sidecar = install_safety._sif_sidecar(destination)
+        self._sif_install(destination)
+        before = (destination.read_bytes(), sidecar.read_bytes())
+        real_rename = install_safety._rename_noreplace
+        real_retain = install_safety._retain_transaction_journal
+        failed = False
+        interrupted = False
+
+        def fail_publication(source, target, label):
+            nonlocal failed
+            if label == "verified SIF sidecar publication" and not failed:
+                failed = True
+                raise OSError("injected SIF sidecar publication failure")
+            return real_rename(source, target, label)
+
+        def interrupt_after_root_retention(path, journal, kind):
+            nonlocal interrupted
+            if journal.get("phase") == "rolled_back" and not interrupted:
+                interrupted = True
+                raise KeyboardInterrupt
+            return real_retain(path, journal, kind)
+
+        with (
+            mock.patch.dict(
+                os.environ, {"FAKE_SIF_CONTENT": "replacement"}, clear=False
+            ),
+            mock.patch.object(
+                install_safety, "_rename_noreplace", side_effect=fail_publication
+            ),
+            mock.patch.object(
+                install_safety,
+                "_retain_transaction_journal",
+                side_effect=interrupt_after_root_retention,
+            ),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self._sif_install(destination, force=True)
+        self.assertTrue(failed)
+        self.assertTrue(interrupted)
+        journal_path = install_safety._journal_path(destination, "sif")
+        journal = json.loads(journal_path.read_text(encoding="utf-8"))
+        self.assertEqual(journal["phase"], "rolled_back")
+        transaction = Path(str(journal["canonical_transaction"]))
+        retained = install_safety._committed_retained_path(transaction)
+        self.assertFalse(transaction.exists())
+        self.assertTrue(retained.is_dir())
+        self.assertEqual((destination.read_bytes(), sidecar.read_bytes()), before)
+        retained_before = _snapshot(retained)
+
+        self._sif_install(destination)
+        self.assertFalse(journal_path.exists())
+        self.assertEqual((destination.read_bytes(), sidecar.read_bytes()), before)
+        self.assertEqual(_snapshot(retained), retained_before)
+
     def test_installer_has_no_automatic_deletion_primitive(self) -> None:
         source = Path(install_safety.__file__).read_text(encoding="utf-8")
         for primitive in (
@@ -1804,6 +1942,7 @@ with (
             ".rmdir(",
             "os.unlink(",
             "os.rmdir(",
+            "os.replace(",
             "shutil.rmtree(",
         ):
             with self.subTest(primitive=primitive):
