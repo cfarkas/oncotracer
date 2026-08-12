@@ -7,7 +7,9 @@ import ast
 import re
 import shlex
 import subprocess
+import tempfile
 import unittest
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 
@@ -47,6 +49,14 @@ ALLOWED_JOB_EXPANSIONS = frozenset(
         "${{ github.run_attempt }}",
     }
 )
+REPOSITORY_ENTRYPOINT_ROOTS = frozenset({"scripts", "tests", "bin"})
+
+
+@dataclass(frozen=True)
+class EmbeddedBody:
+    line: int
+    language: str
+    source: str
 
 
 def _yaml_scalar(value: str) -> str:
@@ -112,7 +122,7 @@ def _shell_tokens(text: str) -> list[str]:
     return list(lexer)
 
 
-def _python_heredoc_command(command: str) -> bool:
+def _heredoc_command_language(command: str) -> str | None:
     try:
         tokens = _shell_tokens(command)
     except ValueError:
@@ -123,15 +133,17 @@ def _python_heredoc_command(command: str) -> bool:
             continue
         executable, _ = invocation
         if re.fullmatch(r"python(?:[23](?:\.\d+)*)?", executable):
-            return True
-    return False
+            return "python"
+        if executable in {"bash", "sh"}:
+            return "shell"
+    return None
 
 
-def extract_heredocs(shell: str) -> tuple[str, list[tuple[int, str]], list[str]]:
-    """Remove heredoc data from shell scanning and return embedded Python bodies."""
+def extract_heredocs(shell: str) -> tuple[str, list[EmbeddedBody], list[str]]:
+    """Remove data heredocs and return bodies executed by an interpreter."""
     lines = shell.splitlines()
     retained: list[str] = []
-    python_bodies: list[tuple[int, str]] = []
+    executable_bodies: list[EmbeddedBody] = []
     errors: list[str] = []
     index = 0
     while index < len(lines):
@@ -158,10 +170,13 @@ def extract_heredocs(shell: str) -> tuple[str, list[tuple[int, str]], list[str]]
             errors.append(f"line {body_start}: unterminated heredoc {delimiter}")
             break
         retained.append("")
-        if _python_heredoc_command(line[: match.start()]):
-            python_bodies.append((body_start, "\n".join(body)))
+        language = _heredoc_command_language(line[: match.start()])
+        if language is not None:
+            executable_bodies.append(
+                EmbeddedBody(body_start, language, "\n".join(body))
+            )
         index += 1
-    return "\n".join(retained), python_bodies, errors
+    return "\n".join(retained), executable_bodies, errors
 
 
 def shell_chunks(shell: str) -> tuple[list[tuple[int, list[str]]], list[str]]:
@@ -467,7 +482,64 @@ def docker_invocation(
     return violations, global_listing, deletion
 
 
-def rm_invocation(args: list[str]) -> list[str]:
+def _contains_global_docker_listing(command: str) -> bool:
+    try:
+        tokens = _shell_tokens(command)
+    except ValueError:
+        return False
+    for segment in command_segments(tokens):
+        invocation = unwrap_command(segment)
+        if invocation is None or invocation[0] != "docker":
+            continue
+        _, listing, _ = docker_invocation(invocation[1])
+        if listing:
+            return True
+    return False
+
+
+def docker_list_tainted_variables(shell: str) -> frozenset[str]:
+    """Find variables fed by global Docker object inventories across lines."""
+    tainted: set[str] = set()
+    for match in re.finditer(
+        r"(?m)^\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
+        r"(?:\"|')?\$\((?P<body>[^)\n]+)\)",
+        shell,
+    ):
+        if _contains_global_docker_listing(match.group("body")):
+            tainted.add(match.group("name"))
+    for match in re.finditer(
+        r"(?m)^\s*(?:mapfile|readarray)(?:\s+-[A-Za-z]+)*\s+"
+        r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*<\s*<\((?P<body>[^)]+)\)",
+        shell,
+    ):
+        if _contains_global_docker_listing(match.group("body")):
+            tainted.add(match.group("name"))
+    changed = True
+    while changed:
+        changed = False
+        for match in re.finditer(
+            r"\bfor\s+(?P<loop>[A-Za-z_][A-Za-z0-9_]*)\s+in\s+"
+            r"(?P<source>\$\{?[A-Za-z_][A-Za-z0-9_]*\}?)",
+            shell,
+        ):
+            source = match.group("source").lstrip("${").rstrip("}")
+            if source in tainted and match.group("loop") not in tainted:
+                tainted.add(match.group("loop"))
+                changed = True
+    for match in re.finditer(
+        r"\bwhile\s+read(?:\s+-[A-Za-z]+)*\s+"
+        r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)[^\n]*;\s*do[\s\S]*?done\s*"
+        r"<\s*<\((?P<body>[^)]+)\)",
+        shell,
+    ):
+        if _contains_global_docker_listing(match.group("body")):
+            tainted.add(match.group("name"))
+    return frozenset(tainted)
+
+
+def rm_invocation(
+    args: list[str], *, temporary_variables: frozenset[str] = frozenset()
+) -> list[str]:
     recursive = False
     targets: list[str] = []
     options_done = False
@@ -502,11 +574,59 @@ def rm_invocation(args: list[str]) -> list[str]:
         )
         for item in targets
     )
+    exact_temporary = bool(targets) and all(
+        any(item in {f"${name}", f"${{{name}}}"} for name in temporary_variables)
+        for item in targets
+    )
     if recursive or wildcard or host_absolute or runner_scoped:
-        if not targets or wildcard or not all(exact_job_path(item) for item in targets):
+        if (
+            not targets
+            or wildcard
+            or not (exact_temporary or all(exact_job_path(item) for item in targets))
+        ):
             return [
                 "filesystem deletion is not bound to exact run-ID-qualified job paths"
             ]
+    return []
+
+
+def rsync_invocation(args: list[str]) -> list[str]:
+    destructive = any(
+        item == "--delete" or item.startswith("--delete-") for item in args
+    )
+    if not destructive:
+        return []
+    operands = [item for item in args if item != "--" and not item.startswith("-")]
+    destination = operands[-1] if operands else ""
+    if not exact_job_path(destination):
+        return ["rsync --delete destination is not an exact run-ID-qualified job path"]
+    return []
+
+
+def git_clean_invocation(args: list[str]) -> list[str]:
+    index = 0
+    directory = ""
+    while index < len(args):
+        item = args[index]
+        if item in {"-C", "--git-dir", "--work-tree", "-c"}:
+            if index + 1 >= len(args):
+                return ["git clean invocation has an incomplete global option"]
+            if item == "-C":
+                directory = args[index + 1]
+            index += 2
+            continue
+        if item.startswith("-C") and item != "-C":
+            directory = item[2:]
+            index += 1
+            continue
+        if item.startswith("-"):
+            index += 1
+            continue
+        break
+    if index >= len(args) or args[index] != "clean":
+        return []
+    if not exact_job_path(directory):
+        return ["git clean is not bound to an exact run-ID-qualified job path"]
     return []
 
 
@@ -514,12 +634,19 @@ class PythonCleanupVisitor(ast.NodeVisitor):
     def __init__(self) -> None:
         self.shutil_aliases = {"shutil"}
         self.rmtree_aliases: set[str] = set()
-        self.lines: list[int] = []
+        self.os_aliases = {"os"}
+        self.remove_aliases: set[str] = set()
+        self.unlink_aliases: set[str] = set()
+        self.path_aliases = {"Path"}
+        self.calls: list[tuple[int, str, str | None]] = []
+        self.symbols: dict[str, str] = {}
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
             if alias.name == "shutil":
                 self.shutil_aliases.add(alias.asname or alias.name)
+            elif alias.name == "os":
+                self.os_aliases.add(alias.asname or alias.name)
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -527,20 +654,173 @@ class PythonCleanupVisitor(ast.NodeVisitor):
             for alias in node.names:
                 if alias.name == "rmtree":
                     self.rmtree_aliases.add(alias.asname or alias.name)
+        elif node.module == "os":
+            for alias in node.names:
+                if alias.name == "remove":
+                    self.remove_aliases.add(alias.asname or alias.name)
+                elif alias.name == "unlink":
+                    self.unlink_aliases.add(alias.asname or alias.name)
+        elif node.module == "pathlib":
+            for alias in node.names:
+                if alias.name == "Path":
+                    self.path_aliases.add(alias.asname or alias.name)
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
         function = node.func
-        direct = isinstance(function, ast.Name) and function.id in self.rmtree_aliases
-        qualified = (
+        direct_rmtree = (
+            isinstance(function, ast.Name) and function.id in self.rmtree_aliases
+        )
+        qualified_rmtree = (
             isinstance(function, ast.Attribute)
             and function.attr == "rmtree"
             and isinstance(function.value, ast.Name)
             and function.value.id in self.shutil_aliases
         )
-        if direct or qualified:
-            self.lines.append(node.lineno)
+        direct_remove = isinstance(function, ast.Name) and function.id in (
+            self.remove_aliases | self.unlink_aliases
+        )
+        qualified_remove = (
+            isinstance(function, ast.Attribute)
+            and function.attr in {"remove", "unlink"}
+            and isinstance(function.value, ast.Name)
+            and function.value.id in self.os_aliases
+        )
+        path_unlink = isinstance(function, ast.Attribute) and function.attr == "unlink"
+        if direct_rmtree or qualified_rmtree:
+            self.calls.append(
+                (
+                    node.lineno,
+                    "shutil.rmtree",
+                    _python_path_symbol(
+                        node.args[0] if node.args else None,
+                        self.symbols,
+                        self.path_aliases,
+                    ),
+                )
+            )
+        elif direct_remove or qualified_remove:
+            self.calls.append(
+                (
+                    node.lineno,
+                    "os.remove/unlink",
+                    _python_path_symbol(
+                        node.args[0] if node.args else None,
+                        self.symbols,
+                        self.path_aliases,
+                    ),
+                )
+            )
+        elif path_unlink:
+            self.calls.append(
+                (
+                    node.lineno,
+                    "Path.unlink",
+                    _python_path_symbol(
+                        function.value, self.symbols, self.path_aliases
+                    ),
+                )
+            )
         self.generic_visit(node)
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        rendered = _python_path_symbol(node.value, self.symbols, self.path_aliases)
+        if rendered is not None:
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    self.symbols[target.id] = rendered
+        self.generic_visit(node)
+
+    def visit_For(self, node: ast.For) -> None:
+        iterator = node.iter
+        if (
+            isinstance(node.target, ast.Name)
+            and isinstance(iterator, ast.Call)
+            and isinstance(iterator.func, ast.Attribute)
+            and iterator.func.attr in {"glob", "rglob"}
+        ):
+            base = _python_path_symbol(
+                iterator.func.value, self.symbols, self.path_aliases
+            )
+            pattern = _python_path_symbol(
+                iterator.args[0] if iterator.args else None,
+                self.symbols,
+                self.path_aliases,
+            )
+            if base is not None and pattern is not None:
+                self.symbols[node.target.id] = f"{base}/{pattern}"
+        self.generic_visit(node)
+
+
+def _python_environment_name(node: ast.AST) -> str | None:
+    if not isinstance(node, ast.Subscript):
+        return None
+    value = node.value
+    if not (
+        isinstance(value, ast.Attribute)
+        and value.attr == "environ"
+        and isinstance(value.value, ast.Name)
+        and value.value.id == "os"
+    ):
+        return None
+    key = node.slice
+    if isinstance(key, ast.Constant) and isinstance(key.value, str):
+        return key.value
+    return None
+
+
+def _python_path_symbol(
+    node: ast.AST | None,
+    symbols: dict[str, str] | None = None,
+    path_aliases: set[str] | None = None,
+) -> str | None:
+    """Render only statically provable environment-bound Python paths."""
+    if node is None:
+        return None
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.Name) and symbols is not None:
+        return symbols.get(node.id)
+    environment = _python_environment_name(node)
+    if environment is not None:
+        return "${" + environment + "}"
+    aliases = path_aliases or {"Path", "PurePath", "PurePosixPath"}
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+        if node.func.id in aliases and len(node.args) == 1:
+            return _python_path_symbol(node.args[0], symbols, path_aliases)
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        function = ast.unparse(node.func)
+        if function == "Path.home" and not node.args:
+            return "${HOME}"
+        if function in {"os.path.join", "posixpath.join"}:
+            pieces = [
+                _python_path_symbol(item, symbols, path_aliases) for item in node.args
+            ]
+            if pieces and all(item is not None for item in pieces):
+                return str(pieces[0]).rstrip("/") + "".join(
+                    "/" + str(item).strip("/") for item in pieces[1:]
+                )
+    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Div, ast.Add)):
+        left = _python_path_symbol(node.left, symbols, path_aliases)
+        right = _python_path_symbol(node.right, symbols, path_aliases)
+        if left is None or right is None:
+            return None
+        separator = "/" if isinstance(node.op, ast.Div) else ""
+        return f"{left}{separator}{right}"
+    if isinstance(node, ast.JoinedStr):
+        pieces: list[str] = []
+        for value in node.values:
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                pieces.append(value.value)
+            elif isinstance(value, ast.FormattedValue):
+                rendered = _python_path_symbol(value.value, symbols, path_aliases)
+                if rendered is None:
+                    return None
+                pieces.append(rendered)
+            else:
+                return None
+        return "".join(pieces)
+    return None
 
 
 def python_cleanup_violations(source: str, start_line: int) -> list[str]:
@@ -551,10 +831,18 @@ def python_cleanup_violations(source: str, start_line: int) -> list[str]:
         return [f"line {line}: embedded Python cannot be audited: {error.msg}"]
     visitor = PythonCleanupVisitor()
     visitor.visit(tree)
-    return [
-        f"line {start_line + line - 1}: embedded Python shutil.rmtree is forbidden"
-        for line in visitor.lines
-    ]
+    findings: list[str] = []
+    for line, operation, rendered in visitor.calls:
+        explicit_broad = rendered is not None and (
+            rendered.startswith(("/", "~/", "${HOME}", "$HOME"))
+            or any(marker in rendered for marker in ("*", "?", "[", "]", ".."))
+        )
+        if explicit_broad and not exact_job_path(rendered):
+            findings.append(
+                f"line {start_line + line - 1}: Python {operation} is not bound "
+                "to an exact run-ID-qualified job path"
+            )
+    return findings
 
 
 def shell_cleanup_violations(
@@ -565,10 +853,25 @@ def shell_cleanup_violations(
 ) -> list[str]:
     if depth > 2:
         return ["line 1: nested shell audit depth exceeded"]
-    shell, python_bodies, errors = extract_heredocs(shell)
+    shell, executable_bodies, errors = extract_heredocs(shell)
+    temporary_variables = frozenset(
+        match.group("name")
+        for match in re.finditer(
+            r"(?m)^(?P<name>[A-Za-z_][A-Za-z0-9_]*)="
+            r"(?:\"|')?\$\(mktemp\s+-[^\n)]*d[^\n)]*\)",
+            shell,
+        )
+    )
+    docker_tainted = docker_list_tainted_variables(shell)
     violations = list(errors)
-    for line, source in python_bodies:
-        violations.extend(python_cleanup_violations(source, line))
+    for body in executable_bodies:
+        if body.language == "python":
+            violations.extend(python_cleanup_violations(body.source, body.line))
+        else:
+            nested = shell_cleanup_violations(body.source, depth=depth + 1)
+            violations.extend(
+                f"line {body.line}: shell heredoc {item}" for item in nested
+            )
 
     chunks, parse_errors = shell_chunks(shell)
     violations.extend(parse_errors)
@@ -590,6 +893,14 @@ def shell_cleanup_violations(
                     chunk_has_global_docker_list = True
                 if deletion:
                     chunk_has_docker_deletion = True
+                    if any(
+                        item.lstrip("${").rstrip("}") in docker_tainted
+                        for item in args
+                        if item.startswith("$")
+                    ):
+                        violations.append(
+                            f"line {line}: Docker deletion target is tainted by a global object listing"
+                        )
             elif executable in {
                 "conda",
                 "mamba",
@@ -606,7 +917,26 @@ def shell_cleanup_violations(
                     violations.append(f"line {line}: global Nextflow cleanup")
             elif executable == "rm":
                 violations.extend(
-                    f"line {line}: {finding}" for finding in rm_invocation(args)
+                    f"line {line}: {finding}"
+                    for finding in rm_invocation(
+                        args, temporary_variables=temporary_variables
+                    )
+                )
+            elif executable == "unlink":
+                targets = [
+                    item for item in args if item != "--" and not item.startswith("-")
+                ]
+                if not targets or not all(exact_job_path(item) for item in targets):
+                    violations.append(
+                        f"line {line}: unlink is not bound to exact run-ID-qualified job paths"
+                    )
+            elif executable == "rsync":
+                violations.extend(
+                    f"line {line}: {finding}" for finding in rsync_invocation(args)
+                )
+            elif executable == "git":
+                violations.extend(
+                    f"line {line}: {finding}" for finding in git_clean_invocation(args)
                 )
             elif executable == "find":
                 exec_deletion = any(
@@ -657,73 +987,199 @@ def _repo_script_prefix_allowed(prefix: str) -> bool:
     return parent in {".", "v2", "$REPO", "${REPO}"} or parent.startswith("$")
 
 
-def _repository_shell_script(token: str) -> Path | None:
-    marker = "scripts/"
-    position = token.rfind(marker)
-    if position < 0:
-        return None
-    prefix = token[:position]
-    if not _repo_script_prefix_allowed(prefix):
-        return None
-    relative = token[position + len(marker) :]
-    if not relative.endswith(".sh") or any(
-        item in relative for item in ("$", "*", "?", "[", "]", "`")
-    ):
-        return None
-    parts = PurePosixPath(relative).parts
-    if not parts or ".." in parts:
-        return None
-    return ROOT / "scripts" / Path(*parts)
-
-
-def referenced_shell_scripts(shell: str) -> set[Path]:
-    """Find repository shell scripts that an executable shell surface invokes."""
-    shell, _, _ = extract_heredocs(shell)
-    chunks, _ = shell_chunks(shell)
+def _repository_entrypoints(token: str, *, root: Path = ROOT) -> set[Path]:
+    """Resolve literal repository shell/Python entrypoints from one argv token."""
     references: set[Path] = set()
+    pattern = re.compile(
+        r"(?P<base>(?:\.github/actions|scripts|tests|bin)/)"
+        r"(?P<relative>[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\.(?:sh|py))"
+    )
+    for match in pattern.finditer(token):
+        prefix = token[: match.start()]
+        if not _repo_script_prefix_allowed(prefix):
+            continue
+        relative = PurePosixPath(match.group("base") + match.group("relative"))
+        if ".." in relative.parts:
+            continue
+        references.add(root / Path(*relative.parts))
+    return references
+
+
+def referenced_entrypoints_from_shell(shell: str, *, root: Path = ROOT) -> set[Path]:
+    """Find repository shell/Python files executed by a shell command surface."""
+    shell, executable_bodies, _ = extract_heredocs(shell)
+    chunks, _ = shell_chunks(shell)
+    references: set[Path] = set(_repository_entrypoints(shell, root=root))
+    for body in executable_bodies:
+        if body.language == "shell":
+            references.update(referenced_entrypoints_from_shell(body.source, root=root))
+        else:
+            references.update(
+                referenced_entrypoints_from_python(body.source, root=root)
+            )
     for _, tokens in chunks:
         for segment in command_segments(tokens):
-            for token in segment:
-                if "$(" not in token and "`" not in token:
-                    continue
-                for match in re.finditer(
-                    r"scripts/(?P<relative>[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\.sh)",
-                    token,
-                ):
-                    prefix = token[: match.start()]
-                    if not _repo_script_prefix_allowed(prefix):
-                        continue
-                    references.add(ROOT / "scripts" / match.group("relative"))
             invocation = unwrap_command(segment)
             if invocation is None:
                 continue
             executable, args = invocation
-            candidates: list[str] = []
-            executable_path = _repository_shell_script(executable)
-            if executable_path is not None:
-                references.add(executable_path)
-            if executable in {"bash", "sh", "source", "."} and "-c" not in args:
-                candidates.extend(item for item in args if not item.startswith("-"))
-            for candidate in candidates[:1]:
-                script = _repository_shell_script(candidate)
-                if script is not None:
-                    references.add(script)
+            references.update(_repository_entrypoints(executable, root=root))
+            interpreter = (
+                executable in {"bash", "sh", "source", "."}
+                or re.fullmatch(r"python(?:[23](?:\.\d+)*)?", executable) is not None
+            )
+            if interpreter and "-c" not in args:
+                for candidate in args:
+                    references.update(_repository_entrypoints(candidate, root=root))
+            for token in segment:
+                if "$(" in token or "`" in token:
+                    references.update(_repository_entrypoints(token, root=root))
     return references
 
 
-def active_hosted_scripts(
-    workflow_runs: dict[Path, list[tuple[int, str]]],
-) -> tuple[tuple[Path, ...], list[str]]:
-    """Resolve active workflow shell-script dependencies transitively."""
+class PythonEntrypointVisitor(ast.NodeVisitor):
+    """Collect literal repo entrypoints launched through Python process APIs."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.references: set[Path] = set()
+
+    def visit_Call(self, node: ast.Call) -> None:
+        function = ast.unparse(node.func)
+        if function in {
+            "subprocess.run",
+            "subprocess.call",
+            "subprocess.check_call",
+            "subprocess.check_output",
+            "subprocess.Popen",
+            "os.system",
+        }:
+            for argument in node.args:
+                if isinstance(argument, ast.Constant) and isinstance(
+                    argument.value, str
+                ):
+                    self.references.update(
+                        _repository_entrypoints(argument.value, root=self.root)
+                    )
+                    if function == "os.system":
+                        self.references.update(
+                            referenced_entrypoints_from_shell(
+                                argument.value, root=self.root
+                            )
+                        )
+                elif isinstance(argument, (ast.List, ast.Tuple)):
+                    for item in argument.elts:
+                        if isinstance(item, ast.Constant) and isinstance(
+                            item.value, str
+                        ):
+                            self.references.update(
+                                _repository_entrypoints(item.value, root=self.root)
+                            )
+        self.generic_visit(node)
+
+
+def referenced_entrypoints_from_python(source: str, *, root: Path = ROOT) -> set[Path]:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return set()
+    visitor = PythonEntrypointVisitor(root)
+    visitor.visit(tree)
+    return visitor.references
+
+
+def _local_action_metadata(action: str, *, root: Path = ROOT) -> Path | None:
+    if not action.startswith("./") or any(
+        marker in action for marker in ("$", "*", "?")
+    ):
+        return None
+    directory = (root / action[2:]).resolve()
+    if not directory.is_relative_to(root.resolve()):
+        return None
+    for name in ("action.yml", "action.yaml"):
+        candidate = directory / name
+        if candidate.is_file() and not candidate.is_symlink():
+            return candidate
+    return directory / "action.yml"
+
+
+def active_hosted_entrypoints(
+    workflow_surfaces: dict[Path, tuple[list[tuple[int, str]], list[tuple[int, str]]]],
+    *,
+    root: Path = ROOT,
+) -> tuple[tuple[Path, ...], list[tuple[Path, int, str]], list[str]]:
+    """Resolve active local actions and shell/Python dependencies transitively."""
+    action_runs: list[tuple[Path, int, str]] = []
+    action_entrypoints: set[Path] = set()
+    action_pending = {
+        metadata
+        for _, uses in workflow_surfaces.values()
+        for _, action in uses
+        if (metadata := _local_action_metadata(action, root=root)) is not None
+    }
+    actions_seen: set[Path] = set()
+    errors: list[str] = []
+    while action_pending:
+        metadata = action_pending.pop()
+        if metadata in actions_seen:
+            continue
+        actions_seen.add(metadata)
+        if not metadata.is_file() or metadata.is_symlink():
+            errors.append(
+                f"{metadata.relative_to(root)}: local action metadata is missing or a symlink"
+            )
+            continue
+        metadata_text = metadata.read_text(encoding="utf-8")
+        runs, uses = workflow_command_surfaces(metadata_text)
+        action_runs.extend((metadata, line, shell) for line, shell in runs)
+        for match in re.finditer(
+            r"(?m)^\s*(?:entrypoint|main|pre|post):\s*(?P<value>[^#]+?)\s*$",
+            metadata_text,
+        ):
+            value = _yaml_scalar(match.group("value"))
+            if value.endswith((".sh", ".py")) and not any(
+                marker in value for marker in ("$", "*", "?", "..")
+            ):
+                action_entrypoints.add(metadata.parent / value.lstrip("./"))
+        image_match = re.search(
+            r"(?m)^\s*image:\s*(?P<value>[^#]+?Dockerfile)\s*$", metadata_text
+        )
+        if image_match:
+            dockerfile = metadata.parent / _yaml_scalar(
+                image_match.group("value")
+            ).lstrip("./")
+            if dockerfile.is_file() and not dockerfile.is_symlink():
+                docker_text = dockerfile.read_text(encoding="utf-8")
+                for match in re.finditer(
+                    r"(?im)^\s*(?:ENTRYPOINT|CMD)\s+"
+                    r"(?:\[\s*)?[\"']?(?P<value>[^\"',\]\s]+\.(?:sh|py))",
+                    docker_text,
+                ):
+                    action_entrypoints.add(
+                        metadata.parent / match.group("value").lstrip("./")
+                    )
+        for _, action in uses:
+            nested = _local_action_metadata(action, root=root)
+            if nested is not None:
+                action_pending.add(nested)
+
     pending = {
         reference
-        for runs in workflow_runs.values()
+        for runs, _ in workflow_surfaces.values()
         for _, shell in runs
-        for reference in referenced_shell_scripts(shell)
+        for reference in referenced_entrypoints_from_shell(shell, root=root)
     }
+    pending.update(
+        reference
+        for _, _, shell in action_runs
+        for reference in referenced_entrypoints_from_shell(shell, root=root)
+    )
+    pending.update(action_entrypoints)
     discovered: set[Path] = set()
-    errors: list[str] = []
-    scripts_root = (ROOT / "scripts").resolve()
+    allowed_roots = tuple(
+        (root / item).resolve() for item in REPOSITORY_ENTRYPOINT_ROOTS
+    )
+    allowed_roots += ((root / ".github" / "actions").resolve(),)
     while pending:
         path = pending.pop()
         if path in discovered:
@@ -735,14 +1191,27 @@ def active_hosted_scripts(
             )
             continue
         resolved = path.resolve()
-        if not resolved.is_relative_to(scripts_root):
+        if not any(resolved.is_relative_to(item) for item in allowed_roots):
             errors.append(
-                f"{path.relative_to(ROOT)}: active hosted script escapes scripts/"
+                f"{path.relative_to(root)}: active hosted entrypoint escapes audited roots"
             )
             continue
         source = path.read_text(encoding="utf-8")
-        pending.update(referenced_shell_scripts(source) - discovered)
-    return tuple(sorted(discovered)), errors
+        if path.suffix == ".sh":
+            references = referenced_entrypoints_from_shell(source, root=root)
+        else:
+            references = referenced_entrypoints_from_python(source, root=root)
+        pending.update(references - discovered)
+    return tuple(sorted(discovered)), action_runs, errors
+
+
+def active_hosted_scripts(
+    workflow_runs: dict[Path, list[tuple[int, str]]],
+) -> tuple[tuple[Path, ...], list[str]]:
+    """Backward-compatible test helper returning active shell entrypoints."""
+    surfaces = {path: (runs, []) for path, runs in workflow_runs.items()}
+    entrypoints, _, errors = active_hosted_entrypoints(surfaces)
+    return tuple(path for path in entrypoints if path.suffix == ".sh"), errors
 
 
 def verified_image_helper_violations(source: str) -> list[str]:
@@ -803,10 +1272,12 @@ def verified_image_helper_violations(source: str) -> list[str]:
 
 def active_surface_violations() -> list[str]:
     violations: list[str] = []
-    workflow_runs: dict[Path, list[tuple[int, str]]] = {}
+    workflow_surfaces: dict[
+        Path, tuple[list[tuple[int, str]], list[tuple[int, str]]]
+    ] = {}
     for path in ACTIVE_WORKFLOWS:
         runs, uses = workflow_command_surfaces(path.read_text(encoding="utf-8"))
-        workflow_runs[path] = runs
+        workflow_surfaces[path] = (runs, uses)
         for line, action in uses:
             if action.casefold().startswith(WHOLE_RUNNER_ACTIONS):
                 violations.append(
@@ -817,10 +1288,23 @@ def active_surface_violations() -> list[str]:
                 f"{path.relative_to(ROOT)}:{line}: {finding}"
                 for finding in shell_cleanup_violations(shell)
             )
-    hosted_scripts, discovery_errors = active_hosted_scripts(workflow_runs)
+    hosted_entrypoints, action_runs, discovery_errors = active_hosted_entrypoints(
+        workflow_surfaces
+    )
     violations.extend(discovery_errors)
-    for path in hosted_scripts:
+    for path, line, shell in action_runs:
+        violations.extend(
+            f"{path.relative_to(ROOT)}:{line}: {finding}"
+            for finding in shell_cleanup_violations(shell)
+        )
+    for path in hosted_entrypoints:
         source = path.read_text(encoding="utf-8")
+        if path.suffix == ".py":
+            violations.extend(
+                f"{path.relative_to(ROOT)}: {finding}"
+                for finding in python_cleanup_violations(source, 1)
+            )
+            continue
         if path == ROOT / "scripts" / "ci_native_parity.sh":
             violations.extend(
                 f"{path.relative_to(ROOT)}: {finding}"
@@ -899,6 +1383,13 @@ class HostedCiStorageSafetyTests(unittest.TestCase):
             "python3 -c \"import shutil; shutil.rmtree('/opt/hostedtoolcache')\"",
             "bash -c 'docker system prune --all --force'",
             "eval 'docker system prune --all --force'",
+            "unlink /opt/hostedtoolcache/sentinel",
+            "rsync -a --delete source/ /opt/hostedtoolcache/",
+            "git clean -fdx",
+            "git -C /opt/hostedtoolcache clean -ffdx",
+            'ids="$(docker --context default images -aq)"\nfor id in $ids; do\n  docker image rm "$id"\ndone',
+            'while read -r id; do docker container rm "$id"; done < <(docker ps -aq)',
+            'mapfile -t ids < <(docker image ls -q)\nfor id in ${ids[@]}; do docker rmi "$id"; done',
         )
         for fixture in fixtures:
             with self.subTest(command=fixture):
@@ -919,6 +1410,92 @@ PY
 """
         self.assertTrue(shell_cleanup_violations(imported_alias))
 
+        variants = (
+            "import os\nos.unlink('/opt/hostedtoolcache/file')\n",
+            "from os import remove as erase\nerase('/opt/hostedtoolcache/file')\n",
+            "from pathlib import Path\nPath('/opt/hostedtoolcache/file').unlink()\n",
+            "from pathlib import Path\ntarget = Path('/opt/hostedtoolcache/file')\ntarget.unlink()\n",
+            "from pathlib import Path as P\ntarget = P('/opt/hostedtoolcache/file')\ntarget.unlink()\n",
+            "from pathlib import Path\nfor target in Path('/opt/hostedtoolcache').glob('*'):\n    target.unlink()\n",
+            "from pathlib import Path\n(Path.home() / '.nextflow').unlink()\n",
+            "import os\nos.remove(os.path.join('/opt/hostedtoolcache', 'file'))\n",
+        )
+        for source in variants:
+            with self.subTest(source=source):
+                self.assertTrue(
+                    shell_cleanup_violations("python3 - <<'PY'\n" + source + "PY\n")
+                )
+
+    def test_shell_heredoc_is_executable_but_data_heredoc_is_not(self) -> None:
+        executable = """bash <<'SHELL'
+docker --context default buildx --builder shared prune --all --force
+SHELL
+"""
+        self.assertTrue(shell_cleanup_violations(executable))
+        data = executable.replace("bash <<", "cat <<")
+        self.assertEqual(shell_cleanup_violations(data), [])
+
+    def test_recursive_workflow_local_action_and_entrypoint_discovery(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_root:
+            root = Path(raw_root)
+            (root / ".github/workflows").mkdir(parents=True)
+            (root / ".github/actions/audit").mkdir(parents=True)
+            (root / ".github/actions/docker-audit").mkdir(parents=True)
+            (root / "scripts").mkdir()
+            (root / "tests").mkdir()
+            workflow = root / ".github/workflows/ci.yml"
+            workflow.write_text(
+                "jobs:\n  test:\n    steps:\n      - uses: ./.github/actions/audit\n",
+                encoding="utf-8",
+            )
+            action = root / ".github/actions/audit/action.yml"
+            action.write_text(
+                "runs:\n  using: composite\n  steps:\n"
+                "    - run: bash scripts/first.sh\n      shell: bash\n"
+                "    - uses: ./.github/actions/docker-audit\n",
+                encoding="utf-8",
+            )
+            (root / ".github/actions/docker-audit/action.yml").write_text(
+                "runs:\n  using: docker\n  image: Dockerfile\n",
+                encoding="utf-8",
+            )
+            (root / ".github/actions/docker-audit/Dockerfile").write_text(
+                'FROM scratch\nENTRYPOINT ["entrypoint.sh"]\n', encoding="utf-8"
+            )
+            (root / ".github/actions/docker-audit/entrypoint.sh").write_text(
+                "bash scripts/fourth.sh\n", encoding="utf-8"
+            )
+            (root / "scripts/first.sh").write_text(
+                "python3 tests/second.py\n", encoding="utf-8"
+            )
+            (root / "tests/second.py").write_text(
+                "import subprocess\nsubprocess.run(['bash', 'scripts/third.sh'])\n",
+                encoding="utf-8",
+            )
+            (root / "scripts/third.sh").write_text(
+                "docker buildx --builder shared prune --all --force\n",
+                encoding="utf-8",
+            )
+            (root / "scripts/fourth.sh").write_text("true\n", encoding="utf-8")
+            surfaces = {workflow: workflow_command_surfaces(workflow.read_text())}
+            entrypoints, action_runs, errors = active_hosted_entrypoints(
+                surfaces, root=root
+            )
+            self.assertEqual(errors, [])
+            self.assertEqual(len(action_runs), 1)
+            self.assertEqual(
+                {path.relative_to(root).as_posix() for path in entrypoints},
+                {
+                    ".github/actions/docker-audit/entrypoint.sh",
+                    "scripts/first.sh",
+                    "tests/second.py",
+                    "scripts/third.sh",
+                    "scripts/fourth.sh",
+                },
+            )
+            third = root / "scripts/third.sh"
+            self.assertTrue(shell_cleanup_violations(third.read_text()))
+
     def test_exact_run_owned_cleanup_is_allowed(self) -> None:
         fixtures = (
             'rm -rf -- "$RUNNER_TEMP/oncotracer-${GITHUB_RUN_ID}"',
@@ -928,6 +1505,9 @@ PY
             'docker compose --project-name "oncotracer-${GITHUB_RUN_ID}" down',
             'rm -f -- "$RUNNER_TEMP/oncotracer-marker-${GITHUB_RUN_ID}"',
             'find "$RUNNER_TEMP/oncotracer-${GITHUB_RUN_ID}" -mindepth 1 -delete',
+            'unlink "$RUNNER_TEMP/oncotracer-marker-${GITHUB_RUN_ID}"',
+            'rsync -a --delete source/ "$RUNNER_TEMP/oncotracer-sync-${GITHUB_RUN_ID}"',
+            'git -C "$RUNNER_TEMP/oncotracer-tree-${GITHUB_RUN_ID}" clean -fdx',
         )
         for fixture in fixtures:
             with self.subTest(command=fixture):
@@ -992,6 +1572,127 @@ PY
         for mutation in mutations:
             with self.subTest():
                 self.assertTrue(verified_image_helper_violations(mutation))
+
+    def test_verified_image_helper_checks_identity_and_use_before_exact_rm(
+        self,
+    ) -> None:
+        source = (ROOT / "scripts" / "ci_native_parity.sh").read_text(encoding="utf-8")
+        start = source.index("remove_owned_image_references() {")
+        end = source.index("\n}\n\nrun_native_environment_probe() {", start) + 2
+        helper = source[start:end]
+        digest = "sha256:" + "a" * 64
+        v1 = "carlosfarkas/oncotracer@sha256:" + "b" * 64
+        mutable = "example.invalid/oncotracer:v1"
+        immutable = f"example.invalid/oncotracer@{digest}"
+
+        def invoke(
+            *, mismatch: bool = False, containers: bool = False
+        ) -> subprocess.CompletedProcess[str]:
+            with tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                runner_temp = root / "runner"
+                context = root / "context"
+                runner_temp.mkdir()
+                context.mkdir()
+                manifest = (
+                    runner_temp / "oncotracer-image-ownership-77-3-quickstart1.tsv"
+                )
+                pins = root / "pins.tsv"
+                pins.write_text(
+                    f"container\tmanifest_digest\n{mutable}\t{digest}\n",
+                    encoding="utf-8",
+                )
+                manifest.write_text(
+                    "reference\timage_id\tcreated_by_job\n"
+                    f"{v1}\t{digest}\t0\n"
+                    f"{mutable}\t{digest}\t1\n"
+                    f"{immutable}\t{digest}\t0\n",
+                    encoding="utf-8",
+                )
+                fake_bin = root / "bin"
+                fake_bin.mkdir()
+                fake = fake_bin / "docker"
+                fake.write_text(
+                    """#!/usr/bin/env bash
+set -Eeuo pipefail
+printf '%s\n' "$*" >> "$DOCKER_LOG"
+if [[ "$1 $2" == 'image inspect' ]]; then
+  reference="$3"
+  if [[ "${4:-}" == --format ]]; then
+    if [[ "$FAKE_MISMATCH" == 1 && "$reference" == *':v1' ]]; then
+      printf 'sha256:%064d\n' 0
+    else
+      printf '%s\n' "$EXPECTED_ID"
+    fi
+  else
+    grep -Fxq -- "$reference" "$STATE_FILE"
+  fi
+elif [[ "$1" == ps ]]; then
+  [[ "$FAKE_CONTAINERS" == 0 ]] || printf 'container-id\n'
+elif [[ "$1 $2" == 'image rm' ]]; then
+  reference="$4"
+  grep -Fxv -- "$reference" "$STATE_FILE" > "$STATE_FILE.next"
+  mv "$STATE_FILE.next" "$STATE_FILE"
+else
+  exit 91
+fi
+""",
+                    encoding="utf-8",
+                )
+                fake.chmod(0o755)
+                state = root / "state"
+                state.write_text(f"{v1}\n{mutable}\n{immutable}\n", encoding="utf-8")
+                docker_log = root / "docker.log"
+                program = "\n".join(
+                    (
+                        "set -Eeuo pipefail",
+                        helper,
+                        "remove_owned_image_references",
+                    )
+                )
+                environment = {
+                    "PATH": f"{fake_bin}:/usr/bin:/bin",
+                    "RUNNER_TEMP": str(runner_temp),
+                    "GITHUB_RUN_ID": "77",
+                    "GITHUB_RUN_ATTEMPT": "3",
+                    "SUITE": "quickstart1",
+                    "IMAGE_OWNERSHIP": str(manifest),
+                    "PINS": str(pins),
+                    "CONTEXT": str(context),
+                    "V1_DOCKER_IMAGE": v1,
+                    "DOCKER_LOG": str(docker_log),
+                    "STATE_FILE": str(state),
+                    "EXPECTED_ID": digest,
+                    "FAKE_MISMATCH": str(int(mismatch)),
+                    "FAKE_CONTAINERS": str(int(containers)),
+                }
+                completed = subprocess.run(
+                    ["bash", "-c", program],
+                    env=environment,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                completed.docker_log = docker_log.read_text(encoding="utf-8")  # type: ignore[attr-defined]
+                return completed
+
+        success = invoke()
+        self.assertEqual(success.returncode, 0, success.stderr)
+        commands = success.docker_log.splitlines()  # type: ignore[attr-defined]
+        rm_index = commands.index(f"image rm -- {mutable}")
+        self.assertLess(
+            commands.index(f"image inspect {mutable} --format {{{{.Id}}}}"), rm_index
+        )
+        self.assertLess(
+            commands.index(f"ps --all --quiet --filter ancestor={mutable}"), rm_index
+        )
+        self.assertEqual(sum(item.startswith("image rm ") for item in commands), 1)
+        mismatch = invoke(mismatch=True)
+        self.assertNotEqual(mismatch.returncode, 0)
+        self.assertNotIn("image rm ", mismatch.docker_log)  # type: ignore[attr-defined]
+        active = invoke(containers=True)
+        self.assertNotEqual(active.returncode, 0)
+        self.assertNotIn("image rm ", active.docker_log)  # type: ignore[attr-defined]
 
     def test_comments_names_heredoc_data_and_echo_are_not_commands(self) -> None:
         workflow = """name: Do not run docker system prune
@@ -1065,6 +1766,16 @@ PY
             "0",
             "--standard-contract-free-gib",
             "14",
+            "--run-id",
+            "123",
+            "--run-attempt",
+            "2",
+            "--suite",
+            "regression-fixture",
+            "--candidate-sha",
+            "a" * 40,
+            "--expected-swap-file",
+            "none",
             "--path",
             str(ROOT),
         ]
@@ -1076,6 +1787,54 @@ PY
         )
         self.assertEqual(passing.returncode, 0, passing.stderr)
         self.assertIn("resource_preflight_required_free_gib=1", passing.stdout)
+        self.assertIn("resource_preflight_status=PASS", passing.stdout)
+        with tempfile.TemporaryDirectory() as raw:
+            evidence = Path(raw) / "preflight.txt"
+            evidence.write_text(passing.stdout, encoding="utf-8")
+            verified = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts/verify_ci_resource_preflight.py"),
+                    "--evidence",
+                    str(evidence),
+                    "--run-id",
+                    "123",
+                    "--run-attempt",
+                    "2",
+                    "--suite",
+                    "regression-fixture",
+                    "--candidate-sha",
+                    "a" * 40,
+                    "--min-free-gib",
+                    "1",
+                    "--min-physical-gib",
+                    "1",
+                    "--min-addressable-gib",
+                    "1",
+                    "--planned-swap-gib",
+                    "0",
+                    "--standard-contract-free-gib",
+                    "14",
+                    "--expected-swap-file",
+                    "none",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(verified.returncode, 0, verified.stderr)
+            tampered = passing.stdout.replace(
+                "resource_preflight_run_id=123", "resource_preflight_run_id=999"
+            )
+            evidence.write_text(tampered, encoding="utf-8")
+            rejected = subprocess.run(
+                verified.args,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn("does not match", rejected.stderr)
 
         failing = subprocess.run(
             [*base, "--min-free-gib", "1048576"],
@@ -1153,6 +1912,7 @@ PY
             "record_phase_resources native-package-cache-released",
             "STANDARD_RUNNER_CONTRACT_FREE_GIB=14",
             "scripts/ci_resource_preflight.sh",
+            "scripts/verify_ci_resource_preflight.py",
             '--min-free-gib "$MIN_FREE_GIB"',
             '--min-addressable-gib "$MIN_ADDRESSABLE_GIB"',
             "trap cleanup_job_swap EXIT",
@@ -1160,6 +1920,13 @@ PY
             'if ! sudo swapoff -- "$SWAP_FILE"',
             "active swap could not be established",
             "Refusing to remove active swap after swapoff failed",
+            'readonly V1_PROJECT_ROOT="$TEST_ROOT/frozen-v1-project"',
+            'readonly V2_PROJECT_ROOT="$TEST_ROOT/native-v2-project"',
+            '--lpwgs-root "$V1_PROJECT_ROOT"',
+            '--lpwgs-root "$V2_PROJECT_ROOT"',
+            '[[ ! -e "$V2_PROJECT_ROOT/references"',
+            "record_phase_resources frozen-reference-released",
+            "record_phase_resources final",
         ):
             self.assertIn(required, parity)
         self.assertIn(
@@ -1181,6 +1948,15 @@ PY
             parity.index('log "Release only image references'),
             parity.index('log "Create and probe only the native environments'),
         )
+        self.assertLess(
+            parity.index('"$V1_PROJECT_ROOT/references/samurai_hg38"'),
+            parity.index("record_phase_resources frozen-reference-released"),
+        )
+        self.assertLess(
+            parity.index("record_phase_resources frozen-reference-released"),
+            parity.index('log "Create and probe only the native environments'),
+        )
+        self.assertNotIn('--lpwgs-root "$TEST_ROOT"', parity)
 
         workflow = (WORKFLOW_ROOT / "native-v2-ci.yml").read_text(encoding="utf-8")
         for required in (
@@ -1206,6 +1982,16 @@ PY
             "before any publication step",
         ):
             self.assertIn(required, release)
+        capacity_start = release.index(
+            "- name: Require safe release-container build capacity"
+        )
+        capacity_end = release.index(
+            "- name: Verify immutable source identity", capacity_start
+        )
+        capacity_step = release[capacity_start:capacity_end]
+        self.assertIn("MAIN_SHA: ${{ steps.gate.outputs.main_sha }}", capacity_step)
+        self.assertIn('--candidate-sha "$MAIN_SHA"', capacity_step)
+        self.assertIn("verify_ci_resource_preflight.py", capacity_step)
 
     def test_heavy_runner_selection_is_explicit_and_fork_safe(self) -> None:
         trusted_expression = (

@@ -5,7 +5,9 @@ usage() {
   cat >&2 <<'EOF'
 Usage: ci_resource_preflight.sh --purpose TEXT --min-free-gib N
        --min-physical-gib N --min-addressable-gib N --planned-swap-gib N
-       --standard-contract-free-gib N --path PATH [--path PATH ...]
+       --standard-contract-free-gib N --run-id N --run-attempt N --suite NAME
+       --candidate-sha SHA --expected-swap-file PATH|none
+       --path PATH [--path PATH ...]
 EOF
   exit 2
 }
@@ -16,6 +18,11 @@ MIN_PHYSICAL_GIB=""
 MIN_ADDRESSABLE_GIB=""
 PLANNED_SWAP_GIB=""
 STANDARD_CONTRACT_FREE_GIB=""
+RUN_ID=""
+RUN_ATTEMPT=""
+SUITE=""
+CANDIDATE_SHA=""
+EXPECTED_SWAP_FILE=""
 declare -a CHECK_PATHS=()
 
 while [[ $# -gt 0 ]]; do
@@ -26,6 +33,11 @@ while [[ $# -gt 0 ]]; do
     --min-addressable-gib) MIN_ADDRESSABLE_GIB="${2:-}"; shift 2 ;;
     --planned-swap-gib) PLANNED_SWAP_GIB="${2:-}"; shift 2 ;;
     --standard-contract-free-gib) STANDARD_CONTRACT_FREE_GIB="${2:-}"; shift 2 ;;
+    --run-id) RUN_ID="${2:-}"; shift 2 ;;
+    --run-attempt) RUN_ATTEMPT="${2:-}"; shift 2 ;;
+    --suite) SUITE="${2:-}"; shift 2 ;;
+    --candidate-sha) CANDIDATE_SHA="${2:-}"; shift 2 ;;
+    --expected-swap-file) EXPECTED_SWAP_FILE="${2:-}"; shift 2 ;;
     --path) CHECK_PATHS+=("${2:-}"); shift 2 ;;
     -h|--help) usage ;;
     *) usage ;;
@@ -33,6 +45,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$PURPOSE" && ${#CHECK_PATHS[@]} -gt 0 ]] || usage
+[[ "$RUN_ID" =~ ^[1-9][0-9]*$ && "$RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]] || usage
+[[ "$SUITE" =~ ^[a-z0-9][a-z0-9-]*$ ]] || usage
+[[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] || usage
 for value in \
   "$MIN_FREE_GIB" "$MIN_PHYSICAL_GIB" "$MIN_ADDRESSABLE_GIB" \
   "$PLANNED_SWAP_GIB" \
@@ -40,6 +55,13 @@ for value in \
   [[ "$value" =~ ^[0-9]+$ ]] || usage
 done
 (( MIN_FREE_GIB > 0 && MIN_PHYSICAL_GIB > 0 && MIN_ADDRESSABLE_GIB > 0 )) || usage
+if (( PLANNED_SWAP_GIB > 0 )); then
+  [[ -n "${RUNNER_TEMP:-}" ]] || usage
+  expected="$RUNNER_TEMP/oncotracer-swap-${RUN_ID}-${RUN_ATTEMPT}"
+  [[ "$EXPECTED_SWAP_FILE" == "$expected" ]] || usage
+else
+  [[ "$EXPECTED_SWAP_FILE" == none ]] || usage
+fi
 
 first_device=""
 available_kib=""
@@ -82,18 +104,6 @@ planned_swap_kib=$((PLANNED_SWAP_GIB * KIB_PER_GIB))
 required_addressable_kib=$((MIN_ADDRESSABLE_GIB * KIB_PER_GIB))
 addressable_kib=$((mem_total_kib + swap_total_kib + planned_swap_kib))
 
-printf 'resource_preflight_purpose=%s\n' "$PURPOSE"
-printf 'resource_preflight_filesystem=%s\n' "$first_device"
-printf 'resource_preflight_available_kib=%s\n' "$available_kib"
-printf 'resource_preflight_required_free_gib=%s\n' "$MIN_FREE_GIB"
-printf 'resource_preflight_mem_total_kib=%s\n' "$mem_total_kib"
-printf 'resource_preflight_required_physical_gib=%s\n' "$MIN_PHYSICAL_GIB"
-printf 'resource_preflight_swap_total_kib=%s\n' "$swap_total_kib"
-printf 'resource_preflight_planned_swap_gib=%s\n' "$PLANNED_SWAP_GIB"
-printf 'resource_preflight_required_addressable_gib=%s\n' "$MIN_ADDRESSABLE_GIB"
-printf 'resource_preflight_standard_contract_free_gib=%s\n' \
-  "$STANDARD_CONTRACT_FREE_GIB"
-
 if (( available_kib < required_free_kib )); then
   printf 'ERROR: %s requires at least %s GiB free on one filesystem; only %s KiB is available.\n' \
     "$PURPOSE" "$MIN_FREE_GIB" "$available_kib" >&2
@@ -121,3 +131,22 @@ if (( MIN_FREE_GIB > STANDARD_CONTRACT_FREE_GIB )); then
   printf 'NOTICE: observed capacity passes, but the %s GiB standard-runner storage contract does not guarantee this %s GiB workload.\n' \
     "$STANDARD_CONTRACT_FREE_GIB" "$MIN_FREE_GIB" >&2
 fi
+
+printf 'resource_preflight_schema=oncotracer-hosted-resource-preflight-v2\n'
+printf 'resource_preflight_status=PASS\n'
+printf 'resource_preflight_run_id=%s\n' "$RUN_ID"
+printf 'resource_preflight_run_attempt=%s\n' "$RUN_ATTEMPT"
+printf 'resource_preflight_suite=%s\n' "$SUITE"
+printf 'resource_preflight_candidate_sha=%s\n' "$CANDIDATE_SHA"
+printf 'resource_preflight_purpose=%s\n' "$PURPOSE"
+printf 'resource_preflight_filesystem=%s\n' "$first_device"
+printf 'resource_preflight_available_kib=%s\n' "$available_kib"
+printf 'resource_preflight_required_free_gib=%s\n' "$MIN_FREE_GIB"
+printf 'resource_preflight_mem_total_kib=%s\n' "$mem_total_kib"
+printf 'resource_preflight_required_physical_gib=%s\n' "$MIN_PHYSICAL_GIB"
+printf 'resource_preflight_swap_total_kib=%s\n' "$swap_total_kib"
+printf 'resource_preflight_planned_swap_gib=%s\n' "$PLANNED_SWAP_GIB"
+printf 'resource_preflight_expected_swap_file=%s\n' "$EXPECTED_SWAP_FILE"
+printf 'resource_preflight_required_addressable_gib=%s\n' "$MIN_ADDRESSABLE_GIB"
+printf 'resource_preflight_standard_contract_free_gib=%s\n' \
+  "$STANDARD_CONTRACT_FREE_GIB"

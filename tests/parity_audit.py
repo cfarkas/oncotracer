@@ -812,7 +812,220 @@ def verify_parity_reports(audit: Path, suite: str) -> dict[str, object]:
     return metrics
 
 
-def verify_minimal_native_environments(context: Path, suite: str) -> dict[str, object]:
+def _unique_mapping(lines: list[str], separator: str, label: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in lines:
+        if not line:
+            break
+        if separator not in line:
+            raise AuditError(f"invalid {label} evidence row: {line!r}")
+        key, value = line.split(separator, 1)
+        if not key or key in values:
+            raise AuditError(f"duplicate or empty {label} evidence key: {key!r}")
+        values[key] = value
+    return values
+
+
+def _evidence_integer(values: dict[str, str], key: str) -> int:
+    value = values.get(key, "")
+    if re.fullmatch(r"[0-9]+", value) is None:
+        raise AuditError(f"resource evidence {key!r} is not a nonnegative integer")
+    return int(value)
+
+
+def verify_hosted_resource_evidence(
+    context: Path, suite: str, candidate_sha: str | None
+) -> dict[str, object]:
+    preflight_path = require_file(context / "hosted-resource-preflight.txt")
+    preflight = _unique_mapping(
+        preflight_path.read_text(encoding="utf-8").splitlines(),
+        "=",
+        "resource preflight",
+    )
+    required_preflight = {
+        "resource_preflight_schema",
+        "resource_preflight_status",
+        "resource_preflight_run_id",
+        "resource_preflight_run_attempt",
+        "resource_preflight_suite",
+        "resource_preflight_candidate_sha",
+        "resource_preflight_purpose",
+        "resource_preflight_filesystem",
+        "resource_preflight_available_kib",
+        "resource_preflight_required_free_gib",
+        "resource_preflight_mem_total_kib",
+        "resource_preflight_required_physical_gib",
+        "resource_preflight_swap_total_kib",
+        "resource_preflight_planned_swap_gib",
+        "resource_preflight_expected_swap_file",
+        "resource_preflight_required_addressable_gib",
+        "resource_preflight_standard_contract_free_gib",
+    }
+    if set(preflight) != required_preflight:
+        raise AuditError(
+            f"resource preflight key inventory mismatch: {set(preflight)!r}"
+        )
+    if (
+        preflight["resource_preflight_schema"]
+        != "oncotracer-hosted-resource-preflight-v2"
+        or preflight["resource_preflight_status"] != "PASS"
+        or preflight["resource_preflight_suite"] != suite
+    ):
+        raise AuditError("resource preflight identity or status mismatch")
+    run_id = preflight["resource_preflight_run_id"]
+    run_attempt = preflight["resource_preflight_run_attempt"]
+    evidence_sha = preflight["resource_preflight_candidate_sha"]
+    if (
+        re.fullmatch(r"[1-9][0-9]*", run_id) is None
+        or re.fullmatch(r"[1-9][0-9]*", run_attempt) is None
+        or re.fullmatch(r"[0-9a-f]{40}", evidence_sha) is None
+        or (candidate_sha is not None and evidence_sha != candidate_sha)
+    ):
+        raise AuditError("resource preflight run or source identity mismatch")
+    thresholds = {
+        "minimum_free_gib": _evidence_integer(
+            preflight, "resource_preflight_required_free_gib"
+        ),
+        "minimum_physical_gib": _evidence_integer(
+            preflight, "resource_preflight_required_physical_gib"
+        ),
+        "minimum_addressable_gib": _evidence_integer(
+            preflight, "resource_preflight_required_addressable_gib"
+        ),
+        "planned_swap_gib": _evidence_integer(
+            preflight, "resource_preflight_planned_swap_gib"
+        ),
+    }
+    if (
+        thresholds
+        != {
+            "minimum_free_gib": 72,
+            "minimum_physical_gib": 15,
+            "minimum_addressable_gib": 47,
+            "planned_swap_gib": 32,
+        }
+        or _evidence_integer(preflight, "resource_preflight_standard_contract_free_gib")
+        != 14
+    ):
+        raise AuditError(f"resource preflight threshold model mismatch: {thresholds!r}")
+    kib_per_gib = 1024 * 1024
+    if (
+        _evidence_integer(preflight, "resource_preflight_available_kib")
+        < thresholds["minimum_free_gib"] * kib_per_gib
+        or _evidence_integer(preflight, "resource_preflight_mem_total_kib")
+        < thresholds["minimum_physical_gib"] * kib_per_gib
+        or (
+            _evidence_integer(preflight, "resource_preflight_mem_total_kib")
+            + _evidence_integer(preflight, "resource_preflight_swap_total_kib")
+            + thresholds["planned_swap_gib"] * kib_per_gib
+            < thresholds["minimum_addressable_gib"] * kib_per_gib
+        )
+    ):
+        raise AuditError("resource preflight observations do not satisfy thresholds")
+    expected_swap = preflight["resource_preflight_expected_swap_file"]
+    if (
+        not expected_swap.startswith("/")
+        or PurePosixPath(expected_swap).name
+        != f"oncotracer-swap-{run_id}-{run_attempt}"
+        or ".." in PurePosixPath(expected_swap).parts
+    ):
+        raise AuditError("resource preflight swap is not exact and job-owned")
+
+    phase_names = (
+        "preflight-passed",
+        "swap-active",
+        "public-inputs-ready",
+        "frozen-images-ready",
+        "frozen-traces-authenticated",
+        "frozen-reference-released",
+        "frozen-images-released",
+        "native-environments-with-cache",
+        "native-package-cache-released",
+        "native-runs-complete",
+        "final",
+    )
+    phase_root = context / "hosted-resource-phases"
+    observed_phases = {path.stem for path in phase_root.glob("*.txt") if path.is_file()}
+    if observed_phases != set(phase_names):
+        raise AuditError(f"resource phase evidence mismatch: {observed_phases!r}")
+    for index, phase in enumerate(phase_names, start=1):
+        phase_path = require_file(phase_root / f"{phase}.txt")
+        text = phase_path.read_text(encoding="utf-8", errors="strict")
+        headers = _unique_mapping(text.splitlines(), "\t", f"resource phase {phase}")
+        for marker in (
+            "[df-kibibytes]",
+            "[memory-kibibytes]",
+            "[active-swap]",
+            "[docker]",
+            "[path-bytes]",
+        ):
+            if text.count(marker) != 1:
+                raise AuditError(
+                    f"resource phase {phase!r} lacks one required marker {marker!r}"
+                )
+        if (
+            headers.get("schema") != "oncotracer-hosted-resource-phase-v2"
+            or headers.get("run_id") != run_id
+            or headers.get("run_attempt") != run_attempt
+            or headers.get("suite") != suite
+            or headers.get("candidate_sha") != evidence_sha
+            or headers.get("phase") != phase
+            or _evidence_integer(headers, "phase_index") != index
+        ):
+            raise AuditError(f"resource phase {phase!r} identity/order mismatch")
+        for key, expected in thresholds.items():
+            if _evidence_integer(headers, key) != expected:
+                raise AuditError(
+                    f"resource phase {phase!r} threshold mismatch for {key}"
+                )
+        if _evidence_integer(headers, "filesystem_reserve_gib") != 8:
+            raise AuditError(f"resource phase {phase!r} reserve threshold mismatch")
+        runner_temp = headers.get("runner_temp", "")
+        if (
+            not runner_temp.startswith("/")
+            or headers.get("expected_swap_file") != expected_swap
+            or PurePosixPath(expected_swap).parent != PurePosixPath(runner_temp)
+        ):
+            raise AuditError(f"resource phase {phase!r} swap ownership mismatch")
+        swap_required = _evidence_integer(headers, "swap_required")
+        swap_size = _evidence_integer(headers, "active_swap_size_bytes")
+        swap_used = _evidence_integer(headers, "active_swap_used_bytes")
+        if phase == "preflight-passed":
+            if swap_required != 0 or swap_size != 0 or swap_used != 0:
+                raise AuditError("preflight phase falsely records active job swap")
+        elif (
+            swap_required != 1
+            or swap_size < thresholds["planned_swap_gib"] * 1024**3
+            or swap_used > swap_size
+        ):
+            raise AuditError(f"resource phase {phase!r} lacks exact planned swap")
+        available = _evidence_integer(headers, "minimum_available_kib")
+        memory = _evidence_integer(headers, "mem_total_kib")
+        total_swap = _evidence_integer(headers, "swap_total_kib")
+        if available < 8 * kib_per_gib:
+            raise AuditError(f"resource phase {phase!r} exhausted its storage reserve")
+        if memory < thresholds["minimum_physical_gib"] * kib_per_gib:
+            raise AuditError(f"resource phase {phase!r} lacks physical memory")
+        if phase != "preflight-passed" and (
+            memory + total_swap < thresholds["minimum_addressable_gib"] * kib_per_gib
+        ):
+            raise AuditError(f"resource phase {phase!r} lacks addressable memory")
+    final_path = require_file(context / "hosted-resource-final.txt")
+    if final_path.read_bytes() != (phase_root / "final.txt").read_bytes():
+        raise AuditError("final resource evidence is not the sealed final phase")
+    return {
+        "run_id": int(run_id),
+        "run_attempt": int(run_attempt),
+        "candidate_sha": evidence_sha,
+        "phase_count": len(phase_names),
+        "preflight_sha256": sha256(preflight_path),
+        "final_sha256": sha256(final_path),
+    }
+
+
+def verify_minimal_native_environments(
+    context: Path, suite: str, candidate_sha: str | None = None
+) -> dict[str, object]:
     required_probes = {
         "core": {"bwa", "samtools", "minimap2", "pigz", "picard"},
         "qdnaseq": {"rscript"},
@@ -902,43 +1115,13 @@ def verify_minimal_native_environments(context: Path, suite: str) -> dict[str, o
             f"native environment probe inventory mismatch: {set(observed)!r}"
         )
 
-    phase_names = {
-        "preflight-passed",
-        "swap-active",
-        "public-inputs-ready",
-        "frozen-images-ready",
-        "frozen-traces-authenticated",
-        "frozen-images-released",
-        "native-environments-with-cache",
-        "native-package-cache-released",
-        "native-runs-complete",
-    }
-    phase_root = context / "hosted-resource-phases"
-    observed_phases = {path.stem for path in phase_root.glob("*.txt") if path.is_file()}
-    if observed_phases != phase_names:
-        raise AuditError(f"resource phase evidence mismatch: {observed_phases!r}")
-    for phase in sorted(phase_names):
-        text = require_file(phase_root / f"{phase}.txt").read_text(
-            encoding="utf-8", errors="replace"
-        )
-        for marker in (
-            "schema\toncotracer-hosted-resource-phase-v1",
-            f"phase\t{phase}",
-            "[df-kibibytes]",
-            "[memory-kibibytes]",
-            "[active-swap]",
-            "[docker]",
-            "[path-bytes]",
-        ):
-            if marker not in text:
-                raise AuditError(
-                    f"resource phase {phase!r} lacks required marker {marker!r}"
-                )
+    resources = verify_hosted_resource_evidence(context, suite, candidate_sha)
     return {
         "environments": sorted(required_environments),
         "probe_count": len(expected),
         "inventory_sha256": sha256(context / "native-environment-inventory.tsv"),
         "probes_sha256": sha256(context / "native-environment-probes.tsv"),
+        "resources": resources,
     }
 
 
@@ -1062,12 +1245,17 @@ def verify_context(
         and provenance.get("binary_sha256") == binary_sha256
     ):
         raise AuditError("native binary provenance mismatch")
-    native_environments = verify_minimal_native_environments(context, suite)
+    native_environments = verify_minimal_native_environments(
+        context, suite, candidate_sha
+    )
     image_actions = verify_job_image_actions(context)
 
     input_manifest = read_manifest(context / "manifests/public-input-manifest.tsv")
     reference_manifest = read_manifest(
         context / "manifests/shared-reference-manifest.tsv"
+    )
+    native_reference_manifest = read_manifest(
+        context / "manifests/native-reference-manifest.tsv"
     )
     required_reference = {
         "genome.fa",
@@ -1099,6 +1287,16 @@ def verify_context(
         raise AuditError(
             f"reference manifest lacks {required_reference - set(reference_manifest)!r}"
         )
+    if not required_reference <= set(native_reference_manifest):
+        raise AuditError(
+            "native reference manifest lacks "
+            f"{required_reference - set(native_reference_manifest)!r}"
+        )
+    for name in ("genome.fa", "genome.fa.fai", "genome.dict"):
+        if native_reference_manifest[name] != reference_manifest[name]:
+            raise AuditError(
+                f"native/frozen canonical reference identity mismatch: {name}"
+            )
 
     qdna_root = context / "qdnaseq-annotation"
     qdna_manifest = verify_manifest_tree(
@@ -1161,6 +1359,9 @@ def verify_context(
         ),
         "reference_manifest_sha256": sha256(
             context / "manifests/shared-reference-manifest.tsv"
+        ),
+        "native_reference_manifest_sha256": sha256(
+            context / "manifests/native-reference-manifest.tsv"
         ),
         "qdnaseq_manifest_sha256": sha256(
             context / "manifests/qdnaseq-annotation-manifest.tsv"

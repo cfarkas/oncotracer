@@ -26,8 +26,10 @@ readonly NEXTFLOW_DIST_URL="https://github.com/nextflow-io/nextflow/releases/dow
 readonly NEXTFLOW_DIST_SHA256="182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c"
 readonly REPO="$GITHUB_WORKSPACE/v2"
 readonly V1_REPO="$GITHUB_WORKSPACE/v1"
-readonly TEST_ROOT="$GITHUB_WORKSPACE/parity-$SUITE"
+readonly TEST_ROOT="$GITHUB_WORKSPACE/oncotracer-parity-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${SUITE}"
 readonly INPUT_ROOT="$TEST_ROOT/input"
+readonly V1_PROJECT_ROOT="$TEST_ROOT/frozen-v1-project"
+readonly V2_PROJECT_ROOT="$TEST_ROOT/native-v2-project"
 readonly REPORT_ROOT="$TEST_ROOT/reports"
 readonly PARITY_SESSION_ID="$(date -u +%Y%m%dT%H%M%SZ).$$"
 readonly NEXTFLOW_REPORT_ROOT="$REPORT_ROOT/frozen-v1.1-$PARITY_SESSION_ID"
@@ -47,13 +49,16 @@ readonly RUNTIME="$CONTEXT/nested-v1-container-runtime.tsv"
 readonly SELECTION="$CONTEXT/nested-v1-trace-selection.tsv"
 readonly RESOURCE_PREFLIGHT="$CONTEXT/hosted-resource-preflight.txt"
 readonly RESOURCE_PHASE_ROOT="$CONTEXT/hosted-resource-phases"
+RESOURCE_PHASE_INDEX=0
 
 # Prior hosted logs record 34 GiB total swap but no peak-swap telemetry, so the
-# 32 GiB job allocation cannot yet be reduced without weakening the gate. The
-# reference and indices are shared by frozen v1.1 and native v2. Native Conda
+# 32 GiB job allocation cannot yet be reduced without weakening the gate.
+# Frozen-v1 and native-v2 references use isolated project roots. The frozen
+# reference is manifested and released before native v2 creates its own cache;
+# neither runtime can adopt or mutate the other's reference tree. Native Conda
 # environments are created only after authenticated frozen traces allow exact
-# job-pulled image references to be released. Both phase peaks are calculated
-# from measured completed validation material, rounded up:
+# job-pulled image references to be released. Both sequential phase peaks are
+# calculated from measured completed validation material, rounded up:
 #
 #   QS1 frozen: 32 swap + 16 reference + 14 images + 1 input + 1 output + 8 reserve
 #   QS2 frozen: 32 swap + 16 reference +  8 images + 2 input + 6 output + 8 reserve
@@ -126,15 +131,53 @@ require_file() {
 }
 
 record_phase_resources() {
-  local phase="$1" output path
+  local phase="$1" output path available_kib mem_total_kib swap_total_kib
+  local active_swap_size_bytes=0 active_swap_used_bytes=0 swap_required=1
   [[ "$phase" =~ ^[a-z0-9][a-z0-9-]*$ ]] || {
     echo "invalid resource-evidence phase: $phase" >&2
     exit 1
   }
+  RESOURCE_PHASE_INDEX=$((RESOURCE_PHASE_INDEX + 1))
+  available_kib="$(LC_ALL=C df -Pk "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp "$DOCKER_ROOT_DIR" |
+    awk 'NR > 1 && $4 ~ /^[0-9]+$/ {if (minimum == "" || $4 < minimum) minimum=$4} END {print minimum}')"
+  mem_total_kib="$(awk '$1 == "MemTotal:" {print $2}' /proc/meminfo)"
+  swap_total_kib="$(awk '$1 == "SwapTotal:" {print $2}' /proc/meminfo)"
+  if [[ "$phase" == preflight-passed ]]; then
+    swap_required=0
+  else
+    read -r active_swap_size_bytes active_swap_used_bytes < <(
+      sudo swapon --show --bytes --noheadings --raw --output=NAME,SIZE,USED |
+        awk -v expected="$SWAP_FILE" '$1 == expected {print $2, $3}'
+    )
+  fi
+  [[ "$available_kib" =~ ^[0-9]+$ && "$mem_total_kib" =~ ^[0-9]+$ &&
+    "$swap_total_kib" =~ ^[0-9]+$ && "$active_swap_size_bytes" =~ ^[0-9]+$ &&
+    "$active_swap_used_bytes" =~ ^[0-9]+$ ]]
+  if (( swap_required == 1 )); then
+    (( active_swap_size_bytes >= PARITY_SWAP_GIB * 1024 * 1024 * 1024 ))
+  fi
   output="$RESOURCE_PHASE_ROOT/$phase.txt"
   {
-    printf 'schema\toncotracer-hosted-resource-phase-v1\n'
+    printf 'schema\toncotracer-hosted-resource-phase-v2\n'
+    printf 'run_id\t%s\n' "$GITHUB_RUN_ID"
+    printf 'run_attempt\t%s\n' "$GITHUB_RUN_ATTEMPT"
+    printf 'suite\t%s\n' "$SUITE"
+    printf 'candidate_sha\t%s\n' "$CANDIDATE_SHA"
     printf 'phase\t%s\n' "$phase"
+    printf 'phase_index\t%s\n' "$RESOURCE_PHASE_INDEX"
+    printf 'minimum_free_gib\t%s\n' "$MIN_FREE_GIB"
+    printf 'minimum_physical_gib\t%s\n' "$MIN_PHYSICAL_GIB"
+    printf 'minimum_addressable_gib\t%s\n' "$MIN_ADDRESSABLE_GIB"
+    printf 'planned_swap_gib\t%s\n' "$PARITY_SWAP_GIB"
+    printf 'filesystem_reserve_gib\t%s\n' "$FILESYSTEM_RESERVE_GIB"
+    printf 'runner_temp\t%s\n' "$RUNNER_TEMP"
+    printf 'expected_swap_file\t%s\n' "$SWAP_FILE"
+    printf 'swap_required\t%s\n' "$swap_required"
+    printf 'active_swap_size_bytes\t%s\n' "$active_swap_size_bytes"
+    printf 'active_swap_used_bytes\t%s\n' "$active_swap_used_bytes"
+    printf 'minimum_available_kib\t%s\n' "$available_kib"
+    printf 'mem_total_kib\t%s\n' "$mem_total_kib"
+    printf 'swap_total_kib\t%s\n' "$swap_total_kib"
     printf 'recorded_at\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     printf '\n[df-kibibytes]\n'
     LC_ALL=C df -Pk "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp "$DOCKER_ROOT_DIR"
@@ -145,7 +188,8 @@ record_phase_resources() {
     printf '\n[docker]\n'
     docker system df
     printf '\n[path-bytes]\n'
-    for path in "$TEST_ROOT" "$INPUT_ROOT" "$TEST_ROOT/references" \
+    for path in "$TEST_ROOT" "$INPUT_ROOT" "$V1_PROJECT_ROOT/references" \
+      "$V2_PROJECT_ROOT/references" \
       "$TEST_ROOT/v1" "$TEST_ROOT/v2" "$V2_ENV_PREFIX" \
       "$CONDA_PACKAGE_CACHE"; do
       if [[ -e "$path" || -L "$path" ]]; then
@@ -385,11 +429,26 @@ bash "$REPO/scripts/ci_resource_preflight.sh" \
   --min-addressable-gib "$MIN_ADDRESSABLE_GIB" \
   --planned-swap-gib "$PARITY_SWAP_GIB" \
   --standard-contract-free-gib "$STANDARD_RUNNER_CONTRACT_FREE_GIB" \
+  --run-id "$GITHUB_RUN_ID" \
+  --run-attempt "$GITHUB_RUN_ATTEMPT" \
+  --suite "$SUITE" \
+  --candidate-sha "$CANDIDATE_SHA" \
+  --expected-swap-file "$SWAP_FILE" \
   --path "$GITHUB_WORKSPACE" \
   --path "$RUNNER_TEMP" \
   --path /tmp \
   --path "$DOCKER_ROOT_DIR" \
-  2>&1 | tee "$RESOURCE_PREFLIGHT"
+  | tee "$RESOURCE_PREFLIGHT"
+python3 "$REPO/scripts/verify_ci_resource_preflight.py" \
+  --evidence "$RESOURCE_PREFLIGHT" \
+  --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT" \
+  --suite "$SUITE" --candidate-sha "$CANDIDATE_SHA" \
+  --min-free-gib "$MIN_FREE_GIB" \
+  --min-physical-gib "$MIN_PHYSICAL_GIB" \
+  --min-addressable-gib "$MIN_ADDRESSABLE_GIB" \
+  --planned-swap-gib "$PARITY_SWAP_GIB" \
+  --standard-contract-free-gib "$STANDARD_RUNNER_CONTRACT_FREE_GIB" \
+  --expected-swap-file "$SWAP_FILE"
 record_phase_resources preflight-passed
 
 log "Install frozen-comparator prerequisites"
@@ -474,29 +533,29 @@ if [[ "$SUITE" == quickstart1 ]]; then
   python3 "$REPO/tests/make_parity_config.py" \
     --source "$INPUT_ROOT/configs/illumina.quickstart.yml" \
     --destination "$TEST_ROOT/configs/v1-illumina.yml" \
-    --lpwgs-root "$TEST_ROOT" --outdir "$TEST_ROOT/v1/illumina"
+    --lpwgs-root "$V1_PROJECT_ROOT" --outdir "$TEST_ROOT/v1/illumina"
   python3 "$REPO/tests/make_parity_config.py" \
     --source "$INPUT_ROOT/configs/illumina.quickstart.yml" \
     --destination "$TEST_ROOT/configs/v2-illumina.yml" \
-    --lpwgs-root "$TEST_ROOT" --outdir "$TEST_ROOT/v2/illumina"
+    --lpwgs-root "$V2_PROJECT_ROOT" --outdir "$TEST_ROOT/v2/illumina"
   python3 "$REPO/tests/make_parity_config.py" \
     --source "$INPUT_ROOT/configs/ont.quickstart.yml" \
     --destination "$TEST_ROOT/configs/v1-ont.yml" \
-    --lpwgs-root "$TEST_ROOT" --outdir "$TEST_ROOT/v1/ont"
+    --lpwgs-root "$V1_PROJECT_ROOT" --outdir "$TEST_ROOT/v1/ont"
   python3 "$REPO/tests/make_parity_config.py" \
     --source "$INPUT_ROOT/configs/ont.quickstart.yml" \
     --destination "$TEST_ROOT/configs/v2-ont.yml" \
-    --lpwgs-root "$TEST_ROOT" --outdir "$TEST_ROOT/v2/ont"
+    --lpwgs-root "$V2_PROJECT_ROOT" --outdir "$TEST_ROOT/v2/ont"
 else
   "$REPO/dist/oncotracer" quickstart 2 --test-root "$INPUT_ROOT" --download-only
   python3 "$REPO/tests/make_parity_config.py" \
     --source "$INPUT_ROOT/configs/hcc1143_lpwgs/illumina.auto.yml" \
     --destination "$TEST_ROOT/configs/v1-hcc1143.yml" \
-    --lpwgs-root "$TEST_ROOT" --outdir "$TEST_ROOT/v1/hcc1143"
+    --lpwgs-root "$V1_PROJECT_ROOT" --outdir "$TEST_ROOT/v1/hcc1143"
   python3 "$REPO/tests/make_parity_config.py" \
     --source "$INPUT_ROOT/configs/hcc1143_lpwgs/illumina.auto.yml" \
     --destination "$TEST_ROOT/configs/v2-hcc1143.yml" \
-    --lpwgs-root "$TEST_ROOT" --outdir "$TEST_ROOT/v2/hcc1143"
+    --lpwgs-root "$V2_PROJECT_ROOT" --outdir "$TEST_ROOT/v2/hcc1143"
 fi
 record_phase_resources public-inputs-ready
 
@@ -670,7 +729,7 @@ else
     2>&1 | tee "$NEXTFLOW_REPORT_ROOT/v1-hcc1143.command.log"
 fi
 
-SAMURAI_SOURCE="$TEST_ROOT/.oncotracer/samurai/v1.4.0"
+SAMURAI_SOURCE="$V1_PROJECT_ROOT/.oncotracer/samurai/v1.4.0"
 require_file "$SAMURAI_SOURCE/.oncotracer-source"
 test "$(git -C "$SAMURAI_SOURCE" rev-parse HEAD)" = "$SAMURAI_COMMIT"
 grep -Fx 'revision=v1.4.0' "$SAMURAI_SOURCE/.oncotracer-source"
@@ -694,6 +753,21 @@ else
     --hcc-root "$TEST_ROOT/v1/hcc1143/01_samurai_illumina"
 fi
 record_phase_resources frozen-traces-authenticated
+
+log "Seal the frozen reference manifest, then release only its job-owned copy"
+python3 "$REPO/tests/parity_audit.py" manifest \
+  "$V1_PROJECT_ROOT/references/samurai_hg38" \
+  "$CONTEXT/manifests/shared-reference-manifest.tsv"
+[[ -d "$V1_PROJECT_ROOT/references" && ! -L "$V1_PROJECT_ROOT/references" ]]
+if [[ "$SUITE" == quickstart1 ]]; then
+  rm -rf -- "$GITHUB_WORKSPACE/oncotracer-parity-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-quickstart1/frozen-v1-project/references"
+else
+  rm -rf -- "$GITHUB_WORKSPACE/oncotracer-parity-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-quickstart2/frozen-v1-project/references"
+fi
+[[ ! -e "$V1_PROJECT_ROOT/references" && ! -L "$V1_PROJECT_ROOT/references" ]]
+mkdir -p "$V2_PROJECT_ROOT"
+[[ ! -e "$V2_PROJECT_ROOT/references" && ! -L "$V2_PROJECT_ROOT/references" ]]
+record_phase_resources frozen-reference-released
 
 log "Release only image references proven to have been created by this job"
 remove_owned_image_references
@@ -817,10 +891,8 @@ else
     "$TEST_ROOT/v2/hcc1143" "$CONTEXT/manifests/v2-hcc1143-output-manifest.tsv"
 fi
 
-python3 "$REPO/tests/parity_audit.py" manifest \
-  "$TEST_ROOT/references/samurai_hg38" "$CONTEXT/manifests/shared-reference-manifest.tsv"
 mapfile -t qdnaseq_caches < <(
-  find "$TEST_ROOT/.oncotracer/reference-cache" \
+  find "$V2_PROJECT_ROOT/.oncotracer/reference-cache" \
     -mindepth 1 -maxdepth 1 -type d -name 'qdnaseq-hg38-100kb-*' -print
 )
 test "${#qdnaseq_caches[@]}" -eq 1
@@ -848,14 +920,12 @@ PY
 cp -a "$QDNASEQ_GENERATION/." "$CONTEXT/qdnaseq-annotation/"
 python3 "$REPO/tests/parity_audit.py" manifest \
   "$CONTEXT/qdnaseq-annotation" "$CONTEXT/manifests/qdnaseq-annotation-manifest.tsv"
+python3 "$REPO/tests/parity_audit.py" manifest \
+  "$V2_PROJECT_ROOT/references/samurai_hg38" \
+  "$CONTEXT/manifests/native-reference-manifest.tsv"
 
-{
-  printf 'final_test_root_bytes\t'
-  du -sx -B1 "$TEST_ROOT" | awk '{print $1}'
-  LC_ALL=C df -Pk "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp "$DOCKER_ROOT_DIR"
-  free -k
-  docker system df
-} > "$CONTEXT/hosted-resource-final.txt"
+record_phase_resources final
+cp "$RESOURCE_PHASE_ROOT/final.txt" "$CONTEXT/hosted-resource-final.txt"
 
 log "Enforce audit contract, finalize checksums, and verify from artifact shape"
 python3 "$REPO/tests/parity_audit.py" verify \

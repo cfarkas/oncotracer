@@ -2040,25 +2040,77 @@ class ParityComparatorTests(unittest.TestCase):
             (context / "native-environment-probes.tsv").write_text(
                 "\n".join(probe_rows) + "\n", encoding="utf-8"
             )
-            phase_names = {
+            resource_sha = "a" * 40
+            runner_temp = "/runner/temp"
+            swap_file = f"{runner_temp}/oncotracer-swap-123-2"
+            (context / "hosted-resource-preflight.txt").write_text(
+                "\n".join(
+                    (
+                        "resource_preflight_schema=oncotracer-hosted-resource-preflight-v2",
+                        "resource_preflight_status=PASS",
+                        "resource_preflight_run_id=123",
+                        "resource_preflight_run_attempt=2",
+                        "resource_preflight_suite=quickstart2",
+                        f"resource_preflight_candidate_sha={resource_sha}",
+                        "resource_preflight_purpose=test parity",
+                        "resource_preflight_filesystem=/dev/test",
+                        f"resource_preflight_available_kib={80 * 1024 * 1024}",
+                        "resource_preflight_required_free_gib=72",
+                        f"resource_preflight_mem_total_kib={16 * 1024 * 1024}",
+                        "resource_preflight_required_physical_gib=15",
+                        "resource_preflight_swap_total_kib=0",
+                        "resource_preflight_planned_swap_gib=32",
+                        f"resource_preflight_expected_swap_file={swap_file}",
+                        "resource_preflight_required_addressable_gib=47",
+                        "resource_preflight_standard_contract_free_gib=14",
+                    )
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            phase_names = (
                 "preflight-passed",
                 "swap-active",
                 "public-inputs-ready",
                 "frozen-images-ready",
                 "frozen-traces-authenticated",
+                "frozen-reference-released",
                 "frozen-images-released",
                 "native-environments-with-cache",
                 "native-package-cache-released",
                 "native-runs-complete",
-            }
+                "final",
+            )
             phase_root = context / "hosted-resource-phases"
             phase_root.mkdir()
-            for phase in phase_names:
+            for phase_index, phase in enumerate(phase_names, start=1):
+                swap_required = int(phase != "preflight-passed")
+                swap_size = 32 * 1024**3 if swap_required else 0
                 (phase_root / f"{phase}.txt").write_text(
                     "\n".join(
                         (
-                            "schema\toncotracer-hosted-resource-phase-v1",
+                            "schema\toncotracer-hosted-resource-phase-v2",
+                            "run_id\t123",
+                            "run_attempt\t2",
+                            "suite\tquickstart2",
+                            f"candidate_sha\t{resource_sha}",
                             f"phase\t{phase}",
+                            f"phase_index\t{phase_index}",
+                            "minimum_free_gib\t72",
+                            "minimum_physical_gib\t15",
+                            "minimum_addressable_gib\t47",
+                            "planned_swap_gib\t32",
+                            "filesystem_reserve_gib\t8",
+                            f"runner_temp\t{runner_temp}",
+                            f"expected_swap_file\t{swap_file}",
+                            f"swap_required\t{swap_required}",
+                            f"active_swap_size_bytes\t{swap_size}",
+                            "active_swap_used_bytes\t0",
+                            f"minimum_available_kib\t{70 * 1024 * 1024}",
+                            f"mem_total_kib\t{16 * 1024 * 1024}",
+                            f"swap_total_kib\t{32 * 1024 * 1024}",
+                            "recorded_at\t2026-08-12T00:00:00Z",
+                            "",
                             "[df-kibibytes]",
                             "[memory-kibibytes]",
                             "[active-swap]",
@@ -2069,11 +2121,56 @@ class ParityComparatorTests(unittest.TestCase):
                     + "\n",
                     encoding="utf-8",
                 )
+            (context / "hosted-resource-final.txt").write_bytes(
+                (phase_root / "final.txt").read_bytes()
+            )
 
             verified = audit_module.verify_minimal_native_environments(
-                context, "quickstart2"
+                context, "quickstart2", resource_sha
             )
             self.assertEqual(verified["environments"], ["core", "qdnaseq"])
+            self.assertEqual(verified["resources"]["phase_count"], 11)
+            swap_phase = phase_root / "swap-active.txt"
+            untampered_swap = swap_phase.read_text(encoding="utf-8")
+            swap_phase.write_text(
+                untampered_swap.replace(
+                    "active_swap_size_bytes\t34359738368", "active_swap_size_bytes\t0"
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(audit_module.AuditError, "planned swap"):
+                audit_module.verify_minimal_native_environments(
+                    context, "quickstart2", resource_sha
+                )
+            swap_phase.write_text(untampered_swap, encoding="utf-8")
+            swap_phase.write_text(
+                untampered_swap.replace("run_id\t123", "run_id\t999"),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(audit_module.AuditError, "identity/order"):
+                audit_module.verify_minimal_native_environments(
+                    context, "quickstart2", resource_sha
+                )
+            swap_phase.write_text(untampered_swap, encoding="utf-8")
+            swap_phase.write_text(
+                untampered_swap.replace("minimum_free_gib\t72", "minimum_free_gib\t71"),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(audit_module.AuditError, "threshold"):
+                audit_module.verify_minimal_native_environments(
+                    context, "quickstart2", resource_sha
+                )
+            swap_phase.write_text(untampered_swap, encoding="utf-8")
+            final_evidence = context / "hosted-resource-final.txt"
+            final_evidence.write_text(
+                final_evidence.read_text(encoding="utf-8") + "tampered\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(audit_module.AuditError, "sealed final"):
+                audit_module.verify_minimal_native_environments(
+                    context, "quickstart2", resource_sha
+                )
+            final_evidence.write_bytes((phase_root / "final.txt").read_bytes())
             with self.assertRaisesRegex(audit_module.AuditError, "inventory mismatch"):
                 audit_module.verify_minimal_native_environments(context, "quickstart1")
             (context / "native-classifier.explicit.txt").write_text(

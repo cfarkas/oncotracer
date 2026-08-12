@@ -95,6 +95,8 @@ jobs:
 
       - name: Require safe release-container build capacity
         if: steps.gate.outputs.ready == 'true'
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
         run: |
           set -Eeuo pipefail
           # The release rebuilds the same five-environment image as Native v2
@@ -116,11 +118,25 @@ jobs:
             --min-addressable-gib "$MIN_PHYSICAL_GIB" \
             --planned-swap-gib 0 \
             --standard-contract-free-gib 14 \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --suite release-v2 \
+            --candidate-sha "$MAIN_SHA" \
+            --expected-swap-file none \
             --path "$GITHUB_WORKSPACE" \
             --path "$RUNNER_TEMP" \
             --path /tmp \
             --path "$DOCKER_ROOT_DIR" \
-            2>&1 | tee "$RUNNER_TEMP/release-resource-preflight.txt"
+            | tee "$RUNNER_TEMP/release-resource-preflight.txt"
+          python3 scripts/verify_ci_resource_preflight.py \
+            --evidence "$RUNNER_TEMP/release-resource-preflight.txt" \
+            --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --suite release-v2 --candidate-sha "$MAIN_SHA" \
+            --min-free-gib "$MIN_FREE_GIB" \
+            --min-physical-gib "$MIN_PHYSICAL_GIB" \
+            --min-addressable-gib "$MIN_PHYSICAL_GIB" \
+            --planned-swap-gib 0 --standard-contract-free-gib 14 \
+            --expected-swap-file none
 
       - name: Verify immutable source identity and release namespace
         if: steps.gate.outputs.ready == 'true'
