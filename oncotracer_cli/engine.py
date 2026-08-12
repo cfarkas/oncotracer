@@ -3430,6 +3430,8 @@ def run_native(
         methylation_pod5_dir=methylation_pod5_dir,
         methylation_gpu=methylation_gpu,
         _output_lease=None,
+        _verified_config=None,
+        _config_sha256=None,
     )
 
 
@@ -3445,10 +3447,28 @@ def _run_native_impl(
     methylation_pod5_dir: Path | None,
     methylation_gpu: bool | None,
     _output_lease: OutputRunLease | None,
+    _verified_config: Mapping[str, object] | None,
+    _config_sha256: str | None,
 ) -> Path:
     explicit_root = root
     config_path = require_file(config_path, "OncoTracer YAML config")
-    config = load_flat_yaml(config_path)
+    if _verified_config is None:
+        config_sha256_before = sha256_file(config_path)
+        config = load_flat_yaml(config_path)
+        config_digest = sha256_file(config_path)
+        if config_digest != config_sha256_before:
+            raise OncoTracerError(
+                f"OncoTracer YAML config changed while it was being parsed: {config_path}"
+            )
+    else:
+        if _config_sha256 is None:
+            raise OncoTracerError("internal native config identity is missing")
+        config_digest = _config_sha256
+        if sha256_file(config_path) != config_digest:
+            raise OncoTracerError(
+                f"OncoTracer YAML config changed before execution: {config_path}"
+            )
+        config = dict(_verified_config)
     _reject_local_sample_panel(config)
     mode = str(config.get("mode") or "").strip().lower()
     if mode not in {"illumina", "ont"}:
@@ -3470,7 +3490,10 @@ def _run_native_impl(
     force_run = _as_bool(config.get("force"), False) if force is None else force
     if _output_lease is None and not dry_run:
         with claim_output_run(
-            outdir, config_path=config_path, runtime_root_path=explicit_root
+            outdir,
+            config_path=config_path,
+            runtime_root_path=explicit_root,
+            expected_config_sha256=config_digest,
         ) as output_lease:
             return _run_native_impl(
                 config_path,
@@ -3483,6 +3506,8 @@ def _run_native_impl(
                 methylation_pod5_dir=methylation_pod5_dir,
                 methylation_gpu=methylation_gpu,
                 _output_lease=output_lease,
+                _verified_config=config,
+                _config_sha256=config_digest,
             )
 
     payload_root: Path | None = None

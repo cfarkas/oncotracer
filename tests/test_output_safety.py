@@ -16,7 +16,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from oncotracer_cli import output_safety  # noqa: E402
+from oncotracer_cli import engine, output_safety  # noqa: E402
 from oncotracer_cli.engine import run_native, write_run_manifest  # noqa: E402
 from oncotracer_cli.output_safety import (  # noqa: E402
     OUTPUT_ACTIVE_RELATIVE,
@@ -392,6 +392,57 @@ class OutputSafetyTests(unittest.TestCase):
                 config.write_text("mode: ont\n", encoding="utf-8")
                 with self.assertRaisesRegex(OncoTracerError, "configuration changed"):
                     lease.validate()
+
+    def test_runtime_change_is_detected_before_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime_root = root / "runtime"
+            script = runtime_root / "bin" / "tool.sh"
+            script.parent.mkdir(parents=True)
+            script.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            config = root / "config.yml"
+            config.write_text("mode: illumina\n", encoding="utf-8")
+            output = root / "run"
+            with claim_output_run(
+                output, config_path=config, runtime_root_path=runtime_root
+            ) as lease:
+                script.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+                with self.assertRaisesRegex(OncoTracerError, "runtime changed"):
+                    lease.validate()
+
+    def test_config_parse_race_fails_before_output_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "run"
+            config = root / "config.yml"
+            original = f"mode: illumina\noutdir: {output}\n"
+            config.write_text(original, encoding="utf-8")
+            real_loader = engine.load_flat_yaml
+
+            def changing_loader(path: Path) -> dict[str, object]:
+                parsed = real_loader(path)
+                path.write_text(original + "force: true\n", encoding="utf-8")
+                return parsed
+
+            with patch.object(engine, "load_flat_yaml", side_effect=changing_loader):
+                with self.assertRaisesRegex(
+                    OncoTracerError, "changed while it was being parsed"
+                ):
+                    run_native(config, root=ROOT)
+            self.assertFalse(os.path.lexists(output))
+
+    def test_verified_config_is_not_parsed_twice(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "run"
+            config = root / "config.yml"
+            config.write_text(f"mode: illumina\noutdir: {output}\n", encoding="utf-8")
+            with patch.object(
+                engine, "load_flat_yaml", wraps=engine.load_flat_yaml
+            ) as loader:
+                with self.assertRaisesRegex(OncoTracerError, "illumina_samplesheet"):
+                    run_native(config, root=ROOT)
+            self.assertEqual(loader.call_count, 1)
 
 
 if __name__ == "__main__":

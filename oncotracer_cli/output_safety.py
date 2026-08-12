@@ -441,6 +441,8 @@ class OutputRunLease:
     active_path: Path
     config_path: Path
     config_sha256: str
+    runtime_root_path: Path | None
+    revalidate_runtime: bool
 
     def validate(self) -> None:
         try:
@@ -453,6 +455,13 @@ class OutputRunLease:
             raise OncoTracerError(
                 f"native run configuration changed during execution: {self.config_path}"
             )
+        if self.revalidate_runtime:
+            current_identity = current_runtime_identity(self.runtime_root_path)
+            if current_identity != self.owner["runtime_identity"]:
+                raise OncoTracerError(
+                    "native OncoTracer runtime changed during execution; "
+                    f"refusing final publication for {self.path}"
+                )
         state, owner = _inspect_existing_target(
             self.path, self.owner["runtime_identity"]
         )
@@ -488,14 +497,22 @@ def claim_output_run(
     config_path: Path,
     identity: Mapping[str, object] | None = None,
     runtime_root_path: Path | None = None,
+    expected_config_sha256: str | None = None,
 ) -> OutputRunLease:
     """Claim or authenticate *outdir* and acquire its nonblocking run lock."""
     path = _absolute_lexical(outdir)
     _reject_broad_target(path)
     _reject_symlink_components(path)
+    if runtime_root_path is not None:
+        runtime_root_path = runtime_root_path.expanduser().resolve(strict=True)
+    revalidate_runtime = identity is None
     runtime_identity = dict(identity or current_runtime_identity(runtime_root_path))
     config_path = config_path.expanduser().resolve(strict=True)
     config_digest = _file_sha256(config_path)
+    if expected_config_sha256 is not None and config_digest != expected_config_sha256:
+        raise OncoTracerError(
+            f"native run configuration changed before output acquisition: {config_path}"
+        )
 
     # Read-only preflight ensures a typo naming protected nonempty data does not
     # even create an adjacent lock file or ownership marker.
@@ -557,7 +574,14 @@ def claim_output_run(
             },
         )
         return OutputRunLease(
-            path, owner, handle, active_path, config_path, config_digest
+            path,
+            owner,
+            handle,
+            active_path,
+            config_path,
+            config_digest,
+            runtime_root_path,
+            revalidate_runtime,
         )
     except BaseException:
         handle.close()
