@@ -136,7 +136,7 @@ Optional methylation is ONT-only and supports the `host`, `conda`, and `poetry` 
 | --- | --- | --- |
 | `mode` | required `illumina` or `ont` | Sequencing route |
 | `lpwgs_root` | required absolute directory | Project/reference/cache root visible to the backend |
-| `outdir` | required absolute directory | Numbered native result tree |
+| `outdir` | required absolute directory | Dedicated absent, empty, or exact-runtime-owned native result tree |
 | `force` | Boolean, `false` | Scientific refresh request; normally keep false |
 | `run_cna_classifier` | Boolean, `false` | Add stage `05_cna_classifier` |
 

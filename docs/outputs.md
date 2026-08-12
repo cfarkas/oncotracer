@@ -1,6 +1,6 @@
 # Output files
 
-Every run writes a numbered directory tree under the YAML `outdir`. Start with the summary, then move from the upstream caller through refined segments, final tables, and plots.
+Every run writes a numbered directory tree under the YAML `outdir`. OncoTracer claims only an absent or empty directory, records its exact runtime ownership in `.oncotracer-native/output-owner.json`, and prevents concurrent writers with an exclusive run lock. Resume and `--force` require that owner record to match; an existing nonempty unowned tree is preserved and rejected. Start with the summary, then move from the upstream caller through refined segments, final tables, and plots.
 
 Set one shell variable so the commands below are easy to reuse:
 

@@ -28,6 +28,7 @@ from .methylation import (
     run_methylation,
     write_global_methylation_failure,
 )
+from .output_safety import OutputRunLease, claim_output_run, inspect_output_target
 from .runtime import (
     CommandRunner,
     OncoTracerError,
@@ -3110,6 +3111,7 @@ def run_refinement_and_outputs(
 def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> None:
     files: list[dict[str, object]] = []
     for relative in [
+        ".oncotracer-native/output-owner.json",
         "06_workflow_summary/workflow_summary.txt",
         "06_workflow_summary/workflow_summary.json",
         "03_cna_codification/cna_events.tsv",
@@ -3416,6 +3418,34 @@ def run_native(
     methylation_pod5_dir: Path | None = None,
     methylation_gpu: bool | None = None,
 ) -> Path:
+    """Run one owned native analysis or print its side-effect-free plan."""
+    return _run_native_impl(
+        config_path,
+        root=root,
+        threads=threads,
+        force=force,
+        dry_run=dry_run,
+        methylation=methylation,
+        methylation_classifier=methylation_classifier,
+        methylation_pod5_dir=methylation_pod5_dir,
+        methylation_gpu=methylation_gpu,
+        _output_lease=None,
+    )
+
+
+def _run_native_impl(
+    config_path: Path,
+    *,
+    root: Path | None,
+    threads: int | None,
+    force: bool | None,
+    dry_run: bool,
+    methylation: bool | None,
+    methylation_classifier: str | None,
+    methylation_pod5_dir: Path | None,
+    methylation_gpu: bool | None,
+    _output_lease: OutputRunLease | None,
+) -> Path:
     explicit_root = root
     config_path = require_file(config_path, "OncoTracer YAML config")
     config = load_flat_yaml(config_path)
@@ -3432,6 +3462,29 @@ def run_native(
         pod5_override=methylation_pod5_dir,
         gpu_override=methylation_gpu,
     )
+    outdir_value = config.get("outdir")
+    if not outdir_value:
+        raise OncoTracerError("config requires outdir")
+    outdir = Path(os.path.abspath(os.fspath(Path(str(outdir_value)).expanduser())))
+    cpu = threads or max(1, min(os.cpu_count() or 1, 16))
+    force_run = _as_bool(config.get("force"), False) if force is None else force
+    if _output_lease is None and not dry_run:
+        with claim_output_run(
+            outdir, config_path=config_path, runtime_root_path=explicit_root
+        ) as output_lease:
+            return _run_native_impl(
+                config_path,
+                root=explicit_root,
+                threads=threads,
+                force=force,
+                dry_run=False,
+                methylation=methylation,
+                methylation_classifier=methylation_classifier,
+                methylation_pod5_dir=methylation_pod5_dir,
+                methylation_gpu=methylation_gpu,
+                _output_lease=output_lease,
+            )
+
     payload_root: Path | None = None
     lpwgs_value = config.get("lpwgs_root")
     if lpwgs_value:
@@ -3446,13 +3499,8 @@ def run_native(
     else:
         payload_root = runtime_root(explicit_root)
         lpwgs_root = (payload_root / "project").resolve()
-    outdir_value = config.get("outdir")
-    if not outdir_value:
-        raise OncoTracerError("config requires outdir")
-    outdir = Path(str(outdir_value)).expanduser().resolve()
-    cpu = threads or max(1, min(os.cpu_count() or 1, 16))
-    force_run = _as_bool(config.get("force"), False) if force is None else force
     if dry_run:
+        inspect_output_target(outdir, runtime_root_path=explicit_root)
         _validate_native_dry_run(
             config,
             config_path,
@@ -3465,9 +3513,7 @@ def run_native(
         )
         return outdir
     root = payload_root or runtime_root(explicit_root)
-    outdir.mkdir(parents=True, exist_ok=True)
     native_dir = outdir / ".oncotracer-native"
-    native_dir.mkdir(parents=True, exist_ok=True)
     trace = native_dir / "trace.tsv"
     runner = CommandRunner(trace, dry_run=dry_run)
     ledger = StageLedger(native_dir / "state.json")
@@ -3616,7 +3662,9 @@ def run_native(
         raise OncoTracerError(
             "native execution trace contains a forbidden Nextflow command"
         )
+    _output_lease.validate()
     write_run_manifest(outdir, config_path, trace)
+    _output_lease.validate()
     summary_path = outdir / "06_workflow_summary" / "workflow_summary.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     if summary.get("workflow_status") != "complete":

@@ -84,7 +84,7 @@ oncotracer run \
   --force
 ```
 
-Do not run two writers against the same `outdir` concurrently.
+OncoTracer now rejects a second writer while the first process holds the exact `outdir` run lock. A new run may claim only an absent or empty output directory. Resume and `--force` require the existing `.oncotracer-native/output-owner.json` to match the same exact OncoTracer runtime and canonical location; they never adopt or delete a nonempty unowned directory. Preserve an unowned or mismatched tree and choose a new `outdir`.
 
 ## 5. Public QuickStart download problems
 

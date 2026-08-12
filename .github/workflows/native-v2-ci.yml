@@ -74,6 +74,7 @@ jobs:
             tests/test_qdnaseq_cache_safety.py \
             tests/test_reference_storage_safety.py \
             tests/test_product_hygiene.py \
+            tests/test_output_safety.py \
             tests/test_release_workflow.py
       - name: Run shell and standalone documentation regression tests
         run: |
