@@ -753,6 +753,12 @@ class PythonCleanupVisitor(ast.NodeVisitor):
 
 
 def _python_environment_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Call):
+        function = ast.unparse(node.func)
+        if function in {"os.getenv", "os.environ.get"} and node.args:
+            key = node.args[0]
+            if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                return key.value
     if not isinstance(node, ast.Subscript):
         return None
     value = node.value
@@ -833,11 +839,7 @@ def python_cleanup_violations(source: str, start_line: int) -> list[str]:
     visitor.visit(tree)
     findings: list[str] = []
     for line, operation, rendered in visitor.calls:
-        explicit_broad = rendered is not None and (
-            rendered.startswith(("/", "~/", "${HOME}", "$HOME"))
-            or any(marker in rendered for marker in ("*", "?", "[", "]", ".."))
-        )
-        if explicit_broad and not exact_job_path(rendered):
+        if rendered is not None and not exact_job_path(rendered):
             findings.append(
                 f"line {start_line + line - 1}: Python {operation} is not bound "
                 "to an exact run-ID-qualified job path"
@@ -1038,54 +1040,170 @@ def referenced_entrypoints_from_shell(shell: str, *, root: Path = ROOT) -> set[P
 
 
 class PythonEntrypointVisitor(ast.NodeVisitor):
-    """Collect literal repo entrypoints launched through Python process APIs."""
+    """Collect repository entrypoints and literal process commands from Python."""
+
+    PROCESS_APIS = {
+        "subprocess.run",
+        "subprocess.call",
+        "subprocess.check_call",
+        "subprocess.check_output",
+        "subprocess.Popen",
+    }
 
     def __init__(self, root: Path) -> None:
-        self.root = root
+        self.root = root.resolve()
         self.references: set[Path] = set()
+        self.paths: dict[str, Path] = {"ROOT": self.root}
+        self.sequences: dict[str, tuple[str | None, ...]] = {}
+        self.process_surfaces: list[tuple[int, str]] = []
+
+    def _path_value(self, node: ast.AST) -> Path | None:
+        if isinstance(node, ast.Name):
+            return self.paths.get(node.id)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            value = node.value
+            candidate = Path(value)
+            if candidate.is_absolute():
+                return candidate
+            if candidate.parts and candidate.parts[0] in (
+                REPOSITORY_ENTRYPOINT_ROOTS | {".github"}
+            ):
+                return self.root / candidate
+            return None
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+            left = self._path_value(node.left)
+            if (
+                left is not None
+                and isinstance(node.right, ast.Constant)
+                and isinstance(node.right.value, str)
+            ):
+                return left / node.right.value
+        if isinstance(node, ast.Call) and len(node.args) == 1:
+            function = ast.unparse(node.func)
+            if function in {"str", "Path"}:
+                return self._path_value(node.args[0])
+        return None
+
+    def _string_value(self, node: ast.AST) -> str | None:
+        path = self._path_value(node)
+        if path is not None:
+            return str(path)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        if isinstance(node, ast.Attribute) and ast.unparse(node) == "sys.executable":
+            return "python3"
+        return None
+
+    def _sequence_value(self, node: ast.AST) -> tuple[str | None, ...] | None:
+        if isinstance(node, ast.Name):
+            return self.sequences.get(node.id)
+        if isinstance(node, (ast.List, ast.Tuple)):
+            return tuple(self._string_value(item) for item in node.elts)
+        return None
+
+    def _record_repository_path(self, value: str | None) -> None:
+        if value is None:
+            return
+        candidate = Path(value)
+        if not candidate.is_absolute():
+            candidate = self.root / candidate
+        try:
+            relative = candidate.relative_to(self.root)
+        except ValueError:
+            return
+        if (
+            candidate.suffix in {".sh", ".py"}
+            and relative.parts
+            and relative.parts[0] in (REPOSITORY_ENTRYPOINT_ROOTS | {".github"})
+        ):
+            self.references.add(candidate)
+
+    def _record_process(self, line: int, argv: tuple[str | None, ...]) -> None:
+        if not argv or argv[0] is None:
+            return
+        executable = PurePosixPath(argv[0]).name
+        self._record_repository_path(argv[0])
+        if executable in {"bash", "sh", "source", "."}:
+            for index, item in enumerate(argv[1:], 1):
+                if item == "-c" and index + 1 < len(argv):
+                    command = argv[index + 1]
+                    if command is not None:
+                        self.process_surfaces.append((line, command))
+                    break
+                if item is not None and not item.startswith("-"):
+                    self._record_repository_path(item)
+                    break
+        elif re.fullmatch(r"python(?:[23](?:\.\d+)*)?", executable):
+            for item in argv[1:]:
+                if item == "-c":
+                    break
+                if item is not None and not item.startswith("-"):
+                    self._record_repository_path(item)
+                    break
+
+        rendered = " ".join(
+            shlex.quote(item if item is not None else "__ONCOTRACER_UNKNOWN__")
+            for item in argv
+        )
+        if rendered:
+            self.process_surfaces.append((line, rendered))
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        path = self._path_value(node.value)
+        sequence = self._sequence_value(node.value)
+        for target in node.targets:
+            if not isinstance(target, ast.Name):
+                continue
+            if path is not None:
+                self.paths[target.id] = path
+            if sequence is not None:
+                self.sequences[target.id] = sequence
+        self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
         function = ast.unparse(node.func)
-        if function in {
-            "subprocess.run",
-            "subprocess.call",
-            "subprocess.check_call",
-            "subprocess.check_output",
-            "subprocess.Popen",
-            "os.system",
-        }:
-            for argument in node.args:
-                if isinstance(argument, ast.Constant) and isinstance(
-                    argument.value, str
-                ):
-                    self.references.update(
-                        _repository_entrypoints(argument.value, root=self.root)
-                    )
-                    if function == "os.system":
-                        self.references.update(
-                            referenced_entrypoints_from_shell(
-                                argument.value, root=self.root
-                            )
-                        )
-                elif isinstance(argument, (ast.List, ast.Tuple)):
-                    for item in argument.elts:
-                        if isinstance(item, ast.Constant) and isinstance(
-                            item.value, str
-                        ):
-                            self.references.update(
-                                _repository_entrypoints(item.value, root=self.root)
-                            )
+        if function in self.PROCESS_APIS and node.args:
+            sequence = self._sequence_value(node.args[0])
+            if sequence is not None:
+                self._record_process(node.lineno, sequence)
+        elif function == "os.system" and node.args:
+            command = self._string_value(node.args[0])
+            if command is not None:
+                self.references.update(
+                    referenced_entrypoints_from_shell(command, root=self.root)
+                )
+                self.process_surfaces.append((node.lineno, command))
         self.generic_visit(node)
 
 
-def referenced_entrypoints_from_python(source: str, *, root: Path = ROOT) -> set[Path]:
+def _python_process_inventory(
+    source: str, *, root: Path = ROOT
+) -> PythonEntrypointVisitor | None:
     try:
         tree = ast.parse(source)
     except SyntaxError:
-        return set()
+        return None
     visitor = PythonEntrypointVisitor(root)
     visitor.visit(tree)
-    return visitor.references
+    return visitor
+
+
+def referenced_entrypoints_from_python(source: str, *, root: Path = ROOT) -> set[Path]:
+    visitor = _python_process_inventory(source, root=root)
+    return set() if visitor is None else visitor.references
+
+
+def python_process_cleanup_violations(source: str) -> list[str]:
+    visitor = _python_process_inventory(source)
+    if visitor is None:
+        return ["line 1: Python process surface cannot be audited"]
+    findings: list[str] = []
+    for line, shell in visitor.process_surfaces:
+        findings.extend(
+            f"line {line}: subprocess {finding}"
+            for finding in shell_cleanup_violations(shell)
+        )
+    return sorted(set(findings))
 
 
 def _local_action_metadata(action: str, *, root: Path = ROOT) -> Path | None:
@@ -1300,10 +1418,13 @@ def active_surface_violations() -> list[str]:
     for path in hosted_entrypoints:
         source = path.read_text(encoding="utf-8")
         if path.suffix == ".py":
-            violations.extend(
-                f"{path.relative_to(ROOT)}: {finding}"
-                for finding in python_cleanup_violations(source, 1)
-            )
+            for findings in (
+                python_cleanup_violations(source, 1),
+                python_process_cleanup_violations(source),
+            ):
+                violations.extend(
+                    f"{path.relative_to(ROOT)}: {finding}" for finding in findings
+                )
             continue
         if path == ROOT / "scripts" / "ci_native_parity.sh":
             violations.extend(
@@ -1341,6 +1462,7 @@ class HostedCiStorageSafetyTests(unittest.TestCase):
         hosted_scripts, errors = active_hosted_scripts(workflow_runs)
         self.assertEqual(errors, [])
         required_scripts = {
+            ROOT / "bin" / "scripts" / "prepare_qdnaseq_bin_data.sh",
             ROOT / "scripts" / "ci_native_parity.sh",
             ROOT / "scripts" / "ci_resource_preflight.sh",
             ROOT / "scripts" / "release_registry_digest.sh",
@@ -1412,6 +1534,7 @@ PY
 
         variants = (
             "import os\nos.unlink('/opt/hostedtoolcache/file')\n",
+            "import os, shutil\nshutil.rmtree(os.getenv('UNTRUSTED_CACHE'))\n",
             "from os import remove as erase\nerase('/opt/hostedtoolcache/file')\n",
             "from pathlib import Path\nPath('/opt/hostedtoolcache/file').unlink()\n",
             "from pathlib import Path\ntarget = Path('/opt/hostedtoolcache/file')\ntarget.unlink()\n",
@@ -1425,6 +1548,12 @@ PY
                 self.assertTrue(
                     shell_cleanup_violations("python3 - <<'PY'\n" + source + "PY\n")
                 )
+        self.assertTrue(
+            python_process_cleanup_violations(
+                "import subprocess\n"
+                "subprocess.run(['rm', '-rf', '/opt/hostedtoolcache'])\n"
+            )
+        )
 
     def test_shell_heredoc_is_executable_but_data_heredoc_is_not(self) -> None:
         executable = """bash <<'SHELL'
@@ -1469,7 +1598,12 @@ SHELL
                 "python3 tests/second.py\n", encoding="utf-8"
             )
             (root / "tests/second.py").write_text(
-                "import subprocess\nsubprocess.run(['bash', 'scripts/third.sh'])\n",
+                "import subprocess\n"
+                "from pathlib import Path\n"
+                "ROOT = Path(__file__).resolve().parents[1]\n"
+                "HELPER = ROOT / 'scripts' / 'third.sh'\n"
+                "command = ['bash', str(HELPER)]\n"
+                "subprocess.run(command)\n",
                 encoding="utf-8",
             )
             (root / "scripts/third.sh").write_text(
@@ -1920,10 +2054,13 @@ PY
             'if ! sudo swapoff -- "$SWAP_FILE"',
             "active swap could not be established",
             "Refusing to remove active swap after swapoff failed",
+            '[[ ! -e "$TEST_ROOT" && ! -L "$TEST_ROOT" ]]',
+            '[[ -d "$TEST_ROOT" && ! -L "$TEST_ROOT" ]]',
             'readonly V1_PROJECT_ROOT="$TEST_ROOT/frozen-v1-project"',
             'readonly V2_PROJECT_ROOT="$TEST_ROOT/native-v2-project"',
             '--lpwgs-root "$V1_PROJECT_ROOT"',
             '--lpwgs-root "$V2_PROJECT_ROOT"',
+            '[[ -d "$V1_PROJECT_ROOT" && ! -L "$V1_PROJECT_ROOT" ]]',
             '[[ ! -e "$V2_PROJECT_ROOT/references"',
             "record_phase_resources frozen-reference-released",
             "record_phase_resources final",
@@ -1951,6 +2088,16 @@ PY
         self.assertLess(
             parity.index('"$V1_PROJECT_ROOT/references/samurai_hg38"'),
             parity.index("record_phase_resources frozen-reference-released"),
+        )
+        self.assertLess(
+            parity.index('[[ ! -e "$TEST_ROOT" && ! -L "$TEST_ROOT" ]]'),
+            parity.index('mkdir -p "$TEST_ROOT/configs"'),
+        )
+        self.assertLess(
+            parity.index('[[ -d "$V1_PROJECT_ROOT" && ! -L "$V1_PROJECT_ROOT" ]]'),
+            parity.index(
+                'rm -rf -- "$GITHUB_WORKSPACE/oncotracer-parity-${GITHUB_RUN_ID}'
+            ),
         )
         self.assertLess(
             parity.index("record_phase_resources frozen-reference-released"),
@@ -1992,6 +2139,31 @@ PY
         self.assertIn("MAIN_SHA: ${{ steps.gate.outputs.main_sha }}", capacity_step)
         self.assertIn('--candidate-sha "$MAIN_SHA"', capacity_step)
         self.assertIn("verify_ci_resource_preflight.py", capacity_step)
+
+    def test_parity_artifact_upload_is_exact_and_fail_closed(self) -> None:
+        driver = (ROOT / "scripts" / "ci_native_parity.sh").read_text(encoding="utf-8")
+        self.assertIn(
+            'readonly TEST_ROOT="$GITHUB_WORKSPACE/oncotracer-parity-'
+            '${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${SUITE}"',
+            driver,
+        )
+        for number in (1, 2):
+            suite = f"quickstart{number}"
+            workflow = (WORKFLOW_ROOT / f"native-v2-{suite}-parity.yml").read_text(
+                encoding="utf-8"
+            )
+            artifact_root = (
+                "oncotracer-parity-${{ github.run_id }}-"
+                f"${{{{ github.run_attempt }}}}-{suite}"
+            )
+            self.assertIn("if-no-files-found: error", workflow)
+            self.assertIn(f"{artifact_root}/audit/**", workflow)
+            self.assertIn(f"{artifact_root}/reports/**", workflow)
+            self.assertNotIn(f"parity-{suite}/", workflow)
+
+        release = (WORKFLOW_ROOT / "release-v2.yml").read_text(encoding="utf-8")
+        self.assertIn('Q1_NAME="native-v2-quickstart1-parity-$Q1_RUN_ID"', release)
+        self.assertIn('Q2_NAME="native-v2-quickstart2-parity-$Q2_RUN_ID"', release)
 
     def test_heavy_runner_selection_is_explicit_and_fork_safe(self) -> None:
         trusted_expression = (

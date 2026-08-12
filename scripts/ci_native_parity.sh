@@ -414,10 +414,15 @@ cleanup_job_swap() {
   return "$cleanup_status"
 }
 
+[[ ! -e "$TEST_ROOT" && ! -L "$TEST_ROOT" ]] || {
+  echo "Refusing to adopt a pre-existing parity root: $TEST_ROOT" >&2
+  exit 1
+}
 mkdir -p "$TEST_ROOT/configs" "$REPORT_ROOT" "$NEXTFLOW_REPORT_ROOT" \
   "$CONTEXT/manifests" "$CONTEXT/configs/parity" "$CONTEXT/configs/input" \
   "$CONTEXT/qdnaseq-annotation" "$CONTEXT/native-environment-probes" \
   "$CONTEXT/native-environments" "$RESOURCE_PHASE_ROOT"
+[[ -d "$TEST_ROOT" && ! -L "$TEST_ROOT" ]]
 printf 'reference\timage_id\tcreated_by_job\n' > "$IMAGE_OWNERSHIP"
 
 log "Require safe hosted-runner capacity"
@@ -758,6 +763,7 @@ log "Seal the frozen reference manifest, then release only its job-owned copy"
 python3 "$REPO/tests/parity_audit.py" manifest \
   "$V1_PROJECT_ROOT/references/samurai_hg38" \
   "$CONTEXT/manifests/shared-reference-manifest.tsv"
+[[ -d "$V1_PROJECT_ROOT" && ! -L "$V1_PROJECT_ROOT" ]]
 [[ -d "$V1_PROJECT_ROOT/references" && ! -L "$V1_PROJECT_ROOT/references" ]]
 if [[ "$SUITE" == quickstart1 ]]; then
   rm -rf -- "$GITHUB_WORKSPACE/oncotracer-parity-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-quickstart1/frozen-v1-project/references"

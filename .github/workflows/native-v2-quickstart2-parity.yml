@@ -70,8 +70,8 @@ jobs:
         with:
           name: native-v2-quickstart2-parity-${{ github.run_id }}
           retention-days: 90
-          if-no-files-found: warn
+          if-no-files-found: error
           include-hidden-files: true
           path: |
-            parity-quickstart2/audit/**
-            parity-quickstart2/reports/**
+            oncotracer-parity-${{ github.run_id }}-${{ github.run_attempt }}-quickstart2/audit/**
+            oncotracer-parity-${{ github.run_id }}-${{ github.run_attempt }}-quickstart2/reports/**
