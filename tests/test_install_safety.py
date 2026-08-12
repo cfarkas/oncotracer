@@ -1935,6 +1935,104 @@ with (
         self.assertEqual((destination.read_bytes(), sidecar.read_bytes()), before)
         self.assertEqual(_snapshot(retained), retained_before)
 
+    def test_fresh_conda_absent_rolled_back_double_interrupt_recovers(self) -> None:
+        base = self.scratch / "absent-double-interrupt-envs"
+        journal_path = install_safety._journal_path(base, "conda")
+        real_write = install_safety._write_journal
+        real_restore = install_safety._restore_conda_transaction
+        publishing_written = False
+        restore_interrupted = False
+
+        def interrupt_after_publishing_write(path, value):
+            nonlocal publishing_written
+            real_write(path, value)
+            if value.get("phase") == "publishing" and not publishing_written:
+                publishing_written = True
+                raise KeyboardInterrupt
+
+        def interrupt_first_restore(target, path, journal):
+            nonlocal restore_interrupted
+            if journal.get("phase") == "publishing" and not restore_interrupted:
+                restore_interrupted = True
+                raise KeyboardInterrupt
+            return real_restore(target, path, journal)
+
+        with (
+            mock.patch.object(
+                install_safety,
+                "_write_journal",
+                side_effect=interrupt_after_publishing_write,
+            ),
+            mock.patch.object(
+                install_safety,
+                "_restore_conda_transaction",
+                side_effect=interrupt_first_restore,
+            ),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self._conda_install(base)
+        self.assertTrue(publishing_written)
+        self.assertTrue(restore_interrupted)
+        self.assertFalse(os.path.lexists(base))
+        self.assertEqual(
+            json.loads(journal_path.read_text(encoding="utf-8"))["phase"],
+            "publishing",
+        )
+
+        real_retain = install_safety._retain_transaction_journal
+        retention_interrupted = False
+
+        def interrupt_after_root_retention(path, journal, kind):
+            nonlocal retention_interrupted
+            if journal.get("phase") == "rolled_back" and not retention_interrupted:
+                retention_interrupted = True
+                raise KeyboardInterrupt
+            return real_retain(path, journal, kind)
+
+        with (
+            mock.patch.object(
+                install_safety,
+                "_retain_transaction_journal",
+                side_effect=interrupt_after_root_retention,
+            ),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self._conda_install(base)
+        self.assertTrue(retention_interrupted)
+        journal = json.loads(journal_path.read_text(encoding="utf-8"))
+        self.assertEqual(journal["phase"], "rolled_back")
+        transaction = Path(str(journal["canonical_transaction"]))
+        retained = install_safety._committed_retained_path(transaction)
+        self.assertFalse(os.path.lexists(base))
+        self.assertFalse(transaction.exists())
+        self.assertTrue(retained.is_dir())
+        retained_before = _snapshot(retained)
+
+        installed = self._conda_install(base)
+        self.assertFalse(journal_path.exists())
+        self.assertEqual(set(installed), set(install_safety.CONDA_NAMES))
+        self.assertEqual(_snapshot(retained), retained_before)
+
+    def test_poetry_build_metadata_preserves_symlink_target(self) -> None:
+        staging = self.scratch / "poetry-state" / "source"
+        (staging / "provenance").mkdir(parents=True)
+        (staging / "oncotracer_cli").mkdir()
+        (staging / "provenance" / "native-v2-sources.json").write_bytes(b"{}\n")
+        external = self.scratch / "patient-sentinel"
+        external.write_bytes(b"PATIENT BYTES")
+        metadata = staging / "oncotracer_cli" / "_build_metadata.py"
+        metadata.symlink_to(external)
+
+        install_safety._write_poetry_build_metadata(staging, SOURCE)
+
+        self.assertEqual(external.read_bytes(), b"PATIENT BYTES")
+        self.assertTrue(metadata.is_file())
+        self.assertFalse(metadata.is_symlink())
+        self.assertIn(SOURCE["source_commit"], metadata.read_text(encoding="utf-8"))
+        retained = list((staging.parent / "metadata-history").iterdir())
+        self.assertEqual(len(retained), 1)
+        self.assertEqual(retained[0].readlink(), external)
+
     def test_installer_has_no_automatic_deletion_primitive(self) -> None:
         source = Path(install_safety.__file__).read_text(encoding="utf-8")
         for primitive in (

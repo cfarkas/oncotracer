@@ -191,18 +191,17 @@ def _fsync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
-def _atomic_write_json(
+def _atomic_write_bytes(
     path: Path,
-    value: object,
+    payload: bytes,
     *,
     retention_parent: Path | None = None,
 ) -> None:
-    """Publish JSON atomically while retaining any prior bytes."""
+    """Publish bytes atomically while retaining any prior named object."""
     path.parent.mkdir(parents=True, exist_ok=True)
     _reject_symlink_components(path.parent)
     temporary_name = f".{path.name}.oncotracer-write-{os.getpid()}-{uuid.uuid4().hex}"
     temporary = path.parent / temporary_name
-    payload = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     parent_fd = _open_pinned_directory(
         path.parent, "installer metadata publication parent"
@@ -289,6 +288,17 @@ def _atomic_write_json(
                 flush=True,
             )
         os.close(parent_fd)
+
+
+def _atomic_write_json(
+    path: Path,
+    value: object,
+    *,
+    retention_parent: Path | None = None,
+) -> None:
+    """Publish JSON atomically while retaining any prior bytes."""
+    payload = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    _atomic_write_bytes(path, payload, retention_parent=retention_parent)
 
 
 def _lock_record(path: Path, target: Path, kind: str) -> dict[str, object]:
@@ -1252,8 +1262,10 @@ def _write_poetry_build_metadata(staging: Path, source: Mapping[str, object]) ->
         'PROVENANCE_PAYLOAD_PATH = "payload/provenance/native-v2-sources.json"\n'
         f"PROVENANCE_PAYLOAD_SHA256 = {hashlib.sha256(payload.read_bytes()).hexdigest()!r}\n"
     )
-    (staging / "oncotracer_cli" / "_build_metadata.py").write_text(
-        contents, encoding="utf-8"
+    _atomic_write_bytes(
+        staging / "oncotracer_cli" / "_build_metadata.py",
+        contents.encode("utf-8"),
+        retention_parent=staging.parent / "metadata-history",
     )
 
 
@@ -2684,6 +2696,10 @@ def _restore_conda_transaction(
                     == journal["previous_markers"][str(name)]
                     for name in journal["assets"]
                 )
+        elif prestate == "absent":
+            unchanged = not os.path.lexists(base) or (
+                base.is_dir() and not base.is_symlink() and not any(base.iterdir())
+            )
         else:
             unchanged = (
                 base.is_dir() and not base.is_symlink() and not any(base.iterdir())
