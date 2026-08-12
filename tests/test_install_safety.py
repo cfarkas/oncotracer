@@ -431,6 +431,23 @@ else:
             self.assertEqual(_snapshot(base), before)
             self.assertEqual(len(self._log_lines()), calls_before)
 
+    def test_cleanup_unlinks_only_owned_hardlink_path(self) -> None:
+        base = self.scratch / "hardlinked-cleanup-envs"
+        self._conda_install(base)
+        history = base / "core" / "conda-meta" / "history"
+        external = self.scratch / "external-hardlink"
+        external.write_bytes(history.read_bytes())
+        external.chmod(stat.S_IMODE(history.stat().st_mode))
+        history.unlink()
+        os.link(external, history)
+        external_inode = external.stat().st_ino
+
+        self._conda_install(base, force=True)
+        self.assertEqual(external.read_bytes(), b"created\n")
+        self.assertEqual(external.stat().st_ino, external_inode)
+        self.assertEqual(external.stat().st_nlink, 1)
+        self.assertNotEqual(history.stat().st_ino, external_inode)
+
     def test_conda_child_source_must_match_the_owned_base(self) -> None:
         base = self.scratch / "split-source-envs"
         self._conda_install(base)
@@ -1501,6 +1518,108 @@ with (
                 second = self._run_unmocked_cli_install(*command, "--force")
                 self.assertEqual(second.returncode, 0, second.stderr)
                 self.assertNotIn("used by active process", second.stderr)
+
+    def test_conda_cleanup_tomb_rejects_foreign_nested_file_after_rename(
+        self,
+    ) -> None:
+        base = self.scratch / "post-rename-foreign-envs"
+        self._conda_install(base)
+        real_replace = install_safety.os.replace
+        cleanup: Path | None = None
+        sentinel: Path | None = None
+
+        def inject_after_cleanup_rename(source, destination):
+            nonlocal cleanup, sentinel
+            source_path = Path(source)
+            destination_path = Path(destination)
+            result = real_replace(source, destination)
+            if (
+                cleanup is None
+                and source_path.name.startswith(f".{base.name}.oncotracer-conda-txn-")
+                and destination_path.name.endswith(".oncotracer-cleanup")
+            ):
+                cleanup = destination_path
+                sentinel = cleanup / "backups" / "core" / "patient-sentinel"
+                sentinel.write_bytes(b"must never be deleted")
+                raise KeyboardInterrupt
+            return result
+
+        with (
+            mock.patch.object(
+                install_safety.os,
+                "replace",
+                side_effect=inject_after_cleanup_rename,
+            ),
+            self.assertRaisesRegex(
+                OncoTracerError, "automatic rollback could not complete"
+            ),
+        ):
+            self._conda_install(base, force=True)
+        self.assertIsNotNone(cleanup)
+        self.assertIsNotNone(sentinel)
+        assert cleanup is not None and sentinel is not None
+        journal = install_safety._journal_path(base, "conda")
+        self.assertTrue(cleanup.is_dir())
+        self.assertTrue(journal.is_file())
+        before = _snapshot(cleanup)
+
+        with self.assertRaisesRegex(OncoTracerError, "unexpected entry"):
+            self._conda_install(base)
+        self.assertEqual(_snapshot(cleanup), before)
+        self.assertEqual(sentinel.read_bytes(), b"must never be deleted")
+        self.assertTrue(journal.is_file())
+
+    def test_sif_cleanup_tomb_rejects_modified_backup_after_rename(self) -> None:
+        destination = self.scratch / "post-rename-modified.sif"
+        self._sif_install(destination)
+        real_replace = install_safety.os.replace
+        cleanup: Path | None = None
+        backup: Path | None = None
+
+        def inject_after_cleanup_rename(source, target):
+            nonlocal cleanup, backup
+            source_path = Path(source)
+            target_path = Path(target)
+            result = real_replace(source, target)
+            if (
+                cleanup is None
+                and source_path.name.startswith(
+                    f".{destination.name}.oncotracer-sif-txn-"
+                )
+                and target_path.name.endswith(".oncotracer-cleanup")
+            ):
+                cleanup = target_path
+                backup = cleanup / "backup.sif"
+                backup.write_bytes(b"modified after atomic cleanup rename")
+                raise KeyboardInterrupt
+            return result
+
+        with (
+            mock.patch.dict(
+                os.environ, {"FAKE_SIF_CONTENT": "new-tomb-content"}, clear=False
+            ),
+            mock.patch.object(
+                install_safety.os,
+                "replace",
+                side_effect=inject_after_cleanup_rename,
+            ),
+            self.assertRaisesRegex(
+                OncoTracerError, "automatic rollback could not complete"
+            ),
+        ):
+            self._sif_install(destination, force=True)
+        self.assertIsNotNone(cleanup)
+        self.assertIsNotNone(backup)
+        assert cleanup is not None and backup is not None
+        journal = install_safety._journal_path(destination, "sif")
+        self.assertTrue(journal.is_file())
+        before = _snapshot(cleanup)
+
+        with self.assertRaisesRegex(OncoTracerError, "modified entry"):
+            self._sif_install(destination)
+        self.assertEqual(_snapshot(cleanup), before)
+        self.assertEqual(backup.read_bytes(), b"modified after atomic cleanup rename")
+        self.assertTrue(journal.is_file())
 
     def test_conda_committed_cleanup_resumes_after_partial_recursive_removal(
         self,

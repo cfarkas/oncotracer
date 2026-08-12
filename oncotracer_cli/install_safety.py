@@ -37,6 +37,8 @@ TRANSACTION_SCHEMA = "oncotracer-install-transaction-v1"
 TRANSACTION_OWNER_SCHEMA = "oncotracer-install-transaction-owner-v1"
 LOCK_SCHEMA = "oncotracer-install-lock-v1"
 INVENTORY_SCHEMA = "oncotracer-install-inventory-v1"
+CLEANUP_INVENTORY_SCHEMA = "oncotracer-install-cleanup-inventory-v1"
+MAX_INVENTORY_JSON_BYTES = 512 * 1024 * 1024
 
 CONDA_NAMES = ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
 MANAGED_CHILDREN = (*CONDA_NAMES, "poetry-runtime")
@@ -155,7 +157,9 @@ def _guard_dedicated(path: Path, label: str) -> Path:
     return path
 
 
-def _safe_read_json(path: Path, label: str) -> dict[str, object]:
+def _safe_read_json(
+    path: Path, label: str, *, max_bytes: int = 1024 * 1024
+) -> dict[str, object]:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         descriptor = os.open(path, flags)
@@ -165,7 +169,7 @@ def _safe_read_json(path: Path, label: str) -> dict[str, object]:
                 raise OncoTracerError(
                     f"{label} must be one non-hardlinked regular file: {path}"
                 )
-            if metadata.st_size > 1024 * 1024:
+            if metadata.st_size > max_bytes:
                 raise OncoTracerError(f"{label} is unexpectedly large: {path}")
             value = json.load(handle)
     except OncoTracerError:
@@ -592,7 +596,11 @@ def _write_child_inventory(destination: Path) -> str:
 
 def _verify_child_inventory(storage: Path, marker: Mapping[str, object]) -> None:
     inventory_path = storage / CHILD_INVENTORY
-    inventory = _safe_read_json(inventory_path, "managed environment inventory")
+    inventory = _safe_read_json(
+        inventory_path,
+        "managed environment inventory",
+        max_bytes=MAX_INVENTORY_JSON_BYTES,
+    )
     if not _valid_inventory(inventory) or sha256_file(inventory_path) != marker.get(
         "inventory_sha256"
     ):
@@ -1579,18 +1587,240 @@ def _committed_cleanup_path(transaction: Path) -> Path:
     return transaction.with_name(f"{transaction.name}.oncotracer-cleanup")
 
 
+def _cleanup_entry(root: Path, path: Path) -> dict[str, object]:
+    """Return a stable cleanup identity without following filesystem links."""
+    relative = path.relative_to(root).as_posix()
+    try:
+        root_metadata = root.lstat()
+        metadata = path.lstat()
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not inspect committed installer cleanup member {path}: {error}"
+        ) from error
+    mode = stat.S_IMODE(metadata.st_mode)
+    if metadata.st_dev != root_metadata.st_dev:
+        raise OncoTracerError(
+            f"committed installer cleanup crosses filesystems: {path}"
+        )
+    if stat.S_ISDIR(metadata.st_mode) and not stat.S_ISLNK(metadata.st_mode):
+        # Directory st_size changes as children are removed and is not portable.
+        # Use a canonical logical identity; exact descendants are separate rows.
+        return {
+            "path": relative,
+            "type": "directory",
+            "mode": mode,
+            "size": 0,
+            "sha256": hashlib.sha256(b"directory").hexdigest(),
+        }
+    if stat.S_ISLNK(metadata.st_mode):
+        target = os.readlink(path)
+        return {
+            "path": relative,
+            "type": "symlink",
+            "mode": mode,
+            "size": metadata.st_size,
+            "sha256": hashlib.sha256(os.fsencode(target)).hexdigest(),
+        }
+    if not stat.S_ISREG(metadata.st_mode):
+        raise OncoTracerError(
+            "committed installer cleanup contains a special "
+            f"file and will be preserved: {path}"
+        )
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+        with os.fdopen(descriptor, "rb") as handle:
+            opened = os.fstat(handle.fileno())
+            if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (
+                metadata.st_dev,
+                metadata.st_ino,
+            ):
+                raise OncoTracerError(
+                    f"committed installer cleanup file changed identity: {path}"
+                )
+            digest = hashlib.sha256()
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+            finished = os.fstat(handle.fileno())
+            if (
+                finished.st_dev,
+                finished.st_ino,
+                finished.st_mode,
+            ) != (
+                opened.st_dev,
+                opened.st_ino,
+                opened.st_mode,
+            ) or finished.st_size != opened.st_size:
+                raise OncoTracerError(
+                    f"committed installer cleanup file changed while hashing: {path}"
+                )
+    except OncoTracerError:
+        raise
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not authenticate committed installer cleanup file {path}: {error}"
+        ) from error
+    try:
+        current = path.lstat()
+    except OSError as error:
+        raise OncoTracerError(
+            f"committed installer cleanup file vanished while hashing: {path}: {error}"
+        ) from error
+    if (
+        current.st_dev,
+        current.st_ino,
+        current.st_mode,
+        current.st_size,
+    ) != (finished.st_dev, finished.st_ino, finished.st_mode, finished.st_size):
+        raise OncoTracerError(
+            f"committed installer cleanup file changed while hashing: {path}"
+        )
+    return {
+        "path": relative,
+        "type": "file",
+        "mode": mode,
+        "size": finished.st_size,
+        "sha256": digest.hexdigest(),
+    }
+
+
+def _cleanup_entries(root: Path) -> list[dict[str, object]]:
+    """Capture every member without following links; hardlinks/specials fail."""
+    entries: list[dict[str, object]] = []
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        try:
+            children = sorted(directory.iterdir(), key=lambda item: item.name)
+        except OSError as error:
+            raise OncoTracerError(
+                f"could not enumerate committed installer cleanup {directory}: {error}"
+            ) from error
+        for path in children:
+            entry = _cleanup_entry(root, path)
+            entries.append(entry)
+            if entry["type"] == "directory":
+                pending.append(path)
+    entries.sort(key=lambda item: str(item["path"]))
+    return entries
+
+
+def _cleanup_inventory(
+    transaction: Path, target: Path, transaction_id: str, kind: str
+) -> dict[str, object]:
+    """Seal the exact transaction tree before its atomic cleanup rename."""
+    _require_transaction(transaction, target, transaction_id, kind)
+    metadata = transaction.lstat()
+    return {
+        "schema": CLEANUP_INVENTORY_SCHEMA,
+        "kind": kind,
+        "transaction_id": transaction_id,
+        "canonical_transaction": str(transaction),
+        "canonical_target": str(target),
+        "root_device": metadata.st_dev,
+        "root_inode": metadata.st_ino,
+        "root_mode": stat.S_IMODE(metadata.st_mode),
+        "entries": _cleanup_entries(transaction),
+    }
+
+
+def _valid_cleanup_inventory(
+    value: object,
+    transaction: Path,
+    target: Path,
+    transaction_id: str,
+    kind: str,
+) -> bool:
+    if not isinstance(value, dict) or set(value) != {
+        "schema",
+        "kind",
+        "transaction_id",
+        "canonical_transaction",
+        "canonical_target",
+        "root_device",
+        "root_inode",
+        "root_mode",
+        "entries",
+    }:
+        return False
+    if (
+        value.get("schema") != CLEANUP_INVENTORY_SCHEMA
+        or value.get("kind") != kind
+        or value.get("transaction_id") != transaction_id
+        or value.get("canonical_transaction") != str(transaction)
+        or value.get("canonical_target") != str(target)
+        or not isinstance(value.get("root_device"), int)
+        or int(value["root_device"]) < 0
+        or not isinstance(value.get("root_inode"), int)
+        or int(value["root_inode"]) <= 0
+        or not isinstance(value.get("root_mode"), int)
+        or int(value["root_mode"]) < 0
+        or int(value["root_mode"]) > 0o7777
+        or not isinstance(value.get("entries"), list)
+    ):
+        return False
+    previous = ""
+    owner_seen = False
+    for entry in value["entries"]:
+        if not isinstance(entry, dict) or set(entry) != {
+            "path",
+            "type",
+            "mode",
+            "size",
+            "sha256",
+        }:
+            return False
+        relative = entry.get("path")
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or relative <= previous
+            or relative.startswith("/")
+            or "\\" in relative
+            or any(part in {"", ".", ".."} for part in relative.split("/"))
+            or entry.get("type") not in {"directory", "file", "symlink"}
+            or not isinstance(entry.get("mode"), int)
+            or int(entry["mode"]) < 0
+            or int(entry["mode"]) > 0o7777
+            or not isinstance(entry.get("size"), int)
+            or int(entry["size"]) < 0
+            or not isinstance(entry.get("sha256"), str)
+            or not _HEX_64.fullmatch(str(entry["sha256"]))
+        ):
+            return False
+        if entry["type"] == "directory" and (
+            entry["size"] != 0
+            or entry["sha256"] != hashlib.sha256(b"directory").hexdigest()
+        ):
+            return False
+        if relative == ".oncotracer-transaction-owner.json":
+            owner_seen = entry["type"] == "file"
+        previous = relative
+    return owner_seen
+
+
+def _cleanup_removal_order(entries: Sequence[Mapping[str, object]]) -> list[str]:
+    owner = ".oncotracer-transaction-owner.json"
+    paths = [str(entry["path"]) for entry in entries]
+    return sorted(
+        paths,
+        key=lambda relative: (
+            relative == owner,
+            -len(relative.split("/")),
+            relative,
+        ),
+    )
+
+
 def _require_committed_cleanup_root(
     cleanup: Path,
     transaction: Path,
     target: Path,
     transaction_id: str,
     kind: str,
-) -> bool:
-    """Authenticate a partially removed, atomically claimed cleanup tree.
-
-    Returns whether the ownership marker is still present. Its absence is only
-    valid after every other entry has already been removed.
-    """
+    inventory: Mapping[str, object],
+) -> None:
+    """Authenticate a partially removed, atomically claimed cleanup tree."""
     expected = _committed_cleanup_path(transaction)
     if cleanup != expected:
         raise OncoTracerError(f"installer cleanup path is not exact: {cleanup}")
@@ -1605,22 +1835,79 @@ def _require_committed_cleanup_root(
         not stat.S_ISDIR(metadata.st_mode)
         or stat.S_ISLNK(metadata.st_mode)
         or metadata.st_dev != parent_metadata.st_dev
+        or metadata.st_dev != inventory["root_device"]
+        or metadata.st_ino != inventory["root_inode"]
+        or stat.S_IMODE(metadata.st_mode) != inventory["root_mode"]
     ):
         raise OncoTracerError(
-            f"committed installer cleanup is not a physical same-filesystem tree: {cleanup}"
+            "committed installer cleanup root identity changed and will be "
+            f"preserved: {cleanup}"
         )
     owner_path = cleanup / ".oncotracer-transaction-owner.json"
-    if not os.path.lexists(owner_path):
-        if any(cleanup.iterdir()):
+    if os.path.lexists(owner_path):
+        owner = _safe_read_json(owner_path, "committed installer cleanup ownership")
+        if not _valid_transaction_owner(
+            owner, transaction, target, transaction_id, kind
+        ):
+            raise OncoTracerError(f"refusing an unowned installer cleanup: {cleanup}")
+
+
+def _validate_cleanup_state(
+    cleanup: Path, inventory: Mapping[str, object]
+) -> tuple[dict[str, dict[str, object]], list[str]]:
+    """Require the remaining tree to be one exact suffix of removal order."""
+    expected_entries = {
+        str(entry["path"]): dict(entry) for entry in inventory["entries"]
+    }
+    observed_entries = {
+        str(entry["path"]): entry for entry in _cleanup_entries(cleanup)
+    }
+    unexpected = sorted(set(observed_entries) - set(expected_entries))
+    changed = sorted(
+        path
+        for path in set(observed_entries) & set(expected_entries)
+        if observed_entries[path] != expected_entries[path]
+    )
+    if unexpected or changed:
+        raise OncoTracerError(
+            "committed installer cleanup contains an unexpected entry or modified entry and "
+            f"will be preserved: {cleanup}; added={unexpected!r}; changed={changed!r}"
+        )
+    order = _cleanup_removal_order(inventory["entries"])
+    remaining = [path for path in order if path in observed_entries]
+    allowed_suffix = order[len(order) - len(remaining) :] if remaining else []
+    if remaining != allowed_suffix:
+        removed_out_of_order = sorted(set(order) - set(remaining))
+        raise OncoTracerError(
+            "committed installer cleanup is not a deterministic partial cleanup "
+            f"suffix and will be preserved: {cleanup}; removed={removed_out_of_order!r}"
+        )
+    return observed_entries, remaining
+
+
+def _remove_cleanup_entry(
+    cleanup: Path, relative: str, expected: Mapping[str, object]
+) -> None:
+    """Remove one authenticated member and durably record that progress."""
+    path = cleanup / relative
+    if _cleanup_entry(cleanup, path) != expected:
+        raise OncoTracerError(
+            f"committed installer cleanup member changed before removal: {path}"
+        )
+    if expected["type"] == "directory":
+        try:
+            path.rmdir()
+        except OSError as error:
             raise OncoTracerError(
-                "committed installer cleanup lost ownership before its contents; "
-                f"preserving it: {cleanup}"
-            )
-        return False
-    owner = _safe_read_json(owner_path, "committed installer cleanup ownership")
-    if not _valid_transaction_owner(owner, transaction, target, transaction_id, kind):
-        raise OncoTracerError(f"refusing an unowned installer cleanup: {cleanup}")
-    return True
+                f"committed installer cleanup directory is not empty: {path}: {error}"
+            ) from error
+    elif expected["type"] == "symlink":
+        path.unlink()
+    else:
+        path.unlink()
+    _fsync_directory(path.parent)
+    if path.parent != cleanup:
+        _fsync_directory(cleanup)
 
 
 def _remove_committed_transaction(
@@ -1629,8 +1916,13 @@ def _remove_committed_transaction(
     transaction_id: str,
     kind: str,
     expected_top_level: set[str],
+    inventory: Mapping[str, object],
 ) -> None:
     """Atomically claim then idempotently remove an authenticated transaction."""
+    if not _valid_cleanup_inventory(
+        inventory, transaction, target, transaction_id, kind
+    ):
+        raise OncoTracerError("committed installer cleanup inventory is malformed")
     cleanup = _committed_cleanup_path(transaction)
     if os.path.lexists(transaction):
         _require_transaction(transaction, target, transaction_id, kind)
@@ -1640,43 +1932,31 @@ def _remove_committed_transaction(
             )
         _assert_inactive(transaction)
         _assert_single_filesystem_tree(transaction, target.parent)
+        observed_top_level = {entry.name for entry in transaction.iterdir()}
+        if observed_top_level != expected_top_level:
+            raise OncoTracerError(
+                "committed installer transaction contains an unexpected entry and "
+                f"will be preserved: {transaction}"
+            )
+        if _cleanup_inventory(transaction, target, transaction_id, kind) != inventory:
+            raise OncoTracerError(
+                "committed installer transaction changed after its cleanup inventory "
+                f"was sealed and will be preserved: {transaction}"
+            )
         os.replace(transaction, cleanup)
         _fsync_directory(target.parent)
     if not os.path.lexists(cleanup):
         return
-    owner_present = _require_committed_cleanup_root(
-        cleanup, transaction, target, transaction_id, kind
+    _require_committed_cleanup_root(
+        cleanup, transaction, target, transaction_id, kind, inventory
     )
     _assert_inactive(cleanup)
-    _assert_single_filesystem_tree(cleanup, target.parent)
-    owner_name = ".oncotracer-transaction-owner.json"
-    observed = {entry.name for entry in cleanup.iterdir()}
-    if not observed.issubset(expected_top_level):
-        raise OncoTracerError(
-            "committed installer cleanup contains an unexpected entry and will be "
-            f"preserved: {cleanup}"
-        )
-    if owner_present and owner_name not in observed:
-        raise OncoTracerError(
-            f"committed installer cleanup ownership vanished: {cleanup}"
-        )
-    for entry in sorted(cleanup.iterdir(), key=lambda item: item.name):
-        if entry.name == owner_name:
-            continue
-        metadata = entry.lstat()
-        if stat.S_ISDIR(metadata.st_mode) and not stat.S_ISLNK(metadata.st_mode):
-            shutil.rmtree(entry)
-        elif stat.S_ISREG(metadata.st_mode) and metadata.st_nlink == 1:
-            entry.unlink()
-        else:
-            raise OncoTracerError(
-                f"refusing unsafe member in committed installer cleanup: {entry}"
-            )
-        _fsync_directory(cleanup)
-    owner_path = cleanup / owner_name
-    if os.path.lexists(owner_path):
-        _safe_unlink(owner_path, "committed installer cleanup ownership")
-        _fsync_directory(cleanup)
+    _, remaining = _validate_cleanup_state(cleanup, inventory)
+    expected_entries = {
+        str(entry["path"]): dict(entry) for entry in inventory["entries"]
+    }
+    for relative in remaining:
+        _remove_cleanup_entry(cleanup, relative, expected_entries[relative])
     cleanup.rmdir()
     _fsync_directory(target.parent)
 
@@ -1764,6 +2044,7 @@ def _valid_conda_journal(value: object, base: Path) -> bool:
         "new_markers",
         "base_marker_before",
         "base_marker_after",
+        "cleanup_inventory",
     }:
         return False
     transaction_id = value.get("transaction_id")
@@ -1789,6 +2070,18 @@ def _valid_conda_journal(value: object, base: Path) -> bool:
         and set(value["new_markers"]) == set(value["assets"])
     )
     if not shallow_valid:
+        return False
+    cleanup_inventory = value.get("cleanup_inventory")
+    if value["phase"] == "committed":
+        if not _valid_cleanup_inventory(
+            cleanup_inventory,
+            transaction,
+            base,
+            str(transaction_id),
+            "conda",
+        ):
+            return False
+    elif cleanup_inventory is not None:
         return False
     install_id = str(value["install_id"])
     assets = [str(name) for name in value["assets"]]
@@ -1952,6 +2245,7 @@ def _restore_conda_transaction(
             transaction_id,
             "conda",
             expected_top_level,
+            journal["cleanup_inventory"],
         )
         _safe_unlink(journal_path, "Conda transaction journal")
         return
@@ -2043,7 +2337,11 @@ def _recover_conda_journal(base: Path) -> None:
     journal_path = _journal_path(base, "conda")
     if not os.path.lexists(journal_path):
         return
-    journal = _safe_read_json(journal_path, "Conda transaction journal")
+    journal = _safe_read_json(
+        journal_path,
+        "Conda transaction journal",
+        max_bytes=MAX_INVENTORY_JSON_BYTES,
+    )
     if not _valid_conda_journal(journal, base):
         raise OncoTracerError(
             f"refusing malformed or foreign Conda transaction journal: {journal_path}"
@@ -2152,7 +2450,11 @@ def install_conda_managed(
     include_poetry = poetry is not None
     pending_journal = _journal_path(base, "conda")
     if os.path.lexists(pending_journal):
-        pending = _safe_read_json(pending_journal, "Conda transaction journal")
+        pending = _safe_read_json(
+            pending_journal,
+            "Conda transaction journal",
+            max_bytes=MAX_INVENTORY_JSON_BYTES,
+        )
         if not _valid_conda_journal(pending, base):
             raise OncoTracerError(
                 f"refusing malformed or foreign Conda transaction journal: {pending_journal}"
@@ -2300,6 +2602,7 @@ def install_conda_managed(
             "new_markers": {name: expected[name] for name in changed},
             "base_marker_before": observed_base_marker,
             "base_marker_after": expected_base_marker,
+            "cleanup_inventory": None,
         }
         # The durable journal precedes transaction creation, package-manager
         # execution, and every target mutation.
@@ -2472,7 +2775,14 @@ def install_conda_managed(
                 else:
                     _verify_conda_runtime(base / name, name)
                 _verify_child_inventory(base / name, observed)
-            committed = {**journal, "phase": "committed"}
+            cleanup_inventory = _cleanup_inventory(
+                transaction, base, transaction_id, "conda"
+            )
+            committed = {
+                **journal,
+                "phase": "committed",
+                "cleanup_inventory": cleanup_inventory,
+            }
             _write_journal(journal_path, committed)
             journal = committed
             _restore_conda_transaction(base, journal_path, journal)
@@ -2616,6 +2926,7 @@ def _valid_sif_journal(value: object, destination: Path) -> bool:
         "prestate",
         "old_marker",
         "new_marker",
+        "cleanup_inventory",
     }:
         return False
     transaction_id = value.get("transaction_id")
@@ -2646,6 +2957,18 @@ def _valid_sif_journal(value: object, destination: Path) -> bool:
         )
     )
     if not shallow_valid:
+        return False
+    cleanup_inventory = value.get("cleanup_inventory")
+    if value["phase"] == "committed":
+        if not _valid_cleanup_inventory(
+            cleanup_inventory,
+            transaction,
+            destination,
+            str(transaction_id),
+            "sif",
+        ):
+            return False
+    elif cleanup_inventory is not None:
         return False
     install_id = str(value["install_id"])
     new_marker = value.get("new_marker")
@@ -2736,6 +3059,7 @@ def _restore_sif_transaction(
             transaction_id,
             "sif",
             expected_entries,
+            journal["cleanup_inventory"],
         )
         _safe_unlink(journal_path, "SIF transaction journal")
         return
@@ -2824,7 +3148,11 @@ def _recover_sif_journal(destination: Path) -> None:
     journal_path = _journal_path(destination, "sif")
     if not os.path.lexists(journal_path):
         return
-    journal = _safe_read_json(journal_path, "SIF transaction journal")
+    journal = _safe_read_json(
+        journal_path,
+        "SIF transaction journal",
+        max_bytes=MAX_INVENTORY_JSON_BYTES,
+    )
     if not _valid_sif_journal(journal, destination):
         raise OncoTracerError(
             f"refusing malformed or foreign SIF transaction journal: {journal_path}"
@@ -2843,7 +3171,11 @@ def install_sif_managed(
     destination = _guard_dedicated(destination, "SIF destination")
     journal_path = _journal_path(destination, "sif")
     if os.path.lexists(journal_path):
-        pending = _safe_read_json(journal_path, "SIF transaction journal")
+        pending = _safe_read_json(
+            journal_path,
+            "SIF transaction journal",
+            max_bytes=MAX_INVENTORY_JSON_BYTES,
+        )
         if not _valid_sif_journal(pending, destination):
             raise OncoTracerError(
                 f"refusing malformed or foreign SIF transaction journal: {journal_path}"
@@ -2926,6 +3258,7 @@ def install_sif_managed(
             "prestate": state,
             "old_marker": old_marker,
             "new_marker": None,
+            "cleanup_inventory": None,
         }
         _write_journal(journal_path, journal)
         try:
@@ -3011,8 +3344,14 @@ def install_sif_managed(
                 raise OncoTracerError(
                     f"SIF verification failed after atomic publication: {destination}"
                 )
-            committed_journal = dict(journal)
-            committed_journal["phase"] = "committed"
+            cleanup_inventory = _cleanup_inventory(
+                transaction, destination, transaction_id, "sif"
+            )
+            committed_journal = {
+                **journal,
+                "phase": "committed",
+                "cleanup_inventory": cleanup_inventory,
+            }
             _write_journal(journal_path, committed_journal)
             journal = committed_journal
             _restore_sif_transaction(destination, journal_path, journal)
