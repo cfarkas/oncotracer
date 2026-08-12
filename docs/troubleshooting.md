@@ -237,7 +237,9 @@ find "$PWD/project/references" -maxdepth 3 -type f -ls 2>/dev/null | head -50
 find "$PWD/project/.oncotracer/reference-cache" -maxdepth 3 -type f -ls 2>/dev/null | head -50
 ```
 
-An existing `project/references/samurai_hg38` or `project/references/samurai_ichorcna_hg38_500kb` is external and read-only. A checksum, manifest, tool-identity, layout, or symlink error there stops the run without repair. Coordinate shared-reference maintenance outside OncoTracer, or use a new project root so OncoTracer can create its own content-addressed cache. Never delete a valid shared reference during another active run.
+An existing `project/references/samurai_hg38` or `project/references/samurai_ichorcna_hg38_500kb` is external and read-only. A checksum, manifest, physical-lock, tool-identity, layout, or symlink error there stops the run without repair. This includes an otherwise usable FASTA/index directory created by another tool but lacking OncoTracer's exact `.oncotracer` manifests and locks. Do not manufacture or copy those records. Coordinate shared-reference maintenance outside OncoTracer, or use a new project root so OncoTracer can create its own content-addressed cache. Never delete a valid shared reference during another active run.
+
+qDNAseq annotations are published under `project/.oncotracer/reference-cache/qdnaseq-hg38-<binsize>kb-*/generations/`. A failed build leaves no current-generation pointer and is safe to rerun. A changed published generation fails closed rather than being repaired in place. OncoTracer deliberately ignores and preserves the older `project/.oncotracer/qdnaseq-bin-data` location.
 
 ## 13. Classifier or GISTIC2 failures
 

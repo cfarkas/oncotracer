@@ -16,7 +16,12 @@ from unittest.mock import patch
 from oncotracer_cli import engine
 from oncotracer_cli.engine import (
     Toolchain,
+    _index_build_contract,
+    _index_build_contract_matches,
+    _index_build_identity,
     _validated_bwa_reader,
+    _validated_fasta_reader,
+    _validated_minimap_reader,
     prepare_ichor_assets,
     prepare_reference,
 )
@@ -139,7 +144,7 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
             patch.object(engine, "HG38_ASSETS", self.hg38),
             patch.object(engine, "download") as download,
         ):
-            with self.assertRaisesRegex(OncoTracerError, "required external hg38"):
+            with self.assertRaisesRegex(OncoTracerError, "required external"):
                 prepare_reference(
                     self.project,
                     runner,  # type: ignore[arg-type]
@@ -400,6 +405,125 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
         self.assertFalse(reader.is_alive())
         self.assertFalse(writer.is_alive())
         self.assertEqual(errors, [])
+
+    def test_bwa_reader_rehashes_index_after_alignment(self) -> None:
+        reference, runner = self.create_owned_reference(bwa=True, minimap2=False)
+        bwt = Path(f"{reference['bwa_prefix']}.bwt")
+        with patch.object(engine, "HG38_ASSETS", self.hg38):
+            with self.assertRaisesRegex(OncoTracerError, "bytes changed"):
+                with _validated_bwa_reader(reference, runner, self.toolchain):
+                    bwt.write_bytes(b"tampered-during-alignment")
+                    raise RuntimeError("simulated scientific failure")
+
+    def test_minimap_reader_rehashes_and_reprobes_index_after_alignment(self) -> None:
+        reference, runner = self.create_owned_reference(bwa=False, minimap2=True)
+        index = Path(str(reference["minimap2_index"]))
+        with patch.object(engine, "HG38_ASSETS", self.hg38):
+            with self.assertRaisesRegex(OncoTracerError, "bytes changed"):
+                with _validated_minimap_reader(reference, runner, self.toolchain):
+                    index.write_bytes(b"tampered-during-alignment")
+                    raise RuntimeError("simulated scientific failure")
+        self.assertIn("reference-minimap2-validate-reader-exit", runner.stages)
+
+    def test_methylation_fasta_reader_rehashes_base_after_use(self) -> None:
+        reference, runner = self.create_owned_reference(bwa=False, minimap2=True)
+        fasta = Path(str(reference["fasta"]))
+        with patch.object(engine, "HG38_ASSETS", self.hg38):
+            with self.assertRaisesRegex(OncoTracerError, "SHA-256 mismatch"):
+                with _validated_fasta_reader(reference, runner):
+                    fasta.write_bytes(b">chr1\nTGCA\n")
+                    raise RuntimeError("simulated scientific failure")
+
+    def test_base_writer_waits_for_methylation_fasta_reader(self) -> None:
+        reference, runner = self.create_owned_reference(bwa=False, minimap2=True)
+        entered = threading.Event()
+        release = threading.Event()
+        writer_acquired = threading.Event()
+        errors: list[BaseException] = []
+
+        def hold_reader() -> None:
+            try:
+                with patch.object(engine, "HG38_ASSETS", self.hg38):
+                    with _validated_fasta_reader(reference, runner):
+                        entered.set()
+                        if not release.wait(5):
+                            raise AssertionError("timed out waiting to release reader")
+            except BaseException as error:  # pragma: no cover - surfaced below
+                errors.append(error)
+
+        def acquire_writer() -> None:
+            try:
+                with engine._reference_lock(
+                    Path(str(reference["minimap2_lock"])),
+                    exclusive=True,
+                    create=False,
+                ):
+                    writer_acquired.set()
+            except BaseException as error:  # pragma: no cover - surfaced below
+                errors.append(error)
+
+        reader = threading.Thread(target=hold_reader)
+        writer = threading.Thread(target=acquire_writer)
+        reader.start()
+        self.assertTrue(entered.wait(2), "methylation reader did not enter")
+        writer.start()
+        self.assertFalse(writer_acquired.wait(0.2))
+        release.set()
+        self.assertTrue(writer_acquired.wait(2))
+        reader.join(2)
+        writer.join(2)
+        self.assertEqual(errors, [])
+
+    def test_hardlinked_lock_is_rejected(self) -> None:
+        locks = self.root / "locks"
+        locks.mkdir()
+        protected = self.root / "protected-lock"
+        protected.write_bytes(b"")
+        candidate = locks / "reference.lock"
+        os.link(protected, candidate)
+        with self.assertRaisesRegex(OncoTracerError, "stable physical file"):
+            with engine._reference_lock(candidate, exclusive=False, create=False):
+                self.fail("hardlinked lock was accepted")
+        self.assertEqual(protected.read_bytes(), b"")
+
+    def test_conda_channel_is_informational_not_validity_identity(self) -> None:
+        prefix = self.root / "portable-core"
+        executable = prefix / "bin" / "bwa"
+        executable.parent.mkdir(parents=True)
+        executable.write_bytes(b"portable-bwa")
+        executable.chmod(0o755)
+        metadata = prefix / "conda-meta"
+        metadata.mkdir()
+        record_path = metadata / "bwa-0.7.17-test_0.json"
+        record = {
+            "name": "bwa",
+            "version": "0.7.17",
+            "build": "test_0",
+            "build_number": 0,
+            "channel": "https://mirror-a.example/conda-forge",
+            "subdir": "linux-64",
+            "sha256": "a" * 64,
+            "md5": "b" * 32,
+            "files": ["bin/bwa"],
+        }
+        record_path.write_text(json.dumps(record), encoding="utf-8")
+        first = _index_build_contract("bwa", "c" * 64, "d" * 64, str(executable))
+        record["channel"] = "https://mirror-b.example/conda-forge"
+        record_path.write_text(json.dumps(record), encoding="utf-8")
+        second = _index_build_contract("bwa", "c" * 64, "d" * 64, str(executable))
+
+        self.assertEqual(_index_build_identity(first), _index_build_identity(second))
+        self.assertNotEqual(
+            first["informational_provenance"],
+            second["informational_provenance"],
+        )
+        self.assertTrue(
+            _index_build_contract_matches(first, _index_build_identity(first), second)
+        )
+        legacy = first["informational_provenance"]["legacy_contract"]
+        self.assertTrue(
+            _index_build_contract_matches(legacy, _index_build_identity(legacy), second)
+        )
 
     def test_external_ichor_assets_are_pinned_and_never_repaired(self) -> None:
         reference = self.project / "references" / "samurai_ichorcna_hg38_500kb"

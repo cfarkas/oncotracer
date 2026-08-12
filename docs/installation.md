@@ -12,7 +12,7 @@ Before installation, provide:
 - at least 80 GiB of addressable memory for the first uncached Illumina BWA index;
 - one backend: Conda, Docker, or Singularity/Apptainer.
 
-The first analysis can take substantially longer because the reference, indexes, packages, and container layers are prepared. If `lpwgs_root/references/samurai_hg38` already exists, OncoTracer treats it as an external, read-only shared reference: every pinned file, index manifest, and tool identity must validate, and OncoTracer will stop instead of repairing it in place. When that path is absent, downloads and indexes go to an OncoTracer-owned, content-addressed cache below `lpwgs_root/.oncotracer/reference-cache/`. Later analyses reuse those validated assets even when they use a fresh result directory.
+The first analysis can take substantially longer because the reference, indexes, packages, and container layers are prepared. If `lpwgs_root/references/samurai_hg38` already exists, OncoTracer treats it as an external, read-only shared reference: every pinned file, index manifest, physical reader lock, and tool identity must validate, and OncoTracer will stop instead of repairing it in place. A plain existing FASTA/index directory is not auto-adopted. When that path is absent, FASTA/index, ichorCNA, and qDNAseq assets go to OncoTracer-owned, content-addressed caches below `lpwgs_root/.oncotracer/reference-cache/`. Later analyses reuse those validated assets even when they use a fresh result directory. Conda channel URLs are retained as informational provenance, but portability validity is based on stable package metadata and the exact indexing-executable SHA-256.
 
 ## 1. Install the stable copied executable
 

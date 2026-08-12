@@ -35,9 +35,13 @@ Keep inputs, configuration, reference/cache, and results below a small number of
 
 ## Reference storage safety
 
-OncoTracer recognizes an existing `references/samurai_hg38` directory as an external shared reference. It reads that directory but never downloads, rebuilds, repairs, or removes files there. The FASTA, FAI, sequence dictionary, BWA index, minimap2 index, immutable manifests, and indexing-tool identities must all match the pinned native-v2 contract. An incomplete, changed, or internally symlinked shared reference fails before analysis.
+OncoTracer recognizes an existing `references/samurai_hg38` directory as an external shared reference. It reads that directory but never downloads, rebuilds, repairs, or removes files there. The FASTA, FAI, sequence dictionary, BWA index, minimap2 index, immutable manifests, physical reader locks, and indexing-tool identities must all match the pinned native-v2 contract. A plain pre-existing FASTA/index directory without OncoTracer's `.oncotracer/locks/` and `.oncotracer/reference-index-provenance/` records is intentionally rejected: OncoTracer does not adopt or add metadata to an external reference. An incomplete, changed, or internally symlinked shared reference fails before analysis.
 
-If `references/samurai_hg38` does not exist, OncoTracer creates a marker-owned, content-addressed cache under `.oncotracer/reference-cache/`. Only that owned cache may be populated or transactionally rebuilt. The pinned ichorCNA hg38/500 kb assets follow the same rule: an existing `references/samurai_ichorcna_hg38_500kb` is read-only; otherwise verified assets are downloaded to the owned cache. Do not copy the ownership marker into an unrelated or shared directory to make OncoTracer overwrite it.
+If `references/samurai_hg38` does not exist, OncoTracer creates a marker-owned, content-addressed cache under `.oncotracer/reference-cache/`. Only that owned cache may be populated or transactionally rebuilt. The pinned ichorCNA hg38/500 kb assets follow the same rule: an existing `references/samurai_ichorcna_hg38_500kb` is read-only; otherwise verified assets are downloaded to the owned cache.
+
+qDNAseq hg38 annotations also use a marker-owned cache below `.oncotracer/reference-cache/`. OncoTracer verifies an immutable upstream commit and source SHA-256, builds a complete three-file bundle in a private staging directory, and publishes one content-addressed generation atomically while holding a physical lock. It revalidates that generation before and after qDNAseq uses it. A legacy `.oncotracer/qdnaseq-bin-data` directory is never adopted, repaired, overwritten, or deleted.
+
+Do not copy an ownership marker into an unrelated or shared directory to make OncoTracer overwrite it.
 
 ## Illumina input
 

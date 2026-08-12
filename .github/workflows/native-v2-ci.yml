@@ -71,6 +71,8 @@ jobs:
             tests/test_native_provenance.py \
             tests/test_ichorcna_plot_compat.py \
             tests/test_qdnaseq_helper.py \
+            tests/test_qdnaseq_cache_safety.py \
+            tests/test_reference_storage_safety.py \
             tests/test_product_hygiene.py \
             tests/test_release_workflow.py
       - name: Run shell and standalone documentation regression tests

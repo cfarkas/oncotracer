@@ -1413,18 +1413,41 @@ probe_gistic() {
 }
 
 verify_qdnaseq_cache() {
-  local cache="$VALIDATION_ROOT/qdnaseq-bin-data"
-  local annotation="$cache/QDNAseq.hg38.100kbp.SR50.rds"
+  local relative annotation cache
+  relative="$(<"$CONTEXT_DIR/qdnaseq-annotation-relative-path.txt")"
+  [[ "$relative" == .oncotracer/reference-cache/qdnaseq-hg38-100kb-*/generations/generation-*/QDNAseq.hg38.100kbp.SR50.rds ]] || {
+    echo "ERROR: invalid qDNAseq annotation relative path: $relative" >&2
+    return 1
+  }
+  annotation="$VALIDATION_ROOT/$relative"
+  cache="$(dirname -- "$annotation")"
+  [[ "$(readlink -f -- "$annotation")" == "$annotation" ]] || {
+    echo "ERROR: qDNAseq annotation path is not physical: $annotation" >&2
+    return 1
+  }
   local source_rda="$cache/QDNAseq.hg38.100kbp.SR50.source.rda"
   local provenance="$annotation.provenance.tsv"
   verify_tree_manifest "$cache" "$CONTEXT_DIR/qdnaseq-bin-data-SHA256SUMS"
-  python3 - "$source_rda" "$annotation" "$provenance" <<'PY'
+  python3 - "$REPOSITORY_ROOT" "$source_rda" "$annotation" "$provenance" <<'PY'
 import csv
 import hashlib
 import sys
 from pathlib import Path
 
-source, annotation, provenance = map(Path, sys.argv[1:])
+repository = Path(sys.argv[1])
+source, annotation, provenance = map(Path, sys.argv[2:])
+sys.path.insert(0, str(repository))
+from oncotracer_cli.engine import (  # noqa: E402
+    _qdnaseq_generation_from_pointer,
+    _reference_identity,
+)
+
+cache = annotation.parent.parent.parent
+validated_generation = _qdnaseq_generation_from_pointer(
+    cache, 100, _reference_identity("qdnaseq-hg38-100kb")
+)
+if validated_generation != annotation.parent:
+    raise SystemExit("qDNAseq annotation failed exact current-pointer validation")
 expected_files = {source.name, annotation.name, provenance.name}
 observed_files = {path.name for path in source.parent.iterdir()}
 if observed_files != expected_files:
@@ -1537,12 +1560,15 @@ action_install_environments() {
   env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
     "$ENV_ROOT/qdnaseq/bin/Rscript" --vanilla -e \
     'library(Biobase); library(QDNAseq); cat("QDNASEQ_R_OK\n")'
-  local annotation="$VALIDATION_ROOT/qdnaseq-bin-data/QDNAseq.hg38.100kbp.SR50.rds"
-  env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+  local annotation annotation_relative
+  annotation="$(env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
     bash "$REPOSITORY_ROOT/bin/scripts/prepare_qdnaseq_bin_data.sh" \
       --binsize 100 \
-      --cache-dir "$VALIDATION_ROOT/qdnaseq-bin-data" \
-      --rscript "$ENV_ROOT/qdnaseq/bin/Rscript"
+      --rscript "$ENV_ROOT/qdnaseq/bin/Rscript" \
+      --project-root "$VALIDATION_ROOT")"
+  annotation_relative="${annotation#"$VALIDATION_ROOT"/}"
+  [[ "$annotation_relative" != "$annotation" ]]
+  printf '%s\n' "$annotation_relative" > "$CONTEXT_DIR/qdnaseq-annotation-relative-path.txt"
   env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
     "$ENV_ROOT/qdnaseq/bin/Rscript" --vanilla -e \
     'x <- readRDS(commandArgs(TRUE)[1]); stopifnot(inherits(x, "AnnotatedDataFrame")); cat("QDNASEQ_RDS_OK\n")' \
@@ -1552,7 +1578,7 @@ action_install_environments() {
   grep -F $'source_rda_sha256\t' "$annotation.provenance.tsv"
   grep -F $'rds_sha256\t' "$annotation.provenance.tsv"
   write_tree_manifest \
-    "$VALIDATION_ROOT/qdnaseq-bin-data" \
+    "$(dirname -- "$annotation")" \
     "$CONTEXT_DIR/qdnaseq-bin-data-SHA256SUMS"
 
   env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
@@ -2472,7 +2498,11 @@ populate_audit_context() {
   cp "$CONTEXT_DIR/public-input-SHA256SUMS" "$destination/"
   cp "$CONTEXT_DIR/validation-reference-SHA256SUMS" "$destination/"
   cp "$CONTEXT_DIR/qdnaseq-bin-data-SHA256SUMS" "$destination/qdnaseq-annotation/"
-  cp "$VALIDATION_ROOT/qdnaseq-bin-data/QDNAseq.hg38.100kbp.SR50.rds.provenance.tsv" \
+  local qdnaseq_annotation qdnaseq_provenance
+  qdnaseq_annotation="$VALIDATION_ROOT/$(<"$CONTEXT_DIR/qdnaseq-annotation-relative-path.txt")"
+  qdnaseq_provenance="$(dirname -- "$qdnaseq_annotation")/QDNAseq.hg38.100kbp.SR50.rds.provenance.tsv"
+  [[ "$qdnaseq_provenance" == "$qdnaseq_annotation.provenance.tsv" ]]
+  cp "$qdnaseq_provenance" \
     "$destination/qdnaseq-annotation/"
   cp "$CONTEXT_DIR"/*-output-SHA256SUMS "$destination/"
   cp "$CONTEXT_DIR"/native-*.explicit.txt "$destination/environments/"

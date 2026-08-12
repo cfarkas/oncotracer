@@ -66,12 +66,41 @@ printf '%s\n' \
   '[[ -n "$output" ]] || { echo "ERROR: mock curl did not receive --output" >&2; exit 98; }' \
   'printf "mock QDNAseq.hg38 source\n" > "$output"' \
   > "$MOCK_BIN/curl"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -Eeuo pipefail' \
+  'path="${@: -1}"' \
+  'if [[ "$path" == *.rda ]]; then' \
+  '  printf "450b77a74dbba381e2f664334de90e41ec5e9eb6a5a8946d036c4b3534254d98  %s\n" "$path"' \
+  'else' \
+  '  /usr/bin/sha256sum -- "$path"' \
+  'fi' \
+  > "$MOCK_BIN/sha256sum"
 chmod +x \
   "$MOCK_BIN/nextflow" \
   "$MOCK_BIN/samtools" \
   "$MOCK_BIN/Rscript" \
   "$MOCK_BIN/qpdf" \
-  "$MOCK_BIN/curl"
+  "$MOCK_BIN/curl" \
+  "$MOCK_BIN/sha256sum"
+
+TEST_PYTHON_HOOK="$TEST_TMP/python-hook"
+mkdir -p "$TEST_PYTHON_HOOK"
+printf '%s\n' \
+  'from pathlib import Path' \
+  'import oncotracer_cli.engine as engine' \
+  '' \
+  'def prepare_fixture(_root, project, binsize, _runner, _toolchain):' \
+  '    generation = "generation-" + "0" * 64' \
+  '    path = (Path(project) / ".oncotracer" / "reference-cache" /' \
+  '            f"qdnaseq-hg38-{binsize}kb-fixture" / "generations" / generation /' \
+  '            f"QDNAseq.hg38.{binsize}kbp.SR50.rds")' \
+  '    path.parent.mkdir(parents=True, exist_ok=True)' \
+  '    path.write_bytes(b"mock qDNAseq annotation\\n")' \
+  '    return path' \
+  '' \
+  'engine.prepare_qdnaseq_annotation = prepare_fixture' \
+  > "$TEST_PYTHON_HOOK/sitecustomize.py"
 
 LPWGS_ROOT="$TEST_TMP/lpwgs"
 REF_FA="$LPWGS_ROOT/reference/genome.fa"
@@ -100,6 +129,7 @@ run_wrapper() {
   local case_dir="$1"
   shift
   PATH="$MOCK_BIN:$ORIGINAL_PATH" \
+  PYTHONPATH="$ROOT_DIR:$TEST_PYTHON_HOOK${PYTHONPATH:+:$PYTHONPATH}" \
   CONDA_PREFIX="$MOCK_PREFIX" \
   MOCK_NEXTFLOW_LOG="$case_dir/nextflow.log" \
   MOCK_NEXTFLOW_EXIT_CODE="$MOCK_NEXTFLOW_EXIT" \

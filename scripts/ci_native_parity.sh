@@ -481,7 +481,33 @@ fi
 
 python3 "$REPO/tests/parity_audit.py" manifest \
   "$TEST_ROOT/references/samurai_hg38" "$CONTEXT/manifests/shared-reference-manifest.tsv"
-cp -a "$TEST_ROOT/.oncotracer/qdnaseq-bin-data/." "$CONTEXT/qdnaseq-annotation/"
+mapfile -t qdnaseq_caches < <(
+  find "$TEST_ROOT/.oncotracer/reference-cache" \
+    -mindepth 1 -maxdepth 1 -type d -name 'qdnaseq-hg38-100kb-*' -print
+)
+test "${#qdnaseq_caches[@]}" -eq 1
+QDNASEQ_CACHE="${qdnaseq_caches[0]}"
+QDNASEQ_GENERATION="$(
+  PYTHONPATH="$REPO${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 - "$QDNASEQ_CACHE" <<'PY'
+import sys
+from pathlib import Path
+
+from oncotracer_cli.engine import (
+    _qdnaseq_generation_from_pointer,
+    _reference_identity,
+)
+
+cache = Path(sys.argv[1])
+generation = _qdnaseq_generation_from_pointer(
+    cache, 100, _reference_identity("qdnaseq-hg38-100kb")
+)
+if generation is None:
+    raise SystemExit(f"qDNAseq generation failed exact pointer/bundle validation: {cache}")
+print(generation)
+PY
+)"
+cp -a "$QDNASEQ_GENERATION/." "$CONTEXT/qdnaseq-annotation/"
 python3 "$REPO/tests/parity_audit.py" manifest \
   "$CONTEXT/qdnaseq-annotation" "$CONTEXT/manifests/qdnaseq-annotation-manifest.tsv"
 

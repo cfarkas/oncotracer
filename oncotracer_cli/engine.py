@@ -81,6 +81,19 @@ HG38_ASSETS = {
 }
 BWA_INDEX_SUFFIXES = (".amb", ".ann", ".bwt", ".pac", ".sa")
 REFERENCE_CACHE_SCHEMA = "oncotracer-reference-cache-owner-v1"
+QDNASEQ_HG38_COMMIT = "cf7c07e39de0ac64a9c38cb030cba4626e2aae83"
+QDNASEQ_HG38_SOURCE_SHA256 = {
+    1: "b9ab0152649a913ad44ce38679bc8acd3073c636d9daa2b5926a1b410f666495",
+    5: "fe897acdbe3555cf13f11e9c210b6cf236838990557777c74eed13b87475635a",
+    10: "e26904321f93ea081559bcce7d59e3cede224db3eb7069581f0770a0ce138d1f",
+    15: "f5e516f740c3e8acfbda782214358ea10f4e9b2689d9b76aad3d99c5bcf97849",
+    30: "71a731557709991e62ea5c224919154cebdadb5f3d6e9f4a287f3999940f1e89",
+    50: "44440e7d4b6d98fe7b422a5137ca121abe80a3ecafde374e20618d7ee480d054",
+    100: "450b77a74dbba381e2f664334de90e41ec5e9eb6a5a8946d036c4b3534254d98",
+    500: "1001b1cc723fb96d3eff54c04285049a13159dfe6100e593c628855dffd12089",
+    1000: "3dc99f8080bc20b2fcfc737680b37894cf92b1416cd3550900b7811a45b76e42",
+}
+QDNASEQ_CACHE_POINTER_SCHEMA = "oncotracer-qdnaseq-cache-pointer-v1"
 
 
 @dataclass(frozen=True)
@@ -387,6 +400,17 @@ def _reference_identity(kind: str) -> str:
             "samurai_commit": SAMURAI_ICHOR_COMMIT,
             "assets": ICHOR_ASSETS,
         }
+    elif match := re.fullmatch(r"qdnaseq-hg38-(\d+)kb", kind):
+        binsize = int(match.group(1))
+        expected_sha256 = QDNASEQ_HG38_SOURCE_SHA256.get(binsize)
+        if expected_sha256 is None:
+            raise OncoTracerError(f"unsupported qDNAseq hg38 bin size: {binsize}")
+        payload = {
+            "kind": kind,
+            "source_commit": QDNASEQ_HG38_COMMIT,
+            "source_sha256": expected_sha256,
+            "object": f"hg38.{binsize}kbp.SR50",
+        }
     else:  # pragma: no cover - internal contract
         raise OncoTracerError(f"unknown reference cache kind: {kind}")
     return _canonical_json_sha256(payload)
@@ -440,26 +464,162 @@ def _ensure_physical_directory(path: Path, label: str) -> Path:
 def _marker_matches(path: Path, expected: Mapping[str, object]) -> bool:
     try:
         _require_physical_file(path, "reference ownership marker")
+        if path.lstat().st_nlink != 1:
+            return False
         observed = json.loads(path.read_text(encoding="utf-8"))
     except (OncoTracerError, OSError, UnicodeError, json.JSONDecodeError):
         return False
     return observed == dict(expected)
 
 
-def _claim_marker(directory: Path, expected: Mapping[str, object], label: str) -> None:
-    marker = directory / ".oncotracer-reference-owner.json"
-    if _marker_matches(marker, expected):
-        return
-    if _lstat(marker, "reference ownership marker") is not None:
-        raise OncoTracerError(f"{label} has a mismatched ownership marker: {marker}")
-    entries = [entry for entry in directory.iterdir() if entry != marker]
-    if entries:
-        raise OncoTracerError(
-            f"refusing to claim nonempty unowned {label}: {directory}"
+def _fsync_directory(path: Path, label: str) -> None:
+    _require_physical_directory(path, label)
+    flags = os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_DIRECTORY", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise OncoTracerError(f"cannot open {label} {path}: {error}") from error
+    try:
+        opened = os.fstat(descriptor)
+        named = path.lstat()
+        if (
+            not stat.S_ISDIR(opened.st_mode)
+            or stat.S_ISLNK(named.st_mode)
+            or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
+        ):
+            raise OncoTracerError(f"{label} is not a stable physical directory: {path}")
+        os.fsync(descriptor)
+    except OSError as error:
+        raise OncoTracerError(f"cannot sync {label} {path}: {error}") from error
+    finally:
+        os.close(descriptor)
+
+
+def _fsync_physical_file(path: Path, label: str) -> None:
+    _require_physical_file(path, label)
+    flags = os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        _require_stable_open_file(descriptor, path, label)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _atomic_write_owned_json(
+    path: Path,
+    value: object,
+    label: str,
+    *,
+    temporary_directory: Path | None = None,
+) -> None:
+    _require_physical_directory(path.parent, f"{label} parent")
+    observed = _lstat(path, label)
+    if observed is not None and (
+        stat.S_ISLNK(observed.st_mode)
+        or not stat.S_ISREG(observed.st_mode)
+        or observed.st_nlink != 1
+    ):
+        raise OncoTracerError(f"{label} is not a replaceable physical file: {path}")
+    original_identity = (
+        (observed.st_dev, observed.st_ino) if observed is not None else None
+    )
+    staging_parent = temporary_directory or path.parent
+    _require_physical_directory(staging_parent, f"{label} staging parent")
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.tmp-", dir=staging_parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(value, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.chmod(0o600)
+        _require_physical_directory(path.parent, f"{label} parent")
+        current = _lstat(path, label)
+        current_identity = (
+            (current.st_dev, current.st_ino) if current is not None else None
         )
-    atomic_write_json(marker, dict(expected))
-    if not _marker_matches(marker, expected):  # pragma: no cover - filesystem failure
-        raise OncoTracerError(f"could not verify {label} ownership marker: {marker}")
+        if current_identity != original_identity:
+            raise OncoTracerError(f"{label} changed during atomic publication: {path}")
+        if current is not None and (
+            stat.S_ISLNK(current.st_mode)
+            or not stat.S_ISREG(current.st_mode)
+            or current.st_nlink != 1
+        ):
+            raise OncoTracerError(f"{label} became unsafe during publication: {path}")
+        os.replace(temporary, path)
+        _require_physical_file(path, label)
+        _fsync_directory(path.parent, f"{label} parent")
+        if staging_parent != path.parent:
+            _fsync_directory(staging_parent, f"{label} staging parent")
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+@contextlib.contextmanager
+def _physical_directory_lock(path: Path, label: str) -> Iterator[None]:
+    """Serialize a claim without creating a lock object in an unowned parent."""
+    _require_physical_directory(path, label)
+    flags = os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_DIRECTORY", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise OncoTracerError(f"cannot open {label} {path}: {error}") from error
+    try:
+        opened = os.fstat(descriptor)
+        named = path.lstat()
+        if (
+            not stat.S_ISDIR(opened.st_mode)
+            or stat.S_ISLNK(named.st_mode)
+            or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
+        ):
+            raise OncoTracerError(f"{label} is not a stable physical directory: {path}")
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        with contextlib.suppress(OSError):
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
+def _claim_marker(directory: Path, expected: Mapping[str, object], label: str) -> None:
+    initial = _require_physical_directory(directory, label).lstat()
+    with _physical_directory_lock(directory.parent, f"{label} parent"):
+        current = _require_physical_directory(directory, label).lstat()
+        if (initial.st_dev, initial.st_ino) != (current.st_dev, current.st_ino):
+            raise OncoTracerError(
+                f"{label} changed while acquiring ownership: {directory}"
+            )
+        marker = directory / ".oncotracer-reference-owner.json"
+        if _marker_matches(marker, expected):
+            return
+        if _lstat(marker, "reference ownership marker") is not None:
+            raise OncoTracerError(
+                f"{label} has a mismatched ownership marker: {marker}"
+            )
+        entries = [entry for entry in directory.iterdir() if entry != marker]
+        if entries:
+            raise OncoTracerError(
+                f"refusing to claim nonempty unowned {label}: {directory}"
+            )
+        # Stage the marker outside the unowned directory. If the process is
+        # killed before rename, the directory stays empty and a later run can
+        # safely claim it instead of being blocked by a partial marker.
+        _atomic_write_owned_json(
+            marker,
+            dict(expected),
+            "reference ownership marker",
+            temporary_directory=directory.parent,
+        )
+        if not _marker_matches(marker, expected):
+            raise OncoTracerError(
+                f"could not verify {label} ownership marker: {marker}"
+            )
 
 
 def _owned_reference_cache(lpwgs_root: Path, kind: str) -> Path:
@@ -494,9 +654,26 @@ def _owned_reference_cache(lpwgs_root: Path, kind: str) -> Path:
     return destination
 
 
+def _require_stable_open_file(descriptor: int, path: Path, label: str) -> None:
+    opened = os.fstat(descriptor)
+    try:
+        named = path.lstat()
+    except OSError as error:
+        raise OncoTracerError(f"cannot revalidate {label} {path}: {error}") from error
+    if (
+        not stat.S_ISREG(opened.st_mode)
+        or stat.S_ISLNK(named.st_mode)
+        or opened.st_nlink != 1
+        or named.st_nlink != 1
+        or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
+    ):
+        raise OncoTracerError(f"{label} is not a stable physical file: {path}")
+
+
 @contextlib.contextmanager
 def _reference_lock(path: Path, *, exclusive: bool, create: bool) -> Iterator[None]:
     """Lock one physical file without following a final symbolic link."""
+    _require_physical_directory(path.parent, "reference lock parent")
     flags = os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0)
     flags |= os.O_RDWR | os.O_CREAT if create else os.O_RDONLY
     try:
@@ -504,17 +681,9 @@ def _reference_lock(path: Path, *, exclusive: bool, create: bool) -> Iterator[No
     except OSError as error:
         raise OncoTracerError(f"cannot open reference lock {path}: {error}") from error
     try:
-        opened = os.fstat(descriptor)
-        named = path.lstat()
-        if (
-            not stat.S_ISREG(opened.st_mode)
-            or stat.S_ISLNK(named.st_mode)
-            or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
-        ):
-            raise OncoTracerError(
-                f"reference lock is not a stable physical file: {path}"
-            )
+        _require_stable_open_file(descriptor, path, "reference lock")
         fcntl.flock(descriptor, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        _require_stable_open_file(descriptor, path, "reference lock")
         yield
     finally:
         with contextlib.suppress(OSError):
@@ -564,7 +733,36 @@ def _ensure_owned_pinned_file(
     return _validate_pinned_file(path, expected_sha256, label)
 
 
-def _prepare_hg38_base(reference_root: Path, *, owned: bool) -> dict[str, Path]:
+def _prepare_hg38_base(
+    reference_root: Path, lock: Path, *, owned: bool
+) -> dict[str, Path]:
+    if owned:
+        # A repair can replace the FASTA used by either backend. Take both index
+        # locks so BWA, minimap2, and methylation readers cannot observe a mixed
+        # base-reference generation.
+        locks = sorted(
+            {
+                _reference_state_paths(reference_root, "bwa")[0],
+                _reference_state_paths(reference_root, "minimap2")[0],
+            }
+        )
+    else:
+        # External references are never repaired. Reuse the selected backend
+        # lease, avoiding a new lock-file requirement for the unused backend.
+        locks = [lock]
+    with contextlib.ExitStack() as stack:
+        for selected in locks:
+            if not owned:
+                _require_physical_file(
+                    selected, "external hg38 reference lock", nonempty=False
+                )
+            stack.enter_context(
+                _reference_lock(selected, exclusive=owned, create=owned)
+            )
+        return _prepare_hg38_base_locked(reference_root, owned=owned)
+
+
+def _prepare_hg38_base_locked(reference_root: Path, *, owned: bool) -> dict[str, Path]:
     paths = {name: reference_root / name for name in HG38_ASSETS}
     for name, expected_sha256 in HG38_ASSETS.items():
         path = paths[name]
@@ -668,7 +866,7 @@ def _bwa_index_matches_fai(fai: Path, prefix: Path) -> bool:
         return False
 
 
-def _portable_conda_identity(executable: Path) -> dict[str, object] | None:
+def _portable_conda_identities(executable: Path) -> dict[str, object] | None:
     prefix = executable.parent.parent if executable.parent.name == "bin" else None
     metadata = prefix / "conda-meta" if prefix is not None else None
     if metadata is None or not metadata.is_dir():
@@ -697,11 +895,11 @@ def _portable_conda_identity(executable: Path) -> dict[str, object] | None:
         "version",
         "build",
         "build_number",
-        "channel",
         "subdir",
         "sha256",
         "md5",
     )
+    legacy_fields = (*stable_fields[:4], "channel", *stable_fields[4:])
     if any(
         not isinstance(record.get(field), str) or not record[field]
         for field in ("name", "version", "build")
@@ -728,7 +926,32 @@ def _portable_conda_identity(executable: Path) -> dict[str, object] | None:
     if owned and relative not in owned:
         raise OncoTracerError(f"Conda record does not own {relative}: {record_path}")
     owner = {field: record.get(field) for field in stable_fields}
-    return {"package_count": 1, "sha256": _canonical_json_sha256([owner])}
+    legacy_owner = {field: record.get(field) for field in legacy_fields}
+    return {
+        "validity": {
+            "package_count": 1,
+            "sha256": _canonical_json_sha256([owner]),
+        },
+        "legacy": {
+            "package_count": 1,
+            "sha256": _canonical_json_sha256([legacy_owner]),
+        },
+        "channel": record.get("channel"),
+    }
+
+
+def _contract_with_conda_information(
+    contract: dict[str, object], conda: Mapping[str, object] | None
+) -> dict[str, object]:
+    if conda is None:
+        return contract
+    legacy = dict(contract)
+    legacy["conda_environment"] = conda["legacy"]
+    contract["informational_provenance"] = {
+        "conda_channel": conda["channel"],
+        "legacy_contract": legacy,
+    }
+    return contract
 
 
 def _index_build_contract(
@@ -740,23 +963,82 @@ def _index_build_contract(
     configured = Path(executable_value).expanduser()
     executable = configured.resolve(strict=True)
     executable_sha256 = sha256_file(executable)
+    conda = _portable_conda_identities(configured)
     if kind == "bwa":
-        return {
-            "schema": "oncotracer-bwa-build-contract-v1",
+        return _contract_with_conda_information(
+            {
+                "schema": "oncotracer-bwa-build-contract-v1",
+                "fasta_sha256": fasta_sha256,
+                "fai_sha256": fai_sha256,
+                "bwa_sha256": executable_sha256,
+                "conda_environment": conda["validity"] if conda is not None else None,
+                "logical_arguments": ["index", "-p", "<PREFIX>", "<FASTA>"],
+            },
+            conda,
+        )
+    return _contract_with_conda_information(
+        {
+            "schema": "oncotracer-minimap2-build-contract-v1",
             "fasta_sha256": fasta_sha256,
             "fai_sha256": fai_sha256,
-            "bwa_sha256": executable_sha256,
-            "conda_environment": _portable_conda_identity(configured),
-            "logical_arguments": ["index", "-p", "<PREFIX>", "<FASTA>"],
-        }
+            "minimap2_sha256": executable_sha256,
+            "conda_environment": conda["validity"] if conda is not None else None,
+            "logical_arguments": ["-x", "map-ont", "-d", "<INDEX>", "<FASTA>"],
+        },
+        conda,
+    )
+
+
+def _index_validity_contract(contract: Mapping[str, object]) -> dict[str, object]:
     return {
-        "schema": "oncotracer-minimap2-build-contract-v1",
-        "fasta_sha256": fasta_sha256,
-        "fai_sha256": fai_sha256,
-        "minimap2_sha256": executable_sha256,
-        "conda_environment": _portable_conda_identity(configured),
-        "logical_arguments": ["-x", "map-ont", "-d", "<INDEX>", "<FASTA>"],
+        key: value
+        for key, value in contract.items()
+        if key != "informational_provenance"
     }
+
+
+def _index_build_identity(contract: Mapping[str, object]) -> str:
+    return _canonical_json_sha256(_index_validity_contract(contract))
+
+
+def _legacy_index_build_contract_matches(
+    observed: Mapping[str, object], expected: Mapping[str, object]
+) -> bool:
+    """Accept v2 manifests whose Conda hash included a machine-specific channel."""
+    if "informational_provenance" in observed:
+        return False
+    observed_stable = dict(observed)
+    observed_conda = observed_stable.pop("conda_environment", None)
+    expected_stable = _index_validity_contract(expected)
+    expected_stable.pop("conda_environment", None)
+    return bool(
+        observed_stable == expected_stable
+        and isinstance(observed_conda, dict)
+        and observed_conda.get("package_count") == 1
+        and isinstance(observed_conda.get("sha256"), str)
+        and re.fullmatch(r"[0-9a-f]{64}", str(observed_conda["sha256"]))
+    )
+
+
+def _index_build_contract_matches(
+    observed: object,
+    observed_identity: object,
+    expected: Mapping[str, object],
+) -> bool:
+    if not isinstance(observed, dict):
+        return False
+    if not isinstance(observed_identity, str) or observed_identity != (
+        _index_build_identity(observed)
+    ):
+        return False
+    if _index_validity_contract(observed) == _index_validity_contract(expected):
+        return True
+    information = expected.get("informational_provenance")
+    if isinstance(information, dict):
+        legacy = information.get("legacy_contract")
+        if isinstance(legacy, dict) and observed == legacy:
+            return True
+    return _legacy_index_build_contract_matches(observed, expected)
 
 
 def _bwa_manifest_payload(
@@ -765,7 +1047,7 @@ def _bwa_manifest_payload(
     return {
         "schema": "oncotracer-bwa-index-manifest-v1",
         "build": dict(contract),
-        "build_identity": _canonical_json_sha256(contract),
+        "build_identity": _index_build_identity(contract),
         "indexes": {
             suffix: {
                 "bytes": Path(f"{prefix}{suffix}").stat().st_size,
@@ -788,8 +1070,11 @@ def _bwa_manifest_matches(
         if (
             not isinstance(manifest, dict)
             or manifest.get("schema") != "oncotracer-bwa-index-manifest-v1"
-            or manifest.get("build") != contract
-            or manifest.get("build_identity") != _canonical_json_sha256(contract)
+            or not _index_build_contract_matches(
+                manifest.get("build"),
+                manifest.get("build_identity"),
+                contract,
+            )
         ):
             return False
         records = manifest.get("indexes")
@@ -814,7 +1099,7 @@ def _minimap_manifest_payload(
     return {
         "schema": "oncotracer-minimap2-index-manifest-v1",
         "build": dict(contract),
-        "build_identity": _canonical_json_sha256(contract),
+        "build_identity": _index_build_identity(contract),
         "index": {"bytes": index.stat().st_size, "sha256": sha256_file(index)},
     }
 
@@ -830,8 +1115,11 @@ def _minimap_manifest_matches(
         return bool(
             isinstance(manifest, dict)
             and manifest.get("schema") == "oncotracer-minimap2-index-manifest-v1"
-            and manifest.get("build") == contract
-            and manifest.get("build_identity") == _canonical_json_sha256(contract)
+            and _index_build_contract_matches(
+                manifest.get("build"),
+                manifest.get("build_identity"),
+                contract,
+            )
             and isinstance(record, dict)
             and record.get("bytes") == index.stat().st_size
             and record.get("sha256") == sha256_file(index)
@@ -967,7 +1255,7 @@ def _prepare_bwa_index(
                     candidate = Path(f"{temporary_prefix}{suffix}")
                     candidate.chmod(0o644)
                     os.replace(candidate, Path(f"{prefix}{suffix}"))
-                atomic_write_json(manifest, payload)
+                _atomic_write_owned_json(manifest, payload, "BWA reference manifest")
             finally:
                 shutil.rmtree(temporary_directory)
         if not (
@@ -1044,7 +1332,9 @@ def _prepare_minimap_index(
                 payload = _minimap_manifest_payload(contract, temporary)
                 temporary.chmod(0o644)
                 os.replace(temporary, index)
-                atomic_write_json(manifest, payload)
+                _atomic_write_owned_json(
+                    manifest, payload, "minimap2 reference manifest"
+                )
             finally:
                 temporary.unlink(missing_ok=True)
         if not (
@@ -1093,8 +1383,11 @@ def prepare_reference(
         ref_dir = _owned_reference_cache(project, "samurai-hg38")
         owned = True
 
-    base = _prepare_hg38_base(ref_dir, owned=owned)
     _prepare_reference_state(ref_dir, owned=owned)
+    base_kind = "minimap2" if need_minimap2 else "bwa"
+    base_lock, _unused_base_manifest = _reference_state_paths(ref_dir, base_kind)
+    base = _prepare_hg38_base(ref_dir, base_lock, owned=owned)
+    base_generation = _canonical_json_sha256(HG38_ASSETS)
     bwa_prefix = ref_dir / "bwa" / "genome"
     bwa_lock, bwa_manifest = _reference_state_paths(ref_dir, "bwa")
     bwa_generation = ""
@@ -1131,6 +1424,8 @@ def prepare_reference(
         "fasta": base["genome.fa"],
         "fai": base["genome.fa.fai"],
         "dict": base["genome.dict"],
+        "base_lock": base_lock,
+        "base_generation": base_generation,
         "fasta_sha256": HG38_ASSETS["genome.fa"],
         "fai_sha256": HG38_ASSETS["genome.fa.fai"],
         "bwa_prefix": bwa_prefix,
@@ -1142,6 +1437,49 @@ def prepare_reference(
         "minimap2_manifest": minimap_manifest,
         "minimap2_generation": minimap_generation,
     }
+
+
+@contextlib.contextmanager
+def _validated_fasta_reader(
+    reference: Mapping[str, object],
+    runner: CommandRunner,
+) -> Iterator[None]:
+    if runner.dry_run:
+        yield
+        return
+    root = Path(str(reference.get("reference_root", "")))
+    paths = {
+        "genome.fa": Path(str(reference.get("fasta", ""))),
+        "genome.fa.fai": Path(str(reference.get("fai", ""))),
+        "genome.dict": Path(str(reference.get("dict", ""))),
+    }
+    lock = Path(str(reference.get("base_lock", "")))
+    expected_locks = {
+        _reference_state_paths(root, "bwa")[0],
+        _reference_state_paths(root, "minimap2")[0],
+    }
+    if (
+        paths["genome.fa"] != root / "genome.fa"
+        or paths["genome.fa.fai"] != root / "genome.fa.fai"
+        or paths["genome.dict"] != root / "genome.dict"
+        or lock not in expected_locks
+    ):
+        raise OncoTracerError(
+            "prepared FASTA reference paths escaped their physical root"
+        )
+    _require_physical_directory(root, "prepared reference root")
+    _require_physical_file(lock, "FASTA reference lock", nonempty=False)
+    expected_generation = reference.get("base_generation")
+    if expected_generation != _canonical_json_sha256(HG38_ASSETS):
+        raise OncoTracerError("prepared FASTA reference has no exact pinned generation")
+    with _reference_lock(lock, exclusive=False, create=False):
+        for name, expected_sha256 in HG38_ASSETS.items():
+            _validate_pinned_file(paths[name], expected_sha256, f"hg38 {name}")
+        try:
+            yield
+        finally:
+            for name, expected_sha256 in HG38_ASSETS.items():
+                _validate_pinned_file(paths[name], expected_sha256, f"hg38 {name}")
 
 
 @contextlib.contextmanager
@@ -1185,19 +1523,23 @@ def _validated_bwa_reader(
             str(reference.get("fai_sha256", "")),
             bwa,
         )
-        if (
-            sha256_file(manifest) != expected_generation
-            or not _bwa_manifest_matches(manifest, prefix, contract)
-            or not _bwa_index_matches_fai(fai, prefix)
-        ):
+        generation_valid = sha256_file(manifest) == expected_generation
+        contents_valid = _bwa_manifest_matches(manifest, prefix, contract)
+        structure_valid = _bwa_index_matches_fai(fai, prefix)
+        if not (generation_valid and contents_valid and structure_valid):
             raise OncoTracerError(
                 "BWA reference changed or became invalid after preparation"
             )
-        yield
-        if sha256_file(manifest) != expected_generation:
-            raise OncoTracerError(
-                "BWA reference generation changed while it was in use"
-            )
+        try:
+            yield
+        finally:
+            generation_valid = sha256_file(manifest) == expected_generation
+            contents_valid = _bwa_manifest_matches(manifest, prefix, contract)
+            structure_valid = _bwa_index_matches_fai(fai, prefix)
+            if not (generation_valid and contents_valid and structure_valid):
+                raise OncoTracerError(
+                    "BWA reference bytes changed or became invalid while in use"
+                )
 
 
 @contextlib.contextmanager
@@ -1241,25 +1583,160 @@ def _validated_minimap_reader(
             str(reference.get("fai_sha256", "")),
             minimap2,
         )
-        if (
-            sha256_file(manifest) != expected_generation
-            or not _minimap_manifest_matches(manifest, index, contract)
-            or not _minimap_index_matches_fai(
+        generation_valid = sha256_file(manifest) == expected_generation
+        contents_valid = _minimap_manifest_matches(manifest, index, contract)
+        structure_valid = _minimap_index_matches_fai(
+            fai,
+            index,
+            minimap2,
+            runner,
+            stage="reference-minimap2-validate-reader",
+        )
+        if not (generation_valid and contents_valid and structure_valid):
+            raise OncoTracerError(
+                "minimap2 reference changed or became invalid after preparation"
+            )
+        try:
+            yield
+        finally:
+            generation_valid = sha256_file(manifest) == expected_generation
+            contents_valid = _minimap_manifest_matches(manifest, index, contract)
+            structure_valid = _minimap_index_matches_fai(
                 fai,
                 index,
                 minimap2,
                 runner,
-                stage="reference-minimap2-validate-reader",
+                stage="reference-minimap2-validate-reader-exit",
             )
-        ):
+            if not (generation_valid and contents_valid and structure_valid):
+                raise OncoTracerError(
+                    "minimap2 reference bytes changed or became invalid while in use"
+                )
+
+
+def _qdnaseq_bundle_names(binsize: int) -> tuple[str, str, str]:
+    stem = f"QDNAseq.hg38.{binsize}kbp.SR50"
+    return f"{stem}.source.rda", f"{stem}.rds", f"{stem}.rds.provenance.tsv"
+
+
+def _qdnaseq_bundle_records(
+    directory: Path, binsize: int
+) -> dict[str, dict[str, object]]:
+    _require_physical_directory(directory, "qDNAseq generation")
+    source_name, rds_name, provenance_name = _qdnaseq_bundle_names(binsize)
+    expected_names = {source_name, rds_name, provenance_name}
+    observed_names = {entry.name for entry in directory.iterdir()}
+    if observed_names != expected_names:
+        raise OncoTracerError(
+            "qDNAseq generation inventory mismatch: "
+            f"expected {sorted(expected_names)}, observed {sorted(observed_names)}"
+        )
+    source = _require_physical_file(
+        directory / source_name, "qDNAseq pinned source RDA"
+    )
+    annotation = _require_physical_file(
+        directory / rds_name, "qDNAseq converted annotation"
+    )
+    provenance = _require_physical_file(
+        directory / provenance_name, "qDNAseq annotation provenance"
+    )
+    for path in (source, annotation, provenance):
+        if path.lstat().st_nlink != 1:
             raise OncoTracerError(
-                "minimap2 reference changed or became invalid after preparation"
+                f"qDNAseq generation file must not be hardlinked: {path}"
             )
-        yield
-        if sha256_file(manifest) != expected_generation:
-            raise OncoTracerError(
-                "minimap2 reference generation changed while it was in use"
-            )
+    try:
+        with provenance.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.reader(handle, delimiter="	"))
+    except (OSError, UnicodeError, csv.Error) as error:
+        raise OncoTracerError(
+            f"cannot parse qDNAseq provenance: {provenance}"
+        ) from error
+    if not rows or rows[0] != ["field", "value"]:
+        raise OncoTracerError(f"qDNAseq provenance has an invalid header: {provenance}")
+    if any(len(row) != 2 for row in rows[1:]):
+        raise OncoTracerError(f"qDNAseq provenance has a malformed row: {provenance}")
+    fields = dict(rows[1:])
+    if len(fields) != len(rows) - 1:
+        raise OncoTracerError(f"qDNAseq provenance has duplicate fields: {provenance}")
+    object_name = f"hg38.{binsize}kbp.SR50"
+    source_url = (
+        "https://raw.githubusercontent.com/asntech/QDNAseq.hg38/"
+        f"{QDNASEQ_HG38_COMMIT}/data/{object_name}.rda"
+    )
+    source_sha256 = sha256_file(source)
+    rds_sha256 = sha256_file(annotation)
+    expected_fields = {
+        "source_url": source_url,
+        "source_commit": QDNASEQ_HG38_COMMIT,
+        "source_rda_sha256": source_sha256,
+        "object": object_name,
+        "rds_sha256": rds_sha256,
+    }
+    if fields != expected_fields:
+        raise OncoTracerError(
+            f"qDNAseq provenance does not match its files: {provenance}"
+        )
+    pinned = QDNASEQ_HG38_SOURCE_SHA256.get(binsize)
+    if pinned is None or source_sha256 != pinned:
+        raise OncoTracerError(
+            f"qDNAseq source SHA-256 mismatch for {binsize} kb: "
+            f"expected {pinned}, observed {source_sha256}"
+        )
+    return {
+        path.name: {"bytes": path.stat().st_size, "sha256": sha256_file(path)}
+        for path in (source, annotation, provenance)
+    }
+
+
+def _qdnaseq_generation_from_pointer(
+    cache: Path, binsize: int, identity: str
+) -> Path | None:
+    pointer = cache / f"current-{binsize}kb.json"
+    observed = _lstat(pointer, "qDNAseq current-generation pointer")
+    if observed is None:
+        return None
+    if (
+        stat.S_ISLNK(observed.st_mode)
+        or not stat.S_ISREG(observed.st_mode)
+        or observed.st_nlink != 1
+    ):
+        raise OncoTracerError(
+            f"qDNAseq current-generation pointer is not a physical file: {pointer}"
+        )
+    try:
+        value = json.loads(pointer.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    generation_name = value.get("generation") if isinstance(value, dict) else None
+    if (
+        not isinstance(value, dict)
+        or value.get("schema") != QDNASEQ_CACHE_POINTER_SCHEMA
+        or value.get("identity") != identity
+        or value.get("canonical_cache") != str(cache)
+        or not isinstance(generation_name, str)
+        or not re.fullmatch(r"generation-[0-9a-f]{64}", generation_name)
+    ):
+        return None
+    generation = cache / "generations" / generation_name
+    try:
+        records = _qdnaseq_bundle_records(generation, binsize)
+    except OncoTracerError:
+        return None
+    source_name, rds_name, provenance_name = _qdnaseq_bundle_names(binsize)
+    expected_value = {
+        "schema": QDNASEQ_CACHE_POINTER_SCHEMA,
+        "identity": identity,
+        "canonical_cache": str(cache),
+        "generation": generation_name,
+        "files": records,
+        "source_name": source_name,
+        "annotation_name": rds_name,
+        "provenance_name": provenance_name,
+    }
+    if value != expected_value:
+        return None
+    return generation
 
 
 def prepare_qdnaseq_annotation(
@@ -1273,38 +1750,183 @@ def prepare_qdnaseq_annotation(
         root / "bin" / "scripts" / "prepare_qdnaseq_bin_data.sh",
         "qDNAseq annotation helper",
     )
-    cache = lpwgs_root / ".oncotracer" / "qdnaseq-bin-data"
-    command = [
-        toolchain.executable("qdnaseq", "bash"),
-        str(helper),
-        "--rscript",
-        toolchain.executable("qdnaseq", "Rscript"),
-        "--binsize",
-        str(binsize),
-        "--cache-dir",
-        str(cache),
-    ]
-    # The helper prints the absolute RDS path as its final line. Capture without shell.
-    if runner.dry_run:
-        return cache / f"QDNAseq.hg38.{binsize}kbp.SR50.rds"
-    import subprocess
-
-    started = utc_now()
-    print(f"[qdnaseq-annotation] {' '.join(map(str, command))}", file=sys.stderr)
-    completed = subprocess.run(command, text=True, capture_output=True, check=False)
-    runner._record(
-        "qdnaseq-annotation", started, utc_now(), completed.returncode, root, command
+    kind = f"qdnaseq-hg38-{binsize}kb"
+    identity = _reference_identity(kind)
+    source_name, rds_name, provenance_name = _qdnaseq_bundle_names(binsize)
+    cache_hint = (
+        lpwgs_root / ".oncotracer" / "reference-cache" / f"{kind}-{identity[:16]}"
     )
-    if completed.returncode != 0:
-        sys.stderr.write(completed.stdout)
-        sys.stderr.write(completed.stderr)
-        raise OncoTracerError("qDNAseq annotation preparation failed")
-    output_lines = [
-        line.strip() for line in completed.stdout.splitlines() if line.strip()
-    ]
-    if not output_lines:
-        raise OncoTracerError("qDNAseq annotation helper returned no path")
-    return require_file(Path(output_lines[-1]), "qDNAseq hg38 annotation")
+    if runner.dry_run:
+        return cache_hint / "generations" / "planned" / rds_name
+
+    cache = _owned_reference_cache(lpwgs_root, kind)
+    lock = cache / f"qdnaseq-{binsize}kb.lock"
+    with _reference_lock(lock, exclusive=True, create=True):
+        generations = _ensure_physical_directory(
+            cache / "generations", "qDNAseq generations directory"
+        )
+        current = _qdnaseq_generation_from_pointer(cache, binsize, identity)
+        if current is not None:
+            return current / rds_name
+
+        staging = Path(
+            tempfile.mkdtemp(prefix=f".qdnaseq-{binsize}kb-build-", dir=cache)
+        )
+        command = [
+            toolchain.executable("qdnaseq", "bash"),
+            str(helper),
+            "--rscript",
+            toolchain.executable("qdnaseq", "Rscript"),
+            "--binsize",
+            str(binsize),
+            "--cache-dir",
+            str(staging),
+        ]
+        try:
+            import subprocess
+
+            started = utc_now()
+            print(
+                f"[qdnaseq-annotation] {' '.join(map(str, command))}",
+                file=sys.stderr,
+            )
+            completed = subprocess.run(
+                command, text=True, capture_output=True, check=False
+            )
+            runner._record(
+                "qdnaseq-annotation",
+                started,
+                utc_now(),
+                completed.returncode,
+                root,
+                command,
+            )
+            if completed.returncode != 0:
+                sys.stderr.write(completed.stdout)
+                sys.stderr.write(completed.stderr)
+                raise OncoTracerError("qDNAseq annotation preparation failed")
+            output_lines = [
+                line.strip() for line in completed.stdout.splitlines() if line.strip()
+            ]
+            expected_output = staging / rds_name
+            if (
+                not output_lines
+                or Path(output_lines[-1]).resolve(strict=True) != expected_output
+            ):
+                raise OncoTracerError(
+                    "qDNAseq annotation helper returned an unexpected path"
+                )
+            records = _qdnaseq_bundle_records(staging, binsize)
+            for name in records:
+                (staging / name).chmod(0o444)
+                _fsync_physical_file(staging / name, f"staged qDNAseq file {name}")
+            _fsync_directory(staging, "qDNAseq staging directory")
+            rds_record = records[rds_name]
+            rds_sha256 = rds_record.get("sha256")
+            if not isinstance(rds_sha256, str):
+                raise OncoTracerError("qDNAseq annotation has no exact SHA-256")
+            generation = generations / f"generation-{rds_sha256}"
+            observed_generation = _lstat(generation, "qDNAseq generation")
+            if observed_generation is None:
+                os.rename(staging, generation)
+                staging = None
+                _fsync_directory(generations, "qDNAseq generations directory")
+            else:
+                if stat.S_ISLNK(observed_generation.st_mode) or not stat.S_ISDIR(
+                    observed_generation.st_mode
+                ):
+                    raise OncoTracerError(
+                        f"qDNAseq generation is not a physical directory: {generation}"
+                    )
+                if _qdnaseq_bundle_records(generation, binsize) != records:
+                    raise OncoTracerError(
+                        f"qDNAseq generation digest collision: {generation}"
+                    )
+
+            pointer = cache / f"current-{binsize}kb.json"
+            pointer_stat = _lstat(pointer, "qDNAseq current-generation pointer")
+            if pointer_stat is not None and (
+                stat.S_ISLNK(pointer_stat.st_mode)
+                or not stat.S_ISREG(pointer_stat.st_mode)
+            ):
+                raise OncoTracerError(
+                    f"qDNAseq current-generation pointer is not a physical file: {pointer}"
+                )
+            _atomic_write_owned_json(
+                pointer,
+                {
+                    "schema": QDNASEQ_CACHE_POINTER_SCHEMA,
+                    "identity": identity,
+                    "canonical_cache": str(cache),
+                    "generation": generation.name,
+                    "files": records,
+                    "source_name": source_name,
+                    "annotation_name": rds_name,
+                    "provenance_name": provenance_name,
+                },
+                "qDNAseq current-generation pointer",
+            )
+            verified = _qdnaseq_generation_from_pointer(cache, binsize, identity)
+            if verified != generation:
+                raise OncoTracerError("published qDNAseq generation failed validation")
+            return generation / rds_name
+        finally:
+            if staging is not None and staging.exists():
+                _require_physical_directory(staging, "qDNAseq staging directory")
+                if staging.parent != cache or not staging.name.startswith(
+                    f".qdnaseq-{binsize}kb-build-"
+                ):
+                    raise OncoTracerError(
+                        f"refusing to clean unsafe qDNAseq staging path: {staging}"
+                    )
+                shutil.rmtree(staging)
+
+
+@contextlib.contextmanager
+def _validated_qdnaseq_reader(
+    annotation: Path,
+    lpwgs_root: Path,
+    binsize: int,
+    runner: CommandRunner,
+) -> Iterator[None]:
+    """Lease and revalidate the immutable qDNAseq bundle around R execution."""
+    if runner.dry_run:
+        yield
+        return
+    project = lpwgs_root.expanduser().resolve(strict=True)
+    kind = f"qdnaseq-hg38-{binsize}kb"
+    identity = _reference_identity(kind)
+    cache = project / ".oncotracer" / "reference-cache" / f"{kind}-{identity[:16]}"
+    generation = annotation.parent
+    expected_annotation = generation / _qdnaseq_bundle_names(binsize)[1]
+    if (
+        annotation != expected_annotation
+        or generation.parent != cache / "generations"
+        or not re.fullmatch(r"generation-[0-9a-f]{64}", generation.name)
+    ):
+        raise OncoTracerError(
+            "prepared qDNAseq annotation escaped its marker-owned cache"
+        )
+    _require_physical_directory(cache, "prepared qDNAseq cache")
+    _require_physical_directory(
+        cache / "generations", "prepared qDNAseq generations directory"
+    )
+    lock = cache / f"qdnaseq-{binsize}kb.lock"
+    _require_physical_file(lock, "qDNAseq reference lock", nonempty=False)
+
+    def require_current() -> None:
+        current = _qdnaseq_generation_from_pointer(cache, binsize, identity)
+        if current != generation:
+            raise OncoTracerError(
+                "qDNAseq annotation changed or became invalid while in use"
+            )
+
+    with _reference_lock(lock, exclusive=False, create=False):
+        require_current()
+        try:
+            yield
+        finally:
+            require_current()
 
 
 def _write_bam_sheet(
@@ -1512,14 +2134,15 @@ def run_qdnaseq(
             ],
         )
         output = qdna_out / "all_segments.seg"
-        signature = ledger.signature(
-            "qdnaseq-local-pon",
-            command,
-            [script, bam_sheet, annotation, *markdup_bams.values()],
-        )
-        if force or not ledger.reusable("qdnaseq-local-pon", signature, [output]):
-            runner.run("qdnaseq-local-pon", command, cwd=root)
-            ledger.complete("qdnaseq-local-pon", signature, [output])
+        with _validated_qdnaseq_reader(annotation, lpwgs_root, binsize, runner):
+            signature = ledger.signature(
+                "qdnaseq-local-pon",
+                command,
+                [script, bam_sheet, annotation, *markdup_bams.values()],
+            )
+            if force or not ledger.reusable("qdnaseq-local-pon", signature, [output]):
+                runner.run("qdnaseq-local-pon", command, cwd=root)
+                ledger.complete("qdnaseq-local-pon", signature, [output])
         # Keep the legacy refinement input path coherent.
         pon_alignment = samurai_outdir / "pon_alignment"
         pon_alignment.mkdir(parents=True, exist_ok=True)
@@ -1560,19 +2183,20 @@ def run_qdnaseq(
     output = qdna_out / "all_segments.seg"
     status = qdna_out / "qdnaseq_sample_status.json"
     expected = [output, status]
-    signature = ledger.signature(
-        "qdnaseq",
-        command,
-        [script, qc_helper, bam_sheet, annotation, *markdup_bams.values()],
-    )
-    if force or not ledger.reusable("qdnaseq", signature, expected):
-        runner.run("qdnaseq", command, cwd=root)
-        for path, label in (
-            (output, "native qDNAseq segments"),
-            (status, "native qDNAseq sample status"),
-        ):
-            require_file(path, label)
-        ledger.complete("qdnaseq", signature, expected)
+    with _validated_qdnaseq_reader(annotation, lpwgs_root, binsize, runner):
+        signature = ledger.signature(
+            "qdnaseq",
+            command,
+            [script, qc_helper, bam_sheet, annotation, *markdup_bams.values()],
+        )
+        if force or not ledger.reusable("qdnaseq", signature, expected):
+            runner.run("qdnaseq", command, cwd=root)
+            for path, label in (
+                (output, "native qDNAseq segments"),
+                (status, "native qDNAseq sample status"),
+            ):
+                require_file(path, label)
+            ledger.complete("qdnaseq", signature, expected)
     return qdna_out, samurai_outdir / "alignment"
 
 
@@ -2795,17 +3419,18 @@ def run_native(
         assert ont_caller is not None
         if methylation_request is not None:
             try:
-                methylation_status = run_methylation(
-                    root,
-                    methylation_request,
-                    samples,
-                    reference,
-                    outdir,
-                    runner,
-                    ledger,
-                    threads=cpu,
-                    force=force_run,
-                )
+                with _validated_fasta_reader(reference, runner):
+                    methylation_status = run_methylation(
+                        root,
+                        methylation_request,
+                        samples,
+                        reference,
+                        outdir,
+                        runner,
+                        ledger,
+                        threads=cpu,
+                        force=force_run,
+                    )
             except (OSError, OncoTracerError, ValueError) as error:
                 methylation_status = write_global_methylation_failure(
                     outdir, methylation_request, error

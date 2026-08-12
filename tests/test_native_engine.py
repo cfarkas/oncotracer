@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import ast
+import contextlib
+import hashlib
 import csv
 import json
 import os
@@ -16,6 +18,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from oncotracer_cli import engine  # noqa: E402
 from oncotracer_cli.engine import (  # noqa: E402
     OntSample,
     Toolchain,
@@ -371,7 +374,7 @@ class NativeEngineTests(unittest.TestCase):
                 "ok\n",
             )
 
-    def test_qdnaseq_helper_receives_exact_rscript(self) -> None:
+    def test_qdnaseq_helper_publishes_owned_generation_and_preserves_legacy(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             helper = root / "bin" / "scripts" / "prepare_qdnaseq_bin_data.sh"
@@ -386,16 +389,53 @@ class NativeEngineTests(unittest.TestCase):
                 executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
                 executable.chmod(0o755)
             lpwgs = root / "project"
-            rds = lpwgs / ".oncotracer" / "qdnaseq-bin-data" / "QDNAseq.hg38.100kbp.SR50.rds"
-            rds.parent.mkdir(parents=True)
-            rds.write_bytes(b"annotation")
+            legacy = lpwgs / ".oncotracer" / "qdnaseq-bin-data"
+            legacy.mkdir(parents=True)
+            sentinel = legacy / "PATIENT_SENTINEL"
+            sentinel.write_bytes(b"must-survive")
+            source_bytes = b"pinned-source"
+            source_sha256 = hashlib.sha256(source_bytes).hexdigest()
+            rds_bytes = b"annotation"
             runner = CommandRunner(root / "trace.tsv", echo=False)
-            completed = subprocess.CompletedProcess([], 0, stdout=f"{rds}\n", stderr="")
-            with patch("subprocess.run", return_value=completed) as run:
+
+            def build(command, **_kwargs):
+                staging = Path(command[command.index("--cache-dir") + 1])
+                source = staging / "QDNAseq.hg38.100kbp.SR50.source.rda"
+                rds = staging / "QDNAseq.hg38.100kbp.SR50.rds"
+                provenance = Path(f"{rds}.provenance.tsv")
+                source.write_bytes(source_bytes)
+                rds.write_bytes(rds_bytes)
+                provenance.write_text(
+                    "field\tvalue\n"
+                    "source_url\thttps://raw.githubusercontent.com/asntech/"
+                    "QDNAseq.hg38/cf7c07e39de0ac64a9c38cb030cba4626e2aae83/"
+                    "data/hg38.100kbp.SR50.rda\n"
+                    "source_commit\tcf7c07e39de0ac64a9c38cb030cba4626e2aae83\n"
+                    f"source_rda_sha256\t{source_sha256}\n"
+                    "object\thg38.100kbp.SR50\n"
+                    f"rds_sha256\t{hashlib.sha256(rds_bytes).hexdigest()}\n",
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(
+                    command, 0, stdout=f"{rds}\n", stderr=""
+                )
+
+            pinned = {**engine.QDNASEQ_HG38_SOURCE_SHA256, 100: source_sha256}
+            with (
+                patch("oncotracer_cli.engine.QDNASEQ_HG38_SOURCE_SHA256", pinned),
+                patch("subprocess.run", side_effect=build) as run,
+            ):
                 result = prepare_qdnaseq_annotation(
                     root, lpwgs, 100, runner, Toolchain(qdnaseq_prefix=prefix)
                 )
-            self.assertEqual(result, rds)
+                reused = prepare_qdnaseq_annotation(
+                    root, lpwgs, 100, runner, Toolchain(qdnaseq_prefix=prefix)
+                )
+            self.assertEqual(result, reused)
+            self.assertEqual(result.read_bytes(), rds_bytes)
+            self.assertIn(lpwgs / ".oncotracer" / "reference-cache", result.parents)
+            self.assertEqual(sentinel.read_bytes(), b"must-survive")
+            self.assertEqual(run.call_count, 1)
             command = run.call_args.args[0]
             self.assertEqual(command[0], str(bash))
             self.assertEqual(command[1], str(helper))
@@ -611,9 +651,15 @@ class NativeEngineTests(unittest.TestCase):
             output = samurai / "qdnaseq" / "all_segments.seg"
             runner = QdnaRunner(output)
 
-            with patch(
-                "oncotracer_cli.engine.prepare_qdnaseq_annotation",
-                return_value=annotation,
+            with (
+                patch(
+                    "oncotracer_cli.engine.prepare_qdnaseq_annotation",
+                    return_value=annotation,
+                ),
+                patch(
+                    "oncotracer_cli.engine._validated_qdnaseq_reader",
+                    return_value=contextlib.nullcontext(),
+                ),
             ):
                 observed, _ = run_qdnaseq(
                     ROOT,

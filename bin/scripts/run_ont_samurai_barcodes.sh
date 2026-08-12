@@ -580,7 +580,7 @@ if [[ "$SAMURAI_PROFILE" == "conda" && "$CALLER" == "qdnaseq" && -z "$QDNASEQ_BI
   QDNASEQ_BIN_DATA="$(bash "$QDNASEQ_BIN_HELPER" \
     --rscript "$QDNASEQ_RSCRIPT" \
     --binsize "$BINSIZE" \
-    --cache-dir "$LPWGS_ROOT/.oncotracer/qdnaseq-bin-data")"
+    --project-root "$LPWGS_ROOT")"
   [[ -s "$QDNASEQ_BIN_DATA" ]] || { echo "ERROR: qDNAseq annotation was not prepared: $QDNASEQ_BIN_DATA" >&2; exit 1; }
   echo "Using qDNAseq hg38 annotation: $QDNASEQ_BIN_DATA"
 fi
