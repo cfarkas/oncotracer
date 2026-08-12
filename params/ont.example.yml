@@ -21,19 +21,21 @@ ont_folder: /home/student/oncotracer/project/input/fastq_pass
 ont_barcodes: barcode07,barcode08
 ont_sample_names: Sample_ONT_1,Sample_ONT_2
 
-# Standard liquid-biopsy settings. For an independent solid-biopsy qDNAseq
-# run, use a new outdir and set solid_biopsy, qdnaseq, and an explicit bin size.
+# Tumor-only defaults use liquid-biopsy ichorCNA. For a mixed TUMOR/NORMAL
+# cohort, use a new outdir with solid_biopsy, qdnaseq, and an explicit bin size.
 ont_analysis_type: liquid_biopsy
 ont_caller: ichorcna
 ont_binsize_kb: 500
 ont_min_age_minutes: 0
 
-# Optional advanced ONT inputs. Keep null/false unless you need these routes.
-ont_ref: null
+# Optional independent NORMAL samples. Native qDNAseq analyzes these barcodes as
+# samples; it never creates or applies a sample-derived panel from them.
 ont_normal_folder: null
 ont_normal_barcodes: null
 ont_normal_sample_names: null
-ont_build_pon: false
+
+# Optional advanced ONT reference input.
+ont_ref: null
 ont_force_realign: false
 
 # Optional ONT POD5 methylation is disabled by default. When enabled, always

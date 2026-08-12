@@ -70,24 +70,16 @@ oncotracer run --backend conda \
 
 Automatic Setup writes absolute paths so that Docker and Singularity/Apptainer can mount the project consistently.
 
-## How normal controls are handled
+## How NORMAL samples are handled
 
-Normal rows are explicit qDNAseq reference inputs:
+Normal rows are ordinary, independently analyzed qDNAseq samples. Automatic
+Setup preserves their `normal` status in `illumina.samplesheet.csv`.
+It does not pool them, construct a sample-derived reference, or apply their
+signal to the tumor rows. NORMAL-only and mixed cohorts are valid; every row is
+processed as its own sample.
 
-- **Zero normal rows run without a local panel.**
-- **Exactly one normal is rejected.**
-- **Two or more normals build and apply** a local median-log₂ qDNAseq panel.
-- Normal samples remain reference and quality-control inputs; **tumor samples are exported downstream** to CNA codification, plots, and optional classifier reports.
-
-Inspect the generated YAML for:
-
-```yaml
-illumina_build_pon: true
-illumina_pon_normal_samples: CONTROL_01,CONTROL_02
-illumina_pon_min_normals: 2
-```
-
-For a study requiring four controls, edit `illumina_pon_min_normals: 4` before running.
+Inspect the generated samplesheet and manifest to confirm the intended role and
+identity of every sample. The generated YAML contains no local-panel settings.
 
 ## What Automatic Setup creates for Illumina
 
@@ -249,7 +241,7 @@ Also check that:
 - R1 and R2 are paired correctly;
 - every configured path is absolute;
 - the result directory is appropriate for this study;
-- normal-control counts match the intended panel design;
+- every submitted tumor/normal status matches the intended sample identity;
 - pathology identifiers, when supplied, match sequencing IDs exactly.
 
 ## Dry-run and resume

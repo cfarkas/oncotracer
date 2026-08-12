@@ -240,7 +240,7 @@ def check_checkout_is_only_for_source_development() -> None:
         "docs/quick_start.md",
         "docs/public_cohort.md",
         "docs/auto_params.md",
-        "docs/six_tumor_four_control.md",
+        "docs/six_tumor_four_normal.md",
         "docs/running.md",
         "docs/containers.md",
     ):

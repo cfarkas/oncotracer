@@ -10,7 +10,7 @@ Most analyses need one flat YAML file. Use this page to choose the shortest nati
 | Run the three-library HCC1143 example | [QuickStart 2](public_cohort.md) | Downloads and analyzes six public FASTQs |
 | Run the complete public archive tutorial | [Full Tutorial](full_tutorial.md) | Processes the 12-run PRJNA754199 manifest |
 | Configure a standard FASTQ folder | [Automatic Setup](auto_params.md) | Creates YAML, manifest, and Illumina samplesheet |
-| See four normal controls used as a panel | [Mock cohort](six_tumor_four_control.md) | Demonstrates six tumors plus four normals |
+| Run six tumors and four normals independently | [Mock cohort](six_tumor_four_normal.md) | Keeps all ten samples in one native qDNAseq run without creating a local panel |
 | Write an Illumina YAML manually | [Illumina setup](configuration/illumina.md) | Uses an existing samplesheet |
 | Write an ONT YAML manually | [ONT setup](configuration/ont.md) | Uses explicit barcode/sample lists |
 | Add pathology or classifier settings | [Pathology and classifier](configuration/pathology.md) | Adds native classifier, GISTIC2, and reports |
@@ -114,13 +114,11 @@ Prepare the selected backend first with `oncotracer install`.
 | `run_gistic` | Adds optional cohort recurrence analysis when classifier is enabled |
 | `knowledge_web` | Enables or disables web enrichment; use `false` for deterministic offline runs |
 
-## Illumina normal-control rule
+## Illumina normal-sample rule
 
-- zero normals: run without a local panel;
-- one normal: reject configuration;
-- two or more normals: build and apply a local qDNAseq panel;
-- normal samples remain reference/QC inputs;
-- tumor samples continue to the downstream CNA outputs.
+Every tumor and normal samplesheet row is analyzed independently. The status is
+preserved in the generated contract; normal rows are not pooled or applied to
+other samples as a local reference.
 
 ## Settings to leave unchanged initially
 

@@ -47,7 +47,7 @@ The QuickStart pages reproduce the detailed style of the original documentation:
 - [QuickStart 1 — Illumina and ONT](quick_start.md)
 - [QuickStart 2 — HCC1143](public_cohort.md)
 - [Complete 12-library PRJNA754199 tutorial](full_tutorial.md)
-- [Mock six-tumor/four-normal cohort](six_tumor_four_control.md)
+- [Mock six-tumor/four-independent-normal cohort](six_tumor_four_normal.md)
 
 ## Run your own FASTQs
 

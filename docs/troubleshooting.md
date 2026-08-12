@@ -180,32 +180,27 @@ gzip -t "$READS/Patient_A_R1.fastq.gz"
 gzip -t "$READS/Patient_A_R2.fastq.gz"
 ```
 
-Common failures include duplicate sample IDs, missing mates, mixed single/paired layouts, exactly one `NORMAL` sample, or a normal-only cohort.
+Common failures include duplicate sample IDs, missing mates, mixed single/paired layouts.
 
-## 10. Illumina panel-of-normals errors
+## 10. Confirm independent Illumina normal outputs
 
-The generated/manual samplesheet must mark every selected panel sample as `normal`, and at least two controls are required.
+The generated/manual samplesheet preserves each submitted `normal` status, but
+normal rows are not reference inputs. Confirm that each expected normal has its
+own qDNAseq status and result files:
 
 ```bash
-CONFIG="$PWD/project/config/illumina.auto.yml"
 SHEET="$PWD/project/config/illumina.samplesheet.csv"
+QDNA="$PWD/project/results/01_samurai_illumina/qdnaseq"
 
-grep '^illumina_pon_' "$CONFIG"
 sed -n '1,40p' "$SHEET"
+cat "$QDNA/qdnaseq_sample_status.json"
+find "$QDNA/bins" "$QDNA/segments" "$QDNA/plots" -maxdepth 1 -type f -print | sort
 ```
 
-A successful local panel writes:
-
-```bash
-PON="$PWD/project/results/01_samurai_illumina/qdnaseq_local_pon"
-
-test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = \
-  QDNASEQ_LOCAL_PON_SUCCESS
-test -s "$PON/pon/normal_panel_manifest.tsv"
-test -s "$PON/qc/normal_panel_sample_qc.tsv"
-```
-
-Do not consume partial panel outputs when the exact completion marker is absent.
+If a normal row is absent from `completed_samples`, inspect its entry in the
+same status JSON. A mathematically invalid sample may fail post-normalization
+QC without stopping later viable samples; OncoTracer must not silently turn the
+remaining normals into a panel.
 
 ## 11. ONT barcode errors
 

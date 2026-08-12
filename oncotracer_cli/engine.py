@@ -261,6 +261,30 @@ def _as_bool(value: object, default: bool = False) -> bool:
     return str(value).strip().lower() in {"1", "true", "t", "yes", "y", "on"}
 
 
+LOCAL_SAMPLE_PANEL_KEYS = frozenset(
+    {
+        "illumina_build_pon",
+        "illumina_pon_normal_samples",
+        "illumina_pon_min_normals",
+        "illumina_pon_name",
+        "illumina_pon_min_mapq",
+        "illumina_pon_r_container",
+        "ont_build_pon",
+    }
+)
+
+
+def _reject_local_sample_panel(config: Mapping[str, object]) -> None:
+    present = sorted(LOCAL_SAMPLE_PANEL_KEYS.intersection(config))
+    if present:
+        names = ", ".join(present)
+        raise OncoTracerError(
+            "local sample-derived panel construction was removed; delete deprecated "
+            f"setting(s): {names}. NORMAL samples are analyzed independently and "
+            "are never combined into a panel."
+        )
+
+
 def _as_int(value: object, default: int) -> int:
     if value is None or str(value).strip() == "":
         return default
@@ -318,14 +342,6 @@ def parse_illumina_samplesheet(path: Path) -> list[IlluminaSample]:
         raise OncoTracerError(
             "a native Illumina run cannot mix single-end and paired-end libraries"
         )
-    normals = [row for row in rows if row.status == "normal"]
-    tumors = [row for row in rows if row.status == "tumor"]
-    if not tumors:
-        raise OncoTracerError("Illumina analysis requires at least one tumor")
-    if len(normals) == 1:
-        raise OncoTracerError(
-            "exactly one normal is not valid; use zero or at least two normals"
-        )
     return rows
 
 
@@ -346,44 +362,101 @@ def _resolve_fastq_pass(folder: Path) -> Path:
 
 
 def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
-    folder_value = config.get("ont_folder")
-    barcodes_value = config.get("ont_barcodes")
-    if not folder_value or not barcodes_value:
-        raise OncoTracerError("ONT config requires ont_folder and ont_barcodes")
-    root = _resolve_fastq_pass(Path(str(folder_value)))
-    barcodes = [
-        token.strip()
-        for token in str(barcodes_value).replace(";", ",").split(",")
-        if token.strip()
-    ]
-    names_value = config.get("ont_sample_names")
-    names = (
-        [
+    def parse_group(
+        folder_value: object,
+        barcodes_value: object,
+        names_value: object,
+        *,
+        status: str,
+        label: str,
+    ) -> list[OntSample]:
+        if not folder_value or not barcodes_value:
+            raise OncoTracerError(
+                f"ONT config requires {label}_folder and {label}_barcodes"
+            )
+        root = _resolve_fastq_pass(Path(str(folder_value)))
+        barcodes = [
             token.strip()
-            for token in str(names_value).replace(";", ",").split(",")
+            for token in str(barcodes_value).replace(";", ",").split(",")
             if token.strip()
         ]
-        if names_value
-        else barcodes
+        names = (
+            [
+                token.strip()
+                for token in str(names_value).replace(";", ",").split(",")
+                if token.strip()
+            ]
+            if names_value
+            else barcodes
+        )
+        if len(names) != len(barcodes):
+            raise OncoTracerError(
+                f"{label}_sample_names must contain one name per barcode"
+            )
+        group: list[OntSample] = []
+        for barcode, name in zip(barcodes, names, strict=True):
+            candidate = root / barcode
+            if not candidate.is_dir() and barcode.isdigit():
+                candidate = root / f"barcode{int(barcode):02d}"
+            if not candidate.is_dir():
+                match = re.fullmatch(r"barcode0*(\d+)", barcode, flags=re.I)
+                if match:
+                    candidate = root / f"barcode{int(match.group(1)):02d}"
+            if not candidate.is_dir():
+                raise OncoTracerError(
+                    f"ONT barcode directory not found: {root / barcode}"
+                )
+            group.append(
+                OntSample(
+                    _safe_sample(name),
+                    candidate.name,
+                    candidate.resolve(),
+                    status=status,
+                )
+            )
+        return group
+
+    samples = parse_group(
+        config.get("ont_folder"),
+        config.get("ont_barcodes"),
+        config.get("ont_sample_names"),
+        status="tumor",
+        label="ont",
     )
-    if len(names) != len(barcodes):
-        raise OncoTracerError("ont_sample_names must contain one name per barcode")
-    samples: list[OntSample] = []
-    for barcode, name in zip(barcodes, names, strict=True):
-        candidate = root / barcode
-        if not candidate.is_dir() and barcode.isdigit():
-            candidate = root / f"barcode{int(barcode):02d}"
-        if not candidate.is_dir():
-            match = re.fullmatch(r"barcode0*(\d+)", barcode, flags=re.I)
-            if match:
-                candidate = root / f"barcode{int(match.group(1)):02d}"
-        if not candidate.is_dir():
-            raise OncoTracerError(f"ONT barcode directory not found: {root / barcode}")
-        samples.append(
-            OntSample(_safe_sample(name), candidate.name, candidate.resolve())
+    normal_values = (
+        config.get("ont_normal_folder"),
+        config.get("ont_normal_barcodes"),
+        config.get("ont_normal_sample_names"),
+    )
+    if any(value not in (None, "") for value in normal_values):
+        if not normal_values[0] or not normal_values[1]:
+            raise OncoTracerError(
+                "independent ONT NORMAL samples require ont_normal_folder and "
+                "ont_normal_barcodes"
+            )
+        samples.extend(
+            parse_group(
+                *normal_values,
+                status="normal",
+                label="ont_normal",
+            )
         )
     if len({sample.sample for sample in samples}) != len(samples):
-        raise OncoTracerError("ONT sample names must be unique")
+        raise OncoTracerError(
+            "ONT sample names must be unique across TUMOR and NORMAL inputs"
+        )
+    directories = [sample.fastq_dir for sample in samples]
+    if len(set(directories)) != len(directories):
+        raise OncoTracerError(
+            "each ONT barcode directory may appear only once across TUMOR and NORMAL inputs"
+        )
+    if any(sample.status == "normal" for sample in samples):
+        caller = _ont_caller(config)
+        if caller != "qdnaseq":
+            raise OncoTracerError(
+                "independent ONT NORMAL samples require ont_analysis_type: "
+                "solid_biopsy and ont_caller: qdnaseq"
+            )
     return samples
 
 
@@ -2099,7 +2172,6 @@ def run_qdnaseq(
     force: bool,
     paired_ends: bool | None = None,
 ) -> tuple[Path, Path]:
-    normals = [sample for sample in samples if sample.status == "normal"]
     bam_sheet = samurai_outdir / "input" / "native.bam.samplesheet.csv"
     _write_bam_sheet(samples, markdup_bams, bam_sheet)
     annotation = prepare_qdnaseq_annotation(
@@ -2113,55 +2185,6 @@ def run_qdnaseq(
         paired = all(sample.fastq_2 is not None for sample in samples)
     else:
         paired = paired_ends
-
-    if normals:
-        qdna_out = samurai_outdir / "qdnaseq_local_pon"
-        script = require_file(
-            root / "bin" / "scripts" / "native_qdnaseq_pon.R",
-            "native qDNAseq local-PoN R script",
-        )
-        command = toolchain.rscript(
-            "qdnaseq",
-            [
-                script,
-                "--samplesheet",
-                bam_sheet,
-                "--outdir",
-                qdna_out,
-                "--binsize",
-                str(binsize),
-                "--min-mapq",
-                "37",
-                "--min-normals",
-                str(len(normals)),
-                "--paired-ends",
-                str(paired).lower(),
-                "--pon-name",
-                "illumina_local_PoN",
-                "--bin-data",
-                annotation,
-            ],
-        )
-        output = qdna_out / "all_segments.seg"
-        with _validated_qdnaseq_reader(annotation, lpwgs_root, binsize, runner):
-            signature = ledger.signature(
-                "qdnaseq-local-pon",
-                command,
-                [script, bam_sheet, annotation, *markdup_bams.values()],
-            )
-            if force or not ledger.reusable("qdnaseq-local-pon", signature, [output]):
-                runner.run("qdnaseq-local-pon", command, cwd=root)
-                ledger.complete("qdnaseq-local-pon", signature, [output])
-        # Keep the legacy refinement input path coherent.
-        pon_alignment = samurai_outdir / "pon_alignment"
-        pon_alignment.mkdir(parents=True, exist_ok=True)
-        for sample, bam in markdup_bams.items():
-            for source in (bam, Path(str(bam) + ".bai")):
-                target = pon_alignment / source.name
-                if target.exists() or target.is_symlink():
-                    target.unlink()
-                target.symlink_to(source.resolve())
-        return qdna_out, pon_alignment
 
     qdna_out = samurai_outdir / "qdnaseq"
     script = require_file(
@@ -2191,7 +2214,8 @@ def run_qdnaseq(
     )
     output = qdna_out / "all_segments.seg"
     status = qdna_out / "qdnaseq_sample_status.json"
-    expected = [output, status]
+    roles = qdna_out / "qdnaseq_sample_roles.tsv"
+    expected = [output, status, roles]
     with _validated_qdnaseq_reader(annotation, lpwgs_root, binsize, runner):
         signature = ledger.signature(
             "qdnaseq",
@@ -2203,6 +2227,7 @@ def run_qdnaseq(
             for path, label in (
                 (output, "native qDNAseq segments"),
                 (status, "native qDNAseq sample status"),
+                (roles, "native qDNAseq sample roles"),
             ):
                 require_file(path, label)
             ledger.complete("qdnaseq", signature, expected)
@@ -2848,10 +2873,6 @@ def run_refinement_and_outputs(
             str(_as_int(config.get("fine_bin_kb_illumina"), 10)),
             "--coverage-mode-illumina",
             "starts",
-            "--normal-samples",
-            "auto" if "qdnaseq_local_pon" in str(qdna_or_ichor_dir) else "none",
-            "--pon-mode",
-            "on" if "qdnaseq_local_pon" in str(qdna_or_ichor_dir) else "off",
             "--min-local-log2-diff",
             str(config.get("min_local_log2_diff_illumina", 0.10)),
         ]
@@ -2880,10 +2901,6 @@ def run_refinement_and_outputs(
             str(_as_int(config.get("fine_bin_kb_ont"), 25)),
             "--coverage-mode-ont",
             "bases",
-            "--normal-samples",
-            "auto",
-            "--pon-mode",
-            "auto",
             "--min-local-log2-diff",
             str(config.get("min_local_log2_diff_ont", 0.12)),
         ]
@@ -3031,8 +3048,34 @@ def run_refinement_and_outputs(
         sample_status_label = "ichorCNA"
     elif selected_caller == "qdnaseq":
         candidate = qdna_or_ichor_dir / "qdnaseq_sample_status.json"
-        # The local-PoN implementation has separate normal/tumor validity
-        # semantics and does not emit this single-sample status schema.
+        roles_path = require_file(
+            qdna_or_ichor_dir / "qdnaseq_sample_roles.tsv",
+            "qDNAseq sample-role manifest",
+        )
+        with roles_path.open(newline="", encoding="utf-8") as handle:
+            roles = list(csv.DictReader(handle, delimiter="\t"))
+        if not roles or set(roles[0]) != {"sample", "status"}:
+            raise OncoTracerError(f"invalid qDNAseq sample-role manifest: {roles_path}")
+        if len({row["sample"] for row in roles}) != len(roles):
+            raise OncoTracerError(
+                f"duplicate sample in qDNAseq role manifest: {roles_path}"
+            )
+        if any(row["status"] not in {"tumor", "normal"} for row in roles):
+            raise OncoTracerError(
+                f"invalid role in qDNAseq sample-role manifest: {roles_path}"
+            )
+        summary.update(
+            {
+                "qdnaseq_sample_roles": str(roles_path),
+                "tumor_samples": [
+                    row["sample"] for row in roles if row["status"] == "tumor"
+                ],
+                "normal_samples": [
+                    row["sample"] for row in roles if row["status"] == "normal"
+                ],
+                "sample_derived_panel_used": False,
+            }
+        )
         if candidate.is_file():
             sample_status_path = candidate
             sample_status_key = "qdnaseq_sample_status"
@@ -3078,7 +3121,9 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "05_cna_classifier/03_report/cna_classifier_report.html",
         "01_samurai_ont/results/ichorcna/ichorcna_sample_status.json",
         "01_samurai_ont/qdnaseq/qdnaseq_sample_status.json",
+        "01_samurai_ont/qdnaseq/qdnaseq_sample_roles.tsv",
         "01_samurai_illumina/qdnaseq/qdnaseq_sample_status.json",
+        "01_samurai_illumina/qdnaseq/qdnaseq_sample_roles.tsv",
         "07_methylation/methylation_status.json",
         "07_methylation/methylation_provenance.json",
     ]:
@@ -3253,6 +3298,12 @@ def _validate_native_dry_run(
             {
                 "samples": [sample.sample for sample in samples],
                 "barcodes": [sample.barcode for sample in samples],
+                "tumor_samples": [
+                    sample.sample for sample in samples if sample.status == "tumor"
+                ],
+                "normal_samples": [
+                    sample.sample for sample in samples if sample.status == "normal"
+                ],
                 "caller": caller,
                 "binsize_kb": binsize,
                 "methylation": methylation,
@@ -3368,6 +3419,7 @@ def run_native(
     explicit_root = root
     config_path = require_file(config_path, "OncoTracer YAML config")
     config = load_flat_yaml(config_path)
+    _reject_local_sample_panel(config)
     mode = str(config.get("mode") or "").strip().lower()
     if mode not in {"illumina", "ont"}:
         raise OncoTracerError("config mode must be illumina or ont")

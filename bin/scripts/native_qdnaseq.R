@@ -71,8 +71,8 @@ read_samplesheet <- function(path) {
   if (!nrow(rows)) fail("Samplesheet has no rows")
   rows$sample <- vapply(rows$sample, safe_sample, character(1L))
   rows$status <- tolower(trimws(as.character(rows$status)))
-  if (any(rows$status != "tumor")) {
-    fail("Native no-PoN qDNAseq accepts tumor rows only; use the local-PoN stage for controls")
+  if (any(!rows$status %in% c("tumor", "normal"))) {
+    fail("Samplesheet status must be tumor or normal")
   }
   if (anyDuplicated(rows$sample)) fail("Duplicate sample IDs in samplesheet")
   rows$bam <- normalizePath(rows$bam, mustWork = TRUE)
@@ -207,6 +207,7 @@ run_analysis <- function(options) {
     file.path(outdir, "all_segments.seg"),
     file.path(outdir, "all_calls.seg"),
     file.path(outdir, "qdnaseq_summary_mqc.txt"),
+    file.path(outdir, "qdnaseq_sample_roles.tsv"),
     file.path(outdir, "qdnaseq_native_versions.tsv"),
     file.path(rds_dir, "all_samples.corrected.rds"),
     file.path(rds_dir, "all_samples.segmented.rds"),
@@ -225,6 +226,8 @@ run_analysis <- function(options) {
       force = TRUE
     )
   }
+
+  write_tsv(samples[, c("sample", "status"), drop = FALSE], file.path(outdir, "qdnaseq_sample_roles.tsv"))
 
   if (nzchar(options$bin_data)) {
     bin_annotations <- readRDS(normalizePath(options$bin_data, mustWork = TRUE))
@@ -326,6 +329,7 @@ run_analysis <- function(options) {
     finite <- assay[is.finite(assay) & assay > 0]
     summary_rows[[i]] <- data.frame(
       sample = sample,
+      sample_role = samples$status[[i]],
       n_bins = length(finite),
       median_copy_number = if (length(finite)) stats::median(finite) else NA_real_,
       mad_copy_number = if (length(finite) > 1L) stats::mad(finite) else NA_real_,
@@ -368,6 +372,7 @@ run_analysis <- function(options) {
     file.path(outdir, "all_segments.seg"),
     file.path(outdir, "all_calls.seg"),
     file.path(outdir, "qdnaseq_summary_mqc.txt"),
+    file.path(outdir, "qdnaseq_sample_roles.tsv"),
     status_path,
     file.path(bins_dir, paste0(samples$sample, "_markdup_bins.bed"))
   )

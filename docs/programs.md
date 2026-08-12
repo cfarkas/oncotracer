@@ -21,7 +21,7 @@ The five groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`.
 | BWA-MEM | Single-end or paired-end alignment to hg38 | `01_samurai_illumina/alignment/*.bam` |
 | SAMtools | FASTA/BAM indexing and BAM validation | BAM/BAI and reference indexes |
 | Picard | Duplicate marking and whole-genome metrics | stage-01 BAMs and metrics |
-| qDNAseq | Read-depth correction, segmentation, calls, and optional local normal panel | `01_samurai_illumina/qdnaseq/` or `qdnaseq_local_pon/` |
+| qDNAseq | Independent per-sample read-depth correction, segmentation, and calls | `01_samurai_illumina/qdnaseq/` |
 | Native boundary-refinement Python | Local BAM-depth boundary evaluation | `02_bam_refinement/` |
 | Native CNA codification/plotting | Event tables, cytogenomic notation, cohort and sample plots | stages 03 and 04 |
 

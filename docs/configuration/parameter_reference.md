@@ -148,13 +148,10 @@ Optional methylation is ONT-only and supports the `host`, `conda`, and `poetry` 
 | `illumina_analysis_type` | `solid_biopsy` | Analysis preset |
 | `illumina_caller` | `qdnaseq` | Native Illumina CNA caller |
 | `illumina_binsize_kb` | `100` | Coarse qDNAseq bin width |
-| `illumina_build_pon` | `false` | Build/apply local qDNAseq normal panel |
-| `illumina_pon_normal_samples` | comma-separated IDs | Every and only selected normal samples |
-| `illumina_pon_min_normals` | `2` | Minimum selected controls; must be at least two |
-| `illumina_pon_name` | `illumina_local_PoN` | Safe panel artifact name |
-| `illumina_pon_min_mapq` | `37` | Panel construction mapping-quality threshold |
 
-Automatic Setup writes no panel for zero normals, rejects exactly one normal, and enables the local panel for two or more. Normal samples remain reference/QC inputs; downstream corrected outputs contain tumors.
+The samplesheet `status` column preserves `tumor` or `normal` metadata. Every
+row is analyzed independently; normal rows are not used to construct or apply a
+local sample-derived reference.
 
 ## ONT YAML fields
 
@@ -163,18 +160,17 @@ Automatic Setup writes no panel for zero normals, rejects exactly one normal, an
 | `ont_folder` | required path | Parent containing selected barcode directories |
 | `ont_barcodes` | required comma-separated names | Tumor barcode selection |
 | `ont_sample_names` | barcode names when omitted | Positional biological sample names |
+| `ont_normal_folder` | optional path | Parent containing independent NORMAL barcode directories; requires solid-biopsy qDNAseq |
+| `ont_normal_barcodes` | required with `ont_normal_folder` | NORMAL barcode selection; each barcode is analyzed as its own sample |
+| `ont_normal_sample_names` | NORMAL barcode names when omitted | Positional NORMAL sample names; never pooled into a panel |
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
 | `ont_caller` | `ichorcna` | `ichorcna`, or `qdnaseq` only with explicit `ont_analysis_type: solid_biopsy` |
 | `ont_binsize_kb` | `500` | Coarse caller bin width; set explicitly for qDNAseq solid-biopsy runs |
 | `ont_ref` | optional FASTA | Custom reference |
-| `ont_normal_folder` | optional path | Parent containing normal barcodes |
-| `ont_normal_barcodes` | optional names | Positional normal barcode selection |
-| `ont_normal_sample_names` | optional names | Positional normal sample names |
-| `ont_build_pon` | `false` | Explicit local-normal route request |
 | `ont_min_age_minutes` | `0` | Exclude very new FASTQs in active run folders |
 | `ont_force_realign` | `false` | Deliberately recreate supported ONT alignments |
 
-`ont_barcodes` and `ont_sample_names` must have equal lengths and order.
+`ont_barcodes` and `ont_sample_names` must have equal lengths and order. The corresponding NORMAL lists must also match, sample names and resolved barcode directories must be unique across both groups, and a mixed TUMOR/NORMAL run uses native qDNAseq rather than the frozen Nextflow comparator.
 
 ## Optional ONT methylation YAML fields
 

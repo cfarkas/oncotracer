@@ -67,7 +67,7 @@ run_illumina() {
     > "$case_dir/run.log" 2>&1
 }
 
-test_tumor_only_disables_pon_and_reports_gzip_progress() {
+test_tumor_only_generates_independent_samples() {
   local case_dir="$TEST_TMP/tumor_only"
   mkdir -p "$case_dir/reads"
   printf 'sample_name,status\nTUMOR_A,TUMOR\n' > "$case_dir/samples.csv"
@@ -76,13 +76,12 @@ test_tumor_only_disables_pon_and_reports_gzip_progress() {
 
   run_illumina "$case_dir"
 
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_build_pon: false'
+  if grep -Eqi 'pon|panel.of.normals' "$case_dir/config/illumina.auto.yml"; then
+    fail "automatic YAML must not contain a local panel setting"
+  fi
   assert_contains "$case_dir/run.log" "oncotracer run --config $case_dir/config/illumina.auto.yml"
   if grep -qi 'nextflow run' "$case_dir/run.log"; then
     fail "Automatic Setup printed an obsolete Nextflow launch command"
-  fi
-  if grep -q '^illumina_pon_normal_samples:' "$case_dir/config/illumina.auto.yml"; then
-    fail "tumor-only YAML must not publish a normal sample list"
   fi
   assert_contains "$case_dir/run.log" '[1/1] Validating gzip FASTQ for Illumina sample TUMOR_A'
   assert_matches "$case_dir/run.log" '^\[1/1\] gzip validation passed for Illumina sample TUMOR_A: [1-9][0-9]* bytes validated in [0-9]+s$'
@@ -91,23 +90,21 @@ test_tumor_only_disables_pon_and_reports_gzip_progress() {
   assert_no_auto_temps "$case_dir/config"
 }
 
-test_one_normal_is_rejected_without_publication() {
+test_one_normal_is_an_independent_sample() {
   local case_dir="$TEST_TMP/one_normal"
   mkdir -p "$case_dir/reads"
   printf 'sample_name,status\nTUMOR_A,TUMOR\nCTRL_A,NORMAL\n' > "$case_dir/samples.csv"
 
-  if run_illumina "$case_dir"; then
-    fail "a single NORMAL sample should be rejected"
-  fi
-
-  assert_contains "$case_dir/run.log" 'requires either zero NORMAL samples or at least two; found 1'
-  [[ ! -e "$case_dir/config/illumina.auto.yml" ]] || fail "failed setup published a YAML"
-  [[ ! -e "$case_dir/config/illumina.samplesheet.csv" ]] || fail "failed setup published a samplesheet"
-  [[ ! -e "$case_dir/config/auto_params_manifest.tsv" ]] || fail "failed setup published a manifest"
-  assert_no_auto_temps "$case_dir/config"
+  make_fastq_gz "$case_dir/reads/TUMOR_A.fastq.gz"
+  make_fastq_gz "$case_dir/reads/CTRL_A.fastq.gz"
+  run_illumina "$case_dir"
+  assert_line "$case_dir/config/illumina.samplesheet.csv" "CTRL_A,$case_dir/reads/CTRL_A.fastq.gz,,normal"
+  ! grep -Eqi 'pon|panel.of.normals' "$case_dir/config/illumina.auto.yml" ||
+    fail "one NORMAL must not create a panel"
+  assert_illumina_manifest "$case_dir/config" 1 1
 }
 
-test_two_normals_enable_reproducible_pon() {
+test_two_normals_are_independent_samples() {
   local case_dir="$TEST_TMP/two_normals"
   mkdir -p "$case_dir/reads"
   printf 'sample_name,status\nTUMOR_Z,TUMOR\nCTRL-2,NORMAL\nCTRL.1,NORMAL\n' > "$case_dir/samples.csv"
@@ -117,12 +114,8 @@ test_two_normals_enable_reproducible_pon() {
 
   run_illumina "$case_dir"
 
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_build_pon: true'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_normal_samples: "CTRL-2,CTRL.1"'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_min_normals: 2'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_name: CTRL-2_CTRL.1_PoN'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_min_mapq: 37'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1'
+  ! grep -Eqi 'pon|panel.of.normals' "$case_dir/config/illumina.auto.yml" ||
+    fail "NORMAL samples must never create a panel"
   assert_line "$case_dir/config/illumina.samplesheet.csv" "CTRL-2,$case_dir/reads/CTRL-2.fastq.gz,,normal"
   assert_line "$case_dir/config/illumina.samplesheet.csv" "CTRL.1,$case_dir/reads/CTRL.1.fastq.gz,,normal"
   assert_matches "$case_dir/run.log" '^\[3/3\] gzip validation passed for Illumina sample CTRL\.1: [1-9][0-9]* bytes validated in [0-9]+s$'
@@ -130,7 +123,7 @@ test_two_normals_enable_reproducible_pon() {
   assert_no_auto_temps "$case_dir/config"
 }
 
-test_six_tumors_and_four_normals_match_quickstart_example_3() {
+test_six_tumors_and_four_normals_are_ten_independent_samples() {
   local case_dir="$TEST_TMP/six_tumors_four_normals"
   local sample
   mkdir -p "$case_dir/reads"
@@ -152,16 +145,12 @@ test_six_tumors_and_four_normals_match_quickstart_example_3() {
 
   run_illumina "$case_dir"
 
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_build_pon: true'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_normal_samples: "CTRL001,CTRL002,CTRL003,CTRL004"'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_min_normals: 4'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_name: CTRL001_CTRL002_CTRL003_CTRL004_PoN'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_min_mapq: 37'
-  assert_line "$case_dir/config/illumina.auto.yml" 'illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1'
+  ! grep -Eqi 'pon|panel.of.normals' "$case_dir/config/illumina.auto.yml" ||
+    fail "ONCO/CTRL example must not create a panel"
   [[ "$(grep -c ',tumor$' "$case_dir/config/illumina.samplesheet.csv")" -eq 6 ]] ||
-    fail "QuickStart Example 3 samplesheet must contain six tumor rows"
+    fail "ONCO/CTRL samplesheet must contain six tumor rows"
   [[ "$(grep -c ',normal$' "$case_dir/config/illumina.samplesheet.csv")" -eq 4 ]] ||
-    fail "QuickStart Example 3 samplesheet must contain four normal rows"
+    fail "ONCO/CTRL samplesheet must contain four independent normal rows"
   [[ "$(find "$case_dir/reads" -maxdepth 1 -type f -name '*.fastq.gz' | wc -l)" -eq 20 ]] ||
     fail "QuickStart Example 3 fixture must contain 20 paired FASTQs"
   assert_illumina_manifest "$case_dir/config" 6 4
@@ -200,20 +189,19 @@ test_invalid_ids_are_rejected() {
   assert_no_auto_temps "$case_dir/config"
 }
 
-test_at_least_one_tumor_is_required() {
+test_normal_only_samples_are_analyzed_independently() {
   local case_dir="$TEST_TMP/no_tumor"
   mkdir -p "$case_dir/reads"
   printf 'sample_name,status\nCTRL_A,NORMAL\nCTRL_B,NORMAL\n' > "$case_dir/samples.csv"
 
-  if run_illumina "$case_dir"; then
-    fail "normal-only setup should be rejected"
-  fi
-
-  assert_contains "$case_dir/run.log" 'Illumina configuration requires at least one tumor sample'
-  [[ ! -e "$case_dir/config/illumina.auto.yml" ]] || fail "normal-only setup published a YAML"
-  [[ ! -e "$case_dir/config/illumina.samplesheet.csv" ]] || fail "normal-only setup published a samplesheet"
-  [[ ! -e "$case_dir/config/auto_params_manifest.tsv" ]] || fail "normal-only setup published a manifest"
-  assert_no_auto_temps "$case_dir/config"
+  make_fastq_gz "$case_dir/reads/CTRL_A.fastq.gz"
+  make_fastq_gz "$case_dir/reads/CTRL_B.fastq.gz"
+  run_illumina "$case_dir"
+  [[ "$(grep -c ',normal$' "$case_dir/config/illumina.samplesheet.csv")" -eq 2 ]] ||
+    fail "normal-only samplesheet must retain both NORMAL rows"
+  ! grep -Eqi 'pon|panel.of.normals' "$case_dir/config/illumina.auto.yml" ||
+    fail "normal-only setup must not create a panel"
+  assert_illumina_manifest "$case_dir/config" 0 2
 }
 
 test_corrupt_gzip_preserves_previous_publication() {
@@ -238,13 +226,64 @@ test_corrupt_gzip_preserves_previous_publication() {
   assert_no_auto_temps "$case_dir/config"
 }
 
-test_tumor_only_disables_pon_and_reports_gzip_progress
-test_one_normal_is_rejected_without_publication
-test_two_normals_enable_reproducible_pon
-test_six_tumors_and_four_normals_match_quickstart_example_3
+test_mixed_ont_roles_select_independent_qdnaseq() {
+  local case_dir="$TEST_TMP/mixed_ont_roles"
+  mkdir -p "$case_dir/reads/barcode01" "$case_dir/reads/barcode02"
+  make_fastq_gz "$case_dir/reads/barcode01/reads.fastq.gz"
+  make_fastq_gz "$case_dir/reads/barcode02/reads.fastq.gz"
+  cat > "$case_dir/samples.csv" <<'CSV'
+barcode,sample_name,status
+barcode01,Tumor_A,TUMOR
+barcode02,Control_A,NORMAL
+CSV
+  bash "$GENERATOR" \
+    --mode ont \
+    --reads-folder "$case_dir/reads" \
+    --sample-table "$case_dir/samples.csv" \
+    --config-dir "$case_dir/config" \
+    --outdir "$case_dir/results" > "$case_dir/run.log" 2>&1
+  assert_line "$case_dir/config/ont.auto.yml" 'ont_analysis_type: solid_biopsy'
+  assert_line "$case_dir/config/ont.auto.yml" 'ont_caller: qdnaseq'
+  assert_line "$case_dir/config/ont.auto.yml" 'ont_binsize_kb: 100'
+  assert_line "$case_dir/config/ont.auto.yml" 'ont_barcodes: barcode01'
+  assert_line "$case_dir/config/ont.auto.yml" 'ont_sample_names: Tumor_A'
+  assert_line "$case_dir/config/ont.auto.yml" "ont_normal_folder: $case_dir/reads"
+  assert_line "$case_dir/config/ont.auto.yml" 'ont_normal_barcodes: barcode02'
+  assert_line "$case_dir/config/ont.auto.yml" 'ont_normal_sample_names: Control_A'
+  ! grep -Eqi 'build.pon|local.pon' "$case_dir/config/ont.auto.yml" ||
+    fail "mixed ONT YAML must not contain local-panel settings"
+}
+
+test_duplicate_ont_barcode_is_rejected() {
+  local case_dir="$TEST_TMP/duplicate_ont_barcode"
+  mkdir -p "$case_dir/reads/barcode01"
+  make_fastq_gz "$case_dir/reads/barcode01/reads.fastq.gz"
+  cat > "$case_dir/samples.csv" <<'CSV'
+barcode,sample_name,status
+barcode01,Tumor_A,TUMOR
+barcode01,Control_A,NORMAL
+CSV
+  if bash "$GENERATOR" \
+    --mode ont \
+    --reads-folder "$case_dir/reads" \
+    --sample-table "$case_dir/samples.csv" \
+    --config-dir "$case_dir/config" \
+    --outdir "$case_dir/results" > "$case_dir/run.log" 2>&1; then
+    fail "duplicate ONT barcode should be rejected"
+  fi
+  assert_contains "$case_dir/run.log" 'duplicate ONT barcode in sample table: barcode01'
+  [[ ! -e "$case_dir/config/ont.auto.yml" ]] || fail "duplicate barcode published YAML"
+}
+
+test_tumor_only_generates_independent_samples
+test_one_normal_is_an_independent_sample
+test_two_normals_are_independent_samples
+test_six_tumors_and_four_normals_are_ten_independent_samples
 test_duplicate_ids_are_rejected
 test_invalid_ids_are_rejected
-test_at_least_one_tumor_is_required
+test_normal_only_samples_are_analyzed_independently
 test_corrupt_gzip_preserves_previous_publication
+test_duplicate_ont_barcode_is_rejected
+test_mixed_ont_roles_select_independent_qdnaseq
 
-echo "PASS: generate_auto_params Illumina PoN tests"
+echo "PASS: generate_auto_params independent NORMAL sample tests"

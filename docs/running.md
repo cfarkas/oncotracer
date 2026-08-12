@@ -22,7 +22,7 @@ For Illumina:
 FASTQ validation
   -> BWA alignment
   -> samtools/Picard processing
-  -> direct qDNAseq or local qDNAseq panel correction
+  -> direct independent qDNAseq for every selected sample
   -> BAM-supported boundary refinement
   -> CNA event and cytogenomic notation tables
   -> cohort and per-sample plots

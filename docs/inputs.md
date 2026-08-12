@@ -127,26 +127,12 @@ illumina_caller: qdnaseq
 illumina_binsize_kb: 100
 ```
 
-## Illumina local normal panel
+## Illumina normal rows
 
-Automatic Setup applies the following contract:
-
-- zero normal rows: no local panel;
-- one normal row: rejected;
-- two or more normal rows: build and apply a local qDNAseq reference;
-- corrected downstream CNA outputs contain tumor samples only.
-
-Manual YAML:
-
-```yaml
-illumina_build_pon: true
-illumina_pon_normal_samples: Control_A,Control_B
-illumina_pon_min_normals: 2
-illumina_pon_name: study_local_PoN
-illumina_pon_min_mapq: 37
-```
-
-Every listed panel sample must exist in the samplesheet and be marked `normal`.
+Every samplesheet row is an analysis sample. The `normal` value records the
+submitted sample status, but does not make that row a reference input. Native
+qDNAseq analyzes normal and tumor rows independently and writes per-sample
+outputs for both. OncoTracer does not create a local panel from the normal rows.
 
 ## ONT input
 
@@ -190,19 +176,6 @@ ont_sample_names: Patient_A,Patient_B
 
 The two lists must have identical lengths and order.
 
-## Optional ONT normal input
-
-A manual configuration may define a separate normal barcode root:
-
-```yaml
-ont_normal_folder: /absolute/path/project/input/normal_fastq_pass
-ont_normal_barcodes: barcode01,barcode02
-ont_normal_sample_names: Normal_A,Normal_B
-ont_build_pon: true
-```
-
-Use the supported study design and validate the generated summaries before interpretation.
-
 ## Optional pathology CSV
 
 A matched pathology table needs a sequencing sample identifier, case identifier, and diagnosis text:
@@ -241,7 +214,7 @@ Confirm that:
 - FASTQs are non-empty and compressed files pass `gzip -t`;
 - R1 and R2 belong to the same sample;
 - all Illumina samples use one layout;
-- local-panel controls are exact normal IDs;
+- every tumor/normal status matches the intended sample identity;
 - ONT barcode and sample lists align positionally;
 - sample names are unique and match pathology identifiers;
 - the result directory is dedicated to the experiment.

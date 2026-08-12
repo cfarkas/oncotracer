@@ -38,11 +38,9 @@ NATIVE_PAYLOAD_EXCLUDED_PATHS = frozenset(
         "examples/prjna754199/README.md",
         "examples/prjna754199/run_example.sh",
         "bin/scripts/prepare_samurai_source.sh",
-        "bin/scripts/qdnaseq_local_pon.R",
         "bin/scripts/run_ifcnv_ont_lpwgs.py",
         "bin/scripts/run_illumina_samurai_fastq.sh",
         "bin/scripts/run_ont_samurai_barcodes.sh",
-        "bin/scripts/run_qdnaseq_local_pon.sh",
     }
 )
 

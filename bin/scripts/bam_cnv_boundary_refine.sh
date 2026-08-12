@@ -98,9 +98,6 @@ MAX_FINE_BINS_PER_WINDOW=400
 MIN_MAPQ=20
 COVERAGE_MODE_ONT="bases"       # bases for ONT long reads
 COVERAGE_MODE_ILLUMINA="starts" # starts for Illumina LP-WGS
-NORMAL_SAMPLES="auto"           # auto | none | comma-separated names
-NORMAL_BAM_DIRS=""
-PON_MODE="auto"                 # auto | on | off
 INCLUDE_DUPLICATES=false
 INCLUDE_SUPPLEMENTARY=false
 INCLUDE_SECONDARY=false
@@ -285,17 +282,8 @@ BAM options
   --coverage-mode bases|starts
       Set the same coverage mode for both ONT and Illumina.
 
-  --normal-samples auto|none|sample1,sample2
-      Normal/PON sample selection. For ONT local-PON runs, auto treats BAMs not
-      matched to tumor samples as normal/PON BAMs. For Illumina, use none unless
-      you have explicit normal BAMs. Default: auto.
-
-  --normal-bam-dirs PATH[,PATH2]
-      Additional directories containing normal/PON BAMs.
-
-  --pon-mode auto|on|off
-      Use local normal/PON BAMs for coverage normalization when available.
-      Default: auto.
+  Removed local-panel options such as --normal-samples, --normal-bam-dirs,
+  and --pon-mode fail explicitly. Each BAM is refined independently.
 
   --include-duplicates
       Include duplicate-marked reads. Default: off.
@@ -417,7 +405,7 @@ Prepared-BAM folder
 
 Examples
 --------
-  ONT ichorCNA local-PON run:
+  ONT ichorCNA run (each BAM is refined independently):
     bam_cnv_boundary_refine.sh \
       --mode ont \
       --ont-cna-dir "$ONT_RUN_ROOT/results/ichorcna" \
@@ -428,8 +416,6 @@ Examples
       --outdir "$ONT_OUT" \
       --fine-bin-kb-ont 25 \
       --coverage-mode-ont bases \
-      --normal-samples auto \
-      --pon-mode auto \
       --skip-install \
       --force
 
@@ -443,8 +429,6 @@ Examples
       --outdir "$ILLUMINA_OUT" \
       --fine-bin-kb-illumina 10 \
       --coverage-mode-illumina starts \
-      --normal-samples none \
-      --pon-mode off \
       --skip-install \
       --force
 EOF
@@ -499,9 +483,10 @@ while [[ $# -gt 0 ]]; do
     --coverage-mode) COVERAGE_MODE_ONT="$2"; COVERAGE_MODE_ILLUMINA="$2"; shift 2 ;;
     --coverage-mode-ont) COVERAGE_MODE_ONT="$2"; shift 2 ;;
     --coverage-mode-illumina) COVERAGE_MODE_ILLUMINA="$2"; shift 2 ;;
-    --normal-samples) NORMAL_SAMPLES="$2"; shift 2 ;;
-    --normal-bam-dirs) NORMAL_BAM_DIRS="$2"; shift 2 ;;
-    --pon-mode) PON_MODE="$2"; shift 2 ;;
+    --normal-samples|--normal-bam-dirs|--pon-mode)
+      echo "ERROR: sample-derived panel refinement has been removed; each sample is refined independently" >&2
+      exit 2
+      ;;
     --include-duplicates) INCLUDE_DUPLICATES=true; shift ;;
     --include-supplementary) INCLUDE_SUPPLEMENTARY=true; shift ;;
     --include-secondary) INCLUDE_SECONDARY=true; shift ;;
@@ -1417,35 +1402,14 @@ def count_bam_coverage(path: Path, chrom: str, intervals: List[Tuple[int, int]],
 # Boundary refinement statistics
 ###############################################################################
 
-def compute_signal(tumor_counts: np.ndarray, normal_counts: Optional[np.ndarray]) -> np.ndarray:
-    counts = tumor_counts.astype(float)
-    if normal_counts is not None and normal_counts.size > 0 and not np.all(np.isnan(normal_counts)):
-        mat = normal_counts.astype(float)
-        # normalize each normal by its local median positive count to reduce library size effects
-        norm_rows = []
-        for row in mat:
-            pos = row[np.isfinite(row) & (row > 0)]
-            sf = np.median(pos) if len(pos) else 1.0
-            if not np.isfinite(sf) or sf <= 0:
-                sf = 1.0
-            norm_rows.append(row / sf)
-        matn = np.vstack(norm_rows)
-        pon = np.nanmedian(matn, axis=0)
-        pos_t = counts[np.isfinite(counts) & (counts > 0)]
-        sf_t = np.median(pos_t) if len(pos_t) else 1.0
-        if not np.isfinite(sf_t) or sf_t <= 0:
-            sf_t = 1.0
-        t = counts / sf_t
-        pc = max(0.01, np.nanmedian(pon[np.isfinite(pon)]) * 0.01) if np.any(np.isfinite(pon)) else 0.01
-        return np.log2((t + pc) / (pon + pc))
-    else:
-        pos = counts[np.isfinite(counts) & (counts > 0)]
-        med = np.median(pos) if len(pos) else 1.0
-        if not np.isfinite(med) or med <= 0:
-            med = 1.0
-        pc = max(0.5, med * 0.01)
-        return np.log2((counts + pc) / (med + pc))
-
+def compute_signal(sample_counts: np.ndarray) -> np.ndarray:
+    counts = sample_counts.astype(float)
+    positive = counts[np.isfinite(counts) & (counts > 0)]
+    median = np.median(positive) if len(positive) else 1.0
+    if not np.isfinite(median) or median <= 0:
+        median = 1.0
+    pseudocount = max(0.5, median * 0.01)
+    return np.log2((counts + pseudocount) / (median + pseudocount))
 
 def split_stats(y: np.ndarray, min_side: int):
     y = np.asarray(y, dtype=float)
@@ -1735,7 +1699,7 @@ def overlay_bins_with_segments(bins: pd.DataFrame, segs: pd.DataFrame) -> pd.Dat
 # Main boundary refinement
 ###############################################################################
 
-def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path) -> dict:
+def refine_one_boundary(row, sample_bams, args, prepared_dir: Path) -> dict:
     sample = row["sample"]
     chrom = row["chrom"]
     original_boundary = int(row["original_boundary"])
@@ -1769,7 +1733,7 @@ def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path)
         "left_median_coverage_units": np.nan,
         "right_median_coverage_units": np.nan,
         "median_coverage_units": np.nan,
-        "used_pon": False,
+        "sample_derived_panel_used": False,
         "best_bic_gain": np.nan,
         "best_left_mean_log2": np.nan,
         "best_right_mean_log2": np.nan,
@@ -1811,25 +1775,7 @@ def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path)
         base["decision_reason"] = "chromosome_not_found_in_sample_bam"
         return base
 
-    normal_counts = None
-    if args.pon_mode in ("auto", "on") and normal_bams:
-        mats = []
-        for nbam in normal_bams.values():
-            nc = count_bam_coverage(
-                nbam, chrom, intervals, args.coverage_mode, int(args.min_mapq),
-                args.include_duplicates, args.include_secondary, args.include_supplementary
-            )
-            if np.any(np.isfinite(nc)):
-                mats.append(nc)
-        if mats:
-            normal_counts = np.vstack(mats)
-            base["used_pon"] = True
-        elif args.pon_mode == "on":
-            base["coverage_resolution_status"] = "poor_bam_resolution"
-            base["decision_reason"] = "pon_requested_but_no_usable_normal_bam_coverage"
-            return base
-
-    y = compute_signal(tumor_counts, normal_counts)
+    y = compute_signal(tumor_counts)
     valid = np.isfinite(y)
     base["n_valid_fine_bins"] = int(np.sum(valid))
     base["median_coverage_units"] = float(np.nanmedian(tumor_counts)) if np.any(np.isfinite(tumor_counts)) else np.nan
@@ -2216,24 +2162,7 @@ def refine_dataset(args):
     if missing:
         log(f"WARNING: missing BAMs for samples; these samples will fall back to prior segmentation: {missing}")
 
-    # Normal BAMs for local PON correction. In auto mode, BAMs not matched to tumor/bin samples are normals.
-    normal_bams = {}
-    if args.normal_samples == "none" or args.pon_mode == "off":
-        normal_bams = {}
-    elif args.normal_samples == "auto":
-        for name, path in all_bams.items():
-            if name not in samples:
-                normal_bams[name] = path
-        if args.normal_bam_dirs:
-            normal_bams.update(list_bams(args.normal_bam_dirs))
-    else:
-        names = [x.strip() for x in re.split(r",|;", args.normal_samples) if x.strip()]
-        for n in names:
-            if n in all_bams:
-                normal_bams[n] = all_bams[n]
-        if args.normal_bam_dirs:
-            normal_bams.update(list_bams(args.normal_bam_dirs))
-    log(f"Matched sample BAMs: {len(sample_bams)}; normal/PON BAMs: {len(normal_bams)}")
+    log(f"Matched independent sample BAMs: {len(sample_bams)}")
 
     prepared_dir = outdir / "_work" / "prepared_bams"
     bam_prep_records = []
@@ -2243,14 +2172,7 @@ def refine_dataset(args):
         rec["role"] = "sample"
         bam_prep_records.append(rec)
         prepared_sample_bams[s] = used
-    prepared_normal_bams = {}
-    for s, p in normal_bams.items():
-        used, rec = prepare_bam(p, s, prepared_dir)
-        rec["role"] = "normal_or_pon"
-        bam_prep_records.append(rec)
-        prepared_normal_bams[s] = used
     sample_bams = prepared_sample_bams
-    normal_bams = prepared_normal_bams
     if prepared_dir.exists() and not any(prepared_dir.iterdir()):
         try:
             prepared_dir.rmdir()
@@ -2263,7 +2185,7 @@ def refine_dataset(args):
     for idx, row in boundaries.iterrows():
         if idx % 25 == 0:
             log(f"Evaluating boundary {idx+1}/{len(boundaries)}")
-        rows.append(refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir))
+        rows.append(refine_one_boundary(row, sample_bams, args, prepared_dir))
     bstats = pd.DataFrame(rows) if rows else empty_boundary_stats()
 
     if prior.empty:
@@ -2319,9 +2241,6 @@ def main():
     p.add_argument("--max-fine-bins-per-window", type=int, default=400)
     p.add_argument("--min-mapq", type=int, default=20)
     p.add_argument("--coverage-mode", choices=["bases", "starts"], default="bases")
-    p.add_argument("--normal-samples", default="auto")
-    p.add_argument("--normal-bam-dirs", default="")
-    p.add_argument("--pon-mode", choices=["auto", "on", "off"], default="auto")
     p.add_argument("--include-duplicates", action="store_true")
     p.add_argument("--include-supplementary", action="store_true")
     p.add_argument("--include-secondary", action="store_true")
@@ -2853,9 +2772,6 @@ run_dataset() {
     --max-fine-bins-per-window "$MAX_FINE_BINS_PER_WINDOW" \
     --min-mapq "$MIN_MAPQ" \
     --coverage-mode "$coverage_mode" \
-    --normal-samples "$NORMAL_SAMPLES" \
-    --normal-bam-dirs "$NORMAL_BAM_DIRS" \
-    --pon-mode "$PON_MODE" \
     $([[ "$INCLUDE_DUPLICATES" == "true" ]] && echo --include-duplicates) \
     $([[ "$INCLUDE_SUPPLEMENTARY" == "true" ]] && echo --include-supplementary) \
     $([[ "$INCLUDE_SECONDARY" == "true" ]] && echo --include-secondary) \
@@ -2881,11 +2797,6 @@ if [[ "$MODE" == "illumina" || "$MODE" == "both" ]]; then
   [[ -n "$ILLUMINA_QDNASEQ_DIR" ]] || { echo "ERROR: --illumina-qdnaseq-dir required for --mode illumina/both" >&2; exit 1; }
   [[ -n "$ILLUMINA_BAM_DIR" ]] || { echo "ERROR: --illumina-bam-dir required for --mode illumina/both" >&2; exit 1; }
   [[ -n "$ILLUMINA_PRIOR_SEG" ]] || { echo "ERROR: --illumina-prior-seg required for --mode illumina/both" >&2; exit 1; }
-  # Default: no PON for Illumina unless explicitly supplied.
-  if [[ "$MODE" == "illumina" && "$NORMAL_SAMPLES" == "auto" && -z "$NORMAL_BAM_DIRS" ]]; then
-    NORMAL_SAMPLES="none"
-    PON_MODE="off"
-  fi
   run_dataset "illumina_qdnaseq_${ILLUMINA_BINSIZE_KB}kb" "$ILLUMINA_QDNASEQ_DIR" "qdnaseq" "illumina" "$ILLUMINA_BAM_DIR" "$ILLUMINA_PRIOR_SEG" "$ILLUMINA_BINSIZE_KB" "$FINE_BIN_KB_ILLUMINA" "$COVERAGE_MODE_ILLUMINA"
 fi
 
