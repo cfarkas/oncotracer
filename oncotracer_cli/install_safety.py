@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import contextlib
+import ctypes
+import errno
 import fcntl
 import hashlib
 import io
@@ -1609,6 +1611,55 @@ def _committed_finalize_path(transaction: Path) -> Path:
     return transaction.with_name(f"{transaction.name}.oncotracer-cleanup-finalize")
 
 
+def _committed_delete_path(transaction: Path) -> Path:
+    return transaction.with_name(f"{transaction.name}.oncotracer-cleanup-delete")
+
+
+def _rename_noreplace_at(
+    source_fd: int,
+    source_name: str,
+    destination_fd: int,
+    destination_name: str,
+    label: str,
+) -> None:
+    """Atomically claim one name without replacing an existing object."""
+    for name in (source_name, destination_name):
+        if not name or name in {".", ".."} or "/" in name or "\\" in name:
+            raise OncoTracerError(f"unsafe {label} component: {name!r}")
+    libc = ctypes.CDLL(None, use_errno=True)
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
+        raise OncoTracerError(
+            f"{label} requires Linux renameat2(RENAME_NOREPLACE) support"
+        )
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    ctypes.set_errno(0)
+    result = renameat2(
+        source_fd,
+        os.fsencode(source_name),
+        destination_fd,
+        os.fsencode(destination_name),
+        1,  # RENAME_NOREPLACE
+    )
+    if result == 0:
+        return
+    error_number = ctypes.get_errno()
+    if error_number in {errno.EEXIST, errno.ENOTEMPTY}:
+        raise OncoTracerError(
+            f"{label} destination already exists; preserving both names: "
+            f"{destination_name}"
+        )
+    error = OSError(error_number, os.strerror(error_number), source_name)
+    raise OncoTracerError(f"could not atomically claim {label}: {error}") from error
+
+
 def _open_pinned_directory(path: Path, label: str) -> int:
     """Open one physical directory and bind subsequent work to its inode."""
     _reject_symlink_components(path)
@@ -1969,7 +2020,22 @@ def _valid_cleanup_inventory(
         if relative == ".oncotracer-transaction-owner.json":
             owner_seen = entry["type"] == "file"
         previous = relative
-    return owner_seen
+    paths = {str(entry["path"]) for entry in value["entries"]}
+    claims = {
+        _cleanup_claim_relative(str(entry["path"]), entry) for entry in value["entries"]
+    }
+    return owner_seen and len(claims) == len(paths) and not (claims & paths)
+
+
+def _cleanup_claim_name(expected: Mapping[str, object]) -> str:
+    payload = json.dumps(dict(expected), sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return f".oncotracer-cleanup-claim-{digest}"
+
+
+def _cleanup_claim_relative(relative: str, expected: Mapping[str, object]) -> str:
+    parts = _cleanup_relative_parts(relative)
+    return "/".join((*parts[:-1], _cleanup_claim_name(expected)))
 
 
 def _cleanup_removal_order(entries: Sequence[Mapping[str, object]]) -> list[str]:
@@ -1987,25 +2053,42 @@ def _cleanup_removal_order(entries: Sequence[Mapping[str, object]]) -> list[str]
 
 def _validate_cleanup_state_at(
     cleanup_fd: int, inventory: Mapping[str, object], label: str
-) -> tuple[dict[str, dict[str, object]], list[str]]:
+) -> tuple[dict[str, dict[str, object]], list[str], str | None]:
     """Require the pinned remaining tree to be one exact removal suffix."""
     expected_entries = {
         str(entry["path"]): dict(entry) for entry in inventory["entries"]
     }
-    observed_entries = {
+    raw_entries = {
         str(entry["path"]): entry for entry in _cleanup_entries_at(cleanup_fd)
     }
-    unexpected = sorted(set(observed_entries) - set(expected_entries))
-    changed = sorted(
-        path
-        for path in set(observed_entries) & set(expected_entries)
-        if observed_entries[path] != expected_entries[path]
-    )
-    if unexpected or changed:
+    claim_paths = {
+        _cleanup_claim_relative(path, expected): path
+        for path, expected in expected_entries.items()
+    }
+    observed_entries: dict[str, dict[str, object]] = {}
+    unexpected: list[str] = []
+    changed: list[str] = []
+    claimed: list[str] = []
+    for observed_path, raw_entry in raw_entries.items():
+        expected_path = (
+            observed_path
+            if observed_path in expected_entries
+            else claim_paths.get(observed_path)
+        )
+        if expected_path is None or expected_path in observed_entries:
+            unexpected.append(observed_path)
+            continue
+        entry = {**raw_entry, "path": expected_path}
+        observed_entries[expected_path] = entry
+        if observed_path != expected_path:
+            claimed.append(expected_path)
+        if entry != expected_entries[expected_path]:
+            changed.append(expected_path)
+    if unexpected or changed or len(claimed) > 1:
         raise OncoTracerError(
             "committed installer cleanup contains an unexpected entry or modified "
             f"entry and will be preserved: {label}; added={unexpected!r}; "
-            f"changed={changed!r}"
+            f"changed={changed!r}; claimed={claimed!r}"
         )
     order = _cleanup_removal_order(inventory["entries"])
     remaining = [path for path in order if path in observed_entries]
@@ -2017,43 +2100,63 @@ def _validate_cleanup_state_at(
             f"suffix and will be preserved: {label}; "
             f"removed={removed_out_of_order!r}"
         )
-    return observed_entries, remaining
+    if claimed and (not remaining or claimed[0] != remaining[0]):
+        raise OncoTracerError(
+            "committed installer cleanup claim is not the next deterministic "
+            f"removal and will be preserved: {label}; claimed={claimed!r}"
+        )
+    return observed_entries, remaining, claimed[0] if claimed else None
 
 
 def _remove_cleanup_entry_at(
     cleanup_fd: int, relative: str, expected: Mapping[str, object]
 ) -> None:
-    """Remove one authenticated name through its pinned physical parent."""
+    """Atomically claim, authenticate, then remove one inventory-bound name."""
     with _cleanup_parent_descriptor(cleanup_fd, relative) as (parent_fd, name):
-        observed, identity = _cleanup_entry_from_parent(
-            os.fstat(cleanup_fd).st_dev, parent_fd, name, relative
-        )
-        if observed != expected:
+        root_device = os.fstat(cleanup_fd).st_dev
+        claim_name = _cleanup_claim_name(expected)
+        source_exists = _exists_at(parent_fd, name)
+        claim_exists = _exists_at(parent_fd, claim_name)
+        if source_exists and claim_exists:
             raise OncoTracerError(
-                "committed installer cleanup member changed before removal: "
-                f"{relative}"
+                "committed installer cleanup source and removal claim both exist; "
+                f"preserving both: {relative}"
             )
-        current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
-        if (
-            current.st_dev,
-            current.st_ino,
-            current.st_mode,
-            current.st_size,
-        ) != (
-            identity.st_dev,
-            identity.st_ino,
-            identity.st_mode,
-            identity.st_size,
-        ):
+        if not source_exists and not claim_exists:
             raise OncoTracerError(
-                "committed installer cleanup member changed before removal: "
-                f"{relative}"
+                f"committed installer cleanup member vanished: {relative}"
+            )
+        if source_exists:
+            observed, _ = _cleanup_entry_from_parent(
+                root_device, parent_fd, name, relative
+            )
+            if observed != expected:
+                raise OncoTracerError(
+                    "committed installer cleanup member changed before removal claim: "
+                    f"{relative}"
+                )
+            _rename_noreplace_at(
+                parent_fd,
+                name,
+                parent_fd,
+                claim_name,
+                f"committed installer cleanup member {relative}",
+            )
+            os.fsync(parent_fd)
+            os.fsync(cleanup_fd)
+        claimed, _ = _cleanup_entry_from_parent(
+            root_device, parent_fd, claim_name, relative
+        )
+        if claimed != expected:
+            raise OncoTracerError(
+                "committed installer cleanup removal claim does not match its "
+                f"sealed inventory and will be preserved: {relative}"
             )
         try:
             if expected["type"] == "directory":
-                os.rmdir(name, dir_fd=parent_fd)
+                os.rmdir(claim_name, dir_fd=parent_fd)
             else:
-                os.unlink(name, dir_fd=parent_fd)
+                os.unlink(claim_name, dir_fd=parent_fd)
         except OSError as error:
             raise OncoTracerError(
                 "could not remove authenticated installer cleanup member "
@@ -2118,10 +2221,12 @@ def _remove_committed_transaction(
     parent = target.parent
     cleanup = _committed_cleanup_path(transaction)
     finalize = _committed_finalize_path(transaction)
+    delete = _committed_delete_path(transaction)
     if (
         transaction.parent != parent
         or cleanup.parent != parent
         or finalize.parent != parent
+        or delete.parent != parent
     ):
         raise OncoTracerError("installer transaction cleanup parent is not exact")
     parent_fd = _open_pinned_directory(parent, "installer transaction parent")
@@ -2130,7 +2235,11 @@ def _remove_committed_transaction(
         transaction_exists = _exists_at(parent_fd, transaction.name)
         cleanup_exists = _exists_at(parent_fd, cleanup.name)
         finalize_exists = _exists_at(parent_fd, finalize.name)
-        if sum((transaction_exists, cleanup_exists, finalize_exists)) > 1:
+        delete_exists = _exists_at(parent_fd, delete.name)
+        if (
+            sum((transaction_exists, cleanup_exists, finalize_exists, delete_exists))
+            > 1
+        ):
             raise OncoTracerError(
                 "multiple installer transaction cleanup roots exist; preserving all"
             )
@@ -2154,11 +2263,12 @@ def _remove_committed_transaction(
                     "committed installer transaction changed after its cleanup "
                     f"inventory was sealed and will be preserved: {transaction}"
                 )
-            os.replace(
+            _rename_noreplace_at(
+                parent_fd,
                 transaction.name,
+                parent_fd,
                 cleanup.name,
-                src_dir_fd=parent_fd,
-                dst_dir_fd=parent_fd,
+                "committed installer transaction cleanup root",
             )
             os.fsync(parent_fd)
             root_name = cleanup.name
@@ -2173,12 +2283,17 @@ def _remove_committed_transaction(
                 parent_fd, finalize.name, "committed installer cleanup finalizer"
             )
             root_name = finalize.name
+        elif delete_exists:
+            cleanup_fd = _open_child_directory(
+                parent_fd, delete.name, "committed installer cleanup deletion claim"
+            )
+            root_name = delete.name
         else:
             return
         assert cleanup_fd is not None and root_name is not None
         _require_cleanup_root_identity(parent_fd, root_name, cleanup_fd, inventory)
         _assert_inactive(parent / root_name, ignored_self_fds=frozenset({cleanup_fd}))
-        _, remaining = _validate_cleanup_state_at(
+        _, remaining, _ = _validate_cleanup_state_at(
             cleanup_fd, inventory, str(parent / root_name)
         )
         expected_entries = {
@@ -2191,18 +2306,26 @@ def _remove_committed_transaction(
                 f"committed installer cleanup is not empty: {parent / root_name}"
             )
         if root_name == cleanup.name:
-            if _exists_at(parent_fd, finalize.name):
-                raise OncoTracerError(
-                    f"installer cleanup finalizer already exists: {finalize}"
-                )
-            os.replace(
+            _rename_noreplace_at(
+                parent_fd,
                 cleanup.name,
+                parent_fd,
                 finalize.name,
-                src_dir_fd=parent_fd,
-                dst_dir_fd=parent_fd,
+                "committed installer cleanup finalizer",
             )
             os.fsync(parent_fd)
             root_name = finalize.name
+            _require_cleanup_root_identity(parent_fd, root_name, cleanup_fd, inventory)
+        if root_name == finalize.name:
+            _rename_noreplace_at(
+                parent_fd,
+                finalize.name,
+                parent_fd,
+                delete.name,
+                "committed installer cleanup deletion claim",
+            )
+            os.fsync(parent_fd)
+            root_name = delete.name
             _require_cleanup_root_identity(parent_fd, root_name, cleanup_fd, inventory)
         _require_cleanup_root_identity(parent_fd, root_name, cleanup_fd, inventory)
         os.rmdir(root_name, dir_fd=parent_fd)
