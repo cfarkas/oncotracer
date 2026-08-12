@@ -228,15 +228,16 @@ Review used/skipped/warning logs beneath `01_samurai_ont/logs/`.
 
 ## 12. Reference or indexing failures
 
-The first Illumina run creates a BWA hg38 index and can require at least 80 GiB of addressable memory. Check free storage, memory, and interrupted reference files:
+The first Illumina run creates a BWA hg38 index in the OncoTracer-owned cache and can require at least 80 GiB of addressable memory. Check free storage, memory, and the two possible reference locations:
 
 ```bash
 free -h
 df -h "$PWD/project"
 find "$PWD/project/references" -maxdepth 3 -type f -ls 2>/dev/null | head -50
+find "$PWD/project/.oncotracer/reference-cache" -maxdepth 3 -type f -ls 2>/dev/null | head -50
 ```
 
-Do not delete a valid shared reference during another active run. Use a new project root or coordinate maintenance when a reference cache is known to be corrupt.
+An existing `project/references/samurai_hg38` or `project/references/samurai_ichorcna_hg38_500kb` is external and read-only. A checksum, manifest, tool-identity, layout, or symlink error there stops the run without repair. Coordinate shared-reference maintenance outside OncoTracer, or use a new project root so OncoTracer can create its own content-addressed cache. Never delete a valid shared reference during another active run.
 
 ## 13. Classifier or GISTIC2 failures
 

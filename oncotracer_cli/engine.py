@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
+import contextlib
 import csv
+import fcntl
 import gzip
 import json
 import math
 import os
 import re
 import shutil
+import stat
 import statistics
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
+from typing import Iterable, Iterator, Mapping, Sequence
 
 from . import __version__
 from .classifier import run_native_classifier
@@ -38,18 +42,45 @@ from .runtime import (
     require_file,
     runtime_root,
     sha256_file,
+    sha256_text,
     utc_now,
 )
 
 HG38_BASE = "https://ngi-igenomes.s3.amazonaws.com/igenomes/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta"
-ICHOR_ASSET_BASE = "https://raw.githubusercontent.com/DIncalciLab/samurai/v1.4.0/assets/ichorcna"
+SAMURAI_ICHOR_COMMIT = "6a901940288b008237703c6b181d447e7dee4fcf"
+ICHOR_ASSET_BASE = (
+    "https://raw.githubusercontent.com/DIncalciLab/samurai/"
+    f"{SAMURAI_ICHOR_COMMIT}/assets/ichorcna"
+)
 ICHOR_ASSETS = {
-    "gc": "gc_hg38_500kb.wig",
-    "map": "map_hg38_500kb.wig",
-    "centromere": "GRCh38.GCA_000001405.2_centromere_acen.txt",
-    "reptime": "Koren_repTiming_hg38_500kb.wig",
-    "pon": "HD_ULP_PoN_hg38_500kb_median_normAutosome_median.rds",
+    "gc": (
+        "gc_hg38_500kb.wig",
+        "4ae9c5d7f3e8260b3d192e88b21e717ac7f761946ba16e896b7d375557e85b57",
+    ),
+    "map": (
+        "map_hg38_500kb.wig",
+        "18efe127d1fde052b5537d4bf0494f73710fe38eb3ec0e7e49fa483b4c647d89",
+    ),
+    "centromere": (
+        "GRCh38.GCA_000001405.2_centromere_acen.txt",
+        "5ca2fed871adaa395773d932b94d40866690f69797694a21b057e8e1b3681e22",
+    ),
+    "reptime": (
+        "Koren_repTiming_hg38_500kb.wig",
+        "d7d20a549fb2a54a91dd73562ca820524a33b8bf33ab45bee881b1e031c96c8c",
+    ),
+    "pon": (
+        "HD_ULP_PoN_hg38_500kb_median_normAutosome_median.rds",
+        "2f2e94d529d0ef3ca74b93e0814c89fae0f6b918b38a7efec3bf4207c25452c0",
+    ),
 }
+HG38_ASSETS = {
+    "genome.fa": "d2b7be348fb20af46461855faec64dfbd21532620bd125783df050180446055e",
+    "genome.fa.fai": "eb7e1fea3ac1c264d6f21a1358727ef533ad560634b0ef360818d970c5f09687",
+    "genome.dict": "bae12a687634bdf379ee5eb61cb9c87f24a977523031844ef637c8943473b2f9",
+}
+BWA_INDEX_SUFFIXES = (".amb", ".ann", ".bwt", ".pac", ".sa")
+REFERENCE_CACHE_SCHEMA = "oncotracer-reference-cache-owner-v1"
 
 
 @dataclass(frozen=True)
@@ -120,7 +151,9 @@ class Toolchain:
             return require_command(name)
         prefix = prefix.expanduser().resolve()
         if not prefix.is_dir():
-            raise OncoTracerError(f"configured {group} Conda prefix does not exist: {prefix}")
+            raise OncoTracerError(
+                f"configured {group} Conda prefix does not exist: {prefix}"
+            )
         executable = prefix / "bin" / name
         if not executable.is_file() or not os.access(executable, os.X_OK):
             raise OncoTracerError(
@@ -148,7 +181,9 @@ class Toolchain:
             return {}
         prefix = prefix.expanduser().resolve()
         if not prefix.is_dir():
-            raise OncoTracerError(f"configured {group} Conda prefix does not exist: {prefix}")
+            raise OncoTracerError(
+                f"configured {group} Conda prefix does not exist: {prefix}"
+            )
         if group != "gistic":
             return {}
 
@@ -182,10 +217,14 @@ class Toolchain:
         """Run the group's exact Rscript with inherited R routing removed."""
         return [
             require_command("env"),
-            "-u", "R_HOME",
-            "-u", "R_LIBS",
-            "-u", "R_LIBS_USER",
-            "-u", "R_LIBS_SITE",
+            "-u",
+            "R_HOME",
+            "-u",
+            "R_LIBS",
+            "-u",
+            "R_LIBS_USER",
+            "-u",
+            "R_LIBS_SITE",
             self.executable(group, "Rscript"),
             "--vanilla",
             *[str(item) for item in command],
@@ -240,7 +279,9 @@ def parse_illumina_samplesheet(path: Path) -> list[IlluminaSample]:
         required = {"sample", "fastq_1", "fastq_2", "status"}
         missing = required.difference(reader.fieldnames or [])
         if missing:
-            raise OncoTracerError(f"Illumina samplesheet is missing: {', '.join(sorted(missing))}")
+            raise OncoTracerError(
+                f"Illumina samplesheet is missing: {', '.join(sorted(missing))}"
+            )
         for raw in reader:
             sample = _safe_sample(raw.get("sample", ""))
             if sample in seen:
@@ -248,7 +289,11 @@ def parse_illumina_samplesheet(path: Path) -> list[IlluminaSample]:
             seen.add(sample)
             fq1 = require_file(Path(raw.get("fastq_1", "")), f"FASTQ 1 for {sample}")
             fq2_text = (raw.get("fastq_2") or "").strip()
-            fq2 = require_file(Path(fq2_text), f"FASTQ 2 for {sample}") if fq2_text else None
+            fq2 = (
+                require_file(Path(fq2_text), f"FASTQ 2 for {sample}")
+                if fq2_text
+                else None
+            )
             status = (raw.get("status") or "tumor").strip().lower()
             if status not in {"tumor", "normal"}:
                 raise OncoTracerError(f"status for {sample} must be tumor or normal")
@@ -257,13 +302,17 @@ def parse_illumina_samplesheet(path: Path) -> list[IlluminaSample]:
         raise OncoTracerError("Illumina samplesheet has no data rows")
     layouts = {sample.fastq_2 is not None for sample in rows}
     if len(layouts) != 1:
-        raise OncoTracerError("a native Illumina run cannot mix single-end and paired-end libraries")
+        raise OncoTracerError(
+            "a native Illumina run cannot mix single-end and paired-end libraries"
+        )
     normals = [row for row in rows if row.status == "normal"]
     tumors = [row for row in rows if row.status == "tumor"]
     if not tumors:
         raise OncoTracerError("Illumina analysis requires at least one tumor")
     if len(normals) == 1:
-        raise OncoTracerError("exactly one normal is not valid; use zero or at least two normals")
+        raise OncoTracerError(
+            "exactly one normal is not valid; use zero or at least two normals"
+        )
     return rows
 
 
@@ -289,10 +338,18 @@ def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
     if not folder_value or not barcodes_value:
         raise OncoTracerError("ONT config requires ont_folder and ont_barcodes")
     root = _resolve_fastq_pass(Path(str(folder_value)))
-    barcodes = [token.strip() for token in str(barcodes_value).replace(";", ",").split(",") if token.strip()]
+    barcodes = [
+        token.strip()
+        for token in str(barcodes_value).replace(";", ",").split(",")
+        if token.strip()
+    ]
     names_value = config.get("ont_sample_names")
     names = (
-        [token.strip() for token in str(names_value).replace(";", ",").split(",") if token.strip()]
+        [
+            token.strip()
+            for token in str(names_value).replace(";", ",").split(",")
+            if token.strip()
+        ]
         if names_value
         else barcodes
     )
@@ -309,10 +366,705 @@ def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
                 candidate = root / f"barcode{int(match.group(1)):02d}"
         if not candidate.is_dir():
             raise OncoTracerError(f"ONT barcode directory not found: {root / barcode}")
-        samples.append(OntSample(_safe_sample(name), candidate.name, candidate.resolve()))
+        samples.append(
+            OntSample(_safe_sample(name), candidate.name, candidate.resolve())
+        )
     if len({sample.sample for sample in samples}) != len(samples):
         raise OncoTracerError("ONT sample names must be unique")
     return samples
+
+
+def _canonical_json_sha256(value: object) -> str:
+    return sha256_text(json.dumps(value, sort_keys=True, separators=(",", ":")))
+
+
+def _reference_identity(kind: str) -> str:
+    if kind == "samurai-hg38":
+        payload: object = {"kind": kind, "assets": HG38_ASSETS}
+    elif kind == "ichorcna-hg38-500kb":
+        payload = {
+            "kind": kind,
+            "samurai_commit": SAMURAI_ICHOR_COMMIT,
+            "assets": ICHOR_ASSETS,
+        }
+    else:  # pragma: no cover - internal contract
+        raise OncoTracerError(f"unknown reference cache kind: {kind}")
+    return _canonical_json_sha256(payload)
+
+
+def _lstat(path: Path, label: str) -> os.stat_result | None:
+    try:
+        return path.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise OncoTracerError(f"cannot inspect {label} {path}: {error}") from error
+
+
+def _require_physical_directory(path: Path, label: str) -> Path:
+    observed = _lstat(path, label)
+    if observed is None:
+        raise OncoTracerError(f"required {label} is missing: {path}")
+    if stat.S_ISLNK(observed.st_mode) or not stat.S_ISDIR(observed.st_mode):
+        raise OncoTracerError(
+            f"{label} must be a physical directory, not a symlink or non-directory: {path}"
+        )
+    return path
+
+
+def _require_physical_file(path: Path, label: str, *, nonempty: bool = True) -> Path:
+    observed = _lstat(path, label)
+    if observed is None:
+        raise OncoTracerError(f"required {label} is missing: {path}")
+    if stat.S_ISLNK(observed.st_mode) or not stat.S_ISREG(observed.st_mode):
+        raise OncoTracerError(
+            f"{label} must be a physical regular file, not a symlink or non-file: {path}"
+        )
+    if nonempty and observed.st_size <= 0:
+        raise OncoTracerError(f"required {label} is empty: {path}")
+    return path
+
+
+def _ensure_physical_directory(path: Path, label: str) -> Path:
+    observed = _lstat(path, label)
+    if observed is None:
+        try:
+            path.mkdir()
+        except FileExistsError:
+            pass
+        except OSError as error:
+            raise OncoTracerError(f"cannot create {label} {path}: {error}") from error
+    return _require_physical_directory(path, label)
+
+
+def _marker_matches(path: Path, expected: Mapping[str, object]) -> bool:
+    try:
+        _require_physical_file(path, "reference ownership marker")
+        observed = json.loads(path.read_text(encoding="utf-8"))
+    except (OncoTracerError, OSError, UnicodeError, json.JSONDecodeError):
+        return False
+    return observed == dict(expected)
+
+
+def _claim_marker(directory: Path, expected: Mapping[str, object], label: str) -> None:
+    marker = directory / ".oncotracer-reference-owner.json"
+    if _marker_matches(marker, expected):
+        return
+    if _lstat(marker, "reference ownership marker") is not None:
+        raise OncoTracerError(f"{label} has a mismatched ownership marker: {marker}")
+    entries = [entry for entry in directory.iterdir() if entry != marker]
+    if entries:
+        raise OncoTracerError(
+            f"refusing to claim nonempty unowned {label}: {directory}"
+        )
+    atomic_write_json(marker, dict(expected))
+    if not _marker_matches(marker, expected):  # pragma: no cover - filesystem failure
+        raise OncoTracerError(f"could not verify {label} ownership marker: {marker}")
+
+
+def _owned_reference_cache(lpwgs_root: Path, kind: str) -> Path:
+    """Return one marker-owned, content-addressed cache below the project root."""
+    lpwgs_root.mkdir(parents=True, exist_ok=True)
+    project = lpwgs_root.expanduser().resolve(strict=True)
+    _require_physical_directory(project, "LP-WGS project root")
+    state = _ensure_physical_directory(
+        project / ".oncotracer", "OncoTracer state directory"
+    )
+    cache_root = _ensure_physical_directory(
+        state / "reference-cache", "reference cache root"
+    )
+    root_marker = {
+        "schema": REFERENCE_CACHE_SCHEMA,
+        "kind": "reference-cache-root",
+        "canonical_path": str(cache_root),
+    }
+    _claim_marker(cache_root, root_marker, "reference cache root")
+
+    identity = _reference_identity(kind)
+    destination = _ensure_physical_directory(
+        cache_root / f"{kind}-{identity[:16]}", f"{kind} reference cache"
+    )
+    marker = {
+        "schema": REFERENCE_CACHE_SCHEMA,
+        "kind": kind,
+        "identity": identity,
+        "canonical_path": str(destination),
+    }
+    _claim_marker(destination, marker, f"{kind} reference cache")
+    return destination
+
+
+@contextlib.contextmanager
+def _reference_lock(path: Path, *, exclusive: bool, create: bool) -> Iterator[None]:
+    """Lock one physical file without following a final symbolic link."""
+    flags = os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0)
+    flags |= os.O_RDWR | os.O_CREAT if create else os.O_RDONLY
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as error:
+        raise OncoTracerError(f"cannot open reference lock {path}: {error}") from error
+    try:
+        opened = os.fstat(descriptor)
+        named = path.lstat()
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or stat.S_ISLNK(named.st_mode)
+            or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
+        ):
+            raise OncoTracerError(
+                f"reference lock is not a stable physical file: {path}"
+            )
+        fcntl.flock(descriptor, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        yield
+    finally:
+        with contextlib.suppress(OSError):
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
+def _validate_pinned_file(path: Path, expected_sha256: str, label: str) -> Path:
+    _require_physical_file(path, label)
+    observed = sha256_file(path)
+    if observed != expected_sha256:
+        raise OncoTracerError(
+            f"{label} SHA-256 mismatch: expected {expected_sha256}, observed {observed}: {path}"
+        )
+    return path
+
+
+def _ensure_owned_pinned_file(
+    root: Path,
+    path: Path,
+    url: str,
+    expected_sha256: str,
+    label: str,
+) -> Path:
+    """Repair one owned cache file only after a complete verified download."""
+    observed = _lstat(path, label)
+    if observed is not None:
+        if stat.S_ISLNK(observed.st_mode) or not stat.S_ISREG(observed.st_mode):
+            raise OncoTracerError(f"owned {label} is not a physical file: {path}")
+        if observed.st_size > 0 and sha256_file(path) == expected_sha256:
+            return path
+
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.download-", dir=root
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    partial = temporary.with_name(f".{temporary.name}.part")
+    try:
+        download(url, temporary)
+        _validate_pinned_file(temporary, expected_sha256, f"downloaded {label}")
+        temporary.chmod(0o644)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+        partial.unlink(missing_ok=True)
+    return _validate_pinned_file(path, expected_sha256, label)
+
+
+def _prepare_hg38_base(reference_root: Path, *, owned: bool) -> dict[str, Path]:
+    paths = {name: reference_root / name for name in HG38_ASSETS}
+    for name, expected_sha256 in HG38_ASSETS.items():
+        path = paths[name]
+        if owned:
+            _ensure_owned_pinned_file(
+                reference_root,
+                path,
+                f"{HG38_BASE}/{name}",
+                expected_sha256,
+                f"hg38 {name}",
+            )
+        else:
+            _validate_pinned_file(path, expected_sha256, f"external hg38 {name}")
+
+    first = ""
+    with paths["genome.fa"].open(encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            if line.startswith(">"):
+                first = line[1:].split()[0]
+                break
+    if not first.startswith("chr"):
+        raise OncoTracerError(
+            f"hg38 reference must use UCSC chr names; first contig is {first!r}"
+        )
+    if _fai_contigs(paths["genome.fa.fai"]) is None:
+        raise OncoTracerError(f"invalid hg38 FASTA index: {paths['genome.fa.fai']}")
+    return paths
+
+
+def _fai_contigs(fai: Path) -> list[tuple[str, int]] | None:
+    try:
+        contigs: list[tuple[str, int]] = []
+        for raw in fai.read_text(encoding="utf-8").splitlines():
+            fields = raw.split("\t")
+            if len(fields) < 5:
+                return None
+            name, length_text = fields[:2]
+            length = int(length_text)
+            if not name or length <= 0:
+                return None
+            contigs.append((name, length))
+        if not contigs or len({name for name, _ in contigs}) != len(contigs):
+            return None
+        return contigs
+    except (OSError, UnicodeError, ValueError):
+        return None
+
+
+def _bwa_index_matches_fai(fai: Path, prefix: Path) -> bool:
+    paths = {suffix: Path(f"{prefix}{suffix}") for suffix in BWA_INDEX_SUFFIXES}
+    contigs = _fai_contigs(fai)
+    if contigs is None or any(
+        not path.is_file() or path.stat().st_size <= 0 for path in paths.values()
+    ):
+        return False
+    try:
+        total_length = sum(length for _, length in contigs)
+        ann_lines = paths[".ann"].read_text(encoding="utf-8").splitlines()
+        ann_header = ann_lines[0].split()
+        if len(ann_header) < 2 or [int(value) for value in ann_header[:2]] != [
+            total_length,
+            len(contigs),
+        ]:
+            return False
+        if len(ann_lines) != 1 + 2 * len(contigs):
+            return False
+        expected_offset = 0
+        for index, (expected_name, expected_length) in enumerate(contigs):
+            annotation = ann_lines[1 + 2 * index].split(maxsplit=2)
+            coordinates = ann_lines[2 + 2 * index].split()
+            if len(annotation) < 2 or len(coordinates) < 3:
+                return False
+            offset, length = int(coordinates[0]), int(coordinates[1])
+            if (
+                annotation[1] != expected_name
+                or offset != expected_offset
+                or length != expected_length
+            ):
+                return False
+            expected_offset += expected_length
+
+        amb_lines = paths[".amb"].read_text(encoding="utf-8").splitlines()
+        amb_header = amb_lines[0].split()
+        if len(amb_header) != 3:
+            return False
+        amb_length, amb_contigs, amb_regions = (int(value) for value in amb_header)
+        if (amb_length, amb_contigs) != (total_length, len(contigs)):
+            return False
+        if amb_regions < 0 or len(amb_lines) != amb_regions + 1:
+            return False
+        for raw in amb_lines[1:]:
+            fields = raw.split()
+            if len(fields) != 3:
+                return False
+            offset, length = int(fields[0]), int(fields[1])
+            if offset < 0 or length <= 0 or offset + length > total_length:
+                return False
+        expected_pac_bytes = (total_length + 3) // 4 + 1
+        return paths[".pac"].stat().st_size == expected_pac_bytes
+    except (IndexError, OSError, UnicodeError, ValueError):
+        return False
+
+
+def _portable_conda_identity(executable: Path) -> dict[str, object] | None:
+    prefix = executable.parent.parent if executable.parent.name == "bin" else None
+    metadata = prefix / "conda-meta" if prefix is not None else None
+    if metadata is None or not metadata.is_dir():
+        return None
+    expected_package = {"bwa": "bwa", "minimap2": "minimap2"}.get(executable.name)
+    if expected_package is None:  # pragma: no cover - internal contract
+        raise OncoTracerError(f"unsupported indexed-reference tool: {executable.name}")
+    relative = executable.relative_to(prefix).as_posix()
+    records: list[tuple[Path, dict[str, object]]] = []
+    try:
+        for record_path in sorted(metadata.glob(f"{expected_package}-*.json")):
+            record = json.loads(record_path.read_text(encoding="utf-8"))
+            if isinstance(record, dict) and record.get("name") == expected_package:
+                records.append((record_path, record))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise OncoTracerError(
+            f"cannot establish Conda identity for {executable}: {error}"
+        ) from error
+    if len(records) != 1:
+        raise OncoTracerError(
+            f"cannot unambiguously identify Conda package {expected_package!r} for {executable}"
+        )
+    record_path, record = records[0]
+    stable_fields = (
+        "name",
+        "version",
+        "build",
+        "build_number",
+        "channel",
+        "subdir",
+        "sha256",
+        "md5",
+    )
+    if any(
+        not isinstance(record.get(field), str) or not record[field]
+        for field in ("name", "version", "build")
+    ):
+        raise OncoTracerError(f"invalid Conda package record: {record_path}")
+    owned: set[str] = set()
+    if "files" in record:
+        files = record["files"]
+        if not isinstance(files, list) or any(
+            not isinstance(item, str) for item in files
+        ):
+            raise OncoTracerError(f"malformed Conda file ownership: {record_path}")
+        owned.update(files)
+    paths_data = record.get("paths_data")
+    if paths_data is not None:
+        if not isinstance(paths_data, dict) or not isinstance(
+            paths_data.get("paths"), list
+        ):
+            raise OncoTracerError(f"malformed Conda path ownership: {record_path}")
+        for item in paths_data["paths"]:
+            if not isinstance(item, dict) or not isinstance(item.get("_path"), str):
+                raise OncoTracerError(f"malformed Conda path ownership: {record_path}")
+            owned.add(item["_path"])
+    if owned and relative not in owned:
+        raise OncoTracerError(f"Conda record does not own {relative}: {record_path}")
+    owner = {field: record.get(field) for field in stable_fields}
+    return {"package_count": 1, "sha256": _canonical_json_sha256([owner])}
+
+
+def _index_build_contract(
+    kind: str,
+    fasta_sha256: str,
+    fai_sha256: str,
+    executable_value: str,
+) -> dict[str, object]:
+    configured = Path(executable_value).expanduser()
+    executable = configured.resolve(strict=True)
+    executable_sha256 = sha256_file(executable)
+    if kind == "bwa":
+        return {
+            "schema": "oncotracer-bwa-build-contract-v1",
+            "fasta_sha256": fasta_sha256,
+            "fai_sha256": fai_sha256,
+            "bwa_sha256": executable_sha256,
+            "conda_environment": _portable_conda_identity(configured),
+            "logical_arguments": ["index", "-p", "<PREFIX>", "<FASTA>"],
+        }
+    return {
+        "schema": "oncotracer-minimap2-build-contract-v1",
+        "fasta_sha256": fasta_sha256,
+        "fai_sha256": fai_sha256,
+        "minimap2_sha256": executable_sha256,
+        "conda_environment": _portable_conda_identity(configured),
+        "logical_arguments": ["-x", "map-ont", "-d", "<INDEX>", "<FASTA>"],
+    }
+
+
+def _bwa_manifest_payload(
+    contract: Mapping[str, object], prefix: Path
+) -> dict[str, object]:
+    return {
+        "schema": "oncotracer-bwa-index-manifest-v1",
+        "build": dict(contract),
+        "build_identity": _canonical_json_sha256(contract),
+        "indexes": {
+            suffix: {
+                "bytes": Path(f"{prefix}{suffix}").stat().st_size,
+                "sha256": sha256_file(Path(f"{prefix}{suffix}")),
+            }
+            for suffix in BWA_INDEX_SUFFIXES
+        },
+    }
+
+
+def _bwa_manifest_matches(
+    manifest_path: Path, prefix: Path, contract: Mapping[str, object]
+) -> bool:
+    try:
+        _require_physical_file(manifest_path, "BWA reference manifest")
+        paths = {suffix: Path(f"{prefix}{suffix}") for suffix in BWA_INDEX_SUFFIXES}
+        for suffix, path in paths.items():
+            _require_physical_file(path, f"BWA index {suffix}")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if (
+            not isinstance(manifest, dict)
+            or manifest.get("schema") != "oncotracer-bwa-index-manifest-v1"
+            or manifest.get("build") != contract
+            or manifest.get("build_identity") != _canonical_json_sha256(contract)
+        ):
+            return False
+        records = manifest.get("indexes")
+        if not isinstance(records, dict) or set(records) != set(BWA_INDEX_SUFFIXES):
+            return False
+        for suffix, path in paths.items():
+            record = records[suffix]
+            if not isinstance(record, dict):
+                return False
+            if record.get("bytes") != path.stat().st_size or record.get(
+                "sha256"
+            ) != sha256_file(path):
+                return False
+        return True
+    except (OncoTracerError, OSError, UnicodeError, json.JSONDecodeError):
+        return False
+
+
+def _minimap_manifest_payload(
+    contract: Mapping[str, object], index: Path
+) -> dict[str, object]:
+    return {
+        "schema": "oncotracer-minimap2-index-manifest-v1",
+        "build": dict(contract),
+        "build_identity": _canonical_json_sha256(contract),
+        "index": {"bytes": index.stat().st_size, "sha256": sha256_file(index)},
+    }
+
+
+def _minimap_manifest_matches(
+    manifest_path: Path, index: Path, contract: Mapping[str, object]
+) -> bool:
+    try:
+        _require_physical_file(manifest_path, "minimap2 reference manifest")
+        _require_physical_file(index, "minimap2 reference index")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        record = manifest.get("index") if isinstance(manifest, dict) else None
+        return bool(
+            isinstance(manifest, dict)
+            and manifest.get("schema") == "oncotracer-minimap2-index-manifest-v1"
+            and manifest.get("build") == contract
+            and manifest.get("build_identity") == _canonical_json_sha256(contract)
+            and isinstance(record, dict)
+            and record.get("bytes") == index.stat().st_size
+            and record.get("sha256") == sha256_file(index)
+        )
+    except (OncoTracerError, OSError, UnicodeError, json.JSONDecodeError):
+        return False
+
+
+def _minimap_index_matches_fai(
+    fai: Path,
+    index: Path,
+    minimap2: str,
+    runner: CommandRunner,
+    *,
+    stage: str,
+) -> bool:
+    expected = _fai_contigs(fai)
+    if expected is None:
+        return False
+    with (
+        tempfile.TemporaryFile(mode="w+b") as stdout,
+        tempfile.TemporaryFile(mode="w+b") as stderr,
+    ):
+        result = runner.run(
+            stage,
+            [minimap2, "-a", index, os.devnull],
+            stdout=stdout,
+            stderr=stderr,
+            check=False,
+        )
+        if result.returncode != 0:
+            return False
+        stdout.seek(0)
+        header = stdout.read().decode("utf-8", errors="replace")
+    observed: list[tuple[str, int]] = []
+    try:
+        for raw in header.splitlines():
+            if not raw.startswith("@SQ\t"):
+                continue
+            tags = {
+                field.partition(":")[0]: field.partition(":")[2]
+                for field in raw.split("\t")[1:]
+                if ":" in field
+            }
+            observed.append((tags["SN"], int(tags["LN"])))
+    except (KeyError, ValueError):
+        return False
+    return bool(observed) and observed == expected
+
+
+def _reference_state_paths(root: Path, kind: str) -> tuple[Path, Path]:
+    state = root / ".oncotracer"
+    if kind == "bwa":
+        return (
+            state / "locks" / "samurai-hg38.bwa-index.lock",
+            state / "reference-index-provenance" / "samurai-hg38.bwa-index.json",
+        )
+    return (
+        state / "locks" / "samurai-hg38-map-ont.minimap2-index.lock",
+        state
+        / "reference-index-provenance"
+        / "samurai-hg38-map-ont.minimap2-index.json",
+    )
+
+
+def _prepare_reference_state(root: Path, *, owned: bool) -> None:
+    state = root / ".oncotracer"
+    if owned:
+        _ensure_physical_directory(state, "reference state directory")
+        _ensure_physical_directory(state / "locks", "reference lock directory")
+        _ensure_physical_directory(
+            state / "reference-index-provenance", "reference provenance directory"
+        )
+    else:
+        _require_physical_directory(state, "external reference state directory")
+        _require_physical_directory(
+            state / "locks", "external reference lock directory"
+        )
+        _require_physical_directory(
+            state / "reference-index-provenance",
+            "external reference provenance directory",
+        )
+
+
+def _prepare_bwa_index(
+    root: Path,
+    fasta: Path,
+    fai: Path,
+    toolchain: Toolchain,
+    runner: CommandRunner,
+    ledger: StageLedger,
+    *,
+    owned: bool,
+) -> tuple[Path, Path, Path, str]:
+    bwa = toolchain.executable("core", "bwa")
+    contract = _index_build_contract(
+        "bwa", HG38_ASSETS["genome.fa"], HG38_ASSETS["genome.fa.fai"], bwa
+    )
+    bwa_directory = root / "bwa"
+    if owned:
+        _ensure_physical_directory(bwa_directory, "owned BWA index directory")
+    else:
+        _require_physical_directory(bwa_directory, "external BWA index directory")
+    prefix = bwa_directory / "genome"
+    lock, manifest = _reference_state_paths(root, "bwa")
+    if not owned:
+        _require_physical_file(lock, "external BWA reference lock", nonempty=False)
+    with _reference_lock(lock, exclusive=owned, create=owned):
+        valid = _bwa_manifest_matches(
+            manifest, prefix, contract
+        ) and _bwa_index_matches_fai(fai, prefix)
+        if not valid and not owned:
+            raise OncoTracerError(
+                "external/shared BWA reference is incomplete or does not match the "
+                "pinned FASTA and installed BWA; refusing to modify it"
+            )
+        if not valid:
+            temporary_directory = Path(
+                tempfile.mkdtemp(prefix=".genome.bwa-build-", dir=bwa_directory)
+            )
+            temporary_prefix = temporary_directory / "genome"
+            try:
+                runner.run(
+                    "reference-bwa-build",
+                    [bwa, "index", "-p", temporary_prefix, fasta],
+                )
+                if not _bwa_index_matches_fai(fai, temporary_prefix):
+                    raise OncoTracerError(
+                        "new BWA index is incomplete or inconsistent with genome.fa.fai"
+                    )
+                payload = _bwa_manifest_payload(contract, temporary_prefix)
+                for suffix in BWA_INDEX_SUFFIXES:
+                    candidate = Path(f"{temporary_prefix}{suffix}")
+                    candidate.chmod(0o644)
+                    os.replace(candidate, Path(f"{prefix}{suffix}"))
+                atomic_write_json(manifest, payload)
+            finally:
+                shutil.rmtree(temporary_directory)
+        if not (
+            _bwa_manifest_matches(manifest, prefix, contract)
+            and _bwa_index_matches_fai(fai, prefix)
+        ):
+            raise OncoTracerError("published BWA reference failed validation")
+        signature = ledger.signature(
+            "reference-bwa", ["validate-read-only", bwa], [fasta, fai]
+        )
+        outputs = [
+            *[Path(f"{prefix}{suffix}") for suffix in BWA_INDEX_SUFFIXES],
+            manifest,
+        ]
+        if not ledger.reusable("reference-bwa", signature, outputs):
+            ledger.complete("reference-bwa", signature, outputs)
+        return prefix, lock, manifest, sha256_file(manifest)
+
+
+def _prepare_minimap_index(
+    root: Path,
+    fasta: Path,
+    fai: Path,
+    toolchain: Toolchain,
+    runner: CommandRunner,
+    ledger: StageLedger,
+    *,
+    owned: bool,
+) -> tuple[Path, Path, Path, str]:
+    minimap2 = toolchain.executable("core", "minimap2")
+    contract = _index_build_contract(
+        "minimap2", HG38_ASSETS["genome.fa"], HG38_ASSETS["genome.fa.fai"], minimap2
+    )
+    index = root / "genome.fa.map-ont.mmi"
+    lock, manifest = _reference_state_paths(root, "minimap2")
+    if not owned:
+        _require_physical_file(lock, "external minimap2 reference lock", nonempty=False)
+    with _reference_lock(lock, exclusive=owned, create=owned):
+        valid = _minimap_manifest_matches(
+            manifest, index, contract
+        ) and _minimap_index_matches_fai(
+            fai,
+            index,
+            minimap2,
+            runner,
+            stage="reference-minimap2-validate",
+        )
+        if not valid and not owned:
+            raise OncoTracerError(
+                "external/shared minimap2 reference is incomplete or does not match the "
+                "pinned FASTA and installed minimap2; refusing to modify it"
+            )
+        if not valid:
+            descriptor, temporary_name = tempfile.mkstemp(
+                prefix=".genome.fa.map-ont.build-", suffix=".mmi", dir=root
+            )
+            os.close(descriptor)
+            temporary = Path(temporary_name)
+            try:
+                runner.run(
+                    "reference-minimap2-build",
+                    [minimap2, "-x", "map-ont", "-d", temporary, fasta],
+                )
+                if not _minimap_index_matches_fai(
+                    fai,
+                    temporary,
+                    minimap2,
+                    runner,
+                    stage="reference-minimap2-validate-candidate",
+                ):
+                    raise OncoTracerError(
+                        "new minimap2 index is unreadable or does not match genome.fa.fai"
+                    )
+                payload = _minimap_manifest_payload(contract, temporary)
+                temporary.chmod(0o644)
+                os.replace(temporary, index)
+                atomic_write_json(manifest, payload)
+            finally:
+                temporary.unlink(missing_ok=True)
+        if not (
+            _minimap_manifest_matches(manifest, index, contract)
+            and _minimap_index_matches_fai(
+                fai,
+                index,
+                minimap2,
+                runner,
+                stage="reference-minimap2-validate-published",
+            )
+        ):
+            raise OncoTracerError("published minimap2 reference failed validation")
+        signature = ledger.signature(
+            "reference-minimap2", ["validate-read-only", minimap2], [fasta, fai]
+        )
+        outputs = [index, manifest]
+        if not ledger.reusable("reference-minimap2", signature, outputs):
+            ledger.complete("reference-minimap2", signature, outputs)
+        return index, lock, manifest, sha256_file(manifest)
 
 
 def prepare_reference(
@@ -324,65 +1076,190 @@ def prepare_reference(
     need_bwa: bool,
     need_minimap2: bool,
     threads: int,
-) -> dict[str, Path]:
-    ref_dir = lpwgs_root / "references" / "samurai_hg38"
-    ref_dir.mkdir(parents=True, exist_ok=True)
-    fasta = ref_dir / "genome.fa"
-    fai = ref_dir / "genome.fa.fai"
-    sequence_dict = ref_dir / "genome.dict"
-    if not fasta.is_file() or fasta.stat().st_size == 0:
-        download(f"{HG38_BASE}/genome.fa", fasta)
-    if not fai.is_file() or fai.stat().st_size == 0:
+) -> dict[str, object]:
+    lpwgs_root.mkdir(parents=True, exist_ok=True)
+    project = lpwgs_root.expanduser().resolve(strict=True)
+    requested = project / "references" / "samurai_hg38"
+    if requested.exists() or requested.is_symlink():
         try:
-            download(f"{HG38_BASE}/genome.fa.fai", fai)
-        except OncoTracerError:
-            runner.run("reference-faidx", [toolchain.executable("core", "samtools"), "faidx", fasta])
-    if not sequence_dict.is_file() or sequence_dict.stat().st_size == 0:
-        try:
-            download(f"{HG38_BASE}/genome.dict", sequence_dict)
-        except OncoTracerError:
-            with sequence_dict.open("w", encoding="utf-8") as output:
-                runner.run(
-                    "reference-dict",
-                    [toolchain.executable("core", "samtools"), "dict", fasta],
-                    stdout=output,
-                )
-    first = ""
-    with fasta.open(encoding="utf-8", errors="replace") as handle:
-        for line in handle:
-            if line.startswith(">"):
-                first = line[1:].split()[0]
-                break
-    if not first.startswith("chr"):
-        raise OncoTracerError(f"hg38 reference must use UCSC chr names; first contig is {first!r}")
+            ref_dir = requested.resolve(strict=True)
+        except OSError as error:
+            raise OncoTracerError(
+                f"cannot resolve external hg38 reference: {requested}"
+            ) from error
+        _require_physical_directory(ref_dir, "external hg38 reference root")
+        owned = False
+    else:
+        ref_dir = _owned_reference_cache(project, "samurai-hg38")
+        owned = True
 
+    base = _prepare_hg38_base(ref_dir, owned=owned)
+    _prepare_reference_state(ref_dir, owned=owned)
     bwa_prefix = ref_dir / "bwa" / "genome"
+    bwa_lock, bwa_manifest = _reference_state_paths(ref_dir, "bwa")
+    bwa_generation = ""
     if need_bwa:
-        required = [Path(str(bwa_prefix) + suffix) for suffix in (".amb", ".ann", ".bwt", ".pac", ".sa")]
-        command = [toolchain.executable("core", "bwa"), "index", "-p", str(bwa_prefix), str(fasta)]
-        signature = ledger.signature("reference-bwa", command, [fasta])
-        if not ledger.reusable("reference-bwa", signature, required):
-            bwa_prefix.parent.mkdir(parents=True, exist_ok=True)
-            runner.run("reference-bwa", command)
-            if not all(path.is_file() and path.stat().st_size > 0 for path in required):
-                raise OncoTracerError("BWA index did not produce all required files")
-            ledger.complete("reference-bwa", signature, required)
+        bwa_prefix, bwa_lock, bwa_manifest, bwa_generation = _prepare_bwa_index(
+            ref_dir,
+            base["genome.fa"],
+            base["genome.fa.fai"],
+            toolchain,
+            runner,
+            ledger,
+            owned=owned,
+        )
 
-    minimap_index = Path(str(fasta) + ".map-ont.mmi")
+    minimap_index = ref_dir / "genome.fa.map-ont.mmi"
+    minimap_lock, minimap_manifest = _reference_state_paths(ref_dir, "minimap2")
+    minimap_generation = ""
     if need_minimap2:
-        command = [toolchain.executable("core", "minimap2"), "-x", "map-ont", "-d", minimap_index, fasta]
-        signature = ledger.signature("reference-minimap2", [str(x) for x in command], [fasta])
-        if not ledger.reusable("reference-minimap2", signature, [minimap_index]):
-            runner.run("reference-minimap2", command)
-            ledger.complete("reference-minimap2", signature, [minimap_index])
+        minimap_index, minimap_lock, minimap_manifest, minimap_generation = (
+            _prepare_minimap_index(
+                ref_dir,
+                base["genome.fa"],
+                base["genome.fa.fai"],
+                toolchain,
+                runner,
+                ledger,
+                owned=owned,
+            )
+        )
 
     return {
-        "fasta": fasta,
-        "fai": fai,
-        "dict": sequence_dict,
+        "reference_root": ref_dir,
+        "reference_owned": owned,
+        "fasta": base["genome.fa"],
+        "fai": base["genome.fa.fai"],
+        "dict": base["genome.dict"],
+        "fasta_sha256": HG38_ASSETS["genome.fa"],
+        "fai_sha256": HG38_ASSETS["genome.fa.fai"],
         "bwa_prefix": bwa_prefix,
+        "bwa_lock": bwa_lock,
+        "bwa_manifest": bwa_manifest,
+        "bwa_generation": bwa_generation,
         "minimap2_index": minimap_index,
+        "minimap2_lock": minimap_lock,
+        "minimap2_manifest": minimap_manifest,
+        "minimap2_generation": minimap_generation,
     }
+
+
+@contextlib.contextmanager
+def _validated_bwa_reader(
+    reference: Mapping[str, object],
+    runner: CommandRunner,
+    toolchain: Toolchain,
+) -> Iterator[None]:
+    if runner.dry_run:
+        yield
+        return
+    root = Path(str(reference.get("reference_root", "")))
+    fasta = Path(str(reference.get("fasta", "")))
+    fai = Path(str(reference.get("fai", "")))
+    prefix = Path(str(reference.get("bwa_prefix", "")))
+    lock = Path(str(reference.get("bwa_lock", "")))
+    manifest = Path(str(reference.get("bwa_manifest", "")))
+    expected_lock, expected_manifest = _reference_state_paths(root, "bwa")
+    if (
+        fasta != root / "genome.fa"
+        or fai != root / "genome.fa.fai"
+        or prefix != root / "bwa" / "genome"
+        or lock != expected_lock
+        or manifest != expected_manifest
+    ):
+        raise OncoTracerError(
+            "prepared BWA reference paths escaped their physical root"
+        )
+    _require_physical_directory(root, "prepared reference root")
+    _require_physical_file(lock, "BWA reference lock", nonempty=False)
+    expected_generation = reference.get("bwa_generation")
+    if not isinstance(expected_generation, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", expected_generation
+    ):
+        raise OncoTracerError("prepared BWA reference has no exact generation")
+    with _reference_lock(lock, exclusive=False, create=False):
+        bwa = toolchain.executable("core", "bwa")
+        contract = _index_build_contract(
+            "bwa",
+            str(reference.get("fasta_sha256", "")),
+            str(reference.get("fai_sha256", "")),
+            bwa,
+        )
+        if (
+            sha256_file(manifest) != expected_generation
+            or not _bwa_manifest_matches(manifest, prefix, contract)
+            or not _bwa_index_matches_fai(fai, prefix)
+        ):
+            raise OncoTracerError(
+                "BWA reference changed or became invalid after preparation"
+            )
+        yield
+        if sha256_file(manifest) != expected_generation:
+            raise OncoTracerError(
+                "BWA reference generation changed while it was in use"
+            )
+
+
+@contextlib.contextmanager
+def _validated_minimap_reader(
+    reference: Mapping[str, object],
+    runner: CommandRunner,
+    toolchain: Toolchain,
+) -> Iterator[None]:
+    if runner.dry_run:
+        yield
+        return
+    root = Path(str(reference.get("reference_root", "")))
+    fasta = Path(str(reference.get("fasta", "")))
+    fai = Path(str(reference.get("fai", "")))
+    index = Path(str(reference.get("minimap2_index", "")))
+    lock = Path(str(reference.get("minimap2_lock", "")))
+    manifest = Path(str(reference.get("minimap2_manifest", "")))
+    expected_lock, expected_manifest = _reference_state_paths(root, "minimap2")
+    if (
+        fasta != root / "genome.fa"
+        or fai != root / "genome.fa.fai"
+        or index != root / "genome.fa.map-ont.mmi"
+        or lock != expected_lock
+        or manifest != expected_manifest
+    ):
+        raise OncoTracerError(
+            "prepared minimap2 reference paths escaped their physical root"
+        )
+    _require_physical_directory(root, "prepared reference root")
+    _require_physical_file(lock, "minimap2 reference lock", nonempty=False)
+    expected_generation = reference.get("minimap2_generation")
+    if not isinstance(expected_generation, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", expected_generation
+    ):
+        raise OncoTracerError("prepared minimap2 reference has no exact generation")
+    with _reference_lock(lock, exclusive=False, create=False):
+        minimap2 = toolchain.executable("core", "minimap2")
+        contract = _index_build_contract(
+            "minimap2",
+            str(reference.get("fasta_sha256", "")),
+            str(reference.get("fai_sha256", "")),
+            minimap2,
+        )
+        if (
+            sha256_file(manifest) != expected_generation
+            or not _minimap_manifest_matches(manifest, index, contract)
+            or not _minimap_index_matches_fai(
+                fai,
+                index,
+                minimap2,
+                runner,
+                stage="reference-minimap2-validate-reader",
+            )
+        ):
+            raise OncoTracerError(
+                "minimap2 reference changed or became invalid after preparation"
+            )
+        yield
+        if sha256_file(manifest) != expected_generation:
+            raise OncoTracerError(
+                "minimap2 reference generation changed while it was in use"
+            )
 
 
 def prepare_qdnaseq_annotation(
@@ -392,7 +1269,10 @@ def prepare_qdnaseq_annotation(
     runner: CommandRunner,
     toolchain: Toolchain,
 ) -> Path:
-    helper = require_file(root / "bin" / "scripts" / "prepare_qdnaseq_bin_data.sh", "qDNAseq annotation helper")
+    helper = require_file(
+        root / "bin" / "scripts" / "prepare_qdnaseq_bin_data.sh",
+        "qDNAseq annotation helper",
+    )
     cache = lpwgs_root / ".oncotracer" / "qdnaseq-bin-data"
     command = [
         toolchain.executable("qdnaseq", "bash"),
@@ -419,7 +1299,9 @@ def prepare_qdnaseq_annotation(
         sys.stderr.write(completed.stdout)
         sys.stderr.write(completed.stderr)
         raise OncoTracerError("qDNAseq annotation preparation failed")
-    output_lines = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    output_lines = [
+        line.strip() for line in completed.stdout.splitlines() if line.strip()
+    ]
     if not output_lines:
         raise OncoTracerError("qDNAseq annotation helper returned no path")
     return require_file(Path(output_lines[-1]), "qDNAseq hg38 annotation")
@@ -436,13 +1318,41 @@ def _write_bam_sheet(
         writer.writeheader()
         for sample in samples:
             writer.writerow(
-                {"sample": sample.sample, "bam": str(bams[sample.sample]), "status": sample.status}
+                {
+                    "sample": sample.sample,
+                    "bam": str(bams[sample.sample]),
+                    "status": sample.status,
+                }
             )
 
 
 def align_illumina(
     samples: list[IlluminaSample],
-    reference: Mapping[str, Path],
+    reference: Mapping[str, object],
+    outdir: Path,
+    runner: CommandRunner,
+    ledger: StageLedger,
+    toolchain: Toolchain,
+    *,
+    threads: int,
+    force: bool,
+) -> dict[str, Path]:
+    with _validated_bwa_reader(reference, runner, toolchain):
+        return _align_illumina_locked(
+            samples,
+            reference,
+            outdir,
+            runner,
+            ledger,
+            toolchain,
+            threads=threads,
+            force=force,
+        )
+
+
+def _align_illumina_locked(
+    samples: list[IlluminaSample],
+    reference: Mapping[str, object],
     outdir: Path,
     runner: CommandRunner,
     ledger: StageLedger,
@@ -486,14 +1396,22 @@ def align_illumina(
             str(bam),
             "-",
         ]
-        signature = ledger.signature(f"illumina-align-{sample.sample}", bwa + ["|"] + sort, reads)
+        signature = ledger.signature(
+            f"illumina-align-{sample.sample}", bwa + ["|"] + sort, reads
+        )
         if force or not ledger.reusable(
             f"illumina-align-{sample.sample}", signature, [bam, bai]
         ):
             runner.pipeline(f"illumina-align-{sample.sample}", bwa, sort)
             runner.run(
                 f"illumina-index-{sample.sample}",
-                [toolchain.executable("core", "samtools"), "index", "-@", str(max(1, threads // 2)), bam],
+                [
+                    toolchain.executable("core", "samtools"),
+                    "index",
+                    "-@",
+                    str(max(1, threads // 2)),
+                    bam,
+                ],
             )
             ledger.complete(f"illumina-align-{sample.sample}", signature, [bam, bai])
 
@@ -512,7 +1430,9 @@ def align_illumina(
                 f"illumina-markdup-{sample.sample}", mark_command, [bam, bai]
             )
             if force or not ledger.reusable(
-                f"illumina-markdup-{sample.sample}", mark_signature, [markdup, markdup_bai]
+                f"illumina-markdup-{sample.sample}",
+                mark_signature,
+                [markdup, markdup_bai],
             ):
                 runner.run(f"illumina-markdup-{sample.sample}", mark_command)
                 if not markdup_bai.is_file():
@@ -521,7 +1441,9 @@ def align_illumina(
                         [toolchain.executable("core", "samtools"), "index", markdup],
                     )
                 ledger.complete(
-                    f"illumina-markdup-{sample.sample}", mark_signature, [markdup, markdup_bai]
+                    f"illumina-markdup-{sample.sample}",
+                    mark_signature,
+                    [markdup, markdup_bai],
                 )
         else:
             raise OncoTracerError(
@@ -549,7 +1471,9 @@ def run_qdnaseq(
     normals = [sample for sample in samples if sample.status == "normal"]
     bam_sheet = samurai_outdir / "input" / "native.bam.samplesheet.csv"
     _write_bam_sheet(samples, markdup_bams, bam_sheet)
-    annotation = prepare_qdnaseq_annotation(root, lpwgs_root, binsize, runner, toolchain)
+    annotation = prepare_qdnaseq_annotation(
+        root, lpwgs_root, binsize, runner, toolchain
+    )
     if paired_ends is None:
         if not all(isinstance(sample, IlluminaSample) for sample in samples):
             raise OncoTracerError(
@@ -608,7 +1532,9 @@ def run_qdnaseq(
         return qdna_out, pon_alignment
 
     qdna_out = samurai_outdir / "qdnaseq"
-    script = require_file(root / "bin" / "scripts" / "native_qdnaseq.R", "native qDNAseq R script")
+    script = require_file(
+        root / "bin" / "scripts" / "native_qdnaseq.R", "native qDNAseq R script"
+    )
     qc_helper = require_file(
         root / "bin" / "scripts" / "qdnaseq_post_normalization_qc.R",
         "native qDNAseq post-normalization QC helper",
@@ -684,7 +1610,33 @@ def merge_fastqs(files: list[Path], destination: Path) -> None:
 
 def align_ont(
     samples: list[OntSample],
-    reference: Mapping[str, Path],
+    reference: Mapping[str, object],
+    samurai_outdir: Path,
+    runner: CommandRunner,
+    ledger: StageLedger,
+    toolchain: Toolchain,
+    *,
+    threads: int,
+    min_age_minutes: int,
+    force: bool,
+) -> dict[str, Path]:
+    with _validated_minimap_reader(reference, runner, toolchain):
+        return _align_ont_locked(
+            samples,
+            reference,
+            samurai_outdir,
+            runner,
+            ledger,
+            toolchain,
+            threads=threads,
+            min_age_minutes=min_age_minutes,
+            force=force,
+        )
+
+
+def _align_ont_locked(
+    samples: list[OntSample],
+    reference: Mapping[str, object],
     samurai_outdir: Path,
     runner: CommandRunner,
     ledger: StageLedger,
@@ -705,7 +1657,9 @@ def align_ont(
         merge_signature = ledger.signature(
             f"ont-merge-{sample.sample}", ["native-gzip-merge", str(merged)], files
         )
-        if force or not ledger.reusable(f"ont-merge-{sample.sample}", merge_signature, [merged]):
+        if force or not ledger.reusable(
+            f"ont-merge-{sample.sample}", merge_signature, [merged]
+        ):
             if not runner.dry_run:
                 merge_fastqs(files, merged)
             ledger.complete(f"ont-merge-{sample.sample}", merge_signature, [merged])
@@ -731,12 +1685,24 @@ def align_ont(
             bam,
             "-",
         ]
-        signature = ledger.signature(f"ont-align-{sample.sample}", [*map(str, left), "|", *map(str, right)], [merged])
-        if force or not ledger.reusable(f"ont-align-{sample.sample}", signature, [bam, bai]):
+        signature = ledger.signature(
+            f"ont-align-{sample.sample}",
+            [*map(str, left), "|", *map(str, right)],
+            [merged],
+        )
+        if force or not ledger.reusable(
+            f"ont-align-{sample.sample}", signature, [bam, bai]
+        ):
             runner.pipeline(f"ont-align-{sample.sample}", left, right)
             runner.run(
                 f"ont-index-{sample.sample}",
-                [toolchain.executable("core", "samtools"), "index", "-@", str(max(1, threads // 2)), bam],
+                [
+                    toolchain.executable("core", "samtools"),
+                    "index",
+                    "-@",
+                    str(max(1, threads // 2)),
+                    bam,
+                ],
             )
             ledger.complete(f"ont-align-{sample.sample}", signature, [bam, bai])
         bams[sample.sample] = bam
@@ -748,11 +1714,37 @@ def prepare_ichor_assets(lpwgs_root: Path, binsize: int) -> dict[str, Path]:
         raise OncoTracerError(
             "native automatic ichorCNA assets are pinned to hg38/500 kb; use ont_binsize_kb: 500"
         )
-    directory = lpwgs_root / "references" / "samurai_ichorcna_hg38_500kb"
-    directory.mkdir(parents=True, exist_ok=True)
+    lpwgs_root.mkdir(parents=True, exist_ok=True)
+    project = lpwgs_root.expanduser().resolve(strict=True)
+    requested = project / "references" / "samurai_ichorcna_hg38_500kb"
+    if requested.exists() or requested.is_symlink():
+        try:
+            directory = requested.resolve(strict=True)
+        except OSError as error:
+            raise OncoTracerError(
+                f"cannot resolve external ichorCNA reference: {requested}"
+            ) from error
+        _require_physical_directory(directory, "external ichorCNA reference root")
+        owned = False
+    else:
+        directory = _owned_reference_cache(project, "ichorcna-hg38-500kb")
+        owned = True
+
     resolved: dict[str, Path] = {}
-    for key, filename in ICHOR_ASSETS.items():
-        resolved[key] = download(f"{ICHOR_ASSET_BASE}/{filename}", directory / filename)
+    for key, (filename, expected_sha256) in ICHOR_ASSETS.items():
+        path = directory / filename
+        if owned:
+            resolved[key] = _ensure_owned_pinned_file(
+                directory,
+                path,
+                f"{ICHOR_ASSET_BASE}/{filename}",
+                expected_sha256,
+                f"ichorCNA {key} asset",
+            )
+        else:
+            resolved[key] = _validate_pinned_file(
+                path, expected_sha256, f"external ichorCNA {key} asset"
+            )
     return resolved
 
 
@@ -787,7 +1779,9 @@ def _combine_headered(paths: list[Path], destination: Path) -> None:
                     output.write(line + "\n")
 
 
-def _correct_ichor_segments(seg_path: Path, summary_path: Path, destination: Path) -> None:
+def _correct_ichor_segments(
+    seg_path: Path, summary_path: Path, destination: Path
+) -> None:
     with summary_path.open(newline="", encoding="utf-8") as handle:
         summary_rows = list(csv.DictReader(handle, delimiter="\t"))
     ploidy: dict[str, float] = {}
@@ -802,19 +1796,32 @@ def _correct_ichor_segments(seg_path: Path, summary_path: Path, destination: Pat
         required = {"ID", "chrom", "start", "end", "num.mark", "logR_Copy_Number"}
         missing = required.difference(fieldnames)
         if missing:
-            raise OncoTracerError(f"ichorCNA SEG is missing columns: {', '.join(sorted(missing))}")
+            raise OncoTracerError(
+                f"ichorCNA SEG is missing columns: {', '.join(sorted(missing))}"
+            )
         destination.parent.mkdir(parents=True, exist_ok=True)
         with destination.open("w", newline="", encoding="utf-8") as sink:
             writer = csv.writer(sink, delimiter="\t")
-            writer.writerow(["sample", "chromosome", "start", "end", "num.mark", "adj.seg"])
+            writer.writerow(
+                ["sample", "chromosome", "start", "end", "num.mark", "adj.seg"]
+            )
             for row in reader:
                 sample = row["ID"]
                 if sample not in ploidy:
-                    raise OncoTracerError(f"ploidy is missing for ichorCNA sample: {sample}")
+                    raise OncoTracerError(
+                        f"ploidy is missing for ichorCNA sample: {sample}"
+                    )
                 ratio = max(float(row["logR_Copy_Number"]) / ploidy[sample], 2e-8)
                 adjusted = max(math.log2(ratio), -0.5)
                 writer.writerow(
-                    [sample, row["chrom"], row["start"], row["end"], row["num.mark"], adjusted]
+                    [
+                        sample,
+                        row["chrom"],
+                        row["start"],
+                        row["end"],
+                        row["num.mark"],
+                        adjusted,
+                    ]
                 )
 
 
@@ -822,9 +1829,15 @@ def _write_ichorcna_sample_status(
     path: Path,
     records: list[dict[str, object]],
 ) -> dict[str, object]:
-    completed = [str(record["sample"]) for record in records if record["status"] == "complete"]
-    failed = [str(record["sample"]) for record in records if record["status"] == "failed"]
-    pending = [str(record["sample"]) for record in records if record["status"] == "pending"]
+    completed = [
+        str(record["sample"]) for record in records if record["status"] == "complete"
+    ]
+    failed = [
+        str(record["sample"]) for record in records if record["status"] == "failed"
+    ]
+    pending = [
+        str(record["sample"]) for record in records if record["status"] == "pending"
+    ]
     if pending:
         overall_status = "in_progress"
     elif completed and failed:
@@ -881,7 +1894,9 @@ def run_ichorcna(
     wig_dir = ichor_out / "wigfiles_samples"
     ichor_out.mkdir(parents=True, exist_ok=True)
     wig_dir.mkdir(parents=True, exist_ok=True)
-    script = require_file(root / "bin" / "scripts" / "native_ichorcna.R", "native ichorCNA R script")
+    script = require_file(
+        root / "bin" / "scripts" / "native_ichorcna.R", "native ichorCNA R script"
+    )
     chromosomes = ",".join(f"chr{index}" for index in range(1, 23))
     status_path = ichor_out / "ichorcna_sample_status.json"
     records: list[dict[str, object]] = [
@@ -924,10 +1939,16 @@ def run_ichorcna(
                     bam,
                 ],
             )
-            signature = ledger.signature(f"ichor-readcounter-{sample.sample}", readcounter, [bam])
-            if force or not ledger.reusable(f"ichor-readcounter-{sample.sample}", signature, [wig]):
+            signature = ledger.signature(
+                f"ichor-readcounter-{sample.sample}", readcounter, [bam]
+            )
+            if force or not ledger.reusable(
+                f"ichor-readcounter-{sample.sample}", signature, [wig]
+            ):
                 with wig.open("w", encoding="utf-8") as output:
-                    runner.run(f"ichor-readcounter-{sample.sample}", readcounter, stdout=output)
+                    runner.run(
+                        f"ichor-readcounter-{sample.sample}", readcounter, stdout=output
+                    )
                 require_file(wig, f"ichorCNA readCounter WIG for {sample.sample}")
                 ledger.complete(f"ichor-readcounter-{sample.sample}", signature, [wig])
 
@@ -960,7 +1981,9 @@ def run_ichorcna(
             )
             expected_params = sample_out / f"{sample.sample}.params.txt"
             expected_seg = sample_out / f"{sample.sample}.seg.txt"
-            signature = ledger.signature(f"ichorcna-{sample.sample}", command, [wig, *assets.values()])
+            signature = ledger.signature(
+                f"ichorcna-{sample.sample}", command, [wig, *assets.values()]
+            )
             if force or not ledger.reusable(
                 f"ichorcna-{sample.sample}", signature, [expected_params, expected_seg]
             ):
@@ -976,15 +1999,21 @@ def run_ichorcna(
                 expected_params = require_file(
                     expected_params, f"ichorCNA params for {sample.sample}"
                 )
-                expected_seg = require_file(expected_seg, f"ichorCNA SEG for {sample.sample}")
+                expected_seg = require_file(
+                    expected_seg, f"ichorCNA SEG for {sample.sample}"
+                )
                 ledger.complete(
-                    f"ichorcna-{sample.sample}", signature, [expected_params, expected_seg]
+                    f"ichorcna-{sample.sample}",
+                    signature,
+                    [expected_params, expected_seg],
                 )
             else:
                 expected_params = require_file(
                     expected_params, f"ichorCNA params for {sample.sample}"
                 )
-                expected_seg = require_file(expected_seg, f"ichorCNA SEG for {sample.sample}")
+                expected_seg = require_file(
+                    expected_seg, f"ichorCNA SEG for {sample.sample}"
+                )
 
             failed_stage = "publish"
             for path in sample_out.rglob("*"):
@@ -1040,7 +2069,9 @@ def run_ichorcna(
     summary = ichor_out / "ichorcna_summary_mqc.txt"
     with summary.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["samplename", "Tumor Fraction", "Ploidy", "GC-Map correction MAD"])
+        writer.writerow(
+            ["samplename", "Tumor Fraction", "Ploidy", "GC-Map correction MAD"]
+        )
         for sample, params, _ in completed:
             values = _parse_ichor_params(params)
             writer.writerow(
@@ -1075,13 +2106,19 @@ def run_refinement_and_outputs(
     if mode == "illumina" and selected_caller != "qdnaseq":
         raise OncoTracerError("native Illumina refinement requires qdnaseq")
     if mode == "ont" and selected_caller not in {"ichorcna", "qdnaseq"}:
-        raise OncoTracerError("native ONT refinement caller must be ichorcna or qdnaseq")
+        raise OncoTracerError(
+            "native ONT refinement caller must be ichorcna or qdnaseq"
+        )
     refine_script = require_file(
         root / "bin" / "scripts" / "bam_cnv_boundary_refine.sh",
         "BAM boundary-refinement script",
     )
     codify = require_file(
-        root / "bin" / "cna_codification" / "scripts" / "cna_to_cytogenomic_notation.py",
+        root
+        / "bin"
+        / "cna_codification"
+        / "scripts"
+        / "cna_to_cytogenomic_notation.py",
         "CNA codification script",
     )
     cytoband = require_file(
@@ -1214,14 +2251,14 @@ def run_refinement_and_outputs(
             [
                 "python",
                 codify,
-            "--qdnaseq",
-            "--input-dir",
-            bins_input,
-            "--cytoband",
-            cytoband,
-            "--outdir",
-            codify_out,
-            "--prefix",
+                "--qdnaseq",
+                "--input-dir",
+                bins_input,
+                "--cytoband",
+                cytoband,
+                "--outdir",
+                codify_out,
+                "--prefix",
                 "cna",
             ],
         ),
@@ -1246,15 +2283,15 @@ def run_refinement_and_outputs(
             [
                 "python",
                 plotter,
-            "--events",
-            events,
-            "--cytoband",
-            cytoband,
-            "--outdir",
-            plots_out,
-            "--bins",
-            bins_table,
-            "--profile-sample",
+                "--events",
+                events,
+                "--cytoband",
+                cytoband,
+                "--outdir",
+                plots_out,
+                "--bins",
+                bins_table,
+                "--profile-sample",
                 "all",
             ],
         ),
@@ -1358,7 +2395,9 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         try:
             parsed = json.loads(summary_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as error:
-            raise OncoTracerError(f"invalid workflow summary: {summary_path}") from error
+            raise OncoTracerError(
+                f"invalid workflow summary: {summary_path}"
+            ) from error
         if isinstance(parsed, dict):
             summary = parsed
     manifest = {
@@ -1374,12 +2413,16 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "failed_samples": summary.get("failed_samples", []),
         "cna_status": summary.get("cna_status"),
         "methylation_status": summary.get("methylation_status"),
-        "methylation_completed_samples": summary.get("methylation_completed_samples", []),
+        "methylation_completed_samples": summary.get(
+            "methylation_completed_samples", []
+        ),
         "methylation_no_cpg_samples": summary.get("methylation_no_cpg_samples", []),
         "created_at": utc_now(),
         "files": files,
     }
-    atomic_write_json(outdir / "06_workflow_summary" / "native_run_manifest.json", manifest)
+    atomic_write_json(
+        outdir / "06_workflow_summary" / "native_run_manifest.json", manifest
+    )
 
 
 def _merge_methylation_summary(
@@ -1395,7 +2438,9 @@ def _merge_methylation_summary(
         try:
             loaded = json.loads(summary_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as error:
-            raise OncoTracerError(f"invalid workflow summary: {summary_path}") from error
+            raise OncoTracerError(
+                f"invalid workflow summary: {summary_path}"
+            ) from error
         summary = loaded if isinstance(loaded, dict) else {}
     else:
         summary = {
@@ -1473,8 +2518,12 @@ def _validate_native_dry_run(
         plan.update(
             {
                 "samples": [sample.sample for sample in samples],
-                "tumor_samples": [sample.sample for sample in samples if sample.status == "tumor"],
-                "normal_samples": [sample.sample for sample in samples if sample.status == "normal"],
+                "tumor_samples": [
+                    sample.sample for sample in samples if sample.status == "tumor"
+                ],
+                "normal_samples": [
+                    sample.sample for sample in samples if sample.status == "normal"
+                ],
                 "paired_end": all(sample.fastq_2 is not None for sample in samples),
                 "caller": str(config.get("illumina_caller") or "qdnaseq"),
                 "binsize_kb": binsize,
@@ -1634,7 +2683,11 @@ def run_native(
     if lpwgs_value:
         lpwgs_root = Path(str(lpwgs_value)).expanduser().resolve()
     elif dry_run:
-        root_hint = Path(explicit_root).expanduser().resolve() if explicit_root else Path.cwd().resolve()
+        root_hint = (
+            Path(explicit_root).expanduser().resolve()
+            if explicit_root
+            else Path.cwd().resolve()
+        )
         lpwgs_root = (root_hint / "project").resolve()
     else:
         payload_root = runtime_root(explicit_root)
@@ -1667,7 +2720,10 @@ def run_native(
     toolchain = Toolchain.from_environment()
 
     # The native trace is an explicit release invariant.
-    atomic_write_text(native_dir / "engine.txt", f"engine=native\nnextflow_used=false\nversion={__version__}\n")
+    atomic_write_text(
+        native_dir / "engine.txt",
+        f"engine=native\nnextflow_used=false\nversion={__version__}\n",
+    )
     cna_error: BaseException | None = None
     methylation_status: dict[str, object] | None = None
 
@@ -1679,7 +2735,13 @@ def run_native(
         samurai_out = outdir / "01_samurai_illumina"
         samurai_out.mkdir(parents=True, exist_ok=True)
         reference = prepare_reference(
-            lpwgs_root, runner, ledger, toolchain, need_bwa=True, need_minimap2=False, threads=cpu
+            lpwgs_root,
+            runner,
+            ledger,
+            toolchain,
+            need_bwa=True,
+            need_minimap2=False,
+            threads=cpu,
         )
         bams = align_illumina(
             samples,
@@ -1722,7 +2784,13 @@ def run_native(
         samurai_out = outdir / "01_samurai_ont"
         samurai_out.mkdir(parents=True, exist_ok=True)
         reference = prepare_reference(
-            lpwgs_root, runner, ledger, toolchain, need_bwa=False, need_minimap2=True, threads=cpu
+            lpwgs_root,
+            runner,
+            ledger,
+            toolchain,
+            need_bwa=False,
+            need_minimap2=True,
+            threads=cpu,
         )
         assert ont_caller is not None
         if methylation_request is not None:
@@ -1790,7 +2858,9 @@ def run_native(
 
     trace_text = trace.read_text(encoding="utf-8", errors="replace")
     if "nextflow" in trace_text.lower():
-        raise OncoTracerError("native execution trace contains a forbidden Nextflow command")
+        raise OncoTracerError(
+            "native execution trace contains a forbidden Nextflow command"
+        )
     write_run_manifest(outdir, config_path, trace)
     summary_path = outdir / "06_workflow_summary" / "workflow_summary.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))

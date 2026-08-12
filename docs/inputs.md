@@ -33,6 +33,12 @@ project/
 
 Keep inputs, configuration, reference/cache, and results below a small number of absolute project roots. OncoTracer derives Docker and Singularity mounts from the YAML paths.
 
+## Reference storage safety
+
+OncoTracer recognizes an existing `references/samurai_hg38` directory as an external shared reference. It reads that directory but never downloads, rebuilds, repairs, or removes files there. The FASTA, FAI, sequence dictionary, BWA index, minimap2 index, immutable manifests, and indexing-tool identities must all match the pinned native-v2 contract. An incomplete, changed, or internally symlinked shared reference fails before analysis.
+
+If `references/samurai_hg38` does not exist, OncoTracer creates a marker-owned, content-addressed cache under `.oncotracer/reference-cache/`. Only that owned cache may be populated or transactionally rebuilt. The pinned ichorCNA hg38/500 kb assets follow the same rule: an existing `references/samurai_ichorcna_hg38_500kb` is read-only; otherwise verified assets are downloaded to the owned cache. Do not copy the ownership marker into an unrelated or shared directory to make OncoTracer overwrite it.
+
 ## Illumina input
 
 ### Automatic sample table
