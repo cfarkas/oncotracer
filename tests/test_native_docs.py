@@ -98,6 +98,40 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("preserves them rather than recursively deleting", troubleshooting)
         self.assertIn("success, error, or interruption", troubleshooting)
 
+    def test_installer_ownership_and_atomic_replacement_are_documented(self) -> None:
+        installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
+        architecture = (ROOT / "docs/native_architecture.md").read_text(
+            encoding="utf-8"
+        )
+        parameters = (ROOT / "docs/configuration/parameter_reference.md").read_text(
+            encoding="utf-8"
+        )
+        troubleshooting = (ROOT / "docs/troubleshooting.md").read_text(encoding="utf-8")
+        poetry = (ROOT / "docs/poetry.md").read_text(encoding="utf-8")
+
+        for required in (
+            "never adopts a populated Conda directory",
+            "ownership-checked lock",
+            "Unrelated siblings",
+            "same-directory transaction",
+            "container provenance",
+            "Existing unowned files",
+        ):
+            self.assertIn(required, installation)
+        for required in (
+            "authenticated rollback journal",
+            "fixed isolated `poetry-runtime` child",
+            "created directly at its final canonical prefix",
+            "exact file inventory",
+            "checkout-local virtual",
+            "Neither `--force` path adopts or pre-deletes",
+        ):
+            self.assertIn(required, architecture)
+        self.assertIn("Backend-irrelevant options are errors", parameters)
+        self.assertIn("cannot adopt or erase an unowned", troubleshooting)
+        self.assertIn("does not alter Poetry's global environment", poetry)
+        self.assertIn("poetry-runtime/bin/oncotracer", poetry)
+        self.assertNotIn("poetry run oncotracer", poetry)
     def test_native_ci_uses_exact_semantic_tool_probes(self) -> None:
         workflow = (ROOT / ".github/workflows/native-v2-ci.yml").read_text(
             encoding="utf-8"

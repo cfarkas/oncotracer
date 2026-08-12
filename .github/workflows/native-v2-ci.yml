@@ -64,6 +64,7 @@ jobs:
             tests/test_native_engine.py \
             tests/test_native_methylation.py \
             tests/test_beginner_runtime.py \
+            tests/test_install_safety.py \
             tests/test_compare_native_parity.py \
             tests/test_native_docs.py \
             tests/test_poetry_cli.py \

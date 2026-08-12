@@ -9,17 +9,32 @@ Poetry is intended for source development. Beginners who only want to run analys
 ```bash
 cd /path/to/my/oncotracer_source/
 
-poetry install --no-interaction
-poetry run oncotracer --help
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+"$ONCOTRACER_DEV" --help
 ```
+
+The explicit prefix is a dedicated OncoTracer installation root, not a Conda
+base installation or a shared Poetry environment. It must be absent, empty, or
+already carry the exact ownership markers written by this installer. OncoTracer
+builds the Poetry virtual environment directly at the final canonical
+`poetry-runtime` path. An ownership-checked rollback transaction preserves the
+verified prior runtime until the replacement passes provenance, executable,
+and exact-inventory checks. It does not alter Poetry's global environment or a
+checkout-local `.venv`.
 
 ## Prepare the Poetry backend
 
 ```bash
 cd /path/to/my/oncotracer_source/
 
-./oncotracer install --poetry
-poetry run oncotracer doctor --backend poetry
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+
+"$ONCOTRACER_DEV" doctor --backend poetry
 ```
 
 ## Run QuickStart 1 through Poetry
@@ -29,7 +44,8 @@ Keep the source checkout separate from the analysis output. The output path belo
 ```bash
 cd /path/to/my/oncotracer_source/
 
-poetry run oncotracer quickstart 1 \
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+"$ONCOTRACER_DEV" quickstart 1 \
   --backend poetry \
   --test-root /path/to/my/analyses_dir/oncotracer-quickstart1-poetry
 ```
@@ -39,7 +55,8 @@ poetry run oncotracer quickstart 1 \
 ```bash
 cd /path/to/my/oncotracer_source/
 
-poetry run oncotracer quickstart 2 \
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+"$ONCOTRACER_DEV" quickstart 2 \
   --backend poetry \
   --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry
 ```

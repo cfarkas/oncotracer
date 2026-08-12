@@ -94,6 +94,7 @@ CLONES="$(grep -c '^clone ' "$FAKE_GIT_LOG")"
   cd "$ROOT"
   python3 -m unittest -v \
     tests/test_beginner_runtime.py \
+    tests/test_install_safety.py \
     tests/test_payload_cache.py \
     tests/test_standalone_dry_run.py
 )

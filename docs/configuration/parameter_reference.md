@@ -26,18 +26,24 @@ oncotracer install --singularity
 ./oncotracer install --poetry
 ```
 
-| Option | Meaning |
-| --- | --- |
-| `--conda` | Create/update five isolated Conda prefixes |
-| `--docker` | Validate Docker, pull the native image, and run its host doctor |
-| `--singularity` | Pull/reuse a SIF through Apptainer or Singularity |
-| `--poetry` | Install the source-development launcher and the five Conda prefixes |
-| `--prefix PATH` | Alternate parent for the five Conda prefixes |
-| `--image IMAGE` | Override the default native container image |
-| `--sif PATH` | Override the Singularity/Apptainer image path |
-| `--force` | Recreate damaged/changed managed assets deliberately |
-| `--dry-run` | Print installation commands without executing them |
-| `--root PATH` | Explicit source or extracted payload root |
+| Option | Accepted with | Meaning |
+| --- | --- | --- |
+| `--conda` | exactly one backend | Create/update five isolated Conda prefixes |
+| `--docker` | exactly one backend | Validate Docker, pull the native image, and run its host doctor |
+| `--singularity` | exactly one backend | Pull/reuse a SIF through Apptainer or Singularity |
+| `--poetry` | exactly one backend | Install an isolated source-development launcher and the five Conda prefixes |
+| `--prefix PATH` | Conda, Poetry | Dedicated owned parent for fixed managed children |
+| `--image IMAGE` | Docker, Singularity | Override the default native container image |
+| `--sif PATH` | Singularity | Override the managed Singularity/Apptainer image path |
+| `--force` | Conda, Poetry, Singularity | Transactionally replace intact, owned assets only |
+| `--dry-run` | every backend | Print installation commands without executing them or writing state |
+| `--root PATH` | Conda, Poetry | Explicit source or extracted payload root |
+
+Backend-irrelevant options are errors; they are never silently ignored. Conda
+and Poetry prefixes must be absent, empty, or have exact root and child
+ownership markers. A SIF destination must be absent on first installation or
+form an intact file/sidecar pair already owned by OncoTracer. `--force` cannot
+adopt, unlink, or recursively remove an unowned target.
 
 ## `oncotracer doctor`
 

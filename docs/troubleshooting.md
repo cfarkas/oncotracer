@@ -121,6 +121,15 @@ oncotracer doctor --backend conda
 
 Do not set `R_HOME`, `R_LIBS`, `R_LIBS_USER`, or `R_LIBS_SITE` to another R installation. Native qDNAseq and ichorCNA stages invoke the exact `Rscript` in their own prefix with those ambient variables removed. Diagnose the exact prefixes; do not substitute a login-shell `command -v` result.
 
+An ownership error means the selected `--prefix` is populated but was not
+created by this installer, a fixed child has lost or mismatched its marker, a
+symlink is present in the target path, or an interrupted journal cannot be
+authenticated. Do not add a marker manually and do not delete the path broadly.
+Preserve it, inspect the reported path, and choose a new absent or empty
+dedicated prefix. `--force` intentionally cannot adopt or erase an unowned
+directory. If a managed prefix is reported active, allow the named process to
+finish or select another prefix instead of replacing files beneath it.
+
 Check storage and inode availability when environment creation fails:
 
 ```bash
@@ -162,6 +171,15 @@ oncotracer doctor --backend singularity
 ```
 
 Check that the recorded SIF exists and all YAML paths are bind-visible. On managed HPC systems, ask the administrator about allowed bind roots and cache locations.
+
+The installed SIF must have its adjacent strict `.oncotracer.json` sidecar. A
+missing, malformed, path-mismatched, source-mismatched, or checksum-mismatched
+pair is preserved and rejected; `--force` does not make an unowned file safe to
+replace. Choose a new absent `--sif` destination. For an intact owned pair,
+`--force` pulls and validates a same-directory candidate before an atomic swap,
+so a pull, doctor, provenance, or publication failure leaves the prior image
+available. Never pre-delete a shared or active SIF to work around an ownership
+error.
 
 ## 9. Illumina input errors
 

@@ -96,8 +96,9 @@ oncotracer run --backend conda --config "$CONFIG"
 oncotracer run --backend docker --config "$CONFIG"
 # or:
 oncotracer run --backend singularity --config "$CONFIG"
-# or, in a Poetry development checkout:
-poetry run oncotracer run --backend poetry --config "$CONFIG"
+# or, after the isolated Poetry development install:
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer run \
+  --backend poetry --config "$CONFIG"
 ```
 
 Prepare the selected backend first with `oncotracer install`.

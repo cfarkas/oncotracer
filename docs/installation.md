@@ -79,6 +79,20 @@ oncotracer doctor --backend conda
 
 Use `--force` only when deliberately rebuilding all five prefixes.
 
+The prefix parent must be absent, empty, or already owned by this OncoTracer
+installer. OncoTracer never adopts a populated Conda directory or an unmarked
+fixed child (`core`, `qdnaseq`, `ichorcna`, `classifier`, `gistic`, or the
+optional Poetry runtime). Strict markers bind each managed path to an install
+ID, environment definition, exact file inventory, and OncoTracer source
+identity. Creation and updates run under an ownership-checked lock. For an
+owned replacement, OncoTracer journals the operation, moves only the verified
+old child to a same-filesystem backup, and creates the new Conda or Poetry
+environment directly at its final canonical prefix. Semantic probes and the
+exact inventory must pass there before commit; interruption restores the prior
+child. `--force` applies only to an intact owned installation and refuses
+prefixes used by active processes. Unrelated siblings under an owned prefix
+parent are preserved.
+
 ### Docker
 
 Install Docker Engine and ensure the current user can access the daemon:
@@ -121,6 +135,17 @@ oncotracer run --backend singularity \
   --config /absolute/path/project/config/illumina.auto.yml
 ```
 
+The first installation requires an absent SIF destination. OncoTracer writes a
+strict `.oncotracer.json` sidecar that binds the canonical path, source image,
+SIF SHA-256, install ID, and OncoTracer source identity. Reuse rechecks the
+sidecar and bytes, then verifies the native `doctor` and container provenance
+inside the image.
+`--force` is accepted only for an owned pair: a new image is pulled to a
+same-directory transaction, verified before publication, and atomically
+swapped with rollback protection. Existing unowned files, symlinks,
+hard-linked files, malformed sidecars, and active images fail closed without
+being removed.
+
 ### Poetry
 
 Poetry is a source-development route, not the normal binary installation. Clone the repository only for development:
@@ -128,16 +153,32 @@ Poetry is a source-development route, not the normal binary installation. Clone 
 ```bash
 git clone https://github.com/cfarkas/oncotracer.git
 cd oncotracer
-./oncotracer install --poetry
-poetry run oncotracer --version
-poetry run oncotracer doctor --backend poetry
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer --version
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer doctor \
+  --backend poetry
 ```
 
-`./oncotracer install --poetry` installs the locked Python launcher and the same five Conda scientific environments. Poetry alone does not provide R, BWA, samtools, Picard, HMMcopy, ichorCNA, or GISTIC2.
+`./oncotracer install --poetry` installs the locked Python launcher into the
+explicit, OncoTracer-owned `poetry-runtime` child and creates the same five
+Conda scientific environments. It does not select or modify Poetry's global
+environment, another checkout's virtual environment, or an existing unowned
+prefix. The virtual environment is built at its final path, while Poetry's
+configuration, data, and download caches are isolated inside the transaction.
+Poetry alone does not provide R, BWA, samtools, Picard, HMMcopy, ichorCNA, or
+GISTIC2.
+
+Installer options are backend-specific. `--prefix` is accepted only for Conda
+and Poetry, while `--image` and `--sif` apply only to the relevant container
+backend. OncoTracer rejects irrelevant combinations instead of silently
+ignoring a path or force request.
 
 ## 3. Verify provenance and health
 
-Run these checks after installation or after moving environments:
+Run these checks after installation or an ownership-verified replacement.
+Managed Conda and Poetry prefixes are canonical-path-bound and must not be moved:
 
 ```bash
 oncotracer --version

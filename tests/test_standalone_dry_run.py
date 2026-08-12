@@ -37,8 +37,6 @@ class DryRunPayloadCacheScopeTests(unittest.TestCase):
                             "install",
                             "--docker",
                             "--dry-run",
-                            "--root",
-                            str(ROOT),
                         ]
                     )
                 self.assertEqual(status, 0)
@@ -235,18 +233,12 @@ class StandaloneDryRunTests(unittest.TestCase):
                 def prepare(base: Path, selected: str = backend):
                     envs = base / "generated-envs"
                     image = base / "generated-image.sif"
-                    return (
-                        [
-                            "install",
-                            f"--{selected}",
-                            "--dry-run",
-                            "--prefix",
-                            str(envs),
-                            "--sif",
-                            str(image),
-                        ],
-                        (envs, image),
-                    )
+                    arguments = ["install", f"--{selected}", "--dry-run"]
+                    if selected in {"conda", "poetry"}:
+                        arguments.extend(["--prefix", str(envs)])
+                    elif selected == "singularity":
+                        arguments.extend(["--sif", str(image)])
+                    return arguments, (envs, image)
 
                 self._run_case(prepare)
 
@@ -336,6 +328,7 @@ class StandaloneDryRunTests(unittest.TestCase):
                     "--conda",
                     "--prefix",
                     str(base / "envs"),
+                    "--dry-run",
                 ],
                 text=True,
                 capture_output=True,
@@ -343,13 +336,11 @@ class StandaloneDryRunTests(unittest.TestCase):
                 check=False,
             )
 
-            self.assertEqual(completed.returncode, 2)
-            self.assertTrue(conda_ran.is_file())
-            self.assertTrue((payload / ".complete.json").is_file())
-            embedded_core = payload / "environments" / "native-core.yml"
-            self.assertTrue(embedded_core.is_file())
-            self.assertNotIn("adjacent-sentinel", embedded_core.read_text())
-            self.assertIn(str(embedded_core), completed.stderr)
+            self.assertEqual(completed.returncode, 0)
+            self.assertFalse(conda_ran.exists())
+            self.assertFalse(payload.exists())
+            self.assertIn("native-core.yml", completed.stderr)
+            self.assertIn("oncotracer-dry-run-payload-", completed.stderr)
             self.assertNotIn(str(adjacent_environments), completed.stderr)
 
     def test_normal_standalone_command_keeps_reusable_payload_cache(self) -> None:
@@ -392,7 +383,6 @@ class StandaloneDryRunTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(completed.returncode, 2)
-            self.assertTrue(sentinel.is_file())
             self.assertTrue((payload / ".complete.json").is_file())
             self.assertTrue((payload / "bin" / "scripts").is_dir())
 

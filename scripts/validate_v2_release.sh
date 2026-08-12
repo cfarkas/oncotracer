@@ -177,7 +177,9 @@ readonly LOG_DIR="$VALIDATION_ROOT/logs"
 readonly STATE_DIR="$VALIDATION_ROOT/state"
 readonly TMP_DIR="$VALIDATION_ROOT/tmp"
 readonly RELEASE_CANDIDATE_DIR="$VALIDATION_ROOT/release-candidate"
-readonly ENV_ROOT="$VALIDATION_ROOT/envs"
+# A source-bound root prevents a resumed validation from adopting or mutating
+# legacy unmarked environments created by an earlier candidate.
+readonly ENV_ROOT="$VALIDATION_ROOT/managed-envs-by-source/$SOURCE_COMMIT"
 readonly INPUT_ROOT="$VALIDATION_ROOT/inputs"
 readonly ANALYSIS_ROOT="$VALIDATION_ROOT/analysis"
 readonly CONFIG_DIR="$ANALYSIS_ROOT/configs"
@@ -1593,6 +1595,7 @@ action_install_environments() {
   probe_readcounter
 
   CUDA_VISIBLE_DEVICES='' NVIDIA_VISIBLE_DEVICES=void \
+  PYTHONDONTWRITEBYTECODE=1 \
     "$ENV_ROOT/classifier/bin/python" -c \
     'import huggingface_hub, jinja2, matplotlib, numpy, openpyxl, pandas, pypdf, reportlab, requests, safetensors, scipy, sklearn, torch, transformers; print("CLASSIFIER_PYTHON_CPU_OK")'
   test -x "$ENV_ROOT/gistic/bin/gistic2"

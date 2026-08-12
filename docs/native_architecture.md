@@ -23,6 +23,30 @@ On every reuse, OncoTracer independently derives the expected payload inventory 
 
 All standalone `--dry-run` commands use a process-scoped temporary payload and remove it after success, validation failure, or interruption. They do not populate the persistent XDG cache or create installation configuration, result directories, Conda environments, container images, or SIF files.
 
+## Installer ownership boundary
+
+Managed Conda/Poetry installations use a strict root marker plus one strict
+marker for each fixed child. The records bind canonical paths, a random install
+ID, the environment or lock-file digest, exact file inventory, and OncoTracer
+source identity. An ownership-checked sibling lock serializes operations. For
+each changed child, an authenticated rollback journal records the prior state,
+the exact-owned old child moves to a same-filesystem backup, and the replacement
+is created directly at its final canonical prefix. Semantic probes and the
+inventory run at that final path before commit; unrelated siblings are outside
+the transaction. Populated unowned paths, marker mismatches, symlinked paths,
+foreign entries, and active prefixes fail before replacement. Poetry's launcher
+is a fixed isolated `poetry-runtime` child, not an ambient virtual environment
+or checkout-local virtual environment.
+
+A managed SIF has an adjacent strict sidecar binding its canonical path, image
+reference, bytes, install ID, and source identity. Every reuse verifies the
+file SHA-256 and executes container `doctor` and `provenance`. Replacement pulls
+into a same-directory owned transaction and verifies the candidate before an
+atomic, rollback-protected swap. Neither `--force` path adopts or pre-deletes an
+unowned destination. Install dry-runs perform the same read-only target checks
+but create no locks, markers, transactions, environments, images, or saved
+configuration.
+
 The release file can therefore be installed directly:
 
 ```bash

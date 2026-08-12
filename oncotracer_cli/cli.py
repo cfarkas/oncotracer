@@ -17,6 +17,7 @@ from typing import Sequence
 
 from . import __version__
 from .engine import Toolchain, run_native
+from .install_safety import install_conda_managed, install_sif_managed
 from .provenance import ProvenanceError, get_provenance
 from .runtime import (
     OncoTracerError,
@@ -79,34 +80,29 @@ def _run(command: Sequence[str | Path], *, cwd: Path | None = None, dry_run: boo
 
 
 def _conda_prefixes(prefix: Path | None = None) -> dict[str, Path]:
-    base = (prefix or (_data_home() / "envs")).expanduser().resolve()
+    base = Path(
+        os.path.abspath(os.fspath((prefix or (_data_home() / "envs")).expanduser()))
+    )
     return {
         name: base / name
         for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
     }
 
 
-def _install_conda(root: Path, args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
-    conda = shutil.which("conda") or ("conda" if args.dry_run else require_command("conda"))
-    prefixes = _conda_prefixes(Path(args.prefix) if args.prefix else None)
-    definitions = {
-        "core": root / "environments" / "native-core.yml",
-        "qdnaseq": root / "environments" / "native-qdnaseq.yml",
-        "ichorcna": root / "environments" / "native-ichorcna.yml",
-        "classifier": root / "environments" / "native-classifier.yml",
-        "gistic": root / "environments" / "native-gistic2.yml",
-    }
-    for name, destination in prefixes.items():
-        definition = require_file(definitions[name], f"native {name} environment definition")
-        if not args.dry_run:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-        if destination.is_dir() and not args.force:
-            command = [conda, "env", "update", "--prefix", destination, "--file", definition, "--prune"]
-        else:
-            if destination.exists() and args.force and not args.dry_run:
-                shutil.rmtree(destination)
-            command = [conda, "env", "create", "--prefix", destination, "--file", definition]
-        _run(command, dry_run=args.dry_run)
+def _install_conda(
+    root: Path, args: argparse.Namespace, *, save: bool = True
+) -> dict[str, object]:
+    conda = shutil.which("conda") or (
+        "conda" if args.dry_run else require_command("conda")
+    )
+    base = Path(args.prefix) if args.prefix else (_data_home() / "envs")
+    prefixes = install_conda_managed(
+        root,
+        base,
+        conda=conda,
+        force=args.force,
+        dry_run=args.dry_run,
+    )
     result: dict[str, object] = {
         "backend": "conda",
         "core_prefix": str(prefixes["core"]),
@@ -142,22 +138,21 @@ def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
         raise OncoTracerError("Apptainer or Singularity is required for --singularity")
     image = args.image or DEFAULT_IMAGE
     destination = (
-        Path(args.sif).expanduser().resolve()
+        Path(args.sif)
         if args.sif
-        else (_data_home() / "images" / "oncotracer-2.0.0.sif").resolve()
+        else (_data_home() / "images" / "oncotracer-2.0.0.sif")
     )
-    if not args.dry_run:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-    if args.force and destination.exists() and not args.dry_run:
-        destination.unlink()
-    if not destination.is_file():
-        _run([executable, "pull", destination, f"docker://{image}"], dry_run=args.dry_run)
-    _run([executable, "exec", destination, "oncotracer", "doctor", "--backend", "host"], dry_run=args.dry_run)
+    installed = install_sif_managed(
+        destination,
+        executable=executable,
+        image=image,
+        force=args.force,
+        dry_run=args.dry_run,
+    )
     result: dict[str, object] = {
+        **installed,
         "backend": "singularity",
         "singularity_command": executable,
-        "sif": str(destination),
-        "image": image,
     }
     if not args.dry_run:
         _save_install_config(result)
@@ -165,16 +160,27 @@ def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
 
 
 def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
-    poetry = shutil.which("poetry") or ("poetry" if args.dry_run else require_command("poetry"))
-    if not args.dry_run:
-        require_command("conda")
-    _run([poetry, "install", "--no-interaction"], cwd=root, dry_run=args.dry_run)
-    scientific = _install_conda(root, args, save=False)
+    poetry = shutil.which("poetry") or (
+        "poetry" if args.dry_run else require_command("poetry")
+    )
+    conda = shutil.which("conda") or (
+        "conda" if args.dry_run else require_command("conda")
+    )
+    base = Path(args.prefix) if args.prefix else (_data_home() / "envs")
+    prefixes = install_conda_managed(
+        root,
+        base,
+        conda=conda,
+        force=args.force,
+        dry_run=args.dry_run,
+        poetry=poetry,
+    )
     result: dict[str, object] = {
-        **scientific,
         "backend": "poetry",
         "repository": str(root),
+        "poetry_prefix": str(base.expanduser().absolute() / "poetry-runtime"),
         "scientific_backend": "conda",
+        **{f"{name}_prefix": str(path) for name, path in prefixes.items()},
     }
     if not args.dry_run:
         _save_install_config(result)
@@ -182,12 +188,37 @@ def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
 
 
 def command_install(args: argparse.Namespace) -> int:
-    selected = [name for name in ("docker", "singularity", "poetry", "conda") if getattr(args, name)]
+    selected = [
+        name
+        for name in ("docker", "singularity", "poetry", "conda")
+        if getattr(args, name)
+    ]
     if len(selected) != 1:
         raise OncoTracerError(
             "install requires exactly one backend flag: --docker, --singularity, --poetry, or --conda"
         )
     backend = selected[0]
+    provided = {
+        "--prefix": args.prefix is not None,
+        "--image": args.image is not None,
+        "--sif": args.sif is not None,
+        "--force": bool(args.force),
+        "--root": args.root is not None,
+    }
+    allowed = {
+        "conda": {"--prefix", "--force", "--root"},
+        "poetry": {"--prefix", "--force", "--root"},
+        "docker": {"--image"},
+        "singularity": {"--image", "--sif", "--force"},
+    }[backend]
+    irrelevant = sorted(
+        flag for flag, present in provided.items() if present and flag not in allowed
+    )
+    if irrelevant:
+        raise OncoTracerError(
+            f"install --{backend} does not accept backend-irrelevant option(s): "
+            f"{', '.join(irrelevant)}"
+        )
     if backend == "conda":
         result = _install_conda(runtime_root(args.root), args)
     elif backend == "docker":
@@ -245,6 +276,7 @@ def _project_mounts(config_path: Path) -> list[Path]:
 
 def _native_environment(config: dict[str, object]) -> dict[str, str]:
     environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
     if config.get("core_prefix"):
         core = Path(str(config["core_prefix"])).expanduser().resolve()
         environment["ONCOTRACER_CORE_PREFIX"] = str(core)
@@ -686,6 +718,7 @@ def _prefix_environment(
     cpu_only: bool = False,
 ) -> dict[str, str]:
     environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
     environment["PATH"] = f"{prefix / 'bin'}{os.pathsep}{environment.get('PATH', '')}"
     if clean_r:
         for name in ("R_HOME", "R_LIBS", "R_LIBS_USER", "R_LIBS_SITE"):

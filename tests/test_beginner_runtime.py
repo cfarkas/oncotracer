@@ -42,7 +42,10 @@ class BeginnerRuntimeTests(unittest.TestCase):
 
     def test_install_dry_runs_need_no_backend_and_write_nothing(self) -> None:
         for backend in ("conda", "docker", "singularity", "poetry"):
-            with self.subTest(backend=backend), tempfile.TemporaryDirectory() as temporary:
+            with (
+                self.subTest(backend=backend),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
                 base = Path(temporary)
                 environment = {
                     "XDG_CONFIG_HOME": str(base / "config"),
@@ -52,18 +55,23 @@ class BeginnerRuntimeTests(unittest.TestCase):
                     "install",
                     f"--{backend}",
                     "--dry-run",
-                    "--root",
-                    str(ROOT),
                 ]
-                if backend == "conda":
+                if backend in {"conda", "poetry"}:
+                    arguments.extend(["--root", str(ROOT)])
                     arguments.extend(["--prefix", str(base / "envs")])
+                elif backend == "singularity":
+                    arguments.extend(["--sif", str(base / "image.sif")])
                 with mock.patch.dict(os.environ, environment, clear=False):
-                    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    with (
+                        contextlib.redirect_stdout(io.StringIO()),
+                        contextlib.redirect_stderr(io.StringIO()),
+                    ):
                         status = cli.main(arguments)
                 self.assertEqual(status, 0)
                 self.assertFalse((base / "config").exists())
                 self.assertFalse((base / "data").exists())
                 self.assertFalse((base / "envs").exists())
+                self.assertFalse((base / "image.sif").exists())
 
     def test_run_dry_runs_need_no_installed_backend_and_write_nothing(self) -> None:
         for backend in ("conda", "docker", "singularity", "poetry"):

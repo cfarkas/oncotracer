@@ -87,8 +87,10 @@ Poetry development route:
 
 ```bash
 cd /path/to/my/oncotracer_source/
-./oncotracer install --poetry
-poetry run oncotracer doctor --backend poetry
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer doctor \
+  --backend poetry
 ```
 
 Use one route for a normal analysis.
@@ -274,8 +276,9 @@ Poetry is a source-development route. Keep the source checkout separate from the
 ```bash
 cd /path/to/my/oncotracer_source/
 
-./oncotracer install --poetry
-poetry run oncotracer quickstart 1 \
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer quickstart 1 \
   --backend poetry \
   --test-root /path/to/my/analyses_dir/oncotracer-quickstart1-poetry
 ```

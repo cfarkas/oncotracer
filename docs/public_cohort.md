@@ -195,8 +195,9 @@ Poetry is a source-development route. Keep the source checkout separate from the
 ```bash
 cd /path/to/my/oncotracer_source/
 
-./oncotracer install --poetry
-poetry run oncotracer quickstart 2 \
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer quickstart 2 \
   --backend poetry \
   --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry
 ```

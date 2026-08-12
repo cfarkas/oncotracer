@@ -74,6 +74,9 @@ REQUIRED_TEXT = {
         "oncotracer doctor --backend singularity",
         "$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload",
         "does not populate the persistent cache",
+        "never adopts a populated Conda directory",
+        "same-directory transaction",
+        "backend-specific",
     ),
     "docs/quick_start.md": (
         "complete native analysis",
@@ -177,6 +180,10 @@ REQUIRED_TEXT = {
         "Normal v2 execution does not invoke Nextflow",
         "canonical path, file type, normalized mode, size, and SHA-256",
         "process-scoped temporary payload",
+        "Installer ownership boundary",
+        "authenticated rollback journal",
+        "created directly at its final canonical prefix",
+        "exact file inventory",
     ),
     "docs/parity_release.md": (
         "Illumina ERR12341627",
