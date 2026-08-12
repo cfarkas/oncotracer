@@ -64,9 +64,7 @@ mkdir -p "$TEST_ROOT/configs" "$REPORT_ROOT" "$NEXTFLOW_REPORT_ROOT" \
   "$CONTEXT/manifests" "$CONTEXT/configs/parity" "$CONTEXT/configs/input" \
   "$CONTEXT/qdnaseq-annotation"
 
-log "Free runner disk and install frozen-comparator prerequisites"
-sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
-docker system prune --all --force || true
+log "Install frozen-comparator prerequisites"
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends samtools bwa minimap2 pigz curl wget git
 

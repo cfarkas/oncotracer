@@ -76,6 +76,7 @@ jobs:
             tests/test_reference_storage_safety.py \
             tests/test_product_hygiene.py \
             tests/test_output_safety.py \
+            tests/test_hosted_ci_storage_safety.py \
             tests/test_release_workflow.py
       - name: Run shell and standalone documentation regression tests
         run: |
@@ -327,11 +328,8 @@ jobs:
             echo "source_commit=$SOURCE_COMMIT"
             echo "source_sha256=$SOURCE_SHA256"
           } >> "$GITHUB_OUTPUT"
-      - name: Free runner disk space
-        run: |
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL || true
-          docker system prune --all --force || true
-          df -h
+      - name: Record runner disk space
+        run: df -h
       - name: Build native image
         run: |
           docker build \
