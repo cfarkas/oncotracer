@@ -12,7 +12,6 @@ import itertools
 import json
 import os
 import re
-import shutil
 import stat
 import subprocess
 import sys
@@ -183,13 +182,6 @@ def _safe_read_json(
     return value
 
 
-def _safe_unlink(path: Path, label: str) -> None:
-    metadata = path.lstat()
-    if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
-        raise OncoTracerError(f"refusing to remove unsafe {label}: {path}")
-    path.unlink()
-
-
 def _fsync_directory(path: Path) -> None:
     flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
     descriptor = os.open(path, flags)
@@ -229,10 +221,11 @@ def _atomic_write_json(path: Path, value: object) -> None:
         _fsync_directory(path.parent)
     finally:
         if created_identity is not None and os.path.lexists(temporary):
-            with contextlib.suppress(OSError):
-                observed = temporary.lstat()
-                if (observed.st_dev, observed.st_ino) == created_identity:
-                    temporary.unlink()
+            print(
+                "OncoTracer retained interrupted metadata staging at " f"{temporary}",
+                file=sys.stderr,
+                flush=True,
+            )
 
 
 def _lock_record(path: Path, target: Path, kind: str) -> dict[str, object]:
@@ -1592,27 +1585,25 @@ def _discard_claimed_target(
     os.replace(target, discarded / name)
 
 
-def _remove_transaction(
+def _retain_rollback_transaction(
     transaction: Path, target: Path, transaction_id: str, kind: str
-) -> None:
+) -> Path | None:
     if not os.path.lexists(transaction):
-        return
+        return None
     _require_transaction(transaction, target, transaction_id, kind)
     _assert_inactive(transaction)
     _assert_single_filesystem_tree(transaction, target.parent)
-    shutil.rmtree(transaction)
+    return _preserve_staging_transaction(
+        transaction,
+        target,
+        transaction_id,
+        kind,
+        reason="rollback",
+    )
 
 
-def _committed_cleanup_path(transaction: Path) -> Path:
-    return transaction.with_name(f"{transaction.name}.oncotracer-cleanup")
-
-
-def _committed_finalize_path(transaction: Path) -> Path:
-    return transaction.with_name(f"{transaction.name}.oncotracer-cleanup-finalize")
-
-
-def _committed_delete_path(transaction: Path) -> Path:
-    return transaction.with_name(f"{transaction.name}.oncotracer-cleanup-delete")
+def _committed_retained_path(transaction: Path) -> Path:
+    return transaction.with_name(f"{transaction.name}.oncotracer-retained")
 
 
 def _rename_noreplace_at(
@@ -1716,25 +1707,6 @@ def _cleanup_relative_parts(relative: str) -> tuple[str, ...]:
     ):
         raise OncoTracerError(f"unsafe committed cleanup path: {relative!r}")
     return parts
-
-
-@contextlib.contextmanager
-def _cleanup_parent_descriptor(
-    root_fd: int, relative: str
-) -> Iterator[tuple[int, str]]:
-    """Yield a pinned physical parent and leaf for a cleanup-relative path."""
-    parts = _cleanup_relative_parts(relative)
-    descriptor = os.dup(root_fd)
-    try:
-        for part in parts[:-1]:
-            child = _open_child_directory(
-                descriptor, part, "committed installer cleanup directory"
-            )
-            os.close(descriptor)
-            descriptor = child
-        yield descriptor, parts[-1]
-    finally:
-        os.close(descriptor)
 
 
 def _cleanup_entry_from_parent(
@@ -1863,14 +1835,6 @@ def _cleanup_entry_from_parent(
         },
         finished,
     )
-
-
-def _cleanup_entry_at(
-    root_fd: int, relative: str
-) -> tuple[dict[str, object], os.stat_result]:
-    root_device = os.fstat(root_fd).st_dev
-    with _cleanup_parent_descriptor(root_fd, relative) as (parent_fd, name):
-        return _cleanup_entry_from_parent(root_device, parent_fd, name, relative)
 
 
 def _cleanup_entries_at(root_fd: int) -> list[dict[str, object]]:
@@ -2020,150 +1984,31 @@ def _valid_cleanup_inventory(
         if relative == ".oncotracer-transaction-owner.json":
             owner_seen = entry["type"] == "file"
         previous = relative
-    paths = {str(entry["path"]) for entry in value["entries"]}
-    claims = {
-        _cleanup_claim_relative(str(entry["path"]), entry) for entry in value["entries"]
-    }
-    return owner_seen and len(claims) == len(paths) and not (claims & paths)
+    return owner_seen
 
 
-def _cleanup_claim_name(expected: Mapping[str, object]) -> str:
-    payload = json.dumps(dict(expected), sort_keys=True, separators=(",", ":"))
-    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-    return f".oncotracer-cleanup-claim-{digest}"
-
-
-def _cleanup_claim_relative(relative: str, expected: Mapping[str, object]) -> str:
-    parts = _cleanup_relative_parts(relative)
-    return "/".join((*parts[:-1], _cleanup_claim_name(expected)))
-
-
-def _cleanup_removal_order(entries: Sequence[Mapping[str, object]]) -> list[str]:
-    owner = ".oncotracer-transaction-owner.json"
-    paths = [str(entry["path"]) for entry in entries]
-    return sorted(
-        paths,
-        key=lambda relative: (
-            relative == owner,
-            -len(relative.split("/")),
-            relative,
-        ),
-    )
-
-
-def _validate_cleanup_state_at(
-    cleanup_fd: int, inventory: Mapping[str, object], label: str
-) -> tuple[dict[str, dict[str, object]], list[str], str | None]:
-    """Require the pinned remaining tree to be one exact removal suffix."""
-    expected_entries = {
-        str(entry["path"]): dict(entry) for entry in inventory["entries"]
-    }
-    raw_entries = {
-        str(entry["path"]): entry for entry in _cleanup_entries_at(cleanup_fd)
-    }
-    claim_paths = {
-        _cleanup_claim_relative(path, expected): path
-        for path, expected in expected_entries.items()
-    }
-    observed_entries: dict[str, dict[str, object]] = {}
-    unexpected: list[str] = []
-    changed: list[str] = []
-    claimed: list[str] = []
-    for observed_path, raw_entry in raw_entries.items():
-        expected_path = (
-            observed_path
-            if observed_path in expected_entries
-            else claim_paths.get(observed_path)
+def _validate_retained_state_at(
+    retained_fd: int, inventory: Mapping[str, object], label: str
+) -> list[dict[str, object]]:
+    """Require exact retained rollback bytes; no partial deletion is accepted."""
+    expected = [dict(entry) for entry in inventory["entries"]]
+    observed = _cleanup_entries_at(retained_fd)
+    if observed != expected:
+        expected_by_path = {str(entry["path"]): entry for entry in expected}
+        observed_by_path = {str(entry["path"]): entry for entry in observed}
+        added = sorted(set(observed_by_path) - set(expected_by_path))
+        missing = sorted(set(expected_by_path) - set(observed_by_path))
+        changed = sorted(
+            path
+            for path in set(expected_by_path) & set(observed_by_path)
+            if expected_by_path[path] != observed_by_path[path]
         )
-        if expected_path is None or expected_path in observed_entries:
-            unexpected.append(observed_path)
-            continue
-        entry = {**raw_entry, "path": expected_path}
-        observed_entries[expected_path] = entry
-        if observed_path != expected_path:
-            claimed.append(expected_path)
-        if entry != expected_entries[expected_path]:
-            changed.append(expected_path)
-    if unexpected or changed or len(claimed) > 1:
         raise OncoTracerError(
-            "committed installer cleanup contains an unexpected entry or modified "
-            f"entry and will be preserved: {label}; added={unexpected!r}; "
-            f"changed={changed!r}; claimed={claimed!r}"
+            "committed installer retained rollback material changed and will be "
+            f"preserved: {label}; added={added!r}; missing={missing!r}; "
+            f"changed={changed!r}"
         )
-    order = _cleanup_removal_order(inventory["entries"])
-    remaining = [path for path in order if path in observed_entries]
-    allowed_suffix = order[len(order) - len(remaining) :] if remaining else []
-    if remaining != allowed_suffix:
-        removed_out_of_order = sorted(set(order) - set(remaining))
-        raise OncoTracerError(
-            "committed installer cleanup is not a deterministic partial cleanup "
-            f"suffix and will be preserved: {label}; "
-            f"removed={removed_out_of_order!r}"
-        )
-    if claimed and (not remaining or claimed[0] != remaining[0]):
-        raise OncoTracerError(
-            "committed installer cleanup claim is not the next deterministic "
-            f"removal and will be preserved: {label}; claimed={claimed!r}"
-        )
-    return observed_entries, remaining, claimed[0] if claimed else None
-
-
-def _remove_cleanup_entry_at(
-    cleanup_fd: int, relative: str, expected: Mapping[str, object]
-) -> None:
-    """Atomically claim, authenticate, then remove one inventory-bound name."""
-    with _cleanup_parent_descriptor(cleanup_fd, relative) as (parent_fd, name):
-        root_device = os.fstat(cleanup_fd).st_dev
-        claim_name = _cleanup_claim_name(expected)
-        source_exists = _exists_at(parent_fd, name)
-        claim_exists = _exists_at(parent_fd, claim_name)
-        if source_exists and claim_exists:
-            raise OncoTracerError(
-                "committed installer cleanup source and removal claim both exist; "
-                f"preserving both: {relative}"
-            )
-        if not source_exists and not claim_exists:
-            raise OncoTracerError(
-                f"committed installer cleanup member vanished: {relative}"
-            )
-        if source_exists:
-            observed, _ = _cleanup_entry_from_parent(
-                root_device, parent_fd, name, relative
-            )
-            if observed != expected:
-                raise OncoTracerError(
-                    "committed installer cleanup member changed before removal claim: "
-                    f"{relative}"
-                )
-            _rename_noreplace_at(
-                parent_fd,
-                name,
-                parent_fd,
-                claim_name,
-                f"committed installer cleanup member {relative}",
-            )
-            os.fsync(parent_fd)
-            os.fsync(cleanup_fd)
-        claimed, _ = _cleanup_entry_from_parent(
-            root_device, parent_fd, claim_name, relative
-        )
-        if claimed != expected:
-            raise OncoTracerError(
-                "committed installer cleanup removal claim does not match its "
-                f"sealed inventory and will be preserved: {relative}"
-            )
-        try:
-            if expected["type"] == "directory":
-                os.rmdir(claim_name, dir_fd=parent_fd)
-            else:
-                os.unlink(claim_name, dir_fd=parent_fd)
-        except OSError as error:
-            raise OncoTracerError(
-                "could not remove authenticated installer cleanup member "
-                f"{relative}: {error}"
-            ) from error
-        os.fsync(parent_fd)
-        os.fsync(cleanup_fd)
+    return observed
 
 
 def _exists_at(parent_fd: int, name: str) -> bool:
@@ -2205,134 +2050,75 @@ def _require_cleanup_root_identity(
         )
 
 
-def _remove_committed_transaction(
+def _retain_committed_transaction(
     transaction: Path,
     target: Path,
     transaction_id: str,
     kind: str,
     expected_top_level: set[str],
     inventory: Mapping[str, object],
-) -> None:
-    """Claim and remove a transaction through pinned no-follow descriptors."""
+) -> Path:
+    """Atomically retain authenticated rollback material; never delete it."""
     if not _valid_cleanup_inventory(
         inventory, transaction, target, transaction_id, kind
     ):
-        raise OncoTracerError("committed installer cleanup inventory is malformed")
+        raise OncoTracerError("committed installer retention inventory is malformed")
     parent = target.parent
-    cleanup = _committed_cleanup_path(transaction)
-    finalize = _committed_finalize_path(transaction)
-    delete = _committed_delete_path(transaction)
-    if (
-        transaction.parent != parent
-        or cleanup.parent != parent
-        or finalize.parent != parent
-        or delete.parent != parent
-    ):
-        raise OncoTracerError("installer transaction cleanup parent is not exact")
+    retained = _committed_retained_path(transaction)
+    roots = (transaction, retained)
+    if any(root.parent != parent for root in roots):
+        raise OncoTracerError("installer transaction retention parent is not exact")
+
     parent_fd = _open_pinned_directory(parent, "installer transaction parent")
-    cleanup_fd: int | None = None
+    retained_fd: int | None = None
     try:
-        transaction_exists = _exists_at(parent_fd, transaction.name)
-        cleanup_exists = _exists_at(parent_fd, cleanup.name)
-        finalize_exists = _exists_at(parent_fd, finalize.name)
-        delete_exists = _exists_at(parent_fd, delete.name)
-        if (
-            sum((transaction_exists, cleanup_exists, finalize_exists, delete_exists))
-            > 1
-        ):
+        existing = [root for root in roots if _exists_at(parent_fd, root.name)]
+        if len(existing) != 1:
             raise OncoTracerError(
-                "multiple installer transaction cleanup roots exist; preserving all"
+                "committed installer transaction must have exactly one rollback "
+                f"root; preserving all observed roots: {[str(path) for path in existing]!r}"
             )
-        root_name: str | None = None
-        if transaction_exists:
+        source = existing[0]
+        if source == transaction:
             _require_transaction(transaction, target, transaction_id, kind)
             _assert_inactive(transaction)
-            cleanup_fd = _open_child_directory(
-                parent_fd, transaction.name, "installer transaction"
-            )
-            _require_cleanup_root_identity(
-                parent_fd, transaction.name, cleanup_fd, inventory
-            )
-            if set(os.listdir(cleanup_fd)) != expected_top_level:
+        retained_fd = _open_child_directory(
+            parent_fd, source.name, "committed installer rollback material"
+        )
+        _require_cleanup_root_identity(parent_fd, source.name, retained_fd, inventory)
+        _assert_inactive(
+            parent / source.name, ignored_self_fds=frozenset({retained_fd})
+        )
+        if source == transaction:
+            if set(os.listdir(retained_fd)) != expected_top_level:
                 raise OncoTracerError(
                     "committed installer transaction contains an unexpected entry "
                     f"and will be preserved: {transaction}"
                 )
-            if _cleanup_entries_at(cleanup_fd) != inventory["entries"]:
-                raise OncoTracerError(
-                    "committed installer transaction changed after its cleanup "
-                    f"inventory was sealed and will be preserved: {transaction}"
-                )
+        _validate_retained_state_at(retained_fd, inventory, str(source))
+
+        root_name = source.name
+        if source != retained:
             _rename_noreplace_at(
                 parent_fd,
-                transaction.name,
+                source.name,
                 parent_fd,
-                cleanup.name,
-                "committed installer transaction cleanup root",
+                retained.name,
+                "committed installer retained rollback material",
             )
             os.fsync(parent_fd)
-            root_name = cleanup.name
-            _require_cleanup_root_identity(parent_fd, root_name, cleanup_fd, inventory)
-        elif cleanup_exists:
-            cleanup_fd = _open_child_directory(
-                parent_fd, cleanup.name, "committed installer cleanup"
-            )
-            root_name = cleanup.name
-        elif finalize_exists:
-            cleanup_fd = _open_child_directory(
-                parent_fd, finalize.name, "committed installer cleanup finalizer"
-            )
-            root_name = finalize.name
-        elif delete_exists:
-            cleanup_fd = _open_child_directory(
-                parent_fd, delete.name, "committed installer cleanup deletion claim"
-            )
-            root_name = delete.name
-        else:
-            return
-        assert cleanup_fd is not None and root_name is not None
-        _require_cleanup_root_identity(parent_fd, root_name, cleanup_fd, inventory)
-        _assert_inactive(parent / root_name, ignored_self_fds=frozenset({cleanup_fd}))
-        _, remaining, _ = _validate_cleanup_state_at(
-            cleanup_fd, inventory, str(parent / root_name)
+            root_name = retained.name
+        _require_cleanup_root_identity(parent_fd, root_name, retained_fd, inventory)
+        _validate_retained_state_at(retained_fd, inventory, str(retained))
+        print(
+            f"OncoTracer retained authenticated rollback material at {retained}",
+            file=sys.stderr,
+            flush=True,
         )
-        expected_entries = {
-            str(entry["path"]): dict(entry) for entry in inventory["entries"]
-        }
-        for relative in remaining:
-            _remove_cleanup_entry_at(cleanup_fd, relative, expected_entries[relative])
-        if os.listdir(cleanup_fd):
-            raise OncoTracerError(
-                f"committed installer cleanup is not empty: {parent / root_name}"
-            )
-        if root_name == cleanup.name:
-            _rename_noreplace_at(
-                parent_fd,
-                cleanup.name,
-                parent_fd,
-                finalize.name,
-                "committed installer cleanup finalizer",
-            )
-            os.fsync(parent_fd)
-            root_name = finalize.name
-            _require_cleanup_root_identity(parent_fd, root_name, cleanup_fd, inventory)
-        if root_name == finalize.name:
-            _rename_noreplace_at(
-                parent_fd,
-                finalize.name,
-                parent_fd,
-                delete.name,
-                "committed installer cleanup deletion claim",
-            )
-            os.fsync(parent_fd)
-            root_name = delete.name
-            _require_cleanup_root_identity(parent_fd, root_name, cleanup_fd, inventory)
-        _require_cleanup_root_identity(parent_fd, root_name, cleanup_fd, inventory)
-        os.rmdir(root_name, dir_fd=parent_fd)
-        os.fsync(parent_fd)
+        return retained
     finally:
-        if cleanup_fd is not None:
-            os.close(cleanup_fd)
+        if retained_fd is not None:
+            os.close(retained_fd)
         os.close(parent_fd)
 
 
@@ -2367,10 +2153,17 @@ def _preserve_path(path: Path, transaction_id: str, label: str) -> Path:
 
 
 def _preserve_staging_transaction(
-    transaction: Path, target: Path, transaction_id: str, kind: str
+    transaction: Path,
+    target: Path,
+    transaction_id: str,
+    kind: str,
+    *,
+    reason: str = "staging",
 ) -> Path | None:
     if not os.path.lexists(transaction):
         return None
+    if transaction.parent != target.parent:
+        raise OncoTracerError("installer preservation parent is not exact")
     metadata = transaction.lstat()
     parent_metadata = target.parent.lstat()
     if (
@@ -2379,13 +2172,40 @@ def _preserve_staging_transaction(
         or metadata.st_dev != parent_metadata.st_dev
     ):
         raise OncoTracerError(
-            f"staging transaction is not a same-filesystem physical directory: {transaction}"
+            f"installer transaction is not a same-filesystem physical directory: {transaction}"
         )
     _assert_inactive(transaction)
-    preserved = _preserve_path(transaction, transaction_id, f"{kind}-staging")
-    os.replace(transaction, preserved)
+    preserved = _preserve_path(transaction, transaction_id, f"{kind}-{reason}")
+    parent_fd = _open_pinned_directory(target.parent, "installer preservation parent")
+    transaction_fd: int | None = None
+    try:
+        transaction_fd = _open_child_directory(
+            parent_fd, transaction.name, "installer transaction for preservation"
+        )
+        opened = os.fstat(transaction_fd)
+        if (opened.st_dev, opened.st_ino) != (metadata.st_dev, metadata.st_ino):
+            raise OncoTracerError(
+                f"installer transaction changed before preservation: {transaction}"
+            )
+        _rename_noreplace_at(
+            parent_fd,
+            transaction.name,
+            parent_fd,
+            preserved.name,
+            "installer preserved transaction",
+        )
+        os.fsync(parent_fd)
+        named = os.stat(preserved.name, dir_fd=parent_fd, follow_symlinks=False)
+        if (named.st_dev, named.st_ino) != (opened.st_dev, opened.st_ino):
+            raise OncoTracerError(
+                f"installer preserved transaction identity changed: {preserved}"
+            )
+    finally:
+        if transaction_fd is not None:
+            os.close(transaction_fd)
+        os.close(parent_fd)
     print(
-        f"OncoTracer preserved interrupted installer staging at {preserved}",
+        f"OncoTracer preserved installer {reason} at {preserved}",
         file=sys.stderr,
         flush=True,
     )
@@ -2394,6 +2214,206 @@ def _preserve_staging_transaction(
 
 def _journal_path(target: Path, kind: str) -> Path:
     return target.parent / f".{target.name}.oncotracer-{kind}-transaction.json"
+
+
+def _retained_journal_path(journal_path: Path, transaction_id: str, kind: str) -> Path:
+    digest = hashlib.sha256(os.fsencode(str(journal_path))).hexdigest()[:16]
+    return journal_path.parent / (
+        f".oncotracer-{kind}-retained-journal-{transaction_id}-{digest}.json"
+    )
+
+
+def _retain_transaction_journal(
+    journal_path: Path, journal: Mapping[str, object], kind: str
+) -> Path:
+    """Atomically retain the authenticated journal; never unlink its name."""
+    transaction_id = journal.get("transaction_id")
+    if (
+        not isinstance(transaction_id, str)
+        or not _HEX_32.fullmatch(transaction_id)
+        or journal.get("kind") != kind
+    ):
+        raise OncoTracerError("installer journal retention identity is malformed")
+    retained = _retained_journal_path(journal_path, transaction_id, kind)
+    if retained.parent != journal_path.parent:
+        raise OncoTracerError("installer retained journal parent is not exact")
+    expected = (json.dumps(dict(journal), indent=2, sort_keys=True) + "\n").encode(
+        "utf-8"
+    )
+    parent_fd = _open_pinned_directory(journal_path.parent, "installer journal parent")
+    journal_fd: int | None = None
+    try:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        journal_fd = os.open(journal_path.name, flags, dir_fd=parent_fd)
+        metadata = os.fstat(journal_fd)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or metadata.st_size != len(expected)
+        ):
+            raise OncoTracerError(
+                f"installer transaction journal is unsafe: {journal_path}"
+            )
+
+        def read_open_journal() -> bytes:
+            os.lseek(journal_fd, 0, os.SEEK_SET)
+            chunks: list[bytes] = []
+            while True:
+                chunk = os.read(journal_fd, 1024 * 1024)
+                if not chunk:
+                    return b"".join(chunks)
+                chunks.append(chunk)
+
+        if read_open_journal() != expected:
+            raise OncoTracerError(
+                f"installer transaction journal changed before retention: {journal_path}"
+            )
+        _rename_noreplace_at(
+            parent_fd,
+            journal_path.name,
+            parent_fd,
+            retained.name,
+            "installer retained transaction journal",
+        )
+        os.fsync(parent_fd)
+        named = os.stat(retained.name, dir_fd=parent_fd, follow_symlinks=False)
+        if (named.st_dev, named.st_ino) != (metadata.st_dev, metadata.st_ino):
+            raise OncoTracerError(
+                f"installer retained journal identity changed: {retained}"
+            )
+        finished = os.fstat(journal_fd)
+        if (
+            finished.st_dev,
+            finished.st_ino,
+            finished.st_mode,
+            finished.st_nlink,
+            finished.st_size,
+            finished.st_mtime_ns,
+        ) != (
+            metadata.st_dev,
+            metadata.st_ino,
+            metadata.st_mode,
+            metadata.st_nlink,
+            metadata.st_size,
+            metadata.st_mtime_ns,
+        ) or read_open_journal() != expected:
+            raise OncoTracerError(
+                f"installer retained journal bytes changed: {retained}"
+            )
+        print(
+            f"OncoTracer retained authenticated installer journal at {retained}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return retained
+    except OncoTracerError:
+        raise
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not retain installer transaction journal {journal_path}: {error}"
+        ) from error
+    finally:
+        if journal_fd is not None:
+            os.close(journal_fd)
+        os.close(parent_fd)
+
+
+def _retain_verified_json_file(
+    source: Path,
+    destination: Path,
+    expected_value: Mapping[str, object],
+    label: str,
+) -> Path:
+    """Move authenticated metadata to retained storage without replacement."""
+    if source == destination or source.parent == destination:
+        raise OncoTracerError(f"unsafe {label} retention destination: {destination}")
+    expected = (
+        json.dumps(dict(expected_value), indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    source_parent_fd = _open_pinned_directory(source.parent, f"{label} source parent")
+    destination_parent_fd: int | None = None
+    source_fd: int | None = None
+    try:
+        destination_parent_fd = _open_pinned_directory(
+            destination.parent, f"{label} retained parent"
+        )
+        source_parent = os.fstat(source_parent_fd)
+        destination_parent = os.fstat(destination_parent_fd)
+        if source_parent.st_dev != destination_parent.st_dev:
+            raise OncoTracerError(
+                f"{label} retention must remain on one filesystem: {destination}"
+            )
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        source_fd = os.open(source.name, flags, dir_fd=source_parent_fd)
+        metadata = os.fstat(source_fd)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or metadata.st_size != len(expected)
+        ):
+            raise OncoTracerError(f"{label} is unsafe for retention: {source}")
+
+        def read_open_source() -> bytes:
+            assert source_fd is not None
+            os.lseek(source_fd, 0, os.SEEK_SET)
+            chunks: list[bytes] = []
+            while True:
+                chunk = os.read(source_fd, 1024 * 1024)
+                if not chunk:
+                    return b"".join(chunks)
+                chunks.append(chunk)
+
+        if read_open_source() != expected:
+            raise OncoTracerError(f"{label} changed before retention: {source}")
+        _rename_noreplace_at(
+            source_parent_fd,
+            source.name,
+            destination_parent_fd,
+            destination.name,
+            label,
+        )
+        os.fsync(source_parent_fd)
+        os.fsync(destination_parent_fd)
+        named = os.stat(
+            destination.name,
+            dir_fd=destination_parent_fd,
+            follow_symlinks=False,
+        )
+        finished = os.fstat(source_fd)
+        stable_fields = (
+            "st_dev",
+            "st_ino",
+            "st_mode",
+            "st_nlink",
+            "st_size",
+            "st_mtime_ns",
+        )
+        if (
+            (named.st_dev, named.st_ino) != (metadata.st_dev, metadata.st_ino)
+            or tuple(getattr(finished, field) for field in stable_fields)
+            != tuple(getattr(metadata, field) for field in stable_fields)
+            or read_open_source() != expected
+        ):
+            raise OncoTracerError(
+                f"{label} changed during retention and will be preserved: "
+                f"{destination}"
+            )
+        print(
+            f"OncoTracer retained authenticated {label} at {destination}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return destination
+    except OncoTracerError:
+        raise
+    except OSError as error:
+        raise OncoTracerError(f"could not retain {label} {source}: {error}") from error
+    finally:
+        if source_fd is not None:
+            os.close(source_fd)
+        if destination_parent_fd is not None:
+            os.close(destination_parent_fd)
+        os.close(source_parent_fd)
 
 
 def _lock_path(target: Path, kind: str) -> Path:
@@ -2526,7 +2546,7 @@ def _restore_conda_transaction(
                 f"Conda target changed during staging recovery: {base}"
             )
         _preserve_staging_transaction(transaction, base, transaction_id, "conda")
-        _safe_unlink(journal_path, "Conda transaction journal")
+        _retain_transaction_journal(journal_path, journal, "conda")
         return
     if journal["phase"] == "committed":
         state, marker = _classify_base(base)
@@ -2614,7 +2634,7 @@ def _restore_conda_transaction(
                     raise OncoTracerError(
                         f"Conda backup changed before cleanup; preserving it: {backup}"
                     )
-        _remove_committed_transaction(
+        _retain_committed_transaction(
             transaction,
             base,
             transaction_id,
@@ -2622,7 +2642,7 @@ def _restore_conda_transaction(
             expected_top_level,
             journal["cleanup_inventory"],
         )
-        _safe_unlink(journal_path, "Conda transaction journal")
+        _retain_transaction_journal(journal_path, journal, "conda")
         return
 
     _require_transaction(transaction, base, transaction_id, "conda")
@@ -2701,11 +2721,14 @@ def _restore_conda_transaction(
                 raise OncoTracerError(
                     f"Conda rollback refuses a changed root marker: {marker_path}"
                 )
-            _safe_unlink(marker_path, "Conda root ownership marker")
-        if prestate == "absent" and base.is_dir() and not any(base.iterdir()):
-            base.rmdir()
-    _remove_transaction(transaction, base, transaction_id, "conda")
-    _safe_unlink(journal_path, "Conda transaction journal")
+            _retain_verified_json_file(
+                marker_path,
+                discarded / BASE_MARKER,
+                base_after,
+                "Conda rollback root ownership marker",
+            )
+    _retain_rollback_transaction(transaction, base, transaction_id, "conda")
+    _retain_transaction_journal(journal_path, journal, "conda")
 
 
 def _recover_conda_journal(base: Path) -> None:
@@ -3393,7 +3416,7 @@ def _restore_sif_transaction(
                 f"SIF target changed during staging recovery: {destination}"
             )
         _preserve_staging_transaction(transaction, destination, transaction_id, "sif")
-        _safe_unlink(journal_path, "SIF transaction journal")
+        _retain_transaction_journal(journal_path, journal, "sif")
         return
     if journal["phase"] == "committed":
         state, marker = _classify_sif(destination)
@@ -3428,7 +3451,7 @@ def _restore_sif_transaction(
                     "SIF transaction contains unexpected entries and will be preserved: "
                     f"{transaction}"
                 )
-        _remove_committed_transaction(
+        _retain_committed_transaction(
             transaction,
             destination,
             transaction_id,
@@ -3436,7 +3459,7 @@ def _restore_sif_transaction(
             expected_entries,
             journal["cleanup_inventory"],
         )
-        _safe_unlink(journal_path, "SIF transaction journal")
+        _retain_transaction_journal(journal_path, journal, "sif")
         return
 
     _require_transaction(transaction, destination, transaction_id, "sif")
@@ -3515,8 +3538,8 @@ def _restore_sif_transaction(
                     f"SIF rollback refuses an unexpectedly changed sidecar: {sidecar}"
                 )
             os.replace(sidecar, discarded_sidecar)
-    _remove_transaction(transaction, destination, transaction_id, "sif")
-    _safe_unlink(journal_path, "SIF transaction journal")
+    _retain_rollback_transaction(transaction, destination, transaction_id, "sif")
+    _retain_transaction_journal(journal_path, journal, "sif")
 
 
 def _recover_sif_journal(destination: Path) -> None:

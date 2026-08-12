@@ -372,7 +372,7 @@ else:
             mock.patch.object(Path, "lstat", new=foreign_device),
             self.assertRaisesRegex(OncoTracerError, "crosses filesystems"),
         ):
-            install_safety._remove_transaction(
+            install_safety._retain_rollback_transaction(
                 transaction, target, transaction_id, "conda"
             )
         self.assertEqual(_snapshot(transaction), before)
@@ -430,23 +430,6 @@ else:
                 self._conda_install(base, force=force)
             self.assertEqual(_snapshot(base), before)
             self.assertEqual(len(self._log_lines()), calls_before)
-
-    def test_cleanup_unlinks_only_owned_hardlink_path(self) -> None:
-        base = self.scratch / "hardlinked-cleanup-envs"
-        self._conda_install(base)
-        history = base / "core" / "conda-meta" / "history"
-        external = self.scratch / "external-hardlink"
-        external.write_bytes(history.read_bytes())
-        external.chmod(stat.S_IMODE(history.stat().st_mode))
-        history.unlink()
-        os.link(external, history)
-        external_inode = external.stat().st_ino
-
-        self._conda_install(base, force=True)
-        self.assertEqual(external.read_bytes(), b"created\n")
-        self.assertEqual(external.stat().st_ino, external_inode)
-        self.assertEqual(external.stat().st_nlink, 1)
-        self.assertNotEqual(history.stat().st_ino, external_inode)
 
     def test_conda_child_source_must_match_the_owned_base(self) -> None:
         base = self.scratch / "split-source-envs"
@@ -575,7 +558,9 @@ else:
                 )
                 path.unlink()
 
-        install_safety._remove_transaction(transaction, target, transaction_id, "conda")
+        install_safety._retain_rollback_transaction(
+            transaction, target, transaction_id, "conda"
+        )
 
     def test_changed_partial_target_metadata_is_never_discarded(self) -> None:
         target = self.scratch / "partial-final-prefix"
@@ -615,7 +600,9 @@ else:
         )
         self.assertFalse(target.exists())
         self.assertEqual(_snapshot(preserved), before)
-        install_safety._remove_transaction(transaction, target, transaction_id, "conda")
+        install_safety._retain_rollback_transaction(
+            transaction, target, transaction_id, "conda"
+        )
 
     def test_empty_conda_root_mode_survives_failed_first_install(self) -> None:
         base = self.scratch / "preexisting-empty-envs"
@@ -722,35 +709,44 @@ else:
         self.assertEqual(_snapshot(base), before)
         self.assertFalse(install_safety._journal_path(base, "conda").exists())
 
-    def test_conda_committed_cleanup_recovers_without_transaction(self) -> None:
-        base = self.scratch / "committed-cleanup-envs"
+    def test_conda_retained_root_then_journal_recovery_is_idempotent(self) -> None:
+        base = self.scratch / "retained-recovery-envs"
         self._conda_install(base)
         journal_path = install_safety._journal_path(base, "conda")
-        real_unlink = install_safety._safe_unlink
 
-        def block_journal_cleanup(path, label):
-            if label == "Conda transaction journal":
-                raise OSError("injected journal cleanup crash")
-            return real_unlink(path, label)
+        def interrupt_journal_retention(path, journal, kind):
+            self.assertEqual((path, kind), (journal_path, "conda"))
+            raise KeyboardInterrupt
 
         with (
             mock.patch.object(
-                install_safety, "_safe_unlink", side_effect=block_journal_cleanup
+                install_safety,
+                "_retain_transaction_journal",
+                side_effect=interrupt_journal_retention,
             ),
-            self.assertRaisesRegex(
-                OncoTracerError, "automatic rollback could not complete"
-            ),
+            self.assertRaises(KeyboardInterrupt),
         ):
             self._conda_install(base, force=True)
         journal = json.loads(journal_path.read_text(encoding="utf-8"))
         self.assertEqual(journal["phase"], "committed")
         self.assertFalse(os.path.lexists(journal["canonical_transaction"]))
+        retained = install_safety._committed_retained_path(
+            Path(str(journal["canonical_transaction"]))
+        )
+        self.assertTrue(retained.is_dir())
+        retained_before = _snapshot(retained)
         self.assertEqual(install_safety._classify_base(base)[0], "owned")
 
         calls_before_recovery = len(self._log_lines())
         self._conda_install(base)
         self.assertEqual(len(self._log_lines()), calls_before_recovery)
         self.assertFalse(journal_path.exists())
+        self.assertEqual(_snapshot(retained), retained_before)
+        audit = install_safety._retained_journal_path(
+            journal_path, str(journal["transaction_id"]), "conda"
+        )
+        self.assertTrue(audit.is_file())
+        self._conda_install(base, force=True)
 
     def test_conda_dry_run_has_zero_writes_and_no_subprocess(self) -> None:
         base = self.scratch / "dry-run-envs"
@@ -1066,39 +1062,50 @@ else:
         self.assertEqual((destination.read_bytes(), sidecar.read_bytes()), before)
         self.assertFalse(install_safety._journal_path(destination, "sif").exists())
 
-    def test_sif_committed_cleanup_recovers_without_transaction(self) -> None:
-        destination = self.scratch / "committed-cleanup.sif"
+    def test_sif_retained_root_then_journal_recovery_is_idempotent(self) -> None:
+        destination = self.scratch / "retained-recovery.sif"
         self._sif_install(destination)
         journal_path = install_safety._journal_path(destination, "sif")
-        real_unlink = install_safety._safe_unlink
 
-        def block_journal_cleanup(path, label):
-            if label == "SIF transaction journal":
-                raise OSError("injected journal cleanup crash")
-            return real_unlink(path, label)
+        def interrupt_journal_retention(path, journal, kind):
+            self.assertEqual((path, kind), (journal_path, "sif"))
+            raise KeyboardInterrupt
 
         with (
             mock.patch.dict(
                 os.environ, {"FAKE_SIF_CONTENT": "committed-new"}, clear=False
             ),
             mock.patch.object(
-                install_safety, "_safe_unlink", side_effect=block_journal_cleanup
+                install_safety,
+                "_retain_transaction_journal",
+                side_effect=interrupt_journal_retention,
             ),
-            self.assertRaisesRegex(
-                OncoTracerError, "automatic rollback could not complete"
-            ),
+            self.assertRaises(KeyboardInterrupt),
         ):
             self._sif_install(destination, force=True)
         journal = json.loads(journal_path.read_text(encoding="utf-8"))
         self.assertEqual(journal["phase"], "committed")
         self.assertFalse(os.path.lexists(journal["canonical_transaction"]))
+        retained = install_safety._committed_retained_path(
+            Path(str(journal["canonical_transaction"]))
+        )
+        retained_before = _snapshot(retained)
         self.assertEqual(destination.read_bytes(), b"committed-new")
 
         calls_before_recovery = len(self._log_lines())
         self._sif_install(destination)
         self.assertEqual(len(self._log_lines()), calls_before_recovery + 2)
         self.assertFalse(journal_path.exists())
+        self.assertEqual(_snapshot(retained), retained_before)
         self.assertEqual(destination.read_bytes(), b"committed-new")
+        audit = install_safety._retained_journal_path(
+            journal_path, str(journal["transaction_id"]), "sif"
+        )
+        self.assertTrue(audit.is_file())
+        with mock.patch.dict(
+            os.environ, {"FAKE_SIF_CONTENT": "future-install"}, clear=False
+        ):
+            self._sif_install(destination, force=True)
 
     def test_sif_committed_cleanup_preserves_unexpected_transaction_entry(
         self,
@@ -1519,407 +1526,133 @@ with (
                 self.assertEqual(second.returncode, 0, second.stderr)
                 self.assertNotIn("used by active process", second.stderr)
 
-    def test_conda_cleanup_tomb_rejects_foreign_nested_file_after_rename(
+    def test_conda_hardlinked_backup_is_retained_without_touching_external_name(
         self,
     ) -> None:
-        base = self.scratch / "post-rename-foreign-envs"
+        base = self.scratch / "hardlinked-retained-envs"
         self._conda_install(base)
-        real_claim = install_safety._rename_noreplace_at
-        cleanup: Path | None = None
-        sentinel: Path | None = None
+        history = base / "core" / "conda-meta" / "history"
+        external = self.scratch / "external-history-hardlink"
+        os.link(history, external)
+        external_inode = external.stat().st_ino
+        external_bytes = external.read_bytes()
 
-        def inject_after_cleanup_rename(
-            source_fd, source, destination_fd, destination, label
-        ):
-            nonlocal cleanup, sentinel
-            result = real_claim(source_fd, source, destination_fd, destination, label)
-            if (
-                cleanup is None
-                and source.startswith(f".{base.name}.oncotracer-conda-txn-")
-                and destination.endswith(".oncotracer-cleanup")
-            ):
-                cleanup = base.parent / destination
-                sentinel = cleanup / "backups" / "core" / "patient-sentinel"
-                sentinel.write_bytes(b"must never be deleted")
-                raise KeyboardInterrupt
-            return result
+        self._conda_install(base, force=True)
 
-        with (
-            mock.patch.object(
-                install_safety,
-                "_rename_noreplace_at",
-                side_effect=inject_after_cleanup_rename,
-            ),
-            self.assertRaisesRegex(
-                OncoTracerError, "automatic rollback could not complete"
-            ),
-        ):
-            self._conda_install(base, force=True)
-        self.assertIsNotNone(cleanup)
-        self.assertIsNotNone(sentinel)
-        assert cleanup is not None and sentinel is not None
-        journal = install_safety._journal_path(base, "conda")
-        self.assertTrue(cleanup.is_dir())
-        self.assertTrue(journal.is_file())
-        before = _snapshot(cleanup)
-
-        with self.assertRaisesRegex(OncoTracerError, "unexpected entry"):
-            self._conda_install(base)
-        self.assertEqual(_snapshot(cleanup), before)
-        self.assertEqual(sentinel.read_bytes(), b"must never be deleted")
-        self.assertTrue(journal.is_file())
-
-    def test_sif_cleanup_tomb_rejects_modified_backup_after_rename(self) -> None:
-        destination = self.scratch / "post-rename-modified.sif"
-        self._sif_install(destination)
-        real_claim = install_safety._rename_noreplace_at
-        cleanup: Path | None = None
-        backup: Path | None = None
-
-        def inject_after_cleanup_rename(
-            source_fd, source, destination_fd, target, label
-        ):
-            nonlocal cleanup, backup
-            result = real_claim(source_fd, source, destination_fd, target, label)
-            if (
-                cleanup is None
-                and source.startswith(f".{destination.name}.oncotracer-sif-txn-")
-                and target.endswith(".oncotracer-cleanup")
-            ):
-                cleanup = destination.parent / target
-                backup = cleanup / "backup.sif"
-                backup.write_bytes(b"modified after atomic cleanup rename")
-                raise KeyboardInterrupt
-            return result
-
-        with (
-            mock.patch.dict(
-                os.environ, {"FAKE_SIF_CONTENT": "new-tomb-content"}, clear=False
-            ),
-            mock.patch.object(
-                install_safety,
-                "_rename_noreplace_at",
-                side_effect=inject_after_cleanup_rename,
-            ),
-            self.assertRaisesRegex(
-                OncoTracerError, "automatic rollback could not complete"
-            ),
-        ):
-            self._sif_install(destination, force=True)
-        self.assertIsNotNone(cleanup)
-        self.assertIsNotNone(backup)
-        assert cleanup is not None and backup is not None
-        journal = install_safety._journal_path(destination, "sif")
-        self.assertTrue(journal.is_file())
-        before = _snapshot(cleanup)
-
-        with self.assertRaisesRegex(OncoTracerError, "modified entry"):
-            self._sif_install(destination)
-        self.assertEqual(_snapshot(cleanup), before)
-        self.assertEqual(backup.read_bytes(), b"modified after atomic cleanup rename")
-        self.assertTrue(journal.is_file())
-
-    def test_conda_committed_cleanup_resumes_after_partial_recursive_removal(
-        self,
-    ) -> None:
-        base = self.scratch / "partial-cleanup-envs"
-        crashes = 0
-        real_remove = install_safety._remove_cleanup_entry_at
-
-        def crash_after_durable_partial_cleanup(cleanup_fd, relative, expected):
-            nonlocal crashes
-            real_remove(cleanup_fd, relative, expected)
-            if crashes < 2:
-                crashes += 1
-                raise KeyboardInterrupt
-
-        with (
-            mock.patch.object(
-                install_safety,
-                "_remove_cleanup_entry_at",
-                side_effect=crash_after_durable_partial_cleanup,
-            ),
-            self.assertRaises(KeyboardInterrupt),
-        ):
-            self._conda_install(base)
-        journal_path = install_safety._journal_path(base, "conda")
-        journal = json.loads(journal_path.read_text(encoding="utf-8"))
-        transaction = Path(journal["canonical_transaction"])
-        cleanup = install_safety._committed_cleanup_path(transaction)
-        self.assertFalse(transaction.exists())
-        self.assertTrue(cleanup.is_dir())
-        self.assertEqual(crashes, 2)
-
-        sentinel = cleanup / "foreign-after-crash"
-        sentinel.write_bytes(b"preserve unexpected cleanup bytes")
-        with self.assertRaisesRegex(OncoTracerError, "unexpected entry"):
-            self._conda_install(base)
-        self.assertEqual(sentinel.read_bytes(), b"preserve unexpected cleanup bytes")
-        sentinel = self.scratch / sentinel.absolute().relative_to(
-            self.scratch.absolute()
-        )
-        sentinel.unlink()
-
-        self._conda_install(base)
-        self.assertFalse(journal_path.exists())
-        self.assertFalse(cleanup.exists())
-        for name in install_safety.CONDA_NAMES:
-            self.assertTrue((base / name / install_safety.ENV_MARKER).is_file())
-
-    def test_sif_committed_cleanup_resumes_after_partial_pair_removal(self) -> None:
-        destination = self.scratch / "partial-cleanup.sif"
-        self._sif_install(destination)
-        crashes = 0
-        real_remove = install_safety._remove_cleanup_entry_at
-
-        def crash_after_durable_partial_cleanup(cleanup_fd, relative, expected):
-            nonlocal crashes
-            real_remove(cleanup_fd, relative, expected)
-            if crashes < 2:
-                crashes += 1
-                raise KeyboardInterrupt
-
-        with (
-            mock.patch.object(
-                install_safety,
-                "_remove_cleanup_entry_at",
-                side_effect=crash_after_durable_partial_cleanup,
-            ),
-            self.assertRaises(KeyboardInterrupt),
-        ):
-            self._sif_install(destination, force=True)
-        journal_path = install_safety._journal_path(destination, "sif")
-        journal = json.loads(journal_path.read_text(encoding="utf-8"))
-        transaction = Path(journal["canonical_transaction"])
-        cleanup = install_safety._committed_cleanup_path(transaction)
-        self.assertFalse(transaction.exists())
-        self.assertTrue(cleanup.is_dir())
-        self.assertEqual(crashes, 2)
-
-        self._sif_install(destination)
-        self.assertFalse(journal_path.exists())
-        self.assertFalse(cleanup.exists())
-        marker = json.loads(
-            install_safety._sif_sidecar(destination).read_text(encoding="utf-8")
-        )
-        self.assertEqual(install_safety.sha256_file(destination), marker["sif_sha256"])
-
-    def test_cleanup_removal_pins_intermediate_parent_against_symlink_swap(
-        self,
-    ) -> None:
-        cleanup = self.scratch / "descriptor-cleanup"
-        nested = cleanup / "nested"
-        nested.mkdir(parents=True)
-        victim = nested / "victim"
-        victim.write_bytes(b"owned cleanup bytes")
-        outside = self.scratch / "outside"
-        outside.mkdir()
-        outside_victim = outside / "victim"
-        outside_victim.write_bytes(b"protected outside bytes")
-        saved_owned = self.scratch / "saved-owned-parent"
-
-        cleanup_fd = install_safety._open_pinned_directory(cleanup, "test cleanup root")
-        expected, _ = install_safety._cleanup_entry_at(cleanup_fd, "nested/victim")
-        real_entry = install_safety._cleanup_entry_from_parent
-        swapped = False
-
-        def swap_parent_after_authentication(root_device, parent_fd, name, relative):
-            nonlocal swapped
-            result = real_entry(root_device, parent_fd, name, relative)
-            if relative == "nested/victim" and not swapped:
-                nested.rename(saved_owned)
-                nested.symlink_to(outside, target_is_directory=True)
-                swapped = True
-            return result
-
-        try:
-            with mock.patch.object(
-                install_safety,
-                "_cleanup_entry_from_parent",
-                side_effect=swap_parent_after_authentication,
-            ):
-                install_safety._remove_cleanup_entry_at(
-                    cleanup_fd, "nested/victim", expected
-                )
-        finally:
-            os.close(cleanup_fd)
-
-        self.assertTrue(swapped)
-        self.assertEqual(outside_victim.read_bytes(), b"protected outside bytes")
-
-        self.assertTrue(nested.is_symlink())
-        self.assertFalse((saved_owned / "victim").exists())
-
-    def test_cleanup_leaf_swap_is_claimed_and_preserved(self) -> None:
-        cleanup = self.scratch / "leaf-swap-cleanup"
-        cleanup.mkdir()
-        victim = cleanup / "victim"
-        victim.write_bytes(b"owned cleanup bytes")
-        foreign = cleanup / "foreign"
-        foreign.write_bytes(b"foreign bytes must survive")
-        saved_owned = cleanup / "saved-owned"
-
-        cleanup_fd = install_safety._open_pinned_directory(cleanup, "test cleanup root")
-        expected, _ = install_safety._cleanup_entry_at(cleanup_fd, "victim")
-        claim = cleanup / install_safety._cleanup_claim_name(expected)
-        real_entry = install_safety._cleanup_entry_from_parent
-        swapped = False
-
-        def swap_leaf_after_authentication(root_device, parent_fd, name, relative):
-            nonlocal swapped
-            result = real_entry(root_device, parent_fd, name, relative)
-            if name == "victim" and relative == "victim" and not swapped:
-                os.rename(
-                    "victim",
-                    saved_owned.name,
-                    src_dir_fd=parent_fd,
-                    dst_dir_fd=parent_fd,
-                )
-                os.rename(
-                    foreign.name,
-                    "victim",
-                    src_dir_fd=parent_fd,
-                    dst_dir_fd=parent_fd,
-                )
-                swapped = True
-            return result
-
-        try:
-            with (
-                mock.patch.object(
-                    install_safety,
-                    "_cleanup_entry_from_parent",
-                    side_effect=swap_leaf_after_authentication,
-                ),
-                self.assertRaisesRegex(OncoTracerError, "removal claim does not match"),
-            ):
-                install_safety._remove_cleanup_entry_at(cleanup_fd, "victim", expected)
-        finally:
-            os.close(cleanup_fd)
-
-        self.assertTrue(swapped)
-        self.assertEqual(saved_owned.read_bytes(), b"owned cleanup bytes")
-        self.assertEqual(claim.read_bytes(), b"foreign bytes must survive")
-        self.assertFalse(victim.exists())
-        self.assertFalse(foreign.exists())
-
-    def test_cleanup_claim_collision_never_replaces_foreign_bytes(self) -> None:
-        cleanup = self.scratch / "claim-collision-cleanup"
-        cleanup.mkdir()
-        victim = cleanup / "victim"
-        victim.write_bytes(b"owned cleanup bytes")
-        cleanup_fd = install_safety._open_pinned_directory(cleanup, "test cleanup root")
-        expected, _ = install_safety._cleanup_entry_at(cleanup_fd, "victim")
-        claim = cleanup / install_safety._cleanup_claim_name(expected)
-        real_entry = install_safety._cleanup_entry_from_parent
-        injected = False
-
-        def collide_after_authentication(root_device, parent_fd, name, relative):
-            nonlocal injected
-            result = real_entry(root_device, parent_fd, name, relative)
-            if name == "victim" and relative == "victim" and not injected:
-                claim.write_bytes(b"foreign collision bytes")
-                injected = True
-            return result
-
-        try:
-            with (
-                mock.patch.object(
-                    install_safety,
-                    "_cleanup_entry_from_parent",
-                    side_effect=collide_after_authentication,
-                ),
-                self.assertRaisesRegex(OncoTracerError, "destination already exists"),
-            ):
-                install_safety._remove_cleanup_entry_at(cleanup_fd, "victim", expected)
-        finally:
-            os.close(cleanup_fd)
-
-        self.assertTrue(injected)
-        self.assertEqual(victim.read_bytes(), b"owned cleanup bytes")
-        self.assertEqual(claim.read_bytes(), b"foreign collision bytes")
-
-    def test_cleanup_claim_resumes_after_repeated_interruptions(self) -> None:
-        cleanup = self.scratch / "interrupted-claim-cleanup"
-        cleanup.mkdir()
-        victim = cleanup / "victim"
-        victim.write_bytes(b"owned cleanup bytes")
-        cleanup_fd = install_safety._open_pinned_directory(cleanup, "test cleanup root")
-        expected, _ = install_safety._cleanup_entry_at(cleanup_fd, "victim")
-        claim_name = install_safety._cleanup_claim_name(expected)
-        claim = cleanup / claim_name
-        inventory = {"entries": [expected]}
-        real_claim = install_safety._rename_noreplace_at
-
-        def interrupt_after_claim(*args):
-            real_claim(*args)
-            raise KeyboardInterrupt
-
-        try:
-            with (
-                mock.patch.object(
-                    install_safety,
-                    "_rename_noreplace_at",
-                    side_effect=interrupt_after_claim,
-                ),
-                self.assertRaises(KeyboardInterrupt),
-            ):
-                install_safety._remove_cleanup_entry_at(cleanup_fd, "victim", expected)
-            self.assertFalse(victim.exists())
-            self.assertEqual(claim.read_bytes(), b"owned cleanup bytes")
-            _, remaining, claimed = install_safety._validate_cleanup_state_at(
-                cleanup_fd, inventory, str(cleanup)
+        backups = [
+            path / "backups" / "core" / "conda-meta" / "history"
+            for path in base.parent.glob(
+                f".{base.name}.oncotracer-conda-txn-*.oncotracer-retained"
             )
-            self.assertEqual((remaining, claimed), (["victim"], "victim"))
+            if (path / "backups" / "core" / "conda-meta" / "history").is_file()
+        ]
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(external.read_bytes(), external_bytes)
+        self.assertEqual(external.stat().st_ino, external_inode)
+        self.assertEqual(backups[0].stat().st_ino, external_inode)
+        self.assertEqual(external.stat().st_nlink, 2)
+        self.assertNotEqual(history.stat().st_ino, external_inode)
 
-            real_unlink = install_safety.os.unlink
+    def test_sif_prior_bytes_and_sidecar_are_retained_after_force(self) -> None:
+        destination = self.scratch / "retained-backup.sif"
+        sidecar = install_safety._sif_sidecar(destination)
+        self._sif_install(destination)
+        old_sif = destination.read_bytes()
+        old_sidecar = sidecar.read_bytes()
 
-            def interrupt_before_claim_unlink(path, *args, **kwargs):
-                if path == claim_name:
-                    raise KeyboardInterrupt
-                return real_unlink(path, *args, **kwargs)
+        with mock.patch.dict(
+            os.environ, {"FAKE_SIF_CONTENT": "replacement-sif"}, clear=False
+        ):
+            self._sif_install(destination, force=True)
 
-            with (
-                mock.patch.object(
-                    install_safety.os,
-                    "unlink",
-                    side_effect=interrupt_before_claim_unlink,
-                ),
-                self.assertRaises(KeyboardInterrupt),
-            ):
-                install_safety._remove_cleanup_entry_at(cleanup_fd, "victim", expected)
-            self.assertEqual(claim.read_bytes(), b"owned cleanup bytes")
-            install_safety._remove_cleanup_entry_at(cleanup_fd, "victim", expected)
-            self.assertEqual(os.listdir(cleanup_fd), [])
-        finally:
-            os.close(cleanup_fd)
+        retained = [
+            path
+            for path in destination.parent.glob(
+                f".{destination.name}.oncotracer-sif-txn-*.oncotracer-retained"
+            )
+            if (path / "backup.sif").is_file()
+        ]
+        self.assertEqual(len(retained), 1)
+        self.assertEqual((retained[0] / "backup.sif").read_bytes(), old_sif)
+        self.assertEqual(
+            (retained[0] / "backup.sidecar.json").read_bytes(), old_sidecar
+        )
+        self.assertEqual(destination.read_bytes(), b"replacement-sif")
 
-    def test_cleanup_root_swap_is_claimed_and_preserved(self) -> None:
-        target = self.scratch / "root-swap-target"
+    def test_retention_collision_preserves_both_roots(self) -> None:
+        target = self.scratch / "retention-collision-target"
         transaction_id, transaction = install_safety._new_transaction(target, "conda")
+        (transaction / "payload").write_bytes(b"authenticated rollback bytes")
         inventory = install_safety._cleanup_inventory(
             transaction, target, transaction_id, "conda"
         )
-        expected_top_level = {".oncotracer-transaction-owner.json"}
-        finalize = install_safety._committed_finalize_path(transaction)
-        delete = install_safety._committed_delete_path(transaction)
-        saved_owned = self.scratch / "saved-authenticated-finalizer"
+        retained = install_safety._committed_retained_path(transaction)
+        real_rename = install_safety._rename_noreplace_at
+        injected = False
+
+        def collide(source_fd, source, destination_fd, destination, label):
+            nonlocal injected
+            if destination == retained.name and not injected:
+                retained.mkdir()
+                (retained / "foreign").write_bytes(b"foreign collision bytes")
+                injected = True
+            return real_rename(source_fd, source, destination_fd, destination, label)
+
+        with (
+            mock.patch.object(
+                install_safety, "_rename_noreplace_at", side_effect=collide
+            ),
+            self.assertRaisesRegex(OncoTracerError, "destination already exists"),
+        ):
+            install_safety._retain_committed_transaction(
+                transaction,
+                target,
+                transaction_id,
+                "conda",
+                {".oncotracer-transaction-owner.json", "payload"},
+                inventory,
+            )
+        self.assertTrue(injected)
+        self.assertEqual(
+            (transaction / "payload").read_bytes(), b"authenticated rollback bytes"
+        )
+        self.assertEqual(
+            (retained / "foreign").read_bytes(), b"foreign collision bytes"
+        )
+
+    def test_root_swap_after_authentication_preserves_owned_and_foreign_trees(
+        self,
+    ) -> None:
+        target = self.scratch / "retention-root-swap-target"
+        transaction_id, transaction = install_safety._new_transaction(target, "conda")
+        (transaction / "payload").write_bytes(b"authenticated rollback bytes")
+        inventory = install_safety._cleanup_inventory(
+            transaction, target, transaction_id, "conda"
+        )
+        retained = install_safety._committed_retained_path(transaction)
+        saved_owned = self.scratch / "saved-authenticated-transaction"
+        foreign = self.scratch / "foreign-replacement"
+        foreign.mkdir()
+        (foreign / "sentinel").write_bytes(b"foreign bytes must survive")
         real_require = install_safety._require_cleanup_root_identity
         swapped = False
 
-        def swap_finalizer_after_authentication(
-            parent_fd, name, cleanup_fd, expected_inventory
-        ):
+        def swap_after_authentication(parent_fd, name, root_fd, expected):
             nonlocal swapped
-            result = real_require(parent_fd, name, cleanup_fd, expected_inventory)
-            if name == finalize.name and not swapped:
+            result = real_require(parent_fd, name, root_fd, expected)
+            if name == transaction.name and not swapped:
                 os.rename(
                     name,
                     saved_owned.name,
                     src_dir_fd=parent_fd,
                     dst_dir_fd=parent_fd,
                 )
-                os.mkdir(name, mode=0o700, dir_fd=parent_fd)
+                os.rename(
+                    foreign.name,
+                    name,
+                    src_dir_fd=parent_fd,
+                    dst_dir_fd=parent_fd,
+                )
                 swapped = True
             return result
 
@@ -1927,46 +1660,76 @@ with (
             mock.patch.object(
                 install_safety,
                 "_require_cleanup_root_identity",
-                side_effect=swap_finalizer_after_authentication,
+                side_effect=swap_after_authentication,
             ),
             self.assertRaisesRegex(OncoTracerError, "root identity changed"),
         ):
-            install_safety._remove_committed_transaction(
+            install_safety._retain_committed_transaction(
                 transaction,
                 target,
                 transaction_id,
                 "conda",
-                expected_top_level,
+                {".oncotracer-transaction-owner.json", "payload"},
                 inventory,
             )
-
         self.assertTrue(swapped)
-        self.assertTrue(saved_owned.is_dir())
-        self.assertTrue(delete.is_dir())
-        self.assertFalse(finalize.exists())
-        self.assertEqual(list(saved_owned.iterdir()), [])
-        self.assertEqual(list(delete.iterdir()), [])
-
-    def test_cleanup_root_claim_resumes_after_interruption(self) -> None:
-        target = self.scratch / "root-interruption-target"
-        transaction_id, transaction = install_safety._new_transaction(target, "conda")
-        inventory = install_safety._cleanup_inventory(
-            transaction, target, transaction_id, "conda"
+        self.assertEqual(
+            (saved_owned / "payload").read_bytes(), b"authenticated rollback bytes"
         )
-        expected_top_level = {".oncotracer-transaction-owner.json"}
-        cleanup = install_safety._committed_cleanup_path(transaction)
-        finalize = install_safety._committed_finalize_path(transaction)
-        delete = install_safety._committed_delete_path(transaction)
-        real_claim = install_safety._rename_noreplace_at
-        interrupted = False
+        self.assertEqual(
+            (retained / "sentinel").read_bytes(), b"foreign bytes must survive"
+        )
 
-        def interrupt_after_root_claim(
+    def test_retained_tree_tamper_fails_closed_without_mutation(self) -> None:
+        target = self.scratch / "retained-tamper-target"
+        transaction_id, transaction = install_safety._new_transaction(target, "sif")
+        payload = transaction / "backup.sif"
+        payload.write_bytes(b"authenticated backup bytes")
+        inventory = install_safety._cleanup_inventory(
+            transaction, target, transaction_id, "sif"
+        )
+        retained = install_safety._retain_committed_transaction(
+            transaction,
+            target,
+            transaction_id,
+            "sif",
+            {".oncotracer-transaction-owner.json", "backup.sif"},
+            inventory,
+        )
+        payload = retained / "backup.sif"
+        payload.write_bytes(b"modified backup bytes")
+        before = _snapshot(retained)
+        with self.assertRaisesRegex(OncoTracerError, "changed"):
+            install_safety._retain_committed_transaction(
+                transaction,
+                target,
+                transaction_id,
+                "sif",
+                {".oncotracer-transaction-owner.json", "backup.sif"},
+                inventory,
+            )
+        self.assertEqual(_snapshot(retained), before)
+
+    def test_conda_retained_root_rejects_added_nested_file_after_rename(self) -> None:
+        base = self.scratch / "post-retention-foreign-envs"
+        self._conda_install(base)
+        real_rename = install_safety._rename_noreplace_at
+        retained: Path | None = None
+        sentinel: Path | None = None
+
+        def inject_after_retention(
             source_fd, source, destination_fd, destination, label
         ):
-            nonlocal interrupted
-            result = real_claim(source_fd, source, destination_fd, destination, label)
-            if destination == delete.name and not interrupted:
-                interrupted = True
+            nonlocal retained, sentinel
+            result = real_rename(source_fd, source, destination_fd, destination, label)
+            if (
+                retained is None
+                and label == "committed installer retained rollback material"
+                and source.startswith(f".{base.name}.oncotracer-conda-txn-")
+            ):
+                retained = base.parent / destination
+                sentinel = retained / "backups" / "core" / "patient-sentinel"
+                sentinel.write_bytes(b"foreign nested bytes must survive")
                 raise KeyboardInterrupt
             return result
 
@@ -1974,52 +1737,77 @@ with (
             mock.patch.object(
                 install_safety,
                 "_rename_noreplace_at",
-                side_effect=interrupt_after_root_claim,
+                side_effect=inject_after_retention,
             ),
-            self.assertRaises(KeyboardInterrupt),
+            self.assertRaisesRegex(
+                OncoTracerError, "automatic rollback could not complete"
+            ),
         ):
-            install_safety._remove_committed_transaction(
-                transaction,
-                target,
-                transaction_id,
-                "conda",
-                expected_top_level,
-                inventory,
-            )
+            self._conda_install(base, force=True)
+        assert retained is not None and sentinel is not None
+        journal = install_safety._journal_path(base, "conda")
+        before = _snapshot(retained)
+        with self.assertRaisesRegex(OncoTracerError, "added=.*patient-sentinel"):
+            self._conda_install(base)
+        self.assertEqual(_snapshot(retained), before)
+        self.assertEqual(sentinel.read_bytes(), b"foreign nested bytes must survive")
+        self.assertTrue(journal.is_file())
 
-        self.assertTrue(interrupted)
-        self.assertFalse(transaction.exists())
-        self.assertFalse(cleanup.exists())
-        self.assertFalse(finalize.exists())
-        self.assertTrue(delete.is_dir())
+    def test_sif_retained_root_rejects_modified_backup_after_rename(self) -> None:
+        destination = self.scratch / "post-retention-modified.sif"
+        self._sif_install(destination)
+        real_rename = install_safety._rename_noreplace_at
+        retained: Path | None = None
+        backup: Path | None = None
 
-        install_safety._remove_committed_transaction(
-            transaction,
-            target,
-            transaction_id,
-            "conda",
-            expected_top_level,
-            inventory,
-        )
-        self.assertFalse(delete.exists())
+        def inject_after_retention(source_fd, source, destination_fd, target, label):
+            nonlocal retained, backup
+            result = real_rename(source_fd, source, destination_fd, target, label)
+            if (
+                retained is None
+                and label == "committed installer retained rollback material"
+                and source.startswith(f".{destination.name}.oncotracer-sif-txn-")
+            ):
+                retained = destination.parent / target
+                backup = retained / "backup.sif"
+                backup.write_bytes(b"modified retained SIF backup")
+                raise KeyboardInterrupt
+            return result
 
-    def test_cleanup_rejects_same_bytes_with_a_different_inode(self) -> None:
-        cleanup = self.scratch / "inode-cleanup"
-        cleanup.mkdir()
-        victim = cleanup / "victim"
-        victim.write_bytes(b"same bytes are not the same owned file")
-        replacement = cleanup / "replacement"
-        replacement.write_bytes(b"same bytes are not the same owned file")
-        cleanup_fd = install_safety._open_pinned_directory(cleanup, "test cleanup root")
-        try:
-            expected, _ = install_safety._cleanup_entry_at(cleanup_fd, "victim")
-            victim.unlink()
-            replacement.rename(victim)
-            with self.assertRaisesRegex(OncoTracerError, "changed before removal"):
-                install_safety._remove_cleanup_entry_at(cleanup_fd, "victim", expected)
-        finally:
-            os.close(cleanup_fd)
-        self.assertEqual(victim.read_bytes(), b"same bytes are not the same owned file")
+        with (
+            mock.patch.dict(
+                os.environ, {"FAKE_SIF_CONTENT": "replacement"}, clear=False
+            ),
+            mock.patch.object(
+                install_safety,
+                "_rename_noreplace_at",
+                side_effect=inject_after_retention,
+            ),
+            self.assertRaisesRegex(
+                OncoTracerError, "automatic rollback could not complete"
+            ),
+        ):
+            self._sif_install(destination, force=True)
+        assert retained is not None and backup is not None
+        journal = install_safety._journal_path(destination, "sif")
+        before = _snapshot(retained)
+        with self.assertRaisesRegex(OncoTracerError, "changed=.*backup.sif"):
+            self._sif_install(destination)
+        self.assertEqual(_snapshot(retained), before)
+        self.assertEqual(backup.read_bytes(), b"modified retained SIF backup")
+        self.assertTrue(journal.is_file())
+
+    def test_installer_has_no_automatic_deletion_primitive(self) -> None:
+        source = Path(install_safety.__file__).read_text(encoding="utf-8")
+        for primitive in (
+            ".unlink(",
+            ".rmdir(",
+            "os.unlink(",
+            "os.rmdir(",
+            "shutil.rmtree(",
+        ):
+            with self.subTest(primitive=primitive):
+                self.assertNotIn(primitive, source)
 
 
 class InstallerActiveUseArgumentTests(unittest.TestCase):

@@ -148,6 +148,22 @@ swapped with rollback protection. Existing unowned files, symlinks,
 hard-linked files, malformed sidecars, and active images fail closed without
 being removed.
 
+After any committed Conda, Poetry, or SIF transaction, OncoTracer retains the
+authenticated rollback tree and its journal instead of deleting either one.
+They are reported on standard error and stored beside the installation target:
+
+```text
+.<target>.oncotracer-<kind>-txn-<transaction-id>.oncotracer-retained
+.oncotracer-<kind>-retained-journal-<transaction-id>-<target-binding>.json
+```
+
+These transaction-ID-bound paths are ignored by later installs, so an
+interrupted journal-retention step can be resumed and a new install can proceed
+without overwriting earlier evidence. OncoTracer never automatically removes
+retained rollback or audit material. An administrator may archive or remove an
+exact reported path only after inspecting it and confirming that no OncoTracer
+install is running; never use a wildcard cleanup command.
+
 ### Poetry
 
 Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development:

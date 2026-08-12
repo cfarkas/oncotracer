@@ -40,6 +40,15 @@ installer cannot publish beneath a consumer. A durable staging journal exists
 before transaction creation or package-manager execution. If SIGKILL leaves an
 unsealed final-prefix tree, recovery restores the prior state and moves the
 unknown tree to a reported sibling preservation path instead of deleting it.
+After commit, the exact inventory-authenticated transaction root is atomically
+renamed with no replacement to a transaction-ID-bound retained rollback path.
+The canonical journal is then atomically renamed to a target-bound retained
+audit record. Recovery accepts either the original transaction name or its
+exact retained name, verifies the complete sealed inventory, and resumes this
+order idempotently. No installer path recursively deletes transaction contents,
+rollback roots, journals, or temporary metadata; later transactions ignore the
+retained names. Their exact paths are reported for deliberate administrator
+archival or removal after active-use checks.
 Poetry's launcher is a fixed isolated `poetry-runtime` child built from an
 exact clean checkout in isolated state and installed only by the final target
 interpreter; it is never an ambient or checkout-local virtual environment.
