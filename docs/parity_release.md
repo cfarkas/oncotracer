@@ -41,10 +41,14 @@ Observed free space above that contract is incidental runner-image capacity and
 must not be made available by deleting runner tools, unrelated images, or global
 caches.
 
-The parity preflight requires all checked paths to resolve to one filesystem
-with at least 72 GiB free, at least 15 GiB physical RAM, and at least 47 GiB
-addressable memory after its job-owned swap is added. This is a phase peak, not
-a sum of mutually exclusive Docker and Conda material. Frozen v1.1 runs first;
+The parity preflight requires every checked filesystem independently to meet
+the storage floor; capacities are never summed across devices. Its sealed
+evidence enumerates every checked path, device, and free-space observation.
+It also requires at least 15 GiB physical RAM and at least 47 GiB addressable memory. A runner
+below the addressable floor receives an exact 32 GiB run-owned swap file and
+must have 72 GiB free. A runner whose physical RAM already satisfies the
+47 GiB floor uses no job swap and must have 40 GiB free. This is a phase peak,
+not a sum of mutually exclusive Docker and Conda material. Frozen v1.1 runs first;
 only after its nested traces are authenticated does the job release exact image
 references proven absent before this run. It then creates only `core`, `qdnaseq`,
 and (for QuickStart 1) `ichorcna` from the committed definitions, records
@@ -59,11 +63,20 @@ and its frozen outputs and inputs each round to 1 GiB. QuickStart 2 images total
 1 GiB for QuickStart 2. The 8 GiB and 7 GiB native transient allowances bound
 the larger mutually exclusive footprint: package solve/cache before its exact
 removal, or native-output growth afterwards. With 32 GiB job-owned swap and an
-8 GiB reserve, both frozen and native
-phase models peak at 72 GiB. Each boundary records `df`, `du`, memory, swap, and
+8 GiB reserve, both low-memory frozen and native
+phase models peak at 72 GiB; removing the unnecessary swap allocation on an
+ample-memory runner makes the maximum 40 GiB. Each boundary immediately
+enforces the 8 GiB filesystem reserve and the physical/addressable memory
+floors before it records `df`, `du`, memory, swap, and
 Docker evidence in the sealed audit. Earlier hosted logs recorded 15.61 GiB
 physical RAM and 34 GiB total swap after adding the 32 GiB file, but no peak
 swap use, so reducing that allocation is not evidence-supported.
+
+The driver first uses preinstalled comparator commands, including a configured
+Conda prefix when present. It runs `apt-get` only when a command is missing and
+passwordless noninteractive sudo is available; otherwise it stops with the
+exact missing-command list. Thus an ample-memory preconfigured runner requires
+neither sudo package mutation nor sudo swap operations.
 
 The Native v2 CI Docker job and permanent release publisher each require 40 GiB
 free and 15 GiB physical RAM: 14 GiB for the final five scientific environments,
@@ -111,6 +124,11 @@ The final `bundles/` directory contains separate QuickStart audit archives, a de
 
 The v2 release parity jobs keep the v1.1 OncoTracer source, SAMURAI source,
 Nextflow version, and every runtime container digest pinned. The QuickStart 1
+audit also pins all five ichorCNA assets to the exact SAMURAI commit by byte
+size and SHA-256, requires byte-identical frozen/native asset manifests, and
+seals those manifests into the artifact checksums. The upstream HD_ULP PoN is
+one of those static SAMURAI assets; it is not constructed from example NORMAL
+controls. The QuickStart 1
 ONT fixture can contain NA read-count bins. ichorCNA 0.5.1 performs two
 `quantile(copy, ...)` calls without `na.rm = TRUE` while creating a correction
 plot, after its analytical segment outputs have been written.

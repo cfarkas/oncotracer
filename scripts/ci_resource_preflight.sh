@@ -63,9 +63,22 @@ else
   [[ "$EXPECTED_SWAP_FILE" == none ]] || usage
 fi
 
-first_device=""
 available_kib=""
+declare -a FILESYSTEM_PATHS=()
+declare -a FILESYSTEM_DEVICES=()
+declare -a FILESYSTEM_AVAILABLE_KIB=()
+declare -A SEEN_PATHS=()
+declare -A SEEN_DEVICES=()
 for path in "${CHECK_PATHS[@]}"; do
+  [[ "$path" != *$'\n'* && "$path" != *$'\r'* ]] || {
+    printf 'ERROR: resource-preflight path contains a line break\n' >&2
+    exit 1
+  }
+  [[ -z "${SEEN_PATHS[$path]+present}" ]] || {
+    printf 'ERROR: duplicate resource-preflight path: %s\n' "$path" >&2
+    exit 1
+  }
+  SEEN_PATHS["$path"]=1
   [[ -e "$path" ]] || {
     printf 'ERROR: resource-preflight path does not exist: %s\n' "$path" >&2
     exit 1
@@ -77,14 +90,12 @@ for path in "${CHECK_PATHS[@]}"; do
     printf 'ERROR: could not establish free storage for %s\n' "$path" >&2
     exit 1
   }
-  if [[ -z "$first_device" ]]; then
-    first_device="$device"
+  FILESYSTEM_PATHS+=("$path")
+  FILESYSTEM_DEVICES+=("$device")
+  FILESYSTEM_AVAILABLE_KIB+=("$path_available_kib")
+  SEEN_DEVICES["$device"]=1
+  if [[ -z "$available_kib" ]]; then
     available_kib="$path_available_kib"
-  elif [[ "$device" != "$first_device" ]]; then
-    printf 'ERROR: %s spans filesystems %s and %s; the checked capacity model requires one filesystem.\n' \
-      "$PURPOSE" "$first_device" "$device" >&2
-    printf 'Configure one explicitly sized runner filesystem; broad host cleanup is not an accepted remedy.\n' >&2
-    exit 1
   elif (( path_available_kib < available_kib )); then
     available_kib="$path_available_kib"
   fi
@@ -104,14 +115,17 @@ planned_swap_kib=$((PLANNED_SWAP_GIB * KIB_PER_GIB))
 required_addressable_kib=$((MIN_ADDRESSABLE_GIB * KIB_PER_GIB))
 addressable_kib=$((mem_total_kib + swap_total_kib + planned_swap_kib))
 
-if (( available_kib < required_free_kib )); then
-  printf 'ERROR: %s requires at least %s GiB free on one filesystem; only %s KiB is available.\n' \
-    "$PURPOSE" "$MIN_FREE_GIB" "$available_kib" >&2
-  printf 'The standard runner contract guarantees only %s GiB. Configure an explicitly sized runner with at least %s GiB free.\n' \
-    "$STANDARD_CONTRACT_FREE_GIB" "$MIN_FREE_GIB" >&2
-  echo 'Broad host cleanup is not an accepted remedy.' >&2
-  exit 1
-fi
+for index in "${!FILESYSTEM_PATHS[@]}"; do
+  if (( FILESYSTEM_AVAILABLE_KIB[index] < required_free_kib )); then
+    printf 'ERROR: %s requires at least %s GiB free on every checked filesystem; path %s on %s has only %s KiB.\n' \
+      "$PURPOSE" "$MIN_FREE_GIB" "${FILESYSTEM_PATHS[index]}" \
+      "${FILESYSTEM_DEVICES[index]}" "${FILESYSTEM_AVAILABLE_KIB[index]}" >&2
+    printf 'The standard runner contract guarantees only %s GiB. Configure each checked filesystem with at least %s GiB free.\n' \
+      "$STANDARD_CONTRACT_FREE_GIB" "$MIN_FREE_GIB" >&2
+    echo 'Broad host cleanup is not an accepted remedy; capacities are never summed across filesystems.' >&2
+    exit 1
+  fi
+done
 
 if (( mem_total_kib < required_physical_kib )); then
   printf 'ERROR: %s requires at least %s GiB physical memory; only %s KiB is available.\n' \
@@ -132,15 +146,24 @@ if (( MIN_FREE_GIB > STANDARD_CONTRACT_FREE_GIB )); then
     "$STANDARD_CONTRACT_FREE_GIB" "$MIN_FREE_GIB" >&2
 fi
 
-printf 'resource_preflight_schema=oncotracer-hosted-resource-preflight-v2\n'
+printf 'resource_preflight_schema=oncotracer-hosted-resource-preflight-v3\n'
 printf 'resource_preflight_status=PASS\n'
 printf 'resource_preflight_run_id=%s\n' "$RUN_ID"
 printf 'resource_preflight_run_attempt=%s\n' "$RUN_ATTEMPT"
 printf 'resource_preflight_suite=%s\n' "$SUITE"
 printf 'resource_preflight_candidate_sha=%s\n' "$CANDIDATE_SHA"
 printf 'resource_preflight_purpose=%s\n' "$PURPOSE"
-printf 'resource_preflight_filesystem=%s\n' "$first_device"
-printf 'resource_preflight_available_kib=%s\n' "$available_kib"
+printf 'resource_preflight_minimum_available_kib=%s\n' "$available_kib"
+printf 'resource_preflight_checked_path_count=%s\n' "${#FILESYSTEM_PATHS[@]}"
+printf 'resource_preflight_unique_device_count=%s\n' "${#SEEN_DEVICES[@]}"
+for index in "${!FILESYSTEM_PATHS[@]}"; do
+  printf 'resource_preflight_checked_path_%03d_path=%s\n' \
+    "$index" "${FILESYSTEM_PATHS[index]}"
+  printf 'resource_preflight_checked_path_%03d_device=%s\n' \
+    "$index" "${FILESYSTEM_DEVICES[index]}"
+  printf 'resource_preflight_checked_path_%03d_available_kib=%s\n' \
+    "$index" "${FILESYSTEM_AVAILABLE_KIB[index]}"
+done
 printf 'resource_preflight_required_free_gib=%s\n' "$MIN_FREE_GIB"
 printf 'resource_preflight_mem_total_kib=%s\n' "$mem_total_kib"
 printf 'resource_preflight_required_physical_gib=%s\n' "$MIN_PHYSICAL_GIB"

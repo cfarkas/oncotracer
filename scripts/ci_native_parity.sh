@@ -67,11 +67,22 @@ RESOURCE_PHASE_INDEX=0
 #   QS2 native: 32 swap + 16 reference + 2 input + 6 frozen output +
 #               1 minimal env + 7 solve/cache-or-output + 8 reserve
 #
-# Every phase therefore requires 72 GiB free at job start, rather than summing
-# mutually exclusive Docker and Conda peaks.
+# A low-memory hosted runner requires 72 GiB free at job start. A runner whose
+# physical RAM already satisfies the 47-GiB addressable floor needs no swap and
+# therefore requires 40 GiB. Neither model sums mutually exclusive Docker and
+# Conda peaks.
 readonly SHARED_REFERENCE_GIB=16
-readonly PARITY_SWAP_GIB=32
 readonly FILESYSTEM_RESERVE_GIB=8
+readonly MIN_PHYSICAL_GIB=15
+readonly MIN_ADDRESSABLE_GIB=47
+readonly HOST_MEM_TOTAL_KIB="$(awk '$1 == "MemTotal:" {print $2}' /proc/meminfo)"
+[[ "$HOST_MEM_TOTAL_KIB" =~ ^[0-9]+$ ]]
+read -r PARITY_SWAP_GIB SWAP_FILE < <(
+  bash "$REPO/scripts/ci_select_parity_swap.sh" \
+    "$HOST_MEM_TOTAL_KIB" "$MIN_ADDRESSABLE_GIB" "$RUNNER_TEMP" \
+    "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+)
+readonly PARITY_SWAP_GIB SWAP_FILE
 if [[ "$SUITE" == quickstart1 ]]; then
   readonly PINNED_IMAGES_GIB=14
   readonly PUBLIC_INPUTS_GIB=1
@@ -99,14 +110,15 @@ if (( FROZEN_PHASE_GIB > NATIVE_PHASE_GIB )); then
 else
   readonly MIN_FREE_GIB="$NATIVE_PHASE_GIB"
 fi
-[[ "$MIN_FREE_GIB" -eq 72 ]]
+if (( PARITY_SWAP_GIB == 32 )); then
+  [[ "$MIN_FREE_GIB" -eq 72 ]]
+else
+  [[ "$PARITY_SWAP_GIB" -eq 0 && "$MIN_FREE_GIB" -eq 40 ]]
+fi
 # The scientific task cap is 14 GB (13.04 GiB). Previous hosted evidence
 # reported 15.61 GiB physical RAM, so 15 GiB is the highest evidence-backed
 # whole-GiB floor that preserves operating-system headroom on that runner.
-readonly MIN_PHYSICAL_GIB=15
-readonly MIN_ADDRESSABLE_GIB=$((MIN_PHYSICAL_GIB + PARITY_SWAP_GIB))
 readonly STANDARD_RUNNER_CONTRACT_FREE_GIB=14
-readonly SWAP_FILE="$RUNNER_TEMP/oncotracer-swap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
 readonly ILLUMINA_PRE_INVENTORY="$RUNNER_TEMP/$SUITE-illumina-nested-traces-pre.tsv"
 readonly ONT_PRE_INVENTORY="$RUNNER_TEMP/$SUITE-ont-nested-traces-pre.tsv"
@@ -132,30 +144,34 @@ require_file() {
 
 record_phase_resources() {
   local phase="$1" output path available_kib mem_total_kib swap_total_kib
-  local active_swap_size_bytes=0 active_swap_used_bytes=0 swap_required=1
+  local active_swap_size_bytes=0 active_swap_used_bytes=0 swap_required=0 swap_row=""
   [[ "$phase" =~ ^[a-z0-9][a-z0-9-]*$ ]] || {
     echo "invalid resource-evidence phase: $phase" >&2
     exit 1
   }
-  RESOURCE_PHASE_INDEX=$((RESOURCE_PHASE_INDEX + 1))
   available_kib="$(LC_ALL=C df -Pk "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp "$DOCKER_ROOT_DIR" |
     awk 'NR > 1 && $4 ~ /^[0-9]+$/ {if (minimum == "" || $4 < minimum) minimum=$4} END {print minimum}')"
   mem_total_kib="$(awk '$1 == "MemTotal:" {print $2}' /proc/meminfo)"
   swap_total_kib="$(awk '$1 == "SwapTotal:" {print $2}' /proc/meminfo)"
-  if [[ "$phase" == preflight-passed ]]; then
-    swap_required=0
-  else
-    read -r active_swap_size_bytes active_swap_used_bytes < <(
-      sudo swapon --show --bytes --noheadings --raw --output=NAME,SIZE,USED |
-        awk -v expected="$SWAP_FILE" '$1 == expected {print $2, $3}'
-    )
+  if (( PARITY_SWAP_GIB > 0 )) && [[ "$phase" != preflight-passed ]]; then
+    swap_required=1
+    swap_row="$(swapon --show --bytes --noheadings --raw --output=NAME,SIZE,USED |
+      awk -v expected="$SWAP_FILE" '$1 == expected {print $2, $3}')"
+    [[ -n "$swap_row" ]] || {
+      echo "ERROR: active job swap evidence is missing for parity phase $phase" >&2
+      exit 1
+    }
+    read -r active_swap_size_bytes active_swap_used_bytes <<< "$swap_row"
   fi
   [[ "$available_kib" =~ ^[0-9]+$ && "$mem_total_kib" =~ ^[0-9]+$ &&
     "$swap_total_kib" =~ ^[0-9]+$ && "$active_swap_size_bytes" =~ ^[0-9]+$ &&
     "$active_swap_used_bytes" =~ ^[0-9]+$ ]]
-  if (( swap_required == 1 )); then
-    (( active_swap_size_bytes >= PARITY_SWAP_GIB * 1024 * 1024 * 1024 ))
-  fi
+  bash "$REPO/scripts/ci_resource_phase_guard.sh" \
+    "$phase" "$available_kib" "$mem_total_kib" "$swap_total_kib" \
+    "$active_swap_size_bytes" "$swap_required" "$MIN_PHYSICAL_GIB" \
+    "$MIN_ADDRESSABLE_GIB" "$PARITY_SWAP_GIB" "$FILESYSTEM_RESERVE_GIB" \
+    >/dev/null
+  RESOURCE_PHASE_INDEX=$((RESOURCE_PHASE_INDEX + 1))
   output="$RESOURCE_PHASE_ROOT/$phase.txt"
   {
     printf 'schema\toncotracer-hosted-resource-phase-v2\n'
@@ -184,7 +200,11 @@ record_phase_resources() {
     printf '\n[memory-kibibytes]\n'
     free -k
     printf '\n[active-swap]\n'
-    sudo swapon --show --bytes --output=NAME,SIZE,USED,PRIO
+    if (( PARITY_SWAP_GIB == 0 )); then
+      printf 'none (physical memory satisfies the addressable floor)\n'
+    else
+      swapon --show --bytes --output=NAME,SIZE,USED,PRIO
+    fi
     printf '\n[docker]\n'
     docker system df
     printf '\n[path-bytes]\n'
@@ -385,14 +405,22 @@ cleanup_job_swap() {
   local status=$? expected active_swap_names cleanup_status=0
   expected="$RUNNER_TEMP/oncotracer-swap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
   set +e
+  if (( PARITY_SWAP_GIB == 0 )); then
+    if [[ "$SWAP_FILE" != none ]]; then
+      echo "Refusing zero-swap cleanup with unexpected identity: $SWAP_FILE" >&2
+      (( status != 0 )) && return "$status"
+      return 1
+    fi
+    return "$status"
+  fi
   if [[ "$SWAP_FILE" != "$expected" ]]; then
     echo "Refusing to clean unexpected swap path: $SWAP_FILE" >&2
     cleanup_status=1
-  elif ! active_swap_names="$(sudo swapon --show=NAME --noheadings --raw 2>/dev/null)"; then
+  elif ! active_swap_names="$(sudo -n swapon --show=NAME --noheadings --raw 2>/dev/null)"; then
     echo "Refusing to remove $SWAP_FILE because active swap could not be established" >&2
     cleanup_status=1
   elif grep -Fx -- "$SWAP_FILE" <<< "$active_swap_names" >/dev/null; then
-    if ! sudo swapoff -- "$SWAP_FILE"; then
+    if ! sudo -n swapoff -- "$SWAP_FILE"; then
       echo "Refusing to remove active swap after swapoff failed: $SWAP_FILE" >&2
       cleanup_status=1
     fi
@@ -405,13 +433,87 @@ cleanup_job_swap() {
     if [[ ! -f "$SWAP_FILE" || -L "$SWAP_FILE" ]]; then
       echo "Refusing to remove non-regular job swap path: $SWAP_FILE" >&2
       cleanup_status=1
-    elif ! sudo rm -f -- "$RUNNER_TEMP/oncotracer-swap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; then
+    elif ! sudo -n rm -f -- "$RUNNER_TEMP/oncotracer-swap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"; then
       echo "Failed to remove inactive job-owned swap file: $SWAP_FILE" >&2
       cleanup_status=1
     fi
   fi
   (( status != 0 )) && return "$status"
   return "$cleanup_status"
+}
+
+write_ichor_asset_manifest() {
+  local root="$1" output="$2" filename expected_bytes expected_sha observed_sha observed_bytes
+  [[ -d "$root" && ! -L "$root" ]]
+  printf 'filename\tbytes\tsha256\n' > "$output"
+  while IFS=$'\t' read -r filename expected_bytes expected_sha; do
+    [[ -n "$filename" ]] || continue
+    require_file "$root/$filename"
+    observed_bytes="$(wc -c < "$root/$filename")"
+    observed_sha="$(sha256sum "$root/$filename" | awk '{print $1}')"
+    [[ "$observed_bytes" == "$expected_bytes" && "$observed_sha" == "$expected_sha" ]] || {
+      echo "ERROR: immutable SAMURAI ichorCNA asset mismatch: $root/$filename" >&2
+      exit 1
+    }
+    printf '%s\t%s\t%s\n' "$filename" "$observed_bytes" "$observed_sha" >> "$output"
+  done <<'EOF'
+GRCh38.GCA_000001405.2_centromere_acen.txt	853	5ca2fed871adaa395773d932b94d40866690f69797694a21b057e8e1b3681e22
+HD_ULP_PoN_hg38_500kb_median_normAutosome_median.rds	675953	2f2e94d529d0ef3ca74b93e0814c89fae0f6b918b38a7efec3bf4207c25452c0
+Koren_repTiming_hg38_500kb.wig	59884	d7d20a549fb2a54a91dd73562ca820524a33b8bf33ab45bee881b1e031c96c8c
+gc_hg38_500kb.wig	52184	4ae9c5d7f3e8260b3d192e88b21e717ac7f761946ba16e896b7d375557e85b57
+map_hg38_500kb.wig	54494	18efe127d1fde052b5537d4bf0494f73710fe38eb3ec0e7e49fa483b4c647d89
+EOF
+}
+
+resolve_owned_native_reference_root() {
+  local kind="$1" identity root marker
+  case "$kind" in
+    samurai-hg38|ichorcna-hg38-500kb) ;;
+    *)
+      echo "ERROR: unsupported native reference-cache kind: $kind" >&2
+      return 2
+      ;;
+  esac
+  read -r identity root < <(python3 - "$REPO" "$V2_PROJECT_ROOT" "$kind" <<'PY'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from oncotracer_cli.engine import _reference_identity
+
+project = Path(sys.argv[2]).resolve(strict=True)
+kind = sys.argv[3]
+identity = _reference_identity(kind)
+root = project / ".oncotracer" / "reference-cache" / f"{kind}-{identity[:16]}"
+print(identity, root)
+PY
+)
+  [[ "$identity" =~ ^[0-9a-f]{64}$ ]]
+  [[ -d "$root" && ! -L "$root" ]]
+  marker="$root/.oncotracer-reference-owner.json"
+  require_file "$marker"
+  python3 - "$marker" "$root" "$identity" "$kind" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+marker, root = map(Path, sys.argv[1:3])
+identity = sys.argv[3]
+kind = sys.argv[4]
+if marker.is_symlink() or root.is_symlink():
+    raise SystemExit("owned native reference cache or marker is a symlink")
+payload = json.loads(marker.read_text(encoding="utf-8"))
+expected = {
+    "schema": "oncotracer-reference-cache-owner-v1",
+    "kind": kind,
+    "identity": identity,
+    "canonical_path": str(root),
+}
+if payload != expected or Path(os.path.realpath(root)) != root:
+    raise SystemExit("native reference cache ownership mismatch")
+PY
+  printf '%s\n' "$root"
 }
 
 [[ ! -e "$TEST_ROOT" && ! -L "$TEST_ROOT" ]] || {
@@ -453,12 +555,21 @@ python3 "$REPO/scripts/verify_ci_resource_preflight.py" \
   --min-addressable-gib "$MIN_ADDRESSABLE_GIB" \
   --planned-swap-gib "$PARITY_SWAP_GIB" \
   --standard-contract-free-gib "$STANDARD_RUNNER_CONTRACT_FREE_GIB" \
-  --expected-swap-file "$SWAP_FILE"
+  --expected-swap-file "$SWAP_FILE" \
+  --path "$GITHUB_WORKSPACE" --path "$RUNNER_TEMP" --path /tmp \
+  --path "$DOCKER_ROOT_DIR"
 record_phase_resources preflight-passed
 
 log "Install frozen-comparator prerequisites"
-sudo apt-get update
-sudo apt-get install -y --no-install-recommends samtools bwa minimap2 pigz curl wget git
+. "$REPO/scripts/ci_parity_prerequisites.sh"
+prerequisite_prefixes=()
+if [[ -n "${CONDA:-}" ]]; then
+  prerequisite_prefixes+=("$CONDA/bin")
+fi
+if [[ -n "${CONDA_EXE:-}" ]]; then
+  prerequisite_prefixes+=("$(dirname -- "$CONDA_EXE")")
+fi
+ensure_frozen_comparator_prerequisites "${prerequisite_prefixes[@]}"
 
 df -h
 
@@ -493,15 +604,23 @@ grep -Fx "$V1_DOCKER_IMAGE" "$RUNNER_TEMP/v1-docker-repodigests.txt"
 printf '%s\n' "$V1_DOCKER_IMAGE" > "$RUNNER_TEMP/v1-docker-digest.txt"
 
 log "Add addressable-memory headroom"
-[[ ! -e "$SWAP_FILE" && ! -L "$SWAP_FILE" ]] || {
-  echo "Refusing to replace pre-existing job swap path: $SWAP_FILE" >&2
-  exit 1
-}
-trap cleanup_job_swap EXIT
-sudo fallocate -l "${PARITY_SWAP_GIB}G" "$SWAP_FILE"
-sudo chmod 600 "$SWAP_FILE"
-sudo mkswap "$SWAP_FILE"
-sudo swapon "$SWAP_FILE"
+if (( PARITY_SWAP_GIB > 0 )); then
+  [[ ! -e "$SWAP_FILE" && ! -L "$SWAP_FILE" ]] || {
+    echo "Refusing to replace pre-existing job swap path: $SWAP_FILE" >&2
+    exit 1
+  }
+  command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1 || {
+    echo "ERROR: this low-memory runner needs a 32-GiB job-owned swap file, but passwordless sudo is unavailable." >&2
+    exit 1
+  }
+  trap cleanup_job_swap EXIT
+  sudo -n fallocate -l "${PARITY_SWAP_GIB}G" "$SWAP_FILE"
+  sudo -n chmod 600 "$SWAP_FILE"
+  sudo -n mkswap "$SWAP_FILE"
+  sudo -n swapon "$SWAP_FILE"
+else
+  [[ "$SWAP_FILE" == none ]]
+fi
 free -h
 record_phase_resources swap-active
 
@@ -740,6 +859,10 @@ test "$(git -C "$SAMURAI_SOURCE" rev-parse HEAD)" = "$SAMURAI_COMMIT"
 grep -Fx 'revision=v1.4.0' "$SAMURAI_SOURCE/.oncotracer-source"
 grep -Fx "commit=$SAMURAI_COMMIT" "$SAMURAI_SOURCE/.oncotracer-source"
 cp "$SAMURAI_SOURCE/.oncotracer-source" "$RUNNER_TEMP/samurai.oncotracer-source"
+if [[ "$SUITE" == quickstart1 ]]; then
+  write_ichor_asset_manifest "$SAMURAI_SOURCE/assets/ichorcna" \
+    "$CONTEXT/manifests/frozen-ichorcna-assets-manifest.tsv"
+fi
 
 log "Select and authenticate completed nested SAMURAI traces"
 if [[ "$SUITE" == quickstart1 ]]; then
@@ -796,6 +919,19 @@ else
     2>&1 | tee "$REPORT_ROOT/v2-hcc1143.log"
 fi
 record_phase_resources native-runs-complete
+
+if [[ "$SUITE" == quickstart1 ]]; then
+  native_ichor_root="$(resolve_owned_native_reference_root ichorcna-hg38-500kb)"
+  write_ichor_asset_manifest \
+    "$native_ichor_root" \
+    "$CONTEXT/manifests/native-ichorcna-assets-manifest.tsv"
+  cmp --silent \
+    "$CONTEXT/manifests/frozen-ichorcna-assets-manifest.tsv" \
+    "$CONTEXT/manifests/native-ichorcna-assets-manifest.tsv" || {
+      echo 'ERROR: frozen-v1/native-v2 ichorCNA asset manifests differ' >&2
+      exit 1
+    }
+fi
 
 log "Produce semantic parity reports"
 if [[ "$SUITE" == quickstart1 ]]; then
@@ -926,8 +1062,9 @@ PY
 cp -a "$QDNASEQ_GENERATION/." "$CONTEXT/qdnaseq-annotation/"
 python3 "$REPO/tests/parity_audit.py" manifest \
   "$CONTEXT/qdnaseq-annotation" "$CONTEXT/manifests/qdnaseq-annotation-manifest.tsv"
+native_hg38_root="$(resolve_owned_native_reference_root samurai-hg38)"
 python3 "$REPO/tests/parity_audit.py" manifest \
-  "$V2_PROJECT_ROOT/references/samurai_hg38" \
+  "$native_hg38_root" \
   "$CONTEXT/manifests/native-reference-manifest.tsv"
 
 record_phase_resources final

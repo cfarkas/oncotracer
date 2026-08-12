@@ -136,7 +136,9 @@ jobs:
             --min-physical-gib "$MIN_PHYSICAL_GIB" \
             --min-addressable-gib "$MIN_PHYSICAL_GIB" \
             --planned-swap-gib 0 --standard-contract-free-gib 14 \
-            --expected-swap-file none
+            --expected-swap-file none \
+            --path "$GITHUB_WORKSPACE" --path "$RUNNER_TEMP" --path /tmp \
+            --path "$DOCKER_ROOT_DIR"
 
       - name: Verify immutable source identity and release namespace
         if: steps.gate.outputs.ready == 'true'

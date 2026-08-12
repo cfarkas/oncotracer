@@ -77,6 +77,8 @@ jobs:
             tests/test_product_hygiene.py \
             tests/test_output_safety.py \
             tests/test_hosted_ci_storage_safety.py \
+            tests/test_ci_parity_resource_guards.py \
+            tests/test_ichor_asset_identity.py \
             tests/test_release_workflow.py
       - name: Run shell and standalone documentation regression tests
         run: |
@@ -369,7 +371,9 @@ jobs:
             --min-physical-gib "$MIN_PHYSICAL_GIB" \
             --min-addressable-gib "$MIN_PHYSICAL_GIB" \
             --planned-swap-gib 0 --standard-contract-free-gib 14 \
-            --expected-swap-file none
+            --expected-swap-file none \
+            --path "$GITHUB_WORKSPACE" --path "$RUNNER_TEMP" --path /tmp \
+            --path "$DOCKER_ROOT_DIR"
           df -h "$GITHUB_WORKSPACE" "$RUNNER_TEMP" /tmp "$DOCKER_ROOT_DIR"
       - name: Build native image
         run: |

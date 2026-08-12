@@ -2046,15 +2046,28 @@ class ParityComparatorTests(unittest.TestCase):
             (context / "hosted-resource-preflight.txt").write_text(
                 "\n".join(
                     (
-                        "resource_preflight_schema=oncotracer-hosted-resource-preflight-v2",
+                        "resource_preflight_schema=oncotracer-hosted-resource-preflight-v3",
                         "resource_preflight_status=PASS",
                         "resource_preflight_run_id=123",
                         "resource_preflight_run_attempt=2",
                         "resource_preflight_suite=quickstart2",
                         f"resource_preflight_candidate_sha={resource_sha}",
                         "resource_preflight_purpose=test parity",
-                        "resource_preflight_filesystem=/dev/test",
-                        f"resource_preflight_available_kib={80 * 1024 * 1024}",
+                        f"resource_preflight_minimum_available_kib={80 * 1024 * 1024}",
+                        "resource_preflight_checked_path_count=4",
+                        "resource_preflight_unique_device_count=3",
+                        "resource_preflight_checked_path_000_path=/workspace",
+                        "resource_preflight_checked_path_000_device=/dev/test",
+                        f"resource_preflight_checked_path_000_available_kib={80 * 1024 * 1024}",
+                        f"resource_preflight_checked_path_001_path={runner_temp}",
+                        "resource_preflight_checked_path_001_device=/dev/test",
+                        f"resource_preflight_checked_path_001_available_kib={80 * 1024 * 1024}",
+                        "resource_preflight_checked_path_002_path=/tmp",
+                        "resource_preflight_checked_path_002_device=/dev/other",
+                        f"resource_preflight_checked_path_002_available_kib={80 * 1024 * 1024}",
+                        "resource_preflight_checked_path_003_path=/docker",
+                        "resource_preflight_checked_path_003_device=/dev/docker",
+                        f"resource_preflight_checked_path_003_available_kib={80 * 1024 * 1024}",
                         "resource_preflight_required_free_gib=72",
                         f"resource_preflight_mem_total_kib={16 * 1024 * 1024}",
                         "resource_preflight_required_physical_gib=15",
@@ -2108,7 +2121,7 @@ class ParityComparatorTests(unittest.TestCase):
                             "active_swap_used_bytes\t0",
                             f"minimum_available_kib\t{70 * 1024 * 1024}",
                             f"mem_total_kib\t{16 * 1024 * 1024}",
-                            f"swap_total_kib\t{32 * 1024 * 1024}",
+                            f"swap_total_kib\t{0 if phase == 'preflight-passed' else 32 * 1024 * 1024}",
                             "recorded_at\t2026-08-12T00:00:00Z",
                             "",
                             "[df-kibibytes]",
@@ -2173,6 +2186,68 @@ class ParityComparatorTests(unittest.TestCase):
             final_evidence.write_bytes((phase_root / "final.txt").read_bytes())
             with self.assertRaisesRegex(audit_module.AuditError, "inventory mismatch"):
                 audit_module.verify_minimal_native_environments(context, "quickstart1")
+
+            preflight_path = context / "hosted-resource-preflight.txt"
+            original_preflight = preflight_path.read_text(encoding="utf-8")
+            original_phases = {
+                phase: (phase_root / f"{phase}.txt").read_text(encoding="utf-8")
+                for phase in phase_names
+            }
+            preflight_path.write_text(
+                original_preflight.replace(
+                    "resource_preflight_required_free_gib=72",
+                    "resource_preflight_required_free_gib=40",
+                )
+                .replace(
+                    f"resource_preflight_mem_total_kib={16 * 1024 * 1024}",
+                    f"resource_preflight_mem_total_kib={64 * 1024 * 1024}",
+                )
+                .replace(
+                    "resource_preflight_planned_swap_gib=32",
+                    "resource_preflight_planned_swap_gib=0",
+                )
+                .replace(
+                    f"resource_preflight_expected_swap_file={swap_file}",
+                    "resource_preflight_expected_swap_file=none",
+                ),
+                encoding="utf-8",
+            )
+            for phase, phase_text in original_phases.items():
+                zero_swap_text = (
+                    phase_text.replace("minimum_free_gib\t72", "minimum_free_gib\t40")
+                    .replace("planned_swap_gib\t32", "planned_swap_gib\t0")
+                    .replace(
+                        f"expected_swap_file\t{swap_file}", "expected_swap_file\tnone"
+                    )
+                    .replace("swap_required\t1", "swap_required\t0")
+                    .replace(
+                        "active_swap_size_bytes\t34359738368",
+                        "active_swap_size_bytes\t0",
+                    )
+                    .replace(
+                        f"mem_total_kib\t{16 * 1024 * 1024}",
+                        f"mem_total_kib\t{64 * 1024 * 1024}",
+                    )
+                    .replace(
+                        f"swap_total_kib\t{32 * 1024 * 1024}",
+                        "swap_total_kib\t0",
+                    )
+                )
+                (phase_root / f"{phase}.txt").write_text(
+                    zero_swap_text, encoding="utf-8"
+                )
+            final_evidence.write_bytes((phase_root / "final.txt").read_bytes())
+            zero_swap_verified = audit_module.verify_minimal_native_environments(
+                context, "quickstart2", resource_sha
+            )
+            self.assertEqual(
+                zero_swap_verified["resources"]["phase_count"], len(phase_names)
+            )
+            preflight_path.write_text(original_preflight, encoding="utf-8")
+            for phase, phase_text in original_phases.items():
+                (phase_root / f"{phase}.txt").write_text(phase_text, encoding="utf-8")
+            final_evidence.write_bytes((phase_root / "final.txt").read_bytes())
+
             (context / "native-classifier.explicit.txt").write_text(
                 "@EXPLICIT\n", encoding="utf-8"
             )

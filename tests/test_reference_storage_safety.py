@@ -536,11 +536,13 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
             "reptime": ("reptime.wig", digest(b"reptime")),
             "pon": ("pon.rds", digest(b"pon")),
         }
+        fixture_sizes = {key: len(key.encode("utf-8")) for key in fixture_assets}
         for key, (name, _expected) in fixture_assets.items():
             (reference / name).write_bytes(key.encode("utf-8"))
         before = self.snapshot(reference)
         with (
             patch.object(engine, "ICHOR_ASSETS", fixture_assets),
+            patch.object(engine, "ICHOR_ASSET_SIZES", fixture_sizes),
             patch.object(engine, "download") as download,
         ):
             observed = prepare_ichor_assets(self.project, 500)
@@ -548,10 +550,11 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
         self.assertEqual(set(observed), set(fixture_assets))
         self.assertEqual(self.snapshot(reference), before)
 
-        (reference / "pon.rds").write_bytes(b"corrupt")
+        (reference / "pon.rds").write_bytes(b"bad")
         corrupt = self.snapshot(reference)
         with (
             patch.object(engine, "ICHOR_ASSETS", fixture_assets),
+            patch.object(engine, "ICHOR_ASSET_SIZES", fixture_sizes),
             patch.object(engine, "download") as download,
         ):
             with self.assertRaisesRegex(OncoTracerError, "SHA-256 mismatch"):
@@ -567,6 +570,7 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
             "reptime": ("reptime.wig", digest(b"reptime")),
             "pon": ("pon.rds", digest(b"pon")),
         }
+        fixture_sizes = {key: len(key.encode("utf-8")) for key in fixture_assets}
 
         def download_asset(url: str, destination: Path, **_kwargs):
             name = url.rsplit("/", 1)[-1]
@@ -576,6 +580,7 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
 
         with (
             patch.object(engine, "ICHOR_ASSETS", fixture_assets),
+            patch.object(engine, "ICHOR_ASSET_SIZES", fixture_sizes),
             patch.object(engine, "download", side_effect=download_asset),
         ):
             observed = prepare_ichor_assets(self.project, 500)
@@ -620,14 +625,18 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
             "reptime": ("reptime.wig", digest(b"reptime")),
             "pon": ("pon.rds", digest(b"pon")),
         }
+        fixture_sizes = {key: len(key.encode("utf-8")) for key in fixture_assets}
         assets = {}
         for key, (name, _expected) in fixture_assets.items():
             path = reference / name
             path.write_bytes(key.encode("utf-8"))
             assets[key] = path
 
-        with patch.object(engine, "ICHOR_ASSETS", fixture_assets):
-            with self.assertRaisesRegex(OncoTracerError, "SHA-256 mismatch"):
+        with (
+            patch.object(engine, "ICHOR_ASSETS", fixture_assets),
+            patch.object(engine, "ICHOR_ASSET_SIZES", fixture_sizes),
+        ):
+            with self.assertRaisesRegex(OncoTracerError, "(size|SHA-256) mismatch"):
                 with _validated_ichor_asset_reader(assets, FixtureRunner()):
                     assets["pon"].write_bytes(b"changed")
 
@@ -641,6 +650,7 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
             "reptime": ("reptime.wig", digest(b"reptime")),
             "pon": ("pon.rds", digest(b"pon")),
         }
+        fixture_sizes = {key: len(key.encode("utf-8")) for key in fixture_assets}
         assets = {}
         for key, (name, _expected) in fixture_assets.items():
             path = reference / name
@@ -658,7 +668,10 @@ class ReferenceStorageSafetyTests(unittest.TestCase):
                 acquired.set()
 
         worker = threading.Thread(target=writer)
-        with patch.object(engine, "ICHOR_ASSETS", fixture_assets):
+        with (
+            patch.object(engine, "ICHOR_ASSETS", fixture_assets),
+            patch.object(engine, "ICHOR_ASSET_SIZES", fixture_sizes),
+        ):
             with _validated_ichor_asset_reader(assets, FixtureRunner()):
                 worker.start()
                 self.assertTrue(attempted.wait(1))

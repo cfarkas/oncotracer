@@ -8,7 +8,7 @@ import re
 from pathlib import Path, PurePosixPath
 
 
-KEYS = {
+STATIC_KEYS = {
     "resource_preflight_schema",
     "resource_preflight_status",
     "resource_preflight_run_id",
@@ -16,8 +16,9 @@ KEYS = {
     "resource_preflight_suite",
     "resource_preflight_candidate_sha",
     "resource_preflight_purpose",
-    "resource_preflight_filesystem",
-    "resource_preflight_available_kib",
+    "resource_preflight_minimum_available_kib",
+    "resource_preflight_checked_path_count",
+    "resource_preflight_unique_device_count",
     "resource_preflight_required_free_gib",
     "resource_preflight_mem_total_kib",
     "resource_preflight_required_physical_gib",
@@ -51,9 +52,45 @@ def parse(path: Path) -> dict[str, str]:
         if not key or key in values:
             fail(f"duplicate or empty evidence key on line {line_number}")
         values[key] = value
-    if set(values) != KEYS:
-        fail(f"evidence key inventory mismatch: {set(values)!r}")
+    if not STATIC_KEYS <= set(values):
+        fail(f"evidence static key inventory mismatch: {set(values)!r}")
     return values
+
+
+def checked_filesystems(
+    values: dict[str, str], expected_paths: list[str], minimum_free_gib: int
+) -> list[tuple[str, str, int]]:
+    count = integer(values, "resource_preflight_checked_path_count")
+    if count != len(expected_paths) or count < 1:
+        fail("checked filesystem count does not match exact invocation paths")
+    dynamic_keys: set[str] = set()
+    records: list[tuple[str, str, int]] = []
+    for index, expected_path in enumerate(expected_paths):
+        prefix = f"resource_preflight_checked_path_{index:03d}_"
+        path_key = prefix + "path"
+        device_key = prefix + "device"
+        available_key = prefix + "available_kib"
+        dynamic_keys.update((path_key, device_key, available_key))
+        if values.get(path_key) != expected_path:
+            fail(f"{path_key} does not match the exact invocation path")
+        device = values.get(device_key, "")
+        if not device or "\n" in device or "\r" in device:
+            fail(f"{device_key} is missing or malformed")
+        available = integer(values, available_key)
+        if available < minimum_free_gib * 1024 * 1024:
+            fail(f"{available_key} does not satisfy the bound threshold")
+        records.append((expected_path, device, available))
+    if set(values) != STATIC_KEYS | dynamic_keys:
+        fail(f"evidence key inventory mismatch: {set(values)!r}")
+    if integer(values, "resource_preflight_minimum_available_kib") != min(
+        record[2] for record in records
+    ):
+        fail("recorded minimum free storage does not match checked filesystems")
+    if integer(values, "resource_preflight_unique_device_count") != len(
+        {record[1] for record in records}
+    ):
+        fail("recorded unique-device count does not match checked filesystems")
+    return records
 
 
 def main() -> int:
@@ -69,11 +106,12 @@ def main() -> int:
     parser.add_argument("--planned-swap-gib", type=int, required=True)
     parser.add_argument("--standard-contract-free-gib", type=int, required=True)
     parser.add_argument("--expected-swap-file", required=True)
+    parser.add_argument("--path", action="append", default=[], required=True)
     args = parser.parse_args()
     values = parse(args.evidence)
 
     expected_identity = {
-        "resource_preflight_schema": "oncotracer-hosted-resource-preflight-v2",
+        "resource_preflight_schema": "oncotracer-hosted-resource-preflight-v3",
         "resource_preflight_status": "PASS",
         "resource_preflight_run_id": args.run_id,
         "resource_preflight_run_attempt": args.run_attempt,
@@ -103,11 +141,7 @@ def main() -> int:
         if expected < 0 or integer(values, key) != expected:
             fail(f"{key} threshold does not match the workflow model")
     kib_per_gib = 1024 * 1024
-    if (
-        integer(values, "resource_preflight_available_kib")
-        < args.min_free_gib * kib_per_gib
-    ):
-        fail("recorded storage does not satisfy the bound threshold")
+    checked_filesystems(values, args.path, args.min_free_gib)
     memory = integer(values, "resource_preflight_mem_total_kib")
     current_swap = integer(values, "resource_preflight_swap_total_kib")
     if memory < args.min_physical_gib * kib_per_gib:

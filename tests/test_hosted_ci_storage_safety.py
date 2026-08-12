@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import os
 import re
 import shlex
 import subprocess
@@ -1951,6 +1952,8 @@ PY
                     "14",
                     "--expected-swap-file",
                     "none",
+                    "--path",
+                    str(ROOT),
                 ],
                 check=False,
                 capture_output=True,
@@ -1978,7 +1981,7 @@ PY
         )
         self.assertEqual(failing.returncode, 1)
         self.assertIn("requires at least 1048576 GiB free", failing.stderr)
-        self.assertIn("Broad host cleanup is not an accepted remedy.", failing.stderr)
+        self.assertIn("Broad host cleanup is not an accepted remedy", failing.stderr)
 
         memory_failing = subprocess.run(
             [
@@ -1999,16 +2002,142 @@ PY
         self.assertIn("swap is not a substitute", memory_failing.stderr)
 
         split_filesystem = subprocess.run(
+            [*base, "--min-free-gib", "1", "--path", "/tmp"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(split_filesystem.returncode, 0, split_filesystem.stderr)
+        self.assertIn(
+            "resource_preflight_checked_path_count=2", split_filesystem.stdout
+        )
+        self.assertIn(
+            "resource_preflight_checked_path_001_path=/tmp", split_filesystem.stdout
+        )
+
+        one_filesystem_low = subprocess.run(
             [*base, "--min-free-gib", "1", "--path", "/proc"],
             check=False,
             capture_output=True,
             text=True,
         )
-        self.assertEqual(split_filesystem.returncode, 1)
-        self.assertIn("spans filesystems", split_filesystem.stderr)
+        self.assertEqual(one_filesystem_low.returncode, 1)
+        self.assertIn("every checked filesystem", one_filesystem_low.stderr)
         self.assertIn(
-            "broad host cleanup is not an accepted remedy", split_filesystem.stderr
+            "capacities are never summed across filesystems", one_filesystem_low.stderr
         )
+
+        with tempfile.TemporaryDirectory() as raw:
+            fixture = Path(raw)
+            first = fixture / "first"
+            second = fixture / "second"
+            first.mkdir()
+            second.mkdir()
+            fake_bin = fixture / "bin"
+            fake_bin.mkdir()
+            fake_df = fake_bin / "df"
+            fake_df.write_text(
+                "#!/bin/sh\n"
+                "for target do :; done\n"
+                f'if [ "$target" = "{first}" ]; then device=/dev/alpha; free=2097152; '
+                f'elif [ "$target" = "{second}" ]; then device=/dev/beta; free=${{SECOND_FREE_KIB:-2097152}}; '
+                "else exit 91; fi\n"
+                "printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\\n'\n"
+                'printf \'%s 4194304 0 %s 0%% /fixture\\n\' "$device" "$free"\n',
+                encoding="utf-8",
+            )
+            fake_df.chmod(0o755)
+            fake_base = [
+                *base[: base.index("--path")],
+                "--path",
+                str(first),
+                "--path",
+                str(second),
+                "--min-free-gib",
+                "1",
+            ]
+            environment = os.environ.copy()
+            environment["PATH"] = f"{fake_bin}:{environment['PATH']}"
+            two_devices = subprocess.run(
+                fake_base,
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(two_devices.returncode, 0, two_devices.stderr)
+            self.assertIn(
+                "resource_preflight_unique_device_count=2", two_devices.stdout
+            )
+            self.assertIn(
+                f"resource_preflight_checked_path_001_path={second}",
+                two_devices.stdout,
+            )
+            multi_evidence = fixture / "multi-device-preflight.txt"
+            multi_evidence.write_text(two_devices.stdout, encoding="utf-8")
+            multi_verifier = [
+                "python3",
+                str(ROOT / "scripts/verify_ci_resource_preflight.py"),
+                "--evidence",
+                str(multi_evidence),
+                "--run-id",
+                "123",
+                "--run-attempt",
+                "2",
+                "--suite",
+                "regression-fixture",
+                "--candidate-sha",
+                "a" * 40,
+                "--min-free-gib",
+                "1",
+                "--min-physical-gib",
+                "1",
+                "--min-addressable-gib",
+                "1",
+                "--planned-swap-gib",
+                "0",
+                "--standard-contract-free-gib",
+                "14",
+                "--expected-swap-file",
+                "none",
+                "--path",
+                str(first),
+                "--path",
+                str(second),
+            ]
+            verified_multi = subprocess.run(
+                multi_verifier,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(verified_multi.returncode, 0, verified_multi.stderr)
+            multi_evidence.write_text(
+                two_devices.stdout.replace(
+                    f"resource_preflight_checked_path_001_path={second}",
+                    "resource_preflight_checked_path_001_path=/wrong-device-path",
+                ),
+                encoding="utf-8",
+            )
+            rejected_path_binding = subprocess.run(
+                multi_verifier,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(rejected_path_binding.returncode, 0)
+            self.assertIn("exact invocation path", rejected_path_binding.stderr)
+            environment["SECOND_FREE_KIB"] = "524288"
+            one_device_low = subprocess.run(
+                fake_base,
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(one_device_low.returncode, 1)
+            self.assertIn(str(second), one_device_low.stderr)
+            self.assertIn("/dev/beta", one_device_low.stderr)
 
         missing_path = subprocess.run(
             [
@@ -2032,7 +2161,10 @@ PY
             "FROZEN_PHASE_GIB=",
             "NATIVE_PHASE_GIB=",
             '[[ "$MIN_FREE_GIB" -eq 72 ]]',
-            "PARITY_SWAP_GIB=32",
+            '[[ "$PARITY_SWAP_GIB" -eq 0 && "$MIN_FREE_GIB" -eq 40 ]]',
+            "scripts/ci_select_parity_swap.sh",
+            "scripts/ci_resource_phase_guard.sh",
+            "scripts/ci_parity_prerequisites.sh",
             "FILESYSTEM_RESERVE_GIB=8",
             "MIN_PHYSICAL_GIB=15",
             'CONDA_PKGS_DIRS="$CONDA_PACKAGE_CACHE"',
@@ -2050,8 +2182,8 @@ PY
             '--min-free-gib "$MIN_FREE_GIB"',
             '--min-addressable-gib "$MIN_ADDRESSABLE_GIB"',
             "trap cleanup_job_swap EXIT",
-            'sudo swapon "$SWAP_FILE"',
-            'if ! sudo swapoff -- "$SWAP_FILE"',
+            'sudo -n swapon "$SWAP_FILE"',
+            'if ! sudo -n swapoff -- "$SWAP_FILE"',
             "active swap could not be established",
             "Refusing to remove active swap after swapoff failed",
             '[[ ! -e "$TEST_ROOT" && ! -L "$TEST_ROOT" ]]',
@@ -2066,10 +2198,12 @@ PY
             "record_phase_resources final",
         ):
             self.assertIn(required, parity)
-        self.assertIn(
-            'SWAP_FILE="$RUNNER_TEMP/oncotracer-swap-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"',
-            parity,
+        selector = (ROOT / "scripts" / "ci_select_parity_swap.sh").read_text(
+            encoding="utf-8"
         )
+        self.assertIn("32", selector)
+        self.assertIn("0\\tnone", selector)
+        self.assertIn("oncotracer-swap-%s-%s", selector)
         self.assertNotIn("/swapfile.oncotracer", parity)
         self.assertNotIn('sudo swapon "$SWAP_FILE" || true', parity)
         self.assertNotIn('install --conda --prefix "$V2_ENV_PREFIX"', parity)

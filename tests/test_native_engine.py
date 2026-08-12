@@ -594,7 +594,9 @@ class NativeEngineTests(unittest.TestCase):
                 "ok\n",
             )
 
-    def test_qdnaseq_helper_publishes_owned_generation_and_preserves_legacy(self) -> None:
+    def test_qdnaseq_helper_publishes_owned_generation_and_preserves_legacy(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             helper = root / "bin" / "scripts" / "prepare_qdnaseq_bin_data.sh"
@@ -761,6 +763,7 @@ class NativeEngineTests(unittest.TestCase):
             temporary = Path(directory)
             assets = {}
             fixture_assets = {}
+            fixture_sizes = {}
             for name in ("gc", "map", "centromere", "reptime", "pon"):
                 filename = f"{name}.asset"
                 payload = name.encode("utf-8")
@@ -768,6 +771,7 @@ class NativeEngineTests(unittest.TestCase):
                 asset.write_bytes(payload)
                 assets[name] = asset
                 fixture_assets[name] = (filename, hashlib.sha256(payload).hexdigest())
+                fixture_sizes[name] = len(payload)
             bams = {}
             samples = []
             fastq_dir = temporary / "fastq"
@@ -790,6 +794,7 @@ class NativeEngineTests(unittest.TestCase):
                     "oncotracer_cli.engine.prepare_ichor_assets", return_value=assets
                 ),
                 patch.object(engine, "ICHOR_ASSETS", fixture_assets),
+                patch.object(engine, "ICHOR_ASSET_SIZES", fixture_sizes),
             ):
                 observed = run_ichorcna(
                     ROOT,

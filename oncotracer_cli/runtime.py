@@ -682,9 +682,10 @@ def download(
     *,
     expected_bytes: int | None = None,
     expected_md5: str | None = None,
+    expected_sha256: str | None = None,
     retries: int = 5,
 ) -> Path:
-    """Download one file atomically and validate optional size/MD5."""
+    """Download one file atomically and validate optional size and digests."""
     destination = destination.expanduser().resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
 
@@ -699,6 +700,9 @@ def download(
                 while chunk := handle.read(8 * 1024 * 1024):
                     digest.update(chunk)
             if digest.hexdigest().lower() != expected_md5.lower():
+                return False
+        if expected_sha256 is not None:
+            if sha256_file(path).lower() != expected_sha256.lower():
                 return False
         return True
 
@@ -726,6 +730,7 @@ def download(
                         destination,
                         expected_bytes=expected_bytes,
                         expected_md5=expected_md5,
+                        expected_sha256=expected_sha256,
                         retries=retries,
                     )
                 shutil.copyfileobj(source, sink, length=8 * 1024 * 1024)

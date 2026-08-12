@@ -37,6 +37,28 @@ NEXTFLOW_VERSION = "26.04.6"
 NEXTFLOW_URL = "https://github.com/nextflow-io/nextflow/releases/download/v26.04.6/nextflow-26.04.6-dist"
 NEXTFLOW_SHA256 = "182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c"
 QDNASEQ_COMMIT = "cf7c07e39de0ac64a9c38cb030cba4626e2aae83"
+ICHOR_ASSET_IDENTITIES = {
+    "GRCh38.GCA_000001405.2_centromere_acen.txt": (
+        853,
+        "5ca2fed871adaa395773d932b94d40866690f69797694a21b057e8e1b3681e22",
+    ),
+    "HD_ULP_PoN_hg38_500kb_median_normAutosome_median.rds": (
+        675953,
+        "2f2e94d529d0ef3ca74b93e0814c89fae0f6b918b38a7efec3bf4207c25452c0",
+    ),
+    "Koren_repTiming_hg38_500kb.wig": (
+        59884,
+        "d7d20a549fb2a54a91dd73562ca820524a33b8bf33ab45bee881b1e031c96c8c",
+    ),
+    "gc_hg38_500kb.wig": (
+        52184,
+        "4ae9c5d7f3e8260b3d192e88b21e717ac7f761946ba16e896b7d375557e85b57",
+    ),
+    "map_hg38_500kb.wig": (
+        54494,
+        "18efe127d1fde052b5537d4bf0494f73710fe38eb3ec0e7e49fa483b4c647d89",
+    ),
+}
 
 
 class AuditError(RuntimeError):
@@ -125,6 +147,39 @@ def verify_manifest_tree(root: Path, path: Path) -> dict[str, tuple[str, int]]:
         if file_path.stat().st_size != size or sha256(file_path) != digest:
             raise AuditError(f"manifest mismatch: {file_path}")
     return records
+
+
+def read_ichor_asset_manifest(path: Path) -> dict[str, tuple[int, str]]:
+    rows = read_tsv(path)
+    if not rows or rows[0] != ["filename", "bytes", "sha256"]:
+        raise AuditError(f"invalid ichorCNA asset manifest: {path}")
+    observed: dict[str, tuple[int, str]] = {}
+    for row in rows[1:]:
+        if len(row) != 3 or row[0] in observed:
+            raise AuditError(f"invalid ichorCNA asset manifest row: {row!r}")
+        filename, bytes_text, digest = row
+        if not bytes_text.isdigit() or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+            raise AuditError(f"invalid ichorCNA asset identity: {row!r}")
+        observed[filename] = (int(bytes_text), digest)
+    if list(observed) != sorted(observed):
+        raise AuditError("ichorCNA asset manifest is not sorted")
+    return observed
+
+
+def verify_ichor_asset_manifests(context: Path, suite: str) -> str | None:
+    frozen = context / "manifests/frozen-ichorcna-assets-manifest.tsv"
+    native = context / "manifests/native-ichorcna-assets-manifest.tsv"
+    if suite == "quickstart1":
+        frozen_assets = read_ichor_asset_manifest(frozen)
+        native_assets = read_ichor_asset_manifest(native)
+        if frozen_assets != ICHOR_ASSET_IDENTITIES or native_assets != frozen_assets:
+            raise AuditError("frozen/native immutable ichorCNA asset identity mismatch")
+        if frozen.read_bytes() != native.read_bytes():
+            raise AuditError("frozen/native ichorCNA asset manifests differ")
+        return sha256(frozen)
+    if frozen.exists() or native.exists():
+        raise AuditError("unexpected ichorCNA asset manifests for QuickStart 2")
+    return None
 
 
 def write_checksums(audit: Path) -> None:
@@ -850,8 +905,9 @@ def verify_hosted_resource_evidence(
         "resource_preflight_suite",
         "resource_preflight_candidate_sha",
         "resource_preflight_purpose",
-        "resource_preflight_filesystem",
-        "resource_preflight_available_kib",
+        "resource_preflight_minimum_available_kib",
+        "resource_preflight_checked_path_count",
+        "resource_preflight_unique_device_count",
         "resource_preflight_required_free_gib",
         "resource_preflight_mem_total_kib",
         "resource_preflight_required_physical_gib",
@@ -861,13 +917,13 @@ def verify_hosted_resource_evidence(
         "resource_preflight_required_addressable_gib",
         "resource_preflight_standard_contract_free_gib",
     }
-    if set(preflight) != required_preflight:
+    if not required_preflight <= set(preflight):
         raise AuditError(
-            f"resource preflight key inventory mismatch: {set(preflight)!r}"
+            f"resource preflight static key inventory mismatch: {set(preflight)!r}"
         )
     if (
         preflight["resource_preflight_schema"]
-        != "oncotracer-hosted-resource-preflight-v2"
+        != "oncotracer-hosted-resource-preflight-v3"
         or preflight["resource_preflight_status"] != "PASS"
         or preflight["resource_preflight_suite"] != suite
     ):
@@ -896,40 +952,94 @@ def verify_hosted_resource_evidence(
             preflight, "resource_preflight_planned_swap_gib"
         ),
     }
-    if (
-        thresholds
-        != {
+    valid_threshold_models = (
+        {
             "minimum_free_gib": 72,
             "minimum_physical_gib": 15,
             "minimum_addressable_gib": 47,
             "planned_swap_gib": 32,
-        }
+        },
+        {
+            "minimum_free_gib": 40,
+            "minimum_physical_gib": 15,
+            "minimum_addressable_gib": 47,
+            "planned_swap_gib": 0,
+        },
+    )
+    if (
+        thresholds not in valid_threshold_models
         or _evidence_integer(preflight, "resource_preflight_standard_contract_free_gib")
         != 14
     ):
         raise AuditError(f"resource preflight threshold model mismatch: {thresholds!r}")
     kib_per_gib = 1024 * 1024
-    if (
-        _evidence_integer(preflight, "resource_preflight_available_kib")
-        < thresholds["minimum_free_gib"] * kib_per_gib
-        or _evidence_integer(preflight, "resource_preflight_mem_total_kib")
-        < thresholds["minimum_physical_gib"] * kib_per_gib
-        or (
-            _evidence_integer(preflight, "resource_preflight_mem_total_kib")
-            + _evidence_integer(preflight, "resource_preflight_swap_total_kib")
-            + thresholds["planned_swap_gib"] * kib_per_gib
-            < thresholds["minimum_addressable_gib"] * kib_per_gib
+    checked_path_count = _evidence_integer(
+        preflight, "resource_preflight_checked_path_count"
+    )
+    if checked_path_count != 4:
+        raise AuditError("parity resource preflight must bind four checked paths")
+    dynamic_keys: set[str] = set()
+    checked_paths: list[tuple[str, str, int]] = []
+    for index in range(checked_path_count):
+        prefix = f"resource_preflight_checked_path_{index:03d}_"
+        path_key = prefix + "path"
+        device_key = prefix + "device"
+        available_key = prefix + "available_kib"
+        dynamic_keys.update((path_key, device_key, available_key))
+        path = preflight.get(path_key, "")
+        device = preflight.get(device_key, "")
+        available = _evidence_integer(preflight, available_key)
+        if (
+            not path.startswith("/")
+            or ".." in PurePosixPath(path).parts
+            or not device
+            or available < thresholds["minimum_free_gib"] * kib_per_gib
+        ):
+            raise AuditError(f"resource preflight checked path {index} is invalid")
+        checked_paths.append((path, device, available))
+    if set(preflight) != required_preflight | dynamic_keys:
+        raise AuditError(
+            f"resource preflight key inventory mismatch: {set(preflight)!r}"
         )
+    if len({path for path, _, _ in checked_paths}) != checked_path_count:
+        raise AuditError("resource preflight checked paths are not unique")
+    if _evidence_integer(preflight, "resource_preflight_minimum_available_kib") != min(
+        available for _, _, available in checked_paths
+    ):
+        raise AuditError("resource preflight minimum storage observation mismatch")
+    if _evidence_integer(preflight, "resource_preflight_unique_device_count") != len(
+        {device for _, device, _ in checked_paths}
+    ):
+        raise AuditError("resource preflight unique-device count mismatch")
+    if _evidence_integer(preflight, "resource_preflight_mem_total_kib") < thresholds[
+        "minimum_physical_gib"
+    ] * kib_per_gib or (
+        _evidence_integer(preflight, "resource_preflight_mem_total_kib")
+        + _evidence_integer(preflight, "resource_preflight_swap_total_kib")
+        + thresholds["planned_swap_gib"] * kib_per_gib
+        < thresholds["minimum_addressable_gib"] * kib_per_gib
     ):
         raise AuditError("resource preflight observations do not satisfy thresholds")
     expected_swap = preflight["resource_preflight_expected_swap_file"]
-    if (
+    runner_temp_candidates = [
+        path
+        for path, _, _ in checked_paths
+        if path == PurePosixPath(expected_swap).parent.as_posix()
+    ]
+    if thresholds["planned_swap_gib"] == 0:
+        if expected_swap != "none":
+            raise AuditError("zero-swap resource preflight must bind literal none")
+    elif (
         not expected_swap.startswith("/")
         or PurePosixPath(expected_swap).name
         != f"oncotracer-swap-{run_id}-{run_attempt}"
         or ".." in PurePosixPath(expected_swap).parts
     ):
         raise AuditError("resource preflight swap is not exact and job-owned")
+    if thresholds["planned_swap_gib"] > 0 and len(runner_temp_candidates) != 1:
+        raise AuditError(
+            "resource preflight swap parent is not a checked filesystem path"
+        )
 
     phase_names = (
         "preflight-passed",
@@ -984,15 +1094,18 @@ def verify_hosted_resource_evidence(
         if (
             not runner_temp.startswith("/")
             or headers.get("expected_swap_file") != expected_swap
-            or PurePosixPath(expected_swap).parent != PurePosixPath(runner_temp)
+        ):
+            raise AuditError(f"resource phase {phase!r} swap ownership mismatch")
+        if thresholds["planned_swap_gib"] > 0 and (
+            PurePosixPath(expected_swap).parent != PurePosixPath(runner_temp)
         ):
             raise AuditError(f"resource phase {phase!r} swap ownership mismatch")
         swap_required = _evidence_integer(headers, "swap_required")
         swap_size = _evidence_integer(headers, "active_swap_size_bytes")
         swap_used = _evidence_integer(headers, "active_swap_used_bytes")
-        if phase == "preflight-passed":
+        if phase == "preflight-passed" or thresholds["planned_swap_gib"] == 0:
             if swap_required != 0 or swap_size != 0 or swap_used != 0:
-                raise AuditError("preflight phase falsely records active job swap")
+                raise AuditError(f"resource phase {phase!r} falsely records job swap")
         elif (
             swap_required != 1
             or swap_size < thresholds["planned_swap_gib"] * 1024**3
@@ -1006,9 +1119,10 @@ def verify_hosted_resource_evidence(
             raise AuditError(f"resource phase {phase!r} exhausted its storage reserve")
         if memory < thresholds["minimum_physical_gib"] * kib_per_gib:
             raise AuditError(f"resource phase {phase!r} lacks physical memory")
-        if phase != "preflight-passed" and (
-            memory + total_swap < thresholds["minimum_addressable_gib"] * kib_per_gib
-        ):
+        phase_addressable = memory + total_swap
+        if phase == "preflight-passed":
+            phase_addressable += thresholds["planned_swap_gib"] * kib_per_gib
+        if phase_addressable < thresholds["minimum_addressable_gib"] * kib_per_gib:
             raise AuditError(f"resource phase {phase!r} lacks addressable memory")
     final_path = require_file(context / "hosted-resource-final.txt")
     if final_path.read_bytes() != (phase_root / "final.txt").read_bytes():
@@ -1019,6 +1133,10 @@ def verify_hosted_resource_evidence(
         "candidate_sha": evidence_sha,
         "phase_count": len(phase_names),
         "preflight_sha256": sha256(preflight_path),
+        "checked_filesystems": [
+            {"path": path, "device": device, "available_kib": available}
+            for path, device, available in checked_paths
+        ],
         "final_sha256": sha256(final_path),
     }
 
@@ -1298,6 +1416,8 @@ def verify_context(
                 f"native/frozen canonical reference identity mismatch: {name}"
             )
 
+    ichor_asset_manifest_sha256 = verify_ichor_asset_manifests(context, suite)
+
     qdna_root = context / "qdnaseq-annotation"
     qdna_manifest = verify_manifest_tree(
         qdna_root, context / "manifests/qdnaseq-annotation-manifest.tsv"
@@ -1363,6 +1483,7 @@ def verify_context(
         "native_reference_manifest_sha256": sha256(
             context / "manifests/native-reference-manifest.tsv"
         ),
+        "ichorcna_asset_manifest_sha256": ichor_asset_manifest_sha256,
         "qdnaseq_manifest_sha256": sha256(
             context / "manifests/qdnaseq-annotation-manifest.tsv"
         ),

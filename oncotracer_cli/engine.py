@@ -75,6 +75,14 @@ ICHOR_ASSETS = {
         "2f2e94d529d0ef3ca74b93e0814c89fae0f6b918b38a7efec3bf4207c25452c0",
     ),
 }
+ICHOR_ASSET_SIZES = {
+    "gc": 52184,
+    "map": 54494,
+    "centromere": 853,
+    "reptime": 59884,
+    # SAMURAI's immutable HD_ULP static reference asset; not local controls.
+    "pon": 675953,
+}
 HG38_ASSETS = {
     "genome.fa": "d2b7be348fb20af46461855faec64dfbd21532620bd125783df050180446055e",
     "genome.fa.fai": "eb7e1fea3ac1c264d6f21a1358727ef533ad560634b0ef360818d970c5f09687",
@@ -473,6 +481,7 @@ def _reference_identity(kind: str) -> str:
             "kind": kind,
             "samurai_commit": SAMURAI_ICHOR_COMMIT,
             "assets": ICHOR_ASSETS,
+            "asset_sizes": ICHOR_ASSET_SIZES,
         }
     elif match := re.fullmatch(r"qdnaseq-hg38-(\d+)kb", kind):
         binsize = int(match.group(1))
@@ -774,8 +783,19 @@ def _reference_lock(path: Path, *, exclusive: bool, create: bool) -> Iterator[No
         os.close(descriptor)
 
 
-def _validate_pinned_file(path: Path, expected_sha256: str, label: str) -> Path:
+def _validate_pinned_file(
+    path: Path,
+    expected_sha256: str,
+    label: str,
+    *,
+    expected_bytes: int | None = None,
+) -> Path:
     _require_physical_file(path, label)
+    if expected_bytes is not None and path.stat().st_size != expected_bytes:
+        raise OncoTracerError(
+            f"{label} size mismatch: expected {expected_bytes}, observed "
+            f"{path.stat().st_size}: {path}"
+        )
     observed = sha256_file(path)
     if observed != expected_sha256:
         raise OncoTracerError(
@@ -790,13 +810,16 @@ def _ensure_owned_pinned_file(
     url: str,
     expected_sha256: str,
     label: str,
+    *,
+    expected_bytes: int | None = None,
 ) -> Path:
     """Repair one owned cache file only after a complete verified download."""
     observed = _lstat(path, label)
     if observed is not None:
         if stat.S_ISLNK(observed.st_mode) or not stat.S_ISREG(observed.st_mode):
             raise OncoTracerError(f"owned {label} is not a physical file: {path}")
-        if observed.st_size > 0 and sha256_file(path) == expected_sha256:
+        size_valid = expected_bytes is None or observed.st_size == expected_bytes
+        if observed.st_size > 0 and size_valid and sha256_file(path) == expected_sha256:
             return path
 
     descriptor, temporary_name = tempfile.mkstemp(
@@ -806,14 +829,26 @@ def _ensure_owned_pinned_file(
     temporary = Path(temporary_name)
     partial = temporary.with_name(f".{temporary.name}.part")
     try:
-        download(url, temporary)
-        _validate_pinned_file(temporary, expected_sha256, f"downloaded {label}")
+        download(
+            url,
+            temporary,
+            expected_bytes=expected_bytes,
+            expected_sha256=expected_sha256,
+        )
+        _validate_pinned_file(
+            temporary,
+            expected_sha256,
+            f"downloaded {label}",
+            expected_bytes=expected_bytes,
+        )
         temporary.chmod(0o644)
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
         partial.unlink(missing_ok=True)
-    return _validate_pinned_file(path, expected_sha256, label)
+    return _validate_pinned_file(
+        path, expected_sha256, label, expected_bytes=expected_bytes
+    )
 
 
 def _prepare_hg38_base(
@@ -2396,6 +2431,7 @@ def prepare_ichor_assets(lpwgs_root: Path, binsize: int) -> dict[str, Path]:
         exclusive=owned,
     ):
         for key, (filename, expected_sha256) in ICHOR_ASSETS.items():
+            expected_bytes = ICHOR_ASSET_SIZES[key]
             path = directory / filename
             if owned:
                 resolved[key] = _ensure_owned_pinned_file(
@@ -2404,10 +2440,14 @@ def prepare_ichor_assets(lpwgs_root: Path, binsize: int) -> dict[str, Path]:
                     f"{ICHOR_ASSET_BASE}/{filename}",
                     expected_sha256,
                     f"ichorCNA {key} asset",
+                    expected_bytes=expected_bytes,
                 )
             else:
                 resolved[key] = _validate_pinned_file(
-                    path, expected_sha256, f"external ichorCNA {key} asset"
+                    path,
+                    expected_sha256,
+                    f"external ichorCNA {key} asset",
+                    expected_bytes=expected_bytes,
                 )
     return resolved
 
@@ -2434,7 +2474,12 @@ def _validated_ichor_asset_reader(
                 raise OncoTracerError(
                     f"prepared ichorCNA {key} asset escaped its physical root"
                 )
-            _validate_pinned_file(path, expected_sha256, f"ichorCNA {key} asset")
+            _validate_pinned_file(
+                path,
+                expected_sha256,
+                f"ichorCNA {key} asset",
+                expected_bytes=ICHOR_ASSET_SIZES[key],
+            )
 
     with _physical_directory_lock(
         directory, "ichorCNA reference root", exclusive=False
