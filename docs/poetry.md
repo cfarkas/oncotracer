@@ -6,6 +6,9 @@ Poetry is intended for source development. Beginners who only want to run analys
 
 ## Install Poetry and the launcher
 
+Use Poetry 2.0 or newer. OncoTracer rejects Poetry 1.x before it creates a lock,
+journal, environment, or target directory.
+
 ```bash
 cd /path/to/my/oncotracer_source/
 
@@ -19,10 +22,12 @@ ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
 The explicit prefix is a dedicated OncoTracer installation root, not a Conda
 base installation or a shared Poetry environment. It must be absent, empty, or
 already carry the exact ownership markers written by this installer. OncoTracer
-builds the Poetry virtual environment directly at the final canonical
-`poetry-runtime` path. An ownership-checked rollback transaction preserves the
-verified prior runtime until the replacement passes provenance, executable,
-and exact-inventory checks. It does not alter Poetry's global environment or a
+requires an exact clean Git checkout matching the launcher's source identity.
+It builds a wheel in an isolated transaction tree, creates the final canonical
+`poetry-runtime` path, and installs the wheel only through that target's Python
+and pip with indexes and dependency resolution disabled. An ownership-checked
+rollback transaction preserves the verified prior runtime until the replacement
+passes provenance, executable, and exact-inventory checks. It does not alter Poetry's global environment, ambient Python site-packages, the checkout, or a
 checkout-local `.venv`.
 
 ## Prepare the Poetry backend

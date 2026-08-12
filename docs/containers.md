@@ -131,9 +131,11 @@ ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
-OncoTracer builds Poetry's Python launcher directly in the explicit owned
-`poetry-runtime` child under a rollback transaction; it does not mutate a
-global Poetry environment or a checkout-local `.venv`. It does not replace
+Poetry 2.0 or newer is required. OncoTracer builds a wheel in isolated
+transaction state from the exact clean checkout, then installs it using only
+the explicit owned `poetry-runtime` child's Python and pip. It does not mutate
+a global Poetry environment, ambient site-packages, or a checkout-local
+`.venv`. It does not replace
 BWA, SAMtools, Picard, qDNAseq, HMMcopy, ichorCNA, the classifier stack, or
 GISTIC2; those are still resolved from the exact managed prefixes.
 

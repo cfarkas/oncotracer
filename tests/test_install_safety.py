@@ -4,12 +4,18 @@
 from __future__ import annotations
 
 import contextlib
+import fcntl
 import io
 import json
 import os
+import re
+import signal
 import stat
 import subprocess
+import sys
 import tempfile
+import time
+import tomllib
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -19,6 +25,9 @@ from oncotracer_cli.runtime import OncoTracerError
 
 
 ROOT = Path(__file__).resolve().parents[1]
+ORIGINAL_ACTIVE_PROCESSES = install_safety._active_processes
+
+
 SOURCE = {
     "oncotracer_version": "2.0.0",
     "source_commit": "a" * 40,
@@ -84,6 +93,7 @@ class ManagedInstallerSafetyTests(unittest.TestCase):
             self.scratch / "fake-conda",
             """#!/usr/bin/env python3
 import os
+import re
 import pathlib
 import sys
 with open(os.environ["FAKE_INSTALL_LOG"], "a", encoding="utf-8") as handle:
@@ -111,33 +121,62 @@ probe.chmod(0o755)
         )
         self.poetry = _write_executable(
             self.scratch / "fake-poetry",
-            """#!/usr/bin/env python3
+            r"""#!/usr/bin/env python3
+import base64
+import csv
+import hashlib
+import io
 import os
+import re
 import pathlib
 import sys
+import zipfile
+args = sys.argv[1:]
 with open(os.environ["FAKE_INSTALL_LOG"], "a", encoding="utf-8") as handle:
-    handle.write("poetry\\t" + "\\t".join(sys.argv[1:]) + "\\n")
-prefix = pathlib.Path(os.environ["VIRTUAL_ENV"])
-launcher = prefix / "bin" / "oncotracer"
+    handle.write("poetry\t" + "\t".join(args) + "\n")
+if args == ["--version"]:
+    print("Poetry (version 2.4.1)")
+    raise SystemExit(0)
+if not args or args[0] != "build":
+    raise SystemExit(93)
+out = pathlib.Path(args[args.index("--output") + 1])
+out.mkdir(parents=True, exist_ok=True)
+wheel = out / "oncotracer-2.0.0-py3-none-any.whl"
 record = {
     "oncotracer_version": os.environ["FAKE_SOURCE_VERSION"],
     "source_commit": os.environ["FAKE_SOURCE_COMMIT"],
     "source_sha256": os.environ["FAKE_SOURCE_SHA256"],
     "source_tree_dirty": False,
 }
-launcher.write_text(
-    "#!/usr/bin/env python3\\n"
-    "import json, sys\\n"
-    f"record = {record!r}\\n"
-    "if sys.argv[1:] == ['--version']:\\n"
-    "    print('OncoTracer 2.0.0')\\n"
-    "elif sys.argv[1:] == ['provenance', '--json']:\\n"
-    "    print(json.dumps(record))\\n"
-    "else:\\n"
-    "    raise SystemExit(2)\\n",
-    encoding="utf-8",
-)
-launcher.chmod(0o755)
+files = {
+    "oncotracer_cli/__init__.py": b'__version__ = "2.0.0"\n',
+    "oncotracer_cli/cli.py": (
+        "import json,sys\n"
+        f"record={record!r}\n"
+        "def main():\n"
+        " a=sys.argv[1:]\n"
+        " if a==['--version']: print('OncoTracer 2.0.0'); return 0\n"
+        " if a==['provenance','--json']: print(json.dumps(record)); return 0\n"
+        " return 2\n"
+    ).encode(),
+    "bin/scripts/native_qdnaseq.R": b"cat('native')\n",
+    "environments/native-core.yml": b"name: core\n",
+    "provenance/native-v2-sources.json": b"{}\n",
+    "oncotracer-2.0.0.dist-info/METADATA": b"Metadata-Version: 2.1\nName: oncotracer\nVersion: 2.0.0\n",
+    "oncotracer-2.0.0.dist-info/WHEEL": b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+    "oncotracer-2.0.0.dist-info/entry_points.txt": b"[console_scripts]\noncotracer = oncotracer_cli.cli:main\n",
+}
+rows=[]
+with zipfile.ZipFile(wheel, "w", zipfile.ZIP_DEFLATED) as archive:
+    for name,data in files.items():
+        archive.writestr(name,data)
+        digest=hashlib.sha256(data).digest()
+        rows.append((name,"sha256="+base64.urlsafe_b64encode(digest).rstrip(b"=").decode(),str(len(data))))
+    record_name="oncotracer-2.0.0.dist-info/RECORD"
+    rows.append((record_name,"",""))
+    output=io.StringIO(newline="")
+    csv.writer(output).writerows(rows)
+    archive.writestr(record_name,output.getvalue().encode())
 """,
         )
         self.apptainer = _write_executable(
@@ -145,6 +184,7 @@ launcher.chmod(0o755)
             """#!/usr/bin/env python3
 import json
 import os
+import re
 import pathlib
 import sys
 args = sys.argv[1:]
@@ -177,6 +217,9 @@ else:
         )
         self.enterContext(
             mock.patch.object(install_safety, "_active_processes", return_value=[])
+        )
+        self.enterContext(
+            mock.patch.object(install_safety, "_verify_poetry_source_checkout")
         )
 
     def _conda_install(
@@ -508,18 +551,20 @@ else:
             b"foreign metadata must survive"
         )
         before = _snapshot(target)
-        with self.assertRaisesRegex(
-            OncoTracerError, "partial installer target changed"
-        ):
-            install_safety._discard_claimed_target(
-                transaction,
-                transaction_id,
-                "core",
-                target,
-                discarded,
-                {},
-            )
-        self.assertEqual(_snapshot(target), before)
+        install_safety._discard_claimed_target(
+            transaction,
+            transaction_id,
+            "core",
+            target,
+            discarded,
+            {},
+        )
+        preserved = target.parent.parent / (
+            f".{target.parent.name}-{target.name}.oncotracer-preserved-"
+            f"{transaction_id}-core"
+        )
+        self.assertFalse(target.exists())
+        self.assertEqual(_snapshot(preserved), before)
         install_safety._remove_transaction(transaction, target, transaction_id, "conda")
 
     def test_empty_conda_root_mode_survives_failed_first_install(self) -> None:
@@ -686,12 +731,9 @@ else:
         runtime = base / "poetry-runtime"
         pip = runtime / "bin" / "pip"
         shebang = pip.read_text(encoding="utf-8").splitlines()[0]
-        self.assertIn(
+        self.assertRegex(
             shebang,
-            {
-                f"#!{runtime / 'bin' / 'python'}",
-                f"#!{runtime / 'bin' / 'python3'}",
-            },
+            rf"^#!{re.escape(str(runtime / 'bin' / 'python'))}(?:3(?:\.(?:10|11|12|13))?)?$",
         )
         executed = subprocess.run([pip, "--version"], text=True, capture_output=True)
         self.assertEqual(executed.returncode, 0, executed.stderr)
@@ -1104,6 +1146,221 @@ else:
             script,
         )
         self.assertNotIn('readonly ENV_ROOT="$VALIDATION_ROOT/envs"', script)
+
+    def test_poetry_wheel_manifest_includes_native_payload_only(self) -> None:
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        includes = {Path(item["path"]) for item in project["tool"]["poetry"]["include"]}
+        required = {
+            Path("bin/scripts/native_qdnaseq.R"),
+            Path("bin/scripts/native_ichorcna.R"),
+            Path("environments/native-core.yml"),
+            Path("provenance/native-v2-sources.json"),
+        }
+        forbidden = {
+            Path("bin/cna_classifier_nf/main.nf"),
+            Path("bin/cna_classifier_nf/nextflow.config"),
+            Path("bin/scripts/native_qdnaseq_pon.R"),
+            Path("bin/scripts/qdnaseq_local_pon.R"),
+            Path("bin/scripts/run_qdnaseq_local_pon.sh"),
+        }
+        for path in required:
+            self.assertTrue(
+                any(include == path or include in path.parents for include in includes),
+                path,
+            )
+        for path in forbidden:
+            self.assertFalse(
+                any(include == path or include in path.parents for include in includes),
+                path,
+            )
+            self.assertFalse(install_safety._poetry_payload_allowed(path), path)
+
+    def test_poetry_v1_fails_before_any_target_or_lock_mutation(self) -> None:
+        poetry_v1 = _write_executable(
+            self.scratch / "poetry-v1",
+            "#!/bin/sh\nprintf 'Poetry (version 1.8.4)\\n'\n",
+        )
+        base = self.scratch / "poetry-v1-target"
+        before = _snapshot(self.scratch)
+        with self.assertRaisesRegex(OncoTracerError, "requires Poetry >=2"):
+            install_safety.install_conda_managed(
+                ROOT,
+                base,
+                conda=str(self.conda),
+                force=False,
+                dry_run=False,
+                poetry=str(poetry_v1),
+            )
+        self.assertEqual(_snapshot(self.scratch), before)
+        self.assertFalse(base.exists())
+        self.assertFalse(install_safety._lock_path(base, "conda").exists())
+        self.assertFalse(install_safety._journal_path(base, "conda").exists())
+
+    def test_active_use_includes_self_and_ignores_non_path_proc_links(self) -> None:
+        with mock.patch.object(
+            install_safety, "_active_processes", ORIGINAL_ACTIVE_PROCESSES
+        ):
+            self.assertIn(os.getpid(), install_safety._active_processes(Path.cwd()))
+            proc = self.scratch / "proc"
+            process = proc / "4242"
+            (process / "fd").mkdir(parents=True)
+            (process / "cwd").symlink_to(self.scratch / "elsewhere")
+            (process / "fd" / "1").symlink_to("pipe:[12345]")
+            (process / "fd" / "2").symlink_to("socket:[98765]")
+            (process / "cmdline").write_bytes(b"relative-command\0")
+            (process / "maps").write_text("", encoding="utf-8")
+            self.assertEqual(
+                install_safety._active_processes(Path.cwd(), proc=proc), []
+            )
+
+    def test_shared_consumer_lock_excludes_installer_writer(self) -> None:
+        target = self.scratch / "consumer-base"
+        lock = install_safety._lock_path(target, "conda")
+        with install_safety._shared_install_lock(lock, target, "conda"):
+            descriptor = os.open(lock, os.O_RDWR | getattr(os, "O_NOFOLLOW", 0))
+            try:
+                with self.assertRaises(BlockingIOError):
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            finally:
+                os.close(descriptor)
+        descriptor = os.open(lock, os.O_RDWR | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
+
+    def test_durable_staging_journal_precedes_transaction_creation(self) -> None:
+        conda_base = self.scratch / "prejournal-conda"
+        conda_seen: list[dict[str, object]] = []
+
+        def stop_conda(target: Path, kind: str, transaction_id: str) -> Path:
+            journal = install_safety._safe_read_json(
+                install_safety._journal_path(target, kind), "test journal"
+            )
+            conda_seen.append(journal)
+            self.assertEqual(journal["phase"], "staging")
+            self.assertEqual(journal["transaction_id"], transaction_id)
+            self.assertFalse(
+                install_safety._transaction_path(target, kind, transaction_id).exists()
+            )
+            raise RuntimeError("stop after durable journal")
+
+        with (
+            mock.patch.object(
+                install_safety, "_create_transaction", side_effect=stop_conda
+            ),
+            self.assertRaisesRegex(RuntimeError, "durable journal"),
+        ):
+            self._conda_install(conda_base)
+        self.assertEqual(len(conda_seen), 1)
+        self.assertFalse(install_safety._journal_path(conda_base, "conda").exists())
+
+        sif = self.scratch / "prejournal.sif"
+        sif_seen: list[dict[str, object]] = []
+
+        def stop_sif(target: Path, kind: str, transaction_id: str) -> Path:
+            journal = install_safety._safe_read_json(
+                install_safety._journal_path(target, kind), "test journal"
+            )
+            sif_seen.append(journal)
+            self.assertEqual(journal["phase"], "staging")
+            self.assertIsNone(journal["new_marker"])
+            self.assertFalse(
+                install_safety._transaction_path(target, kind, transaction_id).exists()
+            )
+            raise RuntimeError("stop after durable SIF journal")
+
+        with (
+            mock.patch.object(
+                install_safety, "_create_transaction", side_effect=stop_sif
+            ),
+            self.assertRaisesRegex(RuntimeError, "durable SIF journal"),
+        ):
+            self._sif_install(sif)
+        self.assertEqual(len(sif_seen), 1)
+        self.assertFalse(install_safety._journal_path(sif, "sif").exists())
+
+    def test_sigkill_recovery_preserves_unsealed_prefix_and_restarts(self) -> None:
+        base = self.scratch / "kill-envs"
+        started = self.scratch / "package-manager-started"
+        slow_conda = _write_executable(
+            self.scratch / "slow-conda",
+            f"""#!/usr/bin/env python3
+import os
+import pathlib
+import sys
+import time
+prefix = pathlib.Path(sys.argv[sys.argv.index("--prefix") + 1])
+(prefix / "foreign-during-kill.txt").write_bytes(b"must survive SIGKILL")
+pathlib.Path({str(started)!r}).write_text(str(os.getpid()) + "\\n", encoding="utf-8")
+time.sleep(60)
+""",
+        )
+        child_code = f"""from pathlib import Path
+from unittest import mock
+from oncotracer_cli import install_safety
+source={SOURCE!r}
+with mock.patch.object(install_safety, "_source_identity", return_value=source):
+    install_safety.install_conda_managed(
+        Path({str(ROOT)!r}), Path({str(base)!r}),
+        conda={str(slow_conda)!r}, force=False, dry_run=False
+    )
+"""
+        environment = os.environ.copy()
+        environment["PYTHONPATH"] = str(ROOT)
+        child = subprocess.Popen(
+            [sys.executable, "-c", child_code],
+            cwd=ROOT,
+            env=environment,
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and not started.exists():
+            if child.poll() is not None:
+                self.fail(f"installer child exited before SIGKILL: {child.returncode}")
+            time.sleep(0.05)
+        self.assertTrue(started.exists(), "package manager did not reach kill point")
+        self.assertTrue(install_safety._journal_path(base, "conda").is_file())
+        package_pid = int(started.read_text(encoding="utf-8").strip())
+        os.kill(child.pid, signal.SIGKILL)
+        child.wait(timeout=10)
+        self.assertEqual(child.returncode, -signal.SIGKILL)
+        os.kill(package_pid, 0)
+        try:
+            with (
+                mock.patch.object(
+                    install_safety, "_active_processes", ORIGINAL_ACTIVE_PROCESSES
+                ),
+                self.assertRaisesRegex(OncoTracerError, "used by active process"),
+            ):
+                self._conda_install(base)
+            self.assertTrue(install_safety._journal_path(base, "conda").is_file())
+            self.assertTrue((base / "core" / "foreign-during-kill.txt").is_file())
+        finally:
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(package_pid, signal.SIGKILL)
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and Path(f"/proc/{package_pid}").exists():
+            time.sleep(0.05)
+        self.assertFalse(Path(f"/proc/{package_pid}").exists())
+
+        with mock.patch.object(
+            install_safety, "_active_processes", ORIGINAL_ACTIVE_PROCESSES
+        ):
+            self._conda_install(base)
+        preserved = sorted(
+            self.scratch.glob(".kill-envs-core.oncotracer-preserved-*-core")
+        )
+        self.assertEqual(len(preserved), 1)
+        self.assertEqual(
+            (preserved[0] / "foreign-during-kill.txt").read_bytes(),
+            b"must survive SIGKILL",
+        )
+        self.assertTrue((base / "core" / install_safety.ENV_MARKER).is_file())
+        self.assertFalse(install_safety._journal_path(base, "conda").exists())
 
 
 if __name__ == "__main__":

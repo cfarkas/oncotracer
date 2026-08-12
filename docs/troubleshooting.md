@@ -128,7 +128,12 @@ authenticated. Do not add a marker manually and do not delete the path broadly.
 Preserve it, inspect the reported path, and choose a new absent or empty
 dedicated prefix. `--force` intentionally cannot adopt or erase an unowned
 directory. If a managed prefix is reported active, allow the named process to
-finish or select another prefix instead of replacing files beneath it.
+finish or select another prefix instead of replacing files beneath it. After an
+uncatchable interruption, OncoTracer can report an `oncotracer-preserved` sibling
+containing an unsealed package-manager tree. It is not automatically deleted:
+inspect it, confirm it contains no unique or foreign data, and remove only that
+exact path when appropriate. Rerunning the installer recovers the journal and
+restores or completes the managed installation.
 
 Check storage and inode availability when environment creation fails:
 
@@ -136,6 +141,10 @@ Check storage and inode availability when environment creation fails:
 df -h "$HOME" "$PWD"
 df -i "$HOME" "$PWD"
 ```
+
+Poetry installation additionally requires Poetry 2.0 or newer and an exact,
+clean Git checkout matching the executable provenance. Version, dirty-tree, or
+source-identity failures occur before managed targets are changed.
 
 ## 7. Docker errors
 

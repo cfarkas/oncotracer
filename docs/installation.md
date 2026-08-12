@@ -89,9 +89,11 @@ owned replacement, OncoTracer journals the operation, moves only the verified
 old child to a same-filesystem backup, and creates the new Conda or Poetry
 environment directly at its final canonical prefix. Semantic probes and the
 exact inventory must pass there before commit; interruption restores the prior
-child. `--force` applies only to an intact owned installation and refuses
-prefixes used by active processes. Unrelated siblings under an owned prefix
-parent are preserved.
+child. An unsealed tree left by SIGKILL is moved to a reported sibling
+`oncotracer-preserved` path rather than deleted. Shared runtime locks keep an
+installer from replacing a prefix while an analysis is consuming it. `--force`
+applies only to an intact owned installation and refuses prefixes used by
+active processes. Unrelated siblings under an owned prefix parent are preserved.
 
 ### Docker
 
@@ -148,7 +150,7 @@ being removed.
 
 ### Poetry
 
-Poetry is a source-development route, not the normal binary installation. Clone the repository only for development:
+Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development:
 
 ```bash
 git clone https://github.com/cfarkas/oncotracer.git
@@ -165,8 +167,12 @@ cd oncotracer
 explicit, OncoTracer-owned `poetry-runtime` child and creates the same five
 Conda scientific environments. It does not select or modify Poetry's global
 environment, another checkout's virtual environment, or an existing unowned
-prefix. The virtual environment is built at its final path, while Poetry's
-configuration, data, and download caches are isolated inside the transaction.
+prefix. OncoTracer first builds a wheel from an exact clean checkout in an
+isolated transaction tree, then invokes only the final virtual environment's
+Python and pip to install that wheel with dependencies and indexes disabled.
+Poetry's configuration, data, build environment, and caches remain inside the
+transaction; the checkout, ambient interpreter, global site-packages, and
+checkout-local `.venv` are unchanged.
 Poetry alone does not provide R, BWA, samtools, Picard, HMMcopy, ichorCNA, or
 GISTIC2.
 

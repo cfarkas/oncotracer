@@ -34,9 +34,15 @@ the exact-owned old child moves to a same-filesystem backup, and the replacement
 is created directly at its final canonical prefix. Semantic probes and the
 inventory run at that final path before commit; unrelated siblings are outside
 the transaction. Populated unowned paths, marker mismatches, symlinked paths,
-foreign entries, and active prefixes fail before replacement. Poetry's launcher
-is a fixed isolated `poetry-runtime` child, not an ambient virtual environment
-or checkout-local virtual environment.
+foreign entries, and active prefixes fail before replacement. A shared lock
+is held for the complete lifetime of each managed analysis, so the exclusive
+installer cannot publish beneath a consumer. A durable staging journal exists
+before transaction creation or package-manager execution. If SIGKILL leaves an
+unsealed final-prefix tree, recovery restores the prior state and moves the
+unknown tree to a reported sibling preservation path instead of deleting it.
+Poetry's launcher is a fixed isolated `poetry-runtime` child built from an
+exact clean checkout in isolated state and installed only by the final target
+interpreter; it is never an ambient or checkout-local virtual environment.
 
 A managed SIF has an adjacent strict sidecar binding its canonical path, image
 reference, bytes, install ID, and source identity. Every reuse verifies the

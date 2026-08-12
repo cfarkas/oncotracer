@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import json
 import os
@@ -17,7 +18,14 @@ from typing import Sequence
 
 from . import __version__
 from .engine import Toolchain, run_native
-from .install_safety import install_conda_managed, install_sif_managed
+from .install_safety import (
+    install_conda_managed,
+    install_sif_managed,
+    managed_conda_runtime_lock,
+    managed_sif_runtime_lock,
+    verify_managed_conda_runtime,
+    verify_managed_sif_runtime,
+)
 from .provenance import ProvenanceError, get_provenance
 from .runtime import (
     OncoTracerError,
@@ -37,11 +45,17 @@ CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
 def _config_home() -> Path:
-    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "oncotracer"
+    return (
+        Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "oncotracer"
+    )
 
 
 def _data_home() -> Path:
-    return Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "oncotracer" / __version__
+    return (
+        Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+        / "oncotracer"
+        / __version__
+    )
 
 
 def _config_file() -> Path:
@@ -55,7 +69,9 @@ def _load_install_config() -> dict[str, object]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
-        raise OncoTracerError(f"invalid installation config: {path}: {error}") from error
+        raise OncoTracerError(
+            f"invalid installation config: {path}: {error}"
+        ) from error
     return value if isinstance(value, dict) else {}
 
 
@@ -67,12 +83,16 @@ def _save_install_config(value: dict[str, object]) -> None:
     atomic_write_json(_config_file(), value)
 
 
-def _run(command: Sequence[str | Path], *, cwd: Path | None = None, dry_run: bool = False) -> None:
+def _run(
+    command: Sequence[str | Path], *, cwd: Path | None = None, dry_run: bool = False
+) -> None:
     argv = [str(item) for item in command]
     print(f"OncoTracer command: {shlex.join(argv)}", file=sys.stderr, flush=True)
     if dry_run:
         return
-    completed = subprocess.run(argv, cwd=cwd, stdout=sys.stderr, stderr=sys.stderr, check=False)
+    completed = subprocess.run(
+        argv, cwd=cwd, stdout=sys.stderr, stderr=sys.stderr, check=False
+    )
     if completed.returncode:
         raise OncoTracerError(
             f"command failed with exit code {completed.returncode}: {shlex.join(argv)}"
@@ -117,11 +137,16 @@ def _install_conda(
 
 
 def _install_docker(args: argparse.Namespace) -> dict[str, object]:
-    docker = shutil.which("docker") or ("docker" if args.dry_run else require_command("docker"))
+    docker = shutil.which("docker") or (
+        "docker" if args.dry_run else require_command("docker")
+    )
     image = args.image or DEFAULT_IMAGE
     _run([docker, "info"], dry_run=args.dry_run)
     _run([docker, "pull", image], dry_run=args.dry_run)
-    _run([docker, "run", "--rm", image, "doctor", "--backend", "host"], dry_run=args.dry_run)
+    _run(
+        [docker, "run", "--rm", image, "doctor", "--backend", "host"],
+        dry_run=args.dry_run,
+    )
     result: dict[str, object] = {"backend": "docker", "image": image}
     if not args.dry_run:
         _save_install_config(result)
@@ -274,6 +299,32 @@ def _project_mounts(config_path: Path) -> list[Path]:
     return roots
 
 
+def _managed_conda_base(config: dict[str, object], *, require_poetry: bool) -> Path:
+    prefixes = _configured_native_prefixes(config)
+    if any(prefix is None for prefix in prefixes.values()):
+        missing = sorted(name for name, prefix in prefixes.items() if prefix is None)
+        raise OncoTracerError(
+            f"managed runtime configuration lacks prefix(es): {', '.join(missing)}"
+        )
+    core = prefixes["core"]
+    assert core is not None
+    base = core.parent
+    for name, prefix in prefixes.items():
+        if prefix != base / name:
+            raise OncoTracerError(
+                f"managed runtime {name} prefix is not the fixed child of {base}: {prefix}"
+            )
+    poetry = config.get("poetry_prefix")
+    if require_poetry and (
+        not poetry
+        or Path(str(poetry)).expanduser().resolve() != base / "poetry-runtime"
+    ):
+        raise OncoTracerError(
+            f"Poetry runtime is not configured at the fixed managed child {base / 'poetry-runtime'}"
+        )
+    return base
+
+
 def _native_environment(config: dict[str, object]) -> dict[str, str]:
     environment = os.environ.copy()
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -294,30 +345,50 @@ def _native_environment(config: dict[str, object]) -> dict[str, str]:
 
 def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
     install = _load_install_config()
-    old = os.environ.copy()
-    try:
-        os.environ.update(_native_environment(install))
-        return run_native(
-            config_path,
-            root=Path(args.root).expanduser().resolve() if args.root else None,
-            threads=args.threads,
-            force=args.force if args.force else None,
-            dry_run=args.dry_run,
-            methylation=args.methylation,
-            methylation_classifier=args.methylation_classifier,
-            methylation_pod5_dir=Path(args.pod5_dir) if args.pod5_dir else None,
-            methylation_gpu=args.gpu,
+    backend = _backend_from(args)
+    lock = contextlib.nullcontext()
+    configured_prefix = any(
+        install.get(f"{name}_prefix")
+        for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
+    )
+    if not args.dry_run and (backend in {"conda", "poetry"} or configured_prefix):
+        base = _managed_conda_base(install, require_poetry=backend == "poetry")
+        lock = managed_conda_runtime_lock(
+            base, require_poetry=backend == "poetry", semantic=False
         )
-    finally:
-        os.environ.clear()
-        os.environ.update(old)
+    with lock:
+        old = os.environ.copy()
+        try:
+            os.environ.update(_native_environment(install))
+            return run_native(
+                config_path,
+                root=Path(args.root).expanduser().resolve() if args.root else None,
+                threads=args.threads,
+                force=args.force if args.force else None,
+                dry_run=args.dry_run,
+                methylation=args.methylation,
+                methylation_classifier=args.methylation_classifier,
+                methylation_pod5_dir=Path(args.pod5_dir) if args.pod5_dir else None,
+                methylation_gpu=args.gpu,
+            )
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
 
 
 def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
-    docker = shutil.which("docker") or ("docker" if args.dry_run else require_command("docker"))
+    docker = shutil.which("docker") or (
+        "docker" if args.dry_run else require_command("docker")
+    )
     install = _load_install_config()
     image = args.image or str(install.get("image") or DEFAULT_IMAGE)
-    command: list[str | Path] = [docker, "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}"]
+    command: list[str | Path] = [
+        docker,
+        "run",
+        "--rm",
+        "--user",
+        f"{os.getuid()}:{os.getgid()}",
+    ]
     command.extend(["--env", "HOME=/tmp", "--env", "MPLCONFIGDIR=/tmp/matplotlib"])
     for mount in _project_mounts(config_path):
         command.extend(["--volume", f"{mount}:{mount}"])
@@ -341,18 +412,38 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
 
 def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
     install = _load_install_config()
-    executable = str(install.get("singularity_command") or _singularity_command() or ("apptainer" if args.dry_run else ""))
+    executable = str(
+        install.get("singularity_command")
+        or _singularity_command()
+        or ("apptainer" if args.dry_run else "")
+    )
     if not executable:
         raise OncoTracerError("Apptainer or Singularity is required")
     sif_value = args.sif or install.get("sif")
     if not sif_value and not args.dry_run:
-        raise OncoTracerError("no SIF is configured; run 'oncotracer install --singularity'")
-    sif_candidate = Path(str(sif_value or "/path/to/oncotracer-2.0.0.sif")).expanduser().resolve()
-    sif = sif_candidate if args.dry_run else require_file(sif_candidate, "OncoTracer SIF")
+        raise OncoTracerError(
+            "no SIF is configured; run 'oncotracer install --singularity'"
+        )
+    sif_candidate = (
+        Path(str(sif_value or "/path/to/oncotracer-2.0.0.sif")).expanduser().resolve()
+    )
+    sif = (
+        sif_candidate if args.dry_run else require_file(sif_candidate, "OncoTracer SIF")
+    )
     command: list[str | Path] = [executable, "exec", "--cleanenv"]
     for mount in _project_mounts(config_path):
         command.extend(["--bind", f"{mount}:{mount}"])
-    command.extend([sif, "oncotracer", "internal-run", "--config", config_path, "--backend", "host"])
+    command.extend(
+        [
+            sif,
+            "oncotracer",
+            "internal-run",
+            "--config",
+            config_path,
+            "--backend",
+            "host",
+        ]
+    )
     if args.threads:
         command.extend(["--threads", str(args.threads)])
     if args.force:
@@ -365,7 +456,11 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--pod5-dir", Path(args.pod5_dir).expanduser().resolve()])
     if args.gpu:
         command.append("--gpu")
-    _run(command, dry_run=args.dry_run)
+    if args.dry_run:
+        _run(command, dry_run=True)
+    else:
+        with managed_sif_runtime_lock(sif, executable=executable, semantic=False):
+            _run(command)
 
 
 def _methylation_requested(config_path: Path, args: argparse.Namespace) -> bool:
@@ -392,8 +487,11 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
         if backend in {"conda", "poetry"} and not args.dry_run:
             install = _load_install_config()
             required = {
-                "core_prefix", "qdnaseq_prefix", "ichorcna_prefix",
-                "classifier_prefix", "gistic_prefix",
+                "core_prefix",
+                "qdnaseq_prefix",
+                "ichorcna_prefix",
+                "classifier_prefix",
+                "gistic_prefix",
             }
             missing = sorted(key for key in required if not install.get(key))
             if missing:
@@ -419,7 +517,9 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
 def command_run(args: argparse.Namespace) -> int:
     outdir = execute_run(Path(args.config), args)
     if args.dry_run:
-        target = outdir if outdir is not None else Path(args.config).expanduser().resolve()
+        target = (
+            outdir if outdir is not None else Path(args.config).expanduser().resolve()
+        )
         print(f"OncoTracer dry-run validation completed without analysis: {target}")
     elif outdir is not None:
         print(f"OncoTracer native analysis completed: {outdir}")
@@ -428,7 +528,9 @@ def command_run(args: argparse.Namespace) -> int:
 
 def command_auto(args: argparse.Namespace) -> int:
     root = runtime_root(args.root)
-    script = require_file(root / "bin" / "scripts" / "generate_auto_params.sh", "Automatic Setup script")
+    script = require_file(
+        root / "bin" / "scripts" / "generate_auto_params.sh", "Automatic Setup script"
+    )
     command: list[str | Path] = [
         "bash",
         script,
@@ -544,7 +646,9 @@ def prepare_quickstart1(root_path: Path, *, dry_run: bool = False) -> tuple[Path
 
 
 def prepare_quickstart2(root: Path, test_root: Path, *, dry_run: bool = False) -> Path:
-    manifest = require_file(root / "examples" / "hcc1143_lpwgs" / "manifest.tsv", "HCC1143 manifest")
+    manifest = require_file(
+        root / "examples" / "hcc1143_lpwgs" / "manifest.tsv", "HCC1143 manifest"
+    )
     reads = test_root / "public" / "hcc1143_lpwgs"
     samples = reads / "samples.csv"
     config_dir = test_root / "configs" / "hcc1143_lpwgs"
@@ -573,7 +677,9 @@ def prepare_quickstart2(root: Path, test_root: Path, *, dry_run: bool = False) -
             writer.writerow(["sample_name", "status"])
             for sample in ("HCC1143_DMSO", "HCC1143_BEZ235", "HCC1143_TRAMETINIB"):
                 writer.writerow([sample, "TUMOR"])
-    script = require_file(root / "bin" / "scripts" / "generate_auto_params.sh", "Automatic Setup script")
+    script = require_file(
+        root / "bin" / "scripts" / "generate_auto_params.sh", "Automatic Setup script"
+    )
     _run(
         [
             "bash",
@@ -612,20 +718,37 @@ def command_quickstart(args: argparse.Namespace) -> int:
                     f"Would run oncotracer with backend={backend} and config={config}",
                     file=sys.stderr,
                 )
-        print(f"QuickStart {args.number} dry-run completed without writing files: {test_root}")
+        print(
+            f"QuickStart {args.number} dry-run completed without writing files: {test_root}"
+        )
         return 0
 
     if not args.download_only:
         for config in configs:
             execute_run(config, args)
         if args.number == "1":
-            verify = require_file(root / "examples" / "quickstart" / "verify_outputs.py", "QuickStart verifier")
+            verify = require_file(
+                root / "examples" / "quickstart" / "verify_outputs.py",
+                "QuickStart verifier",
+            )
             _run([sys.executable, verify, "--test-root", test_root], cwd=root)
         else:
             required = [
-                test_root / "runs" / "hcc1143_lpwgs" / "06_workflow_summary" / "workflow_summary.txt",
-                test_root / "runs" / "hcc1143_lpwgs" / "03_cna_codification" / "cna_events.tsv",
-                test_root / "runs" / "hcc1143_lpwgs" / "04_cna_custom_plots" / "cna_per_sample_pages.pdf",
+                test_root
+                / "runs"
+                / "hcc1143_lpwgs"
+                / "06_workflow_summary"
+                / "workflow_summary.txt",
+                test_root
+                / "runs"
+                / "hcc1143_lpwgs"
+                / "03_cna_codification"
+                / "cna_events.tsv",
+                test_root
+                / "runs"
+                / "hcc1143_lpwgs"
+                / "04_cna_custom_plots"
+                / "cna_per_sample_pages.pdf",
             ]
             for path in required:
                 require_file(path, "QuickStart 2 output")
@@ -641,13 +764,17 @@ def _check_process(
     required_output: str | None = None,
 ) -> dict[str, object]:
     argv = [str(item) for item in command]
-    completed = subprocess.run(argv, text=True, capture_output=True, env=env, check=False)
+    completed = subprocess.run(
+        argv, text=True, capture_output=True, env=env, check=False
+    )
     output = f"{completed.stdout or ''}{completed.stderr or ''}".strip()
     lines = output.splitlines()
     accepted = set(accepted_returncodes or {0})
-    output_matched = required_output is None or re.search(
-        required_output, output, flags=re.IGNORECASE | re.MULTILINE
-    ) is not None
+    output_matched = (
+        required_output is None
+        or re.search(required_output, output, flags=re.IGNORECASE | re.MULTILINE)
+        is not None
+    )
     return {
         "command": shlex.join(argv),
         "returncode": completed.returncode,
@@ -760,10 +887,15 @@ def _probe_core(prefix: Path | None) -> dict[str, object]:
             else:
                 result = _missing_probe(name, f"{name} was not found on PATH")
         probes[name] = result
-    return {"success": all(bool(probe["success"]) for probe in probes.values()), "probes": probes}
+    return {
+        "success": all(bool(probe["success"]) for probe in probes.values()),
+        "probes": probes,
+    }
 
 
-def _probe_native_prefixes(prefixes: dict[str, Path | None]) -> dict[str, dict[str, object]]:
+def _probe_native_prefixes(
+    prefixes: dict[str, Path | None]
+) -> dict[str, dict[str, object]]:
     results: dict[str, dict[str, object]] = {}
     core = prefixes["core"]
     results["core"] = (
@@ -774,7 +906,11 @@ def _probe_native_prefixes(prefixes: dict[str, Path | None]) -> dict[str, dict[s
 
     qdnaseq = prefixes["qdnaseq"]
     if qdnaseq is None:
-        results["qdnaseq"] = {"success": False, "probes": {}, "error": "qdnaseq prefix is not configured"}
+        results["qdnaseq"] = {
+            "success": False,
+            "probes": {},
+            "error": "qdnaseq prefix is not configured",
+        }
     else:
         r_probe = _probe_executable(
             qdnaseq,
@@ -787,11 +923,18 @@ def _probe_native_prefixes(prefixes: dict[str, Path | None]) -> dict[str, dict[s
             required_output=r"QDNASEQ_OK",
             env=_prefix_environment(qdnaseq, clean_r=True),
         )
-        results["qdnaseq"] = {"success": bool(r_probe["success"]), "probes": {"Rscript": r_probe}}
+        results["qdnaseq"] = {
+            "success": bool(r_probe["success"]),
+            "probes": {"Rscript": r_probe},
+        }
 
     ichorcna = prefixes["ichorcna"]
     if ichorcna is None:
-        results["ichorcna"] = {"success": False, "probes": {}, "error": "ichorcna prefix is not configured"}
+        results["ichorcna"] = {
+            "success": False,
+            "probes": {},
+            "error": "ichorcna prefix is not configured",
+        }
     else:
         ichor_r = _probe_executable(
             ichorcna,
@@ -819,7 +962,11 @@ def _probe_native_prefixes(prefixes: dict[str, Path | None]) -> dict[str, dict[s
 
     classifier = prefixes["classifier"]
     if classifier is None:
-        results["classifier"] = {"success": False, "probes": {}, "error": "classifier prefix is not configured"}
+        results["classifier"] = {
+            "success": False,
+            "probes": {},
+            "error": "classifier prefix is not configured",
+        }
     else:
         imports = (
             "import pandas,openpyxl,numpy,scipy,sklearn,matplotlib,jinja2,requests,"
@@ -840,11 +987,17 @@ def _probe_native_prefixes(prefixes: dict[str, Path | None]) -> dict[str, dict[s
 
     gistic = prefixes["gistic"]
     if gistic is None:
-        results["gistic"] = {"success": False, "probes": {}, "error": "gistic prefix is not configured"}
+        results["gistic"] = {
+            "success": False,
+            "probes": {},
+            "error": "gistic prefix is not configured",
+        }
     else:
         try:
             gistic_environment = _prefix_environment(gistic)
-            gistic_environment.update(Toolchain(gistic_prefix=gistic).environment("gistic"))
+            gistic_environment.update(
+                Toolchain(gistic_prefix=gistic).environment("gistic")
+            )
         except OncoTracerError as error:
             gistic_probe = _missing_probe(gistic / "bin" / "gistic2", str(error))
         else:
@@ -906,6 +1059,26 @@ def command_doctor(args: argparse.Namespace) -> int:
         any_prefix = any(prefix is not None for prefix in prefixes.values())
         require_matrix = backend in {"poetry", "conda"} or any_prefix
         if require_matrix:
+            managed_success = True
+            if backend in {"conda", "poetry"} or any_prefix:
+                try:
+                    base = _managed_conda_base(
+                        install, require_poetry=backend == "poetry"
+                    )
+                    managed = verify_managed_conda_runtime(
+                        base, require_poetry=backend == "poetry"
+                    )
+                    checks["managed_install"] = {
+                        "success": True,
+                        "base": str(base),
+                        "children": {name: str(path) for name, path in managed.items()},
+                    }
+                except OncoTracerError as error:
+                    managed_success = False
+                    checks["managed_install"] = {
+                        "success": False,
+                        "error": str(error),
+                    }
             prefix_checks = {
                 group: {
                     "path": str(prefix) if prefix is not None else "",
@@ -918,8 +1091,13 @@ def command_doctor(args: argparse.Namespace) -> int:
             checks["prefixes"] = prefix_checks
             checks["environments"] = environments
             checks["commands"] = environments["core"].get("probes", {})
-            success = all(item["configured"] and item["exists"] for item in prefix_checks.values())
-            success = success and all(bool(item["success"]) for item in environments.values())
+            success = all(
+                item["configured"] and item["exists"] for item in prefix_checks.values()
+            )
+            success = success and all(
+                bool(item["success"]) for item in environments.values()
+            )
+            success = success and managed_success
         else:
             core = _probe_core(None)
             checks["prefixes"] = {}
@@ -929,15 +1107,30 @@ def command_doctor(args: argparse.Namespace) -> int:
     elif backend == "docker":
         docker = require_command("docker")
         image = args.image or str(_load_install_config().get("image") or DEFAULT_IMAGE)
-        result = _check_process([docker, "run", "--rm", image, "doctor", "--backend", "host"])
+        result = _check_process(
+            [docker, "run", "--rm", image, "doctor", "--backend", "host"]
+        )
         checks["docker"] = result
         success = bool(result["success"])
     elif backend in {"singularity", "apptainer"}:
-        executable = _singularity_command()
-        sif = str(_load_install_config().get("sif") or "")
+        install = _load_install_config()
+        executable = str(install.get("singularity_command") or _singularity_command())
+        sif = str(install.get("sif") or "")
         checks["runtime"] = executable
         checks["sif"] = sif
-        success = bool(executable) and bool(sif) and Path(sif).is_file()
+        try:
+            if not executable or not sif:
+                raise OncoTracerError(
+                    "managed Singularity runtime and SIF are not configured"
+                )
+            marker = verify_managed_sif_runtime(
+                Path(sif).expanduser().resolve(), executable=executable
+            )
+            checks["managed_sif"] = {"success": True, "marker": marker}
+            success = True
+        except OncoTracerError as error:
+            checks["managed_sif"] = {"success": False, "error": str(error)}
+            success = False
     success = bool(success) and source_success
     checks["success"] = success
     print(json.dumps(checks, indent=2, sort_keys=True))
@@ -966,7 +1159,9 @@ def command_provenance(args: argparse.Namespace) -> int:
 
 
 def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--backend", choices=("host", "conda", "docker", "singularity", "poetry"))
+    parser.add_argument(
+        "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
+    )
     parser.add_argument("--threads", type=int)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -1011,7 +1206,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="oncotracer",
         description="Native LP-WGS CNA analysis.",
     )
-    parser.add_argument("--version", action="version", version=f"OncoTracer {__version__}")
+    parser.add_argument(
+        "--version", action="version", version=f"OncoTracer {__version__}"
+    )
     subparsers = parser.add_subparsers(dest="command")
 
     install = subparsers.add_parser("install", help="Prepare one execution backend")
@@ -1049,7 +1246,9 @@ def build_parser() -> argparse.ArgumentParser:
     auto.add_argument("--root")
     auto.set_defaults(func=command_auto)
 
-    quickstart = subparsers.add_parser("quickstart", help="Run a complete public validation example")
+    quickstart = subparsers.add_parser(
+        "quickstart", help="Run a complete public validation example"
+    )
     quickstart.add_argument("number", choices=("1", "2"))
     quickstart.add_argument("--test-root", required=True)
     quickstart.add_argument("--download-only", action="store_true")
@@ -1057,12 +1256,18 @@ def build_parser() -> argparse.ArgumentParser:
     quickstart.set_defaults(func=command_quickstart)
 
     doctor = subparsers.add_parser("doctor", help="Verify the selected backend")
-    doctor.add_argument("--backend", choices=("host", "conda", "docker", "singularity", "poetry"))
+    doctor.add_argument(
+        "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
+    )
     doctor.add_argument("--image")
     doctor.set_defaults(func=command_doctor)
 
-    provenance = subparsers.add_parser("provenance", help="Report exact source and binary provenance")
-    provenance.add_argument("--json", action="store_true", help="Emit the complete JSON record")
+    provenance = subparsers.add_parser(
+        "provenance", help="Report exact source and binary provenance"
+    )
+    provenance.add_argument(
+        "--json", action="store_true", help="Emit the complete JSON record"
+    )
     provenance.set_defaults(func=command_provenance)
     return parser
 
@@ -1071,12 +1276,25 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
     """Translate v1 launcher syntax while keeping v2 execution native."""
     if (
         not values
-        or values[0] in {"install", "run", "internal-run", "auto", "quickstart", "doctor", "provenance"}
+        or values[0]
+        in {
+            "install",
+            "run",
+            "internal-run",
+            "auto",
+            "quickstart",
+            "doctor",
+            "provenance",
+        }
         or values[0] in {"-h", "--help", "--version"}
     ):
         return values
     backend = None
-    for flag, name in (("--docker", "docker"), ("--singularity", "singularity"), ("--conda", "conda")):
+    for flag, name in (
+        ("--docker", "docker"),
+        ("--singularity", "singularity"),
+        ("--conda", "conda"),
+    ):
         if flag in values:
             values.remove(flag)
             backend = name
