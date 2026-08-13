@@ -2020,9 +2020,10 @@ if source_manifest_copy_arg:
     shutil.copyfile(source_manifest, source_manifest_copy)
     materialize_trace_sources(root, source_manifest, raw_source_dir)
     with tempfile.TemporaryDirectory(prefix=f"oncotracer-{artifact_prefix}-recompute-") as directory:
-        recomputed, regenerated, _ = recompute_preserved_trace_artifact(
-            raw_source_dir, source_manifest_copy, Path(directory)
-        )
+        with redirect_stdout(sys.stderr):
+            recomputed, regenerated, _ = recompute_preserved_trace_artifact(
+                raw_source_dir, source_manifest_copy, Path(directory)
+            )
         if recomputed.read_bytes() != selected.read_bytes():
             raise SystemExit("preserved raw traces do not reproduce the combined trace")
         if regenerated.read_bytes() != source_manifest_copy.read_bytes():

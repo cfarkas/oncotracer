@@ -1718,6 +1718,111 @@ class ParityComparatorTests(unittest.TestCase):
                     raw_root, manifest_copy, combined
                 )
 
+    def test_server_trace_audit_command_substitution_receives_one_path(self) -> None:
+        driver = (ROOT / "scripts/validate_v2_release.sh").read_text(encoding="utf-8")
+        function_start = driver.index("generate_samurai_trace_audit() {")
+        program_start = driver.index("<<'PY'\n", function_start) + len("<<'PY'\n")
+        program_end = driver.index("\nPY\n", program_start)
+        program = driver[program_start:program_end]
+
+        sys.path.insert(0, str(ROOT / "tests"))
+        try:
+            import verify_nested_samurai as verify_module
+        finally:
+            sys.path.pop(0)
+        processes = sorted(verify_module.SERVER_ILLUMINA_PROCESSES)
+        images = sorted(verify_module.SERVER_ILLUMINA_IMAGES)
+
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            root = workspace / "nested"
+            trace = root / "attempt-1/pipeline_info/execution_trace_current.txt"
+            trace.parent.mkdir(parents=True)
+            with trace.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+                writer.writerow(
+                    ["task_id", "hash", "name", "status", "exit", "container"]
+                )
+                for task_id, process in enumerate(processes, start=1):
+                    writer.writerow(
+                        [
+                            task_id,
+                            f"{task_id:02x}/{task_id:06x}",
+                            f"{process} (SAMPLE_A)",
+                            "COMPLETED",
+                            "0",
+                            images[(task_id - 1) % len(images)],
+                        ]
+                    )
+
+            pins = workspace / "samurai-container-pins.tsv"
+            pins.write_text(
+                "".join(f"{image}\tsha256:{'0' * 64}\n" for image in images),
+                encoding="utf-8",
+            )
+            pre_inventory = workspace / "trace-pre.tsv"
+            pre_inventory.write_text(
+                "source_trace\tmtime_ns\tbytes\tsha256\n", encoding="utf-8"
+            )
+            destination = workspace / "trace-audit.json"
+            post_inventory = workspace / "trace-post.tsv"
+            delta_inventory = workspace / "trace-delta.tsv"
+            source_manifest = workspace / "v1-illumina-samurai-trace-sources.tsv"
+            raw_sources = workspace / "v1-illumina-samurai-trace-source-files"
+            embedded_program = workspace / "generate-samurai-trace-audit.py"
+            embedded_program.write_text(program, encoding="utf-8")
+
+            arguments = [
+                sys.executable,
+                str(embedded_program),
+                str(root),
+                "illumina",
+                "12",
+                str(pins),
+                str(destination),
+                str(pre_inventory),
+                str(post_inventory),
+                str(delta_inventory),
+                "v1-illumina-samurai",
+                "",
+                str(source_manifest),
+                str(raw_sources),
+                "",
+                str(ROOT / "tests"),
+            ]
+            completed = subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    """set -Eeuo pipefail
+selected_output="$("$@")"
+[[ "$selected_output" != *$'\\n'* ]]
+[[ -f "$selected_output" ]]
+printf '%s\\n' "$selected_output"
+""",
+                    "trace-audit-command-substitution",
+                    *arguments,
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            selected = (
+                root
+                / ".oncotracer-parity/pipeline_info/execution_trace_oncotracer_combined.txt"
+            ).resolve()
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + completed.stderr
+            )
+            self.assertEqual(completed.stdout, f"{selected}\n")
+            self.assertEqual(
+                completed.stderr.count("Combined 1 nested trace file(s)"), 2
+            )
+            self.assertTrue(destination.is_file())
+            self.assertTrue(source_manifest.is_file())
+            self.assertTrue(raw_sources.is_dir())
+
     def test_server_sealed_trace_proof_recomputes_and_bundle_wiring_is_complete(
         self,
     ) -> None:
