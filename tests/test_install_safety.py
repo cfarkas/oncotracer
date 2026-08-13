@@ -16,6 +16,7 @@ import sys
 import tempfile
 import time
 import tomllib
+import venv
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -109,7 +110,27 @@ rscript = prefix / "bin" / "Rscript"
 rscript.write_text("#!/bin/sh\\necho QDNASEQ_OK ICHORCNA_OK\\n", encoding="utf-8")
 rscript.chmod(0o755)
 gistic = prefix / "bin" / "gistic2"
-gistic.write_text("#!/bin/sh\\necho GISTIC_OK\\n", encoding="utf-8")
+libraries = [
+    prefix / "share" / "mcr-8.3-0" / "v83" / "runtime" / "glnxa64",
+    prefix / "share" / "mcr-8.3-0" / "v83" / "bin" / "glnxa64",
+    prefix / "share" / "mcr-8.3-0" / "v83" / "sys" / "os" / "glnxa64",
+]
+for library in libraries:
+    library.mkdir(parents=True, exist_ok=True)
+sibling = prefix / "bin" / "gistic-probe-sibling"
+sibling.write_text(
+    "#!/bin/sh\\necho 'Usage: gp_gistic2_from_seg -b base_dir -seg segmentation_file'\\n",
+    encoding="utf-8",
+)
+sibling.chmod(0o755)
+expected = os.pathsep.join(str(path) for path in libraries)
+gistic.write_text(
+    "#!/bin/sh\\n"
+    + "test \\\"$LD_LIBRARY_PATH\\\" = " + repr(expected) + " || exit 88\\n"
+    + "test \\\"${LD_LIBRARY_PATH_MCR+x}:$LD_LIBRARY_PATH_MCR\\\" = 'x:' || exit 89\\n"
+    + '"$(dirname "$0")/gistic-probe-sibling"\\n',
+    encoding="utf-8",
+)
 gistic.chmod(0o755)
 probe = prefix / "bin" / "prefix-probe"
 probe.write_text(
@@ -562,7 +583,7 @@ else:
             transaction, target, transaction_id, "conda"
         )
 
-    def test_changed_partial_target_metadata_is_never_discarded(self) -> None:
+    def test_changed_unsealed_target_metadata_is_never_discarded(self) -> None:
         target = self.scratch / "partial-final-prefix"
         target.mkdir()
         (target / "payload").write_bytes(b"installer bytes")
@@ -578,10 +599,14 @@ else:
             transaction_id,
             "core",
             target,
-            partial_inventory=install_safety._tree_inventory(
-                target, include_installer_metadata=True
-            ),
         )
+        claim = json.loads(
+            install_safety._target_claim_path(transaction, "core").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(claim["state"], "unsealed")
+        self.assertNotIn("partial_inventory", claim)
         (target / install_safety.ENV_MARKER).write_bytes(
             b"foreign metadata must survive"
         )
@@ -603,6 +628,414 @@ else:
         install_safety._preserve_staging_transaction(
             transaction, target, transaction_id, "conda"
         )
+
+    def test_real_size_partial_conda_prefix_keeps_claim_bounded(self) -> None:
+        base = self.scratch / "large-partial-envs"
+        entry_count = 12_000
+
+        def fail_after_real_size_create(destination, name):
+            self.assertEqual(name, "core")
+            records = destination / "conda-meta" / "package-records"
+            records.mkdir()
+            for index in range(entry_count):
+                (records / f"package-{index:05d}.json").write_bytes(b"{}\n")
+            raise OncoTracerError("injected post-create validation failure")
+
+        with (
+            mock.patch.object(
+                install_safety,
+                "_verify_conda_runtime",
+                side_effect=fail_after_real_size_create,
+            ),
+            self.assertRaisesRegex(
+                OncoTracerError, "injected post-create validation failure"
+            ),
+        ):
+            self._conda_install(base)
+
+        preserved = list(
+            self.scratch.glob(f".{base.name}-core.oncotracer-preserved-*-core")
+        )
+        self.assertEqual(len(preserved), 1)
+        records = preserved[0] / "conda-meta" / "package-records"
+        self.assertEqual(sum(1 for _ in records.iterdir()), entry_count)
+        self.assertEqual((records / "package-00000.json").read_bytes(), b"{}\n")
+        self.assertEqual((records / "package-11999.json").read_bytes(), b"{}\n")
+
+        # This is larger than the reader bound that exposed the parity failure
+        # when the full inventory was embedded in claims/core.json.
+        legacy_inventory = install_safety._tree_inventory(
+            preserved[0], include_installer_metadata=True
+        )
+        legacy_payload = json.dumps(
+            {"partial_inventory": legacy_inventory}, indent=2, sort_keys=True
+        ).encode("utf-8")
+        self.assertGreater(len(legacy_payload), 1024 * 1024)
+
+        retained = list(
+            self.scratch.glob(
+                f".{base.name}.oncotracer-conda-txn-*.oncotracer-retained"
+            )
+        )
+        self.assertEqual(len(retained), 1)
+        claim_path = retained[0] / "claims" / "core.json"
+        self.assertLessEqual(
+            claim_path.stat().st_size,
+            install_safety.MAX_TARGET_CLAIM_JSON_BYTES,
+        )
+        claim = json.loads(claim_path.read_text(encoding="utf-8"))
+        self.assertEqual(claim["schema"], install_safety.TARGET_CLAIM_SCHEMA)
+        self.assertEqual(claim["state"], "unsealed")
+        self.assertIsNone(claim["marker"])
+        self.assertNotIn("partial_inventory", claim)
+
+    def test_target_claim_rejects_oversize_and_embedded_inventory(self) -> None:
+        for attack in ("oversize", "embedded-inventory"):
+            with self.subTest(attack=attack):
+                target = self.scratch / f"claim-attack-{attack}"
+                target.mkdir()
+                (target / "patient-sentinel").write_bytes(b"PRESERVE")
+                transaction_id, transaction = install_safety._new_transaction(
+                    target, "conda"
+                )
+                install_safety._require_transaction_subdir(
+                    transaction, "claims", create=True
+                )
+                discarded = install_safety._require_transaction_subdir(
+                    transaction, "discarded", create=True
+                )
+                install_safety._write_target_claim(
+                    transaction, transaction_id, "core", target
+                )
+                claim_path = install_safety._target_claim_path(transaction, "core")
+                if attack == "oversize":
+                    claim_path.write_bytes(
+                        b"{" + b" " * install_safety.MAX_TARGET_CLAIM_JSON_BYTES
+                    )
+                    expected = "unexpectedly large"
+                else:
+                    claim = json.loads(claim_path.read_text(encoding="utf-8"))
+                    claim["partial_inventory"] = {
+                        "schema": install_safety.INVENTORY_SCHEMA,
+                        "entries": [],
+                    }
+                    claim_path.write_text(json.dumps(claim) + "\n", encoding="utf-8")
+                    expected = "claim is malformed"
+
+                before = _snapshot(target)
+                with self.assertRaisesRegex(OncoTracerError, expected):
+                    install_safety._discard_claimed_target(
+                        transaction,
+                        transaction_id,
+                        "core",
+                        target,
+                        discarded,
+                        {},
+                    )
+                self.assertEqual(_snapshot(target), before)
+                self.assertFalse(any(discarded.iterdir()))
+
+    def test_atomic_json_writer_cap_precedes_publication(self) -> None:
+        history = self.scratch / "writer-history"
+        history.mkdir()
+        existing = self.scratch / "existing-bounded.json"
+        existing.write_bytes(b"prior bytes\n")
+        before = (existing.read_bytes(), existing.lstat().st_ino)
+        with self.assertRaisesRegex(OncoTracerError, "unexpectedly large"):
+            install_safety._atomic_write_json(
+                existing,
+                {"payload": "x" * 128},
+                retention_parent=history,
+                max_bytes=32,
+            )
+        self.assertEqual((existing.read_bytes(), existing.lstat().st_ino), before)
+        self.assertFalse(any(history.iterdir()))
+
+        absent = self.scratch / "absent-bounded.json"
+        with self.assertRaisesRegex(OncoTracerError, "unexpectedly large"):
+            install_safety._atomic_write_json(
+                absent,
+                {"payload": "x" * 128},
+                retention_parent=history,
+                max_bytes=32,
+            )
+        self.assertFalse(os.path.lexists(absent))
+        self.assertFalse(any(history.iterdir()))
+
+    def test_target_claim_strict_schema_and_state_types_fail_closed(self) -> None:
+        attacks = {
+            "v1-schema": {"schema": "oncotracer-install-target-claim-v1"},
+            "sealed-null": {"state": "sealed", "marker": None},
+            "unsealed-marker": {"state": "unsealed", "marker": {}},
+            "device-bool": {"device": True},
+            "device-negative": {"device": -1},
+            "inode-zero": {"inode": 0},
+        }
+        for attack, mutation in attacks.items():
+            with self.subTest(attack=attack):
+                target = self.scratch / f"strict-claim-{attack}"
+                target.mkdir()
+                (target / "patient-sentinel").write_bytes(b"PRESERVE")
+                transaction_id, transaction = install_safety._new_transaction(
+                    target, "conda"
+                )
+                install_safety._require_transaction_subdir(
+                    transaction, "claims", create=True
+                )
+                discarded = install_safety._require_transaction_subdir(
+                    transaction, "discarded", create=True
+                )
+                install_safety._write_target_claim(
+                    transaction, transaction_id, "core", target
+                )
+                claim_path = install_safety._target_claim_path(transaction, "core")
+                claim = json.loads(claim_path.read_text(encoding="utf-8"))
+                claim.update(mutation)
+                claim_path.write_text(json.dumps(claim) + "\n", encoding="utf-8")
+                before = _snapshot(target)
+                with self.assertRaisesRegex(OncoTracerError, "claim is malformed"):
+                    install_safety._discard_claimed_target(
+                        transaction, transaction_id, "core", target, discarded, {}
+                    )
+                self.assertEqual(_snapshot(target), before)
+                self.assertFalse(any(discarded.iterdir()))
+
+    def test_conda_semantic_probes_accept_internal_symlinks_and_hardlinks(
+        self,
+    ) -> None:
+        for name in install_safety.CONDA_NAMES:
+            with self.subTest(name=name):
+                destination = self.scratch / f"probe-{name}"
+                binaries = destination / "bin"
+                binaries.mkdir(parents=True)
+                if name in {"core", "classifier"}:
+                    final = _write_executable(
+                        binaries / "python3.11",
+                        "#!/bin/sh\necho CORE_OK CLASSIFIER_OK\n",
+                    )
+                    os.link(final, destination / "conda-package-cache-python")
+                    self.assertGreater(final.stat().st_nlink, 1)
+                    (binaries / "python3").symlink_to("python3.11")
+                    (binaries / "python").symlink_to("python3")
+                elif name in {"qdnaseq", "ichorcna"}:
+                    _write_executable(
+                        binaries / "R",
+                        "#!/bin/sh\necho QDNASEQ_OK ICHORCNA_OK\n",
+                    )
+                    (binaries / "Rscript").symlink_to("R")
+                else:
+                    libraries = [
+                        destination
+                        / "share"
+                        / "mcr-8.3-0"
+                        / "v83"
+                        / relative
+                        / "glnxa64"
+                        for relative in (Path("runtime"), Path("bin"), Path("sys/os"))
+                    ]
+                    for library in libraries:
+                        library.mkdir(parents=True)
+                    _write_executable(
+                        binaries / "gistic-help",
+                        "#!/bin/sh\necho 'Usage: gp_gistic2_from_seg -b base_dir -seg segmentation_file'\n",
+                    )
+                    expected = os.pathsep.join(str(path) for path in libraries)
+                    _write_executable(
+                        binaries / "gistic2.bin",
+                        "#!/bin/sh\n"
+                        f"test \"$LD_LIBRARY_PATH\" = '{expected}' || exit 88\n"
+                        "test \"${LD_LIBRARY_PATH_MCR+x}:$LD_LIBRARY_PATH_MCR\" = 'x:' || exit 89\n"
+                        '"$(dirname "$0")/gistic-help"\n',
+                    )
+                    (binaries / "gistic2").symlink_to("gistic2.bin")
+                install_safety._verify_conda_runtime(destination, name)
+
+    def test_named_physical_python_preserves_real_prefix_discovery(self) -> None:
+        destination = self.scratch / "real-prefix-probe"
+        venv.EnvBuilder(with_pip=False, symlinks=False).create(destination)
+        logical = destination / "bin" / "python"
+        descriptor, resolved = install_safety._open_managed_probe(
+            destination, logical, "real managed Python probe"
+        )
+        try:
+            result = install_safety._run_checked(
+                [
+                    resolved,
+                    "-I",
+                    "-B",
+                    "-c",
+                    (
+                        "import pathlib,sys; "
+                        f"assert pathlib.Path(sys.prefix).resolve() == pathlib.Path({str(destination)!r}); "
+                        f"assert pathlib.Path(sys.executable).resolve() == pathlib.Path({str(resolved)!r}); "
+                        "print('REAL_PREFIX_OK')"
+                    ),
+                ],
+                env=install_safety._managed_conda_probe_environment(
+                    destination, "core"
+                ),
+            )
+        finally:
+            os.close(descriptor)
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.stdout.strip(), "REAL_PREFIX_OK")
+
+    def test_semantic_probe_executable_swap_fails_postcheck(self) -> None:
+        destination = self.scratch / "probe-swap"
+        binaries = destination / "bin"
+        binaries.mkdir(parents=True)
+        final = _write_executable(binaries / "python3.11", "#!/bin/sh\necho CORE_OK\n")
+        (binaries / "python").symlink_to("python3.11")
+
+        def swap_after_apparent_success(*_args, **_kwargs):
+            final.rename(binaries / "original-python3.11")
+            _write_executable(final, "#!/bin/sh\necho CORE_OK\n")
+
+        with (
+            mock.patch.object(
+                install_safety,
+                "_run_semantic_probe",
+                side_effect=swap_after_apparent_success,
+            ),
+            self.assertRaisesRegex(OncoTracerError, "changed while.*probe ran"),
+        ):
+            install_safety._verify_conda_runtime(destination, "core")
+
+    def test_gistic_mcr_directory_swap_fails_postcheck(self) -> None:
+        destination = self.scratch / "gistic-mcr-swap"
+        binaries = destination / "bin"
+        binaries.mkdir(parents=True)
+        _write_executable(
+            binaries / "gistic2",
+            "#!/bin/sh\necho 'Usage: gp_gistic2_from_seg -b base_dir -seg segmentation_file'\n",
+        )
+        root = destination / "share" / "mcr-8.3-0" / "v83"
+        libraries = [
+            root / "runtime" / "glnxa64",
+            root / "bin" / "glnxa64",
+            root / "sys" / "os" / "glnxa64",
+        ]
+        for library in libraries:
+            library.mkdir(parents=True)
+        victim = libraries[0]
+
+        def swap_after_apparent_success(*_args, **_kwargs):
+            victim.rename(victim.with_name("original-glnxa64"))
+            victim.mkdir()
+
+        with (
+            mock.patch.object(
+                install_safety,
+                "_run_semantic_probe",
+                side_effect=swap_after_apparent_success,
+            ),
+            self.assertRaisesRegex(OncoTracerError, "MATLAB runtime changed"),
+        ):
+            install_safety._verify_conda_runtime(destination, "gistic")
+
+    def test_conda_semantic_probe_symlinks_fail_closed(self) -> None:
+        external = self.scratch / "external-probe"
+        _write_executable(external, "#!/bin/sh\necho EXTERNAL\n")
+        external_before = external.read_bytes()
+
+        def prepare(attack):
+            destination = self.scratch / f"probe-attack-{attack}"
+            binaries = destination / "bin"
+            binaries.mkdir(parents=True)
+            probe = binaries / "python"
+            if attack == "absolute":
+                probe.symlink_to(external)
+            elif attack == "parent":
+                outside = self.scratch / "outside-runtime"
+                outside.mkdir()
+                _write_executable(outside / "python", "#!/bin/sh\necho EXTERNAL\n")
+                runtimes = binaries / "runtimes"
+                runtimes.mkdir()
+                (runtimes / "current").symlink_to(outside, target_is_directory=True)
+                probe.symlink_to("runtimes/current/python")
+            elif attack == "dotdot":
+                probe.symlink_to("../outside-python")
+            elif attack == "loop":
+                probe.symlink_to("python3")
+                (binaries / "python3").symlink_to("python")
+            elif attack == "special":
+                os.mkfifo(probe)
+                probe.chmod(0o755)
+            elif attack == "hardlinked-symlink":
+                _write_executable(binaries / "python3.11", "#!/bin/sh\necho CORE_OK\n")
+                probe.symlink_to("python3.11")
+                os.link(
+                    probe,
+                    binaries / "python-copy",
+                    follow_symlinks=False,
+                )
+                self.assertGreater(probe.lstat().st_nlink, 1)
+            else:
+                raise AssertionError(attack)
+            return destination, probe
+
+        for attack in (
+            "absolute",
+            "parent",
+            "dotdot",
+            "loop",
+            "special",
+            "hardlinked-symlink",
+        ):
+            with self.subTest(attack=attack):
+                destination, probe = prepare(attack)
+                with self.assertRaises(OncoTracerError):
+                    install_safety._open_managed_probe(
+                        destination, probe, "test managed probe"
+                    )
+                self.assertEqual(external.read_bytes(), external_before)
+
+    def test_sealed_conda_target_rolls_back_once_and_preserves_original_error(
+        self,
+    ) -> None:
+        base = self.scratch / "sealed-rollback-envs"
+        original = OncoTracerError("injected qdnaseq semantic failure")
+
+        def fail_second(_destination, name):
+            if name == "qdnaseq":
+                raise original
+
+        with (
+            mock.patch.object(
+                install_safety,
+                "_verify_conda_runtime",
+                side_effect=fail_second,
+            ),
+            self.assertRaises(OncoTracerError) as raised,
+        ):
+            self._conda_install(base)
+
+        self.assertIs(raised.exception, original)
+        self.assertEqual(len(self._log_lines()), 2)
+        preserved = list(
+            self.scratch.glob(f".{base.name}-qdnaseq.oncotracer-preserved-*-qdnaseq")
+        )
+        self.assertEqual(len(preserved), 1)
+        self.assertTrue((preserved[0] / "conda-meta" / "history").is_file())
+        retained = list(
+            self.scratch.glob(
+                f".{base.name}.oncotracer-conda-txn-*.oncotracer-retained"
+            )
+        )
+        self.assertEqual(len(retained), 1)
+        discarded_core = retained[0] / "discarded" / "core"
+        self.assertTrue((discarded_core / "conda-meta" / "history").is_file())
+        core_claim = json.loads(
+            (retained[0] / "claims" / "core.json").read_text(encoding="utf-8")
+        )
+        qdnaseq_claim = json.loads(
+            (retained[0] / "claims" / "qdnaseq.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(core_claim["state"], "sealed")
+        self.assertIsNotNone(core_claim["marker"])
+        self.assertEqual(qdnaseq_claim["state"], "unsealed")
+        self.assertIsNone(qdnaseq_claim["marker"])
 
     def test_empty_conda_root_mode_survives_failed_first_install(self) -> None:
         base = self.scratch / "preexisting-empty-envs"

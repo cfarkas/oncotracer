@@ -40,6 +40,11 @@ LOCK_SCHEMA = "oncotracer-install-lock-v1"
 INVENTORY_SCHEMA = "oncotracer-install-inventory-v1"
 CLEANUP_INVENTORY_SCHEMA = "oncotracer-install-cleanup-inventory-v1"
 MAX_INVENTORY_JSON_BYTES = 512 * 1024 * 1024
+TARGET_CLAIM_SCHEMA = "oncotracer-install-target-claim-v2"
+# A target claim contains only fixed-shape ownership metadata, one canonical
+# filesystem path, and (once sealed) a fixed-shape child marker. It must never
+# embed the variable-size environment inventory.
+MAX_TARGET_CLAIM_JSON_BYTES = 64 * 1024
 
 CONDA_NAMES = ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
 MANAGED_CHILDREN = (*CONDA_NAMES, "poetry-runtime")
@@ -295,9 +300,12 @@ def _atomic_write_json(
     value: object,
     *,
     retention_parent: Path | None = None,
+    max_bytes: int | None = None,
 ) -> None:
     """Publish JSON atomically while retaining any prior bytes."""
     payload = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    if max_bytes is not None and len(payload) > max_bytes:
+        raise OncoTracerError(f"installer metadata is unexpectedly large: {path}")
     _atomic_write_bytes(path, payload, retention_parent=retention_parent)
 
 
@@ -701,17 +709,125 @@ def _verify_child_inventory(storage: Path, marker: Mapping[str, object]) -> None
         )
 
 
+def _open_managed_probe_candidate(
+    destination: Path, parts: tuple[str, ...], label: str
+) -> tuple[int | None, str | None, Path]:
+    """Inspect one in-prefix path through pinned, no-follow directory fds."""
+    root_fd = _open_pinned_directory(destination, f"{label} managed prefix")
+    root_device = os.fstat(root_fd).st_dev
+    parent_fd = root_fd
+    opened_parents: list[int] = []
+    candidate = destination.joinpath(*parts)
+    try:
+        for component in parts[:-1]:
+            child_fd = _open_child_directory(parent_fd, component, label)
+            if os.fstat(child_fd).st_dev != root_device:
+                os.close(child_fd)
+                raise OncoTracerError(
+                    f"{label} crosses filesystems inside {destination}"
+                )
+            opened_parents.append(child_fd)
+            parent_fd = child_fd
+        leaf = parts[-1]
+        try:
+            metadata = os.stat(leaf, dir_fd=parent_fd, follow_symlinks=False)
+        except OSError as error:
+            raise OncoTracerError(
+                f"{label} is missing from its managed prefix: {candidate}"
+            ) from error
+        if metadata.st_dev != root_device:
+            raise OncoTracerError(
+                f"{label} crosses filesystems inside its managed prefix: {candidate}"
+            )
+        if stat.S_ISLNK(metadata.st_mode):
+            if metadata.st_nlink != 1:
+                raise OncoTracerError(f"{label} symlink is hardlinked: {candidate}")
+            try:
+                target = os.readlink(leaf, dir_fd=parent_fd)
+            except OSError as error:
+                raise OncoTracerError(
+                    f"could not read {label} symlink: {candidate}"
+                ) from error
+            return None, target, candidate
+        if not stat.S_ISREG(metadata.st_mode) or not metadata.st_mode & 0o111:
+            raise OncoTracerError(f"{label} is not executable: {candidate}")
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(leaf, flags, dir_fd=parent_fd)
+        except OSError as error:
+            raise OncoTracerError(f"could not open {label}: {candidate}") from error
+        opened = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or not opened.st_mode & 0o111
+            or opened.st_dev != root_device
+            or (opened.st_dev, opened.st_ino) != (metadata.st_dev, metadata.st_ino)
+        ):
+            os.close(descriptor)
+            raise OncoTracerError(f"{label} changed while opening it: {candidate}")
+        return descriptor, None, candidate
+    finally:
+        for parent in reversed(opened_parents):
+            os.close(parent)
+        os.close(root_fd)
+
+
+def _open_managed_probe(
+    destination: Path, executable: Path, label: str
+) -> tuple[int, Path]:
+    """Open and resolve an executable through a bounded in-prefix link chain."""
+    if executable.parent.parent != destination or executable.parent.name != "bin":
+        raise OncoTracerError(
+            f"{label} path is not the expected managed-prefix child: {executable}"
+        )
+    current = tuple(executable.relative_to(destination).parts)
+    visited: set[str] = set()
+    for _ in range(40):
+        rendered = "/".join(current)
+        if rendered in visited:
+            raise OncoTracerError(f"{label} symlink chain loops: {executable}")
+        visited.add(rendered)
+        if not current or any(
+            not part or part in {".", ".."} or "/" in part or "\\" in part
+            for part in current
+        ):
+            raise OncoTracerError(
+                f"{label} symlink escapes its managed prefix: {executable}"
+            )
+        descriptor, target, candidate = _open_managed_probe_candidate(
+            destination, current, label
+        )
+        if target is not None:
+            if not target or target.startswith("/") or "\\" in target:
+                raise OncoTracerError(
+                    f"{label} symlink is absolute or external: {candidate}"
+                )
+            target_parts = tuple(target.split("/"))
+            if any(part in {"", ".", ".."} for part in target_parts):
+                raise OncoTracerError(
+                    f"{label} symlink escapes its managed prefix: {candidate}"
+                )
+            current = (*current[:-1], *target_parts)
+            continue
+        assert descriptor is not None
+        return descriptor, candidate
+    raise OncoTracerError(f"{label} symlink chain is too deep: {executable}")
+
+
 def _run_semantic_probe(
     command: Sequence[str | Path],
     label: str,
     required: str,
     *,
+    env: Mapping[str, str] | None = None,
     accepted_returncodes: frozenset[int] = frozenset({0}),
 ) -> None:
-    environment = os.environ.copy()
+    environment = dict(env) if env is not None else os.environ.copy()
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
     result = _run_checked(
-        command, env=environment, accepted_returncodes=accepted_returncodes
+        command,
+        env=environment,
+        accepted_returncodes=accepted_returncodes,
     )
     assert result is not None
     combined = f"{result.stdout}\n{result.stderr}"
@@ -719,60 +835,232 @@ def _run_semantic_probe(
         raise OncoTracerError(f"{label} did not report {required}")
 
 
+def _open_managed_probe_directory(
+    destination: Path, parts: tuple[str, ...], label: str
+) -> int:
+    """Pin one physical same-device directory below a managed prefix."""
+    descriptor = _open_pinned_directory(destination, f"{label} managed prefix")
+    root_device = os.fstat(descriptor).st_dev
+    try:
+        for component in parts:
+            child = _open_child_directory(descriptor, component, label)
+            if os.fstat(child).st_dev != root_device:
+                os.close(child)
+                raise OncoTracerError(
+                    f"{label} crosses filesystems inside {destination}"
+                )
+            os.close(descriptor)
+            descriptor = child
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _managed_probe_directory_names(
+    destination: Path, parts: tuple[str, ...], label: str
+) -> list[str]:
+    descriptor = _open_managed_probe_directory(destination, parts, label)
+    try:
+        with os.scandir(descriptor) as entries:
+            names = [entry.name for entry in itertools.islice(entries, 4_097)]
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not enumerate {label} inside {destination}: {error}"
+        ) from error
+    finally:
+        os.close(descriptor)
+    if len(names) > 4_096:
+        raise OncoTracerError(f"{label} has too many entries inside {destination}")
+    return sorted(names)
+
+
+def _managed_gistic_library_state(
+    destination: Path,
+) -> list[tuple[Path, int, int]]:
+    """Resolve exactly one physical in-prefix MATLAB runtime layout."""
+    label = "managed GISTIC MATLAB runtime"
+    candidates: list[tuple[str, str]] = []
+    for mcr_name in _managed_probe_directory_names(destination, ("share",), label):
+        if not mcr_name.startswith("mcr-") or len(mcr_name) == len("mcr-"):
+            continue
+        mcr_parts = ("share", mcr_name)
+        mcr_fd = _open_managed_probe_directory(destination, mcr_parts, label)
+        os.close(mcr_fd)
+        for version in _managed_probe_directory_names(destination, mcr_parts, label):
+            if version.startswith("v") and len(version) > 1:
+                candidates.append((mcr_name, version))
+    if len(candidates) != 1:
+        raise OncoTracerError(
+            "managed GISTIC prefix must contain exactly one MATLAB Compiler "
+            f"Runtime under share/mcr-*/v*; found {len(candidates)}"
+        )
+    mcr_name, version = candidates[0]
+    library_parts = [
+        ("share", mcr_name, version, "runtime", "glnxa64"),
+        ("share", mcr_name, version, "bin", "glnxa64"),
+        ("share", mcr_name, version, "sys", "os", "glnxa64"),
+    ]
+    libraries: list[tuple[Path, int, int]] = []
+    for parts in library_parts:
+        descriptor = _open_managed_probe_directory(destination, parts, label)
+        metadata = os.fstat(descriptor)
+        os.close(descriptor)
+        libraries.append(
+            (destination.joinpath(*parts), metadata.st_dev, metadata.st_ino)
+        )
+    return libraries
+
+
+def _managed_conda_probe_environment(
+    destination: Path,
+    name: str,
+    *,
+    gistic_state: Sequence[tuple[Path, int, int]] | None = None,
+) -> dict[str, str]:
+    """Build controlled probe routing without sourcing activation hooks."""
+    environment = os.environ.copy()
+    path_entries = [str(destination / "bin")]
+    if environment.get("PATH"):
+        path_entries.append(environment["PATH"])
+    environment["PATH"] = os.pathsep.join(path_entries)
+    environment["CONDA_PREFIX"] = str(destination)
+    for variable in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV"):
+        environment.pop(variable, None)
+    environment["PYTHONNOUSERSITE"] = "1"
+    environment["PYTHONSAFEPATH"] = "1"
+    for variable in ("R_HOME", "R_LIBS", "R_LIBS_USER", "R_LIBS_SITE"):
+        environment.pop(variable, None)
+    if name == "gistic":
+        environment.pop("LD_LIBRARY_PATH", None)
+        environment.pop("LD_LIBRARY_PATH_MCR", None)
+        if gistic_state is None:
+            gistic_state = _managed_gistic_library_state(destination)
+        environment.update(
+            {
+                "CUDA_VISIBLE_DEVICES": "",
+                "NVIDIA_VISIBLE_DEVICES": "void",
+                "LD_LIBRARY_PATH": os.pathsep.join(
+                    str(path) for path, _, _ in gistic_state
+                ),
+                "LD_LIBRARY_PATH_MCR": "",
+            }
+        )
+    return environment
+
+
 def _verify_conda_runtime(destination: Path, name: str) -> None:
     probes: dict[str, tuple[list[str | Path], str]] = {
         "core": (
             [
                 destination / "bin" / "python",
+                "-I",
+                "-B",
                 "-c",
-                "import numpy,pandas,pysam,reportlab; print('CORE_OK')",
+                (
+                    "import os,pathlib,sys; import numpy,pandas,pysam,reportlab; "
+                    "prefix=pathlib.Path(sys.prefix).resolve(); "
+                    "expected=pathlib.Path(os.environ['CONDA_PREFIX']).resolve(); "
+                    "executable=pathlib.Path(sys.executable).resolve(); "
+                    "assert prefix == expected; "
+                    "assert executable.is_relative_to(expected); print('CORE_OK')"
+                ),
             ],
             "CORE_OK",
         ),
         "qdnaseq": (
             [
                 destination / "bin" / "Rscript",
+                "--vanilla",
                 "-e",
-                "suppressPackageStartupMessages(library(QDNAseq));cat('QDNASEQ_OK\\n')",
+                (
+                    "stopifnot(normalizePath(R.home()) == "
+                    "normalizePath(file.path(Sys.getenv('CONDA_PREFIX'),'lib','R')));"
+                    "suppressPackageStartupMessages(library(QDNAseq));cat('QDNASEQ_OK\\n')"
+                ),
             ],
             "QDNASEQ_OK",
         ),
         "ichorcna": (
             [
                 destination / "bin" / "Rscript",
+                "--vanilla",
                 "-e",
-                "suppressPackageStartupMessages(library(ichorCNA));cat('ICHORCNA_OK\\n')",
+                (
+                    "stopifnot(normalizePath(R.home()) == "
+                    "normalizePath(file.path(Sys.getenv('CONDA_PREFIX'),'lib','R')));"
+                    "suppressPackageStartupMessages(library(ichorCNA));cat('ICHORCNA_OK\\n')"
+                ),
             ],
             "ICHORCNA_OK",
         ),
         "classifier": (
             [
                 destination / "bin" / "python",
+                "-I",
+                "-B",
                 "-c",
-                "import numpy,pandas,reportlab,sklearn,torch,transformers; print('CLASSIFIER_OK')",
+                (
+                    "import os,pathlib,sys; "
+                    "import numpy,pandas,reportlab,sklearn,torch,transformers; "
+                    "prefix=pathlib.Path(sys.prefix).resolve(); "
+                    "expected=pathlib.Path(os.environ['CONDA_PREFIX']).resolve(); "
+                    "executable=pathlib.Path(sys.executable).resolve(); "
+                    "assert prefix == expected; "
+                    "assert executable.is_relative_to(expected); print('CLASSIFIER_OK')"
+                ),
             ],
             "CLASSIFIER_OK",
         ),
-        "gistic": ([destination / "bin" / "gistic2", "-h"], "gistic"),
+        "gistic": (
+            [destination / "bin" / "gistic2", "-h"],
+            "Usage: gp_gistic2_from_seg -b base_dir -seg segmentation_file",
+        ),
     }
     command, required = probes[name]
     executable = Path(command[0])
-    try:
-        metadata = executable.lstat()
-    except OSError as error:
-        raise OncoTracerError(
-            f"managed {name} environment lacks its semantic probe: {executable}"
-        ) from error
-    if not stat.S_ISREG(metadata.st_mode) or not os.access(executable, os.X_OK):
-        raise OncoTracerError(f"managed {name} probe is not executable: {executable}")
-    _run_semantic_probe(
-        command,
-        f"managed {name} environment",
-        required,
-        accepted_returncodes=(
-            frozenset({0, 1, 255}) if name == "gistic" else frozenset({0})
-        ),
+    label = f"managed {name} environment probe"
+    gistic_state = (
+        _managed_gistic_library_state(destination) if name == "gistic" else []
     )
+    environment = _managed_conda_probe_environment(
+        destination, name, gistic_state=gistic_state
+    )
+    descriptor, resolved = _open_managed_probe(destination, executable, label)
+    identity = os.fstat(descriptor)
+    command[0] = resolved
+    try:
+        _run_semantic_probe(
+            command,
+            f"managed {name} environment",
+            required,
+            env=environment,
+        )
+        observed_descriptor: int | None = None
+        try:
+            observed_descriptor, observed_path = _open_managed_probe(
+                destination, executable, label
+            )
+            observed = os.fstat(observed_descriptor)
+            if observed_path != resolved or (observed.st_dev, observed.st_ino) != (
+                identity.st_dev,
+                identity.st_ino,
+            ):
+                raise OncoTracerError(
+                    f"{label} changed while its semantic probe ran: {executable}"
+                )
+        finally:
+            if observed_descriptor is not None:
+                os.close(observed_descriptor)
+        if name == "gistic":
+            observed_gistic_state = _managed_gistic_library_state(destination)
+            if observed_gistic_state != gistic_state:
+                raise OncoTracerError(
+                    "managed GISTIC MATLAB runtime changed while its semantic "
+                    f"probe ran: {destination}"
+                )
+    finally:
+        os.close(descriptor)
 
 
 def _base_marker(
@@ -1551,9 +1839,14 @@ def _write_target_claim(
     target: Path,
     *,
     marker: Mapping[str, object] | None = None,
-    partial_inventory: Mapping[str, object] | None = None,
     storage: Path | None = None,
 ) -> None:
+    if (
+        not _HEX_32.fullmatch(transaction_id)
+        or name not in MANAGED_CHILDREN
+        or (marker is not None and not _valid_target_claim_marker(marker, target, name))
+    ):
+        raise OncoTracerError(f"installer target claim is malformed: {target}")
     claimed_storage = storage or target
     metadata = claimed_storage.lstat()
     if not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
@@ -1561,20 +1854,32 @@ def _write_target_claim(
             f"installer-created prefix is not physical: {claimed_storage}"
         )
     value = {
-        "schema": "oncotracer-install-target-claim-v1",
+        "schema": TARGET_CLAIM_SCHEMA,
         "transaction_id": transaction_id,
         "name": name,
         "canonical_target": str(target),
         "device": metadata.st_dev,
         "inode": metadata.st_ino,
+        "state": "sealed" if marker is not None else "unsealed",
         "marker": dict(marker) if marker is not None else None,
-        "partial_inventory": (
-            dict(partial_inventory) if partial_inventory is not None else None
-        ),
     }
     history = _require_transaction_subdir(transaction, "metadata-history", create=True)
     _atomic_write_json(
-        _target_claim_path(transaction, name), value, retention_parent=history
+        _target_claim_path(transaction, name),
+        value,
+        retention_parent=history,
+        max_bytes=MAX_TARGET_CLAIM_JSON_BYTES,
+    )
+
+
+def _valid_target_claim_marker(value: object, target: Path, name: str) -> bool:
+    if not isinstance(value, dict):
+        return False
+    install_id = value.get("install_id")
+    return (
+        isinstance(install_id, str)
+        and bool(_HEX_32.fullmatch(install_id))
+        and _valid_child_marker(value, target, install_id, name)
     )
 
 
@@ -1582,8 +1887,12 @@ def _read_target_claim(
     transaction: Path, transaction_id: str, name: str, target: Path
 ) -> dict[str, object]:
     value = _safe_read_json(
-        _target_claim_path(transaction, name), "installer target claim"
+        _target_claim_path(transaction, name),
+        "installer target claim",
+        max_bytes=MAX_TARGET_CLAIM_JSON_BYTES,
     )
+    state = value.get("state")
+    marker = value.get("marker")
     valid_shape = (
         set(value)
         == {
@@ -1593,21 +1902,20 @@ def _read_target_claim(
             "canonical_target",
             "device",
             "inode",
+            "state",
             "marker",
-            "partial_inventory",
         }
-        and value.get("schema") == "oncotracer-install-target-claim-v1"
+        and value.get("schema") == TARGET_CLAIM_SCHEMA
         and value.get("transaction_id") == transaction_id
         and value.get("name") == name
         and value.get("canonical_target") == str(target)
-        and isinstance(value.get("device"), int)
-        and isinstance(value.get("inode"), int)
-        and (value.get("marker") is None or isinstance(value.get("marker"), dict))
+        and type(value.get("device")) is int
+        and value["device"] >= 0
+        and type(value.get("inode")) is int
+        and value["inode"] > 0
         and (
-            value.get("partial_inventory") is None
-            or _valid_inventory(
-                value.get("partial_inventory"), allow_installer_metadata=True
-            )
+            (state == "unsealed" and marker is None)
+            or (state == "sealed" and _valid_target_claim_marker(marker, target, name))
         )
     )
     if not valid_shape:
@@ -3344,19 +3652,11 @@ def install_conda_managed(
                     expected[name] = final_marker
                 except BaseException:
                     _assert_claimed_identity(transaction, transaction_id, name, target)
-                    claim = _read_target_claim(
-                        transaction, transaction_id, name, target
-                    )
-                    if claim.get("marker") is None:
-                        _write_target_claim(
-                            transaction,
-                            transaction_id,
-                            name,
-                            target,
-                            partial_inventory=_tree_inventory(
-                                target, include_installer_metadata=True
-                            ),
-                        )
+                    # The initial unsealed claim already binds this exact inode
+                    # to the owned transaction. Rollback preserves an unsealed
+                    # tree in full, so traversing and embedding a potentially
+                    # huge partial Conda inventory would add no authorization
+                    # and could itself prevent recovery.
                     raise
 
             journal = {**journal, "new_markers": {n: expected[n] for n in changed}}
