@@ -4351,21 +4351,99 @@ def managed_conda_runtime_lock(
             raise OncoTracerError(
                 f"managed runtime source identity differs from this executable: {base}"
             )
+        base_metadata = base.lstat()
+        base_identity = (base_metadata.st_dev, base_metadata.st_ino)
+        protected_identities: dict[Path, tuple[int, int]] = {}
+        base_marker_path = base / BASE_MARKER
+        base_marker_metadata = base_marker_path.lstat()
+        protected_identities[base_marker_path] = (
+            base_marker_metadata.st_dev,
+            base_marker_metadata.st_ino,
+        )
+        initial_child_identities = {
+            name: (
+                (metadata := (base / name).lstat()).st_dev,
+                metadata.st_ino,
+            )
+            for name in MANAGED_CHILDREN
+            if os.path.lexists(base / name)
+        }
+        for name in initial_child_identities:
+            child = base / name
+            marker_path = child / (
+                POETRY_MARKER if name == "poetry-runtime" else ENV_MARKER
+            )
+            for protected in (marker_path, child / CHILD_INVENTORY):
+                protected_metadata = protected.lstat()
+                protected_identities[protected] = (
+                    protected_metadata.st_dev,
+                    protected_metadata.st_ino,
+                )
         names = [*CONDA_NAMES, *(["poetry-runtime"] if require_poetry else [])]
         paths: dict[str, Path] = {}
         for name in names:
             child = base / name
-            observed = _child_marker_value(base, marker, name)
-            if observed is None:
+            if name not in initial_child_identities:
                 raise OncoTracerError(f"managed runtime child is missing: {child}")
-            _verify_child_inventory(child, observed)
             if semantic:
                 if name == "poetry-runtime":
                     _verify_poetry_runtime(child, source)
                 else:
                     _verify_conda_runtime(child, name)
             paths[name] = child
-        yield paths
+
+        def require_original_identities() -> None:
+            try:
+                observed_base = base.lstat()
+                observed_children = {
+                    name: (
+                        (metadata := (base / name).lstat()).st_dev,
+                        metadata.st_ino,
+                    )
+                    for name in MANAGED_CHILDREN
+                    if os.path.lexists(base / name)
+                }
+            except OSError as error:
+                raise OncoTracerError(
+                    f"managed runtime identity changed during use: {base}: {error}"
+                ) from error
+            if (observed_base.st_dev, observed_base.st_ino) != base_identity:
+                raise OncoTracerError(
+                    f"managed runtime root identity changed during use: {base}"
+                )
+            if observed_children != initial_child_identities:
+                raise OncoTracerError(
+                    f"managed runtime child identity changed during use: {base}"
+                )
+            for protected, expected_identity in protected_identities.items():
+                try:
+                    protected_metadata = protected.lstat()
+                except OSError as error:
+                    raise OncoTracerError(
+                        f"managed runtime metadata disappeared during use: {protected}: {error}"
+                    ) from error
+                if (
+                    protected_metadata.st_dev,
+                    protected_metadata.st_ino,
+                ) != expected_identity:
+                    raise OncoTracerError(
+                        f"managed runtime metadata identity changed during use: {protected}"
+                    )
+
+        try:
+            yield paths
+        finally:
+            if os.path.lexists(_journal_path(base, "conda")):
+                raise OncoTracerError(
+                    f"managed runtime changed during use: installer journal appeared: {base}"
+                )
+            require_original_identities()
+            final_state, final_marker = _classify_base(base)
+            if final_state != "owned" or final_marker != marker:
+                raise OncoTracerError(
+                    f"managed runtime ownership changed during use: {base}"
+                )
+            require_original_identities()
 
 
 def verify_managed_conda_runtime(

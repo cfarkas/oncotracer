@@ -9,12 +9,13 @@ import csv
 import json
 import os
 import re
+import tempfile
 import shlex
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Mapping, Sequence
 
 from . import __version__
 from .engine import Toolchain, run_native
@@ -24,7 +25,6 @@ from .install_safety import (
     installer_cli_target_arguments,
     managed_conda_runtime_lock,
     managed_sif_runtime_lock,
-    verify_managed_conda_runtime,
     verify_managed_sif_runtime,
 )
 from .provenance import ProvenanceError, get_provenance
@@ -774,11 +774,18 @@ def _check_process(
     env: dict[str, str] | None = None,
     accepted_returncodes: set[int] | frozenset[int] | None = None,
     required_output: str | None = None,
+    validator: Callable[[], None] | None = None,
 ) -> dict[str, object]:
     argv = [str(item) for item in command]
-    completed = subprocess.run(
-        argv, text=True, capture_output=True, env=env, check=False
-    )
+    if validator is not None:
+        validator()
+    try:
+        completed = subprocess.run(
+            argv, text=True, capture_output=True, env=env, check=False
+        )
+    finally:
+        if validator is not None:
+            validator()
     output = f"{completed.stdout or ''}{completed.stderr or ''}".strip()
     lines = output.splitlines()
     accepted = set(accepted_returncodes or {0})
@@ -821,6 +828,7 @@ def _probe_executable(
     accepted_returncodes: set[int] | frozenset[int] | None = None,
     required_output: str | None = None,
     env: dict[str, str] | None = None,
+    validator: Callable[[], None] | None = None,
 ) -> dict[str, object]:
     executable = prefix / "bin" / name
     if not executable.is_file() or not os.access(executable, os.X_OK):
@@ -830,6 +838,7 @@ def _probe_executable(
         env=env,
         accepted_returncodes=accepted_returncodes,
         required_output=required_output,
+        validator=validator,
     )
     result["present"] = True
     return result
@@ -850,11 +859,26 @@ def _configured_native_prefixes(install: dict[str, object]) -> dict[str, Path | 
     return prefixes
 
 
+def _contained_environment(
+    environment: Mapping[str, str],
+    containment: Mapping[str, str | None] | None,
+) -> dict[str, str]:
+    result = dict(environment)
+    result["PYTHONDONTWRITEBYTECODE"] = "1"
+    for name, value in (containment or {}).items():
+        if value is None:
+            result.pop(name, None)
+        else:
+            result[name] = value
+    return result
+
+
 def _prefix_environment(
     prefix: Path,
     *,
     clean_r: bool = False,
     cpu_only: bool = False,
+    containment: Mapping[str, str | None] | None = None,
 ) -> dict[str, str]:
     environment = os.environ.copy()
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -865,10 +889,10 @@ def _prefix_environment(
     if cpu_only:
         environment["CUDA_VISIBLE_DEVICES"] = ""
         environment["NVIDIA_VISIBLE_DEVICES"] = "void"
-    return environment
+    return _contained_environment(environment, containment)
 
 
-def _probe_core(prefix: Path | None) -> dict[str, object]:
+def _probe_core(prefix: Path | None, toolchain: Toolchain) -> dict[str, object]:
     definitions: dict[str, tuple[list[str], frozenset[int], str]] = {
         "bwa": ([], frozenset({1}), r"Program:\s*bwa"),
         "samtools": (["--version"], frozenset({0}), r"\bsamtools\b"),
@@ -877,6 +901,7 @@ def _probe_core(prefix: Path | None) -> dict[str, object]:
         "picard": (["-h"], frozenset({1}), r"(Picard|USAGE|CommandLineProgram)"),
     }
     probes: dict[str, dict[str, object]] = {}
+    containment = toolchain.environment("core")
     for name, (arguments, accepted, expected) in definitions.items():
         if prefix is not None:
             result = _probe_executable(
@@ -885,7 +910,8 @@ def _probe_core(prefix: Path | None) -> dict[str, object]:
                 arguments,
                 accepted_returncodes=accepted,
                 required_output=expected,
-                env=_prefix_environment(prefix),
+                env=_prefix_environment(prefix, containment=containment),
+                validator=toolchain.validate_environment,
             )
         else:
             executable = shutil.which(name)
@@ -894,6 +920,8 @@ def _probe_core(prefix: Path | None) -> dict[str, object]:
                     [executable, *arguments],
                     accepted_returncodes=accepted,
                     required_output=expected,
+                    env=_contained_environment(os.environ, containment),
+                    validator=toolchain.validate_environment,
                 )
                 result["present"] = True
             else:
@@ -906,12 +934,12 @@ def _probe_core(prefix: Path | None) -> dict[str, object]:
 
 
 def _probe_native_prefixes(
-    prefixes: dict[str, Path | None]
+    prefixes: dict[str, Path | None], toolchain: Toolchain
 ) -> dict[str, dict[str, object]]:
     results: dict[str, dict[str, object]] = {}
     core = prefixes["core"]
     results["core"] = (
-        _probe_core(core)
+        _probe_core(core, toolchain)
         if core is not None
         else {"success": False, "probes": {}, "error": "core prefix is not configured"}
     )
@@ -933,7 +961,12 @@ def _probe_native_prefixes(
                 'suppressPackageStartupMessages(library(Biobase)); suppressPackageStartupMessages(library(QDNAseq)); cat("QDNASEQ_OK\\n")',
             ],
             required_output=r"QDNASEQ_OK",
-            env=_prefix_environment(qdnaseq, clean_r=True),
+            env=_prefix_environment(
+                qdnaseq,
+                clean_r=True,
+                containment=toolchain.environment("qdnaseq"),
+            ),
+            validator=toolchain.validate_environment,
         )
         results["qdnaseq"] = {
             "success": bool(r_probe["success"]),
@@ -957,7 +990,12 @@ def _probe_native_prefixes(
                 'suppressPackageStartupMessages(library(ichorCNA)); cat("ICHORCNA_OK\\n")',
             ],
             required_output=r"ICHORCNA_OK",
-            env=_prefix_environment(ichorcna, clean_r=True),
+            env=_prefix_environment(
+                ichorcna,
+                clean_r=True,
+                containment=toolchain.environment("ichorcna"),
+            ),
+            validator=toolchain.validate_environment,
         )
         readcounter = _probe_executable(
             ichorcna,
@@ -965,7 +1003,10 @@ def _probe_native_prefixes(
             [],
             accepted_returncodes=frozenset({255}),
             required_output=r"Please specify a BAM file\.\s*Usage:",
-            env=_prefix_environment(ichorcna),
+            env=_prefix_environment(
+                ichorcna, containment=toolchain.environment("ichorcna")
+            ),
+            validator=toolchain.validate_environment,
         )
         results["ichorcna"] = {
             "success": bool(ichor_r["success"]) and bool(readcounter["success"]),
@@ -990,7 +1031,12 @@ def _probe_native_prefixes(
             "python",
             ["-c", imports],
             required_output=r"CLASSIFIER_OK",
-            env=_prefix_environment(classifier, cpu_only=True),
+            env=_prefix_environment(
+                classifier,
+                cpu_only=True,
+                containment=toolchain.environment("classifier"),
+            ),
+            validator=toolchain.validate_environment,
         )
         results["classifier"] = {
             "success": bool(python_probe["success"]),
@@ -1006,9 +1052,8 @@ def _probe_native_prefixes(
         }
     else:
         try:
-            gistic_environment = _prefix_environment(gistic)
-            gistic_environment.update(
-                Toolchain(gistic_prefix=gistic).environment("gistic")
+            gistic_environment = _prefix_environment(
+                gistic, containment=toolchain.environment("gistic")
             )
         except OncoTracerError as error:
             gistic_probe = _missing_probe(gistic / "bin" / "gistic2", str(error))
@@ -1020,6 +1065,7 @@ def _probe_native_prefixes(
                 accepted_returncodes=frozenset({0}),
                 required_output=r"Usage:\s*gp_gistic2_from_seg\b",
                 env=gistic_environment,
+                validator=toolchain.validate_environment,
             )
         results["gistic"] = {
             "success": bool(gistic_probe["success"]),
@@ -1073,32 +1119,6 @@ def command_doctor(args: argparse.Namespace) -> int:
         if require_matrix:
             managed_success = True
             managed_backend = _managed_install_backend(install, backend)
-            if managed_backend is not None:
-                try:
-                    require_poetry = managed_backend == "poetry"
-                    base = _managed_conda_base(install, require_poetry=require_poetry)
-                    managed = verify_managed_conda_runtime(
-                        base, require_poetry=require_poetry
-                    )
-                    checks["managed_install"] = {
-                        "success": True,
-                        "backend": managed_backend,
-                        "base": str(base),
-                        "children": {name: str(path) for name, path in managed.items()},
-                    }
-                except OncoTracerError as error:
-                    managed_success = False
-                    checks["managed_install"] = {
-                        "success": False,
-                        "backend": managed_backend,
-                        "error": str(error),
-                    }
-            else:
-                checks["managed_install"] = {
-                    "success": True,
-                    "required": False,
-                    "provisioning": "external",
-                }
             prefix_checks = {
                 group: {
                     "path": str(prefix) if prefix is not None else "",
@@ -1107,7 +1127,85 @@ def command_doctor(args: argparse.Namespace) -> int:
                 }
                 for group, prefix in prefixes.items()
             }
-            environments = _probe_native_prefixes(prefixes)
+            environments: dict[str, dict[str, object]]
+            with tempfile.TemporaryDirectory(
+                prefix="oncotracer-doctor-runtime-"
+            ) as runtime_name:
+                runtime_cache = Path(runtime_name)
+                runtime_cache.chmod(0o700)
+                toolchain = Toolchain(
+                    core_prefix=prefixes["core"],
+                    qdnaseq_prefix=prefixes["qdnaseq"],
+                    ichorcna_prefix=prefixes["ichorcna"],
+                    classifier_prefix=prefixes["classifier"],
+                    gistic_prefix=prefixes["gistic"],
+                    runtime_cache=runtime_cache,
+                )
+                if managed_backend is not None:
+                    try:
+                        require_poetry = managed_backend == "poetry"
+                        base = _managed_conda_base(
+                            install, require_poetry=require_poetry
+                        )
+                        with managed_conda_runtime_lock(
+                            base,
+                            require_poetry=require_poetry,
+                            semantic=False,
+                        ) as managed:
+                            for group, prefix in prefixes.items():
+                                if (
+                                    group in managed
+                                    and prefix is not None
+                                    and managed[group].resolve() != prefix
+                                ):
+                                    raise OncoTracerError(
+                                        "configured prefix differs from the "
+                                        f"authenticated managed child: {group}"
+                                    )
+                            environments = _probe_native_prefixes(prefixes, toolchain)
+                            toolchain.validate_environment()
+                            checks["managed_install"] = {
+                                "success": True,
+                                "backend": managed_backend,
+                                "base": str(base),
+                                "children": {
+                                    name: str(path) for name, path in managed.items()
+                                },
+                            }
+                    except OncoTracerError as error:
+                        managed_success = False
+                        checks["managed_install"] = {
+                            "success": False,
+                            "backend": managed_backend,
+                            "error": str(error),
+                        }
+                        environments = {
+                            group: {
+                                "success": False,
+                                "probes": {},
+                                "error": "managed runtime authentication failed",
+                            }
+                            for group in prefixes
+                        }
+                else:
+                    checks["managed_install"] = {
+                        "success": True,
+                        "required": False,
+                        "provisioning": "external",
+                    }
+                    try:
+                        environments = _probe_native_prefixes(prefixes, toolchain)
+                        toolchain.validate_environment()
+                    except OncoTracerError as error:
+                        managed_success = False
+                        environments = {
+                            group: {
+                                "success": False,
+                                "probes": {},
+                                "error": str(error),
+                            }
+                            for group in prefixes
+                        }
             checks["prefixes"] = prefix_checks
             checks["environments"] = environments
             checks["commands"] = environments["core"].get("probes", {})
@@ -1119,7 +1217,17 @@ def command_doctor(args: argparse.Namespace) -> int:
             )
             success = success and managed_success
         else:
-            core = _probe_core(None)
+            try:
+                with tempfile.TemporaryDirectory(
+                    prefix="oncotracer-doctor-runtime-"
+                ) as runtime_name:
+                    runtime_cache = Path(runtime_name)
+                    runtime_cache.chmod(0o700)
+                    toolchain = Toolchain(runtime_cache=runtime_cache)
+                    core = _probe_core(None, toolchain)
+                    toolchain.validate_environment()
+            except OncoTracerError as error:
+                core = {"success": False, "probes": {}, "error": str(error)}
             checks["prefixes"] = {}
             checks["environments"] = {"core": core}
             checks["commands"] = core["probes"]

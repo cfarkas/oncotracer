@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from oncotracer_cli import __version__  # noqa: E402
+from oncotracer_cli.engine import Toolchain  # noqa: E402
 from oncotracer_cli.cli import (  # noqa: E402
     _conda_prefixes,
     _check_process,
@@ -29,6 +30,7 @@ from oncotracer_cli.cli import (  # noqa: E402
     prepare_quickstart1,
 )
 from oncotracer_cli.runtime import (  # noqa: E402
+    OncoTracerError,
     atomic_write_workflow_summary,
     load_flat_yaml,
     render_flat_yaml,
@@ -199,13 +201,23 @@ class NativeCliTests(unittest.TestCase):
                 "R_LIBS_SITE": "/foreign/site",
                 "CUDA_VISIBLE_DEVICES": "7",
             }
+            runtime_cache = root / "runtime-cache"
+            runtime_cache.mkdir(mode=0o700)
+            toolchain = Toolchain(
+                core_prefix=prefixes["core"],
+                qdnaseq_prefix=prefixes["qdnaseq"],
+                ichorcna_prefix=prefixes["ichorcna"],
+                classifier_prefix=prefixes["classifier"],
+                gistic_prefix=prefixes["gistic"],
+                runtime_cache=runtime_cache,
+            )
             with (
                 patch.dict(os.environ, contaminated),
                 patch(
                     "oncotracer_cli.cli._check_process", side_effect=successful_probe
                 ) as process,
             ):
-                results = _probe_native_prefixes(prefixes)
+                results = _probe_native_prefixes(prefixes, toolchain)
 
             self.assertTrue(all(result["success"] for result in results.values()))
             calls = process.call_args_list
@@ -370,18 +382,35 @@ class NativeCliTests(unittest.TestCase):
             environments = {name: {"success": True, "probes": {}} for name in prefixes}
             args = build_parser().parse_args(["doctor", "--backend", "poetry"])
             output = io.StringIO()
+            active = {"value": False}
+            lock = MagicMock()
+
+            def enter_lock():
+                active["value"] = True
+                return {
+                    **prefixes,
+                    "poetry-runtime": base / "poetry-runtime",
+                }
+
+            def exit_lock(*_args):
+                active["value"] = False
+                return False
+
+            def contained_probes(*_args):
+                self.assertTrue(active["value"])
+                return environments
+
+            lock.__enter__.side_effect = enter_lock
+            lock.__exit__.side_effect = exit_lock
             with (
                 patch("oncotracer_cli.cli._load_install_config", return_value=install),
                 patch(
                     "oncotracer_cli.cli._probe_native_prefixes",
-                    return_value=environments,
+                    side_effect=contained_probes,
                 ),
                 patch(
-                    "oncotracer_cli.cli.verify_managed_conda_runtime",
-                    return_value={
-                        **prefixes,
-                        "poetry-runtime": base / "poetry-runtime",
-                    },
+                    "oncotracer_cli.cli.managed_conda_runtime_lock",
+                    return_value=lock,
                 ) as strict,
                 patch("oncotracer_cli.cli.get_provenance", return_value=provenance),
                 patch("sys.stdout", output),
@@ -391,7 +420,39 @@ class NativeCliTests(unittest.TestCase):
             self.assertEqual(returncode, 0)
             self.assertTrue(record["managed_install"]["success"])
             self.assertTrue(record["success"])
-            strict.assert_called_once_with(base, require_poetry=True)
+            strict.assert_called_once_with(base, require_poetry=True, semantic=False)
+            lock.__enter__.assert_called_once_with()
+            lock.__exit__.assert_called_once()
+            self.assertFalse(active["value"])
+
+    def test_host_doctor_reports_containment_error_as_json_failure(self) -> None:
+        provenance = {
+            "source_commit": "a" * 40,
+            "source_sha256": "b" * 64,
+            "source_sha256_definition": "git archive tar",
+            "source_metadata_origin": "embedded",
+            "source_tree_dirty": False,
+        }
+        args = build_parser().parse_args(["doctor", "--backend", "host"])
+        output = io.StringIO()
+        with (
+            patch("oncotracer_cli.cli._load_install_config", return_value={}),
+            patch(
+                "oncotracer_cli.cli._probe_core",
+                side_effect=OncoTracerError("unsafe Fontconfig containment"),
+            ),
+            patch("oncotracer_cli.cli.get_provenance", return_value=provenance),
+            patch("sys.stdout", output),
+        ):
+            returncode = command_doctor(args)
+        record = json.loads(output.getvalue())
+        self.assertEqual(returncode, 1)
+        self.assertFalse(record["success"])
+        self.assertFalse(record["environments"]["core"]["success"])
+        self.assertIn(
+            "unsafe Fontconfig containment",
+            record["environments"]["core"]["error"],
+        )
 
     def test_singularity_doctor_authenticates_pair_and_container(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -530,12 +591,6 @@ class NativeCliTests(unittest.TestCase):
                 ),
                 patch(
                     "oncotracer_cli.cli._managed_conda_base",
-                    side_effect=AssertionError(
-                        "external prefixes are not installer-owned"
-                    ),
-                ),
-                patch(
-                    "oncotracer_cli.cli.verify_managed_conda_runtime",
                     side_effect=AssertionError(
                         "external prefixes are not installer-owned"
                     ),

@@ -62,6 +62,8 @@ jobs:
           python3 -m unittest -v \
             tests/test_native_cli.py \
             tests/test_native_engine.py \
+            tests/test_fontconfig_safety.py \
+            tests/test_command_runner_containment.py \
             tests/test_native_methylation.py \
             tests/test_beginner_runtime.py \
             tests/test_install_safety.py \

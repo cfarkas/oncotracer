@@ -15,7 +15,7 @@ import stat
 import statistics
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Iterator, Mapping, Sequence
 
@@ -28,6 +28,7 @@ from .methylation import (
     run_methylation,
     write_global_methylation_failure,
 )
+from .fontconfig_safety import FontconfigRuntime
 from .output_safety import OutputRunLease, claim_output_run, inspect_output_target
 from .runtime import (
     CommandRunner,
@@ -130,9 +131,13 @@ class Toolchain:
     ichorcna_prefix: Path | None = None
     classifier_prefix: Path | None = None
     gistic_prefix: Path | None = None
+    runtime_cache: Path | None = None
+    _fontconfig_runtime: FontconfigRuntime | None = field(
+        default=None, init=False, repr=False
+    )
 
     @classmethod
-    def from_environment(cls) -> "Toolchain":
+    def from_environment(cls, *, runtime_cache: Path | None = None) -> "Toolchain":
         def resolved(name: str) -> Path | None:
             value = os.environ.get(name)
             return Path(value).expanduser().resolve() if value else None
@@ -143,6 +148,7 @@ class Toolchain:
             ichorcna_prefix=resolved("ONCOTRACER_ICHORCNA_PREFIX"),
             classifier_prefix=resolved("ONCOTRACER_CLASSIFIER_PREFIX"),
             gistic_prefix=resolved("ONCOTRACER_GISTIC_PREFIX"),
+            runtime_cache=runtime_cache,
         )
 
     def _prefix(self, group: str) -> Path | None:
@@ -189,7 +195,28 @@ class Toolchain:
             raise OncoTracerError(f"empty command for toolchain group: {group}")
         return [self.executable(group, argv[0]), *argv[1:]]
 
-    def environment(self, group: str) -> dict[str, str]:
+    def _fontconfig_environment(self, group: str) -> dict[str, str | None]:
+        if self.runtime_cache is None:
+            return {}
+        if self._fontconfig_runtime is None:
+            self._fontconfig_runtime = FontconfigRuntime(
+                self.runtime_cache,
+                {
+                    "core": self.core_prefix,
+                    "qdnaseq": self.qdnaseq_prefix,
+                    "ichorcna": self.ichorcna_prefix,
+                    "classifier": self.classifier_prefix,
+                    "gistic": self.gistic_prefix,
+                },
+            )
+        return self._fontconfig_runtime.environment(group)
+
+    def validate_environment(self) -> None:
+        """Revalidate native runtime isolation after every child process."""
+        if self._fontconfig_runtime is not None:
+            self._fontconfig_runtime.validate()
+
+    def environment(self, group: str) -> dict[str, str | None]:
         """Return the minimal exact-prefix environment required by a tool.
 
         Most native executables are relocatable and need no activation state.
@@ -199,15 +226,16 @@ class Toolchain:
         sourcing a shell or inheriting an unrelated environment.
         """
         prefix = self._prefix(group)
+        fontconfig = self._fontconfig_environment(group)
         if prefix is None:
-            return {}
+            return fontconfig
         prefix = prefix.expanduser().resolve()
         if not prefix.is_dir():
             raise OncoTracerError(
                 f"configured {group} Conda prefix does not exist: {prefix}"
             )
         if group != "gistic":
-            return {}
+            return fontconfig
 
         roots = sorted(
             candidate
@@ -231,6 +259,7 @@ class Toolchain:
             )
         _, libraries = valid[0]
         return {
+            **fontconfig,
             "LD_LIBRARY_PATH": os.pathsep.join(str(path) for path in libraries),
             "LD_LIBRARY_PATH_MCR": "",
         }
@@ -1908,17 +1937,32 @@ def prepare_qdnaseq_annotation(
                 f"[qdnaseq-annotation] {' '.join(map(str, command))}",
                 file=sys.stderr,
             )
-            completed = subprocess.run(
-                command, text=True, capture_output=True, check=False
-            )
-            runner._record(
-                "qdnaseq-annotation",
-                started,
-                utc_now(),
-                completed.returncode,
-                root,
-                command,
-            )
+            completed = None
+            runner.validate_environment()
+            try:
+                completed = subprocess.run(
+                    command,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                    env=runner.child_environment(
+                        containment=toolchain.environment("qdnaseq")
+                    ),
+                )
+            finally:
+                try:
+                    if completed is not None:
+                        runner._record(
+                            "qdnaseq-annotation",
+                            started,
+                            utc_now(),
+                            completed.returncode,
+                            root,
+                            command,
+                        )
+                finally:
+                    runner.validate_environment()
+            assert completed is not None
             if completed.returncode != 0:
                 sys.stderr.write(completed.stdout)
                 sys.stderr.write(completed.stderr)
@@ -2259,7 +2303,12 @@ def run_qdnaseq(
             [script, qc_helper, bam_sheet, annotation, *markdup_bams.values()],
         )
         if force or not ledger.reusable("qdnaseq", signature, expected):
-            runner.run("qdnaseq", command, cwd=root)
+            runner.run(
+                "qdnaseq",
+                command,
+                cwd=root,
+                containment=toolchain.environment("qdnaseq"),
+            )
             for path, label in (
                 (output, "native qDNAseq segments"),
                 (status, "native qDNAseq sample status"),
@@ -2720,7 +2769,10 @@ def _run_ichorcna_with_assets(
             ):
                 with wig.open("w", encoding="utf-8") as output:
                     runner.run(
-                        f"ichor-readcounter-{sample.sample}", readcounter, stdout=output
+                        f"ichor-readcounter-{sample.sample}",
+                        readcounter,
+                        stdout=output,
+                        containment=toolchain.environment("ichorcna"),
                     )
                 require_file(wig, f"ichorCNA readCounter WIG for {sample.sample}")
                 ledger.complete(f"ichor-readcounter-{sample.sample}", signature, [wig])
@@ -2760,7 +2812,12 @@ def _run_ichorcna_with_assets(
             if force or not ledger.reusable(
                 f"ichorcna-{sample.sample}", signature, [expected_params, expected_seg]
             ):
-                runner.run(f"ichorcna-{sample.sample}", command, cwd=sample_out)
+                runner.run(
+                    f"ichorcna-{sample.sample}",
+                    command,
+                    cwd=sample_out,
+                    containment=toolchain.environment("ichorcna"),
+                )
                 if not expected_params.is_file():
                     matches = sorted(sample_out.rglob(f"{sample.sample}.params.txt"))
                     if matches:
@@ -3579,10 +3636,27 @@ def _run_native_impl(
         return outdir
     root = execution_root
     native_dir = outdir / ".oncotracer-native"
+    runtime_cache_parent = _ensure_physical_directory(
+        native_dir / "runtime-cache", "native runtime-cache parent"
+    )
+    try:
+        runtime_cache = Path(
+            tempfile.mkdtemp(prefix="invocation-", dir=runtime_cache_parent)
+        )
+        runtime_cache.chmod(0o700)
+    except OSError as error:
+        raise OncoTracerError(
+            f"cannot create exclusive native runtime cache under {runtime_cache_parent}: {error}"
+        ) from error
     trace = native_dir / "trace.tsv"
-    runner = CommandRunner(trace, dry_run=dry_run)
+    toolchain = Toolchain.from_environment(runtime_cache=runtime_cache)
+    runner = CommandRunner(
+        trace,
+        dry_run=dry_run,
+        protected_environment=toolchain.environment("core"),
+        validators=(toolchain.validate_environment,),
+    )
     ledger = StageLedger(native_dir / "state.json")
-    toolchain = Toolchain.from_environment()
 
     # The native trace is an explicit release invariant.
     atomic_write_text(

@@ -9,6 +9,7 @@ import io
 import json
 import os
 import re
+import shutil
 import signal
 import stat
 import subprocess
@@ -451,6 +452,94 @@ else:
                 self._conda_install(base, force=force)
             self.assertEqual(_snapshot(base), before)
             self.assertEqual(len(self._log_lines()), calls_before)
+
+    def test_managed_runtime_rejects_foreign_entry_during_and_after_use(self) -> None:
+        base = self.scratch / "runtime-foreign-envs"
+        self._conda_install(base)
+        foreign = base / "core" / "var" / "cache" / "fontconfig" / "foreign-cache"
+
+        with self.assertRaisesRegex(OncoTracerError, "changed or foreign entries"):
+            with install_safety.managed_conda_runtime_lock(base, require_poetry=False):
+                foreign.parent.mkdir(parents=True)
+                foreign.write_bytes(b"preserve foreign runtime bytes")
+
+        self.assertEqual(foreign.read_bytes(), b"preserve foreign runtime bytes")
+        with self.assertRaisesRegex(OncoTracerError, "changed or foreign entries"):
+            with install_safety.managed_conda_runtime_lock(base, require_poetry=False):
+                self.fail("a dirty managed environment must fail before yielding")
+
+        root_base = self.scratch / "runtime-foreign-root"
+        self._conda_install(root_base)
+        root_foreign = root_base / "foreign-runtime-entry"
+        with install_safety.managed_conda_runtime_lock(root_base, require_poetry=False):
+            root_foreign.write_bytes(b"preserve unrelated root-level bytes")
+        self.assertEqual(
+            root_foreign.read_bytes(), b"preserve unrelated root-level bytes"
+        )
+        with install_safety.managed_conda_runtime_lock(root_base, require_poetry=False):
+            self.assertEqual(
+                root_foreign.read_bytes(), b"preserve unrelated root-level bytes"
+            )
+        self.assertEqual(
+            root_foreign.read_bytes(), b"preserve unrelated root-level bytes"
+        )
+
+    def test_managed_runtime_post_use_rejects_identity_replacement(self) -> None:
+        child_base = self.scratch / "runtime-replaced-child"
+        self._conda_install(child_base)
+        child = child_base / "core"
+        saved_child = self.scratch / "saved-runtime-core"
+        with self.assertRaisesRegex(OncoTracerError, "child identity changed"):
+            with install_safety.managed_conda_runtime_lock(
+                child_base, require_poetry=False
+            ):
+                os.rename(child, saved_child)
+                shutil.copytree(saved_child, child, symlinks=True)
+        self.assertTrue(saved_child.is_dir())
+        self.assertTrue(child.is_dir())
+
+        marker_base = self.scratch / "runtime-replaced-marker"
+        self._conda_install(marker_base)
+        marker = marker_base / "core" / install_safety.ENV_MARKER
+        saved_marker = self.scratch / "saved-runtime-marker.json"
+        with self.assertRaisesRegex(OncoTracerError, "metadata identity changed"):
+            with install_safety.managed_conda_runtime_lock(
+                marker_base, require_poetry=False
+            ):
+                os.rename(marker, saved_marker)
+                marker.write_bytes(saved_marker.read_bytes())
+        self.assertTrue(saved_marker.is_file())
+        self.assertTrue(marker.is_file())
+
+    def test_managed_runtime_validates_optional_poetry_and_chains_body_error(
+        self,
+    ) -> None:
+        poetry_base = self.scratch / "runtime-optional-poetry"
+        self._conda_install(poetry_base, poetry=True)
+        poetry_foreign = poetry_base / "poetry-runtime" / "foreign-runtime-file"
+        with self.assertRaisesRegex(OncoTracerError, "changed or foreign entries"):
+            with install_safety.managed_conda_runtime_lock(
+                poetry_base, require_poetry=False
+            ):
+                poetry_foreign.write_bytes(b"preserve optional runtime bytes")
+        self.assertEqual(
+            poetry_foreign.read_bytes(), b"preserve optional runtime bytes"
+        )
+
+        body_base = self.scratch / "runtime-body-and-post-error"
+        self._conda_install(body_base)
+        body_foreign = body_base / "core" / "foreign-after-body-error"
+        with self.assertRaises(OncoTracerError) as caught:
+            with install_safety.managed_conda_runtime_lock(
+                body_base, require_poetry=False
+            ):
+                body_foreign.write_bytes(b"preserve after body failure")
+                raise RuntimeError("injected runtime body failure")
+        self.assertIsInstance(caught.exception.__context__, RuntimeError)
+        self.assertIn(
+            "injected runtime body failure", str(caught.exception.__context__)
+        )
+        self.assertEqual(body_foreign.read_bytes(), b"preserve after body failure")
 
     def test_conda_child_source_must_match_the_owned_base(self) -> None:
         base = self.scratch / "split-source-envs"

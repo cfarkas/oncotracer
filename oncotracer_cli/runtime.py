@@ -22,7 +22,7 @@ import zipfile
 from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Iterable, Iterator, Mapping, Sequence, TextIO
+from typing import Callable, Iterable, Iterator, Mapping, Sequence, TextIO
 
 from . import __version__
 
@@ -135,7 +135,9 @@ def _payload_cache_location(archive_sha256: str | None = None) -> _PayloadCacheL
     _reject_symlink_components(base)
     destination = base / "oncotracer" / __version__ / archive_sha256 / "payload"
     if destination.parent.parent.parent.parent != base:
-        raise OncoTracerError(f"invalid content-addressed payload-cache path: {destination}")
+        raise OncoTracerError(
+            f"invalid content-addressed payload-cache path: {destination}"
+        )
     return _PayloadCacheLocation(destination, "default", base)
 
 
@@ -160,7 +162,9 @@ def isolated_payload_cache(enabled: bool = True) -> Iterator[None]:
 def _payload_relative(member_name: str, *, directory: bool) -> PurePosixPath | None:
     if not member_name.startswith("payload/"):
         return None
-    if "\\" in member_name or any(ord(character) < 32 or ord(character) == 127 for character in member_name):
+    if "\\" in member_name or any(
+        ord(character) < 32 or ord(character) == 127 for character in member_name
+    ):
         raise OncoTracerError(
             f"standalone executable has an unsafe payload path: {member_name!r}"
         )
@@ -314,10 +318,7 @@ def _complete_payload(
         observed = json.loads(marker.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return False
-    return (
-        observed == expected
-        and _tree_payload_manifest(path) == payload_manifest
-    )
+    return observed == expected and _tree_payload_manifest(path) == payload_manifest
 
 
 def _cache_state(
@@ -755,26 +756,39 @@ class CommandResult:
 
 
 def _command_environment(
-    overrides: Mapping[str, str | None] | None,
+    *layers: Mapping[str, str | None] | None,
 ) -> dict[str, str]:
-    """Merge explicit overrides while allowing a caller to unset a variable."""
+    """Merge ordered overrides while allowing a caller to unset a variable."""
     environment = os.environ.copy()
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
-    for key, value in (overrides or {}).items():
-        if value is None:
-            environment.pop(key, None)
-        else:
-            environment[key] = value
+    for overrides in layers:
+        for key, value in (overrides or {}).items():
+            if value is None:
+                environment.pop(key, None)
+            else:
+                environment[key] = value
     return environment
 
 
 class CommandRunner:
     """Run commands without a shell and append an auditable TSV trace."""
 
-    def __init__(self, trace_path: Path, *, dry_run: bool = False, echo: bool = True):
+    def __init__(
+        self,
+        trace_path: Path,
+        *,
+        validators: Sequence[Callable[[], None]] = (),
+        dry_run: bool = False,
+        echo: bool = True,
+        environment: Mapping[str, str | None] | None = None,
+        protected_environment: Mapping[str, str | None] | None = None,
+    ):
         self.trace_path = trace_path
         self.dry_run = dry_run
+        self.validators = tuple(validators)
         self.echo = echo
+        self.environment = dict(environment or {})
+        self.protected_environment = dict(protected_environment or {})
         trace_path.parent.mkdir(parents=True, exist_ok=True)
         if not trace_path.exists():
             with trace_path.open("w", encoding="utf-8", newline="") as handle:
@@ -789,6 +803,22 @@ class CommandRunner:
                         "command",
                     ]
                 )
+
+    def child_environment(
+        self,
+        overrides: Mapping[str, str | None] | None = None,
+        *,
+        containment: Mapping[str, str | None] | None = None,
+    ) -> dict[str, str]:
+        """Return the exact environment used for one nested child process."""
+        return _command_environment(
+            self.environment, overrides, self.protected_environment, containment
+        )
+
+    def validate_environment(self) -> None:
+        """Revalidate private runtime containment before and after child use."""
+        for validator in self.validators:
+            validator()
 
     def _record(
         self,
@@ -819,6 +849,7 @@ class CommandRunner:
         *,
         cwd: Path | None = None,
         env: Mapping[str, str | None] | None = None,
+        containment: Mapping[str, str | None] | None = None,
         stdout: TextIO | None = None,
         stderr: TextIO | None = None,
         stdin: TextIO | int | None = None,
@@ -832,17 +863,31 @@ class CommandRunner:
             finished = utc_now()
             self._record(stage, started, finished, 0, cwd, argv)
             return CommandResult(0, argv, started, finished)
-        completed = subprocess.run(
-            argv,
-            cwd=cwd,
-            env=_command_environment(env),
-            stdin=stdin,
-            stdout=stdout,
-            stderr=stderr,
-            check=False,
-        )
-        finished = utc_now()
-        self._record(stage, started, finished, completed.returncode, cwd, argv)
+        self.validate_environment()
+        completed: (
+            subprocess.CompletedProcess[bytes] | subprocess.CompletedProcess[str] | None
+        ) = None
+        finished = started
+        try:
+            completed = subprocess.run(
+                argv,
+                cwd=cwd,
+                env=self.child_environment(env, containment=containment),
+                stdin=stdin,
+                stdout=stdout,
+                stderr=stderr,
+                check=False,
+            )
+        finally:
+            finished = utc_now()
+            try:
+                if completed is not None:
+                    self._record(
+                        stage, started, finished, completed.returncode, cwd, argv
+                    )
+            finally:
+                self.validate_environment()
+        assert completed is not None
         if check and completed.returncode != 0:
             raise OncoTracerError(
                 f"stage {stage!r} failed with exit code {completed.returncode}: {shlex.join(argv)}"
@@ -857,6 +902,7 @@ class CommandRunner:
         *,
         cwd: Path | None = None,
         env: Mapping[str, str | None] | None = None,
+        containment: Mapping[str, str | None] | None = None,
     ) -> None:
         left_argv = tuple(str(item) for item in left)
         right_argv = tuple(str(item) for item in right)
@@ -870,20 +916,63 @@ class CommandRunner:
         if self.dry_run:
             self._record(stage, started, utc_now(), 0, cwd, rendered)
             return
-        proc_env = _command_environment(env)
-        left_process = subprocess.Popen(
-            left_argv, cwd=cwd, env=proc_env, stdout=subprocess.PIPE
-        )
-        assert left_process.stdout is not None
-        right_process = subprocess.Popen(
-            right_argv, cwd=cwd, env=proc_env, stdin=left_process.stdout
-        )
-        left_process.stdout.close()
-        right_rc = right_process.wait()
-        left_rc = left_process.wait()
+        self.validate_environment()
+        proc_env = self.child_environment(env, containment=containment)
+        left_process: subprocess.Popen[bytes] | None = None
+        right_process: subprocess.Popen[bytes] | None = None
+        left_rc: int | None = None
+        right_rc: int | None = None
+        finished = started
+        try:
+            left_process = subprocess.Popen(
+                left_argv, cwd=cwd, env=proc_env, stdout=subprocess.PIPE
+            )
+            assert left_process.stdout is not None
+            try:
+                right_process = subprocess.Popen(
+                    right_argv, cwd=cwd, env=proc_env, stdin=left_process.stdout
+                )
+            finally:
+                left_process.stdout.close()
+            right_rc = right_process.wait()
+            left_rc = left_process.wait()
+        finally:
+            try:
+                for process in (right_process, left_process):
+                    if process is not None and process.poll() is None:
+                        try:
+                            process.terminate()
+                        except OSError:
+                            pass
+                for process in (right_process, left_process):
+                    if process is None:
+                        continue
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        try:
+                            process.kill()
+                        except OSError:
+                            pass
+                        process.wait()
+                if left_process is not None:
+                    left_rc = left_process.returncode
+                if right_process is not None:
+                    right_rc = right_process.returncode
+                finished = utc_now()
+                if left_rc is not None and right_rc is not None:
+                    self._record(
+                        stage,
+                        started,
+                        finished,
+                        right_rc or left_rc,
+                        cwd,
+                        rendered,
+                    )
+            finally:
+                self.validate_environment()
+        assert left_rc is not None and right_rc is not None
         returncode = right_rc or left_rc
-        finished = utc_now()
-        self._record(stage, started, finished, returncode, cwd, rendered)
         if returncode:
             raise OncoTracerError(
                 f"pipeline stage {stage!r} failed (left={left_rc}, right={right_rc})"

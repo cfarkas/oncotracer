@@ -717,6 +717,10 @@ class NativeEngineTests(unittest.TestCase):
             def rscript(_group, command):
                 return [str(item) for item in command]
 
+            @staticmethod
+            def environment(_group):
+                return {}
+
         class SampleRunner:
             dry_run = False
 
@@ -860,6 +864,10 @@ class NativeEngineTests(unittest.TestCase):
             @staticmethod
             def rscript(_group, command):
                 return [str(item) for item in command]
+
+            @staticmethod
+            def environment(_group):
+                return {}
 
         class QdnaRunner:
             dry_run = False
