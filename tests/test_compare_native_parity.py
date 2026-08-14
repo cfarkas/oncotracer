@@ -1718,6 +1718,154 @@ class ParityComparatorTests(unittest.TestCase):
                     raw_root, manifest_copy, combined
                 )
 
+    def test_server_audit_context_reuses_sealed_immutable_evidence(self) -> None:
+        driver = (ROOT / "scripts/validate_v2_release.sh").read_text(encoding="utf-8")
+        start = driver.index("copy_immutable_audit_file() {")
+        end = driver.index("\npopulate_audit_context() {", start)
+        helper = driver[start:end]
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "immutable provenance.tsv"
+            destination = root / "audit copy.tsv"
+            source.write_text(
+                "schema\toncotracer-qdnaseq-bin-data-v1\n", encoding="utf-8"
+            )
+            source.chmod(0o444)
+            command = f"""set -Eeuo pipefail
+{helper}
+copy_immutable_audit_file "$1" "$2"
+copy_immutable_audit_file "$1" "$2"
+"""
+
+            completed = subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    command,
+                    "immutable-copy",
+                    str(source),
+                    str(destination),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + completed.stderr
+            )
+            first_identity = destination.stat().st_ino
+            self.assertEqual(destination.stat().st_mode & 0o777, 0o444)
+            self.assertEqual(destination.read_bytes(), source.read_bytes())
+
+            completed = subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    command,
+                    "immutable-copy",
+                    str(source),
+                    str(destination),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + completed.stderr
+            )
+            self.assertEqual(destination.stat().st_ino, first_identity)
+
+            writable_source = root / "writable-source.tsv"
+            writable_source.write_bytes(source.read_bytes())
+            writable_destination = root / "writable-source-copy.tsv"
+            completed = subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    command,
+                    "immutable-copy",
+                    str(writable_source),
+                    str(writable_destination),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertFalse(writable_destination.exists())
+
+            writable_destination.write_bytes(source.read_bytes())
+            writable_before = writable_destination.read_bytes()
+            writable_mode_before = writable_destination.stat().st_mode & 0o777
+            self.assertNotEqual(writable_mode_before, 0o444)
+            completed = subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    command,
+                    "immutable-copy",
+                    str(source),
+                    str(writable_destination),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertEqual(writable_destination.read_bytes(), writable_before)
+            self.assertEqual(
+                writable_destination.stat().st_mode & 0o777, writable_mode_before
+            )
+
+            mismatch = root / "mismatch.tsv"
+            mismatch.write_text("foreign\n", encoding="utf-8")
+            mismatch.chmod(0o444)
+            mismatch_before = mismatch.read_bytes()
+            completed = subprocess.run(
+                ["bash", "-c", command, "immutable-copy", str(source), str(mismatch)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertEqual(mismatch.read_bytes(), mismatch_before)
+
+            external = root / "external.tsv"
+            external.write_text("external\n", encoding="utf-8")
+            linked = root / "linked.tsv"
+            linked.symlink_to(external)
+            completed = subprocess.run(
+                ["bash", "-c", command, "immutable-copy", str(source), str(linked)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertEqual(external.read_text(encoding="utf-8"), "external\n")
+
+            hardlink_source = root / "hardlink-source.tsv"
+            hardlink_source.write_bytes(source.read_bytes())
+            hardlink_source.chmod(0o444)
+            hardlinked = root / "hardlinked.tsv"
+            os.link(hardlink_source, hardlinked)
+            completed = subprocess.run(
+                [
+                    "bash",
+                    "-c",
+                    command,
+                    "immutable-copy",
+                    str(source),
+                    str(hardlinked),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertEqual(hardlink_source.stat().st_nlink, 2)
+            self.assertEqual(hardlink_source.read_bytes(), source.read_bytes())
+
     def test_server_trace_audit_command_substitution_receives_one_path(self) -> None:
         driver = (ROOT / "scripts/validate_v2_release.sh").read_text(encoding="utf-8")
         function_start = driver.index("generate_samurai_trace_audit() {")

@@ -2472,6 +2472,44 @@ if not checks or not all(value is True for value in checks.values()):
 PY
 }
 
+copy_immutable_audit_file() {
+  local source="$1" destination="$2" source_metadata destination_metadata
+  if [[ ! -f "$source" || -L "$source" ]]; then
+    printf 'Immutable audit source is not a physical regular file: %s\n' "$source" >&2
+    return 1
+  fi
+  source_metadata="$(stat -c '%a:%h' -- "$source")"
+  if [[ "$source_metadata" != "444:1" ]]; then
+    printf 'Immutable audit source has unsafe mode or link count (%s): %s\n' \
+      "$source_metadata" "$source" >&2
+    return 1
+  fi
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    if [[ ! -f "$destination" || -L "$destination" ]]; then
+      printf 'Immutable audit destination is not a physical regular file: %s\n' "$destination" >&2
+      return 1
+    fi
+    destination_metadata="$(stat -c '%a:%h' -- "$destination")"
+    if [[ "$destination_metadata" != "444:1" ]]; then
+      printf 'Immutable audit destination has unsafe mode or link count (%s): %s\n' \
+        "$destination_metadata" "$destination" >&2
+      return 1
+    fi
+    if ! cmp -s -- "$source" "$destination"; then
+      printf 'Immutable audit destination differs from its source: %s\n' "$destination" >&2
+      return 1
+    fi
+    return 0
+  fi
+  cp --no-dereference --update=none -- "$source" "$destination"
+  if [[ ! -f "$destination" || -L "$destination" ]] ||
+     [[ "$(stat -c '%a:%h' -- "$destination")" != "444:1" ]] ||
+     ! cmp -s -- "$source" "$destination"; then
+    printf 'Immutable audit copy could not be authenticated: %s\n' "$destination" >&2
+    return 1
+  fi
+}
+
 populate_audit_context() {
   local destination="$1"
   mkdir -p \
@@ -2506,8 +2544,9 @@ populate_audit_context() {
   qdnaseq_annotation="$VALIDATION_ROOT/$(<"$CONTEXT_DIR/qdnaseq-annotation-relative-path.txt")"
   qdnaseq_provenance="$(dirname -- "$qdnaseq_annotation")/QDNAseq.hg38.100kbp.SR50.rds.provenance.tsv"
   [[ "$qdnaseq_provenance" == "$qdnaseq_annotation.provenance.tsv" ]]
-  cp "$qdnaseq_provenance" \
-    "$destination/qdnaseq-annotation/"
+  copy_immutable_audit_file \
+    "$qdnaseq_provenance" \
+    "$destination/qdnaseq-annotation/QDNAseq.hg38.100kbp.SR50.rds.provenance.tsv"
   cp "$CONTEXT_DIR"/*-output-SHA256SUMS "$destination/"
   cp "$CONTEXT_DIR"/native-*.explicit.txt "$destination/environments/"
   cp "$CONFIG_DIR"/*.yml "$destination/configs/"
