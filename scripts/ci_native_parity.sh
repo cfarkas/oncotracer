@@ -495,15 +495,21 @@ remove_owned_image_references() {
 }
 
 run_native_environment_probe() {
-  local environment="$1" probe="$2" expected_status="$3" pattern="$4"
-  local output status digest
+  local environment="$1" probe="$2" expected_status="$3" patterns="$4"
+  local output status digest required_pattern pattern_status=0
   shift 4
   output="$CONTEXT/native-environment-probes/$environment-$probe.txt"
   set +e
   "$@" > "$output" 2>&1
   status=$?
   set -e
-  if [[ "$status" -ne "$expected_status" ]] || ! grep -Eq "$pattern" "$output"; then
+  while IFS= read -r required_pattern; do
+    if [[ -z "$required_pattern" ]] || ! grep -Eq -- "$required_pattern" "$output"; then
+      pattern_status=1
+      break
+    fi
+  done <<< "$patterns"
+  if [[ "$status" -ne "$expected_status" || "$pattern_status" -ne 0 ]]; then
     echo "Native environment probe failed: $environment/$probe (status=$status)" >&2
     cat "$output" >&2
     exit 1
@@ -583,7 +589,7 @@ create_minimal_native_environments() {
       "$ONCOTRACER_ICHORCNA_PREFIX/bin/Rscript" --vanilla -e \
       'suppressPackageStartupMessages(library(ichorCNA)); cat("ICHORCNA_OK\n")'
     run_native_environment_probe ichorcna readcounter 255 \
-      'Please specify a BAM file[.][[:space:]]*Usage:' \
+      $'^Please specify a BAM file[.]$\n^Usage: .*/readCounter \\[options\\] <BAM file>$' \
       "$ONCOTRACER_ICHORCNA_PREFIX/bin/readCounter"
   fi
 }

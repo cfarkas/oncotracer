@@ -3161,6 +3161,89 @@ PY
         self.assertEqual(missing_path.returncode, 1)
         self.assertIn("resource-preflight path does not exist", missing_path.stderr)
 
+    def test_native_probe_requires_each_readcounter_semantic_line(self) -> None:
+        source = (ROOT / "scripts" / "ci_native_parity.sh").read_text(encoding="utf-8")
+        start = source.index("run_native_environment_probe() {")
+        end = source.index("\n}\n\ncreate_native_environment() {", start) + 2
+        helper = source[start:end]
+
+        def invoke(output: str, status: int) -> subprocess.CompletedProcess[str]:
+            with tempfile.TemporaryDirectory() as raw:
+                root = Path(raw)
+                context = root / "context"
+                probes = context / "native-environment-probes"
+                probes.mkdir(parents=True)
+                executable = root / "readCounter"
+                rendered = output.replace("{executable}", str(executable))
+                executable.write_text(
+                    "#!/bin/sh\n"
+                    f"printf '%s' {shlex.quote(rendered)}\n"
+                    f"exit {status}\n",
+                    encoding="utf-8",
+                )
+                executable.chmod(0o755)
+                harness = f"""set -Eeuo pipefail
+{helper}
+CONTEXT={shlex.quote(str(context))}
+printf 'environment\\tprobe\\tresult\\tevidence_sha256\\n' \\
+  > "$CONTEXT/native-environment-probes.tsv"
+run_native_environment_probe ichorcna readcounter 255 \\
+  $'^Please specify a BAM file[.]$\\n^Usage: .*/readCounter \\\\[options\\\\] <BAM file>$' \\
+  {shlex.quote(str(executable))}
+"""
+                completed = subprocess.run(
+                    ["bash", "-c", harness],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                rows = (
+                    (context / "native-environment-probes.tsv")
+                    .read_text(encoding="utf-8")
+                    .splitlines()
+                )
+                if completed.returncode == 0:
+                    self.assertEqual(len(rows), 2)
+                    self.assertRegex(
+                        rows[1], r"^ichorcna\treadcounter\tPASS\t[0-9a-f]{64}$"
+                    )
+                else:
+                    self.assertEqual(
+                        rows,
+                        ["environment\tprobe\tresult\tevidence_sha256"],
+                    )
+                return completed
+
+        valid = invoke(
+            "Please specify a BAM file.\n"
+            "Usage: {executable} [options] <BAM file>\n"
+            "\nOptions:\n    -s, --seg\n",
+            255,
+        )
+        self.assertEqual(valid.returncode, 0, valid.stderr)
+
+        missing_usage = invoke("Please specify a BAM file.\n", 255)
+        self.assertEqual(missing_usage.returncode, 1)
+        self.assertIn("Native environment probe failed", missing_usage.stderr)
+
+        missing_sentinel = invoke(
+            "Usage: {executable} [options] <BAM file>\n",
+            255,
+        )
+        self.assertEqual(missing_sentinel.returncode, 1)
+
+        joined_lines = invoke(
+            "Please specify a BAM file. Usage: " "{executable} [options] <BAM file>\n",
+            255,
+        )
+        self.assertEqual(joined_lines.returncode, 1)
+
+        wrong_status = invoke(
+            "Please specify a BAM file.\n" "Usage: {executable} [options] <BAM file>\n",
+            0,
+        )
+        self.assertEqual(wrong_status.returncode, 1)
+
     def test_capacity_models_and_job_swap_are_explicit_and_fail_closed(self) -> None:
         parity = (ROOT / "scripts" / "ci_native_parity.sh").read_text(encoding="utf-8")
         for required in (
