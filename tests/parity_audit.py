@@ -1280,14 +1280,20 @@ def verify_job_image_actions(context: Path) -> dict[str, object]:
     if any(len(row) != 3 for row in actions[1:]):
         raise AuditError("invalid job image action row")
     observed_actions: dict[str, tuple[str, str]] = {}
+    preexisting_image_ids = {
+        image_id for image_id, created_by_job in owned.values() if created_by_job == "0"
+    }
     for reference, image_id, action in actions[1:]:
         expected = owned.get(reference)
         if reference in observed_actions or expected is None or image_id != expected[0]:
             raise AuditError(f"invalid job image action identity: {reference!r}")
-        expected_action = (
-            "REMOVED_JOB_CREATED" if expected[1] == "1" else "PRESERVED_PREEXISTING"
-        )
-        if action != expected_action:
+        expected_actions = {"PRESERVED_PREEXISTING"}
+        if expected[1] == "1":
+            if image_id in preexisting_image_ids:
+                expected_actions = {"PRESERVED_JOB_CREATED_SHARED"}
+            else:
+                expected_actions = {"REMOVED_JOB_CREATED"}
+        if action not in expected_actions:
             raise AuditError(f"invalid job image action: {reference!r}")
         observed_actions[reference] = (image_id, action)
     if set(observed_actions) != expected_references:
@@ -1296,6 +1302,10 @@ def verify_job_image_actions(context: Path) -> dict[str, object]:
         "reference_count": len(expected_references),
         "removed_count": sum(
             action == "REMOVED_JOB_CREATED" for _, action in observed_actions.values()
+        ),
+        "shared_preserved_count": sum(
+            action == "PRESERVED_JOB_CREATED_SHARED"
+            for _, action in observed_actions.values()
         ),
         "ownership_sha256": sha256(context / "job-image-reference-ownership.tsv"),
         "actions_sha256": sha256(context / "job-image-reference-actions.tsv"),

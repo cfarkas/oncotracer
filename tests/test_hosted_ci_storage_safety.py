@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import os
 import re
 import shlex
@@ -51,6 +52,9 @@ ALLOWED_JOB_EXPANSIONS = frozenset(
     }
 )
 REPOSITORY_ENTRYPOINT_ROOTS = frozenset({"scripts", "tests", "bin"})
+VERIFIED_IMAGE_HELPER_SHA256 = (
+    "23f64178e1cfcd0ea1b3c1e1c04b33bef36c424905f9a65477a9c156d683790f"
+)
 
 
 @dataclass(frozen=True)
@@ -1289,6 +1293,16 @@ def shell_cleanup_violations(
             if invocation is None:
                 continue
             executable, args = invocation
+            if executable.startswith("$"):
+                _, _, indirect_docker_deletion = docker_invocation(
+                    args,
+                    allow_verified_manifest_reference=allow_verified_manifest_reference,
+                )
+                if indirect_docker_deletion:
+                    violations.append(
+                        f"line {line}: Docker deletion uses a dynamic executable"
+                    )
+                    chunk_has_docker_deletion = True
             if executable == "docker":
                 findings, global_listing, deletion = docker_invocation(
                     args,
@@ -1746,16 +1760,32 @@ def verified_image_helper_violations(source: str) -> list[str]:
     start = source.index(start_marker)
     end = source.index(end_marker, start)
     helper = source[start:end]
+    helper_sha256 = hashlib.sha256(helper.encode("utf-8")).hexdigest()
+    if helper_sha256 != VERIFIED_IMAGE_HELPER_SHA256:
+        findings.append(
+            "verified image cleanup helper differs from the fully reviewed implementation: "
+            f"sha256={helper_sha256}"
+        )
     deletion = 'docker image rm -- "$reference"'
     helper_lines = tuple(
         line.strip()
         for line in helper.splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     )
+    alias_helper_name = "verify_job_owned_image_aliases"
+    alias_definitions = re.findall(
+        rf"(?m)^\s*(?:function\s+)?{alias_helper_name}(?:\s*\(\s*\))?\s*\{{",
+        helper,
+    )
+    if len(alias_definitions) != 1 or helper.count(alias_helper_name) != 3:
+        findings.append(
+            "verified image cleanup alias helper definition or call set is ambiguous"
+        )
     required = (
         'expected_manifest="$RUNNER_TEMP/oncotracer-image-ownership-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${SUITE}.tsv"',
         '[[ "$IMAGE_OWNERSHIP" == "$expected_manifest" ]] || {',
         '[[ -f "$IMAGE_OWNERSHIP" && ! -L "$IMAGE_OWNERSHIP" ]] || {',
+        '[[ "${GITHUB_ACTIONS:-}" == true && -n "${RUNNER_NAME:-}" ]] || {',
         'allowed["$V1_DOCKER_IMAGE"]=1',
         'done < "$PINS"',
         '[[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]',
@@ -1771,6 +1801,21 @@ def verified_image_helper_violations(source: str) -> list[str]:
         "action=PRESERVED_PREEXISTING",
         '[[ "$line_number" -gt 1 && "$observed_count" -eq "$expected_count" ]]',
         'for reference in "${!allowed[@]}"',
+        "verify_job_owned_image_aliases() {",
+        '[[ -n "$expected_alias" &&',
+        '-z "${expected_alias_keys[$expected_alias]+present}" ]] || {',
+        'expected_alias_keys["$expected_alias"]="$expected_reference"',
+        'docker image inspect "$target_image_id"',
+        '[[ -n "$canonical_alias" &&',
+        '-z "${actual_alias_keys[$canonical_alias]+present}" ]] || {',
+        'actual_alias_keys["$canonical_alias"]="$actual_alias"',
+        '[[ -n "${expected_alias_keys[$canonical_alias]+present}" ]] || {',
+        '[[ "$actual_alias_count" -eq "$expected_alias_count" ]] || {',
+        '[[ -n "${actual_alias_keys[$expected_alias]+present}" ]] || {',
+        'rebound_id="$(docker image inspect "$expected_reference" --format',
+        '[[ "$rebound_id" == "$target_image_id" ]] || {',
+        "action=PRESERVED_JOB_CREATED_SHARED",
+        'removed_aliases["${references[$alias_index]}"]=1',
     )
     for marker in required:
         if not any(line.startswith(marker) for line in helper_lines):
@@ -1781,7 +1826,12 @@ def verified_image_helper_violations(source: str) -> list[str]:
         findings.append(
             "verified image cleanup must contain exactly one exact-reference deletion"
         )
-    else:
+    alias_verification = 'verify_job_owned_image_aliases "$image_id"'
+    if helper_lines.count(alias_verification) != 2:
+        findings.append(
+            "verified image cleanup must validate the complete alias group twice"
+        )
+    if source.count(deletion) == 1 and helper.count(deletion) == 1:
         lines = helper.splitlines()
         stripped = [line.strip() for line in lines]
         deletion_index = stripped.index(deletion)
@@ -1838,6 +1888,23 @@ def verified_image_helper_violations(source: str) -> list[str]:
                     if depth == 0:
                         matching_fi = index
                         break
+        alias_call_indices = [
+            index for index, line in enumerate(stripped) if line == alias_verification
+        ]
+        allowed_completeness_loop = next(
+            (
+                index
+                for index, line in enumerate(stripped)
+                if line == 'for reference in "${!allowed[@]}"; do'
+            ),
+            -1,
+        )
+        if len(alias_call_indices) == 2 and not (
+            allowed_completeness_loop < alias_call_indices[0] < created_if
+        ):
+            findings.append(
+                "verified image cleanup does not prevalidate aliases after the complete manifest"
+            )
         if not (created_if < deletion_index < matching_fi):
             findings.append(
                 "verified image deletion is outside the created-by-this-job branch"
@@ -1869,6 +1936,77 @@ def verified_image_helper_violations(source: str) -> list[str]:
             findings.append(
                 "verified image deletion occurs inside the active-use rejection branch"
             )
+
+        current_if_matches = [
+            index
+            for index, line in enumerate(stripped)
+            if line.startswith(
+                'if current_id="$(docker image inspect "$reference" --format'
+            )
+        ]
+        if len(current_if_matches) != 1:
+            findings.append(
+                "verified image cleanup lacks one unambiguous second identity check"
+            )
+        else:
+            current_if = current_if_matches[0]
+            current_branch_end = -1
+            current_matching_fi = -1
+            depth = 0
+            for index in range(current_if, len(stripped)):
+                line = stripped[index]
+                if re.match(r"^if\b.*\bthen$", line):
+                    depth += 1
+                elif (line == "else" or line.startswith("elif ")) and depth == 1:
+                    if current_branch_end < 0:
+                        current_branch_end = index
+                elif line == "fi":
+                    depth -= 1
+                    if depth == 0:
+                        current_matching_fi = index
+                        break
+            if current_branch_end < 0:
+                current_branch_end = current_matching_fi
+            branch_markers = (
+                '[[ "$current_id" == "$image_id" ]] || {',
+                'containers="$(docker ps --all --quiet --filter "ancestor=$reference")"',
+                '[[ -z "$containers" ]] || {',
+                'daemon_containers="$(docker ps --all --quiet)"',
+                '[[ -z "$daemon_containers" ]] || {',
+                alias_verification,
+            )
+            branch_positions: list[int] = []
+            for marker in branch_markers:
+                matches = [
+                    index
+                    for index in range(
+                        current_if + 1,
+                        max(min(current_branch_end, deletion_index), 0),
+                    )
+                    if stripped[index].startswith(marker)
+                ]
+                if len(matches) != 1:
+                    findings.append(
+                        "verified image cleanup second-pass guard is missing or ambiguous: "
+                        f"{marker}"
+                    )
+                    break
+                branch_positions.append(matches[0])
+            ordered_positions = [
+                current_if,
+                *branch_positions,
+                deletion_index,
+                current_branch_end,
+                current_matching_fi,
+            ]
+            if (
+                len(branch_positions) != len(branch_markers)
+                or ordered_positions != sorted(ordered_positions)
+                or len(set(ordered_positions)) != len(ordered_positions)
+            ):
+                findings.append(
+                    "verified image deletion is not inside the second identity-check success branch"
+                )
 
         helper_without_delete = helper.replace(deletion, "true", 1)
         findings.extend(
@@ -2258,6 +2396,11 @@ SHELL
         source = (ROOT / "scripts" / "ci_native_parity.sh").read_text(encoding="utf-8")
         self.assertEqual(verified_image_helper_violations(source), [])
         dynamic_delete = 'docker image rm -- "$reference"'
+        alias_start = source.index("  verify_job_owned_image_aliases() {")
+        alias_end = source.index("\n  }\n\n  expected_manifest=", alias_start) + 4
+        alias_helper = source[alias_start:alias_end]
+        fail_open_alias_helper = alias_helper.replace("exit 1", "true")
+        self.assertNotEqual(alias_helper, fail_open_alias_helper)
         self.assertTrue(shell_cleanup_violations(dynamic_delete))
         self.assertEqual(
             shell_cleanup_violations(
@@ -2308,6 +2451,83 @@ SHELL
                 'else\n      docker image rm -- "$reference"',
                 1,
             ),
+            source.replace(
+                '          [[ "$current_id" == "$image_id" ]] || {',
+                "          true",
+                1,
+            ),
+            source.replace(dynamic_delete, "true", 1).replace(
+                '        elif [[ -z "${removed_aliases[$reference]+present}" ]]; then',
+                '        elif [[ -z "${removed_aliases[$reference]+present}" ]]; then\n'
+                '          docker image rm -- "$reference"',
+                1,
+            ),
+            source.replace(
+                '      [[ -n "$expected_alias" &&\n'
+                '        -z "${expected_alias_keys[$expected_alias]+present}" ]] || {',
+                "      true || {",
+                1,
+            ),
+            source.replace(
+                '      [[ -n "$canonical_alias" &&\n'
+                '        -z "${actual_alias_keys[$canonical_alias]+present}" ]] || {',
+                "      true || {",
+                1,
+            ),
+            source.replace(
+                '      [[ -n "${expected_alias_keys[$canonical_alias]+present}" ]] || {',
+                "      true",
+                1,
+            ),
+            source.replace(
+                '    [[ "$actual_alias_count" -eq "$expected_alias_count" ]] || {',
+                "    true",
+                1,
+            ),
+            source.replace(
+                '      [[ -n "${actual_alias_keys[$expected_alias]+present}" ]] || {',
+                "      true",
+                1,
+            ),
+            source.replace(
+                '      [[ "$rebound_id" == "$target_image_id" ]] || {',
+                "      true",
+                1,
+            ),
+            source.replace(
+                '    verify_job_owned_image_aliases "$image_id"',
+                "    true",
+                1,
+            ),
+            source.replace(
+                '          verify_job_owned_image_aliases "$image_id"',
+                "          true",
+                1,
+            ),
+            source.replace(
+                '          [[ -z "$daemon_containers" ]] || {',
+                "          true",
+                1,
+            ),
+            source.replace(
+                '  expected_manifest="$RUNNER_TEMP/oncotracer-image-ownership-',
+                "  verify_job_owned_image_aliases() { :; }\n\n"
+                '  expected_manifest="$RUNNER_TEMP/oncotracer-image-ownership-',
+                1,
+            ),
+            source.replace(
+                dynamic_delete,
+                dynamic_delete
+                + "\n          docker_cmd=docker\n"
+                + '          "$docker_cmd" image rm -- "$reference"',
+                1,
+            ),
+            source.replace(
+                "  verify_job_owned_image_aliases() {",
+                "  verify_job_owned_image_aliases() {\n    return 0",
+                1,
+            ),
+            source.replace(alias_helper, fail_open_alias_helper, 1),
         )
         for mutation in mutations:
             with self.subTest():
@@ -2321,12 +2541,26 @@ SHELL
         end = source.index("\n}\n\nrun_native_environment_probe() {", start) + 2
         helper = source[start:end]
         digest = "sha256:" + "a" * 64
-        v1 = "carlosfarkas/oncotracer@sha256:" + "b" * 64
-        mutable = "example.invalid/oncotracer:v1"
-        immutable = f"example.invalid/oncotracer@{digest}"
+        v1_image_id = "sha256:" + "c" * 64
+        v1 = "docker.io/carlosfarkas/oncotracer@sha256:" + "b" * 64
+        mutable = "docker.io/example/oncotracer:v1"
+        immutable = f"docker.io/example/oncotracer@{digest}"
+        index_mutable = "index.docker.io/example/oncotracer:v1"
+        index_immutable = f"index.docker.io/example/oncotracer@{digest}"
 
         def invoke(
-            *, mismatch: bool = False, containers: bool = False
+            *,
+            alias_cascade: bool = True,
+            containers: bool = False,
+            mismatch: bool = False,
+            missing_before_cleanup: bool = False,
+            shared: bool = False,
+            untracked_alias: bool = False,
+            index_aliases: bool = False,
+            duplicate_canonical_alias: bool = False,
+            duplicate_tracked_canonical: bool = False,
+            disappear_before_alias_output_call: int = 0,
+            disappear_after_alias_output_call: int = 0,
         ) -> subprocess.CompletedProcess[str]:
             with tempfile.TemporaryDirectory() as raw:
                 root = Path(raw)
@@ -2338,15 +2572,27 @@ SHELL
                     runner_temp / "oncotracer-image-ownership-77-3-quickstart1.tsv"
                 )
                 pins = root / "pins.tsv"
+                pin_lines = ["container\tmanifest_digest", f"{mutable}\t{digest}"]
+                ownership_lines = [
+                    "reference\timage_id\tcreated_by_job",
+                    f"{v1}\t{v1_image_id}\t0",
+                    f"{immutable}\t{digest}\t{int(not shared)}",
+                    f"{mutable}\t{digest}\t1",
+                ]
+                if duplicate_tracked_canonical:
+                    pin_lines.append(f"{index_mutable}\t{digest}")
+                    ownership_lines.extend(
+                        (
+                            f"{index_immutable}\t{digest}\t1",
+                            f"{index_mutable}\t{digest}\t1",
+                        )
+                    )
                 pins.write_text(
-                    f"container\tmanifest_digest\n{mutable}\t{digest}\n",
+                    "\n".join(pin_lines) + "\n",
                     encoding="utf-8",
                 )
                 manifest.write_text(
-                    "reference\timage_id\tcreated_by_job\n"
-                    f"{v1}\t{digest}\t0\n"
-                    f"{mutable}\t{digest}\t1\n"
-                    f"{immutable}\t{digest}\t0\n",
+                    "\n".join(ownership_lines) + "\n",
                     encoding="utf-8",
                 )
                 fake_bin = root / "bin"
@@ -2359,8 +2605,48 @@ printf '%s\n' "$*" >> "$DOCKER_LOG"
 if [[ "$1 $2" == 'image inspect' ]]; then
   reference="$3"
   if [[ "${4:-}" == --format ]]; then
+    if [[ "$reference" == "$EXPECTED_ID" && "${5:-}" == *'.RepoTags'* ]]; then
+      alias_call=0
+      if [[ -e "$ALIAS_COUNT_FILE" ]]; then
+        read -r alias_call < "$ALIAS_COUNT_FILE"
+      fi
+      alias_call=$((alias_call + 1))
+      printf '%s\n' "$alias_call" > "$ALIAS_COUNT_FILE"
+      if [[ "$FAKE_DISAPPEAR_BEFORE_ALIAS_OUTPUT_CALL" == "$alias_call" ]]; then
+        grep -Fxv -- "$MUTABLE_REFERENCE" "$STATE_FILE" > "$STATE_FILE.next"
+        mv "$STATE_FILE.next" "$STATE_FILE"
+      fi
+      if grep -Fxq -- "$MUTABLE_REFERENCE" "$STATE_FILE"; then
+        if [[ "$FAKE_INDEX_ALIASES" == 1 ]]; then
+          printf 'index.docker.io/%s\n' "${MUTABLE_REFERENCE#docker.io/}"
+        else
+          printf '%s\n' "${MUTABLE_REFERENCE#docker.io/}"
+        fi
+        if [[ "$FAKE_DUPLICATE_CANONICAL_ALIAS" == 1 ]]; then
+          printf '%s\n' "$MUTABLE_REFERENCE"
+        fi
+      fi
+      if grep -Fxq -- "$IMMUTABLE_REFERENCE" "$STATE_FILE"; then
+        if [[ "$FAKE_INDEX_ALIASES" == 1 ]]; then
+          printf 'index.docker.io/%s\n' "${IMMUTABLE_REFERENCE#docker.io/}"
+        else
+          printf '%s\n' "${IMMUTABLE_REFERENCE#docker.io/}"
+        fi
+      fi
+      if [[ "$FAKE_UNTRACKED_ALIAS" == 1 ]]; then
+        printf '%s\n' 'example/oncotracer:preexisting'
+      fi
+      if [[ "$FAKE_DISAPPEAR_AFTER_ALIAS_OUTPUT_CALL" == "$alias_call" ]]; then
+        grep -Fxv -- "$MUTABLE_REFERENCE" "$STATE_FILE" > "$STATE_FILE.next"
+        mv "$STATE_FILE.next" "$STATE_FILE"
+      fi
+      exit 0
+    fi
+    grep -Fxq -- "$reference" "$STATE_FILE" || exit 1
     if [[ "$FAKE_MISMATCH" == 1 && "$reference" == *':v1' ]]; then
       printf 'sha256:%064d\n' 0
+    elif [[ "$reference" == "$V1_REFERENCE" ]]; then
+      printf '%s\n' "$V1_IMAGE_ID"
     else
       printf '%s\n' "$EXPECTED_ID"
     fi
@@ -2371,7 +2657,13 @@ elif [[ "$1" == ps ]]; then
   [[ "$FAKE_CONTAINERS" == 0 ]] || printf 'container-id\n'
 elif [[ "$1 $2" == 'image rm' ]]; then
   reference="$4"
-  grep -Fxv -- "$reference" "$STATE_FILE" > "$STATE_FILE.next"
+  if [[ "$FAKE_ALIAS_CASCADE" == 1 &&
+    ( "$reference" == "$MUTABLE_REFERENCE" || "$reference" == "$IMMUTABLE_REFERENCE" ) ]]; then
+    grep -Fxv -e "$MUTABLE_REFERENCE" -e "$IMMUTABLE_REFERENCE" \
+      "$STATE_FILE" > "$STATE_FILE.next"
+  else
+    grep -Fxv -- "$reference" "$STATE_FILE" > "$STATE_FILE.next"
+  fi
   mv "$STATE_FILE.next" "$STATE_FILE"
 else
   exit 91
@@ -2381,7 +2673,12 @@ fi
                 )
                 fake.chmod(0o755)
                 state = root / "state"
-                state.write_text(f"{v1}\n{mutable}\n{immutable}\n", encoding="utf-8")
+                initial_references = [v1, immutable, mutable]
+                if duplicate_tracked_canonical:
+                    initial_references.extend((index_immutable, index_mutable))
+                if missing_before_cleanup:
+                    initial_references.remove(mutable)
+                state.write_text("\n".join(initial_references) + "\n", encoding="utf-8")
                 docker_log = root / "docker.log"
                 program = "\n".join(
                     (
@@ -2392,6 +2689,8 @@ fi
                 )
                 environment = {
                     "PATH": f"{fake_bin}:/usr/bin:/bin",
+                    "GITHUB_ACTIONS": "true",
+                    "RUNNER_NAME": "isolated-test-runner",
                     "RUNNER_TEMP": str(runner_temp),
                     "GITHUB_RUN_ID": "77",
                     "GITHUB_RUN_ATTEMPT": "3",
@@ -2403,8 +2702,25 @@ fi
                     "DOCKER_LOG": str(docker_log),
                     "STATE_FILE": str(state),
                     "EXPECTED_ID": digest,
+                    "V1_IMAGE_ID": v1_image_id,
+                    "V1_REFERENCE": v1,
+                    "MUTABLE_REFERENCE": mutable,
+                    "IMMUTABLE_REFERENCE": immutable,
+                    "FAKE_ALIAS_CASCADE": str(int(alias_cascade)),
+                    "FAKE_UNTRACKED_ALIAS": str(int(untracked_alias)),
+                    "FAKE_INDEX_ALIASES": str(int(index_aliases)),
+                    "FAKE_DUPLICATE_CANONICAL_ALIAS": str(
+                        int(duplicate_canonical_alias)
+                    ),
+                    "FAKE_DISAPPEAR_BEFORE_ALIAS_OUTPUT_CALL": str(
+                        disappear_before_alias_output_call
+                    ),
+                    "FAKE_DISAPPEAR_AFTER_ALIAS_OUTPUT_CALL": str(
+                        disappear_after_alias_output_call
+                    ),
                     "FAKE_MISMATCH": str(int(mismatch)),
                     "FAKE_CONTAINERS": str(int(containers)),
+                    "ALIAS_COUNT_FILE": str(root / "alias-count"),
                 }
                 completed = subprocess.run(
                     ["bash", "-c", program],
@@ -2414,25 +2730,111 @@ fi
                     text=True,
                 )
                 completed.docker_log = docker_log.read_text(encoding="utf-8")  # type: ignore[attr-defined]
+                action_path = context / "job-image-reference-actions.tsv"
+                completed.action_log = (  # type: ignore[attr-defined]
+                    action_path.read_text(encoding="utf-8")
+                    if action_path.exists()
+                    else ""
+                )
+                completed.final_state = state.read_text(encoding="utf-8")  # type: ignore[attr-defined]
                 return completed
 
         success = invoke()
         self.assertEqual(success.returncode, 0, success.stderr)
         commands = success.docker_log.splitlines()  # type: ignore[attr-defined]
-        rm_index = commands.index(f"image rm -- {mutable}")
+        rm_index = commands.index(f"image rm -- {immutable}")
         self.assertLess(
-            commands.index(f"image inspect {mutable} --format {{{{.Id}}}}"), rm_index
+            commands.index(f"image inspect {immutable} --format {{{{.Id}}}}"),
+            rm_index,
         )
         self.assertLess(
-            commands.index(f"ps --all --quiet --filter ancestor={mutable}"), rm_index
+            commands.index(f"ps --all --quiet --filter ancestor={immutable}"),
+            rm_index,
         )
         self.assertEqual(sum(item.startswith("image rm ") for item in commands), 1)
+        self.assertEqual(success.final_state, f"{v1}\n")  # type: ignore[attr-defined]
+        self.assertIn(
+            f"{immutable}\t{digest}\tREMOVED_JOB_CREATED\n",
+            success.action_log,  # type: ignore[attr-defined]
+        )
+        self.assertIn(
+            f"{mutable}\t{digest}\tREMOVED_JOB_CREATED\n",
+            success.action_log,  # type: ignore[attr-defined]
+        )
+
+        index_names = invoke(index_aliases=True)
+        self.assertEqual(index_names.returncode, 0, index_names.stderr)
+
+        duplicate = invoke(duplicate_canonical_alias=True)
+        self.assertNotEqual(duplicate.returncode, 0)
+        self.assertIn("canonically duplicated", duplicate.stderr)
+        self.assertNotIn("image rm ", duplicate.docker_log)  # type: ignore[attr-defined]
+
+        duplicate_tracked = invoke(duplicate_tracked_canonical=True)
+        self.assertNotEqual(duplicate_tracked.returncode, 0)
+        self.assertIn("Tracked Docker aliases", duplicate_tracked.stderr)
+        self.assertIn("canonically duplicated", duplicate_tracked.stderr)
+        self.assertNotIn(  # type: ignore[attr-defined]
+            "image rm ", duplicate_tracked.docker_log
+        )
+
+        disappeared_before_snapshot = invoke(disappear_before_alias_output_call=1)
+        self.assertNotEqual(disappeared_before_snapshot.returncode, 0)
+        self.assertIn(
+            "missing a tracked job-owned alias", disappeared_before_snapshot.stderr
+        )
+        self.assertNotIn(  # type: ignore[attr-defined]
+            "image rm ", disappeared_before_snapshot.docker_log
+        )
+
+        disappeared_after_snapshot = invoke(disappear_after_alias_output_call=1)
+        self.assertNotEqual(disappeared_after_snapshot.returncode, 0)
+        self.assertIn("disappeared after inventory", disappeared_after_snapshot.stderr)
+        self.assertNotIn(  # type: ignore[attr-defined]
+            "image rm ", disappeared_after_snapshot.docker_log
+        )
+
+        disappeared_during_immediate_recheck = invoke(
+            disappear_after_alias_output_call=2
+        )
+        self.assertNotEqual(disappeared_during_immediate_recheck.returncode, 0)
+        self.assertIn(
+            "disappeared after inventory", disappeared_during_immediate_recheck.stderr
+        )
+        self.assertNotIn(  # type: ignore[attr-defined]
+            "image rm ", disappeared_during_immediate_recheck.docker_log
+        )
+
+        no_cascade = invoke(alias_cascade=False)
+        self.assertEqual(no_cascade.returncode, 0, no_cascade.stderr)
+        self.assertEqual(
+            sum(
+                item.startswith("image rm ")
+                for item in no_cascade.docker_log.splitlines()  # type: ignore[attr-defined]
+            ),
+            2,
+        )
+
+        shared = invoke(shared=True)
+        self.assertEqual(shared.returncode, 0, shared.stderr)
+        self.assertNotIn("image rm ", shared.docker_log)  # type: ignore[attr-defined]
+        self.assertIn(
+            f"{mutable}\t{digest}\tPRESERVED_JOB_CREATED_SHARED\n",
+            shared.action_log,  # type: ignore[attr-defined]
+        )
         mismatch = invoke(mismatch=True)
         self.assertNotEqual(mismatch.returncode, 0)
         self.assertNotIn("image rm ", mismatch.docker_log)  # type: ignore[attr-defined]
         active = invoke(containers=True)
         self.assertNotEqual(active.returncode, 0)
         self.assertNotIn("image rm ", active.docker_log)  # type: ignore[attr-defined]
+        missing = invoke(missing_before_cleanup=True)
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertNotIn("image rm ", missing.docker_log)  # type: ignore[attr-defined]
+        untracked = invoke(untracked_alias=True)
+        self.assertNotEqual(untracked.returncode, 0)
+        self.assertIn("untracked alias", untracked.stderr)
+        self.assertNotIn("image rm ", untracked.docker_log)  # type: ignore[attr-defined]
 
     def test_comments_names_heredoc_data_and_echo_are_not_commands(self) -> None:
         workflow = """name: Do not run docker system prune

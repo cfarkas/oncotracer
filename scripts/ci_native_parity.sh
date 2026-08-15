@@ -231,9 +231,110 @@ record_image_ownership() {
 
 remove_owned_image_references() {
   local expected_manifest reference image_id created_by_job extra observed_id containers action
+  local alias_index current_id daemon_containers index
+  local preserved_id preflight_containers
   local line_number=0 expected_count=1 observed_count=0
   declare -A allowed=()
+  declare -A actions=()
+  declare -A checked_image_ids=()
+  declare -A preexisting_image_ids=()
+  declare -A removed_aliases=()
   declare -A seen=()
+  declare -a created_flags=()
+  declare -a image_ids=()
+  declare -a references=()
+
+  canonical_docker_reference() {
+    local candidate="$1"
+    case "$candidate" in
+      docker.io/*)
+        printf '%s\n' "${candidate#docker.io/}"
+        ;;
+      index.docker.io/*)
+        printf '%s\n' "${candidate#index.docker.io/}"
+        ;;
+      *)
+        printf '%s\n' "$candidate"
+        ;;
+    esac
+  }
+
+  verify_job_owned_image_aliases() {
+    local target_image_id="$1"
+    local actual_alias alias_index alias_output canonical_alias expected_alias
+    local expected_reference rebound_id
+    local expected_alias_count=0 actual_alias_count=0
+    declare -A actual_alias_keys=()
+    declare -A expected_alias_keys=()
+    declare -a inventory_aliases=()
+
+    for alias_index in "${!references[@]}"; do
+      [[ "${image_ids[$alias_index]}" == "$target_image_id" &&
+        "${created_flags[$alias_index]}" == 1 &&
+        -z "${removed_aliases[${references[$alias_index]}]+present}" ]] || continue
+      expected_reference="${references[$alias_index]}"
+      expected_alias="$(canonical_docker_reference "$expected_reference")"
+      [[ -n "$expected_alias" &&
+        -z "${expected_alias_keys[$expected_alias]+present}" ]] || {
+        echo "Tracked Docker aliases are empty or canonically duplicated for image: $target_image_id" >&2
+        exit 1
+      }
+      expected_alias_keys["$expected_alias"]="$expected_reference"
+      expected_alias_count=$((expected_alias_count + 1))
+    done
+    [[ "$expected_alias_count" -gt 0 ]] || {
+      echo "Job-owned image has no remaining tracked Docker aliases: $target_image_id" >&2
+      exit 1
+    }
+
+    alias_output="$(
+      docker image inspect "$target_image_id" \
+        --format '{{range .RepoTags}}{{println .}}{{end}}{{range .RepoDigests}}{{println .}}{{end}}'
+    )" || {
+      echo "Unable to inventory Docker aliases for job-owned image: $target_image_id" >&2
+      exit 1
+    }
+    mapfile -t inventory_aliases < <(
+      printf '%s\n' "$alias_output" | sed '/^$/d' | LC_ALL=C sort -u
+    )
+    [[ "${#inventory_aliases[@]}" -gt 0 ]] || {
+      echo "Job-owned image has no addressable Docker aliases: $target_image_id" >&2
+      exit 1
+    }
+    for actual_alias in "${inventory_aliases[@]}"; do
+      canonical_alias="$(canonical_docker_reference "$actual_alias")"
+      [[ -n "$canonical_alias" &&
+        -z "${actual_alias_keys[$canonical_alias]+present}" ]] || {
+        echo "Docker alias inventory is empty or canonically duplicated for image: $target_image_id" >&2
+        exit 1
+      }
+      actual_alias_keys["$canonical_alias"]="$actual_alias"
+      actual_alias_count=$((actual_alias_count + 1))
+      [[ -n "${expected_alias_keys[$canonical_alias]+present}" ]] || {
+        echo "Refusing cleanup of an image with an untracked alias: $actual_alias" >&2
+        exit 1
+      }
+    done
+    [[ "$actual_alias_count" -eq "$expected_alias_count" ]] || {
+      echo "Docker alias inventory is missing a tracked job-owned alias for image: $target_image_id" >&2
+      exit 1
+    }
+    for expected_alias in "${!expected_alias_keys[@]}"; do
+      [[ -n "${actual_alias_keys[$expected_alias]+present}" ]] || {
+        echo "Docker alias inventory is missing tracked alias: ${expected_alias_keys[$expected_alias]}" >&2
+        exit 1
+      }
+      expected_reference="${expected_alias_keys[$expected_alias]}"
+      rebound_id="$(docker image inspect "$expected_reference" --format '{{.Id}}')" || {
+        echo "Tracked Docker alias disappeared after inventory: $expected_reference" >&2
+        exit 1
+      }
+      [[ "$rebound_id" == "$target_image_id" ]] || {
+        echo "Tracked Docker alias changed identity after inventory: $expected_reference" >&2
+        exit 1
+      }
+    done
+  }
 
   expected_manifest="$RUNNER_TEMP/oncotracer-image-ownership-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${SUITE}.tsv"
   [[ "$IMAGE_OWNERSHIP" == "$expected_manifest" ]] || {
@@ -242,6 +343,15 @@ remove_owned_image_references() {
   }
   [[ -f "$IMAGE_OWNERSHIP" && ! -L "$IMAGE_OWNERSHIP" ]] || {
     echo "Image ownership manifest must be a regular non-symlink: $IMAGE_OWNERSHIP" >&2
+    exit 1
+  }
+  [[ "${GITHUB_ACTIONS:-}" == true && -n "${RUNNER_NAME:-}" ]] || {
+    echo "Image cleanup requires a GitHub Actions one-job runner context" >&2
+    exit 1
+  }
+  daemon_containers="$(docker ps --all --quiet)"
+  [[ -z "$daemon_containers" ]] || {
+    echo "Refusing image cleanup on a Docker daemon with existing containers" >&2
     exit 1
   }
   printf 'reference\timage_id\taction\n' \
@@ -281,28 +391,104 @@ remove_owned_image_references() {
       echo "Refusing cleanup after image identity changed: $reference" >&2
       exit 1
     }
-    action=PRESERVED_PREEXISTING
-    if [[ "$created_by_job" == 1 ]]; then
-      containers="$(docker ps --all --quiet --filter "ancestor=$reference")"
-      [[ -z "$containers" ]] || {
+    if [[ "$created_by_job" == 0 ]]; then
+      preexisting_image_ids["$image_id"]=1
+    else
+      preflight_containers="$(docker ps --all --quiet --filter "ancestor=$reference")"
+      [[ -z "$preflight_containers" ]] || {
         echo "Refusing to remove an image reference used by a container: $reference" >&2
         exit 1
       }
-      docker image rm -- "$reference"
-      if docker image inspect "$reference" >/dev/null 2>&1; then
-        echo "Job-created image reference remains after exact removal: $reference" >&2
-        exit 1
-      fi
-      action=REMOVED_JOB_CREATED
     fi
-    printf '%s\t%s\t%s\n' "$reference" "$image_id" "$action" \
-      >> "$CONTEXT/job-image-reference-actions.tsv"
+    references+=("$reference")
+    image_ids+=("$image_id")
+    created_flags+=("$created_by_job")
   done < "$IMAGE_OWNERSHIP"
 
   [[ "$line_number" -gt 1 && "$observed_count" -eq "$expected_count" ]]
   for reference in "${!allowed[@]}"; do
     [[ -n "${seen[$reference]+present}" ]] || {
       echo "Ownership manifest omitted expected image reference: $reference" >&2
+      exit 1
+    }
+  done
+
+  for index in "${!references[@]}"; do
+    image_id="${image_ids[$index]}"
+    [[ -z "${checked_image_ids[$image_id]+present}" ]] || continue
+    checked_image_ids["$image_id"]=1
+    [[ -n "${preexisting_image_ids[$image_id]+present}" ]] && continue
+    verify_job_owned_image_aliases "$image_id"
+  done
+
+  for index in "${!references[@]}"; do
+    reference="${references[$index]}"
+    image_id="${image_ids[$index]}"
+    created_by_job="${created_flags[$index]}"
+    action=PRESERVED_PREEXISTING
+    if [[ "$created_by_job" == 1 ]]; then
+      if [[ -n "${preexisting_image_ids[$image_id]+present}" ]]; then
+        action=PRESERVED_JOB_CREATED_SHARED
+      else
+        if current_id="$(docker image inspect "$reference" --format '{{.Id}}' 2>/dev/null)"; then
+          [[ "$current_id" == "$image_id" ]] || {
+            echo "Refusing cleanup after image identity changed: $reference" >&2
+            exit 1
+          }
+          containers="$(docker ps --all --quiet --filter "ancestor=$reference")"
+          [[ -z "$containers" ]] || {
+            echo "Refusing to remove an image reference used by a container: $reference" >&2
+            exit 1
+          }
+          daemon_containers="$(docker ps --all --quiet)"
+          [[ -z "$daemon_containers" ]] || {
+            echo "Refusing image cleanup after the isolated Docker daemon gained a container" >&2
+            exit 1
+          }
+          verify_job_owned_image_aliases "$image_id"
+          docker image rm -- "$reference"
+          if docker image inspect "$reference" >/dev/null 2>&1; then
+            echo "Job-created image reference remains after exact removal: $reference" >&2
+            exit 1
+          fi
+          for alias_index in "${!references[@]}"; do
+            [[ "${image_ids[$alias_index]}" == "$image_id" &&
+              "${created_flags[$alias_index]}" == 1 ]] || continue
+            if current_id="$(docker image inspect "${references[$alias_index]}" --format '{{.Id}}' 2>/dev/null)"; then
+              [[ "$current_id" == "$image_id" ]] || {
+                echo "Refusing cleanup after image alias identity changed: ${references[$alias_index]}" >&2
+                exit 1
+              }
+            else
+              removed_aliases["${references[$alias_index]}"]=1
+            fi
+          done
+        elif [[ -z "${removed_aliases[$reference]+present}" ]]; then
+          echo "Job-created image reference disappeared before an owned alias was removed: $reference" >&2
+          exit 1
+        fi
+        action=REMOVED_JOB_CREATED
+      fi
+    fi
+    actions["$reference"]="$action"
+    printf '%s\t%s\t%s\n' "$reference" "$image_id" "$action" \
+      >> "$CONTEXT/job-image-reference-actions.tsv"
+  done
+
+  for index in "${!references[@]}"; do
+    reference="${references[$index]}"
+    image_id="${image_ids[$index]}"
+    action="${actions[$reference]}"
+    if [[ "$action" == REMOVED_JOB_CREATED ]]; then
+      if docker image inspect "$reference" >/dev/null 2>&1; then
+        echo "Job-created image reference reappeared after cleanup: $reference" >&2
+        exit 1
+      fi
+      continue
+    fi
+    preserved_id="$(docker image inspect "$reference" --format '{{.Id}}')"
+    [[ "$preserved_id" == "$image_id" ]] || {
+      echo "Preserved image reference changed during cleanup: $reference" >&2
       exit 1
     }
   done
@@ -899,6 +1085,9 @@ mkdir -p "$V2_PROJECT_ROOT"
 record_phase_resources frozen-reference-released
 
 log "Release only image references proven to have been created by this job"
+cp "$IMAGE_OWNERSHIP" "$CONTEXT/job-image-reference-ownership.tsv"
+cp "$PINS" "$CONTEXT/nested-v1-container-pins.tsv"
+cp "$PREFLIGHT" "$CONTEXT/nested-v1-container-preflight.tsv"
 remove_owned_image_references
 record_phase_resources frozen-images-released
 

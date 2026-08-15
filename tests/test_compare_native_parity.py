@@ -2564,6 +2564,66 @@ printf '%s\\n' "$selected_output"
 
             verified = audit_module.verify_job_image_actions(context)
             self.assertEqual(verified["reference_count"], len(references))
+
+            ownership_rows = [line.split("\t") for line in ownership_lines]
+            created_index = next(
+                index
+                for index, row in enumerate(ownership_rows[1:], start=1)
+                if row[2] == "1"
+            )
+            preexisting_index = next(
+                index
+                for index, row in enumerate(ownership_rows[1:], start=1)
+                if row[2] == "0"
+            )
+            shared_id = "sha256:" + "f" * 64
+            ownership_rows[created_index][1] = shared_id
+            ownership_rows[preexisting_index][1] = shared_id
+            shared_action_rows = [["reference", "image_id", "action"]]
+            for reference, image_id, created in ownership_rows[1:]:
+                if created == "0":
+                    action = "PRESERVED_PREEXISTING"
+                elif image_id == shared_id:
+                    action = "PRESERVED_JOB_CREATED_SHARED"
+                else:
+                    action = "REMOVED_JOB_CREATED"
+                shared_action_rows.append([reference, image_id, action])
+            (context / "job-image-reference-ownership.tsv").write_text(
+                "\n".join("\t".join(row) for row in ownership_rows) + "\n",
+                encoding="utf-8",
+            )
+            actions_path.write_text(
+                "\n".join("\t".join(row) for row in shared_action_rows) + "\n",
+                encoding="utf-8",
+            )
+            shared_verified = audit_module.verify_job_image_actions(context)
+            self.assertEqual(shared_verified["shared_preserved_count"], 1)
+            actions_path.write_text(
+                actions_path.read_text(encoding="utf-8").replace(
+                    "PRESERVED_JOB_CREATED_SHARED", "REMOVED_JOB_CREATED", 1
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                audit_module.AuditError, "invalid job image action"
+            ):
+                audit_module.verify_job_image_actions(context)
+
+            (context / "job-image-reference-ownership.tsv").write_text(
+                "\n".join(ownership_lines) + "\n", encoding="utf-8"
+            )
+            actions_path.write_text("\n".join(action_lines) + "\n", encoding="utf-8")
+            actions_path.write_text(
+                actions_path.read_text(encoding="utf-8").replace(
+                    "REMOVED_JOB_CREATED", "PRESERVED_JOB_CREATED_SHARED", 1
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                audit_module.AuditError, "invalid job image action"
+            ):
+                audit_module.verify_job_image_actions(context)
+            actions_path.write_text("\n".join(action_lines) + "\n", encoding="utf-8")
             actions_path.write_text(
                 actions_path.read_text(encoding="utf-8").replace(
                     "REMOVED_JOB_CREATED", "PRESERVED_PREEXISTING", 1
