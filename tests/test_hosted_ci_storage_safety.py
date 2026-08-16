@@ -3380,14 +3380,25 @@ run_native_environment_probe ichorcna readcounter 255 \\
                 "oncotracer-parity-${{ github.run_id }}-"
                 f"${{{{ github.run_attempt }}}}-{suite}"
             )
+            artifact_name = (
+                f"native-v2-{suite}-parity-${{{{ github.run_id }}}}-"
+                "${{ github.run_attempt }}"
+            )
+            self.assertIn(f"name: {artifact_name}", workflow)
             self.assertIn("if-no-files-found: error", workflow)
             self.assertIn(f"{artifact_root}/audit/**", workflow)
             self.assertIn(f"{artifact_root}/reports/**", workflow)
             self.assertNotIn(f"parity-{suite}/", workflow)
 
         release = (WORKFLOW_ROOT / "release-v2.yml").read_text(encoding="utf-8")
-        self.assertIn('Q1_NAME="native-v2-quickstart1-parity-$Q1_RUN_ID"', release)
-        self.assertIn('Q2_NAME="native-v2-quickstart2-parity-$Q2_RUN_ID"', release)
+        self.assertIn(
+            'Q1_NAME="native-v2-quickstart1-parity-' '$Q1_RUN_ID-$Q1_RUN_ATTEMPT"',
+            release,
+        )
+        self.assertIn(
+            'Q2_NAME="native-v2-quickstart2-parity-' '$Q2_RUN_ID-$Q2_RUN_ATTEMPT"',
+            release,
+        )
 
     def test_heavy_runner_selection_is_explicit_and_fork_safe(self) -> None:
         trusted_expression = (

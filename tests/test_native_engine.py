@@ -945,6 +945,8 @@ class NativeEngineTests(unittest.TestCase):
             command = runner.command or []
             paired_index = command.index("--paired-ends")
             self.assertEqual(command[paired_index + 1], "false")
+            mapq_index = command.index("--min-mapq")
+            self.assertEqual(command[mapq_index + 1], "37")
             self.assertEqual(Path(command[0]).name, "native_qdnaseq.R")
             self.assertNotIn("native_qdnaseq_pon.R", command)
             sheet = (samurai / "input" / "native.bam.samplesheet.csv").read_text(
@@ -958,6 +960,176 @@ class NativeEngineTests(unittest.TestCase):
             )
             self.assertIn("SNC-E\ttumor", roles)
             self.assertIn("SNC-F\tnormal", roles)
+
+    def test_illumina_qdnaseq_uses_unmarked_bam_and_frozen_mapq(self) -> None:
+        class FakeToolchain:
+            @staticmethod
+            def rscript(_group, command):
+                return [str(item) for item in command]
+
+            @staticmethod
+            def environment(_group):
+                return {}
+
+        class QdnaRunner:
+            dry_run = False
+
+            def __init__(self, output: Path) -> None:
+                self.output = output
+                self.command: list[str] | None = None
+
+            def run(self, _stage, command, **_kwargs):
+                self.command = [str(item) for item in command]
+                self.output.parent.mkdir(parents=True, exist_ok=True)
+                self.output.write_text(
+                    "ID\tchrom\tloc.start\tloc.end\tseg.mean\n", encoding="utf-8"
+                )
+                (self.output.parent / "qdnaseq_sample_status.json").write_text(
+                    json.dumps(
+                        {
+                            "overall_status": "complete",
+                            "completed_samples": ["CASE"],
+                            "failed_samples": [],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                (self.output.parent / "qdnaseq_sample_roles.tsv").write_text(
+                    "sample\tstatus\nCASE\ttumor\n", encoding="utf-8"
+                )
+
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            read_1 = temporary / "CASE_R1.fastq.gz"
+            read_2 = temporary / "CASE_R2.fastq.gz"
+            read_1.write_bytes(b"r1")
+            read_2.write_bytes(b"r2")
+            sample = IlluminaSample("CASE", read_1, read_2, "tumor")
+            alignment_bam = temporary / "alignment" / "CASE.bam"
+            alignment_bam.parent.mkdir()
+            alignment_bam.write_bytes(b"unmarked-alignment")
+            annotation = temporary / "QDNAseq.hg38.100kbp.SR50.rds"
+            annotation.write_bytes(b"annotation")
+            samurai = temporary / "01_samurai_illumina"
+            output = samurai / "qdnaseq" / "all_segments.seg"
+            runner = QdnaRunner(output)
+
+            with (
+                patch(
+                    "oncotracer_cli.engine.prepare_qdnaseq_annotation",
+                    return_value=annotation,
+                ),
+                patch(
+                    "oncotracer_cli.engine._validated_qdnaseq_reader",
+                    return_value=contextlib.nullcontext(),
+                ),
+            ):
+                run_qdnaseq(
+                    ROOT,
+                    temporary / "project",
+                    [sample],
+                    {sample.sample: alignment_bam},
+                    samurai,
+                    100,
+                    runner,  # type: ignore[arg-type]
+                    StageLedger(temporary / "state.json"),
+                    FakeToolchain(),  # type: ignore[arg-type]
+                    force=True,
+                )
+
+            command = runner.command or []
+            paired_index = command.index("--paired-ends")
+            self.assertEqual(command[paired_index + 1], "true")
+            mapq_index = command.index("--min-mapq")
+            self.assertEqual(command[mapq_index + 1], "1")
+            sheet = (samurai / "input" / "native.bam.samplesheet.csv").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn(str(alignment_bam), sheet)
+
+    def test_illumina_alignment_keeps_markdup_qc_but_returns_unmarked_bam(
+        self,
+    ) -> None:
+        class FakeToolchain:
+            @staticmethod
+            def executable(_group, name):
+                return name
+
+        class AlignmentRunner:
+            def __init__(self) -> None:
+                self.markdup_runs = 0
+
+            def pipeline(self, _stage, _left, right, **_kwargs):
+                command = [str(item) for item in right]
+                output = Path(command[command.index("-o") + 1])
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_bytes(b"unmarked-alignment")
+
+            def run(self, stage, command, **_kwargs):
+                command = [str(item) for item in command]
+                if stage.startswith("illumina-index-"):
+                    Path(command[-1] + ".bai").write_bytes(b"alignment-index")
+                elif "MarkDuplicates" in command:
+                    self.markdup_runs += 1
+                    output = Path(
+                        next(item[2:] for item in command if item.startswith("O="))
+                    )
+                    metrics = Path(
+                        next(item[2:] for item in command if item.startswith("M="))
+                    )
+                    output.write_bytes(b"duplicate-marked-qc")
+                    Path(str(output) + ".bai").write_bytes(b"markdup-index")
+                    metrics.write_text("metrics\n", encoding="utf-8")
+                else:
+                    self.fail(f"unexpected stage: {stage}")
+
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            read_1 = temporary / "CASE_R1.fastq.gz"
+            read_2 = temporary / "CASE_R2.fastq.gz"
+            read_1.write_bytes(b"r1")
+            read_2.write_bytes(b"r2")
+            sample = IlluminaSample("CASE", read_1, read_2, "tumor")
+            samurai = temporary / "01_samurai_illumina"
+            runner = AlignmentRunner()
+            ledger = StageLedger(temporary / "state.json")
+            observed = engine._align_illumina_locked(
+                [sample],
+                {"bwa_prefix": temporary / "reference" / "genome"},
+                samurai,
+                runner,  # type: ignore[arg-type]
+                ledger,
+                FakeToolchain(),  # type: ignore[arg-type]
+                threads=4,
+                force=True,
+            )
+
+            unmarked = samurai / "alignment" / "CASE.bam"
+            marked = samurai / "markduplicates" / "CASE_markdup.bam"
+            self.assertEqual(observed, {"CASE": unmarked})
+            self.assertTrue(unmarked.is_file())
+            self.assertTrue(Path(str(unmarked) + ".bai").is_file())
+            self.assertTrue(marked.is_file())
+            self.assertTrue(Path(str(marked) + ".bai").is_file())
+            self.assertTrue(
+                (samurai / "markduplicates" / "CASE_markdup.metrics.txt").is_file()
+            )
+            self.assertEqual(runner.markdup_runs, 1)
+
+            metrics = samurai / "markduplicates" / "CASE_markdup.metrics.txt"
+            metrics.unlink()
+            engine._align_illumina_locked(
+                [sample],
+                {"bwa_prefix": temporary / "reference" / "genome"},
+                samurai,
+                runner,  # type: ignore[arg-type]
+                ledger,
+                FakeToolchain(),  # type: ignore[arg-type]
+                threads=4,
+                force=False,
+            )
+            self.assertTrue(metrics.is_file())
+            self.assertEqual(runner.markdup_runs, 2)
 
     def test_ont_caller_validation_is_explicit(self) -> None:
         self.assertEqual(_ont_caller({}), "ichorcna")

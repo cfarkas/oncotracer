@@ -2216,7 +2216,7 @@ def _align_illumina_locked(
             if force or not ledger.reusable(
                 f"illumina-markdup-{sample.sample}",
                 mark_signature,
-                [markdup, markdup_bai],
+                [markdup, markdup_bai, metrics],
             ):
                 runner.run(f"illumina-markdup-{sample.sample}", mark_command)
                 if not markdup_bai.is_file():
@@ -2227,14 +2227,18 @@ def _align_illumina_locked(
                 ledger.complete(
                     f"illumina-markdup-{sample.sample}",
                     mark_signature,
-                    [markdup, markdup_bai],
+                    [markdup, markdup_bai, metrics],
                 )
         else:
             raise OncoTracerError(
                 "Picard MarkDuplicates is required for native Illumina analysis; "
                 "run 'oncotracer install --conda' or use the maintained container backend"
             )
-        results[sample.sample] = markdup
+        # Keep duplicate-marked BAMs and metrics as mandatory QC artifacts, but
+        # preserve the frozen-v1 qDNAseq input contract: qDNAseq consumes the
+        # unmarked alignment BAM while refinement independently reads the same
+        # alignment directory.
+        results[sample.sample] = bam
     return results
 
 
@@ -2242,7 +2246,7 @@ def run_qdnaseq(
     root: Path,
     lpwgs_root: Path,
     samples: list[IlluminaSample] | list[OntSample],
-    markdup_bams: Mapping[str, Path],
+    input_bams: Mapping[str, Path],
     samurai_outdir: Path,
     binsize: int,
     runner: CommandRunner,
@@ -2253,7 +2257,7 @@ def run_qdnaseq(
     paired_ends: bool | None = None,
 ) -> tuple[Path, Path]:
     bam_sheet = samurai_outdir / "input" / "native.bam.samplesheet.csv"
-    _write_bam_sheet(samples, markdup_bams, bam_sheet)
+    _write_bam_sheet(samples, input_bams, bam_sheet)
     annotation = prepare_qdnaseq_annotation(
         root, lpwgs_root, binsize, runner, toolchain
     )
@@ -2274,6 +2278,10 @@ def run_qdnaseq(
         root / "bin" / "scripts" / "qdnaseq_post_normalization_qc.R",
         "native qDNAseq post-normalization QC helper",
     )
+    illumina_compatibility = bool(samples) and all(
+        isinstance(sample, IlluminaSample) for sample in samples
+    )
+    min_mapq = 1 if illumina_compatibility else 37
     command = toolchain.rscript(
         "qdnaseq",
         [
@@ -2285,7 +2293,7 @@ def run_qdnaseq(
             "--binsize",
             str(binsize),
             "--min-mapq",
-            "37",
+            str(min_mapq),
             "--paired-ends",
             str(paired).lower(),
             "--bin-data",
@@ -2300,7 +2308,7 @@ def run_qdnaseq(
         signature = ledger.signature(
             "qdnaseq",
             command,
-            [script, qc_helper, bam_sheet, annotation, *markdup_bams.values()],
+            [script, qc_helper, bam_sheet, annotation, *input_bams.values()],
         )
         if force or not ledger.reusable("qdnaseq", signature, expected):
             runner.run(
