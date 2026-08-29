@@ -97,19 +97,6 @@ register_unique_sample_id() {
   sample_ids+=("$sample_id")
 }
 join_by_comma() { local IFS=,; printf '%s' "$*"; }
-reproducible_pon_name() {
-  local joined="" raw component
-  for raw in "$@"; do
-    component="${raw//[^A-Za-z0-9._-]/_}"
-    while [[ "$component" == *__* ]]; do component="${component//__/_}"; done
-    while [[ "$component" == [._-]* ]]; do component="${component:1}"; done
-    while [[ "$component" == *[._-] ]]; do component="${component:0:${#component}-1}"; done
-    [[ -n "$component" ]] || component=sample
-    [[ -z "$joined" ]] || joined+="_"
-    joined+="$component"
-  done
-  printf '%s_PoN' "$joined"
-}
 RUN_CNA_CLASSIFIER="$(normalize_bool "$RUN_CNA_CLASSIFIER")"
 PATHOLOGY_USE_BIOMED_MODELS="$(normalize_bool "$PATHOLOGY_USE_BIOMED_MODELS")"
 PATHOLOGY_BIOMED_LOCAL_FILES_ONLY="$(normalize_bool "$PATHOLOGY_BIOMED_LOCAL_FILES_ONLY")"
@@ -121,7 +108,7 @@ if [[ "$MODE" == illumina ]]; then
   SHEET="$CONFIG_DIR/illumina.samplesheet.csv"
   SHEET_TMP="$(mktemp "$CONFIG_DIR/.illumina.samplesheet.csv.tmp.XXXXXX")"
   printf "sample,fastq_1,fastq_2,status\n" > "$SHEET_TMP"
-  sample_ids=(); normal_names=(); tumor_count=0; normal_count=0
+  sample_ids=(); tumor_count=0; normal_count=0
   while IFS=$'\t' read -r sample status unused; do
     [[ -n "$sample" && -n "$status" ]] || { echo "ERROR: Illumina rows require sample_name,status" >&2; exit 2; }
     register_unique_sample_id "$sample"
@@ -130,11 +117,8 @@ if [[ "$MODE" == illumina ]]; then
       tumor_count=$((tumor_count + 1))
     else
       normal_count=$((normal_count + 1))
-      normal_names+=("$sample")
     fi
   done < "$META"
-  [[ $tumor_count -gt 0 ]] || { echo "ERROR: Illumina configuration requires at least one tumor sample" >&2; exit 2; }
-  [[ $normal_count -ne 1 ]] || { echo "ERROR: Illumina PoN requires either zero NORMAL samples or at least two; found 1" >&2; exit 2; }
 
   detected_layout=""
   sample_index=0
@@ -185,27 +169,19 @@ illumina_samplesheet: $SHEET
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
-illumina_build_pon: $([[ $normal_count -ge 2 ]] && printf true || printf false)
 EOF
-  if [[ $normal_count -ge 2 ]]; then
-    normal_csv="$(join_by_comma "${normal_names[@]}")"
-    pon_name="$(reproducible_pon_name "${normal_names[@]}")"
-    cat >> "$YAML_TMP" <<EOF
-illumina_pon_normal_samples: "$normal_csv"
-illumina_pon_min_normals: $normal_count
-illumina_pon_name: $pon_name
-illumina_pon_min_mapq: 37
-illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1
-EOF
-  fi
 else
   mapfile -t detected_barcodes < <(for directory in "$READS"/*; do [[ -d "$directory" ]] || continue; find "$directory" -maxdepth 1 -type f \( -name "*.fastq.gz" -o -name "*.fq.gz" -o -name "*.fastq" -o -name "*.fq" \) -print -quit | grep -q . && basename "$directory"; done | sort)
   [[ ${#detected_barcodes[@]} -gt 0 ]] || { echo "ERROR: no barcode directories found below $READS" >&2; exit 2; }
-  sample_ids=(); tumors=(); tumor_names=(); normals=(); normal_names=(); row=0
+  sample_ids=(); barcode_ids=(); tumors=(); tumor_names=(); normals=(); normal_names=(); row=0
   while IFS=$'\t' read -r first second third; do
     if [[ -n "$third" ]]; then barcode="$first"; sample="$second"; status="$third"; else sample="$first"; status="$second"; [[ $row -lt ${#detected_barcodes[@]} ]] || { echo "ERROR: more metadata rows than barcode folders" >&2; exit 2; }; barcode="${detected_barcodes[$row]}"; fi
     [[ -n "$sample" && -n "$status" ]] || { echo "ERROR: ONT rows require sample_name,status" >&2; exit 2; }
     register_unique_sample_id "$sample"
+    for existing_barcode in "${barcode_ids[@]}"; do
+      [[ "$existing_barcode" != "$barcode" ]] || { echo "ERROR: duplicate ONT barcode in sample table: $barcode" >&2; exit 2; }
+    done
+    barcode_ids+=("$barcode")
     [[ -d "$READS/$barcode" ]] || { echo "ERROR: barcode folder not found: $READS/$barcode" >&2; exit 2; }
     mapfile -t barcode_fastqs < <(find "$READS/$barcode" -maxdepth 1 -type f \( -name "*.fastq.gz" -o -name "*.fq.gz" -o -name "*.fastq" -o -name "*.fq" \) -print)
     [[ ${#barcode_fastqs[@]} -gt 0 ]] || { echo "ERROR: no FASTQ found in $READS/$barcode" >&2; exit 2; }
@@ -223,9 +199,9 @@ outdir: $OUTDIR
 ont_folder: $READS
 ont_barcodes: $(join_by_comma "${tumors[@]}")
 ont_sample_names: $(join_by_comma "${tumor_names[@]}")
-ont_analysis_type: liquid_biopsy
-ont_caller: ichorcna
-ont_binsize_kb: 500
+ont_analysis_type: $([[ ${#normals[@]} -gt 0 ]] && printf solid_biopsy || printf liquid_biopsy)
+ont_caller: $([[ ${#normals[@]} -gt 0 ]] && printf qdnaseq || printf ichorcna)
+ont_binsize_kb: $([[ ${#normals[@]} -gt 0 ]] && printf 100 || printf 500)
 ont_min_age_minutes: 0
 EOF
   if [[ ${#normals[@]} -gt 0 ]]; then

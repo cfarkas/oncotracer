@@ -35,7 +35,9 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'main')
-    runs-on: ubuntu-24.04
+    # Publishing opts in to a configured heavy runner only when an
+    # administrator explicitly sets the repository variable.
+    runs-on: ${{ vars.ONCOTRACER_HEAVY_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 360
 
     steps:
@@ -62,7 +64,7 @@ jobs:
                        .head_branch == "main" and .event == "push" and
                        .status == "completed" and .conclusion == "success")] |
               sort_by(.run_number, .run_attempt, .id) | last // empty |
-              {id, name, html_url, url, head_sha, event, conclusion}
+              {id, run_attempt, name, html_url, url, head_sha, event, conclusion}
             ' <<< "$RUNS"
           }
           CI="$(resolve_run 'Native v2 CI')"
@@ -77,10 +79,13 @@ jobs:
             echo 'ready=true'
             echo "main_sha=$MAIN_SHA"
             echo "ci_id=$(jq -r '.id' <<< "$CI")"
+            echo "ci_attempt=$(jq -r '.run_attempt' <<< "$CI")"
             echo "ci_url=$(jq -r '.html_url' <<< "$CI")"
             echo "q1_id=$(jq -r '.id' <<< "$Q1")"
+            echo "q1_attempt=$(jq -r '.run_attempt' <<< "$Q1")"
             echo "q1_url=$(jq -r '.html_url' <<< "$Q1")"
             echo "q2_id=$(jq -r '.id' <<< "$Q2")"
+            echo "q2_attempt=$(jq -r '.run_attempt' <<< "$Q2")"
             echo "q2_url=$(jq -r '.html_url' <<< "$Q2")"
           } >> "$GITHUB_OUTPUT"
 
@@ -90,6 +95,53 @@ jobs:
         with:
           ref: ${{ steps.gate.outputs.main_sha }}
           fetch-depth: 0
+
+      - name: Require safe release-container build capacity
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+        run: |
+          set -Eeuo pipefail
+          # The release rebuilds the same five-environment image as Native v2
+          # CI: 14 GiB final environments + 18 GiB transient solve/export
+          # space + 8 GiB reserve = 40 GiB free before any publication step.
+          FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=14
+          TRANSIENT_SOLVE_AND_EXPORT_GIB=18
+          RUNNER_RESERVE_GIB=8
+          MIN_PHYSICAL_GIB=15
+          MIN_FREE_GIB=$((
+            FINAL_SCIENTIFIC_ENVIRONMENTS_GIB +
+            TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB
+          ))
+          DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
+          bash scripts/ci_resource_preflight.sh \
+            --purpose 'OncoTracer stable five-environment container publication' \
+            --min-free-gib "$MIN_FREE_GIB" \
+            --min-physical-gib "$MIN_PHYSICAL_GIB" \
+            --min-addressable-gib "$MIN_PHYSICAL_GIB" \
+            --planned-swap-gib 0 \
+            --standard-contract-free-gib 14 \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --suite release-v2 \
+            --candidate-sha "$MAIN_SHA" \
+            --expected-swap-file none \
+            --path "$GITHUB_WORKSPACE" \
+            --path "$RUNNER_TEMP" \
+            --path /tmp \
+            --path "$DOCKER_ROOT_DIR" \
+            | tee "$RUNNER_TEMP/release-resource-preflight.txt"
+          python3 scripts/verify_ci_resource_preflight.py \
+            --evidence "$RUNNER_TEMP/release-resource-preflight.txt" \
+            --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --suite release-v2 --candidate-sha "$MAIN_SHA" \
+            --min-free-gib "$MIN_FREE_GIB" \
+            --min-physical-gib "$MIN_PHYSICAL_GIB" \
+            --min-addressable-gib "$MIN_PHYSICAL_GIB" \
+            --planned-swap-gib 0 --standard-contract-free-gib 14 \
+            --expected-swap-file none \
+            --path "$GITHUB_WORKSPACE" --path "$RUNNER_TEMP" --path /tmp \
+            --path "$DOCKER_ROOT_DIR"
 
       - name: Verify immutable source identity and release namespace
         if: steps.gate.outputs.ready == 'true'
@@ -113,14 +165,24 @@ jobs:
             }
           fi
           RELEASE_EXISTS=false
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-            --json tagName,isDraft,isPrerelease,targetCommitish \
-            > "$RUNNER_TEMP/existing-release.json" 2>/dev/null; then
+          RELEASE_STATUS=0
+          gh api -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+            > "$RUNNER_TEMP/existing-release.json" \
+            2> "$RUNNER_TEMP/existing-release.error" || RELEASE_STATUS=$?
+          if [[ "$RELEASE_STATUS" -eq 0 ]]; then
             jq -e --arg sha "$MAIN_SHA" '
-              .tagName == "v2.0.0" and .isDraft == false and
-              .isPrerelease == false and .targetCommitish == $sha
+              .tag_name == "v2.0.0" and .draft == false and
+              .prerelease == false and .target_commitish == $sha
             ' "$RUNNER_TEMP/existing-release.json"
             RELEASE_EXISTS=true
+          elif grep -Eq '\(HTTP 404\)[[:space:]]*$' \
+            "$RUNNER_TEMP/existing-release.error"; then
+            echo "$RELEASE_TAG has no existing GitHub release"
+          else
+            cat "$RUNNER_TEMP/existing-release.error" >&2
+            echo "unable to establish whether $RELEASE_TAG already exists" >&2
+            exit "$RELEASE_STATUS"
           fi
           {
             echo "source_sha256=$SOURCE_SHA256"
@@ -165,10 +227,14 @@ jobs:
           SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
           BINARY_SHA256: ${{ steps.binary.outputs.sha256 }}
           Q1_RUN_ID: ${{ steps.gate.outputs.q1_id }}
+          Q1_RUN_ATTEMPT: ${{ steps.gate.outputs.q1_attempt }}
           Q2_RUN_ID: ${{ steps.gate.outputs.q2_id }}
+          Q2_RUN_ATTEMPT: ${{ steps.gate.outputs.q2_attempt }}
         run: |
           set -Eeuo pipefail
-          mkdir -p release/parity/quickstart1 release/parity/quickstart2
+          PARITY_DIR="$RUNNER_TEMP/release-parity-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test ! -e "$PARITY_DIR" && test ! -L "$PARITY_DIR"
+          mkdir -p "$PARITY_DIR/quickstart1" "$PARITY_DIR/quickstart2"
           resolve_artifact() {
             local run_id="$1" expected_name="$2" output="$3"
             local response record count digest artifact_id
@@ -186,23 +252,25 @@ jobs:
             test "sha256:$(sha256sum "$output" | awk '{print $1}')" = "$digest"
             printf '%s\t%s\t%s\n' "$artifact_id" "$expected_name" "$digest"
           }
-          Q1_NAME="native-v2-quickstart1-parity-$Q1_RUN_ID"
-          Q2_NAME="native-v2-quickstart2-parity-$Q2_RUN_ID"
+          [[ "$Q1_RUN_ID" =~ ^[1-9][0-9]*$ && "$Q1_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          [[ "$Q2_RUN_ID" =~ ^[1-9][0-9]*$ && "$Q2_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          Q1_NAME="native-v2-quickstart1-parity-$Q1_RUN_ID-$Q1_RUN_ATTEMPT"
+          Q2_NAME="native-v2-quickstart2-parity-$Q2_RUN_ID-$Q2_RUN_ATTEMPT"
           Q1_RECORD="$(resolve_artifact "$Q1_RUN_ID" "$Q1_NAME" "$RUNNER_TEMP/q1.zip")"
           Q2_RECORD="$(resolve_artifact "$Q2_RUN_ID" "$Q2_NAME" "$RUNNER_TEMP/q2.zip")"
-          unzip -q "$RUNNER_TEMP/q1.zip" -d release/parity/quickstart1
-          unzip -q "$RUNNER_TEMP/q2.zip" -d release/parity/quickstart2
+          unzip -q "$RUNNER_TEMP/q1.zip" -d "$PARITY_DIR/quickstart1"
+          unzip -q "$RUNNER_TEMP/q2.zip" -d "$PARITY_DIR/quickstart2"
           python3 tests/parity_audit.py verify \
-            --suite quickstart1 --audit release/parity/quickstart1/audit \
+            --suite quickstart1 --audit "$PARITY_DIR/quickstart1/audit" \
             --candidate-sha "$MAIN_SHA" --source-sha256 "$SOURCE_SHA256" \
             --binary-sha256 "$BINARY_SHA256"
           python3 tests/parity_audit.py verify \
-            --suite quickstart2 --audit release/parity/quickstart2/audit \
+            --suite quickstart2 --audit "$PARITY_DIR/quickstart2/audit" \
             --candidate-sha "$MAIN_SHA" --source-sha256 "$SOURCE_SHA256" \
             --binary-sha256 "$BINARY_SHA256"
           tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
             --mode='u+rwX,go+rX,go-w' --format=gnu \
-            -C release/parity -cf - quickstart1 quickstart2 \
+            -C "$PARITY_DIR" -cf - quickstart1 quickstart2 \
             | gzip -n -9 > release/oncotracer-v2.0.0-parity-audit.tar.gz
           PARITY_SHA256="$(sha256sum release/oncotracer-v2.0.0-parity-audit.tar.gz | awk '{print $1}')"
           {
@@ -224,6 +292,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           CONTEXT="$RUNNER_TEMP/oncotracer-v2-release-context"
+          test ! -e "$CONTEXT" && test ! -L "$CONTEXT"
           mkdir -p "$CONTEXT"
           git -c tar.umask=0002 archive --format=tar "$MAIN_SHA" | tar -xf - -C "$CONTEXT"
           test -f "$CONTEXT/Dockerfile"
@@ -256,7 +325,7 @@ jobs:
             org.opencontainers.image.source.sha256=${{ steps.source.outputs.source_sha256 }}
             org.opencontainers.image.version=2.0.0
 
-      - name: Verify and publish immutable container digest
+      - name: Authenticate candidate and classify stable container state
         if: steps.gate.outputs.ready == 'true'
         id: image
         env:
@@ -283,35 +352,153 @@ jobs:
 
           CURRENT_MAIN="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           test "$CURRENT_MAIN" = "$MAIN_SHA"
-          CANDIDATE_TAG="$IMAGE_NAME:v2.0.0-candidate-$GITHUB_RUN_ID"
+          CANDIDATE_TAG="$IMAGE_NAME:v2.0.0-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           docker tag oncotracer:v2.0.0-release-candidate "$CANDIDATE_TAG"
           docker push "$CANDIDATE_TAG"
-          IMAGE_DIGEST="$(docker buildx imagetools inspect "$CANDIDATE_TAG" \
-            | awk '$1 == "Digest:" {print $2; exit}')"
-          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          CANDIDATE_DIGEST="$(scripts/release_registry_digest.sh "$CANDIDATE_TAG")"
+          [[ "$CANDIDATE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          CANDIDATE_IMAGE="$IMAGE_NAME@$CANDIDATE_DIGEST"
 
-          for stable in "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0"; do
-            if docker buildx imagetools inspect "$stable" > "$RUNNER_TEMP/stable.txt" 2>&1; then
-              EXISTING="$(awk '$1 == "Digest:" {print $2; exit}' "$RUNNER_TEMP/stable.txt")"
-              test "$EXISTING" = "$IMAGE_DIGEST" || {
-                echo "$stable already points at $EXISTING" >&2
+          # A new personal GHCR package is private by default. An authenticated
+          # pull would therefore be insufficient release evidence: the stable
+          # image must work for a beginner with no GitHub credentials. Remove
+          # the exact run-owned candidate tag before pulling the immutable
+          # digest with a fresh, credential-free Docker config. `docker pull`
+          # must query GHCR for that manifest even when its layers are cached.
+          # On the first run this intentionally stops after the candidate push;
+          # an administrator can make the package Public and retry the workflow.
+          test "$CANDIDATE_TAG" = \
+            "ghcr.io/cfarkas/oncotracer:v2.0.0-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker image rm "ghcr.io/cfarkas/oncotracer:v2.0.0-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if docker image inspect \
+            "ghcr.io/cfarkas/oncotracer:v2.0.0-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            >/dev/null 2>&1; then
+            echo "run-owned candidate tag is still available locally" >&2
+            exit 1
+          fi
+          ANONYMOUS_DOCKER_CONFIG="$RUNNER_TEMP/oncotracer-anonymous-docker-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test ! -e "$ANONYMOUS_DOCKER_CONFIG" && test ! -L "$ANONYMOUS_DOCKER_CONFIG"
+          install -d -m 0700 "$ANONYMOUS_DOCKER_CONFIG"
+          test -z "$(find "$ANONYMOUS_DOCKER_CONFIG" -mindepth 1 -print -quit)"
+          env -u DOCKER_AUTH_CONFIG -u REGISTRY_AUTH_FILE \
+            DOCKER_CONFIG="$ANONYMOUS_DOCKER_CONFIG" \
+            docker pull "$CANDIDATE_IMAGE"
+          test ! -e "$ANONYMOUS_DOCKER_CONFIG/config.json"
+          docker run --rm "$CANDIDATE_IMAGE" --version | grep -F 'OncoTracer 2.0.0'
+          ANONYMOUS_BINARY_SHA256="$(docker run --rm --entrypoint sha256sum \
+            "$CANDIDATE_IMAGE" /usr/local/bin/oncotracer | awk 'NR == 1 {print $1}')"
+          test "$ANONYMOUS_BINARY_SHA256" = "$RELEASE_BINARY_SHA256"
+          docker run --rm "$CANDIDATE_IMAGE" provenance --json \
+            > "$RUNNER_TEMP/anonymous-container-provenance.json"
+          jq -e \
+            --arg commit "$MAIN_SHA" \
+            --arg source "$SOURCE_SHA256" \
+            --arg binary "$RELEASE_BINARY_SHA256" '
+              .source_commit == $commit and .source_sha256 == $source and
+              .source_tree_dirty == false and .binary_sha256 == $binary
+            ' "$RUNNER_TEMP/anonymous-container-provenance.json"
+          cmp "$RUNNER_TEMP/container-provenance.json" \
+            "$RUNNER_TEMP/anonymous-container-provenance.json"
+          docker run --rm "$CANDIDATE_IMAGE" doctor --backend host \
+            > "$RUNNER_TEMP/anonymous-container-doctor.json"
+          jq -e '.success == true' "$RUNNER_TEMP/anonymous-container-doctor.json"
+          docker run --rm --entrypoint bash "$CANDIDATE_IMAGE" \
+            -c '! command -v nextflow'
+
+          # The anonymous scope is never reused for publishing. Authenticate
+          # the normal Docker config explicitly only after public pullability
+          # and exact runtime provenance have passed.
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io \
+            --username "$GITHUB_ACTOR" --password-stdin
+
+          REGISTRY_STATE="$(scripts/release_registry_pair.sh \
+            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+          IFS=$'\t' read -r STABLE_STATE STABLE_FIELD2 STABLE_FIELD3 \
+            STABLE_FIELD4 STABLE_EXTRA <<< "$REGISTRY_STATE"
+          test -z "$STABLE_EXTRA"
+          PRESENT_STABLE_TAG=""
+          MISSING_STABLE_TAG=""
+          case "$STABLE_STATE" in
+            missing)
+              test -z "$STABLE_FIELD2$STABLE_FIELD3$STABLE_FIELD4"
+              IMAGE_DIGEST="$CANDIDATE_DIGEST"
+              ;;
+            existing)
+              [[ "$STABLE_FIELD2" =~ ^sha256:[0-9a-f]{64}$ ]]
+              test -z "$STABLE_FIELD3$STABLE_FIELD4"
+              IMAGE_DIGEST="$STABLE_FIELD2"
+              echo "found stable container digest $IMAGE_DIGEST; authenticating before reuse"
+              ;;
+            partial)
+              PRESENT_STABLE_TAG="$STABLE_FIELD2"
+              MISSING_STABLE_TAG="$STABLE_FIELD3"
+              IMAGE_DIGEST="$STABLE_FIELD4"
+              [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+              if [[ ! (
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:2.0.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" ||
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:2.0.0"
+              ) ]]; then
+                echo "invalid partial stable registry state: $REGISTRY_STATE" >&2
                 exit 1
-              }
-            fi
-          done
-          docker buildx imagetools create \
-            --tag "$IMAGE_NAME:2.0.0" \
-            --tag "$IMAGE_NAME:v2.0.0" \
-            "$CANDIDATE_TAG@$IMAGE_DIGEST"
-          test "$(docker buildx imagetools inspect "$IMAGE_NAME:2.0.0" \
-            | awk '$1 == "Digest:" {print $2; exit}')" = "$IMAGE_DIGEST"
-          docker pull "$IMAGE_NAME@$IMAGE_DIGEST"
-          docker run --rm "$IMAGE_NAME@$IMAGE_DIGEST" provenance --json \
+              fi
+              echo "found partial stable registry state; authenticating $IMAGE_DIGEST before repair"
+              ;;
+            *)
+              echo "invalid stable registry state: $REGISTRY_STATE" >&2
+              exit 1
+              ;;
+          esac
+
+          PUBLISHED_IMAGE="$IMAGE_NAME@$IMAGE_DIGEST"
+          docker pull "$PUBLISHED_IMAGE"
+          docker run --rm "$PUBLISHED_IMAGE" --version | grep -F 'OncoTracer 2.0.0'
+          PUBLISHED_BINARY_SHA256="$(docker run --rm --entrypoint sha256sum \
+            "$PUBLISHED_IMAGE" /usr/local/bin/oncotracer | awk 'NR == 1 {print $1}')"
+          [[ "$PUBLISHED_BINARY_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          test "$PUBLISHED_BINARY_SHA256" = "$RELEASE_BINARY_SHA256"
+          docker run --rm "$PUBLISHED_IMAGE" provenance --json \
             > "$RUNNER_TEMP/published-container-provenance.json"
-          cmp "$RUNNER_TEMP/container-provenance.json" "$RUNNER_TEMP/published-container-provenance.json"
+          jq -e \
+            --arg commit "$MAIN_SHA" \
+            --arg source "$SOURCE_SHA256" \
+            --arg binary "$RELEASE_BINARY_SHA256" '
+              .source_commit == $commit and .source_sha256 == $source and
+              .source_tree_dirty == false and .binary_sha256 == $binary
+            ' "$RUNNER_TEMP/published-container-provenance.json"
+          cmp "$RUNNER_TEMP/container-provenance.json" \
+            "$RUNNER_TEMP/published-container-provenance.json"
+          docker run --rm "$PUBLISHED_IMAGE" doctor --backend host \
+            > "$RUNNER_TEMP/published-container-doctor.json"
+          jq -e '.success == true' "$RUNNER_TEMP/published-container-doctor.json"
+          docker run --rm --entrypoint bash "$PUBLISHED_IMAGE" \
+            -c '! command -v nextflow'
+          echo "authenticated release container digest $IMAGE_DIGEST"
+
+          # The conditional-write capability probe must only touch an exact,
+          # attempt-owned tag. Existing stable aliases can legitimately refer
+          # to a byte-different but fully authenticated rebuild, so rebind the
+          # disposable candidate alias to the selected release digest first.
+          if [[ "$CANDIDATE_DIGEST" != "$IMAGE_DIGEST" ]]; then
+            docker buildx imagetools create --prefer-index=false \
+              --tag "$CANDIDATE_TAG" "$PUBLISHED_IMAGE"
+          fi
+          test "$(scripts/release_registry_digest.sh "$CANDIDATE_TAG")" = \
+            "$IMAGE_DIGEST"
+
+          AUTHENTICATED_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
+            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+          test "$AUTHENTICATED_REGISTRY_STATE" = "$REGISTRY_STATE" || {
+            echo "stable registry state changed during authentication" >&2
+            exit 1
+          }
           {
             echo "digest=$IMAGE_DIGEST"
             echo "candidate_tag=$CANDIDATE_TAG"
+            echo "stable_state=$STABLE_STATE"
+            echo "present_stable_tag=$PRESENT_STABLE_TAG"
+            echo "missing_stable_tag=$MISSING_STABLE_TAG"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build final release provenance and assets
@@ -323,10 +510,13 @@ jobs:
           PARITY_SHA256: ${{ steps.parity.outputs.bundle_sha256 }}
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
           CI_ID: ${{ steps.gate.outputs.ci_id }}
+          CI_ATTEMPT: ${{ steps.gate.outputs.ci_attempt }}
           CI_URL: ${{ steps.gate.outputs.ci_url }}
           Q1_ID: ${{ steps.gate.outputs.q1_id }}
+          Q1_ATTEMPT: ${{ steps.gate.outputs.q1_attempt }}
           Q1_URL: ${{ steps.gate.outputs.q1_url }}
           Q2_ID: ${{ steps.gate.outputs.q2_id }}
+          Q2_ATTEMPT: ${{ steps.gate.outputs.q2_attempt }}
           Q2_URL: ${{ steps.gate.outputs.q2_url }}
           Q1_ARTIFACT_ID: ${{ steps.parity.outputs.q1_artifact_id }}
           Q1_ARTIFACT_NAME: ${{ steps.parity.outputs.q1_artifact_name }}
@@ -348,9 +538,9 @@ jobs:
             --arg nextflow_version "$NEXTFLOW_VERSION" \
             --arg nextflow_sha256 "$NEXTFLOW_DIST_SHA256" \
             --arg qdnaseq "$QDNASEQ_SOURCE_COMMIT" \
-            --arg ci_id "$CI_ID" --arg ci_url "$CI_URL" \
-            --arg q1_id "$Q1_ID" --arg q1_url "$Q1_URL" \
-            --arg q2_id "$Q2_ID" --arg q2_url "$Q2_URL" \
+            --arg ci_id "$CI_ID" --arg ci_attempt "$CI_ATTEMPT" --arg ci_url "$CI_URL" \
+            --arg q1_id "$Q1_ID" --arg q1_attempt "$Q1_ATTEMPT" --arg q1_url "$Q1_URL" \
+            --arg q2_id "$Q2_ID" --arg q2_attempt "$Q2_ATTEMPT" --arg q2_url "$Q2_URL" \
             --arg q1_artifact_id "$Q1_ARTIFACT_ID" \
             --arg q1_artifact_name "$Q1_ARTIFACT_NAME" \
             --arg q1_artifact_digest "$Q1_ARTIFACT_DIGEST" \
@@ -381,19 +571,24 @@ jobs:
                 qdnaseq_source_commit: $qdnaseq
               },
               workflows: {
-                native_v2_ci: {run_id: ($ci_id|tonumber), url: $ci_url, sha: $commit},
+                native_v2_ci: {
+                  run_id: ($ci_id|tonumber), run_attempt: ($ci_attempt|tonumber),
+                  url: $ci_url, sha: $commit
+                },
                 quickstart1: {
-                  run_id: ($q1_id|tonumber), url: $q1_url, sha: $commit,
+                  run_id: ($q1_id|tonumber), run_attempt: ($q1_attempt|tonumber),
+                  url: $q1_url, sha: $commit,
                   artifact: {id: ($q1_artifact_id|tonumber), name: $q1_artifact_name, digest: $q1_artifact_digest}
                 },
                 quickstart2: {
-                  run_id: ($q2_id|tonumber), url: $q2_url, sha: $commit,
+                  run_id: ($q2_id|tonumber), run_attempt: ($q2_attempt|tonumber),
+                  url: $q2_url, sha: $commit,
                   artifact: {id: ($q2_artifact_id|tonumber), name: $q2_artifact_name, digest: $q2_artifact_digest}
                 }
               }
             }
           ' > release/release-provenance.json
-          cat > release/RELEASE_NOTES.md <<EOF
+          cat > "$RUNNER_TEMP/RELEASE_NOTES.md" <<EOF
           # OncoTracer v2.0.0
 
           Native, copied-executable OncoTracer release with no Nextflow dependency in the v2 runtime.
@@ -413,31 +608,170 @@ jobs:
             sha256sum --strict -c SHA256SUMS
           )
 
-      - name: Reconfirm main and publish or verify GitHub release
+      - name: Clean-room accept local release assets before publication
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
+          BINARY_SHA256: ${{ steps.binary.outputs.sha256 }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -Eeuo pipefail
+          PREPUBLICATION_ACCEPTANCE="$RUNNER_TEMP/oncotracer-local-beginner-acceptance-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          bash scripts/verify_release_acceptance.sh \
+            "$GITHUB_WORKSPACE/release" \
+            "$PREPUBLICATION_ACCEPTANCE" \
+            "$MAIN_SHA" "$SOURCE_SHA256" "$BINARY_SHA256" "$IMAGE_DIGEST"
+
+      - name: Recheck and publish stable container aliases
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          CANDIDATE_TAG: ${{ steps.image.outputs.candidate_tag }}
+          STABLE_STATE: ${{ steps.image.outputs.stable_state }}
+          PRESENT_STABLE_TAG: ${{ steps.image.outputs.present_stable_tag }}
+          MISSING_STABLE_TAG: ${{ steps.image.outputs.missing_stable_tag }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          PUBLISHED_IMAGE="$IMAGE_NAME@$IMAGE_DIGEST"
+          case "$STABLE_STATE" in
+            missing)
+              test -z "$PRESENT_STABLE_TAG$MISSING_STABLE_TAG"
+              EXPECTED_REGISTRY_STATE=missing
+              ;;
+            existing)
+              test -z "$PRESENT_STABLE_TAG$MISSING_STABLE_TAG"
+              printf -v EXPECTED_REGISTRY_STATE 'existing\t%s' "$IMAGE_DIGEST"
+              ;;
+            partial)
+              if [[ ! (
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:2.0.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" ||
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:2.0.0"
+              ) ]]; then
+                echo "invalid captured partial stable registry state" >&2
+                exit 1
+              fi
+              printf -v EXPECTED_REGISTRY_STATE 'partial\t%s\t%s\t%s' \
+                "$PRESENT_STABLE_TAG" "$MISSING_STABLE_TAG" "$IMAGE_DIGEST"
+              ;;
+            *)
+              echo "invalid captured stable registry state: $STABLE_STATE" >&2
+              exit 1
+              ;;
+          esac
+
+          # These two remote snapshots are deliberately adjacent to the first
+          # permanent mutation. Any source advance or stable-tag change fails
+          # closed instead of publishing from a stale classification.
+          PREPUBLISH_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
+            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+          test "$PREPUBLISH_REGISTRY_STATE" = "$EXPECTED_REGISTRY_STATE" || {
+            echo "stable registry state changed after prepublication acceptance" >&2
+            exit 1
+          }
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')" = "$MAIN_SHA"
+
+          case "$STABLE_STATE" in
+            missing)
+              bash scripts/release_registry_put_if_absent.sh \
+                "$CANDIDATE_TAG" "$IMAGE_DIGEST" "$MAIN_SHA" \
+                "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0"
+              ;;
+            partial)
+              bash scripts/release_registry_put_if_absent.sh \
+                "$CANDIDATE_TAG" "$IMAGE_DIGEST" "$MAIN_SHA" \
+                "$MISSING_STABLE_TAG"
+              ;;
+            existing)
+              ;;
+          esac
+
+          FINAL_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
+            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+          printf -v EXPECTED_FINAL_REGISTRY_STATE 'existing\t%s' "$IMAGE_DIGEST"
+          test "$FINAL_REGISTRY_STATE" = "$EXPECTED_FINAL_REGISTRY_STATE"
+
+      - name: Publish or verify GitHub release for captured main SHA
         if: steps.gate.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
           RELEASE_EXISTS: ${{ steps.source.outputs.release_exists }}
+          SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
+          BINARY_SHA256: ${{ steps.binary.outputs.sha256 }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           set -Eeuo pipefail
-          test "$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')" = "$MAIN_SHA"
+          PREPUBLICATION_ACCEPTANCE="$RUNNER_TEMP/oncotracer-local-beginner-acceptance-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ACCEPTED_RELEASE="$PREPUBLICATION_ACCEPTANCE/release"
+          test -d "$ACCEPTED_RELEASE" && test ! -L "$ACCEPTED_RELEASE"
+          test "$(stat -c '%a' -- "$ACCEPTED_RELEASE")" = 500
           assets=(
-            release/oncotracer
-            release/oncotracer-v2.0.0-parity-audit.tar.gz
-            release/release-provenance.json
-            release/SHA256SUMS
+            "$ACCEPTED_RELEASE/oncotracer"
+            "$ACCEPTED_RELEASE/oncotracer-v2.0.0-parity-audit.tar.gz"
+            "$ACCEPTED_RELEASE/release-provenance.json"
+            "$ACCEPTED_RELEASE/SHA256SUMS"
           )
+          for asset in "${assets[@]}"; do
+            test -f "$asset"
+            test ! -L "$asset"
+            test "$(stat -c '%h' -- "$asset")" -eq 1
+            test "$(stat -c '%a' -- "$asset")" = 400
+          done
+          expected_assets='["SHA256SUMS","oncotracer","oncotracer-v2.0.0-parity-audit.tar.gz","release-provenance.json"]'
           if [[ "$RELEASE_EXISTS" == true ]]; then
-            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber \
-              --repo "$GITHUB_REPOSITORY"
+            gh api -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+              > "$RUNNER_TEMP/existing-release-before-upload.json"
+            jq -e --arg sha "$MAIN_SHA" --argjson expected "$expected_assets" '
+              .tag_name == "v2.0.0" and .draft == false and
+              .prerelease == false and .target_commitish == $sha and
+              ([.assets[].name] | length) == ([.assets[].name] | unique | length) and
+              (([.assets[].name] - $expected) | length) == 0
+            ' "$RUNNER_TEMP/existing-release-before-upload.json"
+
+            missing_assets=()
+            for asset in "${assets[@]}"; do
+              name="${asset##*/}"
+              count="$(jq --arg name "$name" \
+                '[.assets[] | select(.name == $name)] | length' \
+                "$RUNNER_TEMP/existing-release-before-upload.json")"
+              if [[ "$count" -eq 0 ]]; then
+                missing_assets+=("$asset")
+                continue
+              fi
+              test "$count" -eq 1
+              download_dir="$RUNNER_TEMP/existing-release-assets/$name"
+              mkdir -p "$download_dir"
+              gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+                --pattern "$name" --dir "$download_dir"
+              downloaded="$download_dir/$name"
+              test -f "$downloaded"
+              local_sha256="$(sha256sum "$asset" | awk '{print $1}')"
+              existing_sha256="$(sha256sum "$downloaded" | awk '{print $1}')"
+              test "$existing_sha256" = "$local_sha256" || {
+                echo "existing release asset $name has digest $existing_sha256; expected $local_sha256" >&2
+                exit 1
+              }
+            done
+            if [[ "${#missing_assets[@]}" -gt 0 ]]; then
+              gh release upload "$RELEASE_TAG" "${missing_assets[@]}" \
+                --repo "$GITHUB_REPOSITORY"
+            fi
             gh release edit "$RELEASE_TAG" --target "$MAIN_SHA" \
-              --title 'OncoTracer v2.0.0' --notes-file release/RELEASE_NOTES.md \
+              --title 'OncoTracer v2.0.0' --notes-file "$RUNNER_TEMP/RELEASE_NOTES.md" \
               --latest --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$RELEASE_TAG" "${assets[@]}" \
               --target "$MAIN_SHA" --title 'OncoTracer v2.0.0' \
-              --notes-file release/RELEASE_NOTES.md --latest \
+              --notes-file "$RUNNER_TEMP/RELEASE_NOTES.md" --latest \
               --repo "$GITHUB_REPOSITORY"
           fi
           test "$(git ls-remote origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')" = "$MAIN_SHA"
@@ -450,3 +784,34 @@ jobs:
             ([.assets[].name] | sort) ==
               (["SHA256SUMS","oncotracer","oncotracer-v2.0.0-parity-audit.tar.gz","release-provenance.json"] | sort)
           ' "$RUNNER_TEMP/published-release.json"
+          for asset in "${assets[@]}"; do
+            name="${asset##*/}"
+            download_dir="$RUNNER_TEMP/published-release-assets/$name"
+            mkdir -p "$download_dir"
+            gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --pattern "$name" --dir "$download_dir"
+            downloaded="$download_dir/$name"
+            test -f "$downloaded"
+            local_sha256="$(sha256sum "$asset" | awk '{print $1}')"
+            published_sha256="$(sha256sum "$downloaded" | awk '{print $1}')"
+            test "$published_sha256" = "$local_sha256" || {
+              echo "published release asset $name has digest $published_sha256; expected $local_sha256" >&2
+              exit 1
+            }
+          done
+
+          # Re-download the exact four assets and run the same clean-room
+          # acceptance implementation used before any permanent mutation.
+          PUBLISHED_RELEASE_DOWNLOAD="$RUNNER_TEMP/oncotracer-published-release-download-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          POSTPUBLICATION_ACCEPTANCE="$RUNNER_TEMP/oncotracer-released-beginner-acceptance-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          PREPUBLICATION_ACCEPTANCE="$RUNNER_TEMP/oncotracer-local-beginner-acceptance-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test ! -e "$PUBLISHED_RELEASE_DOWNLOAD" && test ! -L "$PUBLISHED_RELEASE_DOWNLOAD"
+          install -d -m 0700 "$PUBLISHED_RELEASE_DOWNLOAD"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --dir "$PUBLISHED_RELEASE_DOWNLOAD"
+          bash scripts/verify_release_acceptance.sh \
+            "$PUBLISHED_RELEASE_DOWNLOAD" \
+            "$POSTPUBLICATION_ACCEPTANCE" \
+            "$MAIN_SHA" "$SOURCE_SHA256" "$BINARY_SHA256" "$IMAGE_DIGEST"
+          cmp "$PREPUBLICATION_ACCEPTANCE/acceptance-evidence.json" \
+            "$POSTPUBLICATION_ACCEPTANCE/acceptance-evidence.json"

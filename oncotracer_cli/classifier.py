@@ -14,6 +14,7 @@ from .runtime import (
     StageLedger,
     atomic_write_json,
     atomic_write_text,
+    atomic_write_workflow_summary,
     require_directory,
     require_file,
     utc_now,
@@ -26,7 +27,7 @@ class ToolchainLike(Protocol):
 
     def wrap(self, group: str, command: Sequence[str | Path]) -> list[str]: ...
 
-    def environment(self, group: str) -> dict[str, str]: ...
+    def environment(self, group: str) -> dict[str, str | None]: ...
 
 
 DEFAULTS: dict[str, object] = {
@@ -184,11 +185,12 @@ def _stage(
     runner: CommandRunner,
     ledger: StageLedger,
     force: bool,
+    containment: Mapping[str, str | None] | None = None,
 ) -> None:
     signature = ledger.signature(name, command, inputs)
     if force or not ledger.reusable(name, signature, outputs):
         cwd.mkdir(parents=True, exist_ok=True)
-        runner.run(name, command, cwd=cwd)
+        runner.run(name, command, cwd=cwd, containment=containment)
         for output in outputs:
             require_file(output, f"{name} output")
         ledger.complete(name, signature, outputs)
@@ -272,6 +274,7 @@ def _run_gistic(
         if required:
             raise OncoTracerError(reason)
         return _write_gistic_skip(output, reason, segmentation)
+    gistic_environment = toolchain.environment("gistic")
 
     ref_value = str(config.get("gistic_refgene") or "auto")
     if ref_value and ref_value != "auto":
@@ -287,6 +290,7 @@ def _run_gistic(
                 "classifier-gistic-refgene",
                 ["bash", helper, ref_dir],
                 cwd=root,
+                containment=gistic_environment,
                 check=False,
             )
             if result.returncode != 0 or not refgene.is_file() or refgene.stat().st_size == 0:
@@ -334,14 +338,13 @@ def _run_gistic(
         ]
     )
     wrapped = toolchain.wrap("gistic", command)
-    gistic_environment = toolchain.environment("gistic")
     atomic_write_text(command_file, " ".join(__import__("shlex").quote(item) for item in wrapped) + "\n")
     version_probe = toolchain.wrap("gistic", ["gistic2", "-h"])
     version_result = runner.run(
         "classifier-gistic-version",
         version_probe,
         cwd=output,
-        env=gistic_environment,
+        containment=gistic_environment,
         check=False,
     )
     atomic_write_text(versions, f"returncode={version_result.returncode}\n")
@@ -353,7 +356,7 @@ def _run_gistic(
             "classifier-gistic",
             wrapped,
             cwd=output,
-            env=gistic_environment,
+            containment=gistic_environment,
             check=False,
         )
         if result.returncode == 0:
@@ -383,11 +386,7 @@ def _update_summary(analysis_outdir: Path, classifier_out: Path) -> None:
     value["cna_classifier"] = str(classifier_out)
     value["cna_classifier_completed"] = True
     value["completed_at"] = utc_now()
-    atomic_write_json(json_path, value)
-    atomic_write_text(
-        summary_dir / "workflow_summary.txt",
-        "\n".join(f"{key}={item}" for key, item in value.items()) + "\n",
-    )
+    atomic_write_workflow_summary(summary_dir, value)
 
 
 def run_native_classifier(
@@ -415,6 +414,7 @@ def run_native_classifier(
     pathology_out = classifier_out / "07_pathology"
     for directory in (prepared, classification, report, gistic, parsed, knowledge, pathology_out):
         directory.mkdir(parents=True, exist_ok=True)
+    classifier_environment = toolchain.environment("classifier")
 
     cna_input = require_directory(analysis_outdir / "03_cna_codification", "CNA classifier input")
     cna_events = require_file(cna_input / "cna_events.tsv", "CNA events")
@@ -459,6 +459,7 @@ def run_native_classifier(
     _stage(
         "classifier-prepare", prepare_wrapped, [cna_events, cna_notation, region_catalog, chrom_sizes],
         prepare_outputs, cwd=prepared, runner=runner, ledger=ledger, force=force,
+        containment=classifier_environment,
     )
 
     gistic_dir, gistic_status, gistic_command = _run_gistic(
@@ -482,6 +483,7 @@ def run_native_classifier(
     _stage(
         "classifier-parse-gistic", parse_command, [gistic_status, gistic_command], parsed_outputs,
         cwd=parsed, runner=runner, ledger=ledger, force=force,
+        containment=classifier_environment,
     )
 
     classify_command = toolchain.wrap(
@@ -518,6 +520,7 @@ def run_native_classifier(
     _stage(
         "classifier-classify", classify_command, prepare_outputs + parsed_outputs, classify_outputs,
         cwd=classification, runner=runner, ledger=ledger, force=force,
+        containment=classifier_environment,
     )
 
     knowledge_command = toolchain.wrap(
@@ -570,6 +573,7 @@ def run_native_classifier(
         "classifier-knowledge", knowledge_command,
         [classification / "cna_patient_classification.tsv", prepared / "clean_events.tsv", prepared / "driver_region_hits.tsv", region_catalog],
         knowledge_outputs, cwd=knowledge, runner=runner, ledger=ledger, force=force,
+        containment=classifier_environment,
     )
 
     pathology_value = config.get("pathology_csv") or config.get("pathology")
@@ -611,6 +615,7 @@ def run_native_classifier(
         "classifier-pathology", pathology_wrapped,
         [pathology, classification / "cna_patient_classification.tsv", knowledge / "sample_knowledge_summary.tsv"],
         pathology_outputs, cwd=pathology_out, runner=runner, ledger=ledger, force=force,
+        containment=classifier_environment,
     )
 
     plot_command = toolchain.wrap(
@@ -644,6 +649,7 @@ def run_native_classifier(
         "classifier-report", plot_command,
         prepare_outputs + classify_outputs + parsed_outputs + pathology_outputs,
         plot_outputs, cwd=report, runner=runner, ledger=ledger, force=force,
+        containment=classifier_environment,
     )
     report_tables = report / "report_tables"
     report_tables.mkdir(parents=True, exist_ok=True)
@@ -686,6 +692,7 @@ def run_native_classifier(
             classify_outputs + knowledge_outputs + pathology_outputs,
             [report / "pdf_reports" / "pdf_report_index.tsv"],
             cwd=report, runner=runner, ledger=ledger, force=force,
+            containment=classifier_environment,
         )
 
     if _bool(config, "run_clinician_reports"):
@@ -710,6 +717,7 @@ def run_native_classifier(
             classify_outputs + knowledge_outputs + pathology_outputs,
             [report / "clinician_reports" / "clinician_report_index.tsv"],
             cwd=report, runner=runner, ledger=ledger, force=force,
+            containment=classifier_environment,
         )
 
     summary = {

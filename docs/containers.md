@@ -22,7 +22,15 @@ oncotracer run \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
-The installer creates or updates isolated versioned prefixes. qDNAseq and ichorCNA are separated because their R stacks are incompatible. The classifier and GISTIC2 also remain isolated.
+The installer creates or updates isolated versioned prefixes. qDNAseq and
+ichorCNA are separated because their R stacks are incompatible. The classifier
+and GISTIC2 also remain isolated. A prefix parent must be absent, empty, or
+carry the exact OncoTracer ownership marker; populated unowned paths and
+unmarked fixed children are never adopted. Updates are journaled under an
+ownership-checked lock: the verified prior child is backed up and its
+replacement is created directly at the final prefix, then semantically probed
+and exactly inventoried. Unrelated siblings are preserved, and active managed
+prefixes are refused.
 
 `oncotracer doctor --backend conda` uses exact prefix executables and semantic tool/package probes rather than relying on a login shell's `PATH`.
 
@@ -87,6 +95,13 @@ oncotracer run \
 
 Apptainer is preferred when both executables are present. The installer pulls the same native image into a local SIF and records its path in the OncoTracer configuration. The runner uses `--cleanenv` and explicit binds derived from YAML paths.
 
+The SIF and its strict `.oncotracer.json` ownership sidecar form one managed
+pair. Reuse verifies the canonical path, image reference, source identity, file
+SHA-256, container provenance, and native host doctor. `--force` never unlinks
+an existing file first: it stages and verifies a sibling candidate, then
+atomically publishes it with a rollback journal. Unowned, malformed, symlinked,
+hard-linked, or active destinations are preserved and rejected.
+
 Choose an explicit SIF location:
 
 ```bash
@@ -106,14 +121,23 @@ oncotracer run \
 ## Poetry development route
 
 ```bash
-./oncotracer install --poetry
-poetry run oncotracer doctor --backend poetry
-poetry run oncotracer run \
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+"$ONCOTRACER_DEV" doctor --backend poetry
+"$ONCOTRACER_DEV" run \
   --backend poetry \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
-Poetry manages the Python launcher environment. It does not replace BWA, SAMtools, Picard, qDNAseq, HMMcopy, ichorCNA, the classifier stack, or GISTIC2; those are still resolved from the exact managed prefixes.
+Poetry 2.0 or newer is required. OncoTracer builds a wheel in isolated
+transaction state from the exact clean checkout, then installs it using only
+the explicit owned `poetry-runtime` child's Python and pip. It does not mutate
+a global Poetry environment, ambient site-packages, or a checkout-local
+`.venv`. It does not replace
+BWA, SAMtools, Picard, qDNAseq, HMMcopy, ichorCNA, the classifier stack, or
+GISTIC2; those are still resolved from the exact managed prefixes.
 
 ## Paths and mounts
 
@@ -139,7 +163,11 @@ Stable release records contain the exact source commit, deterministic source-tre
 
 ## Backend-independent QuickStarts
 
+Start from the directory where you want the tutorials to create their input, configuration, and result folders:
+
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 1 \
   --backend docker \
   --test-root "$PWD/oncotracer-quickstart1-docker"

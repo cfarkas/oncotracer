@@ -24,17 +24,9 @@ illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
 
-# Optional run-local qDNAseq panel of normals (PoN). It is disabled by default.
-# To enable it, mark at least two samples as normal in the samplesheet, set
-# illumina_build_pon to true, and list every and only normal sample ID separated
-# by commas. NORMAL controls build the reference; corrected CNA outputs contain
-# TUMOR samples only.
-illumina_build_pon: false
-illumina_pon_normal_samples: null
-illumina_pon_min_normals: 2
-illumina_pon_name: illumina_local_PoN
-illumina_pon_min_mapq: 37
-illumina_pon_r_container: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1
+# The samplesheet status column records TUMOR or NORMAL. Every row is analyzed
+# independently by native qDNAseq; normal rows are not pooled into a local
+# sample-derived reference.
 
 # Optional CNA classifier and pathology report. Leave false for the standard run.
 run_cna_classifier: false

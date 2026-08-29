@@ -91,15 +91,11 @@ oncotracer run --backend conda \
   --config "$PROJECT_DIR/config/ont.manual.yml"
 ```
 
-## Local Illumina normal panel
+## Illumina normal status
 
-```yaml
-illumina_build_pon: true
-illumina_pon_normal_samples: Control_A,Control_B
-illumina_pon_min_normals: 2
-illumina_pon_name: study_local_PoN
-illumina_pon_min_mapq: 37
-```
+Record `normal` in the fourth column of `illumina_samplesheet` for each normal
+sample. No extra YAML fields are needed: every row is analyzed independently,
+and normal rows are never pooled into a sample-derived reference.
 
 ## Native classifier and pathology
 

@@ -9,8 +9,10 @@ oncotracer run \
   --config /absolute/path/project/config/illumina.auto.yml
 ```
 
-The same YAML can be executed through Conda, Docker, Singularity/Apptainer, or Poetry. All backends use the same native stage graph.
+The standard CNA YAML can be executed through Conda, Docker, Singularity/Apptainer, or Poetry. All backends use the same native stage graph.
 The caller stage is direct qDNAseq or direct HMMcopy/ichorCNA, followed by the same downstream refinement and reporting contract.
+
+The optional ONT POD5 methylation branch uses explicit user-installed/licensed resources and therefore supports host, Conda, or Poetry in v2.0.0, not the stable Docker or Singularity/Apptainer image.
 
 ## Native stage graph
 
@@ -20,7 +22,7 @@ For Illumina:
 FASTQ validation
   -> BWA alignment
   -> samtools/Picard processing
-  -> direct qDNAseq or local qDNAseq panel correction
+  -> direct independent qDNAseq for every selected sample
   -> BAM-supported boundary refinement
   -> CNA event and cytogenomic notation tables
   -> cohort and per-sample plots
@@ -31,6 +33,10 @@ FASTQ validation
 For ONT:
 
 ```text
+optional explicit POD5 + barcode read IDs
+  -> Dorado 5mCG/5hmCG -> Modkit CpG pileup -> Sturgeon or MARLIN
+  -> methylation status (independent of CNA)
+
 barcode FASTQ discovery and merge
   -> minimap2 alignment
   -> HMMcopy readCounter
@@ -79,10 +85,13 @@ oncotracer run --backend singularity \
 ### Poetry
 
 ```bash
-./oncotracer install --poetry
-poetry run oncotracer doctor --backend poetry
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer doctor \
+  --backend poetry
 
-poetry run oncotracer run --backend poetry \
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer run \
+  --backend poetry \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
@@ -106,6 +115,8 @@ oncotracer run \
 ```
 
 The selected thread count is passed to supported native stages. External tool behavior and memory requirements still depend on the specific stage.
+
+For optional methylation, `--gpu` accelerates Dorado modified-base basecalling and exposes the GPU to MARLIN. Modkit and Sturgeon remain CPU-threaded. Read [Optional ONT methylation](configuration/methylation.md) before enabling it.
 
 ## Dry-run
 
@@ -159,6 +170,8 @@ Open these first:
 <outdir>/06_workflow_summary/workflow_summary.json
 <outdir>/06_workflow_summary/native_run_manifest.json
 <outdir>/05_cna_classifier/native_classifier_summary.json  # when enabled
+<outdir>/07_methylation/methylation_status.json             # when enabled
+<outdir>/07_methylation/methylation_provenance.json         # when enabled
 ```
 
 The trace is generated from argument arrays rather than shell strings. The engine checks the final trace and fails if a Nextflow invocation appears.
@@ -183,7 +196,7 @@ nextflow_used=false
 
 ## Output ownership and container mounts
 
-Docker runs as the invoking numeric user/group. The CLI derives mounts from the YAML paths, including `lpwgs_root`, `outdir`, samplesheet, FASTQ roots, and pathology table. Use absolute paths and keep related data below a small number of project roots.
+Docker runs as the invoking numeric user/group. The CLI derives mounts from the standard CNA YAML paths, including `lpwgs_root`, `outdir`, samplesheet, FASTQ roots, and pathology table. Use absolute paths and keep related data below a small number of project roots. Optional methylation is rejected for the v2.0.0 container backends.
 
 ## Stopping and restarting
 

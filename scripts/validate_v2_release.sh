@@ -177,7 +177,9 @@ readonly LOG_DIR="$VALIDATION_ROOT/logs"
 readonly STATE_DIR="$VALIDATION_ROOT/state"
 readonly TMP_DIR="$VALIDATION_ROOT/tmp"
 readonly RELEASE_CANDIDATE_DIR="$VALIDATION_ROOT/release-candidate"
-readonly ENV_ROOT="$VALIDATION_ROOT/envs"
+# A source-bound root prevents a resumed validation from adopting or mutating
+# legacy unmarked environments created by an earlier candidate.
+readonly ENV_ROOT="$VALIDATION_ROOT/managed-envs-by-source/$SOURCE_COMMIT"
 readonly INPUT_ROOT="$VALIDATION_ROOT/inputs"
 readonly ANALYSIS_ROOT="$VALIDATION_ROOT/analysis"
 readonly CONFIG_DIR="$ANALYSIS_ROOT/configs"
@@ -206,7 +208,6 @@ fi
 export TMPDIR="$TMP_DIR"
 export XDG_CONFIG_HOME="$VALIDATION_ROOT/config"
 export XDG_DATA_HOME="$VALIDATION_ROOT/data"
-export ONCOTRACER_PAYLOAD_CACHE="$VALIDATION_ROOT/payload-cache"
 # Release parity is CPU-only on the validation server. Do not discover,
 # configure, reset, or place load on GPUs used by active sequencing services.
 export CUDA_VISIBLE_DEVICES=""
@@ -250,15 +251,51 @@ commit=$SAMURAI_COMMIT_EXPECTED
 prepared_main_nf_sha256=$SAMURAI_PREPARED_MAIN_SHA256
 repository=https://github.com/DIncalciLab/samurai.git
 EOF
-cat > "$CONTEXT_DIR/samurai-nextflow-audit.config" <<EOF
+nested_task_cpu_limit="$THREADS"
+if ((nested_task_cpu_limit > 4)); then
+  nested_task_cpu_limit=4
+fi
+samurai_config_template="$(mktemp "$TMP_DIR/samurai-nextflow-audit.$SESSION_ID.XXXXXX.config")"
+cat > "$samurai_config_template" <<EOF
+params.oncotracer_nested_audit_policy_sha256 = '__ONCOTRACER_AUDIT_POLICY_SHA256__'
+executor.queueSize = 4
 process {
-  resourceLimits = [cpus: $THREADS, memory: '96.GB', time: '48.h']
+  resourceLimits = [cpus: $nested_task_cpu_limit, memory: '96.GB', time: '48.h']
+  withName: ICHORCNA_RUN {
+    cache = false
+    containerOptions = '-v $REPOSITORY_ROOT/bin/scripts:/opt/oncotracer/scripts:ro -v $REPOSITORY_ROOT/bin/scripts/v1_ichorcna_profile.R:/.Rprofile:ro'
+  }
 }
 conda { useMamba = false }
 trace {
   fields = 'task_id,hash,native_id,name,status,exit,submit,duration,realtime,%cpu,peak_rss,peak_vmem,rchar,wchar,container'
 }
 EOF
+samurai_policy_sha="$(
+  {
+    printf 'config-template\0'
+    cat "$samurai_config_template"
+    for source in \
+      "$REPOSITORY_ROOT/bin/scripts/ichorcna_plot_compat.R" \
+      "$REPOSITORY_ROOT/bin/scripts/v1_ichorcna_profile.R"; do
+      digest="$(sha256sum "$source" | awk '{print $1}')"
+      printf 'source\0%s\0%s\0' "$(basename "$source")" "$digest"
+    done
+  } | sha256sum | awk '{print $1}'
+)"
+[[ "$samurai_policy_sha" =~ ^[0-9a-f]{64}$ ]]
+sed "s/__ONCOTRACER_AUDIT_POLICY_SHA256__/$samurai_policy_sha/" \
+  "$samurai_config_template" > "$CONTEXT_DIR/samurai-nextflow-audit.config"
+rm -f -- "$samurai_config_template"
+grep -Fxq \
+  "params.oncotracer_nested_audit_policy_sha256 = '$samurai_policy_sha'" \
+  "$CONTEXT_DIR/samurai-nextflow-audit.config"
+(
+  cd "$REPOSITORY_ROOT"
+  sha256sum \
+    bin/scripts/ichorcna_plot_compat.R \
+    bin/scripts/v1_ichorcna_profile.R
+) > "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS"
 
 git -C "$REPOSITORY_ROOT" status --short > "$CONTEXT_DIR/git-status-${SESSION_ID}.txt"
 git -C "$REPOSITORY_ROOT" log -1 --format=fuller "$SOURCE_COMMIT" > "$CONTEXT_DIR/source-commit-${SESSION_ID}.txt"
@@ -1378,18 +1415,41 @@ probe_gistic() {
 }
 
 verify_qdnaseq_cache() {
-  local cache="$VALIDATION_ROOT/qdnaseq-bin-data"
-  local annotation="$cache/QDNAseq.hg38.100kbp.SR50.rds"
+  local relative annotation cache
+  relative="$(<"$CONTEXT_DIR/qdnaseq-annotation-relative-path.txt")"
+  [[ "$relative" == .oncotracer/reference-cache/qdnaseq-hg38-100kb-*/generations/generation-*/QDNAseq.hg38.100kbp.SR50.rds ]] || {
+    echo "ERROR: invalid qDNAseq annotation relative path: $relative" >&2
+    return 1
+  }
+  annotation="$VALIDATION_ROOT/$relative"
+  cache="$(dirname -- "$annotation")"
+  [[ "$(readlink -f -- "$annotation")" == "$annotation" ]] || {
+    echo "ERROR: qDNAseq annotation path is not physical: $annotation" >&2
+    return 1
+  }
   local source_rda="$cache/QDNAseq.hg38.100kbp.SR50.source.rda"
   local provenance="$annotation.provenance.tsv"
   verify_tree_manifest "$cache" "$CONTEXT_DIR/qdnaseq-bin-data-SHA256SUMS"
-  python3 - "$source_rda" "$annotation" "$provenance" <<'PY'
+  python3 - "$REPOSITORY_ROOT" "$source_rda" "$annotation" "$provenance" <<'PY'
 import csv
 import hashlib
 import sys
 from pathlib import Path
 
-source, annotation, provenance = map(Path, sys.argv[1:])
+repository = Path(sys.argv[1])
+source, annotation, provenance = map(Path, sys.argv[2:])
+sys.path.insert(0, str(repository))
+from oncotracer_cli.engine import (  # noqa: E402
+    _qdnaseq_generation_from_pointer,
+    _reference_identity,
+)
+
+cache = annotation.parent.parent.parent
+validated_generation = _qdnaseq_generation_from_pointer(
+    cache, 100, _reference_identity("qdnaseq-hg38-100kb")
+)
+if validated_generation != annotation.parent:
+    raise SystemExit("qDNAseq annotation failed exact current-pointer validation")
 expected_files = {source.name, annotation.name, provenance.name}
 observed_files = {path.name for path in source.parent.iterdir()}
 if observed_files != expected_files:
@@ -1502,12 +1562,15 @@ action_install_environments() {
   env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
     "$ENV_ROOT/qdnaseq/bin/Rscript" --vanilla -e \
     'library(Biobase); library(QDNAseq); cat("QDNASEQ_R_OK\n")'
-  local annotation="$VALIDATION_ROOT/qdnaseq-bin-data/QDNAseq.hg38.100kbp.SR50.rds"
-  env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+  local annotation annotation_relative
+  annotation="$(env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
     bash "$REPOSITORY_ROOT/bin/scripts/prepare_qdnaseq_bin_data.sh" \
       --binsize 100 \
-      --cache-dir "$VALIDATION_ROOT/qdnaseq-bin-data" \
-      --rscript "$ENV_ROOT/qdnaseq/bin/Rscript"
+      --rscript "$ENV_ROOT/qdnaseq/bin/Rscript" \
+      --project-root "$VALIDATION_ROOT")"
+  annotation_relative="${annotation#"$VALIDATION_ROOT"/}"
+  [[ "$annotation_relative" != "$annotation" ]]
+  printf '%s\n' "$annotation_relative" > "$CONTEXT_DIR/qdnaseq-annotation-relative-path.txt"
   env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
     "$ENV_ROOT/qdnaseq/bin/Rscript" --vanilla -e \
     'x <- readRDS(commandArgs(TRUE)[1]); stopifnot(inherits(x, "AnnotatedDataFrame")); cat("QDNASEQ_RDS_OK\n")' \
@@ -1517,16 +1580,22 @@ action_install_environments() {
   grep -F $'source_rda_sha256\t' "$annotation.provenance.tsv"
   grep -F $'rds_sha256\t' "$annotation.provenance.tsv"
   write_tree_manifest \
-    "$VALIDATION_ROOT/qdnaseq-bin-data" \
+    "$(dirname -- "$annotation")" \
     "$CONTEXT_DIR/qdnaseq-bin-data-SHA256SUMS"
 
   env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
     "$ENV_ROOT/ichorcna/bin/Rscript" --vanilla -e \
     'library(ichorCNA); cat("ICHORCNA_R_OK\n")'
+  env -u R_HOME -u R_LIBS -u R_LIBS_USER -u R_LIBS_SITE \
+    "$ENV_ROOT/ichorcna/bin/Rscript" --vanilla \
+    "$REPOSITORY_ROOT/tests/test_ichorcna_plot_compat.R" \
+    "$CONTEXT_DIR/ichorcna-zero-median-guard.pdf" \
+    | tee "$CONTEXT_DIR/ichorcna-plot-compat-probe.txt"
   test -x "$ENV_ROOT/ichorcna/bin/readCounter"
   probe_readcounter
 
   CUDA_VISIBLE_DEVICES='' NVIDIA_VISIBLE_DEVICES=void \
+  PYTHONDONTWRITEBYTECODE=1 \
     "$ENV_ROOT/classifier/bin/python" -c \
     'import huggingface_hub, jinja2, matplotlib, numpy, openpyxl, pandas, pypdf, reportlab, requests, safetensors, scipy, sklearn, torch, transformers; print("CLASSIFIER_PYTHON_CPU_OK")'
   test -x "$ENV_ROOT/gistic/bin/gistic2"
@@ -1575,6 +1644,9 @@ PY
   test -x "$ENV_ROOT/qdnaseq/bin/Rscript"
   test -x "$ENV_ROOT/ichorcna/bin/Rscript"
   test -x "$ENV_ROOT/ichorcna/bin/readCounter"
+  test -s "$CONTEXT_DIR/ichorcna-zero-median-guard.pdf"
+  grep -Fx "ICHORCNA_ZERO_MEDIAN_PLOT_GUARD_OK" \
+    "$CONTEXT_DIR/ichorcna-plot-compat-probe.txt"
   test -x "$ENV_ROOT/classifier/bin/python"
   test -x "$ENV_ROOT/gistic/bin/gistic2"
   probe_bwa
@@ -1735,6 +1807,8 @@ verify_prepare_configs() {
     "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina/.nextflow"; do
     cmp -s "$nested_home/config" "$CONTEXT_DIR/samurai-nextflow-audit.config"
   done
+  (cd "$REPOSITORY_ROOT" &&
+    sha256sum -c "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS")
   verify_tree_manifest "$CONFIG_DIR" "$CONTEXT_DIR/parity-config-SHA256SUMS"
 }
 
@@ -1743,6 +1817,7 @@ run_stage \
   "rewrite only lpwgs_root/outdir/force for separate frozen-v1.1 and copied-native-v2 QuickStart configurations; create nested v1 resource limits and container-aware trace fields" \
   action_prepare_configs verify_prepare_configs \
   "$CONTEXT_DIR/public-input-SHA256SUMS" "$CONTEXT_DIR/samurai-nextflow-audit.config" \
+  "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS" \
   "$REPOSITORY_ROOT/tests/make_parity_config.py"
 
 required_output_paths() {
@@ -1798,18 +1873,37 @@ verify_samurai_nextflow_audit_config() {
     "$CONTEXT_DIR/samurai-nextflow-audit.config"
 }
 
+capture_samurai_trace_inventory() {
+  local root="$1" destination="$2"
+  python3 "$REPOSITORY_ROOT/tests/verify_nested_samurai.py" \
+    --snapshot-root "$root" \
+    --snapshot-out "$destination"
+  [[ -s "$destination" ]]
+}
+
 generate_samurai_trace_audit() {
   local root="$1" mode="$2" expected_rows="$3" destination="$4" trace_copy="$5"
-  local selected="${6-}" temporary selected_output copy_tmp
+  local pre_inventory="$6" post_inventory="$7" delta_inventory="$8"
+  local artifact_prefix="$9" selected="${10-}" source_manifest_copy="${11-}"
+  local raw_source_dir="${12-}" marker_copy="${13-}"
+  local temporary selected_output copy_tmp
   temporary="$(mktemp "$TMP_DIR/samurai-trace-audit.XXXXXX")"
   if ! selected_output="$(
     python3 - \
       "$root" "$mode" "$expected_rows" \
-      "$CONTEXT_DIR/samurai-container-pins.tsv" "$temporary" "$selected" <<'PY'
+      "$CONTEXT_DIR/samurai-container-pins.tsv" "$temporary" \
+      "$pre_inventory" "$post_inventory" "$delta_inventory" \
+      "$artifact_prefix" "$selected" "$source_manifest_copy" \
+      "$raw_source_dir" "$marker_copy" "$REPOSITORY_ROOT/tests" <<'PY'
 import csv
 import hashlib
 import json
+import re
+import shutil
 import sys
+import tempfile
+from collections import Counter
+from contextlib import redirect_stdout
 from pathlib import Path
 
 root = Path(sys.argv[1]).resolve()
@@ -1817,7 +1911,21 @@ mode = sys.argv[2]
 expected_rows = int(sys.argv[3])
 pins_path = Path(sys.argv[4])
 destination = Path(sys.argv[5])
-selected_arg = sys.argv[6]
+pre_inventory = Path(sys.argv[6])
+post_inventory = Path(sys.argv[7])
+delta_inventory = Path(sys.argv[8])
+artifact_prefix = sys.argv[9]
+selected_arg = sys.argv[10]
+source_manifest_copy_arg = sys.argv[11]
+raw_source_dir_arg = sys.argv[12]
+marker_copy_arg = sys.argv[13]
+tests_dir = Path(sys.argv[14]).resolve()
+sys.path.insert(0, str(tests_dir))
+from combine_nested_samurai_traces import combine_root  # noqa: E402
+from combine_nested_samurai_traces import materialize_trace_sources  # noqa: E402
+from combine_nested_samurai_traces import recompute_preserved_trace_artifact  # noqa: E402
+from verify_nested_samurai import find_compat_marker  # noqa: E402
+from verify_nested_samurai import verify_current_trace_invocation  # noqa: E402
 
 expected_processes = {
     "illumina": {
@@ -1871,6 +1979,12 @@ expected_images = {
 }
 if mode not in expected_processes:
     raise SystemExit(f"unsupported SAMURAI trace mode: {mode}")
+if re.fullmatch(r"v1-(?:illumina|ont|hcc1143)-samurai", artifact_prefix) is None:
+    raise SystemExit(f"unsafe trace artifact prefix: {artifact_prefix!r}")
+trace_artifact = f"{artifact_prefix}-execution-trace.txt"
+manifest_artifact = f"{artifact_prefix}-trace-sources.tsv"
+source_files_artifact = f"{artifact_prefix}-trace-source-files"
+marker_artifact = f"{artifact_prefix}-ichorcna-plot-compat.tsv"
 
 pins = {}
 with pins_path.open(encoding="utf-8") as handle:
@@ -1886,47 +2000,72 @@ with pins_path.open(encoding="utf-8") as handle:
                 raise SystemExit(f"ambiguous SAMURAI image alias: {alias}")
             pins[alias] = (tag, digest)
 
-traces = sorted(root.rglob("execution_trace_*.txt"))
-if not traces:
-    raise SystemExit(f"no nested SAMURAI trace found under {root}")
-for trace in traces:
-    trace.resolve().relative_to(root)
-if selected_arg:
-    selected = Path(selected_arg).resolve()
-    selected.relative_to(root)
-    if selected not in [path.resolve() for path in traces]:
-        raise SystemExit(f"recorded SAMURAI trace is unavailable: {selected}")
-else:
-    selected = max(traces, key=lambda path: (path.stat().st_mtime_ns, str(path))).resolve()
+with redirect_stdout(sys.stderr):
+    selected, source_manifest, _ = combine_root(root)
+selected = selected.resolve()
+source_manifest = source_manifest.resolve()
+if selected_arg and selected_arg != trace_artifact:
+    raise SystemExit(
+        f"recorded combined SAMURAI artifact changed: expected {selected_arg!r}, "
+        f"observed {trace_artifact!r}"
+    )
+if bool(source_manifest_copy_arg) != bool(raw_source_dir_arg):
+    raise SystemExit("source-manifest copy and raw-source directory must be supplied together")
+if source_manifest_copy_arg:
+    source_manifest_copy = Path(source_manifest_copy_arg)
+    raw_source_dir = Path(raw_source_dir_arg)
+    if source_manifest_copy.name != manifest_artifact or raw_source_dir.name != source_files_artifact:
+        raise SystemExit("trace artifact output names do not match the deterministic contract")
+    source_manifest_copy.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source_manifest, source_manifest_copy)
+    materialize_trace_sources(root, source_manifest, raw_source_dir)
+    with tempfile.TemporaryDirectory(prefix=f"oncotracer-{artifact_prefix}-recompute-") as directory:
+        with redirect_stdout(sys.stderr):
+            recomputed, regenerated, _ = recompute_preserved_trace_artifact(
+                raw_source_dir, source_manifest_copy, Path(directory)
+            )
+        if recomputed.read_bytes() != selected.read_bytes():
+            raise SystemExit("preserved raw traces do not reproduce the combined trace")
+        if regenerated.read_bytes() != source_manifest_copy.read_bytes():
+            raise SystemExit("preserved raw traces do not reproduce the source manifest")
 
 rows = []
-processes = set()
+process_names = []
 containers = set()
 with selected.open(encoding="utf-8-sig", newline="") as handle:
     reader = csv.DictReader(handle, delimiter="\t")
-    required = {"name", "status", "exit", "container"}
+    required = {"hash", "name", "status", "exit", "container"}
     missing = required - set(reader.fieldnames or [])
     if missing:
         raise SystemExit(f"SAMURAI trace lacks required column(s): {sorted(missing)}")
     for row in reader:
         name = (row.get("name") or "").rstrip("\r")
+        normalized = re.sub(
+            r"\s+\([^()]*(?:\([^()]*\)[^()]*)*\)$", "", name.strip()
+        )
+        if ":SAMURAI:" in normalized:
+            normalized = "SAMURAI:" + normalized.rsplit(":SAMURAI:", 1)[1]
+        if normalized not in expected_processes[mode]:
+            continue
         status = (row.get("status") or "").rstrip("\r").upper()
         exit_code = (row.get("exit") or "").rstrip("\r")
-        container = (row.get("container") or "").rstrip("\r")
+        container = (row.get("container") or "").rstrip("\r").removeprefix("docker://")
+        task_hash = (row.get("hash") or "").rstrip("\r").lower()
         if status not in {"COMPLETED", "CACHED"} or exit_code != "0":
             raise SystemExit(
-                f"non-passing SAMURAI trace row: {name!r} status={status!r} exit={exit_code!r}"
+                f"non-passing contracted SAMURAI row: {name!r} "
+                f"status={status!r} exit={exit_code!r}"
             )
+        if re.fullmatch(r"[0-9a-f]{2}/[0-9a-f]{6,}", task_hash) is None:
+            raise SystemExit(f"invalid contracted SAMURAI task hash: {task_hash!r}")
         if container in {"", "-", "null"} or container not in pins:
             raise SystemExit(f"unresolved or forbidden SAMURAI container: {container!r}")
-        normalized = name.split(" (", 1)[0]
-        if ":SAMURAI:" in normalized:
-            normalized = "SAMURAI:" + normalized.split(":SAMURAI:", 1)[1]
-        processes.add(normalized)
         canonical, digest = pins[container]
         containers.add(canonical)
+        process_names.append(normalized)
         rows.append(
             {
+                "hash": task_hash,
                 "name": name,
                 "normalized_process": normalized,
                 "status": status,
@@ -1934,22 +2073,27 @@ with selected.open(encoding="utf-8-sig", newline="") as handle:
                 "container": container,
                 "canonical_container": canonical,
                 "repo_digest": digest,
+                "source_trace": row.get("source_trace", ""),
+                "source_row": row.get("source_row", ""),
             }
         )
-if len(rows) != expected_rows:
+
+processes = set(process_names)
+complete = (
+    len(rows) == expected_rows
+    and processes == expected_processes[mode]
+    and containers == expected_images[mode]
+)
+if not complete:
     raise SystemExit(
-        f"SAMURAI trace row count mismatch: expected {expected_rows}, observed {len(rows)}"
+        "SAMURAI combined trace contract mismatch: "
+        f"mode={mode!r} expected_rows={expected_rows} observed_rows={len(rows)} "
+        f"counts={dict(Counter(process_names))!r} "
+        f"missing_processes={sorted(expected_processes[mode] - processes)!r} "
+        f"extra_processes={sorted(processes - expected_processes[mode])!r} "
+        f"observed_containers={sorted(containers)!r}"
     )
-if processes != expected_processes[mode]:
-    raise SystemExit(
-        "SAMURAI process-set mismatch: "
-        f"expected={sorted(expected_processes[mode])!r} observed={sorted(processes)!r}"
-    )
-if containers != expected_images[mode]:
-    raise SystemExit(
-        "SAMURAI container-set mismatch: "
-        f"expected={sorted(expected_images[mode])!r} observed={sorted(containers)!r}"
-    )
+
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -1958,18 +2102,76 @@ def sha256(path):
             digest.update(chunk)
     return digest.hexdigest()
 
+with source_manifest.open(newline="", encoding="utf-8") as handle:
+    source_rows = list(csv.DictReader(handle, delimiter="\t"))
+available = []
+for source in source_rows:
+    source_path = (root / source["source_trace"]).resolve()
+    source_path.relative_to(root)
+    if sha256(source_path) != source["sha256"]:
+        raise SystemExit(f"source trace checksum changed: {source_path}")
+    available.append(
+        {
+            "relative_path": source["source_trace"],
+            "artifact_path": f"{source_files_artifact}/{source['source_trace']}",
+            "mtime_ns": int(source["mtime_ns"]),
+            "bytes": int(source["bytes"]),
+            "rows": int(source["rows"]),
+            "successful_rows": int(source["successful_rows"]),
+            "sha256": source["sha256"],
+        }
+    )
+
+
+invocation = verify_current_trace_invocation(
+    root,
+    pre_inventory,
+    source_manifest,
+    rows,
+    post_inventory,
+    delta_inventory,
+    require_ichorcna=mode == "ont",
+)
+compatibility = None
+if mode == "ont":
+    selected_marker, metadata, task_hash, marker_relative = find_compat_marker(
+        root, rows
+    )
+    if marker_copy_arg:
+        marker_copy = Path(marker_copy_arg)
+        if marker_copy.name != marker_artifact:
+            raise SystemExit("compatibility-marker artifact name is not deterministic")
+        marker_copy.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(selected_marker, marker_copy)
+    compatibility = {
+        "artifact": marker_artifact,
+        "relative_path": marker_relative.as_posix(),
+        "task_hash": task_hash,
+        "sha256": sha256(selected_marker),
+        "metadata": metadata,
+    }
+elif marker_copy_arg:
+    raise SystemExit("a compatibility-marker artifact is valid only for ONT")
+
 record = {
     "schema": "oncotracer-samurai-trace-audit-v1",
     "mode": mode,
-    "source_trace": str(selected),
+    "evidence_mode": "complete-combined-trace",
+    "source_trace": trace_artifact,
     "source_trace_sha256": sha256(selected),
-    "available_traces": [
-        {"path": str(path.resolve()), "sha256": sha256(path)} for path in traces
-    ],
+    "source_manifest": manifest_artifact,
+    "source_manifest_sha256": sha256(source_manifest),
+    "source_files": source_files_artifact,
+    "available_traces": available,
+    "contract_row_count": expected_rows,
     "row_count": len(rows),
     "processes": sorted(processes),
+    "contract_processes": sorted(expected_processes[mode]),
     "containers": sorted(containers),
+    "contract_containers": sorted(expected_images[mode]),
+    "ichorcna_plot_compat": compatibility,
     "rows": rows,
+    "trace_invocation": invocation,
 }
 destination.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 print(selected)
@@ -1993,16 +2195,36 @@ PY
 
 verify_samurai_trace_audit() {
   local root="$1" mode="$2" expected_rows="$3" evidence="$4" trace_copy="$5"
-  local source temporary temporary_trace
-  source="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["source_trace"])' "$evidence")"
+  local pre_inventory="$6" post_inventory="$7" delta_inventory="$8"
+  local artifact_prefix="$9" source_manifest="${10}" raw_sources="${11}"
+  local marker_copy="${12-}" temporary temporary_trace temporary_post temporary_delta
   temporary="$(mktemp "$TMP_DIR/samurai-trace-verify.XXXXXX")"
   temporary_trace="$(mktemp "$TMP_DIR/samurai-trace-copy-verify.XXXXXX")"
+  temporary_post="$(mktemp "$TMP_DIR/samurai-trace-post-verify.XXXXXX")"
+  temporary_delta="$(mktemp "$TMP_DIR/samurai-trace-delta-verify.XXXXXX")"
   generate_samurai_trace_audit \
-    "$root" "$mode" "$expected_rows" "$temporary" "$temporary_trace" "$source"
+    "$root" "$mode" "$expected_rows" "$temporary" "$temporary_trace" \
+    "$pre_inventory" "$temporary_post" "$temporary_delta" "$artifact_prefix" \
+    "${artifact_prefix}-execution-trace.txt" "" "" ""
   cmp -s "$temporary" "$evidence"
   cmp -s "$temporary_trace" "$trace_copy"
-  rm -f -- "$temporary" "$temporary_trace"
+  cmp -s "$temporary_post" "$post_inventory"
+  cmp -s "$temporary_delta" "$delta_inventory"
+  python3 "$REPOSITORY_ROOT/tests/verify_nested_samurai.py" \
+    --verify-artifact-context "$CONTEXT_DIR" \
+    --artifact-prefix "$artifact_prefix" \
+    --artifact-mode "$mode" \
+    --artifact-expected-rows "$expected_rows"
+  python3 "$REPOSITORY_ROOT/tests/parity_audit.py" verify-trace-proof \
+    --raw-root "$raw_sources" \
+    --source-manifest "$source_manifest" \
+    --combined-trace "$trace_copy"
+  if [[ "$mode" == ont ]]; then
+    [[ -s "$marker_copy" ]]
+  fi
+  rm -f -- "$temporary" "$temporary_trace" "$temporary_post" "$temporary_delta"
 }
+
 action_v1_quickstart1() {
   verify_prepare_pinned_nextflow
   verify_prepare_pinned_samurai
@@ -2011,34 +2233,53 @@ action_v1_quickstart1() {
     "$ANALYSIS_ROOT/v1/illumina/01_samurai_illumina"
   install_samurai_nextflow_audit_config \
     "$ANALYSIS_ROOT/v1/ont/01_samurai_ont"
-  mkdir -p "$WORK_DIR/v1-launch/quickstart1"
+  local report_session="$REPORT_DIR/frozen-v1.1-quickstart1-$SESSION_ID"
+  mkdir -p "$WORK_DIR/v1-launch/quickstart1" "$report_session"
   (
     export PATH="$TOOL_BIN:$PATH"
     [[ "$(command -v nextflow)" == "$NEXTFLOW" ]]
     cd "$WORK_DIR/v1-launch/quickstart1"
-    "$NEXTFLOW" -log "$REPORT_DIR/v1-illumina.nextflow.log" run \
+    capture_samurai_trace_inventory \
+      "$ANALYSIS_ROOT/v1/illumina/01_samurai_illumina" \
+      "$CONTEXT_DIR/v1-illumina-samurai-trace-pre.tsv"
+    "$NEXTFLOW" -log "$report_session/v1-illumina.nextflow.log" run \
       "$V1_SOURCE_DIR/main.nf" --docker \
       --docker_image "$V1_DOCKER_IMAGE" \
       -params-file "$CONFIG_DIR/v1-illumina.yml" \
       -work-dir "$WORK_DIR/v1-illumina" \
-      -with-report "$REPORT_DIR/v1-illumina.html" \
-      -with-trace "$REPORT_DIR/v1-illumina.tsv" \
-      -resume
-    "$NEXTFLOW" -log "$REPORT_DIR/v1-ont.nextflow.log" run \
+      -with-report "$report_session/v1-illumina.html" \
+      -with-trace "$report_session/v1-illumina.tsv"
+    capture_samurai_trace_inventory \
+      "$ANALYSIS_ROOT/v1/ont/01_samurai_ont" \
+      "$CONTEXT_DIR/v1-ont-samurai-trace-pre.tsv"
+    "$NEXTFLOW" -log "$report_session/v1-ont.nextflow.log" run \
       "$V1_SOURCE_DIR/main.nf" --docker \
       --docker_image "$V1_DOCKER_IMAGE" \
       -params-file "$CONFIG_DIR/v1-ont.yml" \
       -work-dir "$WORK_DIR/v1-ont" \
-      -with-report "$REPORT_DIR/v1-ont.html" \
-      -with-trace "$REPORT_DIR/v1-ont.tsv" \
-      -resume
+      -with-report "$report_session/v1-ont.html" \
+      -with-trace "$report_session/v1-ont.tsv"
   )
   generate_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/illumina/01_samurai_illumina" illumina 12 \
     "$CONTEXT_DIR/v1-illumina-samurai-trace-audit.json" \
-    "$CONTEXT_DIR/v1-illumina-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-illumina-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-delta.tsv" \
+    "v1-illumina-samurai" "" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-sources.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-source-files" ""
   generate_samurai_trace_audit "$ANALYSIS_ROOT/v1/ont/01_samurai_ont" ont 10 \
-    "$CONTEXT_DIR/v1-ont-samurai-trace-audit.json" "$CONTEXT_DIR/v1-ont-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-ont-samurai-trace-audit.json" \
+    "$CONTEXT_DIR/v1-ont-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-delta.tsv" \
+    "v1-ont-samurai" "" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-sources.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-source-files" \
+    "$CONTEXT_DIR/v1-ont-samurai-ichorcna-plot-compat.tsv"
   write_tree_manifest "$ANALYSIS_ROOT/v1/illumina" "$CONTEXT_DIR/v1-illumina-output-SHA256SUMS"
   write_tree_manifest "$ANALYSIS_ROOT/v1/ont" "$CONTEXT_DIR/v1-ont-output-SHA256SUMS"
 }
@@ -2055,9 +2296,23 @@ verify_v1_quickstart1() {
   verify_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/illumina/01_samurai_illumina" illumina 12 \
     "$CONTEXT_DIR/v1-illumina-samurai-trace-audit.json" \
-    "$CONTEXT_DIR/v1-illumina-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-illumina-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-delta.tsv" \
+    "v1-illumina-samurai" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-sources.tsv" \
+    "$CONTEXT_DIR/v1-illumina-samurai-trace-source-files" ""
   verify_samurai_trace_audit "$ANALYSIS_ROOT/v1/ont/01_samurai_ont" ont 10 \
-    "$CONTEXT_DIR/v1-ont-samurai-trace-audit.json" "$CONTEXT_DIR/v1-ont-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-ont-samurai-trace-audit.json" \
+    "$CONTEXT_DIR/v1-ont-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-delta.tsv" \
+    "v1-ont-samurai" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-sources.tsv" \
+    "$CONTEXT_DIR/v1-ont-samurai-trace-source-files" \
+    "$CONTEXT_DIR/v1-ont-samurai-ichorcna-plot-compat.tsv"
 }
 
 run_stage \
@@ -2072,8 +2327,12 @@ run_stage \
   "$CONTEXT_DIR/samurai-container-pins.tsv" \
   "$CONTEXT_DIR/samurai-container-identities.tsv" \
   "$CONTEXT_DIR/samurai-nextflow-audit.config" \
+  "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS" \
   "$CONTEXT_DIR/public-input-SHA256SUMS" "$CONTEXT_DIR/validation-reference-SHA256SUMS" \
-  "$CONFIG_DIR/v1-illumina.yml" "$CONFIG_DIR/v1-ont.yml"
+  "$CONFIG_DIR/v1-illumina.yml" "$CONFIG_DIR/v1-ont.yml" \
+  "$REPOSITORY_ROOT/tests/verify_nested_samurai.py" \
+  "$REPOSITORY_ROOT/tests/combine_nested_samurai_traces.py" \
+  "$REPOSITORY_ROOT/tests/parity_audit.py"
 
 action_v1_quickstart2() {
   verify_prepare_pinned_nextflow
@@ -2081,23 +2340,33 @@ action_v1_quickstart2() {
   verify_prepare_samurai_containers
   install_samurai_nextflow_audit_config \
     "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina"
-  mkdir -p "$WORK_DIR/v1-launch/quickstart2"
+  local report_session="$REPORT_DIR/frozen-v1.1-quickstart2-$SESSION_ID"
+  mkdir -p "$WORK_DIR/v1-launch/quickstart2" "$report_session"
   (
     export PATH="$TOOL_BIN:$PATH"
     [[ "$(command -v nextflow)" == "$NEXTFLOW" ]]
     cd "$WORK_DIR/v1-launch/quickstart2"
-    "$NEXTFLOW" -log "$REPORT_DIR/v1-hcc1143.nextflow.log" run \
+    capture_samurai_trace_inventory \
+      "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina" \
+      "$CONTEXT_DIR/v1-hcc1143-samurai-trace-pre.tsv"
+    "$NEXTFLOW" -log "$report_session/v1-hcc1143.nextflow.log" run \
       "$V1_SOURCE_DIR/main.nf" --docker \
       --docker_image "$V1_DOCKER_IMAGE" \
       -params-file "$CONFIG_DIR/v1-hcc1143.yml" \
       -work-dir "$WORK_DIR/v1-hcc1143" \
-      -with-report "$REPORT_DIR/v1-hcc1143.html" \
-      -with-trace "$REPORT_DIR/v1-hcc1143.tsv" \
-      -resume
+      -with-report "$report_session/v1-hcc1143.html" \
+      -with-trace "$report_session/v1-hcc1143.tsv"
   )
   generate_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina" illumina 32 \
-    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-audit.json" "$CONTEXT_DIR/v1-hcc1143-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-audit.json" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-delta.tsv" \
+    "v1-hcc1143-samurai" "" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-sources.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-source-files" ""
   write_tree_manifest "$ANALYSIS_ROOT/v1/hcc1143" "$CONTEXT_DIR/v1-hcc1143-output-SHA256SUMS"
 }
 
@@ -2111,7 +2380,13 @@ verify_v1_quickstart2() {
   verify_samurai_trace_audit \
     "$ANALYSIS_ROOT/v1/hcc1143/01_samurai_illumina" illumina 32 \
     "$CONTEXT_DIR/v1-hcc1143-samurai-trace-audit.json" \
-    "$CONTEXT_DIR/v1-hcc1143-samurai-execution-trace.txt"
+    "$CONTEXT_DIR/v1-hcc1143-samurai-execution-trace.txt" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-pre.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-post.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-delta.tsv" \
+    "v1-hcc1143-samurai" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-sources.tsv" \
+    "$CONTEXT_DIR/v1-hcc1143-samurai-trace-source-files" ""
 }
 
 run_stage \
@@ -2126,8 +2401,11 @@ run_stage \
   "$CONTEXT_DIR/samurai-container-pins.tsv" \
   "$CONTEXT_DIR/samurai-container-identities.tsv" \
   "$CONTEXT_DIR/samurai-nextflow-audit.config" \
+  "$CONTEXT_DIR/v1-ichorcna-plot-compat-SHA256SUMS" \
   "$CONTEXT_DIR/public-input-SHA256SUMS" "$CONTEXT_DIR/validation-reference-SHA256SUMS" \
-  "$CONFIG_DIR/v1-hcc1143.yml"
+  "$CONFIG_DIR/v1-hcc1143.yml" "$REPOSITORY_ROOT/tests/verify_nested_samurai.py" \
+  "$REPOSITORY_ROOT/tests/combine_nested_samurai_traces.py" \
+  "$REPOSITORY_ROOT/tests/parity_audit.py"
 
 action_v2_quickstart1() {
   run_copied_binary run --backend conda --config "$CONFIG_DIR/v2-illumina.yml" --threads "$THREADS"
@@ -2194,6 +2472,44 @@ if not checks or not all(value is True for value in checks.values()):
 PY
 }
 
+copy_immutable_audit_file() {
+  local source="$1" destination="$2" source_metadata destination_metadata
+  if [[ ! -f "$source" || -L "$source" ]]; then
+    printf 'Immutable audit source is not a physical regular file: %s\n' "$source" >&2
+    return 1
+  fi
+  source_metadata="$(stat -c '%a:%h' -- "$source")"
+  if [[ "$source_metadata" != "444:1" ]]; then
+    printf 'Immutable audit source has unsafe mode or link count (%s): %s\n' \
+      "$source_metadata" "$source" >&2
+    return 1
+  fi
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    if [[ ! -f "$destination" || -L "$destination" ]]; then
+      printf 'Immutable audit destination is not a physical regular file: %s\n' "$destination" >&2
+      return 1
+    fi
+    destination_metadata="$(stat -c '%a:%h' -- "$destination")"
+    if [[ "$destination_metadata" != "444:1" ]]; then
+      printf 'Immutable audit destination has unsafe mode or link count (%s): %s\n' \
+        "$destination_metadata" "$destination" >&2
+      return 1
+    fi
+    if ! cmp -s -- "$source" "$destination"; then
+      printf 'Immutable audit destination differs from its source: %s\n' "$destination" >&2
+      return 1
+    fi
+    return 0
+  fi
+  cp --no-dereference --update=none -- "$source" "$destination"
+  if [[ ! -f "$destination" || -L "$destination" ]] ||
+     [[ "$(stat -c '%a:%h' -- "$destination")" != "444:1" ]] ||
+     ! cmp -s -- "$source" "$destination"; then
+    printf 'Immutable audit copy could not be authenticated: %s\n' "$destination" >&2
+    return 1
+  fi
+}
+
 populate_audit_context() {
   local destination="$1"
   mkdir -p \
@@ -2224,8 +2540,13 @@ populate_audit_context() {
   cp "$CONTEXT_DIR/public-input-SHA256SUMS" "$destination/"
   cp "$CONTEXT_DIR/validation-reference-SHA256SUMS" "$destination/"
   cp "$CONTEXT_DIR/qdnaseq-bin-data-SHA256SUMS" "$destination/qdnaseq-annotation/"
-  cp "$VALIDATION_ROOT/qdnaseq-bin-data/QDNAseq.hg38.100kbp.SR50.rds.provenance.tsv" \
-    "$destination/qdnaseq-annotation/"
+  local qdnaseq_annotation qdnaseq_provenance
+  qdnaseq_annotation="$VALIDATION_ROOT/$(<"$CONTEXT_DIR/qdnaseq-annotation-relative-path.txt")"
+  qdnaseq_provenance="$(dirname -- "$qdnaseq_annotation")/QDNAseq.hg38.100kbp.SR50.rds.provenance.tsv"
+  [[ "$qdnaseq_provenance" == "$qdnaseq_annotation.provenance.tsv" ]]
+  copy_immutable_audit_file \
+    "$qdnaseq_provenance" \
+    "$destination/qdnaseq-annotation/QDNAseq.hg38.100kbp.SR50.rds.provenance.tsv"
   cp "$CONTEXT_DIR"/*-output-SHA256SUMS "$destination/"
   cp "$CONTEXT_DIR"/native-*.explicit.txt "$destination/environments/"
   cp "$CONFIG_DIR"/*.yml "$destination/configs/"
@@ -2412,6 +2733,19 @@ PY
   (cd "$BUNDLE_DIR" && sha256sum ./*.tar.gz > SHA256SUMS)
 }
 
+verify_preserved_trace_bundle_context() {
+  local context="$1" prefix="$2" mode="$3" expected_rows="$4"
+  python3 "$REPOSITORY_ROOT/tests/verify_nested_samurai.py" \
+    --verify-artifact-context "$context" \
+    --artifact-prefix "$prefix" \
+    --artifact-mode "$mode" \
+    --artifact-expected-rows "$expected_rows"
+  python3 "$REPOSITORY_ROOT/tests/parity_audit.py" verify-trace-proof \
+    --raw-root "$context/${prefix}-trace-source-files" \
+    --source-manifest "$context/${prefix}-trace-sources.tsv" \
+    --combined-trace "$context/${prefix}-execution-trace.txt"
+}
+
 verify_bundle_audits() {
   local extracted
   assert_parity_report "$AUDIT_ROOT/quickstart1/illumina/parity_report.json"
@@ -2444,13 +2778,26 @@ PY
   verify_tree_manifest "$extracted/quickstart1" "$extracted/quickstart1/SHA256SUMS"
   verify_tree_manifest "$extracted/quickstart2" "$extracted/quickstart2/SHA256SUMS"
   verify_tree_manifest "$extracted" "$extracted/SHA256SUMS"
+  verify_preserved_trace_bundle_context \
+    "$extracted/quickstart1/context/context-records" \
+    v1-illumina-samurai illumina 12
+  verify_preserved_trace_bundle_context \
+    "$extracted/quickstart1/context/context-records" \
+    v1-ont-samurai ont 10
+  verify_preserved_trace_bundle_context \
+    "$extracted/quickstart2/context/context-records" \
+    v1-hcc1143-samurai illumina 32
 }
 
 run_stage \
   "bundle-release-audits" \
   "verify every parity report and unchanged threshold; create deterministic QuickStart and combined audit tarballs plus SHA256SUMS" \
   action_bundle_audits verify_bundle_audits \
-  "$AUDIT_ROOT/quickstart1" "$AUDIT_ROOT/quickstart2" "$RELEASE_CANDIDATE_DIR/SHA256SUMS" "$LEDGER"
+  "$AUDIT_ROOT/quickstart1" "$AUDIT_ROOT/quickstart2" \
+  "$RELEASE_CANDIDATE_DIR/SHA256SUMS" "$LEDGER" \
+  "$REPOSITORY_ROOT/tests/verify_nested_samurai.py" \
+  "$REPOSITORY_ROOT/tests/combine_nested_samurai_traces.py" \
+  "$REPOSITORY_ROOT/tests/parity_audit.py"
 
 # The generic stage runner records success only after its action and verifier.
 # Repack once after that row exists so the released evidence contains the

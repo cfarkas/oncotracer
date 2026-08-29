@@ -35,13 +35,14 @@ nav:
   - Full Tutorial:
       - Complete PRJNA754199 archive: full_tutorial.md
   - Other Example Runs:
-      - Mock cohort — six tumors + four normals: six_tumor_four_control.md
+      - Mock cohort — six tumors + four independent normals: six_tumor_four_normal.md
   - Run and Configure:
       - Choose a Configuration Route: configuration.md
       - Native Workflow Overview: running.md
       - Canonical Native YAML: configuration_v2.md
       - Illumina Setup: configuration/illumina.md
       - ONT Setup: configuration/ont.md
+      - Optional ONT Methylation: configuration/methylation.md
       - Pathology and Classifier: configuration/pathology.md
       - Advanced Refinement: configuration/refinement.md
       - All Parameters: configuration/parameter_reference.md

@@ -53,11 +53,85 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("optional cna classifier", architecture)
         self.assertNotIn("nextflow run", configuration)
 
+    def test_parity_documentation_matches_the_executable_gate(self) -> None:
+        text = (ROOT / "docs/parity_release.md").read_text(encoding="utf-8")
+        self.assertIn("state-specific CNA genomic-coverage recall and precision", text)
+        self.assertIn("corrected input log₂-signal Pearson correlation", text)
+        self.assertIn("complete ten-process contract", text)
+        self.assertIn("exact Nextflow work directory", text)
+        self.assertIn("An incomplete resume fragment", text)
+        self.assertNotIn("four-process final-resume", text)
+        self.assertNotIn("event recall and precision of at least", text)
+        self.assertNotIn("refined-bin Pearson correlation", text)
+
     def test_mkdocs_contains_assurance_pages(self) -> None:
         text = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
         for page in ("native_architecture.md", "parity_release.md", "migration_v1_to_v2.md"):
             self.assertIn(page, text)
 
+    def test_standalone_payload_cache_contract_is_documented(self) -> None:
+        architecture = (ROOT / "docs/native_architecture.md").read_text(
+            encoding="utf-8"
+        )
+        installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
+        troubleshooting = (ROOT / "docs/troubleshooting.md").read_text(
+            encoding="utf-8"
+        )
+
+        cache_layout = (
+            "$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload"
+        )
+        self.assertIn(cache_layout, architecture)
+        self.assertIn(cache_layout, installation)
+        for required in (
+            "canonical path",
+            "normalized mode",
+            "size",
+            "SHA-256",
+            "Symlinks",
+            "special files",
+        ):
+            self.assertIn(required, architecture)
+        self.assertIn("process-scoped temporary payload", architecture)
+        self.assertIn("does not populate the persistent cache", installation)
+        self.assertIn("unset ONCOTRACER_PAYLOAD_CACHE", troubleshooting)
+        self.assertIn("preserves them rather than recursively deleting", troubleshooting)
+        self.assertIn("success, error, or interruption", troubleshooting)
+
+    def test_installer_ownership_and_atomic_replacement_are_documented(self) -> None:
+        installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
+        architecture = (ROOT / "docs/native_architecture.md").read_text(
+            encoding="utf-8"
+        )
+        parameters = (ROOT / "docs/configuration/parameter_reference.md").read_text(
+            encoding="utf-8"
+        )
+        troubleshooting = (ROOT / "docs/troubleshooting.md").read_text(encoding="utf-8")
+        poetry = (ROOT / "docs/poetry.md").read_text(encoding="utf-8")
+
+        for required in (
+            "never adopts a populated Conda directory",
+            "ownership-checked lock",
+            "Unrelated siblings",
+            "same-directory transaction",
+            "container provenance",
+            "Existing unowned files",
+        ):
+            self.assertIn(required, installation)
+        for required in (
+            "authenticated rollback journal",
+            "fixed isolated `poetry-runtime` child",
+            "created directly at its final canonical prefix",
+            "exact file inventory",
+            "checkout-local virtual",
+            "Neither `--force` path adopts or pre-deletes",
+        ):
+            self.assertIn(required, architecture)
+        self.assertIn("Backend-irrelevant options are errors", parameters)
+        self.assertIn("cannot adopt or erase an unowned", troubleshooting)
+        self.assertIn("does not alter Poetry's global environment", poetry)
+        self.assertIn("poetry-runtime/bin/oncotracer", poetry)
+        self.assertNotIn("poetry run oncotracer", poetry)
     def test_native_ci_uses_exact_semantic_tool_probes(self) -> None:
         workflow = (ROOT / ".github/workflows/native-v2-ci.yml").read_text(
             encoding="utf-8"
@@ -139,6 +213,25 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("samurai-container-identities.tsv", text)
         self.assertIn("samurai-nextflow-audit.config", text)
         self.assertIn("oncotracer-samurai-trace-audit-v1", text)
+        self.assertIn("from combine_nested_samurai_traces import combine_root", text)
+        self.assertIn("from contextlib import redirect_stdout", text)
+        self.assertIn("with redirect_stdout(sys.stderr):", text)
+        self.assertIn("from verify_nested_samurai import find_compat_marker", text)
+        self.assertIn("v1-ichorcna-plot-compat-SHA256SUMS", text)
+        self.assertIn("withName: ICHORCNA_RUN", text)
+        self.assertIn('"evidence_mode": "complete-combined-trace"', text)
+        self.assertNotIn("exact-ont-final-resume-trace", text)
+        self.assertIn('"contract_containers": sorted(expected_images[mode])', text)
+        self.assertIn('"task_hash": task_hash', text)
+        self.assertIn('"relative_path": marker_relative.as_posix()', text)
+        self.assertIn("executor.queueSize = 4", text)
+        self.assertIn("oncotracer_nested_audit_policy_sha256", text)
+        self.assertNotIn("env.ONCOTRACER_NESTED_AUDIT_POLICY_SHA256", text)
+        self.assertIn("cache = false", text)
+        self.assertIn('$REPORT_DIR/frozen-v1.1-quickstart1-$SESSION_ID', text)
+        self.assertIn('$REPORT_DIR/frozen-v1.1-quickstart2-$SESSION_ID', text)
+        self.assertNotRegex(text, r"(?m)^\s+-resume\s*$")
+        self.assertNotIn("selected = max(traces", text)
         self.assertIn('"container"', text)
         self.assertIn("unresolved or forbidden SAMURAI container", text)
         for expected_rows in (
@@ -173,6 +266,25 @@ class NativeDocumentationTests(unittest.TestCase):
             self.assertIn(f'ENV_ROOT/{environment}', text)
         for threshold in ("0.80", "0.90", "0.95", "0.98", "0.08"):
             self.assertIn(threshold, text)
+
+        hosted_driver = (ROOT / "scripts/ci_native_parity.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual(
+            hosted_driver.count('"$NEXTFLOW" -log "$NEXTFLOW_REPORT_ROOT/'), 3
+        )
+        self.assertIn("executor.queueSize = 4", hosted_driver)
+        self.assertIn("seal_nested_config", hosted_driver)
+        self.assertIn("oncotracer_nested_audit_policy_sha256", hosted_driver)
+        self.assertNotIn(
+            "env.ONCOTRACER_NESTED_AUDIT_POLICY_SHA256", hosted_driver
+        )
+        self.assertIn("cache = false", hosted_driver)
+        self.assertNotIn("-resume 2>&1", hosted_driver)
+        self.assertIn(
+            'readonly NEXTFLOW_REPORT_ROOT="$REPORT_ROOT/frozen-v1.1-$PARITY_SESSION_ID"',
+            hosted_driver,
+        )
 
         self.assertIn('cd "$TMP_DIR"', text)
         self.assertIn('env -u PYTHONHOME -u PYTHONPATH "$BINARY" "$@"', text)

@@ -33,6 +33,16 @@ project/
 
 Keep inputs, configuration, reference/cache, and results below a small number of absolute project roots. OncoTracer derives Docker and Singularity mounts from the YAML paths.
 
+## Reference storage safety
+
+OncoTracer recognizes an existing `references/samurai_hg38` directory as an external shared reference. It reads that directory but never downloads, rebuilds, repairs, or removes files there. The FASTA, FAI, sequence dictionary, BWA index, minimap2 index, immutable manifests, physical reader locks, and indexing-tool identities must all match the pinned native-v2 contract. A plain pre-existing FASTA/index directory without OncoTracer's `.oncotracer/locks/` and `.oncotracer/reference-index-provenance/` records is intentionally rejected: OncoTracer does not adopt or add metadata to an external reference. An incomplete, changed, or internally symlinked shared reference fails before analysis.
+
+If `references/samurai_hg38` does not exist, OncoTracer creates a marker-owned, content-addressed cache under `.oncotracer/reference-cache/`. Only that owned cache may be populated or transactionally rebuilt. The pinned ichorCNA hg38/500 kb assets follow the same rule: an existing `references/samurai_ichorcna_hg38_500kb` is read-only; otherwise verified assets are downloaded to the owned cache. The full five-file ichorCNA bundle is held under a shared reader lease and re-hashed before and after caller execution; owned-cache repair takes the corresponding exclusive lease.
+
+qDNAseq hg38 annotations also use a marker-owned cache below `.oncotracer/reference-cache/`. OncoTracer verifies an immutable upstream commit and source SHA-256, builds a complete three-file bundle in a private staging directory, and publishes one content-addressed generation atomically while holding a physical lock. It revalidates that generation before and after qDNAseq uses it. A legacy `.oncotracer/qdnaseq-bin-data` directory is never adopted, repaired, overwritten, or deleted.
+
+Do not copy an ownership marker into an unrelated or shared directory to make OncoTracer overwrite it.
+
 ## Illumina input
 
 ### Automatic sample table
@@ -117,26 +127,12 @@ illumina_caller: qdnaseq
 illumina_binsize_kb: 100
 ```
 
-## Illumina local normal panel
+## Illumina normal rows
 
-Automatic Setup applies the following contract:
-
-- zero normal rows: no local panel;
-- one normal row: rejected;
-- two or more normal rows: build and apply a local qDNAseq reference;
-- corrected downstream CNA outputs contain tumor samples only.
-
-Manual YAML:
-
-```yaml
-illumina_build_pon: true
-illumina_pon_normal_samples: Control_A,Control_B
-illumina_pon_min_normals: 2
-illumina_pon_name: study_local_PoN
-illumina_pon_min_mapq: 37
-```
-
-Every listed panel sample must exist in the samplesheet and be marked `normal`.
+Every samplesheet row is an analysis sample. The `normal` value records the
+submitted sample status, but does not make that row a reference input. Native
+qDNAseq analyzes normal and tumor rows independently and writes per-sample
+outputs for both. OncoTracer does not create a local panel from the normal rows.
 
 ## ONT input
 
@@ -180,19 +176,6 @@ ont_sample_names: Patient_A,Patient_B
 
 The two lists must have identical lengths and order.
 
-## Optional ONT normal input
-
-A manual configuration may define a separate normal barcode root:
-
-```yaml
-ont_normal_folder: /absolute/path/project/input/normal_fastq_pass
-ont_normal_barcodes: barcode01,barcode02
-ont_normal_sample_names: Normal_A,Normal_B
-ont_build_pon: true
-```
-
-Use the supported study design and validate the generated summaries before interpretation.
-
 ## Optional pathology CSV
 
 A matched pathology table needs a sequencing sample identifier, case identifier, and diagnosis text:
@@ -231,7 +214,7 @@ Confirm that:
 - FASTQs are non-empty and compressed files pass `gzip -t`;
 - R1 and R2 belong to the same sample;
 - all Illumina samples use one layout;
-- local-panel controls are exact normal IDs;
+- every tumor/normal status matches the intended sample identity;
 - ONT barcode and sample lists align positionally;
 - sample names are unique and match pathology identifiers;
 - the result directory is dedicated to the experiment.

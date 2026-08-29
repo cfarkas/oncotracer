@@ -1,0 +1,4488 @@
+"""Storage-safe, ownership-bound installation transactions."""
+
+from __future__ import annotations
+
+import contextlib
+import ctypes
+import errno
+import fcntl
+import hashlib
+import io
+import itertools
+import json
+import os
+import re
+import stat
+import subprocess
+import sys
+import tarfile
+import time
+import uuid
+import venv
+import zipfile
+from collections.abc import Iterator, Mapping, Sequence
+from contextvars import ContextVar
+from dataclasses import dataclass
+from pathlib import Path
+
+from . import __version__
+from .provenance import ProvenanceError, get_provenance
+from .runtime import OncoTracerError, sha256_file
+
+
+CONDA_BASE_SCHEMA = "oncotracer-conda-install-root-v1"
+CONDA_ENV_SCHEMA = "oncotracer-conda-environment-v1"
+POETRY_ENV_SCHEMA = "oncotracer-poetry-runtime-v1"
+SIF_SCHEMA = "oncotracer-sif-install-v1"
+TRANSACTION_SCHEMA = "oncotracer-install-transaction-v1"
+TRANSACTION_OWNER_SCHEMA = "oncotracer-install-transaction-owner-v1"
+LOCK_SCHEMA = "oncotracer-install-lock-v1"
+INVENTORY_SCHEMA = "oncotracer-install-inventory-v1"
+CLEANUP_INVENTORY_SCHEMA = "oncotracer-install-cleanup-inventory-v1"
+MAX_INVENTORY_JSON_BYTES = 512 * 1024 * 1024
+TARGET_CLAIM_SCHEMA = "oncotracer-install-target-claim-v2"
+# A target claim contains only fixed-shape ownership metadata, one canonical
+# filesystem path, and (once sealed) a fixed-shape child marker. It must never
+# embed the variable-size environment inventory.
+MAX_TARGET_CLAIM_JSON_BYTES = 64 * 1024
+
+CONDA_NAMES = ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
+MANAGED_CHILDREN = (*CONDA_NAMES, "poetry-runtime")
+BASE_MARKER = ".oncotracer-conda-root.json"
+ENV_MARKER = ".oncotracer-environment.json"
+POETRY_MARKER = ".oncotracer-poetry-runtime.json"
+CHILD_INVENTORY = ".oncotracer-install-inventory.json"
+_HEX_32 = re.compile(r"[0-9a-f]{32}")
+_HEX_40 = re.compile(r"[0-9a-f]{40}")
+_HEX_64 = re.compile(r"[0-9a-f]{64}")
+_CLI_INSTALL_TARGET_ARGUMENTS: ContextVar[frozenset[Path]] = ContextVar(
+    "oncotracer_cli_install_target_arguments", default=frozenset()
+)
+
+
+def _absolute(path: Path) -> Path:
+    return Path(os.path.abspath(os.fspath(path.expanduser())))
+
+
+def _source_identity() -> dict[str, object]:
+    try:
+        provenance = get_provenance()
+    except ProvenanceError as error:
+        raise OncoTracerError(
+            f"installer cannot establish OncoTracer source identity: {error}"
+        ) from error
+    commit = provenance.get("source_commit")
+    source_sha256 = provenance.get("source_sha256")
+    if provenance.get("oncotracer_version") != __version__:
+        raise OncoTracerError(
+            "installer provenance version does not match this OncoTracer executable"
+        )
+    if provenance.get("source_tree_dirty") is not False:
+        raise OncoTracerError(
+            "installer requires a clean, exactly identified OncoTracer source tree"
+        )
+    if not isinstance(commit, str) or not _HEX_40.fullmatch(commit):
+        raise OncoTracerError(
+            "installer requires an exact 40-character OncoTracer source commit"
+        )
+    if not isinstance(source_sha256, str) or not _HEX_64.fullmatch(source_sha256):
+        raise OncoTracerError(
+            "installer requires an exact OncoTracer source archive SHA-256"
+        )
+    return {
+        "oncotracer_version": __version__,
+        "source_commit": commit,
+        "source_sha256": source_sha256,
+    }
+
+
+def _valid_source(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value)
+        == {
+            "oncotracer_version",
+            "source_commit",
+            "source_sha256",
+        }
+        and value.get("oncotracer_version") == __version__
+        and isinstance(value.get("source_commit"), str)
+        and bool(_HEX_40.fullmatch(str(value["source_commit"])))
+        and isinstance(value.get("source_sha256"), str)
+        and bool(_HEX_64.fullmatch(str(value["source_sha256"])))
+    )
+
+
+def _reject_symlink_components(path: Path) -> None:
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current /= part
+        try:
+            metadata = current.lstat()
+        except FileNotFoundError:
+            break
+        except OSError as error:
+            raise OncoTracerError(
+                f"could not inspect installer target component {current}: {error}"
+            ) from error
+        if stat.S_ISLNK(metadata.st_mode):
+            raise OncoTracerError(
+                f"installer targets must not contain symlinks: {current}"
+            )
+
+
+def _broad_targets() -> set[Path]:
+    broad = {
+        Path("/"),
+        _absolute(Path.home()),
+        Path("/home"),
+        Path("/media"),
+        Path("/mnt"),
+        Path("/opt"),
+        Path("/srv"),
+        Path("/tmp"),
+        Path("/usr"),
+        Path("/usr/local"),
+        Path("/var"),
+        Path("/var/tmp"),
+    }
+    for name in ("XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME"):
+        if value := os.environ.get(name):
+            broad.add(_absolute(Path(value)))
+    return broad
+
+
+def _guard_dedicated(path: Path, label: str) -> Path:
+    path = _absolute(path)
+    if path in _broad_targets() or (os.path.lexists(path) and os.path.ismount(path)):
+        raise OncoTracerError(
+            f"{label} must be a dedicated child path, not a broad system, home, "
+            f"temporary, storage, or XDG root: {path}"
+        )
+    _reject_symlink_components(path)
+    return path
+
+
+def _safe_read_json(
+    path: Path, label: str, *, max_bytes: int = 1024 * 1024
+) -> dict[str, object]:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+        with os.fdopen(descriptor, "r", encoding="utf-8") as handle:
+            metadata = os.fstat(handle.fileno())
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise OncoTracerError(
+                    f"{label} must be one non-hardlinked regular file: {path}"
+                )
+            if metadata.st_size > max_bytes:
+                raise OncoTracerError(f"{label} is unexpectedly large: {path}")
+            value = json.load(handle)
+    except OncoTracerError:
+        raise
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise OncoTracerError(f"could not verify {label} {path}: {error}") from error
+    if not isinstance(value, dict):
+        raise OncoTracerError(f"{label} is not a JSON object: {path}")
+    return value
+
+
+def _fsync_directory(path: Path) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    descriptor = os.open(path, flags)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _atomic_write_bytes(
+    path: Path,
+    payload: bytes,
+    *,
+    retention_parent: Path | None = None,
+) -> None:
+    """Publish bytes atomically while retaining any prior named object."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _reject_symlink_components(path.parent)
+    temporary_name = f".{path.name}.oncotracer-write-{os.getpid()}-{uuid.uuid4().hex}"
+    temporary = path.parent / temporary_name
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    parent_fd = _open_pinned_directory(
+        path.parent, "installer metadata publication parent"
+    )
+    descriptor: int | None = None
+    created_identity: tuple[int, int] | None = None
+    prior_retained: Path | None = None
+    try:
+        descriptor = os.open(temporary_name, flags, 0o600, dir_fd=parent_fd)
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = None
+            metadata = os.fstat(handle.fileno())
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise OncoTracerError(
+                    f"installer metadata staging file is unsafe: {temporary}"
+                )
+            created_identity = (metadata.st_dev, metadata.st_ino)
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        observed = os.stat(temporary_name, dir_fd=parent_fd, follow_symlinks=False)
+        if (observed.st_dev, observed.st_ino) != created_identity:
+            raise OncoTracerError(
+                f"installer metadata staging path changed unexpectedly: {temporary}"
+            )
+        if _exists_at(parent_fd, path.name):
+            _rename_exchange_at(
+                parent_fd,
+                temporary_name,
+                parent_fd,
+                path.name,
+                "installer metadata publication",
+            )
+            retention_parent = retention_parent or path.parent
+            retention_parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            retention_fd = _open_pinned_directory(
+                retention_parent, "installer retained metadata parent"
+            )
+            try:
+                if os.fstat(retention_fd).st_dev != os.fstat(parent_fd).st_dev:
+                    raise OncoTracerError(
+                        "installer metadata retention must remain on one filesystem"
+                    )
+                retained_name = (
+                    f".{path.name}.oncotracer-retained-metadata-" f"{uuid.uuid4().hex}"
+                )
+                _rename_noreplace_at(
+                    parent_fd,
+                    temporary_name,
+                    retention_fd,
+                    retained_name,
+                    "prior installer metadata retention",
+                )
+                os.fsync(parent_fd)
+                os.fsync(retention_fd)
+                prior_retained = retention_parent / retained_name
+            finally:
+                os.close(retention_fd)
+        else:
+            _rename_noreplace_at(
+                parent_fd,
+                temporary_name,
+                parent_fd,
+                path.name,
+                "installer metadata publication",
+            )
+        os.fsync(parent_fd)
+        published = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+        if (published.st_dev, published.st_ino) != created_identity:
+            raise OncoTracerError(f"installer metadata publication changed: {path}")
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        if created_identity is not None and _exists_at(parent_fd, temporary_name):
+            print(
+                "OncoTracer retained interrupted metadata at " f"{temporary}",
+                file=sys.stderr,
+                flush=True,
+            )
+        if prior_retained is not None:
+            print(
+                f"OncoTracer retained prior metadata at {prior_retained}",
+                file=sys.stderr,
+                flush=True,
+            )
+        os.close(parent_fd)
+
+
+def _atomic_write_json(
+    path: Path,
+    value: object,
+    *,
+    retention_parent: Path | None = None,
+    max_bytes: int | None = None,
+) -> None:
+    """Publish JSON atomically while retaining any prior bytes."""
+    payload = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    if max_bytes is not None and len(payload) > max_bytes:
+        raise OncoTracerError(f"installer metadata is unexpectedly large: {path}")
+    _atomic_write_bytes(path, payload, retention_parent=retention_parent)
+
+
+def _lock_record(path: Path, target: Path, kind: str) -> dict[str, object]:
+    return {
+        "schema": LOCK_SCHEMA,
+        "kind": kind,
+        "canonical_lock": str(path),
+        "canonical_target": str(target),
+    }
+
+
+@contextlib.contextmanager
+def _install_lock(
+    path: Path, target: Path, kind: str, *, exclusive: bool
+) -> Iterator[None]:
+    """Hold the ownership-bound installer/consumer lock."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    expected = _lock_record(path, target, kind)
+    created = False
+    flags = os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags | os.O_CREAT | os.O_EXCL, 0o600)
+        created = True
+    except FileExistsError:
+        descriptor = os.open(path, flags)
+    with os.fdopen(descriptor, "r+", encoding="utf-8") as handle:
+        metadata = os.fstat(handle.fileno())
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise OncoTracerError(
+                f"installer lock must be one non-hardlinked regular file: {path}"
+            )
+        # Initialize a new record while exclusively locked. Existing readers
+        # can therefore never observe a half-written ownership record.
+        fcntl.flock(
+            handle.fileno(), fcntl.LOCK_EX if created or exclusive else fcntl.LOCK_SH
+        )
+        if created:
+            json.dump(expected, handle, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+            _fsync_directory(path.parent)
+            if not exclusive:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_SH)
+        try:
+            try:
+                current = path.lstat()
+            except OSError as error:
+                raise OncoTracerError(
+                    f"installer lock path changed while acquiring it: {path}: {error}"
+                ) from error
+            if (current.st_dev, current.st_ino) != (metadata.st_dev, metadata.st_ino):
+                raise OncoTracerError(
+                    f"installer lock path was replaced while acquiring it: {path}"
+                )
+            handle.seek(0)
+            try:
+                observed = json.load(handle)
+            except (UnicodeDecodeError, json.JSONDecodeError) as error:
+                raise OncoTracerError(
+                    f"installer lock is malformed or unowned: {path}: {error}"
+                ) from error
+            if observed != expected:
+                raise OncoTracerError(
+                    f"installer lock is foreign or target-mismatched: {path}"
+                )
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
+def _exclusive_install_lock(path: Path, target: Path, kind: str) -> Iterator[None]:
+    with _install_lock(path, target, kind, exclusive=True):
+        yield
+
+
+@contextlib.contextmanager
+def _shared_install_lock(path: Path, target: Path, kind: str) -> Iterator[None]:
+    with _install_lock(path, target, kind, exclusive=False):
+        yield
+
+
+def _path_contains(root: Path, candidate: Path) -> bool:
+    return candidate == root or root in candidate.parents
+
+
+@contextlib.contextmanager
+def installer_cli_target_arguments(*paths: Path) -> Iterator[None]:
+    """Ignore only this process's exact installer target argv entries.
+
+    The current process remains visible through its cwd, executable, open file
+    descriptors, memory maps, and every other absolute argv entry. Child
+    processes never inherit this PID-scoped exception.
+    """
+    token = _CLI_INSTALL_TARGET_ARGUMENTS.set(
+        frozenset(_absolute(path) for path in paths)
+    )
+    try:
+        yield
+    finally:
+        _CLI_INSTALL_TARGET_ARGUMENTS.reset(token)
+
+
+def _active_processes(
+    path: Path,
+    *,
+    proc: Path = Path("/proc"),
+    timeout: float = 5.0,
+    ignored_self_fds: frozenset[int] = frozenset(),
+) -> list[int]:
+    """Return processes whose cwd/executable/fd/argv uses *path*."""
+    deadline = time.monotonic() + timeout
+    target = _absolute(path)
+    ignored_self_arguments = _CLI_INSTALL_TARGET_ARGUMENTS.get()
+    observed: set[int] = set()
+    if not proc.is_dir():
+        raise OncoTracerError(
+            "active-use verification requires a readable /proc filesystem"
+        )
+    try:
+        processes = list(itertools.islice(proc.iterdir(), 131073))
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not enumerate /proc for active-use safety: {error}"
+        ) from error
+    if len(processes) > 131072:
+        raise OncoTracerError("active-use verification exceeded its process bound")
+    for process in processes:
+        if time.monotonic() > deadline:
+            raise OncoTracerError(
+                f"active-use verification exceeded its safety deadline for {target}"
+            )
+        if not process.name.isdigit():
+            continue
+        pid = int(process.name)
+        links = [process / "cwd", process / "exe"]
+        try:
+            fd_entries = list(itertools.islice((process / "fd").iterdir(), 4097))
+        except OSError:
+            fd_entries = []
+        if len(fd_entries) > 4096:
+            raise OncoTracerError(
+                f"active-use verification exceeded its fd bound for PID {pid}"
+            )
+        links.extend(fd_entries)
+        for link in links:
+            if (
+                pid == os.getpid()
+                and link.parent.name == "fd"
+                and link.name.isdigit()
+                and int(link.name) in ignored_self_fds
+            ):
+                continue
+            if time.monotonic() > deadline:
+                raise OncoTracerError(
+                    f"active-use verification exceeded its safety deadline for {target}"
+                )
+            try:
+                rendered = os.readlink(link).removesuffix(" (deleted)")
+            except OSError:
+                continue
+            # pipe:[N], socket:[N], anon_inode:..., and other pseudo-targets
+            # are not paths and must never be resolved against our cwd.
+            if not rendered.startswith("/"):
+                continue
+            used = _absolute(Path(rendered))
+            if _path_contains(target, used):
+                observed.add(pid)
+                break
+        if pid in observed:
+            continue
+        try:
+            with (process / "cmdline").open("rb") as handle:
+                raw_arguments = handle.read(2 * 1024 * 1024 + 1)
+        except OSError:
+            continue
+        if len(raw_arguments) > 2 * 1024 * 1024:
+            raise OncoTracerError(
+                f"active-use verification exceeded its argv bound for PID {pid}"
+            )
+        arguments = raw_arguments.split(b"\0")
+        for argument in arguments:
+            if not argument or not argument.startswith(b"/"):
+                continue
+            with contextlib.suppress(OSError, UnicodeDecodeError):
+                used = _absolute(Path(os.fsdecode(argument)))
+                if pid == os.getpid() and used in ignored_self_arguments:
+                    continue
+                if _path_contains(target, used):
+                    observed.add(pid)
+                    break
+        if pid in observed:
+            continue
+        try:
+            with (process / "maps").open(
+                "r", encoding="utf-8", errors="replace"
+            ) as handle:
+                raw_mappings = handle.read(16 * 1024 * 1024 + 1)
+        except OSError:
+            continue
+        if len(raw_mappings) > 16 * 1024 * 1024:
+            raise OncoTracerError(
+                f"active-use verification exceeded its map bound for PID {pid}"
+            )
+        mappings = raw_mappings.splitlines()
+        for mapping in mappings:
+            if str(target) not in mapping:
+                continue
+            fields = mapping.split(maxsplit=5)
+            if len(fields) != 6 or not fields[5].startswith("/"):
+                continue
+            rendered = fields[5].removesuffix(" (deleted)")
+            used = _absolute(Path(rendered))
+            if _path_contains(target, used):
+                observed.add(pid)
+                break
+    return sorted(observed)
+
+
+def _assert_inactive(
+    path: Path, *, ignored_self_fds: frozenset[int] = frozenset()
+) -> None:
+    processes = (
+        _active_processes(path, ignored_self_fds=ignored_self_fds)
+        if ignored_self_fds
+        else _active_processes(path)
+    )
+    if processes:
+        rendered = ", ".join(map(str, processes[:20]))
+        raise OncoTracerError(
+            f"refusing to replace installer asset used by active process(es) {rendered}: {path}"
+        )
+
+
+def _run_checked(
+    command: Sequence[str | Path],
+    *,
+    cwd: Path | None = None,
+    env: Mapping[str, str] | None = None,
+    dry_run: bool = False,
+    accepted_returncodes: frozenset[int] = frozenset({0}),
+) -> subprocess.CompletedProcess[str] | None:
+    argv = [str(value) for value in command]
+    import shlex
+
+    print(f"OncoTracer command: {shlex.join(argv)}", file=sys.stderr, flush=True)
+    if dry_run:
+        return None
+    completed = subprocess.run(
+        argv,
+        cwd=cwd,
+        env=dict(env) if env is not None else None,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.stdout:
+        print(completed.stdout, end="", file=sys.stderr)
+    if completed.stderr:
+        print(completed.stderr, end="", file=sys.stderr)
+    if completed.returncode not in accepted_returncodes:
+        raise OncoTracerError(
+            f"command failed with exit code {completed.returncode}: {shlex.join(argv)}"
+        )
+    return completed
+
+
+def _tree_inventory(
+    root: Path, *, include_installer_metadata: bool = False
+) -> dict[str, object]:
+    """Return an exact, deterministic inventory without following symlinks."""
+    entries: list[dict[str, object]] = []
+    pending = [root]
+    root_device = root.lstat().st_dev
+    while pending:
+        directory = pending.pop()
+        for path in sorted(directory.iterdir(), key=lambda item: item.name):
+            relative = path.relative_to(root).as_posix()
+            if not include_installer_metadata and relative in {
+                ENV_MARKER,
+                POETRY_MARKER,
+                CHILD_INVENTORY,
+            }:
+                continue
+            metadata = path.lstat()
+            if metadata.st_dev != root_device:
+                raise OncoTracerError(
+                    f"managed environment crosses filesystems: {path}"
+                )
+            mode = stat.S_IMODE(metadata.st_mode)
+            if stat.S_ISDIR(metadata.st_mode):
+                entries.append({"path": relative, "type": "directory", "mode": mode})
+                pending.append(path)
+            elif stat.S_ISREG(metadata.st_mode):
+                entries.append(
+                    {
+                        "path": relative,
+                        "type": "file",
+                        "mode": mode,
+                        "size": metadata.st_size,
+                        "sha256": sha256_file(path),
+                    }
+                )
+            elif stat.S_ISLNK(metadata.st_mode):
+                entries.append(
+                    {
+                        "path": relative,
+                        "type": "symlink",
+                        "mode": mode,
+                        "target": os.readlink(path),
+                    }
+                )
+            else:
+                raise OncoTracerError(
+                    f"managed environment contains a special file: {path}"
+                )
+    entries.sort(key=lambda item: str(item["path"]))
+    return {"schema": INVENTORY_SCHEMA, "entries": entries}
+
+
+def _valid_inventory(value: object, *, allow_installer_metadata: bool = False) -> bool:
+    if not isinstance(value, dict) or set(value) != {"schema", "entries"}:
+        return False
+    if value.get("schema") != INVENTORY_SCHEMA or not isinstance(
+        value.get("entries"), list
+    ):
+        return False
+    previous = ""
+    for entry in value["entries"]:
+        if not isinstance(entry, dict):
+            return False
+        relative = entry.get("path")
+        kind = entry.get("type")
+        mode = entry.get("mode")
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or relative <= previous
+            or relative.startswith("/")
+            or "\\" in relative
+            or any(part in {"", ".", ".."} for part in relative.split("/"))
+            or (
+                not allow_installer_metadata
+                and relative in {ENV_MARKER, POETRY_MARKER, CHILD_INVENTORY}
+            )
+            or not isinstance(mode, int)
+            or mode < 0
+            or mode > 0o7777
+        ):
+            return False
+        previous = relative
+        if kind == "directory":
+            if set(entry) != {"path", "type", "mode"}:
+                return False
+        elif kind == "file":
+            if (
+                set(entry) != {"path", "type", "mode", "size", "sha256"}
+                or not isinstance(entry.get("size"), int)
+                or entry["size"] < 0
+                or not isinstance(entry.get("sha256"), str)
+                or not _HEX_64.fullmatch(str(entry["sha256"]))
+            ):
+                return False
+        elif kind == "symlink":
+            if set(entry) != {"path", "type", "mode", "target"} or not isinstance(
+                entry.get("target"), str
+            ):
+                return False
+        else:
+            return False
+    return True
+
+
+def _write_child_inventory(destination: Path) -> str:
+    inventory = _tree_inventory(destination)
+    path = destination / CHILD_INVENTORY
+    _atomic_write_json(path, inventory)
+    return sha256_file(path)
+
+
+def _verify_child_inventory(storage: Path, marker: Mapping[str, object]) -> None:
+    inventory_path = storage / CHILD_INVENTORY
+    inventory = _safe_read_json(
+        inventory_path,
+        "managed environment inventory",
+        max_bytes=MAX_INVENTORY_JSON_BYTES,
+    )
+    if not _valid_inventory(inventory) or sha256_file(inventory_path) != marker.get(
+        "inventory_sha256"
+    ):
+        raise OncoTracerError(
+            f"managed environment inventory is malformed or marker-mismatched: {storage}"
+        )
+    observed = _tree_inventory(storage)
+    if observed != inventory:
+        raise OncoTracerError(
+            "managed environment contains changed or foreign entries and will not "
+            f"be reused or replaced: {storage}"
+        )
+
+
+def _open_managed_probe_candidate(
+    destination: Path, parts: tuple[str, ...], label: str
+) -> tuple[int | None, str | None, Path]:
+    """Inspect one in-prefix path through pinned, no-follow directory fds."""
+    root_fd = _open_pinned_directory(destination, f"{label} managed prefix")
+    root_device = os.fstat(root_fd).st_dev
+    parent_fd = root_fd
+    opened_parents: list[int] = []
+    candidate = destination.joinpath(*parts)
+    try:
+        for component in parts[:-1]:
+            child_fd = _open_child_directory(parent_fd, component, label)
+            if os.fstat(child_fd).st_dev != root_device:
+                os.close(child_fd)
+                raise OncoTracerError(
+                    f"{label} crosses filesystems inside {destination}"
+                )
+            opened_parents.append(child_fd)
+            parent_fd = child_fd
+        leaf = parts[-1]
+        try:
+            metadata = os.stat(leaf, dir_fd=parent_fd, follow_symlinks=False)
+        except OSError as error:
+            raise OncoTracerError(
+                f"{label} is missing from its managed prefix: {candidate}"
+            ) from error
+        if metadata.st_dev != root_device:
+            raise OncoTracerError(
+                f"{label} crosses filesystems inside its managed prefix: {candidate}"
+            )
+        if stat.S_ISLNK(metadata.st_mode):
+            if metadata.st_nlink != 1:
+                raise OncoTracerError(f"{label} symlink is hardlinked: {candidate}")
+            try:
+                target = os.readlink(leaf, dir_fd=parent_fd)
+            except OSError as error:
+                raise OncoTracerError(
+                    f"could not read {label} symlink: {candidate}"
+                ) from error
+            return None, target, candidate
+        if not stat.S_ISREG(metadata.st_mode) or not metadata.st_mode & 0o111:
+            raise OncoTracerError(f"{label} is not executable: {candidate}")
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(leaf, flags, dir_fd=parent_fd)
+        except OSError as error:
+            raise OncoTracerError(f"could not open {label}: {candidate}") from error
+        opened = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or not opened.st_mode & 0o111
+            or opened.st_dev != root_device
+            or (opened.st_dev, opened.st_ino) != (metadata.st_dev, metadata.st_ino)
+        ):
+            os.close(descriptor)
+            raise OncoTracerError(f"{label} changed while opening it: {candidate}")
+        return descriptor, None, candidate
+    finally:
+        for parent in reversed(opened_parents):
+            os.close(parent)
+        os.close(root_fd)
+
+
+def _open_managed_probe(
+    destination: Path, executable: Path, label: str
+) -> tuple[int, Path]:
+    """Open and resolve an executable through a bounded in-prefix link chain."""
+    if executable.parent.parent != destination or executable.parent.name != "bin":
+        raise OncoTracerError(
+            f"{label} path is not the expected managed-prefix child: {executable}"
+        )
+    current = tuple(executable.relative_to(destination).parts)
+    visited: set[str] = set()
+    for _ in range(40):
+        rendered = "/".join(current)
+        if rendered in visited:
+            raise OncoTracerError(f"{label} symlink chain loops: {executable}")
+        visited.add(rendered)
+        if not current or any(
+            not part or part in {".", ".."} or "/" in part or "\\" in part
+            for part in current
+        ):
+            raise OncoTracerError(
+                f"{label} symlink escapes its managed prefix: {executable}"
+            )
+        descriptor, target, candidate = _open_managed_probe_candidate(
+            destination, current, label
+        )
+        if target is not None:
+            if not target or target.startswith("/") or "\\" in target:
+                raise OncoTracerError(
+                    f"{label} symlink is absolute or external: {candidate}"
+                )
+            target_parts = tuple(target.split("/"))
+            if any(part in {"", ".", ".."} for part in target_parts):
+                raise OncoTracerError(
+                    f"{label} symlink escapes its managed prefix: {candidate}"
+                )
+            current = (*current[:-1], *target_parts)
+            continue
+        assert descriptor is not None
+        return descriptor, candidate
+    raise OncoTracerError(f"{label} symlink chain is too deep: {executable}")
+
+
+def _run_semantic_probe(
+    command: Sequence[str | Path],
+    label: str,
+    required: str,
+    *,
+    env: Mapping[str, str] | None = None,
+    accepted_returncodes: frozenset[int] = frozenset({0}),
+) -> None:
+    environment = dict(env) if env is not None else os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = _run_checked(
+        command,
+        env=environment,
+        accepted_returncodes=accepted_returncodes,
+    )
+    assert result is not None
+    combined = f"{result.stdout}\n{result.stderr}"
+    if required.casefold() not in combined.casefold():
+        raise OncoTracerError(f"{label} did not report {required}")
+
+
+def _open_managed_probe_directory(
+    destination: Path, parts: tuple[str, ...], label: str
+) -> int:
+    """Pin one physical same-device directory below a managed prefix."""
+    descriptor = _open_pinned_directory(destination, f"{label} managed prefix")
+    root_device = os.fstat(descriptor).st_dev
+    try:
+        for component in parts:
+            child = _open_child_directory(descriptor, component, label)
+            if os.fstat(child).st_dev != root_device:
+                os.close(child)
+                raise OncoTracerError(
+                    f"{label} crosses filesystems inside {destination}"
+                )
+            os.close(descriptor)
+            descriptor = child
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _managed_probe_directory_names(
+    destination: Path, parts: tuple[str, ...], label: str
+) -> list[str]:
+    descriptor = _open_managed_probe_directory(destination, parts, label)
+    try:
+        with os.scandir(descriptor) as entries:
+            names = [entry.name for entry in itertools.islice(entries, 4_097)]
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not enumerate {label} inside {destination}: {error}"
+        ) from error
+    finally:
+        os.close(descriptor)
+    if len(names) > 4_096:
+        raise OncoTracerError(f"{label} has too many entries inside {destination}")
+    return sorted(names)
+
+
+def _managed_gistic_library_state(
+    destination: Path,
+) -> list[tuple[Path, int, int]]:
+    """Resolve exactly one physical in-prefix MATLAB runtime layout."""
+    label = "managed GISTIC MATLAB runtime"
+    candidates: list[tuple[str, str]] = []
+    for mcr_name in _managed_probe_directory_names(destination, ("share",), label):
+        if not mcr_name.startswith("mcr-") or len(mcr_name) == len("mcr-"):
+            continue
+        mcr_parts = ("share", mcr_name)
+        mcr_fd = _open_managed_probe_directory(destination, mcr_parts, label)
+        os.close(mcr_fd)
+        for version in _managed_probe_directory_names(destination, mcr_parts, label):
+            if version.startswith("v") and len(version) > 1:
+                candidates.append((mcr_name, version))
+    if len(candidates) != 1:
+        raise OncoTracerError(
+            "managed GISTIC prefix must contain exactly one MATLAB Compiler "
+            f"Runtime under share/mcr-*/v*; found {len(candidates)}"
+        )
+    mcr_name, version = candidates[0]
+    library_parts = [
+        ("share", mcr_name, version, "runtime", "glnxa64"),
+        ("share", mcr_name, version, "bin", "glnxa64"),
+        ("share", mcr_name, version, "sys", "os", "glnxa64"),
+    ]
+    libraries: list[tuple[Path, int, int]] = []
+    for parts in library_parts:
+        descriptor = _open_managed_probe_directory(destination, parts, label)
+        metadata = os.fstat(descriptor)
+        os.close(descriptor)
+        libraries.append(
+            (destination.joinpath(*parts), metadata.st_dev, metadata.st_ino)
+        )
+    return libraries
+
+
+def _managed_conda_probe_environment(
+    destination: Path,
+    name: str,
+    *,
+    gistic_state: Sequence[tuple[Path, int, int]] | None = None,
+) -> dict[str, str]:
+    """Build controlled probe routing without sourcing activation hooks."""
+    environment = os.environ.copy()
+    path_entries = [str(destination / "bin")]
+    if environment.get("PATH"):
+        path_entries.append(environment["PATH"])
+    environment["PATH"] = os.pathsep.join(path_entries)
+    environment["CONDA_PREFIX"] = str(destination)
+    for variable in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV"):
+        environment.pop(variable, None)
+    environment["PYTHONNOUSERSITE"] = "1"
+    environment["PYTHONSAFEPATH"] = "1"
+    for variable in ("R_HOME", "R_LIBS", "R_LIBS_USER", "R_LIBS_SITE"):
+        environment.pop(variable, None)
+    if name == "gistic":
+        environment.pop("LD_LIBRARY_PATH", None)
+        environment.pop("LD_LIBRARY_PATH_MCR", None)
+        if gistic_state is None:
+            gistic_state = _managed_gistic_library_state(destination)
+        environment.update(
+            {
+                "CUDA_VISIBLE_DEVICES": "",
+                "NVIDIA_VISIBLE_DEVICES": "void",
+                "LD_LIBRARY_PATH": os.pathsep.join(
+                    str(path) for path, _, _ in gistic_state
+                ),
+                "LD_LIBRARY_PATH_MCR": "",
+            }
+        )
+    return environment
+
+
+def _verify_conda_runtime(destination: Path, name: str) -> None:
+    probes: dict[str, tuple[list[str | Path], str]] = {
+        "core": (
+            [
+                destination / "bin" / "python",
+                "-I",
+                "-B",
+                "-c",
+                (
+                    "import os,pathlib,sys; import numpy,pandas,pysam,reportlab; "
+                    "prefix=pathlib.Path(sys.prefix).resolve(); "
+                    "expected=pathlib.Path(os.environ['CONDA_PREFIX']).resolve(); "
+                    "executable=pathlib.Path(sys.executable).resolve(); "
+                    "assert prefix == expected; "
+                    "assert executable.is_relative_to(expected); print('CORE_OK')"
+                ),
+            ],
+            "CORE_OK",
+        ),
+        "qdnaseq": (
+            [
+                destination / "bin" / "Rscript",
+                "--vanilla",
+                "-e",
+                (
+                    "stopifnot(normalizePath(R.home()) == "
+                    "normalizePath(file.path(Sys.getenv('CONDA_PREFIX'),'lib','R')));"
+                    "suppressPackageStartupMessages(library(QDNAseq));cat('QDNASEQ_OK\\n')"
+                ),
+            ],
+            "QDNASEQ_OK",
+        ),
+        "ichorcna": (
+            [
+                destination / "bin" / "Rscript",
+                "--vanilla",
+                "-e",
+                (
+                    "stopifnot(normalizePath(R.home()) == "
+                    "normalizePath(file.path(Sys.getenv('CONDA_PREFIX'),'lib','R')));"
+                    "suppressPackageStartupMessages(library(ichorCNA));cat('ICHORCNA_OK\\n')"
+                ),
+            ],
+            "ICHORCNA_OK",
+        ),
+        "classifier": (
+            [
+                destination / "bin" / "python",
+                "-I",
+                "-B",
+                "-c",
+                (
+                    "import os,pathlib,sys; "
+                    "import numpy,pandas,reportlab,sklearn,torch,transformers; "
+                    "prefix=pathlib.Path(sys.prefix).resolve(); "
+                    "expected=pathlib.Path(os.environ['CONDA_PREFIX']).resolve(); "
+                    "executable=pathlib.Path(sys.executable).resolve(); "
+                    "assert prefix == expected; "
+                    "assert executable.is_relative_to(expected); print('CLASSIFIER_OK')"
+                ),
+            ],
+            "CLASSIFIER_OK",
+        ),
+        "gistic": (
+            [destination / "bin" / "gistic2", "-h"],
+            "Usage: gp_gistic2_from_seg -b base_dir -seg segmentation_file",
+        ),
+    }
+    command, required = probes[name]
+    executable = Path(command[0])
+    label = f"managed {name} environment probe"
+    gistic_state = (
+        _managed_gistic_library_state(destination) if name == "gistic" else []
+    )
+    environment = _managed_conda_probe_environment(
+        destination, name, gistic_state=gistic_state
+    )
+    descriptor, resolved = _open_managed_probe(destination, executable, label)
+    identity = os.fstat(descriptor)
+    command[0] = resolved
+    try:
+        _run_semantic_probe(
+            command,
+            f"managed {name} environment",
+            required,
+            env=environment,
+        )
+        observed_descriptor: int | None = None
+        try:
+            observed_descriptor, observed_path = _open_managed_probe(
+                destination, executable, label
+            )
+            observed = os.fstat(observed_descriptor)
+            if observed_path != resolved or (observed.st_dev, observed.st_ino) != (
+                identity.st_dev,
+                identity.st_ino,
+            ):
+                raise OncoTracerError(
+                    f"{label} changed while its semantic probe ran: {executable}"
+                )
+        finally:
+            if observed_descriptor is not None:
+                os.close(observed_descriptor)
+        if name == "gistic":
+            observed_gistic_state = _managed_gistic_library_state(destination)
+            if observed_gistic_state != gistic_state:
+                raise OncoTracerError(
+                    "managed GISTIC MATLAB runtime changed while its semantic "
+                    f"probe ran: {destination}"
+                )
+    finally:
+        os.close(descriptor)
+
+
+def _base_marker(
+    base: Path, install_id: str, source: Mapping[str, object]
+) -> dict[str, object]:
+    return {
+        "schema": CONDA_BASE_SCHEMA,
+        "object_type": "conda-install-root",
+        "install_id": install_id,
+        "canonical_path": str(base),
+        "managed_children": list(MANAGED_CHILDREN),
+        "source": dict(source),
+    }
+
+
+def _valid_base_marker(value: object, base: Path) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value)
+        == {
+            "schema",
+            "object_type",
+            "install_id",
+            "canonical_path",
+            "managed_children",
+            "source",
+        }
+        and value.get("schema") == CONDA_BASE_SCHEMA
+        and value.get("object_type") == "conda-install-root"
+        and isinstance(value.get("install_id"), str)
+        and bool(_HEX_32.fullmatch(str(value["install_id"])))
+        and value.get("canonical_path") == str(base)
+        and value.get("managed_children") == list(MANAGED_CHILDREN)
+        and _valid_source(value.get("source"))
+    )
+
+
+def _environment_marker(
+    destination: Path,
+    install_id: str,
+    name: str,
+    definition_sha256: str,
+    source: Mapping[str, object],
+    inventory_sha256: str,
+) -> dict[str, object]:
+    return {
+        "schema": CONDA_ENV_SCHEMA,
+        "object_type": "conda-environment",
+        "install_id": install_id,
+        "canonical_path": str(destination),
+        "environment": name,
+        "definition_sha256": definition_sha256,
+        "inventory_sha256": inventory_sha256,
+        "source": dict(source),
+    }
+
+
+def _poetry_marker(
+    destination: Path,
+    install_id: str,
+    project_sha256: str,
+    lock_sha256: str,
+    launcher_sha256: str,
+    source: Mapping[str, object],
+    inventory_sha256: str,
+) -> dict[str, object]:
+    return {
+        "schema": POETRY_ENV_SCHEMA,
+        "object_type": "poetry-runtime",
+        "install_id": install_id,
+        "canonical_path": str(destination),
+        "project_sha256": project_sha256,
+        "lock_sha256": lock_sha256,
+        "launcher_sha256": launcher_sha256,
+        "inventory_sha256": inventory_sha256,
+        "source": dict(source),
+    }
+
+
+def _valid_child_marker(
+    value: object,
+    destination: Path,
+    install_id: str,
+    name: str,
+) -> bool:
+    if not isinstance(value, dict):
+        return False
+    common = (
+        value.get("install_id") == install_id
+        and value.get("canonical_path") == str(destination)
+        and _valid_source(value.get("source"))
+    )
+    if name == "poetry-runtime":
+        return (
+            common
+            and set(value)
+            == {
+                "schema",
+                "object_type",
+                "install_id",
+                "canonical_path",
+                "project_sha256",
+                "lock_sha256",
+                "launcher_sha256",
+                "inventory_sha256",
+                "source",
+            }
+            and value.get("schema") == POETRY_ENV_SCHEMA
+            and value.get("object_type") == "poetry-runtime"
+            and isinstance(value.get("project_sha256"), str)
+            and bool(_HEX_64.fullmatch(str(value["project_sha256"])))
+            and isinstance(value.get("lock_sha256"), str)
+            and bool(_HEX_64.fullmatch(str(value["lock_sha256"])))
+            and isinstance(value.get("launcher_sha256"), str)
+            and bool(_HEX_64.fullmatch(str(value["launcher_sha256"])))
+            and isinstance(value.get("inventory_sha256"), str)
+            and bool(_HEX_64.fullmatch(str(value["inventory_sha256"])))
+        )
+    return (
+        common
+        and set(value)
+        == {
+            "schema",
+            "object_type",
+            "install_id",
+            "canonical_path",
+            "environment",
+            "definition_sha256",
+            "inventory_sha256",
+            "source",
+        }
+        and value.get("schema") == CONDA_ENV_SCHEMA
+        and value.get("object_type") == "conda-environment"
+        and value.get("environment") == name
+        and isinstance(value.get("definition_sha256"), str)
+        and bool(_HEX_64.fullmatch(str(value["definition_sha256"])))
+        and isinstance(value.get("inventory_sha256"), str)
+        and bool(_HEX_64.fullmatch(str(value["inventory_sha256"])))
+    )
+
+
+def _classify_base(base: Path) -> tuple[str, dict[str, object] | None]:
+    if not os.path.lexists(base):
+        return "absent", None
+    metadata = base.lstat()
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise OncoTracerError(
+            f"Conda install root must be a real directory, not a symlink or file: {base}"
+        )
+    entries = list(base.iterdir())
+    if not entries:
+        return "empty", None
+    marker_path = base / BASE_MARKER
+    if not marker_path.exists():
+        raise OncoTracerError(
+            "refusing to adopt or modify a non-empty unowned Conda install root; "
+            f"choose a new empty dedicated --prefix: {base}"
+        )
+    marker = _safe_read_json(marker_path, "Conda install-root ownership marker")
+    if not _valid_base_marker(marker, base):
+        raise OncoTracerError(
+            f"Conda install-root ownership marker is malformed or path-mismatched: {marker_path}"
+        )
+    install_id = str(marker["install_id"])
+    for name in MANAGED_CHILDREN:
+        child = base / name
+        if not os.path.lexists(child):
+            continue
+        metadata = child.lstat()
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise OncoTracerError(
+                f"managed installer child is not a real directory: {child}"
+            )
+        child_marker = child / (
+            POETRY_MARKER if name == "poetry-runtime" else ENV_MARKER
+        )
+        if not child_marker.exists():
+            raise OncoTracerError(
+                f"refusing to adopt unowned managed child path: {child}"
+            )
+        value = _safe_read_json(child_marker, f"{name} ownership marker")
+        if not _valid_child_marker(value, child, install_id, name):
+            raise OncoTracerError(
+                f"managed child ownership marker is malformed or mismatched: {child_marker}"
+            )
+        _verify_child_inventory(child, value)
+        if name == "poetry-runtime" and (
+            not _poetry_complete(child)
+            or sha256_file(child / "bin" / "oncotracer") != value["launcher_sha256"]
+        ):
+            raise OncoTracerError(
+                f"managed Poetry launcher does not match its ownership marker: {child}"
+            )
+    return "owned", marker
+
+
+def _child_marker_at(
+    storage: Path,
+    destination: Path,
+    base_marker: Mapping[str, object],
+    name: str,
+) -> dict[str, object] | None:
+    if not os.path.lexists(storage):
+        return None
+    marker_name = POETRY_MARKER if name == "poetry-runtime" else ENV_MARKER
+    value = _safe_read_json(storage / marker_name, f"{name} ownership marker")
+    if not _valid_child_marker(
+        value, destination, str(base_marker["install_id"]), name
+    ) or value.get("source") != base_marker.get("source"):
+        raise OncoTracerError(f"managed child ownership is invalid: {storage}")
+    _verify_child_inventory(storage, value)
+    if name == "poetry-runtime" and (
+        not _poetry_complete(storage)
+        or sha256_file(storage / "bin" / "oncotracer") != value["launcher_sha256"]
+    ):
+        raise OncoTracerError(
+            f"managed Poetry launcher integrity is invalid: {storage}"
+        )
+    return value
+
+
+def _child_marker_value(
+    base: Path, base_marker: Mapping[str, object], name: str
+) -> dict[str, object] | None:
+    destination = base / name
+    return _child_marker_at(destination, destination, base_marker, name)
+
+
+def _conda_complete(path: Path) -> bool:
+    history = path / "conda-meta" / "history"
+    try:
+        metadata = history.lstat()
+    except OSError:
+        return False
+    return stat.S_ISREG(metadata.st_mode) and metadata.st_nlink == 1
+
+
+def _poetry_complete(path: Path) -> bool:
+    def safe_executable(candidate: Path) -> bool:
+        try:
+            metadata = candidate.lstat()
+        except OSError:
+            return False
+        return (
+            stat.S_ISREG(metadata.st_mode)
+            and metadata.st_nlink == 1
+            and os.access(candidate, os.X_OK)
+        )
+
+    return safe_executable(path / "bin" / "python") and safe_executable(
+        path / "bin" / "oncotracer"
+    )
+
+
+_POETRY_PAYLOAD_ROOTS = ("bin", "examples", "params", "environments", "provenance")
+_POETRY_EXCLUDED_PATHS = frozenset(
+    {
+        "bin/cna_classifier_nf/README.md",
+        "bin/scripts/install_oncotracer.sh",
+        "examples/hcc1143_lpwgs/README.md",
+        "examples/hcc1143_lpwgs/run_example.sh",
+        "examples/prjna754199/PROVENANCE.md",
+        "examples/prjna754199/README.md",
+        "examples/prjna754199/run_example.sh",
+        "bin/scripts/prepare_samurai_source.sh",
+        "bin/scripts/qdnaseq_local_pon.R",
+        "bin/scripts/native_qdnaseq_pon.R",
+        "bin/scripts/run_ifcnv_ont_lpwgs.py",
+        "bin/scripts/run_illumina_samurai_fastq.sh",
+        "bin/scripts/run_ont_samurai_barcodes.sh",
+        "bin/scripts/run_qdnaseq_local_pon.sh",
+    }
+)
+
+
+def _require_poetry_v2(poetry: str) -> None:
+    result = _run_checked([poetry, "--version"])
+    assert result is not None
+    match = re.fullmatch(
+        r"Poetry \(version ([0-9]+)(?:\.[0-9]+){1,2}\)", result.stdout.strip()
+    )
+    if match is None or int(match.group(1)) < 2:
+        rendered = result.stdout.strip() or result.stderr.strip() or "unknown"
+        raise OncoTracerError(
+            "Poetry installation requires Poetry >=2 before any target is changed; "
+            f"observed {rendered!r}"
+        )
+
+
+@dataclass(frozen=True)
+class _PoetrySourceSnapshot:
+    archive: bytes
+    pyproject_sha256: str
+    lock_sha256: str
+
+
+def _safe_tar_path(name: str) -> Path:
+    if not name or name.startswith("/") or "\\" in name:
+        raise OncoTracerError(f"Poetry source archive has unsafe member name: {name!r}")
+    path = Path(name)
+    if any(part in {"", ".", ".."} for part in path.parts):
+        raise OncoTracerError(f"Poetry source archive has unsafe member name: {name!r}")
+    return path
+
+
+def _poetry_snapshot_from_archive(archive: bytes) -> _PoetrySourceSnapshot:
+    required: dict[str, bytes] = {}
+    observed: set[str] = set()
+    try:
+        with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as source:
+            for member in source:
+                relative = _safe_tar_path(member.name)
+                rendered = relative.as_posix()
+                if rendered in observed:
+                    raise OncoTracerError(
+                        f"Poetry source archive has duplicate member: {rendered}"
+                    )
+                observed.add(rendered)
+                if rendered not in {"pyproject.toml", "poetry.lock"}:
+                    continue
+                if not member.isreg():
+                    raise OncoTracerError(
+                        f"Poetry source archive member is not regular: {rendered}"
+                    )
+                handle = source.extractfile(member)
+                if handle is None:
+                    raise OncoTracerError(
+                        f"Poetry source archive member cannot be read: {rendered}"
+                    )
+                required[rendered] = handle.read()
+    except (OSError, tarfile.TarError) as error:
+        raise OncoTracerError(f"Poetry source archive is invalid: {error}") from error
+    missing = {"pyproject.toml", "poetry.lock"} - set(required)
+    if missing:
+        raise OncoTracerError(
+            f"Poetry source archive lacks required input: {sorted(missing)[0]}"
+        )
+    return _PoetrySourceSnapshot(
+        archive=archive,
+        pyproject_sha256=hashlib.sha256(required["pyproject.toml"]).hexdigest(),
+        lock_sha256=hashlib.sha256(required["poetry.lock"]).hexdigest(),
+    )
+
+
+def _verify_poetry_source_checkout(
+    root: Path, source: Mapping[str, object]
+) -> _PoetrySourceSnapshot:
+    """Return an immutable archive bound to the executable source identity."""
+
+    def git(*arguments: str, binary: bool = False) -> bytes | str:
+        result = subprocess.run(
+            ["git", "-C", str(root), *arguments],
+            check=False,
+            capture_output=True,
+            text=not binary,
+        )
+        if result.returncode:
+            detail = (
+                result.stderr
+                if not binary
+                else result.stderr.decode("utf-8", errors="replace")
+            )
+            raise OncoTracerError(
+                f"Poetry requires an exact clean Git checkout: {detail.strip()}"
+            )
+        return result.stdout
+
+    top = _absolute(Path(str(git("rev-parse", "--show-toplevel")).strip()))
+    if top != root:
+        raise OncoTracerError(
+            f"Poetry build root is not the exact Git checkout root: {root}"
+        )
+    commit = str(git("rev-parse", "--verify", "HEAD^{commit}")).strip().lower()
+    if commit != source.get("source_commit"):
+        raise OncoTracerError(
+            "Poetry checkout HEAD does not match this executable source identity"
+        )
+    status = str(git("status", "--porcelain", "--untracked-files=all"))
+    if status.strip():
+        raise OncoTracerError("Poetry requires an exact clean Git checkout")
+    archive = git(
+        "-c", "tar.umask=0002", "archive", "--format=tar", commit, binary=True
+    )
+    assert isinstance(archive, bytes)
+    if hashlib.sha256(archive).hexdigest() != source.get("source_sha256"):
+        raise OncoTracerError(
+            "Poetry checkout archive does not match this executable source identity"
+        )
+    return _poetry_snapshot_from_archive(archive)
+
+
+def _poetry_payload_allowed(relative: Path) -> bool:
+    rendered = relative.as_posix()
+    return not (
+        rendered in _POETRY_EXCLUDED_PATHS
+        or any(
+            part == "__pycache__"
+            or part == "work"
+            or part == "nextflow.config"
+            or part.startswith(".nextflow")
+            or part.endswith((".pyc", ".pyo", ".nf"))
+            for part in relative.parts
+        )
+    )
+
+
+def _copy_poetry_project(snapshot: _PoetrySourceSnapshot, staging: Path) -> None:
+    """Materialize fixed product roots from one authenticated Git archive."""
+    file_roots = {"pyproject.toml", "poetry.lock", "README.md"}
+    directory_roots = {"oncotracer_cli", *_POETRY_PAYLOAD_ROOTS}
+    required_roots = file_roots | directory_roots
+    observed_roots: set[str] = set()
+    observed_members: set[str] = set()
+    try:
+        with tarfile.open(fileobj=io.BytesIO(snapshot.archive), mode="r:") as source:
+            for member in source:
+                relative = _safe_tar_path(member.name)
+                rendered = relative.as_posix()
+                if rendered in observed_members:
+                    raise OncoTracerError(
+                        f"Poetry source archive has duplicate member: {rendered}"
+                    )
+                observed_members.add(rendered)
+                root_name = relative.parts[0]
+                selected = rendered in file_roots or root_name in directory_roots
+                if not selected or not _poetry_payload_allowed(relative):
+                    continue
+                if root_name in file_roots and rendered != root_name:
+                    raise OncoTracerError(
+                        f"Poetry source archive nests content below a file: {rendered}"
+                    )
+                observed_roots.add(root_name)
+                destination = staging / relative
+                if member.isdir():
+                    destination.mkdir(parents=True, exist_ok=True)
+                elif member.isreg():
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    handle = source.extractfile(member)
+                    if handle is None:
+                        raise OncoTracerError(
+                            f"Poetry source archive member cannot be read: {rendered}"
+                        )
+                    flags = (
+                        os.O_WRONLY
+                        | os.O_CREAT
+                        | os.O_EXCL
+                        | getattr(os, "O_NOFOLLOW", 0)
+                    )
+                    descriptor = os.open(destination, flags, member.mode & 0o777)
+                    with os.fdopen(descriptor, "wb") as output:
+                        output.write(handle.read())
+                    os.chmod(destination, member.mode & 0o777, follow_symlinks=False)
+                    os.utime(
+                        destination,
+                        (member.mtime, member.mtime),
+                        follow_symlinks=False,
+                    )
+                else:
+                    raise OncoTracerError(
+                        "Poetry source archive contains a selected symlink, hardlink, "
+                        f"or special file: {rendered}"
+                    )
+    except (OSError, tarfile.TarError) as error:
+        raise OncoTracerError(f"Poetry source archive is invalid: {error}") from error
+    missing = required_roots - observed_roots
+    if missing:
+        raise OncoTracerError(
+            f"Poetry source archive lacks required product root: {sorted(missing)[0]}"
+        )
+
+
+def _write_poetry_build_metadata(staging: Path, source: Mapping[str, object]) -> None:
+    payload = staging / "provenance" / "native-v2-sources.json"
+    if not payload.is_file():
+        raise OncoTracerError(f"Poetry build lacks provenance payload: {payload}")
+    contents = (
+        '"""Generated immutable source metadata for this OncoTracer build."""\n\n'
+        "from __future__ import annotations\n\n"
+        'BUILD_METADATA_SCHEMA = "oncotracer-build-metadata-v1"\n'
+        'SOURCE_SHA256_DEFINITION = "sha256(git -c tar.umask=0002 archive --format=tar COMMIT)"\n'
+        f'SOURCE_COMMIT = {source["source_commit"]!r}\n'
+        f'SOURCE_SHA256 = {source["source_sha256"]!r}\n'
+        "SOURCE_TREE_DIRTY = False\n"
+        'SOURCE_METADATA_ORIGIN = "embedded"\n'
+        "ONCOTRACER_SOURCE_COMMIT = SOURCE_COMMIT\n"
+        "ONCOTRACER_SOURCE_SHA256 = SOURCE_SHA256\n"
+        'PROVENANCE_PAYLOAD_PATH = "payload/provenance/native-v2-sources.json"\n'
+        f"PROVENANCE_PAYLOAD_SHA256 = {hashlib.sha256(payload.read_bytes()).hexdigest()!r}\n"
+    )
+    _atomic_write_bytes(
+        staging / "oncotracer_cli" / "_build_metadata.py",
+        contents.encode("utf-8"),
+        retention_parent=staging.parent / "metadata-history",
+    )
+
+
+def _verify_poetry_wheel(wheel: Path) -> None:
+    try:
+        metadata = wheel.lstat()
+    except OSError as error:
+        raise OncoTracerError(f"Poetry did not produce its wheel: {wheel}") from error
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+        raise OncoTracerError(f"Poetry wheel is not one regular file: {wheel}")
+    try:
+        with zipfile.ZipFile(wheel) as archive:
+            names = archive.namelist()
+    except (OSError, zipfile.BadZipFile) as error:
+        raise OncoTracerError(f"Poetry produced an invalid wheel: {wheel}") from error
+    if len(names) != len(set(names)) or any(
+        name.startswith("/") or ".." in Path(name).parts for name in names
+    ):
+        raise OncoTracerError(f"Poetry wheel has unsafe member names: {wheel}")
+    required = (
+        "oncotracer_cli/cli.py",
+        "bin/scripts/native_qdnaseq.R",
+        "environments/native-core.yml",
+        "provenance/native-v2-sources.json",
+    )
+    for expected in required:
+        if expected not in names:
+            raise OncoTracerError(
+                f"Poetry wheel lacks required native payload {expected}: {wheel}"
+            )
+    forbidden = [
+        name
+        for name in names
+        if not _poetry_payload_allowed(Path(name)) or name in _POETRY_EXCLUDED_PATHS
+    ]
+    if forbidden:
+        raise OncoTracerError(
+            f"Poetry wheel contains forbidden legacy/Nextflow payload: {forbidden[0]}"
+        )
+
+
+def _build_poetry_wheel(
+    snapshot: _PoetrySourceSnapshot,
+    transaction: Path,
+    poetry: str,
+    source: Mapping[str, object],
+) -> Path:
+    state = _require_transaction_subdir(transaction, "poetry-state", create=True)
+    staging = state / "source"
+    wheels = state / "wheels"
+    staging.mkdir(mode=0o700)
+    wheels.mkdir(mode=0o700)
+    _copy_poetry_project(snapshot, staging)
+    _write_poetry_build_metadata(staging, source)
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "POETRY_VIRTUALENVS_CREATE": "false",
+            "POETRY_VIRTUALENVS_IN_PROJECT": "false",
+            "POETRY_CACHE_DIR": str(state / "cache"),
+            "POETRY_CONFIG_DIR": str(state / "config"),
+            "POETRY_DATA_DIR": str(state / "data"),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+    )
+    environment.pop("VIRTUAL_ENV", None)
+    _run_checked(
+        [poetry, "build", "--format", "wheel", "--output", wheels, "--no-interaction"],
+        cwd=staging,
+        env=environment,
+    )
+    candidates = sorted(wheels.glob("*.whl"))
+    if len(candidates) != 1:
+        raise OncoTracerError(
+            f"isolated Poetry build produced {len(candidates)} wheels, expected one"
+        )
+    _verify_poetry_wheel(candidates[0])
+    return candidates[0]
+
+
+def _pip_install_poetry_wheel(target: Path, wheel: Path, transaction: Path) -> None:
+    environment = os.environ.copy()
+    for name in ("PYTHONHOME", "PYTHONPATH", "PIP_PREFIX", "PIP_TARGET", "PIP_USER"):
+        environment.pop(name, None)
+    environment.update(
+        {
+            "VIRTUAL_ENV": str(target),
+            "PIP_CACHE_DIR": str(transaction / "poetry-state" / "pip-cache"),
+            "PIP_CONFIG_FILE": os.devnull,
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+            "PIP_NO_INPUT": "1",
+            "PIP_REQUIRE_VIRTUALENV": "true",
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+    )
+    _run_checked(
+        [
+            target / "bin" / "python",
+            "-m",
+            "pip",
+            "install",
+            "--no-index",
+            "--no-deps",
+            "--force-reinstall",
+            wheel,
+        ],
+        env=environment,
+    )
+
+
+def _verify_poetry_runtime(
+    destination: Path, expected_source: Mapping[str, object]
+) -> None:
+    launcher = destination / "bin" / "oncotracer"
+    environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    version = _run_checked([launcher, "--version"], env=environment)
+    provenance = _run_checked([launcher, "provenance", "--json"], env=environment)
+    assert version is not None and provenance is not None
+    if version.stdout.strip() != f"OncoTracer {__version__}":
+        raise OncoTracerError(
+            f"managed Poetry launcher reported an unexpected version: {launcher}"
+        )
+    try:
+        record = json.loads(provenance.stdout)
+    except (TypeError, json.JSONDecodeError) as error:
+        raise OncoTracerError(
+            f"managed Poetry launcher emitted invalid provenance JSON: {launcher}"
+        ) from error
+    if not isinstance(record, dict):
+        raise OncoTracerError(
+            f"managed Poetry launcher provenance is not an object: {launcher}"
+        )
+    for key in ("oncotracer_version", "source_commit", "source_sha256"):
+        if record.get(key) != expected_source.get(key):
+            raise OncoTracerError(
+                f"managed Poetry launcher provenance {key} is inconsistent"
+            )
+    if record.get("source_tree_dirty") is not False:
+        raise OncoTracerError("managed Poetry launcher provenance is not clean")
+
+
+def _transaction_owner(
+    transaction: Path, base: Path, transaction_id: str, kind: str
+) -> dict[str, object]:
+    return {
+        "schema": TRANSACTION_OWNER_SCHEMA,
+        "kind": kind,
+        "transaction_id": transaction_id,
+        "canonical_transaction": str(transaction),
+        "canonical_target": str(base),
+    }
+
+
+def _valid_transaction_owner(
+    value: object, transaction: Path, target: Path, transaction_id: str, kind: str
+) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value)
+        == {
+            "schema",
+            "kind",
+            "transaction_id",
+            "canonical_transaction",
+            "canonical_target",
+        }
+        and value.get("schema") == TRANSACTION_OWNER_SCHEMA
+        and value.get("kind") == kind
+        and value.get("transaction_id") == transaction_id
+        and value.get("canonical_transaction") == str(transaction)
+        and value.get("canonical_target") == str(target)
+    )
+
+
+def _assert_single_filesystem_tree(root: Path, parent: Path) -> None:
+    """Refuse cleanup if an owned transaction contains another filesystem."""
+    try:
+        parent_metadata = parent.lstat()
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not inspect installer transaction parent {parent}: {error}"
+        ) from error
+    expected_device = parent_metadata.st_dev
+    pending = [root]
+    while pending:
+        current = pending.pop()
+        try:
+            metadata = current.lstat()
+        except OSError as error:
+            raise OncoTracerError(
+                f"could not inspect installer transaction member {current}: {error}"
+            ) from error
+        if metadata.st_dev != expected_device:
+            raise OncoTracerError(
+                "refusing to remove an installer transaction that crosses "
+                f"filesystems: {current}"
+            )
+        if stat.S_ISLNK(metadata.st_mode) or stat.S_ISREG(metadata.st_mode):
+            continue
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise OncoTracerError(
+                f"refusing special file in installer transaction: {current}"
+            )
+        try:
+            pending.extend(current.iterdir())
+        except OSError as error:
+            raise OncoTracerError(
+                f"could not inventory installer transaction {current}: {error}"
+            ) from error
+
+
+def _require_transaction(
+    transaction: Path, target: Path, transaction_id: str, kind: str
+) -> None:
+    expected = target.parent / (
+        f".{target.name}.oncotracer-{kind}-txn-{transaction_id}"
+    )
+    if transaction != expected:
+        raise OncoTracerError(
+            f"installer transaction path is not the exact expected child: {transaction}"
+        )
+    try:
+        parent_metadata = target.parent.lstat()
+        metadata = transaction.lstat()
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not inspect installer transaction {transaction}: {error}"
+        ) from error
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or metadata.st_dev != parent_metadata.st_dev
+    ):
+        raise OncoTracerError(
+            f"installer transaction is not a same-filesystem physical directory: {transaction}"
+        )
+    owner = _safe_read_json(
+        transaction / ".oncotracer-transaction-owner.json",
+        "installer transaction ownership marker",
+    )
+    if not _valid_transaction_owner(owner, transaction, target, transaction_id, kind):
+        raise OncoTracerError(
+            f"refusing an unowned installer transaction: {transaction}"
+        )
+
+
+def _require_transaction_subdir(
+    transaction: Path, name: str, *, create: bool = False
+) -> Path:
+    if not name or "/" in name or "\\" in name or name in {".", ".."}:
+        raise OncoTracerError(f"invalid installer transaction member: {name!r}")
+    path = transaction / name
+    if create and not os.path.lexists(path):
+        path.mkdir(mode=0o700)
+    try:
+        transaction_metadata = transaction.lstat()
+        metadata = path.lstat()
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not inspect installer transaction directory {path}: {error}"
+        ) from error
+    if (
+        path.parent != transaction
+        or not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or metadata.st_dev != transaction_metadata.st_dev
+    ):
+        raise OncoTracerError(
+            f"installer transaction member is not a physical directory: {path}"
+        )
+    return path
+
+
+def _target_claim_path(transaction: Path, name: str) -> Path:
+    return transaction / "claims" / f"{name}.json"
+
+
+def _write_target_claim(
+    transaction: Path,
+    transaction_id: str,
+    name: str,
+    target: Path,
+    *,
+    marker: Mapping[str, object] | None = None,
+    storage: Path | None = None,
+) -> None:
+    if (
+        not _HEX_32.fullmatch(transaction_id)
+        or name not in MANAGED_CHILDREN
+        or (marker is not None and not _valid_target_claim_marker(marker, target, name))
+    ):
+        raise OncoTracerError(f"installer target claim is malformed: {target}")
+    claimed_storage = storage or target
+    metadata = claimed_storage.lstat()
+    if not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
+        raise OncoTracerError(
+            f"installer-created prefix is not physical: {claimed_storage}"
+        )
+    value = {
+        "schema": TARGET_CLAIM_SCHEMA,
+        "transaction_id": transaction_id,
+        "name": name,
+        "canonical_target": str(target),
+        "device": metadata.st_dev,
+        "inode": metadata.st_ino,
+        "state": "sealed" if marker is not None else "unsealed",
+        "marker": dict(marker) if marker is not None else None,
+    }
+    history = _require_transaction_subdir(transaction, "metadata-history", create=True)
+    _atomic_write_json(
+        _target_claim_path(transaction, name),
+        value,
+        retention_parent=history,
+        max_bytes=MAX_TARGET_CLAIM_JSON_BYTES,
+    )
+
+
+def _valid_target_claim_marker(value: object, target: Path, name: str) -> bool:
+    if not isinstance(value, dict):
+        return False
+    install_id = value.get("install_id")
+    return (
+        isinstance(install_id, str)
+        and bool(_HEX_32.fullmatch(install_id))
+        and _valid_child_marker(value, target, install_id, name)
+    )
+
+
+def _read_target_claim(
+    transaction: Path, transaction_id: str, name: str, target: Path
+) -> dict[str, object]:
+    value = _safe_read_json(
+        _target_claim_path(transaction, name),
+        "installer target claim",
+        max_bytes=MAX_TARGET_CLAIM_JSON_BYTES,
+    )
+    state = value.get("state")
+    marker = value.get("marker")
+    valid_shape = (
+        set(value)
+        == {
+            "schema",
+            "transaction_id",
+            "name",
+            "canonical_target",
+            "device",
+            "inode",
+            "state",
+            "marker",
+        }
+        and value.get("schema") == TARGET_CLAIM_SCHEMA
+        and value.get("transaction_id") == transaction_id
+        and value.get("name") == name
+        and value.get("canonical_target") == str(target)
+        and type(value.get("device")) is int
+        and value["device"] >= 0
+        and type(value.get("inode")) is int
+        and value["inode"] > 0
+        and (
+            (state == "unsealed" and marker is None)
+            or (state == "sealed" and _valid_target_claim_marker(marker, target, name))
+        )
+    )
+    if not valid_shape:
+        raise OncoTracerError(f"installer target claim is malformed: {target}")
+    return value
+
+
+def _discard_claimed_target(
+    transaction: Path,
+    transaction_id: str,
+    name: str,
+    target: Path,
+    discarded: Path,
+    base_marker: Mapping[str, object],
+) -> None:
+    claim = _read_target_claim(transaction, transaction_id, name, target)
+    metadata = target.lstat()
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or (metadata.st_dev, metadata.st_ino) != (claim["device"], claim["inode"])
+    ):
+        raise OncoTracerError(
+            f"installer-created target identity changed; refusing removal: {target}"
+        )
+    marker = claim.get("marker")
+    _assert_inactive(target)
+    if marker is None:
+        # A killed package manager can leave arbitrary bytes, including data
+        # written by another process before we regain the lock. Never delete
+        # such an unsealed tree. Move its exact claimed inode aside so the
+        # prior managed prefix can be restored, and leave it for inspection.
+        preserved = target.parent.parent / (
+            f".{target.parent.name}-{target.name}.oncotracer-preserved-"
+            f"{transaction_id}-{name}"
+        )
+        if os.path.lexists(preserved):
+            raise OncoTracerError(
+                f"installer preservation destination already exists: {preserved}"
+            )
+        _rename_noreplace(
+            target, preserved, "interrupted installer target preservation"
+        )
+        print(
+            f"OncoTracer preserved interrupted installer target at {preserved}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return
+    observed = _child_marker_at(target, target, base_marker, name)
+    if observed != marker:
+        raise OncoTracerError(
+            f"installer-created target marker changed; refusing removal: {target}"
+        )
+    _rename_noreplace(target, discarded / name, "claimed installer target rollback")
+
+
+def _committed_retained_path(transaction: Path) -> Path:
+    return transaction.with_name(f"{transaction.name}.oncotracer-retained")
+
+
+def _rename_noreplace_at(
+    source_fd: int,
+    source_name: str,
+    destination_fd: int,
+    destination_name: str,
+    label: str,
+) -> None:
+    """Atomically claim one name without replacing an existing object."""
+    for name in (source_name, destination_name):
+        if not name or name in {".", ".."} or "/" in name or "\\" in name:
+            raise OncoTracerError(f"unsafe {label} component: {name!r}")
+    libc = ctypes.CDLL(None, use_errno=True)
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
+        raise OncoTracerError(
+            f"{label} requires Linux renameat2(RENAME_NOREPLACE) support"
+        )
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    ctypes.set_errno(0)
+    result = renameat2(
+        source_fd,
+        os.fsencode(source_name),
+        destination_fd,
+        os.fsencode(destination_name),
+        1,  # RENAME_NOREPLACE
+    )
+    if result == 0:
+        return
+    error_number = ctypes.get_errno()
+    if error_number in {errno.EEXIST, errno.ENOTEMPTY}:
+        raise OncoTracerError(
+            f"{label} destination already exists; preserving both names: "
+            f"{destination_name}"
+        )
+    error = OSError(error_number, os.strerror(error_number), source_name)
+    raise OncoTracerError(f"could not atomically claim {label}: {error}") from error
+
+
+def _rename_exchange_at(
+    source_fd: int,
+    source_name: str,
+    destination_fd: int,
+    destination_name: str,
+    label: str,
+) -> None:
+    """Atomically exchange two names so neither prior object is destroyed."""
+    for name in (source_name, destination_name):
+        if not name or name in {".", ".."} or "/" in name or "\\" in name:
+            raise OncoTracerError(f"unsafe {label} component: {name!r}")
+    libc = ctypes.CDLL(None, use_errno=True)
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
+        raise OncoTracerError(f"{label} requires Linux renameat2 support")
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    ctypes.set_errno(0)
+    result = renameat2(
+        source_fd,
+        os.fsencode(source_name),
+        destination_fd,
+        os.fsencode(destination_name),
+        2,  # RENAME_EXCHANGE
+    )
+    if result == 0:
+        return
+    error_number = ctypes.get_errno()
+    error = OSError(error_number, os.strerror(error_number), source_name)
+    raise OncoTracerError(f"could not atomically exchange {label}: {error}") from error
+
+
+def _rename_noreplace(source: Path, destination: Path, label: str) -> None:
+    """Rename one path without overwriting any destination object."""
+    source_parent_fd = _open_pinned_directory(source.parent, f"{label} source parent")
+    destination_parent_fd: int | None = None
+    try:
+        destination_parent_fd = _open_pinned_directory(
+            destination.parent, f"{label} destination parent"
+        )
+        source_parent = os.fstat(source_parent_fd)
+        destination_parent = os.fstat(destination_parent_fd)
+        if source_parent.st_dev != destination_parent.st_dev:
+            raise OncoTracerError(
+                f"{label} rename must remain on one filesystem: {destination}"
+            )
+        _rename_noreplace_at(
+            source_parent_fd,
+            source.name,
+            destination_parent_fd,
+            destination.name,
+            label,
+        )
+        os.fsync(source_parent_fd)
+        os.fsync(destination_parent_fd)
+    except OncoTracerError:
+        raise
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not rename {label} without replacement: {source}: {error}"
+        ) from error
+    finally:
+        if destination_parent_fd is not None:
+            os.close(destination_parent_fd)
+        os.close(source_parent_fd)
+
+
+def _open_pinned_directory(path: Path, label: str) -> int:
+    """Open one physical directory and bind subsequent work to its inode."""
+    _reject_symlink_components(path)
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(path, flags)
+        opened = os.fstat(descriptor)
+        named = path.lstat()
+    except OSError as error:
+        if descriptor is not None:
+            os.close(descriptor)
+        raise OncoTracerError(f"could not pin {label} {path}: {error}") from error
+    if (
+        not stat.S_ISDIR(opened.st_mode)
+        or stat.S_ISLNK(named.st_mode)
+        or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
+    ):
+        os.close(descriptor)
+        raise OncoTracerError(f"{label} is not a stable physical directory: {path}")
+    return descriptor
+
+
+def _open_child_directory(parent_fd: int, name: str, label: str) -> int:
+    if not name or name in {".", ".."} or "/" in name or "\\" in name:
+        raise OncoTracerError(f"unsafe {label} component: {name!r}")
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(name, flags, dir_fd=parent_fd)
+        opened = os.fstat(descriptor)
+        named = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError as error:
+        if descriptor is not None:
+            os.close(descriptor)
+        raise OncoTracerError(f"could not pin {label} {name}: {error}") from error
+    if (
+        not stat.S_ISDIR(opened.st_mode)
+        or stat.S_ISLNK(named.st_mode)
+        or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
+    ):
+        os.close(descriptor)
+        raise OncoTracerError(f"{label} changed while it was opened: {name}")
+    return descriptor
+
+
+def _cleanup_relative_parts(relative: str) -> tuple[str, ...]:
+    parts = tuple(relative.split("/"))
+    if (
+        not relative
+        or relative.startswith("/")
+        or "\\" in relative
+        or any(part in {"", ".", ".."} for part in parts)
+    ):
+        raise OncoTracerError(f"unsafe committed cleanup path: {relative!r}")
+    return parts
+
+
+def _cleanup_entry_from_parent(
+    root_device: int,
+    parent_fd: int,
+    name: str,
+    relative: str,
+) -> tuple[dict[str, object], os.stat_result]:
+    """Authenticate one entry relative to a pinned parent without traversal."""
+    _cleanup_relative_parts(relative)
+    if "/" in name or "\\" in name or name in {"", ".", ".."}:
+        raise OncoTracerError(f"unsafe committed cleanup member: {name!r}")
+    try:
+        metadata = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not inspect committed installer cleanup member {relative}: {error}"
+        ) from error
+    mode = stat.S_IMODE(metadata.st_mode)
+    if metadata.st_dev != root_device:
+        raise OncoTracerError(
+            f"committed installer cleanup crosses filesystems: {relative}"
+        )
+    if stat.S_ISDIR(metadata.st_mode) and not stat.S_ISLNK(metadata.st_mode):
+        return (
+            {
+                "path": relative,
+                "type": "directory",
+                "mode": mode,
+                "device": metadata.st_dev,
+                "inode": metadata.st_ino,
+                "size": 0,
+                "sha256": hashlib.sha256(b"directory").hexdigest(),
+            },
+            metadata,
+        )
+    if stat.S_ISLNK(metadata.st_mode):
+        try:
+            target = os.readlink(name, dir_fd=parent_fd)
+        except OSError as error:
+            raise OncoTracerError(
+                f"could not read committed installer cleanup symlink {relative}: {error}"
+            ) from error
+        return (
+            {
+                "path": relative,
+                "type": "symlink",
+                "mode": mode,
+                "device": metadata.st_dev,
+                "inode": metadata.st_ino,
+                "size": metadata.st_size,
+                "sha256": hashlib.sha256(os.fsencode(target)).hexdigest(),
+            },
+            metadata,
+        )
+    if not stat.S_ISREG(metadata.st_mode):
+        raise OncoTracerError(
+            "committed installer cleanup contains a special file and will be "
+            f"preserved: {relative}"
+        )
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(name, flags, dir_fd=parent_fd)
+        with os.fdopen(descriptor, "rb") as handle:
+            opened = os.fstat(handle.fileno())
+            if not stat.S_ISREG(opened.st_mode) or (
+                opened.st_dev,
+                opened.st_ino,
+            ) != (metadata.st_dev, metadata.st_ino):
+                raise OncoTracerError(
+                    f"committed installer cleanup file changed identity: {relative}"
+                )
+            digest = hashlib.sha256()
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+            finished = os.fstat(handle.fileno())
+            if (
+                finished.st_dev,
+                finished.st_ino,
+                finished.st_mode,
+                finished.st_size,
+            ) != (
+                opened.st_dev,
+                opened.st_ino,
+                opened.st_mode,
+                opened.st_size,
+            ):
+                raise OncoTracerError(
+                    f"committed installer cleanup file changed while hashing: {relative}"
+                )
+    except OncoTracerError:
+        raise
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not authenticate committed installer cleanup file {relative}: {error}"
+        ) from error
+    try:
+        current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError as error:
+        raise OncoTracerError(
+            f"committed installer cleanup file vanished while hashing: {relative}: {error}"
+        ) from error
+    if (
+        current.st_dev,
+        current.st_ino,
+        current.st_mode,
+        current.st_size,
+    ) != (
+        finished.st_dev,
+        finished.st_ino,
+        finished.st_mode,
+        finished.st_size,
+    ):
+        raise OncoTracerError(
+            f"committed installer cleanup file changed while hashing: {relative}"
+        )
+    return (
+        {
+            "path": relative,
+            "type": "file",
+            "mode": mode,
+            "device": finished.st_dev,
+            "inode": finished.st_ino,
+            "size": finished.st_size,
+            "sha256": digest.hexdigest(),
+        },
+        finished,
+    )
+
+
+def _cleanup_entries_at(root_fd: int) -> list[dict[str, object]]:
+    """Inventory a pinned tree using only no-follow descriptor-relative paths."""
+    root_device = os.fstat(root_fd).st_dev
+    entries: list[dict[str, object]] = []
+
+    def visit(directory_fd: int, prefix: str) -> None:
+        try:
+            names = sorted(os.listdir(directory_fd))
+        except OSError as error:
+            raise OncoTracerError(
+                f"could not enumerate committed installer cleanup {prefix or '.'}: {error}"
+            ) from error
+        for name in names:
+            if not isinstance(name, str) or name in {"", ".", ".."} or "/" in name:
+                raise OncoTracerError(
+                    f"unsafe committed installer cleanup member: {name!r}"
+                )
+            relative = f"{prefix}/{name}" if prefix else name
+            entry, metadata = _cleanup_entry_from_parent(
+                root_device, directory_fd, name, relative
+            )
+            entries.append(entry)
+            if entry["type"] == "directory":
+                child_fd = _open_child_directory(
+                    directory_fd, name, "committed installer cleanup directory"
+                )
+                try:
+                    opened = os.fstat(child_fd)
+                    if (opened.st_dev, opened.st_ino) != (
+                        metadata.st_dev,
+                        metadata.st_ino,
+                    ):
+                        raise OncoTracerError(
+                            "committed installer cleanup directory changed while "
+                            f"walking it: {relative}"
+                        )
+                    visit(child_fd, relative)
+                finally:
+                    os.close(child_fd)
+
+    visit(root_fd, "")
+    entries.sort(key=lambda item: str(item["path"]))
+    return entries
+
+
+def _cleanup_inventory(
+    transaction: Path, target: Path, transaction_id: str, kind: str
+) -> dict[str, object]:
+    """Seal the exact transaction tree before its atomic cleanup rename."""
+    _require_transaction(transaction, target, transaction_id, kind)
+    descriptor = _open_pinned_directory(transaction, "installer transaction")
+    try:
+        metadata = os.fstat(descriptor)
+        entries = _cleanup_entries_at(descriptor)
+        return {
+            "schema": CLEANUP_INVENTORY_SCHEMA,
+            "kind": kind,
+            "transaction_id": transaction_id,
+            "canonical_transaction": str(transaction),
+            "canonical_target": str(target),
+            "root_device": metadata.st_dev,
+            "root_inode": metadata.st_ino,
+            "root_mode": stat.S_IMODE(metadata.st_mode),
+            "entries": entries,
+        }
+    finally:
+        os.close(descriptor)
+
+
+def _valid_cleanup_inventory(
+    value: object,
+    transaction: Path,
+    target: Path,
+    transaction_id: str,
+    kind: str,
+) -> bool:
+    if not isinstance(value, dict) or set(value) != {
+        "schema",
+        "kind",
+        "transaction_id",
+        "canonical_transaction",
+        "canonical_target",
+        "root_device",
+        "root_inode",
+        "root_mode",
+        "entries",
+    }:
+        return False
+    if (
+        value.get("schema") != CLEANUP_INVENTORY_SCHEMA
+        or value.get("kind") != kind
+        or value.get("transaction_id") != transaction_id
+        or value.get("canonical_transaction") != str(transaction)
+        or value.get("canonical_target") != str(target)
+        or not isinstance(value.get("root_device"), int)
+        or int(value["root_device"]) < 0
+        or not isinstance(value.get("root_inode"), int)
+        or int(value["root_inode"]) <= 0
+        or not isinstance(value.get("root_mode"), int)
+        or int(value["root_mode"]) < 0
+        or int(value["root_mode"]) > 0o7777
+        or not isinstance(value.get("entries"), list)
+    ):
+        return False
+    previous = ""
+    owner_seen = False
+    for entry in value["entries"]:
+        if not isinstance(entry, dict) or set(entry) != {
+            "path",
+            "type",
+            "mode",
+            "size",
+            "device",
+            "inode",
+            "sha256",
+        }:
+            return False
+        relative = entry.get("path")
+        if (
+            not isinstance(relative, str)
+            or not relative
+            or relative <= previous
+            or relative.startswith("/")
+            or "\\" in relative
+            or any(part in {"", ".", ".."} for part in relative.split("/"))
+            or entry.get("type") not in {"directory", "file", "symlink"}
+            or not isinstance(entry.get("mode"), int)
+            or int(entry["mode"]) < 0
+            or int(entry["mode"]) > 0o7777
+            or not isinstance(entry.get("device"), int)
+            or int(entry["device"]) != int(value["root_device"])
+            or not isinstance(entry.get("inode"), int)
+            or int(entry["inode"]) <= 0
+            or not isinstance(entry.get("size"), int)
+            or int(entry["size"]) < 0
+            or not isinstance(entry.get("sha256"), str)
+            or not _HEX_64.fullmatch(str(entry["sha256"]))
+        ):
+            return False
+        if entry["type"] == "directory" and (
+            entry["size"] != 0
+            or entry["sha256"] != hashlib.sha256(b"directory").hexdigest()
+        ):
+            return False
+        if relative == ".oncotracer-transaction-owner.json":
+            owner_seen = entry["type"] == "file"
+        previous = relative
+    return owner_seen
+
+
+def _validate_retained_state_at(
+    retained_fd: int, inventory: Mapping[str, object], label: str
+) -> list[dict[str, object]]:
+    """Require exact retained rollback bytes; no partial deletion is accepted."""
+    expected = [dict(entry) for entry in inventory["entries"]]
+    observed = _cleanup_entries_at(retained_fd)
+    if observed != expected:
+        expected_by_path = {str(entry["path"]): entry for entry in expected}
+        observed_by_path = {str(entry["path"]): entry for entry in observed}
+        added = sorted(set(observed_by_path) - set(expected_by_path))
+        missing = sorted(set(expected_by_path) - set(observed_by_path))
+        changed = sorted(
+            path
+            for path in set(expected_by_path) & set(observed_by_path)
+            if expected_by_path[path] != observed_by_path[path]
+        )
+        raise OncoTracerError(
+            "committed installer retained rollback material changed and will be "
+            f"preserved: {label}; added={added!r}; missing={missing!r}; "
+            f"changed={changed!r}"
+        )
+    return observed
+
+
+def _exists_at(parent_fd: int, name: str) -> bool:
+    try:
+        os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return False
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not inspect installer transaction entry {name}: {error}"
+        ) from error
+    return True
+
+
+def _require_cleanup_root_identity(
+    parent_fd: int,
+    name: str,
+    cleanup_fd: int,
+    inventory: Mapping[str, object],
+) -> None:
+    opened = os.fstat(cleanup_fd)
+    try:
+        named = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError as error:
+        raise OncoTracerError(
+            f"committed installer cleanup root vanished: {name}: {error}"
+        ) from error
+    if (
+        not stat.S_ISDIR(opened.st_mode)
+        or stat.S_ISLNK(named.st_mode)
+        or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
+        or opened.st_dev != inventory["root_device"]
+        or opened.st_ino != inventory["root_inode"]
+        or stat.S_IMODE(opened.st_mode) != inventory["root_mode"]
+    ):
+        raise OncoTracerError(
+            "committed installer cleanup root identity changed and will be "
+            f"preserved: {name}"
+        )
+
+
+def _retain_committed_transaction(
+    transaction: Path,
+    target: Path,
+    transaction_id: str,
+    kind: str,
+    expected_top_level: set[str],
+    inventory: Mapping[str, object],
+) -> Path:
+    """Atomically retain authenticated rollback material; never delete it."""
+    if not _valid_cleanup_inventory(
+        inventory, transaction, target, transaction_id, kind
+    ):
+        raise OncoTracerError("committed installer retention inventory is malformed")
+    parent = target.parent
+    retained = _committed_retained_path(transaction)
+    roots = (transaction, retained)
+    if any(root.parent != parent for root in roots):
+        raise OncoTracerError("installer transaction retention parent is not exact")
+
+    parent_fd = _open_pinned_directory(parent, "installer transaction parent")
+    retained_fd: int | None = None
+    try:
+        existing = [root for root in roots if _exists_at(parent_fd, root.name)]
+        if len(existing) != 1:
+            raise OncoTracerError(
+                "committed installer transaction must have exactly one rollback "
+                f"root; preserving all observed roots: {[str(path) for path in existing]!r}"
+            )
+        source = existing[0]
+        if source == transaction:
+            _require_transaction(transaction, target, transaction_id, kind)
+            _assert_inactive(transaction)
+        retained_fd = _open_child_directory(
+            parent_fd, source.name, "committed installer rollback material"
+        )
+        _require_cleanup_root_identity(parent_fd, source.name, retained_fd, inventory)
+        _assert_inactive(
+            parent / source.name, ignored_self_fds=frozenset({retained_fd})
+        )
+        if source == transaction:
+            if set(os.listdir(retained_fd)) != expected_top_level:
+                raise OncoTracerError(
+                    "committed installer transaction contains an unexpected entry "
+                    f"and will be preserved: {transaction}"
+                )
+        _validate_retained_state_at(retained_fd, inventory, str(source))
+
+        root_name = source.name
+        if source != retained:
+            _rename_noreplace_at(
+                parent_fd,
+                source.name,
+                parent_fd,
+                retained.name,
+                "committed installer retained rollback material",
+            )
+            os.fsync(parent_fd)
+            root_name = retained.name
+        _require_cleanup_root_identity(parent_fd, root_name, retained_fd, inventory)
+        _validate_retained_state_at(retained_fd, inventory, str(retained))
+        print(
+            f"OncoTracer retained authenticated rollback material at {retained}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return retained
+    finally:
+        if retained_fd is not None:
+            os.close(retained_fd)
+        os.close(parent_fd)
+
+
+def _transaction_path(target: Path, kind: str, transaction_id: str) -> Path:
+    return target.parent / f".{target.name}.oncotracer-{kind}-txn-{transaction_id}"
+
+
+def _create_transaction(target: Path, kind: str, transaction_id: str) -> Path:
+    transaction = _transaction_path(target, kind, transaction_id)
+    transaction.mkdir(mode=0o700)
+    _atomic_write_json(
+        transaction / ".oncotracer-transaction-owner.json",
+        _transaction_owner(transaction, target, transaction_id, kind),
+    )
+    return transaction
+
+
+def _new_transaction(target: Path, kind: str) -> tuple[str, Path]:
+    transaction_id = uuid.uuid4().hex
+    return transaction_id, _create_transaction(target, kind, transaction_id)
+
+
+def _preserve_path(path: Path, transaction_id: str, label: str) -> Path:
+    preserved = path.parent / (
+        f".{path.name}.oncotracer-preserved-{transaction_id}-{label}"
+    )
+    if os.path.lexists(preserved):
+        raise OncoTracerError(
+            f"installer preservation destination already exists: {preserved}"
+        )
+    return preserved
+
+
+def _preserve_staging_transaction(
+    transaction: Path,
+    target: Path,
+    transaction_id: str,
+    kind: str,
+    *,
+    reason: str = "staging",
+) -> Path | None:
+    if not os.path.lexists(transaction):
+        return None
+    if transaction.parent != target.parent:
+        raise OncoTracerError("installer preservation parent is not exact")
+    metadata = transaction.lstat()
+    parent_metadata = target.parent.lstat()
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or metadata.st_dev != parent_metadata.st_dev
+    ):
+        raise OncoTracerError(
+            f"installer transaction is not a same-filesystem physical directory: {transaction}"
+        )
+    _assert_inactive(transaction)
+    preserved = _preserve_path(transaction, transaction_id, f"{kind}-{reason}")
+    _assert_single_filesystem_tree(transaction, target.parent)
+    parent_fd = _open_pinned_directory(target.parent, "installer preservation parent")
+    transaction_fd: int | None = None
+    try:
+        transaction_fd = _open_child_directory(
+            parent_fd, transaction.name, "installer transaction for preservation"
+        )
+        opened = os.fstat(transaction_fd)
+        if (opened.st_dev, opened.st_ino) != (metadata.st_dev, metadata.st_ino):
+            raise OncoTracerError(
+                f"installer transaction changed before preservation: {transaction}"
+            )
+        _rename_noreplace_at(
+            parent_fd,
+            transaction.name,
+            parent_fd,
+            preserved.name,
+            "installer preserved transaction",
+        )
+        os.fsync(parent_fd)
+        named = os.stat(preserved.name, dir_fd=parent_fd, follow_symlinks=False)
+        if (named.st_dev, named.st_ino) != (opened.st_dev, opened.st_ino):
+            raise OncoTracerError(
+                f"installer preserved transaction identity changed: {preserved}"
+            )
+    finally:
+        if transaction_fd is not None:
+            os.close(transaction_fd)
+        os.close(parent_fd)
+    print(
+        f"OncoTracer preserved installer {reason} at {preserved}",
+        file=sys.stderr,
+        flush=True,
+    )
+    return preserved
+
+
+def _journal_path(target: Path, kind: str) -> Path:
+    return target.parent / f".{target.name}.oncotracer-{kind}-transaction.json"
+
+
+def _retained_journal_path(journal_path: Path, transaction_id: str, kind: str) -> Path:
+    digest = hashlib.sha256(os.fsencode(str(journal_path))).hexdigest()[:16]
+    return journal_path.parent / (
+        f".oncotracer-{kind}-retained-journal-{transaction_id}-{digest}.json"
+    )
+
+
+def _retain_transaction_journal(
+    journal_path: Path, journal: Mapping[str, object], kind: str
+) -> Path:
+    """Atomically retain the authenticated journal; never unlink its name."""
+    transaction_id = journal.get("transaction_id")
+    if (
+        not isinstance(transaction_id, str)
+        or not _HEX_32.fullmatch(transaction_id)
+        or journal.get("kind") != kind
+    ):
+        raise OncoTracerError("installer journal retention identity is malformed")
+    retained = _retained_journal_path(journal_path, transaction_id, kind)
+    if retained.parent != journal_path.parent:
+        raise OncoTracerError("installer retained journal parent is not exact")
+    expected = (json.dumps(dict(journal), indent=2, sort_keys=True) + "\n").encode(
+        "utf-8"
+    )
+    parent_fd = _open_pinned_directory(journal_path.parent, "installer journal parent")
+    journal_fd: int | None = None
+    try:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        journal_fd = os.open(journal_path.name, flags, dir_fd=parent_fd)
+        metadata = os.fstat(journal_fd)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or metadata.st_size != len(expected)
+        ):
+            raise OncoTracerError(
+                f"installer transaction journal is unsafe: {journal_path}"
+            )
+
+        def read_open_journal() -> bytes:
+            os.lseek(journal_fd, 0, os.SEEK_SET)
+            chunks: list[bytes] = []
+            while True:
+                chunk = os.read(journal_fd, 1024 * 1024)
+                if not chunk:
+                    return b"".join(chunks)
+                chunks.append(chunk)
+
+        if read_open_journal() != expected:
+            raise OncoTracerError(
+                f"installer transaction journal changed before retention: {journal_path}"
+            )
+        _rename_noreplace_at(
+            parent_fd,
+            journal_path.name,
+            parent_fd,
+            retained.name,
+            "installer retained transaction journal",
+        )
+        os.fsync(parent_fd)
+        named = os.stat(retained.name, dir_fd=parent_fd, follow_symlinks=False)
+        if (named.st_dev, named.st_ino) != (metadata.st_dev, metadata.st_ino):
+            raise OncoTracerError(
+                f"installer retained journal identity changed: {retained}"
+            )
+        finished = os.fstat(journal_fd)
+        if (
+            finished.st_dev,
+            finished.st_ino,
+            finished.st_mode,
+            finished.st_nlink,
+            finished.st_size,
+            finished.st_mtime_ns,
+        ) != (
+            metadata.st_dev,
+            metadata.st_ino,
+            metadata.st_mode,
+            metadata.st_nlink,
+            metadata.st_size,
+            metadata.st_mtime_ns,
+        ) or read_open_journal() != expected:
+            raise OncoTracerError(
+                f"installer retained journal bytes changed: {retained}"
+            )
+        print(
+            f"OncoTracer retained authenticated installer journal at {retained}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return retained
+    except OncoTracerError:
+        raise
+    except OSError as error:
+        raise OncoTracerError(
+            f"could not retain installer transaction journal {journal_path}: {error}"
+        ) from error
+    finally:
+        if journal_fd is not None:
+            os.close(journal_fd)
+        os.close(parent_fd)
+
+
+def _retain_verified_json_file(
+    source: Path,
+    destination: Path,
+    expected_value: Mapping[str, object],
+    label: str,
+) -> Path:
+    """Move authenticated metadata to retained storage without replacement."""
+    if source == destination or source.parent == destination:
+        raise OncoTracerError(f"unsafe {label} retention destination: {destination}")
+    expected = (
+        json.dumps(dict(expected_value), indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    source_parent_fd = _open_pinned_directory(source.parent, f"{label} source parent")
+    destination_parent_fd: int | None = None
+    source_fd: int | None = None
+    try:
+        destination_parent_fd = _open_pinned_directory(
+            destination.parent, f"{label} retained parent"
+        )
+        source_parent = os.fstat(source_parent_fd)
+        destination_parent = os.fstat(destination_parent_fd)
+        if source_parent.st_dev != destination_parent.st_dev:
+            raise OncoTracerError(
+                f"{label} retention must remain on one filesystem: {destination}"
+            )
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        source_fd = os.open(source.name, flags, dir_fd=source_parent_fd)
+        metadata = os.fstat(source_fd)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or metadata.st_size != len(expected)
+        ):
+            raise OncoTracerError(f"{label} is unsafe for retention: {source}")
+
+        def read_open_source() -> bytes:
+            assert source_fd is not None
+            os.lseek(source_fd, 0, os.SEEK_SET)
+            chunks: list[bytes] = []
+            while True:
+                chunk = os.read(source_fd, 1024 * 1024)
+                if not chunk:
+                    return b"".join(chunks)
+                chunks.append(chunk)
+
+        if read_open_source() != expected:
+            raise OncoTracerError(f"{label} changed before retention: {source}")
+        _rename_noreplace_at(
+            source_parent_fd,
+            source.name,
+            destination_parent_fd,
+            destination.name,
+            label,
+        )
+        os.fsync(source_parent_fd)
+        os.fsync(destination_parent_fd)
+        named = os.stat(
+            destination.name,
+            dir_fd=destination_parent_fd,
+            follow_symlinks=False,
+        )
+        finished = os.fstat(source_fd)
+        stable_fields = (
+            "st_dev",
+            "st_ino",
+            "st_mode",
+            "st_nlink",
+            "st_size",
+            "st_mtime_ns",
+        )
+        if (
+            (named.st_dev, named.st_ino) != (metadata.st_dev, metadata.st_ino)
+            or tuple(getattr(finished, field) for field in stable_fields)
+            != tuple(getattr(metadata, field) for field in stable_fields)
+            or read_open_source() != expected
+        ):
+            raise OncoTracerError(
+                f"{label} changed during retention and will be preserved: "
+                f"{destination}"
+            )
+        print(
+            f"OncoTracer retained authenticated {label} at {destination}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return destination
+    except OncoTracerError:
+        raise
+    except OSError as error:
+        raise OncoTracerError(f"could not retain {label} {source}: {error}") from error
+    finally:
+        if source_fd is not None:
+            os.close(source_fd)
+        if destination_parent_fd is not None:
+            os.close(destination_parent_fd)
+        os.close(source_parent_fd)
+
+
+def _lock_path(target: Path, kind: str) -> Path:
+    return target.parent / f".{target.name}.oncotracer-{kind}.lock"
+
+
+def _write_journal(path: Path, value: Mapping[str, object]) -> None:
+    _atomic_write_json(path, dict(value), retention_parent=path.parent)
+
+
+def _valid_conda_journal(value: object, base: Path) -> bool:
+    if not isinstance(value, dict) or set(value) != {
+        "schema",
+        "kind",
+        "phase",
+        "transaction_id",
+        "install_id",
+        "canonical_target",
+        "canonical_transaction",
+        "prestate",
+        "assets",
+        "previous_markers",
+        "new_markers",
+        "base_marker_before",
+        "base_marker_after",
+        "cleanup_inventory",
+    }:
+        return False
+    transaction_id = value.get("transaction_id")
+    transaction = base.parent / f".{base.name}.oncotracer-conda-txn-{transaction_id}"
+    shallow_valid = (
+        value.get("schema") == TRANSACTION_SCHEMA
+        and value.get("kind") == "conda"
+        and value.get("phase") in {"staging", "publishing", "committed", "rolled_back"}
+        and isinstance(transaction_id, str)
+        and bool(_HEX_32.fullmatch(transaction_id))
+        and isinstance(value.get("install_id"), str)
+        and bool(_HEX_32.fullmatch(str(value["install_id"])))
+        and value.get("canonical_target") == str(base)
+        and value.get("canonical_transaction") == str(transaction)
+        and value.get("prestate") in {"absent", "empty", "owned"}
+        and isinstance(value.get("assets"), list)
+        and bool(value["assets"])
+        and all(name in MANAGED_CHILDREN for name in value["assets"])
+        and len(set(value["assets"])) == len(value["assets"])
+        and isinstance(value.get("previous_markers"), dict)
+        and isinstance(value.get("new_markers"), dict)
+        and set(value["previous_markers"]) == set(value["assets"])
+        and set(value["new_markers"]) == set(value["assets"])
+    )
+    if not shallow_valid:
+        return False
+    cleanup_inventory = value.get("cleanup_inventory")
+    if value["phase"] in {"committed", "rolled_back"}:
+        if not _valid_cleanup_inventory(
+            cleanup_inventory,
+            transaction,
+            base,
+            str(transaction_id),
+            "conda",
+        ):
+            return False
+    elif cleanup_inventory is not None:
+        return False
+    install_id = str(value["install_id"])
+    assets = [str(name) for name in value["assets"]]
+    base_after = value.get("base_marker_after")
+    if (
+        not _valid_base_marker(base_after, base)
+        or base_after.get("install_id") != install_id
+    ):
+        return False
+    for name in assets:
+        new = value["new_markers"].get(name)
+        if not _valid_child_marker(new, base / name, install_id, name) or new.get(
+            "source"
+        ) != base_after.get("source"):
+            return False
+        previous = value["previous_markers"].get(name)
+        if previous is not None and not _valid_child_marker(
+            previous, base / name, install_id, name
+        ):
+            return False
+    if value["prestate"] in {"absent", "empty"}:
+        return (
+            value.get("base_marker_before") is None
+            and all(value["previous_markers"].get(name) is None for name in assets)
+            and (
+                set(assets) == set(CONDA_NAMES) or set(assets) == set(MANAGED_CHILDREN)
+            )
+        )
+    base_before = value.get("base_marker_before")
+    return (
+        _valid_base_marker(base_before, base)
+        and base_before.get("install_id") == install_id
+        and all(
+            value["previous_markers"].get(name) is None
+            or value["previous_markers"][name].get("source")
+            == base_before.get("source")
+            for name in assets
+        )
+    )
+
+
+def _restore_conda_transaction(
+    base: Path, journal_path: Path, journal: Mapping[str, object]
+) -> None:
+    """Recover the exact-final-prefix installer transaction idempotently."""
+    transaction_id = str(journal["transaction_id"])
+    transaction = Path(str(journal["canonical_transaction"]))
+    if journal["phase"] == "staging":
+        prestate = str(journal["prestate"])
+        if prestate == "absent":
+            unchanged = not os.path.lexists(base)
+        elif prestate == "empty":
+            unchanged = (
+                base.is_dir() and not base.is_symlink() and not any(base.iterdir())
+            )
+        else:
+            state, marker = _classify_base(base)
+            unchanged = state == "owned" and marker == journal["base_marker_before"]
+            if unchanged and marker is not None:
+                unchanged = all(
+                    _child_marker_value(base, marker, str(name))
+                    == journal["previous_markers"][str(name)]
+                    for name in journal["assets"]
+                )
+        if not unchanged:
+            raise OncoTracerError(
+                f"Conda target changed during staging recovery: {base}"
+            )
+        _preserve_staging_transaction(transaction, base, transaction_id, "conda")
+        _retain_transaction_journal(journal_path, journal, "conda")
+        return
+    if journal["phase"] == "rolled_back":
+        prestate = str(journal["prestate"])
+        if prestate == "owned":
+            state, marker = _classify_base(base)
+            unchanged = state == "owned" and marker == journal["base_marker_before"]
+            if unchanged and marker is not None:
+                unchanged = all(
+                    _child_marker_value(base, marker, str(name))
+                    == journal["previous_markers"][str(name)]
+                    for name in journal["assets"]
+                )
+        elif prestate == "absent":
+            unchanged = not os.path.lexists(base) or (
+                base.is_dir() and not base.is_symlink() and not any(base.iterdir())
+            )
+        else:
+            unchanged = (
+                base.is_dir() and not base.is_symlink() and not any(base.iterdir())
+            )
+        if not unchanged:
+            raise OncoTracerError(
+                f"rolled-back Conda target changed before recovery: {base}"
+            )
+        inventory = journal["cleanup_inventory"]
+        expected_top_level = {
+            str(entry["path"]).split("/", 1)[0] for entry in inventory["entries"]
+        }
+        _retain_committed_transaction(
+            transaction,
+            base,
+            transaction_id,
+            "conda",
+            expected_top_level,
+            inventory,
+        )
+        _retain_transaction_journal(journal_path, journal, "conda")
+        return
+    if journal["phase"] == "committed":
+        state, marker = _classify_base(base)
+        if state != "owned" or marker != journal["base_marker_after"]:
+            raise OncoTracerError(
+                f"committed Conda transaction does not match its target: {base}"
+            )
+        for raw_name in journal["assets"]:
+            name = str(raw_name)
+            observed = _child_marker_value(base, marker, name)
+            if observed != journal["new_markers"][name]:
+                raise OncoTracerError(
+                    f"committed Conda child is inconsistent: {base / name}"
+                )
+            if name == "poetry-runtime":
+                _verify_poetry_runtime(base / name, observed["source"])
+            else:
+                _verify_conda_runtime(base / name, name)
+            _verify_child_inventory(base / name, observed)
+        expected_top_level = {
+            ".oncotracer-transaction-owner.json",
+            "backups",
+            "claims",
+            "empty",
+            "discarded",
+            "metadata-history",
+        }
+        if "poetry-runtime" in journal["assets"]:
+            expected_top_level.add("poetry-state")
+        if os.path.lexists(transaction):
+            _require_transaction(transaction, base, transaction_id, "conda")
+            backups = _require_transaction_subdir(transaction, "backups")
+            claims = _require_transaction_subdir(transaction, "claims")
+            empty = _require_transaction_subdir(transaction, "empty")
+            discarded = _require_transaction_subdir(transaction, "discarded")
+            _require_transaction_subdir(transaction, "metadata-history")
+            if "poetry-state" in expected_top_level:
+                _require_transaction_subdir(transaction, "poetry-state")
+            observed_top_level = {path.name for path in transaction.iterdir()}
+            if observed_top_level != expected_top_level:
+                raise OncoTracerError(
+                    "Conda transaction contains unexpected entries and will be "
+                    f"preserved: {transaction}"
+                )
+            if any(empty.iterdir()) or any(discarded.iterdir()):
+                raise OncoTracerError(
+                    "committed Conda transaction has unexpected pending entries; "
+                    f"preserving it: {transaction}"
+                )
+            base_before = journal.get("base_marker_before")
+            expected_backups = {
+                str(name)
+                for name in journal["assets"]
+                if journal["previous_markers"][str(name)] is not None
+            }
+            if {path.name for path in backups.iterdir()} != expected_backups:
+                raise OncoTracerError(
+                    f"Conda backup set changed before cleanup: {backups}"
+                )
+            expected_claims = {f"{name}.json" for name in journal["assets"]}
+            if {path.name for path in claims.iterdir()} != expected_claims:
+                raise OncoTracerError(
+                    f"Conda target-claim set changed before cleanup: {claims}"
+                )
+            for raw_name in journal["assets"]:
+                name = str(raw_name)
+                backup = backups / name
+                previous = journal["previous_markers"][name]
+                claim = _read_target_claim(
+                    transaction, transaction_id, name, base / name
+                )
+                if claim.get("marker") != journal["new_markers"][name]:
+                    raise OncoTracerError(
+                        f"Conda final-prefix claim changed before cleanup: {base / name}"
+                    )
+                _assert_claimed_identity(transaction, transaction_id, name, base / name)
+                if previous is None:
+                    continue
+                if not isinstance(base_before, Mapping):
+                    raise OncoTracerError(
+                        "committed Conda transaction lacks its prior base ownership"
+                    )
+                observed_backup = _child_marker_at(
+                    backup, base / name, base_before, name
+                )
+                if observed_backup != previous:
+                    raise OncoTracerError(
+                        f"Conda backup changed before cleanup; preserving it: {backup}"
+                    )
+        _retain_committed_transaction(
+            transaction,
+            base,
+            transaction_id,
+            "conda",
+            expected_top_level,
+            journal["cleanup_inventory"],
+        )
+        _retain_transaction_journal(journal_path, journal, "conda")
+        return
+
+    _require_transaction(transaction, base, transaction_id, "conda")
+    backups = _require_transaction_subdir(transaction, "backups")
+    _require_transaction_subdir(transaction, "claims")
+    discarded = _require_transaction_subdir(transaction, "discarded", create=True)
+    prestate = str(journal["prestate"])
+    base_before = journal.get("base_marker_before")
+    base_after = journal["base_marker_after"]
+    marker_for_validation = base_before if base_before is not None else base_after
+    assert isinstance(marker_for_validation, Mapping)
+
+    for raw_name in reversed(journal["assets"]):
+        name = str(raw_name)
+        target = base / name
+        backup = backups / name
+        previous = journal["previous_markers"][name]
+        if os.path.lexists(backup):
+            metadata = backup.lstat()
+            if (
+                not stat.S_ISDIR(metadata.st_mode)
+                or stat.S_ISLNK(metadata.st_mode)
+                or metadata.st_dev != transaction.lstat().st_dev
+            ):
+                raise OncoTracerError(
+                    f"Conda rollback backup is not a physical directory: {backup}"
+                )
+            observed_backup = _child_marker_at(
+                backup, target, marker_for_validation, name
+            )
+            if previous is None or observed_backup != previous:
+                raise OncoTracerError(
+                    f"Conda rollback backup is inconsistent: {backup}"
+                )
+            if os.path.lexists(target):
+                _discard_claimed_target(
+                    transaction,
+                    transaction_id,
+                    name,
+                    target,
+                    discarded,
+                    base_after,
+                )
+            _rename_noreplace(backup, target, "Conda rollback backup restoration")
+            continue
+
+        if previous is not None:
+            # A crash immediately after backup -> target is already restored.
+            observed_target = _child_marker_at(
+                target, target, marker_for_validation, name
+            )
+            if observed_target == previous:
+                continue
+            raise OncoTracerError(
+                f"Conda rollback lost or changed the prior target: {target}"
+            )
+        if os.path.lexists(target):
+            _discard_claimed_target(
+                transaction,
+                transaction_id,
+                name,
+                target,
+                discarded,
+                base_after,
+            )
+
+    marker_path = base / BASE_MARKER
+    if prestate == "owned":
+        if not _valid_base_marker(base_before, base):
+            raise OncoTracerError("Conda rollback has an invalid prior base marker")
+        history = _require_transaction_subdir(transaction, "metadata-history")
+        _atomic_write_json(marker_path, base_before, retention_parent=history)
+    else:
+        if os.path.lexists(marker_path):
+            observed = _safe_read_json(marker_path, "Conda root ownership marker")
+            if observed != base_after:
+                raise OncoTracerError(
+                    f"Conda rollback refuses a changed root marker: {marker_path}"
+                )
+            _retain_verified_json_file(
+                marker_path,
+                discarded / BASE_MARKER,
+                base_after,
+                "Conda rollback root ownership marker",
+            )
+    rollback_inventory = _cleanup_inventory(transaction, base, transaction_id, "conda")
+    rolled_back = {
+        **journal,
+        "phase": "rolled_back",
+        "cleanup_inventory": rollback_inventory,
+    }
+    _write_journal(journal_path, rolled_back)
+    expected_top_level = {
+        str(entry["path"]).split("/", 1)[0] for entry in rollback_inventory["entries"]
+    }
+    _retain_committed_transaction(
+        transaction,
+        base,
+        transaction_id,
+        "conda",
+        expected_top_level,
+        rollback_inventory,
+    )
+    _retain_transaction_journal(journal_path, rolled_back, "conda")
+
+
+def _recover_conda_journal(base: Path) -> None:
+    journal_path = _journal_path(base, "conda")
+    if not os.path.lexists(journal_path):
+        return
+    journal = _safe_read_json(
+        journal_path,
+        "Conda transaction journal",
+        max_bytes=MAX_INVENTORY_JSON_BYTES,
+    )
+    if not _valid_conda_journal(journal, base):
+        raise OncoTracerError(
+            f"refusing malformed or foreign Conda transaction journal: {journal_path}"
+        )
+    _restore_conda_transaction(base, journal_path, journal)
+
+
+def _dry_run_conda_plan(
+    base: Path,
+    root: Path,
+    conda: str,
+    *,
+    include_poetry: bool,
+    poetry: str | None,
+) -> None:
+    state, marker = _classify_base(base)
+    definitions = {
+        "core": root / "environments" / "native-core.yml",
+        "qdnaseq": root / "environments" / "native-qdnaseq.yml",
+        "ichorcna": root / "environments" / "native-ichorcna.yml",
+        "classifier": root / "environments" / "native-classifier.yml",
+        "gistic": root / "environments" / "native-gistic2.yml",
+    }
+    for name, definition in definitions.items():
+        if not definition.is_file():
+            raise OncoTracerError(
+                f"native {name} environment definition is missing: {definition}"
+            )
+        if state == "owned" and marker is not None:
+            _child_marker_value(base, marker, name)
+        _run_checked(
+            [conda, "env", "create", "--prefix", base / name, "--file", definition],
+            dry_run=True,
+        )
+    if include_poetry:
+        assert poetry is not None
+        _run_checked([poetry, "--version"], dry_run=True)
+        _run_checked(
+            [
+                poetry,
+                "build",
+                "--format",
+                "wheel",
+                "--output",
+                "<isolated-wheel-dir>",
+                "--no-interaction",
+            ],
+            cwd=Path("<isolated-source-tree>"),
+            dry_run=True,
+        )
+        _run_checked(
+            [sys.executable, "-m", "venv", base / "poetry-runtime"], dry_run=True
+        )
+        _run_checked(
+            [
+                base / "poetry-runtime" / "bin" / "python",
+                "-m",
+                "pip",
+                "install",
+                "--no-index",
+                "--no-deps",
+                "<isolated-built-wheel>",
+            ],
+            dry_run=True,
+        )
+
+
+def _same_child_spec(
+    observed: Mapping[str, object], expected: Mapping[str, object], name: str
+) -> bool:
+    ignored = {"inventory_sha256"}
+    if name == "poetry-runtime":
+        ignored.add("launcher_sha256")
+    return {key: value for key, value in observed.items() if key not in ignored} == {
+        key: value for key, value in expected.items() if key not in ignored
+    }
+
+
+def _assert_claimed_identity(
+    transaction: Path, transaction_id: str, name: str, target: Path
+) -> None:
+    claim = _read_target_claim(transaction, transaction_id, name, target)
+    metadata = target.lstat()
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or (metadata.st_dev, metadata.st_ino) != (claim["device"], claim["inode"])
+    ):
+        raise OncoTracerError(
+            f"installer-created final prefix changed identity: {target}"
+        )
+
+
+def install_conda_managed(
+    root: Path,
+    base: Path,
+    *,
+    conda: str,
+    force: bool,
+    dry_run: bool,
+    poetry: str | None = None,
+) -> dict[str, Path]:
+    """Install directly at final prefixes with owned transactional backups."""
+    base = _guard_dedicated(base, "Conda install root")
+    root = _absolute(root)
+    include_poetry = poetry is not None
+    pending_journal = _journal_path(base, "conda")
+    if os.path.lexists(pending_journal):
+        pending = _safe_read_json(
+            pending_journal,
+            "Conda transaction journal",
+            max_bytes=MAX_INVENTORY_JSON_BYTES,
+        )
+        if not _valid_conda_journal(pending, base):
+            raise OncoTracerError(
+                f"refusing malformed or foreign Conda transaction journal: {pending_journal}"
+            )
+        if dry_run:
+            raise OncoTracerError(
+                "Conda dry-run cannot recover a pending owned transaction; rerun "
+                f"without --dry-run to recover it first: {pending_journal}"
+            )
+        initial_state = "pending"
+    else:
+        initial_state, _ = _classify_base(base)
+    if not dry_run and initial_state == "empty":
+        _assert_inactive(base)
+    if dry_run:
+        _dry_run_conda_plan(
+            base, root, conda, include_poetry=include_poetry, poetry=poetry
+        )
+        return {name: base / name for name in CONDA_NAMES}
+
+    source = _source_identity()
+    project = root / "pyproject.toml"
+    lock = root / "poetry.lock"
+    poetry_snapshot: _PoetrySourceSnapshot | None = None
+    if include_poetry:
+        if not project.is_file() or not lock.is_file():
+            raise OncoTracerError(
+                "Poetry installation requires pyproject.toml and poetry.lock"
+            )
+        assert poetry is not None
+        _require_poetry_v2(poetry)
+        poetry_snapshot = _verify_poetry_source_checkout(root, source)
+    base.parent.mkdir(parents=True, exist_ok=True)
+    base = _guard_dedicated(base, "Conda install root")
+    with _exclusive_install_lock(_lock_path(base, "conda"), base, "conda"):
+        base = _guard_dedicated(base, "Conda install root")
+        _recover_conda_journal(base)
+        state, observed_base_marker = _classify_base(base)
+        install_id = (
+            str(observed_base_marker["install_id"])
+            if observed_base_marker is not None
+            else uuid.uuid4().hex
+        )
+        expected_base_marker = _base_marker(base, install_id, source)
+        if (
+            state == "owned"
+            and not include_poetry
+            and os.path.lexists(base / "poetry-runtime")
+            and observed_base_marker is not None
+            and observed_base_marker.get("source") != source
+        ):
+            raise OncoTracerError(
+                "this owned prefix includes a Poetry runtime from another "
+                "OncoTracer source; update it with install --poetry or select a "
+                "new dedicated Conda --prefix"
+            )
+        definitions = {
+            "core": root / "environments" / "native-core.yml",
+            "qdnaseq": root / "environments" / "native-qdnaseq.yml",
+            "ichorcna": root / "environments" / "native-ichorcna.yml",
+            "classifier": root / "environments" / "native-classifier.yml",
+            "gistic": root / "environments" / "native-gistic2.yml",
+        }
+        for name, definition in definitions.items():
+            if not definition.is_file() or definition.stat().st_size == 0:
+                raise OncoTracerError(
+                    f"native {name} environment definition is missing or empty: {definition}"
+                )
+        names = [*CONDA_NAMES, *(["poetry-runtime"] if include_poetry else [])]
+        previous: dict[str, dict[str, object] | None] = {}
+        expected: dict[str, dict[str, object]] = {}
+        changed: list[str] = []
+        for name in names:
+            prior = (
+                _child_marker_value(base, observed_base_marker, name)
+                if state == "owned" and observed_base_marker is not None
+                else None
+            )
+            previous[name] = prior
+            prior_inventory = (
+                str(prior["inventory_sha256"]) if prior is not None else "0" * 64
+            )
+            if name == "poetry-runtime":
+                planned = _poetry_marker(
+                    base / name,
+                    install_id,
+                    poetry_snapshot.pyproject_sha256,
+                    poetry_snapshot.lock_sha256,
+                    str(prior["launcher_sha256"]) if prior else "0" * 64,
+                    source,
+                    prior_inventory,
+                )
+            else:
+                planned = _environment_marker(
+                    base / name,
+                    install_id,
+                    name,
+                    sha256_file(definitions[name]),
+                    source,
+                    prior_inventory,
+                )
+            expected[name] = planned
+            complete = (
+                _poetry_complete(base / name)
+                if name == "poetry-runtime"
+                else _conda_complete(base / name)
+            )
+            needs_change = (
+                force
+                or prior is None
+                or not complete
+                or not _same_child_spec(prior, planned, name)
+            )
+            if needs_change:
+                changed.append(name)
+            else:
+                if name == "poetry-runtime":
+                    _verify_poetry_runtime(base / name, source)
+                else:
+                    _verify_conda_runtime(base / name, name)
+                _verify_child_inventory(base / name, prior)
+                expected[name] = prior
+
+        if not changed:
+            if observed_base_marker != expected_base_marker:
+                _atomic_write_json(
+                    base / BASE_MARKER,
+                    expected_base_marker,
+                    retention_parent=base.parent,
+                )
+            return {name: base / name for name in CONDA_NAMES}
+        if state == "owned":
+            _assert_inactive(base)
+
+        transaction_id = uuid.uuid4().hex
+        transaction = _transaction_path(base, "conda", transaction_id)
+        journal_path = _journal_path(base, "conda")
+        journal: dict[str, object] = {
+            "schema": TRANSACTION_SCHEMA,
+            "kind": "conda",
+            "phase": "staging",
+            "transaction_id": transaction_id,
+            "install_id": install_id,
+            "canonical_target": str(base),
+            "canonical_transaction": str(transaction),
+            "prestate": state,
+            "assets": changed,
+            "previous_markers": {name: previous[name] for name in changed},
+            "new_markers": {name: expected[name] for name in changed},
+            "base_marker_before": observed_base_marker,
+            "base_marker_after": expected_base_marker,
+            "cleanup_inventory": None,
+        }
+        # The durable journal precedes transaction creation, package-manager
+        # execution, and every target mutation.
+        _write_journal(journal_path, journal)
+        try:
+            transaction = _create_transaction(base, "conda", transaction_id)
+            backups = _require_transaction_subdir(transaction, "backups", create=True)
+            _require_transaction_subdir(transaction, "claims", create=True)
+            empty = _require_transaction_subdir(transaction, "empty", create=True)
+            _require_transaction_subdir(transaction, "discarded", create=True)
+            for name in changed:
+                placeholder = empty / name
+                placeholder.mkdir(mode=0o700)
+                _write_target_claim(
+                    transaction,
+                    transaction_id,
+                    name,
+                    base / name,
+                    storage=placeholder,
+                )
+            journal = {**journal, "phase": "publishing"}
+            _write_journal(journal_path, journal)
+            if state == "absent":
+                base.mkdir(mode=0o700)
+            elif not base.is_dir() or base.is_symlink():
+                raise OncoTracerError(f"Conda root changed before installation: {base}")
+            history = _require_transaction_subdir(transaction, "metadata-history")
+            _atomic_write_json(
+                base / BASE_MARKER,
+                expected_base_marker,
+                retention_parent=history,
+            )
+            for name in changed:
+                target = base / name
+                backup = backups / name
+                if previous[name] is not None:
+                    _assert_inactive(target)
+                    observed_before_backup = _child_marker_value(
+                        base, observed_base_marker, name
+                    )
+                    if observed_before_backup != previous[name]:
+                        raise OncoTracerError(
+                            f"managed prefix changed before backup: {target}"
+                        )
+                    target_identity = target.lstat()
+                    _rename_noreplace(target, backup, "Conda prefix backup")
+                    backup_identity = backup.lstat()
+                    if (backup_identity.st_dev, backup_identity.st_ino) != (
+                        target_identity.st_dev,
+                        target_identity.st_ino,
+                    ):
+                        raise OncoTracerError(
+                            f"managed prefix identity changed during backup: {target}"
+                        )
+                    observed_backup = _child_marker_at(
+                        backup, target, observed_base_marker, name
+                    )
+                    if observed_backup != previous[name]:
+                        raise OncoTracerError(
+                            f"managed prefix changed during backup: {target}"
+                        )
+                elif os.path.lexists(target):
+                    raise OncoTracerError(
+                        f"new managed prefix appeared before creation: {target}"
+                    )
+                _rename_noreplace(
+                    empty / name, target, "Conda final-prefix publication"
+                )
+                _assert_claimed_identity(transaction, transaction_id, name, target)
+                try:
+                    if name == "poetry-runtime":
+                        assert poetry is not None
+                        if poetry_snapshot is None:
+                            raise OncoTracerError(
+                                "Poetry source snapshot is unavailable"
+                            )
+                        wheel = _build_poetry_wheel(
+                            poetry_snapshot, transaction, poetry, source
+                        )
+                        venv.EnvBuilder(with_pip=True, symlinks=False).create(target)
+                        _assert_claimed_identity(
+                            transaction, transaction_id, name, target
+                        )
+                        _pip_install_poetry_wheel(target, wheel, transaction)
+                        _assert_claimed_identity(
+                            transaction, transaction_id, name, target
+                        )
+                        if not _poetry_complete(target):
+                            raise OncoTracerError(
+                                f"Poetry runtime is incomplete: {target}"
+                            )
+                        _verify_poetry_runtime(target, source)
+                        inventory_sha256 = _write_child_inventory(target)
+                        final_marker = _poetry_marker(
+                            target,
+                            install_id,
+                            poetry_snapshot.pyproject_sha256,
+                            poetry_snapshot.lock_sha256,
+                            sha256_file(target / "bin" / "oncotracer"),
+                            source,
+                            inventory_sha256,
+                        )
+                        marker_name = POETRY_MARKER
+                    else:
+                        _run_checked(
+                            [
+                                conda,
+                                "env",
+                                "create",
+                                "--prefix",
+                                target,
+                                "--file",
+                                definitions[name],
+                            ]
+                        )
+                        _assert_claimed_identity(
+                            transaction, transaction_id, name, target
+                        )
+                        if not _conda_complete(target):
+                            raise OncoTracerError(
+                                f"Conda prefix lacks conda-meta/history: {target}"
+                            )
+                        _verify_conda_runtime(target, name)
+                        inventory_sha256 = _write_child_inventory(target)
+                        final_marker = _environment_marker(
+                            target,
+                            install_id,
+                            name,
+                            sha256_file(definitions[name]),
+                            source,
+                            inventory_sha256,
+                        )
+                        marker_name = ENV_MARKER
+                    _atomic_write_json(target / marker_name, final_marker)
+                    _assert_claimed_identity(transaction, transaction_id, name, target)
+                    _write_target_claim(
+                        transaction,
+                        transaction_id,
+                        name,
+                        target,
+                        marker=final_marker,
+                    )
+                    expected[name] = final_marker
+                except BaseException:
+                    _assert_claimed_identity(transaction, transaction_id, name, target)
+                    # The initial unsealed claim already binds this exact inode
+                    # to the owned transaction. Rollback preserves an unsealed
+                    # tree in full, so traversing and embedding a potentially
+                    # huge partial Conda inventory would add no authorization
+                    # and could itself prevent recovery.
+                    raise
+
+            journal = {**journal, "new_markers": {n: expected[n] for n in changed}}
+            _write_journal(journal_path, journal)
+            state_after, marker_after = _classify_base(base)
+            if state_after != "owned" or marker_after != expected_base_marker:
+                raise OncoTracerError(
+                    f"Conda root verification failed after installation: {base}"
+                )
+            for name in names:
+                observed = _child_marker_value(base, marker_after, name)
+                if observed != expected[name]:
+                    raise OncoTracerError(
+                        f"managed installation verification failed: {base / name}"
+                    )
+                if name == "poetry-runtime":
+                    _verify_poetry_runtime(base / name, source)
+                else:
+                    _verify_conda_runtime(base / name, name)
+                _verify_child_inventory(base / name, observed)
+            cleanup_inventory = _cleanup_inventory(
+                transaction, base, transaction_id, "conda"
+            )
+            committed = {
+                **journal,
+                "phase": "committed",
+                "cleanup_inventory": cleanup_inventory,
+            }
+            _write_journal(journal_path, committed)
+            journal = committed
+            _restore_conda_transaction(base, journal_path, journal)
+        except BaseException:
+            try:
+                _restore_conda_transaction(base, journal_path, journal)
+            except Exception as rollback_error:
+                raise OncoTracerError(
+                    "Conda installation failed and automatic rollback could not "
+                    f"complete; preserve the journal for recovery: {journal_path}: {rollback_error}"
+                ) from rollback_error
+            raise
+    return {name: base / name for name in CONDA_NAMES}
+
+
+def _sif_sidecar(destination: Path) -> Path:
+    return destination.with_name(f"{destination.name}.oncotracer.json")
+
+
+def _sif_marker(
+    destination: Path,
+    install_id: str,
+    image: str,
+    digest: str,
+    source: Mapping[str, object],
+) -> dict[str, object]:
+    return {
+        "schema": SIF_SCHEMA,
+        "object_type": "singularity-image",
+        "install_id": install_id,
+        "canonical_path": str(destination),
+        "image": image,
+        "sif_sha256": digest,
+        "source": dict(source),
+    }
+
+
+def _valid_sif_marker(value: object, destination: Path) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value)
+        == {
+            "schema",
+            "object_type",
+            "install_id",
+            "canonical_path",
+            "image",
+            "sif_sha256",
+            "source",
+        }
+        and value.get("schema") == SIF_SCHEMA
+        and value.get("object_type") == "singularity-image"
+        and isinstance(value.get("install_id"), str)
+        and bool(_HEX_32.fullmatch(str(value["install_id"])))
+        and value.get("canonical_path") == str(destination)
+        and isinstance(value.get("image"), str)
+        and bool(value["image"])
+        and isinstance(value.get("sif_sha256"), str)
+        and bool(_HEX_64.fullmatch(str(value["sif_sha256"])))
+        and _valid_source(value.get("source"))
+    )
+
+
+def _classify_sif(destination: Path) -> tuple[str, dict[str, object] | None]:
+    sidecar = _sif_sidecar(destination)
+    destination_exists = os.path.lexists(destination)
+    sidecar_exists = os.path.lexists(sidecar)
+    if not destination_exists and not sidecar_exists:
+        return "absent", None
+    if destination_exists != sidecar_exists:
+        raise OncoTracerError(
+            f"refusing incomplete or unowned SIF installation pair: {destination}, {sidecar}"
+        )
+    metadata = destination.lstat()
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_nlink != 1
+        or metadata.st_size == 0
+    ):
+        raise OncoTracerError(
+            f"SIF target must be one nonempty, non-hardlinked regular file: {destination}"
+        )
+    marker = _safe_read_json(sidecar, "SIF ownership sidecar")
+    if not _valid_sif_marker(marker, destination):
+        raise OncoTracerError(
+            f"SIF sidecar is malformed, foreign, or path-mismatched: {sidecar}"
+        )
+    if sha256_file(destination) != marker["sif_sha256"]:
+        raise OncoTracerError(
+            f"SIF bytes do not match the strict ownership sidecar: {destination}"
+        )
+    return "owned", marker
+
+
+def _parse_json_output(
+    completed: subprocess.CompletedProcess[str], label: str
+) -> dict[str, object]:
+    try:
+        value = json.loads(completed.stdout)
+    except (TypeError, json.JSONDecodeError) as error:
+        raise OncoTracerError(f"{label} did not emit valid JSON") from error
+    if not isinstance(value, dict):
+        raise OncoTracerError(f"{label} JSON is not an object")
+    return value
+
+
+def _verify_sif_runtime(
+    executable: str,
+    sif: Path,
+    expected_source: Mapping[str, object],
+) -> None:
+    doctor = _run_checked(
+        [executable, "exec", sif, "oncotracer", "doctor", "--backend", "host"]
+    )
+    provenance = _run_checked(
+        [executable, "exec", sif, "oncotracer", "provenance", "--json"]
+    )
+    assert doctor is not None and provenance is not None
+    doctor_record = _parse_json_output(doctor, "container doctor")
+    provenance_record = _parse_json_output(provenance, "container provenance")
+    if doctor_record.get("success") is not True:
+        raise OncoTracerError("staged SIF failed the native host doctor")
+    for key in ("oncotracer_version", "source_commit", "source_sha256"):
+        if provenance_record.get(key) != expected_source.get(key):
+            raise OncoTracerError(
+                f"staged SIF provenance {key} does not match this executable"
+            )
+    if provenance_record.get("source_tree_dirty") is not False:
+        raise OncoTracerError("staged SIF provenance is not a clean source tree")
+
+
+def _valid_sif_journal(value: object, destination: Path) -> bool:
+    if not isinstance(value, dict) or set(value) != {
+        "schema",
+        "kind",
+        "phase",
+        "transaction_id",
+        "install_id",
+        "canonical_target",
+        "canonical_transaction",
+        "prestate",
+        "old_marker",
+        "new_marker",
+        "cleanup_inventory",
+    }:
+        return False
+    transaction_id = value.get("transaction_id")
+    transaction = (
+        destination.parent / f".{destination.name}.oncotracer-sif-txn-{transaction_id}"
+    )
+    shallow_valid = (
+        value.get("schema") == TRANSACTION_SCHEMA
+        and value.get("kind") == "sif"
+        and value.get("phase") in {"staging", "publishing", "committed", "rolled_back"}
+        and isinstance(transaction_id, str)
+        and bool(_HEX_32.fullmatch(transaction_id))
+        and isinstance(value.get("install_id"), str)
+        and bool(_HEX_32.fullmatch(str(value["install_id"])))
+        and value.get("canonical_target") == str(destination)
+        and value.get("canonical_transaction") == str(transaction)
+        and value.get("prestate") in {"absent", "owned"}
+        and (
+            value.get("old_marker") is None
+            or _valid_sif_marker(value["old_marker"], destination)
+        )
+        and (
+            (value.get("phase") == "staging" and value.get("new_marker") is None)
+            or (
+                value.get("phase") in {"publishing", "committed", "rolled_back"}
+                and _valid_sif_marker(value.get("new_marker"), destination)
+            )
+        )
+    )
+    if not shallow_valid:
+        return False
+    cleanup_inventory = value.get("cleanup_inventory")
+    if value["phase"] in {"committed", "rolled_back"}:
+        if not _valid_cleanup_inventory(
+            cleanup_inventory,
+            transaction,
+            destination,
+            str(transaction_id),
+            "sif",
+        ):
+            return False
+    elif cleanup_inventory is not None:
+        return False
+    install_id = str(value["install_id"])
+    new_marker = value.get("new_marker")
+    old_marker = value.get("old_marker")
+    return (new_marker is None or new_marker.get("install_id") == install_id) and (
+        (value["prestate"] == "absent" and old_marker is None)
+        or (
+            value["prestate"] == "owned"
+            and old_marker is not None
+            and old_marker.get("install_id") == install_id
+        )
+    )
+
+
+def _require_sif_bytes(path: Path, digest: object, label: str) -> None:
+    if not isinstance(digest, str) or not _HEX_64.fullmatch(digest):
+        raise OncoTracerError(f"{label} has no valid expected SHA-256")
+    try:
+        metadata = path.lstat()
+    except OSError as error:
+        raise OncoTracerError(f"could not inspect {label} {path}: {error}") from error
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_nlink != 1
+        or metadata.st_size == 0
+        or sha256_file(path) != digest
+    ):
+        raise OncoTracerError(f"{label} bytes are unsafe or inconsistent: {path}")
+
+
+def _restore_sif_transaction(
+    destination: Path, journal_path: Path, journal: Mapping[str, object]
+) -> None:
+    transaction_id = str(journal["transaction_id"])
+    transaction = Path(str(journal["canonical_transaction"]))
+    sidecar = _sif_sidecar(destination)
+    if journal["phase"] == "staging":
+        if journal["prestate"] == "absent":
+            unchanged = not os.path.lexists(destination) and not os.path.lexists(
+                sidecar
+            )
+        else:
+            state, marker = _classify_sif(destination)
+            unchanged = state == "owned" and marker == journal["old_marker"]
+        if not unchanged:
+            raise OncoTracerError(
+                f"SIF target changed during staging recovery: {destination}"
+            )
+        _preserve_staging_transaction(transaction, destination, transaction_id, "sif")
+        _retain_transaction_journal(journal_path, journal, "sif")
+        return
+    if journal["phase"] == "rolled_back":
+        if journal["prestate"] == "absent":
+            unchanged = not os.path.lexists(destination) and not os.path.lexists(
+                sidecar
+            )
+        else:
+            state, marker = _classify_sif(destination)
+            unchanged = state == "owned" and marker == journal["old_marker"]
+        if not unchanged:
+            raise OncoTracerError(
+                f"rolled-back SIF target changed before recovery: {destination}"
+            )
+        inventory = journal["cleanup_inventory"]
+        expected_entries = {
+            str(entry["path"]).split("/", 1)[0] for entry in inventory["entries"]
+        }
+        _retain_committed_transaction(
+            transaction,
+            destination,
+            transaction_id,
+            "sif",
+            expected_entries,
+            inventory,
+        )
+        _retain_transaction_journal(journal_path, journal, "sif")
+        return
+    if journal["phase"] == "committed":
+        state, marker = _classify_sif(destination)
+        if state != "owned" or marker != journal["new_marker"]:
+            raise OncoTracerError(
+                f"committed SIF transaction does not match its target: {destination}"
+            )
+        owner_name = ".oncotracer-transaction-owner.json"
+        expected_entries = {owner_name}
+        old_marker = journal.get("old_marker")
+        if old_marker is not None:
+            expected_entries.update({"backup.sif", "backup.sidecar.json"})
+        if os.path.lexists(transaction):
+            _require_transaction(transaction, destination, transaction_id, "sif")
+            if old_marker is not None:
+                _require_sif_bytes(
+                    transaction / "backup.sif",
+                    old_marker["sif_sha256"],
+                    "committed SIF rollback backup",
+                )
+                observed_backup_sidecar = _safe_read_json(
+                    transaction / "backup.sidecar.json",
+                    "committed SIF rollback backup sidecar",
+                )
+                if observed_backup_sidecar != old_marker:
+                    raise OncoTracerError(
+                        "SIF backup changed before cleanup; preserving its transaction"
+                    )
+            observed_entries = {path.name for path in transaction.iterdir()}
+            if observed_entries != expected_entries:
+                raise OncoTracerError(
+                    "SIF transaction contains unexpected entries and will be preserved: "
+                    f"{transaction}"
+                )
+        _retain_committed_transaction(
+            transaction,
+            destination,
+            transaction_id,
+            "sif",
+            expected_entries,
+            journal["cleanup_inventory"],
+        )
+        _retain_transaction_journal(journal_path, journal, "sif")
+        return
+
+    _require_transaction(transaction, destination, transaction_id, "sif")
+
+    backup_sif = transaction / "backup.sif"
+    backup_sidecar = transaction / "backup.sidecar.json"
+    candidate_sif = transaction / "candidate.sif"
+    candidate_sidecar = transaction / "candidate.sidecar.json"
+    discarded_sif = transaction / "discarded.sif"
+    discarded_sidecar = transaction / "discarded.sidecar.json"
+    old_marker = journal["old_marker"]
+    new_marker = journal["new_marker"]
+    if old_marker is not None:
+        # Restore each component independently. Publication intentionally moves
+        # the old SIF and sidecar in separate atomic operations; a crash between
+        # those operations must not make the still-present component look lost.
+        if os.path.lexists(backup_sif):
+            _require_sif_bytes(
+                backup_sif, old_marker["sif_sha256"], "SIF rollback backup"
+            )
+            if os.path.lexists(destination):
+                _require_sif_bytes(
+                    destination, new_marker["sif_sha256"], "new SIF rollback target"
+                )
+                _assert_inactive(destination)
+                _rename_noreplace(
+                    destination, discarded_sif, "new SIF rollback preservation"
+                )
+            _rename_noreplace(backup_sif, destination, "prior SIF rollback restoration")
+        else:
+            _require_sif_bytes(destination, old_marker["sif_sha256"], "prior owned SIF")
+
+        if os.path.lexists(backup_sidecar):
+            observed_backup = _safe_read_json(
+                backup_sidecar, "SIF rollback backup sidecar"
+            )
+            if observed_backup != old_marker:
+                raise OncoTracerError(
+                    "SIF rollback backup sidecar does not match its journal"
+                )
+            if os.path.lexists(sidecar):
+                observed_target = _safe_read_json(
+                    sidecar, "new SIF rollback target sidecar"
+                )
+                if observed_target != new_marker:
+                    raise OncoTracerError(
+                        f"SIF rollback refuses an unexpectedly changed sidecar: {sidecar}"
+                    )
+                _rename_noreplace(
+                    sidecar, discarded_sidecar, "new SIF sidecar preservation"
+                )
+            _rename_noreplace(backup_sidecar, sidecar, "prior SIF sidecar restoration")
+        else:
+            observed_sidecar = _safe_read_json(sidecar, "prior owned SIF sidecar")
+            if observed_sidecar != old_marker:
+                raise OncoTracerError("SIF rollback lost the prior owned sidecar")
+    else:
+        # A fresh install rolls back to absence. A component can only have been
+        # published if its same-directory candidate has disappeared.
+        if os.path.lexists(destination):
+            if os.path.lexists(candidate_sif):
+                raise OncoTracerError(
+                    f"SIF rollback refuses a foreign target that appeared: {destination}"
+                )
+            _require_sif_bytes(
+                destination, new_marker["sif_sha256"], "new SIF rollback target"
+            )
+            _assert_inactive(destination)
+            _rename_noreplace(
+                destination, discarded_sif, "fresh SIF rollback preservation"
+            )
+        if os.path.lexists(sidecar):
+            if os.path.lexists(candidate_sidecar):
+                raise OncoTracerError(
+                    f"SIF rollback refuses a foreign sidecar that appeared: {sidecar}"
+                )
+            observed_target = _safe_read_json(
+                sidecar, "new SIF rollback target sidecar"
+            )
+            if observed_target != new_marker:
+                raise OncoTracerError(
+                    f"SIF rollback refuses an unexpectedly changed sidecar: {sidecar}"
+                )
+            _rename_noreplace(
+                sidecar, discarded_sidecar, "fresh SIF sidecar preservation"
+            )
+    rollback_inventory = _cleanup_inventory(
+        transaction, destination, transaction_id, "sif"
+    )
+    rolled_back = {
+        **journal,
+        "phase": "rolled_back",
+        "cleanup_inventory": rollback_inventory,
+    }
+    _write_journal(journal_path, rolled_back)
+    expected_entries = {
+        str(entry["path"]).split("/", 1)[0] for entry in rollback_inventory["entries"]
+    }
+    _retain_committed_transaction(
+        transaction,
+        destination,
+        transaction_id,
+        "sif",
+        expected_entries,
+        rollback_inventory,
+    )
+    _retain_transaction_journal(journal_path, rolled_back, "sif")
+
+
+def _recover_sif_journal(destination: Path) -> None:
+    journal_path = _journal_path(destination, "sif")
+    if not os.path.lexists(journal_path):
+        return
+    journal = _safe_read_json(
+        journal_path,
+        "SIF transaction journal",
+        max_bytes=MAX_INVENTORY_JSON_BYTES,
+    )
+    if not _valid_sif_journal(journal, destination):
+        raise OncoTracerError(
+            f"refusing malformed or foreign SIF transaction journal: {journal_path}"
+        )
+    _restore_sif_transaction(destination, journal_path, journal)
+
+
+def install_sif_managed(
+    destination: Path,
+    *,
+    executable: str,
+    image: str,
+    force: bool,
+    dry_run: bool,
+) -> dict[str, object]:
+    destination = _guard_dedicated(destination, "SIF destination")
+    journal_path = _journal_path(destination, "sif")
+    if os.path.lexists(journal_path):
+        pending = _safe_read_json(
+            journal_path,
+            "SIF transaction journal",
+            max_bytes=MAX_INVENTORY_JSON_BYTES,
+        )
+        if not _valid_sif_journal(pending, destination):
+            raise OncoTracerError(
+                f"refusing malformed or foreign SIF transaction journal: {journal_path}"
+            )
+        if dry_run:
+            raise OncoTracerError(
+                "SIF dry-run cannot recover a pending owned transaction; rerun "
+                f"without --dry-run to recover it first: {journal_path}"
+            )
+    else:
+        # An incomplete pair is normally unowned and must fail immediately. A
+        # strict pending journal is the sole exception because a process crash
+        # can occur between the two same-directory publication renames.
+        _classify_sif(destination)
+    if dry_run:
+        _run_checked(
+            [executable, "pull", "<same-directory-staged-sif>", f"docker://{image}"],
+            dry_run=True,
+        )
+        _run_checked(
+            [
+                executable,
+                "exec",
+                "<same-directory-staged-sif>",
+                "oncotracer",
+                "doctor",
+                "--backend",
+                "host",
+            ],
+            dry_run=True,
+        )
+        _run_checked(
+            [
+                executable,
+                "exec",
+                "<same-directory-staged-sif>",
+                "oncotracer",
+                "provenance",
+                "--json",
+            ],
+            dry_run=True,
+        )
+        return {"sif": str(destination), "image": image}
+
+    source = _source_identity()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination = _guard_dedicated(destination, "SIF destination")
+    with _exclusive_install_lock(_lock_path(destination, "sif"), destination, "sif"):
+        destination = _guard_dedicated(destination, "SIF destination")
+        _recover_sif_journal(destination)
+        state, old_marker = _classify_sif(destination)
+        if state == "owned" and old_marker is not None and not force:
+            if old_marker.get("image") != image or old_marker.get("source") != source:
+                raise OncoTracerError(
+                    "owned SIF belongs to a different image or OncoTracer source; "
+                    "use --force for an ownership-verified staged replacement"
+                )
+            _verify_sif_runtime(executable, destination, source)
+            return {"sif": str(destination), "image": image}
+        if destination.exists():
+            _assert_inactive(destination)
+        if _sif_sidecar(destination).exists():
+            _assert_inactive(_sif_sidecar(destination))
+
+        install_id = (
+            str(old_marker["install_id"])
+            if old_marker is not None
+            else uuid.uuid4().hex
+        )
+        transaction_id = uuid.uuid4().hex
+        transaction = _transaction_path(destination, "sif", transaction_id)
+        journal: dict[str, object] = {
+            "schema": TRANSACTION_SCHEMA,
+            "kind": "sif",
+            "phase": "staging",
+            "transaction_id": transaction_id,
+            "install_id": install_id,
+            "canonical_target": str(destination),
+            "canonical_transaction": str(transaction),
+            "prestate": state,
+            "old_marker": old_marker,
+            "new_marker": None,
+            "cleanup_inventory": None,
+        }
+        _write_journal(journal_path, journal)
+        try:
+            transaction = _create_transaction(destination, "sif", transaction_id)
+            candidate = transaction / "candidate.sif"
+            candidate_sidecar = transaction / "candidate.sidecar.json"
+            _run_checked([executable, "pull", candidate, f"docker://{image}"])
+            metadata = candidate.lstat()
+            if (
+                not stat.S_ISREG(metadata.st_mode)
+                or metadata.st_nlink != 1
+                or metadata.st_size == 0
+            ):
+                raise OncoTracerError(
+                    f"staged SIF is not one nonempty regular file: {candidate}"
+                )
+            _verify_sif_runtime(executable, candidate, source)
+            new_marker = _sif_marker(
+                destination, install_id, image, sha256_file(candidate), source
+            )
+            _atomic_write_json(candidate_sidecar, new_marker)
+            journal = {**journal, "phase": "publishing", "new_marker": new_marker}
+            _write_journal(journal_path, journal)
+            sidecar = _sif_sidecar(destination)
+            if state == "owned":
+                _assert_inactive(destination)
+                _assert_inactive(sidecar)
+                current_state, current_marker = _classify_sif(destination)
+                if current_state != "owned" or current_marker != old_marker:
+                    raise OncoTracerError(
+                        f"owned SIF changed before backup: {destination}"
+                    )
+                destination_identity = destination.lstat()
+                sidecar_identity = sidecar.lstat()
+                _rename_noreplace(
+                    destination, transaction / "backup.sif", "owned SIF backup"
+                )
+                backup_identity = (transaction / "backup.sif").lstat()
+                if (backup_identity.st_dev, backup_identity.st_ino) != (
+                    destination_identity.st_dev,
+                    destination_identity.st_ino,
+                ):
+                    raise OncoTracerError(
+                        f"owned SIF identity changed during backup: {destination}"
+                    )
+                _require_sif_bytes(
+                    transaction / "backup.sif",
+                    old_marker["sif_sha256"],
+                    "SIF rollback backup",
+                )
+                observed_sidecar = _safe_read_json(
+                    sidecar, "owned SIF sidecar before backup"
+                )
+                if observed_sidecar != old_marker:
+                    raise OncoTracerError(
+                        f"owned SIF sidecar changed before backup: {sidecar}"
+                    )
+                _rename_noreplace(
+                    sidecar,
+                    transaction / "backup.sidecar.json",
+                    "owned SIF sidecar backup",
+                )
+                backup_sidecar_identity = (transaction / "backup.sidecar.json").lstat()
+                if (
+                    backup_sidecar_identity.st_dev,
+                    backup_sidecar_identity.st_ino,
+                ) != (sidecar_identity.st_dev, sidecar_identity.st_ino):
+                    raise OncoTracerError(
+                        f"owned SIF sidecar identity changed during backup: {sidecar}"
+                    )
+                if (
+                    _safe_read_json(
+                        transaction / "backup.sidecar.json",
+                        "SIF rollback backup sidecar",
+                    )
+                    != old_marker
+                ):
+                    raise OncoTracerError(
+                        f"owned SIF sidecar changed during backup: {sidecar}"
+                    )
+            elif destination.exists() or sidecar.exists():
+                raise OncoTracerError(
+                    f"absent SIF target changed before publication: {destination}"
+                )
+            _rename_noreplace(candidate, destination, "verified SIF publication")
+            _rename_noreplace(
+                candidate_sidecar, sidecar, "verified SIF sidecar publication"
+            )
+            state_after, marker_after = _classify_sif(destination)
+            if state_after != "owned" or marker_after != new_marker:
+                raise OncoTracerError(
+                    f"SIF verification failed after atomic publication: {destination}"
+                )
+            cleanup_inventory = _cleanup_inventory(
+                transaction, destination, transaction_id, "sif"
+            )
+            committed_journal = {
+                **journal,
+                "phase": "committed",
+                "cleanup_inventory": cleanup_inventory,
+            }
+            _write_journal(journal_path, committed_journal)
+            journal = committed_journal
+            _restore_sif_transaction(destination, journal_path, journal)
+        except BaseException:
+            try:
+                _restore_sif_transaction(destination, journal_path, journal)
+            except Exception as rollback_error:
+                raise OncoTracerError(
+                    "SIF installation failed and automatic rollback could not "
+                    f"complete; preserve the journal for recovery: {journal_path}: {rollback_error}"
+                ) from rollback_error
+            raise
+    return {"sif": str(destination), "image": image}
+
+
+@contextlib.contextmanager
+def managed_conda_runtime_lock(
+    base: Path, *, require_poetry: bool, semantic: bool = False
+) -> Iterator[dict[str, Path]]:
+    """Authenticate a managed runtime and hold a shared consumer lock."""
+    base = _guard_dedicated(base, "managed Conda runtime")
+    with _shared_install_lock(_lock_path(base, "conda"), base, "conda"):
+        if os.path.lexists(_journal_path(base, "conda")):
+            raise OncoTracerError(
+                f"managed runtime has an interrupted installer transaction: {base}"
+            )
+        state, marker = _classify_base(base)
+        if state != "owned" or marker is None:
+            raise OncoTracerError(
+                f"Conda runtime is not strictly installer-owned: {base}"
+            )
+        source = _source_identity()
+        if marker.get("source") != source:
+            raise OncoTracerError(
+                f"managed runtime source identity differs from this executable: {base}"
+            )
+        base_metadata = base.lstat()
+        base_identity = (base_metadata.st_dev, base_metadata.st_ino)
+        protected_identities: dict[Path, tuple[int, int]] = {}
+        base_marker_path = base / BASE_MARKER
+        base_marker_metadata = base_marker_path.lstat()
+        protected_identities[base_marker_path] = (
+            base_marker_metadata.st_dev,
+            base_marker_metadata.st_ino,
+        )
+        initial_child_identities = {
+            name: (
+                (metadata := (base / name).lstat()).st_dev,
+                metadata.st_ino,
+            )
+            for name in MANAGED_CHILDREN
+            if os.path.lexists(base / name)
+        }
+        for name in initial_child_identities:
+            child = base / name
+            marker_path = child / (
+                POETRY_MARKER if name == "poetry-runtime" else ENV_MARKER
+            )
+            for protected in (marker_path, child / CHILD_INVENTORY):
+                protected_metadata = protected.lstat()
+                protected_identities[protected] = (
+                    protected_metadata.st_dev,
+                    protected_metadata.st_ino,
+                )
+        names = [*CONDA_NAMES, *(["poetry-runtime"] if require_poetry else [])]
+        paths: dict[str, Path] = {}
+        for name in names:
+            child = base / name
+            if name not in initial_child_identities:
+                raise OncoTracerError(f"managed runtime child is missing: {child}")
+            if semantic:
+                if name == "poetry-runtime":
+                    _verify_poetry_runtime(child, source)
+                else:
+                    _verify_conda_runtime(child, name)
+            paths[name] = child
+
+        def require_original_identities() -> None:
+            try:
+                observed_base = base.lstat()
+                observed_children = {
+                    name: (
+                        (metadata := (base / name).lstat()).st_dev,
+                        metadata.st_ino,
+                    )
+                    for name in MANAGED_CHILDREN
+                    if os.path.lexists(base / name)
+                }
+            except OSError as error:
+                raise OncoTracerError(
+                    f"managed runtime identity changed during use: {base}: {error}"
+                ) from error
+            if (observed_base.st_dev, observed_base.st_ino) != base_identity:
+                raise OncoTracerError(
+                    f"managed runtime root identity changed during use: {base}"
+                )
+            if observed_children != initial_child_identities:
+                raise OncoTracerError(
+                    f"managed runtime child identity changed during use: {base}"
+                )
+            for protected, expected_identity in protected_identities.items():
+                try:
+                    protected_metadata = protected.lstat()
+                except OSError as error:
+                    raise OncoTracerError(
+                        f"managed runtime metadata disappeared during use: {protected}: {error}"
+                    ) from error
+                if (
+                    protected_metadata.st_dev,
+                    protected_metadata.st_ino,
+                ) != expected_identity:
+                    raise OncoTracerError(
+                        f"managed runtime metadata identity changed during use: {protected}"
+                    )
+
+        try:
+            yield paths
+        finally:
+            if os.path.lexists(_journal_path(base, "conda")):
+                raise OncoTracerError(
+                    f"managed runtime changed during use: installer journal appeared: {base}"
+                )
+            require_original_identities()
+            final_state, final_marker = _classify_base(base)
+            if final_state != "owned" or final_marker != marker:
+                raise OncoTracerError(
+                    f"managed runtime ownership changed during use: {base}"
+                )
+            require_original_identities()
+
+
+def verify_managed_conda_runtime(
+    base: Path, *, require_poetry: bool
+) -> dict[str, Path]:
+    with managed_conda_runtime_lock(
+        base, require_poetry=require_poetry, semantic=True
+    ) as paths:
+        return dict(paths)
+
+
+@contextlib.contextmanager
+def managed_sif_runtime_lock(
+    destination: Path, *, executable: str, semantic: bool = False
+) -> Iterator[dict[str, object]]:
+    """Authenticate a managed SIF pair and hold its shared consumer lock."""
+    destination = _guard_dedicated(destination, "managed SIF runtime")
+    with _shared_install_lock(_lock_path(destination, "sif"), destination, "sif"):
+        if os.path.lexists(_journal_path(destination, "sif")):
+            raise OncoTracerError(
+                f"managed SIF has an interrupted installer transaction: {destination}"
+            )
+        state, marker = _classify_sif(destination)
+        if state != "owned" or marker is None:
+            raise OncoTracerError(f"SIF is not strictly installer-owned: {destination}")
+        source = _source_identity()
+        if marker.get("source") != source:
+            raise OncoTracerError(
+                f"managed SIF source identity differs from this executable: {destination}"
+            )
+        if semantic:
+            _verify_sif_runtime(executable, destination, source)
+        yield marker
+
+
+def verify_managed_sif_runtime(
+    destination: Path, *, executable: str
+) -> dict[str, object]:
+    with managed_sif_runtime_lock(
+        destination, executable=executable, semantic=True
+    ) as marker:
+        return dict(marker)

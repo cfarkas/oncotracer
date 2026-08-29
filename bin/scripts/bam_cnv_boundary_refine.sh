@@ -46,7 +46,9 @@ SCRIPT_SOURCE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 #   04_final_results/cna_cytogenomic_input/run_cna_codification.sh
 ###############################################################################
 
-LPWGS_ROOT="/media/server/STORAGE/LPWGS_2025"
+# Native v2 always supplies this explicitly. The current directory is a safe,
+# portable default for direct legacy/helper use.
+LPWGS_ROOT="${LPWGS_ROOT:-$PWD}"
 ENV_NAME="bam_cnv_boundary_refine_env"
 MODE="ont"
 OUTDIR=""
@@ -54,11 +56,14 @@ SKIP_INSTALL=false
 NATIVE_CURRENT_ENVIRONMENT=false
 PYTHON_EXECUTABLE=""
 SAMTOOLS_EXECUTABLE=""
+CODIFICATION_SCRIPT="$SCRIPT_SOURCE_DIR/../cna_codification/scripts/cna_to_cytogenomic_notation.py"
+CYTOBAND_RESOURCE="$SCRIPT_SOURCE_DIR/../cna_codification/resources/hg38.cytoBand.txt.gz"
 FORCE=false
 PURGE_ENV=false
 
 # ONT defaults
-ONT_ICHOR_DIR=""
+ONT_CNA_DIR=""
+ONT_CALLER="ichorcna"
 ONT_BAM_DIR=""
 ONT_PRIOR_SEG=""
 ONT_BINSIZE_KB=500
@@ -93,9 +98,6 @@ MAX_FINE_BINS_PER_WINDOW=400
 MIN_MAPQ=20
 COVERAGE_MODE_ONT="bases"       # bases for ONT long reads
 COVERAGE_MODE_ILLUMINA="starts" # starts for Illumina LP-WGS
-NORMAL_SAMPLES="auto"           # auto | none | comma-separated names
-NORMAL_BAM_DIRS=""
-PON_MODE="auto"                 # auto | on | off
 INCLUDE_DUPLICATES=false
 INCLUDE_SUPPLEMENTARY=false
 INCLUDE_SECONDARY=false
@@ -145,17 +147,22 @@ Usage
 -----
   bam_cnv_boundary_refine.sh --mode ont|illumina|both [options]
 
-Required ONT ichorCNA inputs
----------------------------
-  --ont-ichor-dir PATH
-      SAMURAI results/ichorcna directory containing *.correctedDepth.txt.
+Required ONT CNA inputs
+-----------------------
+  --ont-cna-dir PATH
+      Caller output directory. ichorCNA requires top-level
+      *.correctedDepth.txt files; qDNAseq requires bins/*_bins.bed files.
+      --ont-ichor-dir remains a compatibility alias.
+
+  --ont-caller ichorcna|qdnaseq
+      CNA caller that produced --ont-cna-dir. Default: ichorcna.
 
   --ont-bam-dir PATH
       BAM directory for the same samples, usually <SAMURAI_RUN_ROOT>/bam.
 
   --ont-prior-seg PATH
-      Prior segmentation table, usually segments_logR_corrected_gistic.seg
-      or all_segments_ichorcna_gistic.seg.
+      Prior segmentation table: usually segments_logR_corrected_gistic.seg
+      for ichorCNA or all_segments.seg for qDNAseq.
 
   --ont-binsize-kb N
       Original coarse bin size in kilobases. Default: 500.
@@ -168,7 +175,7 @@ Required Illumina qDNAseq inputs
 
   --illumina-bam-dir PATH
       BAM directory for the same samples, for example
-      /media/server/STORAGE/LPWGS_2025/samurai_results_100kb/alignment.
+      /path/to/my/analyses_dir/samurai_results/alignment.
 
   --illumina-prior-seg PATH
       Prior segmentation table, usually qdnaseq/all_segments.seg.
@@ -200,6 +207,12 @@ Environment options
 
   --samtools-executable PATH
       Exact core-prefix samtools executable for --native-current-environment.
+
+  --codification-script PATH
+      Packaged CNA-to-cytogenomic-notation converter copied into final outputs.
+
+  --cytoband PATH
+      Packaged hg38 cytoband resource copied into final outputs.
 
   --check-env-only
       Activate/check the environment, attempt package repair if enabled, then
@@ -269,17 +282,8 @@ BAM options
   --coverage-mode bases|starts
       Set the same coverage mode for both ONT and Illumina.
 
-  --normal-samples auto|none|sample1,sample2
-      Normal/PON sample selection. For ONT local-PON runs, auto treats BAMs not
-      matched to tumor samples as normal/PON BAMs. For Illumina, use none unless
-      you have explicit normal BAMs. Default: auto.
-
-  --normal-bam-dirs PATH[,PATH2]
-      Additional directories containing normal/PON BAMs.
-
-  --pon-mode auto|on|off
-      Use local normal/PON BAMs for coverage normalization when available.
-      Default: auto.
+  Removed local-panel options such as --normal-samples, --normal-bam-dirs,
+  and --pon-mode fail explicitly. Each BAM is refined independently.
 
   --include-duplicates
       Include duplicate-marked reads. Default: off.
@@ -326,7 +330,7 @@ ZIPcnv comparison options
 Runtime options
 ---------------
   --lpwgs-root PATH
-      Project root. Default: /media/server/STORAGE/LPWGS_2025.
+      Project root. Default: the current working directory.
 
   --skip-install
       Use the existing conda environment instead of creating/updating it.
@@ -401,18 +405,17 @@ Prepared-BAM folder
 
 Examples
 --------
-  ONT ichorCNA local-PON run:
+  ONT ichorCNA run (each BAM is refined independently):
     bam_cnv_boundary_refine.sh \
       --mode ont \
-      --ont-ichor-dir "$ONT_RUN_ROOT/results/ichorcna" \
+      --ont-cna-dir "$ONT_RUN_ROOT/results/ichorcna" \
+      --ont-caller ichorcna \
       --ont-bam-dir "$ONT_RUN_ROOT/bam" \
       --ont-prior-seg "$ONT_RUN_ROOT/results/ichorcna/segments_logR_corrected_gistic.seg" \
       --ont-binsize-kb 500 \
       --outdir "$ONT_OUT" \
       --fine-bin-kb-ont 25 \
       --coverage-mode-ont bases \
-      --normal-samples auto \
-      --pon-mode auto \
       --skip-install \
       --force
 
@@ -426,8 +429,6 @@ Examples
       --outdir "$ILLUMINA_OUT" \
       --fine-bin-kb-illumina 10 \
       --coverage-mode-illumina starts \
-      --normal-samples none \
-      --pon-mode off \
       --skip-install \
       --force
 EOF
@@ -443,9 +444,12 @@ while [[ $# -gt 0 ]]; do
     --python-executable) PYTHON_EXECUTABLE="$2"; shift 2 ;;
     --samtools-executable) SAMTOOLS_EXECUTABLE="$2"; shift 2 ;;
     --purge_env|--purge-env) PURGE_ENV=true; shift ;;
+    --codification-script) CODIFICATION_SCRIPT="$2"; shift 2 ;;
+    --cytoband) CYTOBAND_RESOURCE="$2"; shift 2 ;;
     --force) FORCE=true; shift ;;
 
-    --ont-ichor-dir) ONT_ICHOR_DIR="$2"; shift 2 ;;
+    --ont-cna-dir|--ont-ichor-dir) ONT_CNA_DIR="$2"; shift 2 ;;
+    --ont-caller) ONT_CALLER="$2"; shift 2 ;;
     --ont-bam-dir) ONT_BAM_DIR="$2"; shift 2 ;;
     --ont-prior-seg) ONT_PRIOR_SEG="$2"; shift 2 ;;
     --ont-binsize-kb) ONT_BINSIZE_KB="$2"; shift 2 ;;
@@ -479,9 +483,10 @@ while [[ $# -gt 0 ]]; do
     --coverage-mode) COVERAGE_MODE_ONT="$2"; COVERAGE_MODE_ILLUMINA="$2"; shift 2 ;;
     --coverage-mode-ont) COVERAGE_MODE_ONT="$2"; shift 2 ;;
     --coverage-mode-illumina) COVERAGE_MODE_ILLUMINA="$2"; shift 2 ;;
-    --normal-samples) NORMAL_SAMPLES="$2"; shift 2 ;;
-    --normal-bam-dirs) NORMAL_BAM_DIRS="$2"; shift 2 ;;
-    --pon-mode) PON_MODE="$2"; shift 2 ;;
+    --normal-samples|--normal-bam-dirs|--pon-mode)
+      echo "ERROR: sample-derived panel refinement has been removed; each sample is refined independently" >&2
+      exit 2
+      ;;
     --include-duplicates) INCLUDE_DUPLICATES=true; shift ;;
     --include-supplementary) INCLUDE_SUPPLEMENTARY=true; shift ;;
     --include-secondary) INCLUDE_SECONDARY=true; shift ;;
@@ -509,6 +514,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$MODE" == "ont" || "$MODE" == "illumina" || "$MODE" == "both" ]] || { echo "ERROR: --mode must be ont, illumina, or both" >&2; exit 1; }
+[[ "$ONT_CALLER" == "ichorcna" || "$ONT_CALLER" == "qdnaseq" ]] || { echo "ERROR: --ont-caller must be ichorcna or qdnaseq" >&2; exit 1; }
 [[ "$ZIPCNV_MODE" == "off" || "$ZIPCNV_MODE" == "adapted" || "$ZIPCNV_MODE" == "official" || "$ZIPCNV_MODE" == "both" ]] || { echo "ERROR: --zipcnv-mode must be off, adapted, official, or both" >&2; exit 1; }
 
 # Backward-compatible alias for one historical typo in generated wrappers.
@@ -527,9 +533,6 @@ if [[ "$PURGE_ENV" == "true" ]]; then
   if [[ -f /opt/conda/etc/profile.d/conda.sh ]]; then
     # shellcheck source=/dev/null
     source /opt/conda/etc/profile.d/conda.sh
-  elif [[ -f /home/server/anaconda3/etc/profile.d/conda.sh ]]; then
-    # shellcheck source=/dev/null
-    source /home/server/anaconda3/etc/profile.d/conda.sh
   elif [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
     # shellcheck source=/dev/null
     source "$HOME/miniconda3/etc/profile.d/conda.sh"
@@ -572,6 +575,10 @@ PY_HELPER="$SCRIPTS_DIR/bam_cnv_boundary_refine.py"
 ZIP_HELPER="$SCRIPTS_DIR/zipcnv_compare.py"
 [[ -n "$ZIPCNV_DIR" ]] || ZIPCNV_DIR="$LPWGS_ROOT/tools/ZIPcnv"
 ZIPCNV_DIR="$(readlink -m "$ZIPCNV_DIR")"
+[[ -s "$CODIFICATION_SCRIPT" ]] || { echo "ERROR: CNA codification script missing/empty: $CODIFICATION_SCRIPT" >&2; exit 1; }
+[[ -s "$CYTOBAND_RESOURCE" ]] || { echo "ERROR: cytoband resource missing/empty: $CYTOBAND_RESOURCE" >&2; exit 1; }
+CODIFICATION_SCRIPT="$(readlink -f "$CODIFICATION_SCRIPT")"
+CYTOBAND_RESOURCE="$(readlink -f "$CYTOBAND_RESOURCE")"
 if [[ "$NATIVE_CURRENT_ENVIRONMENT" == "true" ]]; then
   [[ -s "$PY_HELPER" ]] || { echo "ERROR: committed BAM-refinement helper missing/empty: $PY_HELPER" >&2; exit 1; }
   [[ -s "$ZIP_HELPER" ]] || { echo "ERROR: committed ZIPcnv-adapted helper missing/empty: $ZIP_HELPER" >&2; exit 1; }
@@ -618,9 +625,6 @@ else
 if [[ -f /opt/conda/etc/profile.d/conda.sh ]]; then
   # shellcheck source=/dev/null
   source /opt/conda/etc/profile.d/conda.sh
-elif [[ -f /home/server/anaconda3/etc/profile.d/conda.sh ]]; then
-  # shellcheck source=/dev/null
-  source /home/server/anaconda3/etc/profile.d/conda.sh
 elif [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
   # shellcheck source=/dev/null
   source "$HOME/miniconda3/etc/profile.d/conda.sh"
@@ -1398,35 +1402,14 @@ def count_bam_coverage(path: Path, chrom: str, intervals: List[Tuple[int, int]],
 # Boundary refinement statistics
 ###############################################################################
 
-def compute_signal(tumor_counts: np.ndarray, normal_counts: Optional[np.ndarray]) -> np.ndarray:
-    counts = tumor_counts.astype(float)
-    if normal_counts is not None and normal_counts.size > 0 and not np.all(np.isnan(normal_counts)):
-        mat = normal_counts.astype(float)
-        # normalize each normal by its local median positive count to reduce library size effects
-        norm_rows = []
-        for row in mat:
-            pos = row[np.isfinite(row) & (row > 0)]
-            sf = np.median(pos) if len(pos) else 1.0
-            if not np.isfinite(sf) or sf <= 0:
-                sf = 1.0
-            norm_rows.append(row / sf)
-        matn = np.vstack(norm_rows)
-        pon = np.nanmedian(matn, axis=0)
-        pos_t = counts[np.isfinite(counts) & (counts > 0)]
-        sf_t = np.median(pos_t) if len(pos_t) else 1.0
-        if not np.isfinite(sf_t) or sf_t <= 0:
-            sf_t = 1.0
-        t = counts / sf_t
-        pc = max(0.01, np.nanmedian(pon[np.isfinite(pon)]) * 0.01) if np.any(np.isfinite(pon)) else 0.01
-        return np.log2((t + pc) / (pon + pc))
-    else:
-        pos = counts[np.isfinite(counts) & (counts > 0)]
-        med = np.median(pos) if len(pos) else 1.0
-        if not np.isfinite(med) or med <= 0:
-            med = 1.0
-        pc = max(0.5, med * 0.01)
-        return np.log2((counts + pc) / (med + pc))
-
+def compute_signal(sample_counts: np.ndarray) -> np.ndarray:
+    counts = sample_counts.astype(float)
+    positive = counts[np.isfinite(counts) & (counts > 0)]
+    median = np.median(positive) if len(positive) else 1.0
+    if not np.isfinite(median) or median <= 0:
+        median = 1.0
+    pseudocount = max(0.5, median * 0.01)
+    return np.log2((counts + pseudocount) / (median + pseudocount))
 
 def split_stats(y: np.ndarray, min_side: int):
     y = np.asarray(y, dtype=float)
@@ -1716,7 +1699,7 @@ def overlay_bins_with_segments(bins: pd.DataFrame, segs: pd.DataFrame) -> pd.Dat
 # Main boundary refinement
 ###############################################################################
 
-def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path) -> dict:
+def refine_one_boundary(row, sample_bams, args, prepared_dir: Path) -> dict:
     sample = row["sample"]
     chrom = row["chrom"]
     original_boundary = int(row["original_boundary"])
@@ -1750,7 +1733,7 @@ def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path)
         "left_median_coverage_units": np.nan,
         "right_median_coverage_units": np.nan,
         "median_coverage_units": np.nan,
-        "used_pon": False,
+        "sample_derived_panel_used": False,
         "best_bic_gain": np.nan,
         "best_left_mean_log2": np.nan,
         "best_right_mean_log2": np.nan,
@@ -1792,25 +1775,7 @@ def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path)
         base["decision_reason"] = "chromosome_not_found_in_sample_bam"
         return base
 
-    normal_counts = None
-    if args.pon_mode in ("auto", "on") and normal_bams:
-        mats = []
-        for nbam in normal_bams.values():
-            nc = count_bam_coverage(
-                nbam, chrom, intervals, args.coverage_mode, int(args.min_mapq),
-                args.include_duplicates, args.include_secondary, args.include_supplementary
-            )
-            if np.any(np.isfinite(nc)):
-                mats.append(nc)
-        if mats:
-            normal_counts = np.vstack(mats)
-            base["used_pon"] = True
-        elif args.pon_mode == "on":
-            base["coverage_resolution_status"] = "poor_bam_resolution"
-            base["decision_reason"] = "pon_requested_but_no_usable_normal_bam_coverage"
-            return base
-
-    y = compute_signal(tumor_counts, normal_counts)
+    y = compute_signal(tumor_counts)
     valid = np.isfinite(y)
     base["n_valid_fine_bins"] = int(np.sum(valid))
     base["median_coverage_units"] = float(np.nanmedian(tumor_counts)) if np.any(np.isfinite(tumor_counts)) else np.nan
@@ -1906,6 +1871,41 @@ def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path)
 ###############################################################################
 # Outputs
 ###############################################################################
+
+def write_cna_codification_runner(
+    cna_input: Path,
+    codification_script: Path,
+    cytoband_source: Path,
+) -> Path:
+    """Create a self-contained, relocatable CNA-codification helper."""
+    for source, label in (
+        (codification_script, "CNA codification script"),
+        (cytoband_source, "cytoband resource"),
+    ):
+        if not source.is_file():
+            raise FileNotFoundError(f"{label} missing: {source}")
+    resources = cna_input / "resources"
+    resources.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(codification_script, resources / "cna_to_cytogenomic_notation.py")
+    shutil.copy2(cytoband_source, resources / "hg38.cytoBand.txt.gz")
+
+    run_script = cna_input / "run_cna_codification.sh"
+    run_script.write_text("""#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-python3}"
+mkdir -p "$SCRIPT_DIR/cytogenomic_notation"
+"$PYTHON_EXECUTABLE" "$SCRIPT_DIR/resources/cna_to_cytogenomic_notation.py" \
+  --input_dir "$SCRIPT_DIR/qdnaseq_bins" \
+  --cytoband "$SCRIPT_DIR/resources/hg38.cytoBand.txt.gz" \
+  --outdir "$SCRIPT_DIR/cytogenomic_notation" \
+  --genome-label GRCh38 --prefix seq \
+  --loss -0.30 --gain 0.25 --deep-loss -1.00 --amp 0.70 \
+  --min-bins 3 --min-mb 1.0 --max-gap-bp 500000 --qdnaseq
+""")
+    run_script.chmod(0o755)
+    return run_script
+
 
 def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats: pd.DataFrame, final_segments: pd.DataFrame, refined_bins: pd.DataFrame, args):
     tables = outdir / "01_tables"
@@ -2056,27 +2056,7 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
     pd.DataFrame(bed_manifest).to_csv(compat / "input_bed_files.tsv", sep="\t", index=False)
     pd.DataFrame(cna_manifest).to_csv(compat / "input_cna_files.tsv", sep="\t", index=False)
     pd.DataFrame(cytogenomic_manifest).to_csv(cna_input / "input_bed_files.tsv", sep="\t", index=False)
-    cytogenomic_out = cna_input / "cytogenomic_notation"
-    run_script = cna_input / "run_cna_codification.sh"
-    run_script.write_text(f"""#!/usr/bin/env bash
-set -Eeuo pipefail
-mkdir -p "{cytogenomic_out}"
-python /media/server/STORAGE/LPWGS_2025/cna_codification/scripts/cna_to_cytogenomic_notation.py \
-  --input_dir "{cna_bins}" \
-  --cytoband /media/server/STORAGE/LPWGS_2025/cna_codification/resources/hg38.cytoBand.txt.gz \
-  --outdir "{cytogenomic_out}" \
-  --genome-label GRCh38 \
-  --prefix seq \
-  --loss -0.30 \
-  --gain 0.25 \
-  --deep-loss -1.00 \
-  --amp 0.70 \
-  --min-bins 3 \
-  --min-mb 1.0 \
-  --max-gap-bp 500000 \
-  --qdnaseq
-""")
-    run_script.chmod(0o755)
+    write_cna_codification_runner(cna_input, args.codification_script, args.cytoband)
 
     readme = compat / "README.txt"
     readme.write_text(
@@ -2114,6 +2094,7 @@ python /media/server/STORAGE/LPWGS_2025/cna_codification/scripts/cna_to_cytogeno
         {"dataset": args.dataset_name, "category": "refined_bins_boundary_shift", "path": "04_final_results/refined_bins_boundary_bp_difference.xlsx", "description": "Excel copy of refined bins with boundary_bp_difference in bp."},
         {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/qdnaseq_bins/", "description": "Per-sample qDNAseq-style BED bins with final_log2 in column 5 for cna_to_cytogenomic_notation.py --qdnaseq; valid for ONT and Illumina refined outputs."},
         {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/run_cna_codification.sh", "description": "Runnable command for CNA-to-cytogenomic-notation conversion using the converter-ready BED bins."},
+        {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/resources/", "description": "Self-contained converter and hg38 cytoband resource used by run_cna_codification.sh."},
     ]).to_csv(final_results / "final_results_manifest.csv", index=False)
 
     manifest_rows = [
@@ -2129,6 +2110,7 @@ python /media/server/STORAGE/LPWGS_2025/cna_codification/scripts/cna_to_cytogeno
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/refined_bins_boundary_bp_difference.xlsx", "description": "Excel copy of refined bins with boundary_bp_difference in bp."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/qdnaseq_bins/", "description": "Converter-ready qDNAseq-style BED bins with final_log2 in column 5 for cna_to_cytogenomic_notation.py --qdnaseq."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/run_cna_codification.sh", "description": "Runnable CNA-to-cytogenomic-notation command for the converter-ready BED bins."},
+        {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/resources/", "description": "Self-contained converter and hg38 cytoband resource used by run_cna_codification.sh."},
         {"dataset": args.dataset_name, "category": "samurai_compatible_segments", "path": "02_samurai_compatible/all_segments.seg", "description": "GISTIC/SAMURAI-like final segment file for downstream analyses."},
         {"dataset": args.dataset_name, "category": "samurai_compatible_segments", "path": "02_samurai_compatible/segments_logR_corrected_gistic.seg", "description": "ichorCNA/SAMURAI-like final segment file with adj.seg values."},
         {"dataset": args.dataset_name, "category": "samurai_compatible_bins", "path": "02_samurai_compatible/bins/", "description": "Per-sample no-header BED files: chrom, start, end, final_log2."},
@@ -2180,24 +2162,7 @@ def refine_dataset(args):
     if missing:
         log(f"WARNING: missing BAMs for samples; these samples will fall back to prior segmentation: {missing}")
 
-    # Normal BAMs for local PON correction. In auto mode, BAMs not matched to tumor/bin samples are normals.
-    normal_bams = {}
-    if args.normal_samples == "none" or args.pon_mode == "off":
-        normal_bams = {}
-    elif args.normal_samples == "auto":
-        for name, path in all_bams.items():
-            if name not in samples:
-                normal_bams[name] = path
-        if args.normal_bam_dirs:
-            normal_bams.update(list_bams(args.normal_bam_dirs))
-    else:
-        names = [x.strip() for x in re.split(r",|;", args.normal_samples) if x.strip()]
-        for n in names:
-            if n in all_bams:
-                normal_bams[n] = all_bams[n]
-        if args.normal_bam_dirs:
-            normal_bams.update(list_bams(args.normal_bam_dirs))
-    log(f"Matched sample BAMs: {len(sample_bams)}; normal/PON BAMs: {len(normal_bams)}")
+    log(f"Matched independent sample BAMs: {len(sample_bams)}")
 
     prepared_dir = outdir / "_work" / "prepared_bams"
     bam_prep_records = []
@@ -2207,14 +2172,7 @@ def refine_dataset(args):
         rec["role"] = "sample"
         bam_prep_records.append(rec)
         prepared_sample_bams[s] = used
-    prepared_normal_bams = {}
-    for s, p in normal_bams.items():
-        used, rec = prepare_bam(p, s, prepared_dir)
-        rec["role"] = "normal_or_pon"
-        bam_prep_records.append(rec)
-        prepared_normal_bams[s] = used
     sample_bams = prepared_sample_bams
-    normal_bams = prepared_normal_bams
     if prepared_dir.exists() and not any(prepared_dir.iterdir()):
         try:
             prepared_dir.rmdir()
@@ -2227,7 +2185,7 @@ def refine_dataset(args):
     for idx, row in boundaries.iterrows():
         if idx % 25 == 0:
             log(f"Evaluating boundary {idx+1}/{len(boundaries)}")
-        rows.append(refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir))
+        rows.append(refine_one_boundary(row, sample_bams, args, prepared_dir))
     bstats = pd.DataFrame(rows) if rows else empty_boundary_stats()
 
     if prior.empty:
@@ -2261,6 +2219,8 @@ def main():
     p.add_argument("--bam-dirs", required=True)
     p.add_argument("--prior-seg", required=True)
     p.add_argument("--outdir", required=True)
+    p.add_argument("--codification-script", required=True, type=Path)
+    p.add_argument("--cytoband", required=True, type=Path)
     p.add_argument("--coarse-binsize-kb", type=float, required=True)
     p.add_argument("--fine-bin-kb", type=float, required=True)
     p.add_argument("--search-radius-bins", type=int, default=2)
@@ -2281,9 +2241,6 @@ def main():
     p.add_argument("--max-fine-bins-per-window", type=int, default=400)
     p.add_argument("--min-mapq", type=int, default=20)
     p.add_argument("--coverage-mode", choices=["bases", "starts"], default="bases")
-    p.add_argument("--normal-samples", default="auto")
-    p.add_argument("--normal-bam-dirs", default="")
-    p.add_argument("--pon-mode", choices=["auto", "on", "off"], default="auto")
     p.add_argument("--include-duplicates", action="store_true")
     p.add_argument("--include-supplementary", action="store_true")
     p.add_argument("--include-secondary", action="store_true")
@@ -2796,6 +2753,8 @@ run_dataset() {
     --coarse-binsize-kb "$binsize" \
     --fine-bin-kb "$finekb" \
     --search-radius-bins "$SEARCH_RADIUS_BINS" \
+    --codification-script "$CODIFICATION_SCRIPT" \
+    --cytoband "$CYTOBAND_RESOURCE" \
     --search-radius-bp "$SEARCH_RADIUS_BP" \
     --min-side-fine-bins "$MIN_SIDE_FINE_BINS" \
     --min-valid-fine-bins "$MIN_VALID_FINE_BINS" \
@@ -2813,9 +2772,6 @@ run_dataset() {
     --max-fine-bins-per-window "$MAX_FINE_BINS_PER_WINDOW" \
     --min-mapq "$MIN_MAPQ" \
     --coverage-mode "$coverage_mode" \
-    --normal-samples "$NORMAL_SAMPLES" \
-    --normal-bam-dirs "$NORMAL_BAM_DIRS" \
-    --pon-mode "$PON_MODE" \
     $([[ "$INCLUDE_DUPLICATES" == "true" ]] && echo --include-duplicates) \
     $([[ "$INCLUDE_SUPPLEMENTARY" == "true" ]] && echo --include-supplementary) \
     $([[ "$INCLUDE_SECONDARY" == "true" ]] && echo --include-secondary) \
@@ -2831,21 +2787,16 @@ run_dataset() {
 }
 
 if [[ "$MODE" == "ont" || "$MODE" == "both" ]]; then
-  [[ -n "$ONT_ICHOR_DIR" ]] || { echo "ERROR: --ont-ichor-dir required for --mode ont/both" >&2; exit 1; }
+  [[ -n "$ONT_CNA_DIR" ]] || { echo "ERROR: --ont-cna-dir required for --mode ont/both" >&2; exit 1; }
   [[ -n "$ONT_BAM_DIR" ]] || { echo "ERROR: --ont-bam-dir required for --mode ont/both" >&2; exit 1; }
   [[ -n "$ONT_PRIOR_SEG" ]] || { echo "ERROR: --ont-prior-seg required for --mode ont/both" >&2; exit 1; }
-  run_dataset "ONT_ichorcna_${ONT_BINSIZE_KB}kb" "$ONT_ICHOR_DIR" "ichorcna" "ONT" "$ONT_BAM_DIR" "$ONT_PRIOR_SEG" "$ONT_BINSIZE_KB" "$FINE_BIN_KB_ONT" "$COVERAGE_MODE_ONT"
+  run_dataset "ONT_${ONT_CALLER}_${ONT_BINSIZE_KB}kb" "$ONT_CNA_DIR" "$ONT_CALLER" "ONT" "$ONT_BAM_DIR" "$ONT_PRIOR_SEG" "$ONT_BINSIZE_KB" "$FINE_BIN_KB_ONT" "$COVERAGE_MODE_ONT"
 fi
 
 if [[ "$MODE" == "illumina" || "$MODE" == "both" ]]; then
   [[ -n "$ILLUMINA_QDNASEQ_DIR" ]] || { echo "ERROR: --illumina-qdnaseq-dir required for --mode illumina/both" >&2; exit 1; }
   [[ -n "$ILLUMINA_BAM_DIR" ]] || { echo "ERROR: --illumina-bam-dir required for --mode illumina/both" >&2; exit 1; }
   [[ -n "$ILLUMINA_PRIOR_SEG" ]] || { echo "ERROR: --illumina-prior-seg required for --mode illumina/both" >&2; exit 1; }
-  # Default: no PON for Illumina unless explicitly supplied.
-  if [[ "$MODE" == "illumina" && "$NORMAL_SAMPLES" == "auto" && -z "$NORMAL_BAM_DIRS" ]]; then
-    NORMAL_SAMPLES="none"
-    PON_MODE="off"
-  fi
   run_dataset "illumina_qdnaseq_${ILLUMINA_BINSIZE_KB}kb" "$ILLUMINA_QDNASEQ_DIR" "qdnaseq" "illumina" "$ILLUMINA_BAM_DIR" "$ILLUMINA_PRIOR_SEG" "$ILLUMINA_BINSIZE_KB" "$FINE_BIN_KB_ILLUMINA" "$COVERAGE_MODE_ILLUMINA"
 fi
 

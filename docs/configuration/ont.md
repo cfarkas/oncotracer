@@ -1,6 +1,8 @@
 # ONT configuration
 
-Use this route for Oxford Nanopore Technologies FASTQs organized in barcode directories. Native v2 discovers and merges the selected reads, aligns with minimap2, counts genomic bins with HMMcopy, runs ichorCNA, refines CNA boundaries from BAM depth, and creates tables, plots, and summaries.
+Use this route for Oxford Nanopore Technologies FASTQs organized in barcode directories. Native v2 discovers and merges the selected reads, aligns with minimap2, runs the explicitly selected CNA caller, refines CNA boundaries from BAM depth, and creates tables, plots, and summaries. The default liquid-biopsy route uses HMMcopy/ichorCNA; an explicit solid-biopsy route can use qDNAseq.
+
+The liquid-biopsy caller uses the version-selected upstream HD_ULP ichorCNA reference object as a static scientific asset. That caller resource is not created from the cohort, and no submitted `NORMAL` sample is pooled into it.
 
 ## Recommended: Automatic Setup
 
@@ -13,9 +15,7 @@ project/input/fastq_pass/
 ├── barcode01/
 │   ├── reads_001.fastq.gz
 │   └── reads_002.fastq.gz
-├── barcode02/
-│   └── reads_001.fastq.gz
-└── barcode03/
+└── barcode02/
     └── reads_001.fastq.gz
 ```
 
@@ -30,12 +30,11 @@ mkdir -p "$PROJECT_DIR/input/fastq_pass"
 cat > "$PROJECT_DIR/input/ont_samples.csv" <<'CSV'
 barcode,sample_name,status
 barcode01,Patient_A,TUMOR
-barcode02,Patient_B,TUMOR
-barcode03,Patient_Normal,NORMAL
+barcode02,Control_A,NORMAL
 CSV
 ```
 
-`barcode` must match a directory name exactly. At least one row must be `TUMOR`.
+`barcode` must match a directory name exactly.
 
 ### Generate the YAML
 
@@ -74,20 +73,22 @@ mode: ont
 lpwgs_root: /absolute/path/project
 outdir: /absolute/path/project/results/ont
 ont_folder: /absolute/path/project/input/fastq_pass
-ont_barcodes: barcode01,barcode02
-ont_sample_names: Patient_A,Patient_B
-ont_analysis_type: liquid_biopsy
-ont_caller: ichorcna
-ont_binsize_kb: 500
-ont_min_age_minutes: 0
+ont_barcodes: barcode01
+ont_sample_names: Patient_A
 ont_normal_folder: /absolute/path/project/input/fastq_pass
-ont_normal_barcodes: barcode03
-ont_normal_sample_names: Patient_Normal
+ont_normal_barcodes: barcode02
+ont_normal_sample_names: Control_A
+ont_analysis_type: solid_biopsy
+ont_caller: qdnaseq
+ont_binsize_kb: 100
+ont_min_age_minutes: 0
 run_cna_classifier: false
 force: false
 ```
 
 Barcode and sample-name lists are positional. The first barcode maps to the first sample name.
+`ont_barcodes`/`ont_sample_names` identify TUMOR samples. When the input table contains NORMAL rows, Automatic Setup writes them separately as `ont_normal_folder`, `ont_normal_barcodes`, and `ont_normal_sample_names`. Native v2 runs qDNAseq for every TUMOR and NORMAL sample independently; it never pools, averages, or subtracts the NORMAL group. Mixed or NORMAL-containing ONT cohorts therefore use `ont_analysis_type: solid_biopsy` and `ont_caller: qdnaseq`. The frozen Nextflow comparator does not support this role-preserving route.
+
 
 ## Manual YAML
 
@@ -122,18 +123,44 @@ oncotracer run \
   --config "$PROJECT_DIR/config/ont.manual.yml"
 ```
 
-## Optional normal/control barcodes
+## Explicit solid-biopsy qDNAseq route
 
-Add:
+For a solid-tumor ONT cohort, select qDNAseq explicitly and use a new `outdir` so its caller and reports remain separate from an ichorCNA run:
 
 ```yaml
-ont_normal_folder: /absolute/path/project/input/normal_fastq_pass
-ont_normal_barcodes: barcode01,barcode02
-ont_normal_sample_names: Normal_A,Normal_B
-ont_build_pon: true
+mode: ont
+lpwgs_root: /absolute/path/project
+outdir: /absolute/path/project/results/ont_solid_qdnaseq
+ont_folder: /absolute/path/project/input/fastq_pass
+ont_barcodes: barcode01,barcode02
+ont_sample_names: Tumor_A,Tumor_B
+ont_analysis_type: solid_biopsy
+ont_caller: qdnaseq
+ont_binsize_kb: 100
+ont_min_age_minutes: 0
+run_cna_classifier: false
+force: false
 ```
 
-Review the supported study design and native summary before interpreting normalized calls.
+This route reuses the native qDNAseq implementation and its existing scientific settings, passes the long-read BAMs as unpaired data, and writes initial caller output under `01_samurai_ont/qdnaseq/`. It does not combine or overwrite `01_samurai_ont/results/ichorcna/`; retaining a distinct `outdir` also keeps the downstream stage-02 through stage-06 products separate. `ont_caller: qdnaseq` is rejected unless `ont_analysis_type: solid_biopsy` is present.
+
+## Optional POD5 methylation classification
+
+For an ONT run, `--methylation` can run modified-base basecalling and either Sturgeon (`--sturgeon`, CNS-tumor research) or MARLIN (`--marlin`, leukemia research) before the CNA branch. An explicit non-empty POD5 directory is mandatory; OncoTracer never searches for POD5 files:
+
+```bash
+cd /path/to/my/analyses_dir/
+
+oncotracer run \
+  --backend conda \
+  --config "$PWD/project/config/ont.manual.yml" \
+  --methylation \
+  --sturgeon \
+  --pod5-dir /absolute/path/to/pod5_pass \
+  --gpu
+```
+
+The YAML must also contain explicit, checksum-pinned Dorado/Modkit/classifier resources. If Modkit detects zero usable modified-CpG calls, OncoTracer records `no_cpg_modifications`, skips the methylation classifier, and continues CNA. A CNA failure likewise does not discard a completed methylation result. Read [Optional ONT methylation](methylation.md) before enabling this research branch, especially the Sturgeon license, hg38 model/probe, backend, and GPU limitations.
 
 ## Custom reference
 
@@ -165,18 +192,16 @@ Use this only when an existing ONT alignment is invalid or the relevant alignmen
 
 | Setting | Typical value | Purpose |
 | --- | --- | --- |
-| `ont_folder` | absolute directory | Parent containing tumor barcode directories |
-| `ont_barcodes` | comma-separated names | Tumor barcode selection |
+| `ont_folder` | absolute directory | Parent containing selected barcode directories |
+| `ont_barcodes` | comma-separated names | Barcode selection |
 | `ont_sample_names` | comma-separated names | Biological names in matching order |
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
-| `ont_caller` | `ichorcna` | ONT CNA caller |
-| `ont_binsize_kb` | `500` | Initial genomic bin width |
+| `ont_caller` | `ichorcna` | `ichorcna`, or `qdnaseq` for an explicit `solid_biopsy` analysis |
+| `ont_binsize_kb` | `500` | Initial caller bin width; set it explicitly for qDNAseq |
 | `ont_ref` | optional FASTA | Custom reference |
-| `ont_normal_folder` | optional directory | Parent containing normal barcodes |
-| `ont_normal_barcodes` | optional names | Normal barcode selection |
-| `ont_normal_sample_names` | optional names | Positional normal sample names |
 | `ont_min_age_minutes` | `0` | Minimum FASTQ age before use |
 | `ont_force_realign` | `false` | Deliberate alignment refresh |
+| `--methylation --sturgeon|--marlin --pod5-dir PATH` | optional CLI branch | Explicit POD5 methylation/classifier route; see the dedicated page |
 | `run_cna_classifier` | `false` | Add native classifier/reports |
 | `force` | `false` | Preserve reusable stages |
 

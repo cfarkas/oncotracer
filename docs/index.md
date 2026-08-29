@@ -2,6 +2,8 @@
 
 OncoTracer is a native, auditable workflow for low-pass whole-genome sequencing (LP-WGS) copy-number analysis from Illumina and Oxford Nanopore Technologies (ONT) FASTQs.
 
+For ONT only, an optional explicit-POD5 branch can perform Dorado/Modkit modified-base processing followed by user-selected Sturgeon (CNS research) or MARLIN (leukemia research) classification. It runs before CNA but records and preserves the two outcomes independently.
+
 ```text
 Illumina FASTQ -> BWA/Picard -> qDNAseq -----------+
                                                     +-> BAM-supported refinement
@@ -17,9 +19,11 @@ ONT FASTQ ------> minimap2 ---> HMMcopy/ichorCNA --+              |
 
 ## Start with a complete public example
 
-QuickStart 1 runs one checksum-validated Illumina library and one checksum-validated ONT library:
+QuickStart 1 runs one checksum-validated Illumina library and one checksum-validated ONT library. Replace the example analyses directory with a real directory on your Linux workstation or server:
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer install --conda
 oncotracer doctor --backend conda
 
@@ -31,6 +35,8 @@ oncotracer quickstart 1 \
 QuickStart 2 runs three public HCC1143 Illumina libraries:
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 2 \
   --backend conda \
   --test-root "$PWD/oncotracer-quickstart2"
@@ -41,7 +47,7 @@ The QuickStart pages reproduce the detailed style of the original documentation:
 - [QuickStart 1 — Illumina and ONT](quick_start.md)
 - [QuickStart 2 — HCC1143](public_cohort.md)
 - [Complete 12-library PRJNA754199 tutorial](full_tutorial.md)
-- [Mock six-tumor/four-normal cohort](six_tumor_four_control.md)
+- [Mock six-tumor/four-independent-normal cohort](six_tumor_four_normal.md)
 
 ## Run your own FASTQs
 

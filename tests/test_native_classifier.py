@@ -14,11 +14,30 @@ from oncotracer_cli.runtime import CommandRunner, StageLedger
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class _RecordingRunner(CommandRunner):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.containment_calls: list[tuple[str, dict[str, str | None] | None, bool]] = (
+            []
+        )
+
+    def run(self, stage, command, **kwargs):
+        containment = kwargs.get("containment")
+        self.containment_calls.append((stage, containment, "env" in kwargs))
+        return super().run(stage, command, **kwargs)
+
+
 class NativeClassifierTests(unittest.TestCase):
     def test_sample_set_aliases(self) -> None:
-        self.assertEqual(sample_set_key({"cna_classifier_sample_set": "DLBCL"}), "lymphoma")
-        self.assertEqual(sample_set_key({"cna_classifier_sample_set": "AML"}), "leukemia")
-        self.assertEqual(sample_set_key({"cna_classifier_sample_set": "breast:S1,S2"}), "breast")
+        self.assertEqual(
+            sample_set_key({"cna_classifier_sample_set": "DLBCL"}), "lymphoma"
+        )
+        self.assertEqual(
+            sample_set_key({"cna_classifier_sample_set": "AML"}), "leukemia"
+        )
+        self.assertEqual(
+            sample_set_key({"cna_classifier_sample_set": "breast:S1,S2"}), "breast"
+        )
 
     def test_gistic_runtime_receives_exact_prefix_mcr_environment(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -58,14 +77,14 @@ class NativeClassifierTests(unittest.TestCase):
             expected = ":".join(str(path) for path in libraries)
             executable.write_text(
                 "#!/bin/sh\n"
-                f"test \"$LD_LIBRARY_PATH\" = {expected!r} || exit 88\n"
+                f'test "$LD_LIBRARY_PATH" = {expected!r} || exit 88\n'
                 "exit 0\n",
                 encoding="utf-8",
             )
             executable.chmod(0o755)
 
             native = workspace / ".native"
-            runner = CommandRunner(native / "trace.tsv", echo=False)
+            runner = _RecordingRunner(native / "trace.tsv", echo=False)
             ledger = StageLedger(native / "state.json")
             output, status, _command = _run_gistic(
                 ROOT,
@@ -80,11 +99,25 @@ class NativeClassifierTests(unittest.TestCase):
                 workspace / "output",
                 runner,
                 ledger,
-                Toolchain(gistic_prefix=prefix),
+                Toolchain(
+                    gistic_prefix=prefix,
+                    runtime_cache=workspace / "runtime-cache",
+                ),
                 force=True,
             )
             self.assertTrue((output / ".oncotracer-complete").is_file())
             self.assertIn("completed", status.read_text(encoding="utf-8"))
+            routed = {
+                stage: (containment, used_env)
+                for stage, containment, used_env in runner.containment_calls
+                if stage.startswith("classifier-gistic")
+            }
+            self.assertEqual(
+                set(routed), {"classifier-gistic-version", "classifier-gistic"}
+            )
+            for containment, used_env in routed.values():
+                self.assertFalse(used_env)
+                self.assertIn("gistic.conf", str(containment["FONTCONFIG_FILE"]))
 
     def test_complete_offline_classifier_graph_without_nextflow(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -98,7 +131,10 @@ class NativeClassifierTests(unittest.TestCase):
                 (ROOT / "bin/cna_classifier_nf/test/mini_cna_events.tsv").read_bytes()
             )
             (codification / "cna_cytogenomic_notation.tsv").write_bytes(
-                (ROOT / "bin/cna_classifier_nf/test/mini_cna_cytogenomic_notation.tsv").read_bytes()
+                (
+                    ROOT
+                    / "bin/cna_classifier_nf/test/mini_cna_cytogenomic_notation.tsv"
+                ).read_bytes()
             )
             (summary / "workflow_summary.json").write_text(
                 json.dumps(
@@ -117,7 +153,7 @@ class NativeClassifierTests(unittest.TestCase):
                 encoding="utf-8",
             )
             native = analysis / ".oncotracer-native"
-            runner = CommandRunner(native / "trace.tsv", echo=False)
+            runner = _RecordingRunner(native / "trace.tsv", echo=False)
             ledger = StageLedger(native / "state.json")
             config = {
                 "run_cna_classifier": True,
@@ -139,7 +175,10 @@ class NativeClassifierTests(unittest.TestCase):
                 workspace / "lpwgs",
                 runner,
                 ledger,
-                Toolchain(classifier_prefix=Path(sys.prefix)),
+                Toolchain(
+                    classifier_prefix=Path(sys.prefix),
+                    runtime_cache=workspace / "runtime-cache",
+                ),
                 force=True,
             )
             self.assertEqual(result, analysis / "05_cna_classifier")
@@ -164,8 +203,27 @@ class NativeClassifierTests(unittest.TestCase):
             trace = (native / "trace.tsv").read_text(encoding="utf-8").lower()
             self.assertNotIn("nextflow", trace)
             self.assertIn(str(Path(sys.prefix) / "bin" / "python").lower(), trace)
-            workflow_summary = (summary / "workflow_summary.txt").read_text(encoding="utf-8")
-            self.assertIn("cna_classifier_completed=True", workflow_summary)
+            workflow_summary = (summary / "workflow_summary.txt").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("nextflow_used=false", workflow_summary)
+            self.assertIn("cna_classifier_completed=true", workflow_summary)
+            workflow_summary_json = json.loads(
+                (summary / "workflow_summary.json").read_text(encoding="utf-8")
+            )
+            self.assertIs(workflow_summary_json["nextflow_used"], False)
+            self.assertIs(workflow_summary_json["cna_classifier_completed"], True)
+            classifier_calls = [
+                (stage, containment)
+                for stage, containment, _used_env in runner.containment_calls
+                if stage.startswith("classifier-")
+            ]
+            self.assertTrue(classifier_calls)
+            for stage, containment in classifier_calls:
+                with self.subTest(stage=stage):
+                    self.assertIn(
+                        "classifier.conf", str(containment["FONTCONFIG_FILE"])
+                    )
 
 
 if __name__ == "__main__":

@@ -47,6 +47,10 @@ force: false
 
 `ont_barcodes` and `ont_sample_names` are positional and must have the same number of entries.
 
+The default above is the liquid-biopsy ichorCNA route. For a separate solid-biopsy qDNAseq analysis, use a new `outdir` and set `ont_analysis_type: solid_biopsy`, `ont_caller: qdnaseq`, and an explicit qDNAseq bin width. The engine rejects qDNAseq for other ONT analysis types.
+
+An optional ONT-only POD5 methylation branch is available with `--methylation` plus exactly one of `--sturgeon` or `--marlin`, and always requires `--pod5-dir /absolute/path`. It runs before CNA, but the two outcomes are preserved independently. See [Optional ONT methylation](configuration/methylation.md) for the required checksum-pinned external resources and license/backend limitations.
+
 ## Run a YAML
 
 ```bash
@@ -58,33 +62,12 @@ oncotracer run \
 
 Repeat the same command to reuse valid completed stages. Add `--dry-run` to inspect the native argument arrays, or `--force` only for a deliberate refresh.
 
-## Illumina local panel of normals
+## Normal samples
 
-```yaml
-illumina_build_pon: true
-illumina_pon_normal_samples: Control_A,Control_B
-illumina_pon_min_normals: 2
-illumina_pon_name: study_local_PoN
-illumina_pon_min_mapq: 37
-```
-
-Every listed panel sample must be present in the samplesheet and marked `normal`. Automatic Setup enforces the native contract:
-
-- zero normals: no local panel;
-- exactly one normal: configuration rejected;
-- two or more normals: robust median-log₂ reference built and applied;
-- corrected downstream bins, segments, events, and plots contain tumors only.
-
-## Optional ONT normal input
-
-```yaml
-ont_normal_folder: /data/study/input/normal_fastq_pass
-ont_normal_barcodes: barcode01,barcode02
-ont_normal_sample_names: Normal_A,Normal_B
-ont_build_pon: true
-```
-
-Review the supported study design and stage summaries before interpreting normalized calls.
+In an Illumina samplesheet, `status: normal` is preserved metadata for an
+independently analyzed qDNAseq sample. Automatic Setup does not pool normal
+rows, create a sample-derived reference, or exclude them from per-sample CNA
+outputs. Review `qdnaseq_sample_status.json` for exact completion status.
 
 ## Optional native CNA classifier
 

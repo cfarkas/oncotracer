@@ -1,57 +1,69 @@
-# Poetry launcher
+# Poetry Launcher
 
-The Poetry route is intended for development of the Python launcher while retaining the same native scientific stage graph used by the copied release executable.
+Poetry provides a managed Python launcher for OncoTracer's native v2 engine. It does not replace the scientific software runtime: installation also creates the same five isolated Conda environments used by the global executable.
 
-For normal users, install the verified release asset and choose Conda, Docker, or Singularity/Apptainer. See [Installation](installation.md).
+Poetry is intended for source development. Beginners who only want to run analyses should normally install the verified global executable and choose Conda, Docker, or Singularity/Apptainer.
 
-## Prepare a source-development checkout
+## Install Poetry and the launcher
 
-From an existing source checkout:
+Use Poetry 2.0 or newer. OncoTracer rejects Poetry 1.x before it creates a lock,
+journal, environment, or target directory.
 
 ```bash
-./oncotracer install --poetry
-poetry run oncotracer --version
-poetry run oncotracer provenance --json
-poetry run oncotracer doctor --backend poetry
+cd /path/to/my/oncotracer_source/
+
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+"$ONCOTRACER_DEV" --help
 ```
 
-The installer performs two jobs:
+The explicit prefix is a dedicated OncoTracer installation root, not a Conda
+base installation or a shared Poetry environment. It must be absent, empty, or
+already carry the exact ownership markers written by this installer. OncoTracer
+requires an exact clean Git checkout matching the launcher's source identity.
+It builds a wheel in an isolated transaction tree, creates the final canonical
+`poetry-runtime` path, and installs the wheel only through that target's Python
+and pip with indexes and dependency resolution disabled. An ownership-checked
+rollback transaction preserves the verified prior runtime until the replacement
+passes provenance, executable, and exact-inventory checks. It does not alter Poetry's global environment, ambient Python site-packages, the checkout, or a
+checkout-local `.venv`.
 
-1. `poetry install --no-interaction` creates the locked Python launcher environment.
-2. The five scientific Conda prefixes are created for core tools, qDNAseq, ichorCNA/HMMcopy, classifier/reporting, and GISTIC2.
-
-The saved backend is `poetry`, but scientific stages execute through those exact Conda prefixes rather than through the Poetry virtual environment.
-
-## Run a YAML
+## Prepare the Poetry backend
 
 ```bash
-poetry run oncotracer run \
+cd /path/to/my/oncotracer_source/
+
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+
+"$ONCOTRACER_DEV" doctor --backend poetry
+```
+
+## Run QuickStart 1 through Poetry
+
+Keep the source checkout separate from the analysis output. The output path below is explicit so it does not depend on whichever source directory contains `pyproject.toml`.
+
+```bash
+cd /path/to/my/oncotracer_source/
+
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+"$ONCOTRACER_DEV" quickstart 1 \
   --backend poetry \
-  --config "$PWD/project/config/illumina.auto.yml"
+  --test-root /path/to/my/analyses_dir/oncotracer-quickstart1-poetry
 ```
 
-## Run the public examples
+## Run QuickStart 2 through Poetry
 
 ```bash
-poetry run oncotracer quickstart 1 \
-  --backend poetry \
-  --test-root "$PWD/oncotracer-quickstart1-poetry"
+cd /path/to/my/oncotracer_source/
 
-poetry run oncotracer quickstart 2 \
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+"$ONCOTRACER_DEV" quickstart 2 \
   --backend poetry \
-  --test-root "$PWD/oncotracer-quickstart2-poetry"
+  --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry
 ```
 
-## Rebuild after source changes
-
-```bash
-poetry install --no-interaction
-./oncotracer install --poetry --force
-poetry run oncotracer doctor --backend poetry
-```
-
-Use `--force` only when the environment definitions changed or a prefix is known to be damaged.
-
-## Boundary between Poetry and the scientific runtime
-
-Poetry manages the launcher and Python development dependencies. It does not replace the versioned R stacks, alignment programs, Picard, HMMcopy, ichorCNA, or GISTIC2. The run trace and result contract are identical to the other v2 backends.
+For a different managed runtime, install it explicitly with `oncotracer install --docker`, `--singularity`, or `--conda`, then select the matching `--backend`. Every v2 route executes the native stage graph and records `nextflow_used=false`.
