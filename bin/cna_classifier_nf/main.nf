@@ -1,4 +1,6 @@
 #!/usr/bin/env nextflow
+// Legacy v1.1 source interface only; native v2 does not package or invoke it.
+
 nextflow.enable.dsl = 2
 
 // Package build: v9 - deep PubMed/Europe-PMC literature ranking and clinician driver reports
@@ -108,8 +110,8 @@ workflow {
 
     Example:
       nextflow run main.nf -profile conda \
-        --input /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina \
-        --outdir /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina/cna_classifier_nf_results \
+        --input /path/to/my/analyses_dir/cna_input \
+        --outdir /path/to/my/analyses_dir/cna_classifier_results \
         --gistic_refgene auto
     """
   }

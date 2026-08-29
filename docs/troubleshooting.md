@@ -84,13 +84,15 @@ oncotracer run \
   --force
 ```
 
-Do not run two writers against the same `outdir` concurrently.
+OncoTracer now rejects a second writer while the first process holds the exact `outdir` run lock. A new run may claim only an absent or empty output directory. Resume and `--force` require the existing `.oncotracer-native/output-owner.json` to match the same exact OncoTracer runtime and canonical location; they never adopt or delete a nonempty unowned directory. Preserve an unowned or mismatched tree and choose a new `outdir`.
 
 ## 5. Public QuickStart download problems
 
-Download and validate without analysis:
+Download and validate without analysis. Replace the example analyses directory with a directory where you have write permission:
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 1 \
   --test-root "$PWD/oncotracer-quickstart1" \
   --download-only
@@ -101,6 +103,8 @@ Repeat the command after a transient interruption. Completed files are accepted 
 For HCC1143:
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 2 \
   --test-root "$PWD/oncotracer-quickstart2" \
   --download-only
@@ -117,12 +121,30 @@ oncotracer doctor --backend conda
 
 Do not set `R_HOME`, `R_LIBS`, `R_LIBS_USER`, or `R_LIBS_SITE` to another R installation. Native qDNAseq and ichorCNA stages invoke the exact `Rscript` in their own prefix with those ambient variables removed. Diagnose the exact prefixes; do not substitute a login-shell `command -v` result.
 
+An ownership error means the selected `--prefix` is populated but was not
+created by this installer, a fixed child has lost or mismatched its marker, a
+symlink is present in the target path, or an interrupted journal cannot be
+authenticated. Do not add a marker manually and do not delete the path broadly.
+Preserve it, inspect the reported path, and choose a new absent or empty
+dedicated prefix. `--force` intentionally cannot adopt or erase an unowned
+directory. If a managed prefix is reported active, allow the named process to
+finish or select another prefix instead of replacing files beneath it. After an
+uncatchable interruption, OncoTracer can report an `oncotracer-preserved` sibling
+containing an unsealed package-manager tree. It is not automatically deleted:
+inspect it, confirm it contains no unique or foreign data, and remove only that
+exact path when appropriate. Rerunning the installer recovers the journal and
+restores or completes the managed installation.
+
 Check storage and inode availability when environment creation fails:
 
 ```bash
 df -h "$HOME" "$PWD"
 df -i "$HOME" "$PWD"
 ```
+
+Poetry installation additionally requires Poetry 2.0 or newer and an exact,
+clean Git checkout matching the executable provenance. Version, dirty-tree, or
+source-identity failures occur before managed targets are changed.
 
 ## 7. Docker errors
 
@@ -159,6 +181,15 @@ oncotracer doctor --backend singularity
 
 Check that the recorded SIF exists and all YAML paths are bind-visible. On managed HPC systems, ask the administrator about allowed bind roots and cache locations.
 
+The installed SIF must have its adjacent strict `.oncotracer.json` sidecar. A
+missing, malformed, path-mismatched, source-mismatched, or checksum-mismatched
+pair is preserved and rejected; `--force` does not make an unowned file safe to
+replace. Choose a new absent `--sif` destination. For an intact owned pair,
+`--force` pulls and validates a same-directory candidate before an atomic swap,
+so a pull, doctor, provenance, or publication failure leaves the prior image
+available. Never pre-delete a shared or active SIF to work around an ownership
+error.
+
 ## 9. Illumina input errors
 
 Automatic Setup supports one consistent layout per run:
@@ -176,32 +207,27 @@ gzip -t "$READS/Patient_A_R1.fastq.gz"
 gzip -t "$READS/Patient_A_R2.fastq.gz"
 ```
 
-Common failures include duplicate sample IDs, missing mates, mixed single/paired layouts, exactly one `NORMAL` sample, or a normal-only cohort.
+Common failures include duplicate sample IDs, missing mates, mixed single/paired layouts.
 
-## 10. Illumina panel-of-normals errors
+## 10. Confirm independent Illumina normal outputs
 
-The generated/manual samplesheet must mark every selected panel sample as `normal`, and at least two controls are required.
+The generated/manual samplesheet preserves each submitted `normal` status, but
+normal rows are not reference inputs. Confirm that each expected normal has its
+own qDNAseq status and result files:
 
 ```bash
-CONFIG="$PWD/project/config/illumina.auto.yml"
 SHEET="$PWD/project/config/illumina.samplesheet.csv"
+QDNA="$PWD/project/results/01_samurai_illumina/qdnaseq"
 
-grep '^illumina_pon_' "$CONFIG"
 sed -n '1,40p' "$SHEET"
+cat "$QDNA/qdnaseq_sample_status.json"
+find "$QDNA/bins" "$QDNA/segments" "$QDNA/plots" -maxdepth 1 -type f -print | sort
 ```
 
-A successful local panel writes:
-
-```bash
-PON="$PWD/project/results/01_samurai_illumina/qdnaseq_local_pon"
-
-test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = \
-  QDNASEQ_LOCAL_PON_SUCCESS
-test -s "$PON/pon/normal_panel_manifest.tsv"
-test -s "$PON/qc/normal_panel_sample_qc.tsv"
-```
-
-Do not consume partial panel outputs when the exact completion marker is absent.
+If a normal row is absent from `completed_samples`, inspect its entry in the
+same status JSON. A mathematically invalid sample may fail post-normalization
+QC without stopping later viable samples; OncoTracer must not silently turn the
+remaining normals into a panel.
 
 ## 11. ONT barcode errors
 
@@ -224,15 +250,18 @@ Review used/skipped/warning logs beneath `01_samurai_ont/logs/`.
 
 ## 12. Reference or indexing failures
 
-The first Illumina run creates a BWA hg38 index and can require at least 80 GiB of addressable memory. Check free storage, memory, and interrupted reference files:
+The first Illumina run creates a BWA hg38 index in the OncoTracer-owned cache and can require at least 80 GiB of addressable memory. Check free storage, memory, and the two possible reference locations:
 
 ```bash
 free -h
 df -h "$PWD/project"
 find "$PWD/project/references" -maxdepth 3 -type f -ls 2>/dev/null | head -50
+find "$PWD/project/.oncotracer/reference-cache" -maxdepth 3 -type f -ls 2>/dev/null | head -50
 ```
 
-Do not delete a valid shared reference during another active run. Use a new project root or coordinate maintenance when a reference cache is known to be corrupt.
+An existing `project/references/samurai_hg38` or `project/references/samurai_ichorcna_hg38_500kb` is external and read-only. A checksum, manifest, physical-lock, tool-identity, layout, or symlink error there stops the run without repair. This includes an otherwise usable FASTA/index directory created by another tool but lacking OncoTracer's exact `.oncotracer` manifests and locks. Do not manufacture or copy those records. Coordinate shared-reference maintenance outside OncoTracer, or use a new project root so OncoTracer can create its own content-addressed cache. Never delete a valid shared reference during another active run.
+
+qDNAseq annotations are published under `project/.oncotracer/reference-cache/qdnaseq-hg38-<binsize>kb-*/generations/`. A failed build leaves no current-generation pointer and is safe to rerun. A changed published generation fails closed rather than being repaired in place. OncoTracer deliberately ignores and preserves the older `project/.oncotracer/qdnaseq-bin-data` location.
 
 ## 13. Classifier or GISTIC2 failures
 
@@ -263,7 +292,26 @@ sha256sum oncotracer 2>/dev/null || true
 
 For a stable asset, `source_commit`, `source_sha256`, and binary checksum must agree with `release-provenance.json` and `SHA256SUMS` from the same release.
 
-## 15. Report a reproducible problem
+## 15. Standalone payload-cache safety
+
+The copied executable normally manages its own content-addressed directory below the XDG cache. If `ONCOTRACER_PAYLOAD_CACHE` is set accidentally, return to the safe default before retrying:
+
+```bash
+unset ONCOTRACER_PAYLOAD_CACHE
+oncotracer --version
+```
+
+The override is an advanced integration option. It must name an absent or empty dedicated path, or a complete cache already owned by that exact executable archive. Never point it at a home directory, XDG root, shared reference, analysis, or scientific-data directory. OncoTracer rejects symlinked, unowned, mismatched, or unexpectedly populated paths and preserves them rather than recursively deleting them. Inspect an ownership or integrity error; do not respond with a broad cache deletion.
+
+The default cache layout is:
+
+```text
+${XDG_CACHE_HOME:-$HOME/.cache}/oncotracer/2.0.0/<executable-sha256>/payload
+```
+
+Every `--dry-run` uses a separate temporary payload and removes it on success, error, or interruption. A dry-run must not create persistent XDG state, outputs, environments, images, or SIF files.
+
+## 16. Report a reproducible problem
 
 Include only de-identified information:
 

@@ -26,18 +26,24 @@ oncotracer install --singularity
 ./oncotracer install --poetry
 ```
 
-| Option | Meaning |
-| --- | --- |
-| `--conda` | Create/update five isolated Conda prefixes |
-| `--docker` | Validate Docker, pull the native image, and run its host doctor |
-| `--singularity` | Pull/reuse a SIF through Apptainer or Singularity |
-| `--poetry` | Install the source-development launcher and the five Conda prefixes |
-| `--prefix PATH` | Alternate parent for the five Conda prefixes |
-| `--image IMAGE` | Override the default native container image |
-| `--sif PATH` | Override the Singularity/Apptainer image path |
-| `--force` | Recreate damaged/changed managed assets deliberately |
-| `--dry-run` | Print installation commands without executing them |
-| `--root PATH` | Explicit source or extracted payload root |
+| Option | Accepted with | Meaning |
+| --- | --- | --- |
+| `--conda` | exactly one backend | Create/update five isolated Conda prefixes |
+| `--docker` | exactly one backend | Validate Docker, pull the native image, and run its host doctor |
+| `--singularity` | exactly one backend | Pull/reuse a SIF through Apptainer or Singularity |
+| `--poetry` | exactly one backend | Install an isolated source-development launcher and the five Conda prefixes |
+| `--prefix PATH` | Conda, Poetry | Dedicated owned parent for fixed managed children |
+| `--image IMAGE` | Docker, Singularity | Override the default native container image |
+| `--sif PATH` | Singularity | Override the managed Singularity/Apptainer image path |
+| `--force` | Conda, Poetry, Singularity | Transactionally replace intact, owned assets only |
+| `--dry-run` | every backend | Print installation commands without executing them or writing state |
+| `--root PATH` | Conda, Poetry | Explicit source or extracted payload root |
+
+Backend-irrelevant options are errors; they are never silently ignored. Conda
+and Poetry prefixes must be absent, empty, or have exact root and child
+ownership markers. A SIF destination must be absent on first installation or
+form an intact file/sidecar pair already owned by OncoTracer. `--force` cannot
+adopt, unlink, or recursively remove an unowned target.
 
 ## `oncotracer doctor`
 
@@ -53,6 +59,8 @@ The command returns JSON and exits nonzero when required source identity, prefix
 ## `oncotracer quickstart`
 
 ```bash
+cd /path/to/my/analyses_dir/
+
 oncotracer quickstart 1 \
   --backend conda \
   --test-root "$PWD/oncotracer-quickstart1"
@@ -118,8 +126,15 @@ oncotracer run \
 | `--image IMAGE` | Docker image override |
 | `--sif PATH` | Singularity/Apptainer image override |
 | `--root PATH` | Explicit payload/source root |
+| `--methylation` | Enable the optional ONT POD5 methylation branch |
+| `--sturgeon` | Select the supported CNS-tumor research classifier; mutually exclusive with `--marlin` |
+| `--marlin` | Select the supported leukemia research classifier; mutually exclusive with `--sturgeon` |
+| `--pod5-dir PATH` | Required explicit non-empty POD5 directory whenever methylation is enabled |
+| `--gpu` | Use `cuda:all` for Dorado and expose the GPU to MARLIN; requires `--methylation` |
 
 Repeating the same command reuses valid content-matched stages automatically.
+
+Optional methylation is ONT-only and supports the `host`, `conda`, and `poetry` backends with explicit user-installed resources. The stable container does not redistribute the licensed tools/models, so Docker and Singularity/Apptainer reject this branch.
 
 ## Common YAML fields
 
@@ -127,7 +142,7 @@ Repeating the same command reuses valid content-matched stages automatically.
 | --- | --- | --- |
 | `mode` | required `illumina` or `ont` | Sequencing route |
 | `lpwgs_root` | required absolute directory | Project/reference/cache root visible to the backend |
-| `outdir` | required absolute directory | Numbered native result tree |
+| `outdir` | required absolute directory | Dedicated absent, empty, or exact-runtime-owned native result tree |
 | `force` | Boolean, `false` | Scientific refresh request; normally keep false |
 | `run_cna_classifier` | Boolean, `false` | Add stage `05_cna_classifier` |
 
@@ -139,13 +154,10 @@ Repeating the same command reuses valid content-matched stages automatically.
 | `illumina_analysis_type` | `solid_biopsy` | Analysis preset |
 | `illumina_caller` | `qdnaseq` | Native Illumina CNA caller |
 | `illumina_binsize_kb` | `100` | Coarse qDNAseq bin width |
-| `illumina_build_pon` | `false` | Build/apply local qDNAseq normal panel |
-| `illumina_pon_normal_samples` | comma-separated IDs | Every and only selected normal samples |
-| `illumina_pon_min_normals` | `2` | Minimum selected controls; must be at least two |
-| `illumina_pon_name` | `illumina_local_PoN` | Safe panel artifact name |
-| `illumina_pon_min_mapq` | `37` | Panel construction mapping-quality threshold |
 
-Automatic Setup writes no panel for zero normals, rejects exactly one normal, and enables the local panel for two or more. Normal samples remain reference/QC inputs; downstream corrected outputs contain tumors.
+The samplesheet `status` column preserves `tumor` or `normal` metadata. Every
+row is analyzed independently; normal rows are not used to construct or apply a
+local sample-derived reference.
 
 ## ONT YAML fields
 
@@ -154,18 +166,50 @@ Automatic Setup writes no panel for zero normals, rejects exactly one normal, an
 | `ont_folder` | required path | Parent containing selected barcode directories |
 | `ont_barcodes` | required comma-separated names | Tumor barcode selection |
 | `ont_sample_names` | barcode names when omitted | Positional biological sample names |
+| `ont_normal_folder` | optional path | Parent containing independent NORMAL barcode directories; requires solid-biopsy qDNAseq |
+| `ont_normal_barcodes` | required with `ont_normal_folder` | NORMAL barcode selection; each barcode is analyzed as its own sample |
+| `ont_normal_sample_names` | NORMAL barcode names when omitted | Positional NORMAL sample names; never pooled into a panel |
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
-| `ont_caller` | `ichorcna` | Native ONT CNA caller |
-| `ont_binsize_kb` | `500` | Coarse ichorCNA/HMMcopy bin width |
+| `ont_caller` | `ichorcna` | `ichorcna`, or `qdnaseq` only with explicit `ont_analysis_type: solid_biopsy` |
+| `ont_binsize_kb` | `500` | Coarse caller bin width; set explicitly for qDNAseq solid-biopsy runs |
 | `ont_ref` | optional FASTA | Custom reference |
-| `ont_normal_folder` | optional path | Parent containing normal barcodes |
-| `ont_normal_barcodes` | optional names | Positional normal barcode selection |
-| `ont_normal_sample_names` | optional names | Positional normal sample names |
-| `ont_build_pon` | `false` | Explicit local-normal route request |
 | `ont_min_age_minutes` | `0` | Exclude very new FASTQs in active run folders |
 | `ont_force_realign` | `false` | Deliberately recreate supported ONT alignments |
 
-`ont_barcodes` and `ont_sample_names` must have equal lengths and order.
+`ont_barcodes` and `ont_sample_names` must have equal lengths and order. The corresponding NORMAL lists must also match, sample names and resolved barcode directories must be unique across both groups, and a mixed TUMOR/NORMAL run uses native qDNAseq rather than the frozen Nextflow comparator.
+
+## Optional ONT methylation YAML fields
+
+CLI values override `methylation`, classifier, POD5, and GPU YAML values. There is no POD5 discovery; one explicit path is always required.
+
+| Field | Typical/default | Meaning |
+| --- | --- | --- |
+| `methylation` | `false` | Enable optional ONT methylation when not using `--methylation` |
+| `methylation_classifier` | required when enabled | Exactly `sturgeon` or `marlin` |
+| `methylation_pod5_dir` | required when enabled | Explicit directory containing non-empty `.pod5` files |
+| `methylation_gpu` | `false` | Dorado `cuda:all`; MARLIN GPU visibility; Modkit/Sturgeon remain CPU |
+| `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.0.0 |
+| `methylation_dorado_executable` | required local executable | Dorado binary; no download or installation |
+| `methylation_modkit_executable` | required local executable | Modkit binary; no download or installation |
+| `methylation_samtools_executable` | `samtools` | Explicit or PATH-resolved SAMtools binary |
+| `methylation_dorado_model` | required directory | Explicit compatible Dorado basecalling model |
+| `methylation_dorado_model_sha256` | optional expected digest | OncoTracer directory-tree digest; always recorded |
+| `methylation_dorado_modbase_model` | required directory | Explicit compatible 5mCG/5hmCG model |
+| `methylation_dorado_modbase_model_sha256` | optional expected digest | OncoTracer directory-tree digest; always recorded |
+| `sturgeon_interface_contract_commit` | fixed supported upstream interface commit; does not authenticate the installed package | `4c742ddea49b0077a8f8ff3d99daafb238d00706` |
+| `sturgeon_license_acknowledged` | required `true` | User attests to separately obtaining/accepting the Sturgeon license |
+| `sturgeon_executable` | required | User-installed Sturgeon executable |
+| `sturgeon_model`, `sturgeon_model_sha256` | required pair | Explicit model and exact file SHA-256 |
+| `sturgeon_probes`, `sturgeon_probes_sha256` | required pair | Explicit hg38 probes and exact file SHA-256 |
+| `marlin_interface_contract_commit` | fixed supported upstream interface commit; does not authenticate an external runtime | `37c9836cc325ff2edccbdff06736604163db2c15` |
+| `marlin_rscript` | required | Rscript from the user-prepared MARLIN environment |
+| `marlin_python` | required | Exact Python with h5py, NumPy, and TensorFlow; automatic environments are forbidden |
+| `marlin_model`, `marlin_model_sha256` | required pair | Explicit MARLIN model and exact file SHA-256 |
+| `marlin_features`, `marlin_features_sha256` | required pair | Explicit feature RData and exact file SHA-256 |
+| `marlin_class_annotations`, `marlin_class_annotations_sha256` | required pair | Explicit class workbook and exact file SHA-256 |
+| `marlin_probe_bed`, `marlin_probe_bed_sha256` | required pair | Explicit hg38 probe BED and exact file SHA-256 |
+
+The classifier is not invoked for a sample with zero usable modified-CpG calls. CNA continues, and the final status reports the two branches independently. See [Optional ONT methylation](methylation.md) for the complete setup, dry-run, resume, license, and output contract.
 
 ## Native classifier and pathology fields
 

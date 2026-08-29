@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import compileall
 import hashlib
 import io
 import re
@@ -17,14 +16,30 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 
-SOURCE_SHA256_DEFINITION = (
-    "sha256(git -c tar.umask=0002 archive --format=tar COMMIT)"
-)
+SOURCE_SHA256_DEFINITION = "sha256(git -c tar.umask=0002 archive --format=tar COMMIT)"
 PROVENANCE_PAYLOAD_PATH = "payload/provenance/native-v2-sources.json"
 ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 HEX_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PAYLOAD_ROOTS = ("bin", "examples", "params", "environments", "provenance")
+NATIVE_PAYLOAD_EXCLUDED_PATHS = frozenset(
+    {
+        # These files are retained in the source tree solely for historical
+        # v1.1/standalone compatibility. Native v2 neither invokes nor ships
+        # launchers that install or execute Nextflow.
+        "bin/cna_classifier_nf/README.md",
+        "bin/scripts/install_oncotracer.sh",
+        "examples/hcc1143_lpwgs/README.md",
+        "examples/hcc1143_lpwgs/run_example.sh",
+        "examples/prjna754199/PROVENANCE.md",
+        "examples/prjna754199/README.md",
+        "examples/prjna754199/run_example.sh",
+        "bin/scripts/prepare_samurai_source.sh",
+        "bin/scripts/run_ifcnv_ont_lpwgs.py",
+        "bin/scripts/run_illumina_samurai_fastq.sh",
+        "bin/scripts/run_ont_samurai_barcodes.sh",
+    }
+)
 
 
 def _git(root: Path, *arguments: str) -> str:
@@ -74,7 +89,9 @@ def git_archive_sha256(root: Path, commit: str) -> str:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    if process.stdout is None or process.stderr is None:  # pragma: no cover - Popen contract
+    if (
+        process.stdout is None or process.stderr is None
+    ):  # pragma: no cover - Popen contract
         raise SystemExit("could not read git archive output")
     digest = hashlib.sha256()
     while chunk := process.stdout.read(1024 * 1024):
@@ -108,7 +125,9 @@ def resolve_source_metadata(
         return None, None, None, "unbound-development"
 
     if bool(source_commit) != bool(source_sha256):
-        raise SystemExit("--source-commit and --source-sha256 must be supplied together")
+        raise SystemExit(
+            "--source-commit and --source-sha256 must be supplied together"
+        )
 
     checkout = _is_git_checkout(root)
     if source_commit is None or source_sha256 is None:
@@ -129,7 +148,9 @@ def resolve_source_metadata(
     source_commit = source_commit.lower()
     source_sha256 = source_sha256.lower()
     if not HEX_COMMIT.fullmatch(source_commit):
-        raise SystemExit("--source-commit must be a full 40-character hexadecimal commit ID")
+        raise SystemExit(
+            "--source-commit must be a full 40-character hexadecimal commit ID"
+        )
     if not HEX_SHA256.fullmatch(source_sha256):
         raise SystemExit("--source-sha256 must be a 64-character hexadecimal SHA-256")
 
@@ -182,6 +203,8 @@ def _payload_member_target(staging: Path, member_name: str) -> Path | None:
         return None if forbidden else staging.joinpath(*relative.parts)
     if first not in PAYLOAD_ROOTS:
         return None
+    if relative.as_posix() in NATIVE_PAYLOAD_EXCLUDED_PATHS:
+        return None
     forbidden = any(
         part == "__pycache__"
         or part == "work"
@@ -215,14 +238,17 @@ def copy_payload_from_git_archive(
     )
     if result.returncode != 0:
         detail = result.stderr.decode("utf-8", errors="replace").strip()
-        raise SystemExit(detail or f"git archive failed with exit code {result.returncode}")
+        raise SystemExit(
+            detail or f"git archive failed with exit code {result.returncode}"
+        )
 
     observed_roots: set[str] = set()
     with tarfile.open(fileobj=io.BytesIO(result.stdout), mode="r:") as archive:
         for member in archive:
             relative = PurePosixPath(member.name)
             if relative.parts and (
-                relative.parts[0] == "oncotracer_cli" or relative.parts[0] in PAYLOAD_ROOTS
+                relative.parts[0] == "oncotracer_cli"
+                or relative.parts[0] in PAYLOAD_ROOTS
             ):
                 observed_roots.add(relative.parts[0])
             target = _payload_member_target(staging, member.name)
@@ -254,20 +280,26 @@ def copy_payload_from_git_archive(
 
 def copy_payload_from_tree(root: Path, staging: Path) -> None:
     """Copy an explicitly unbound or already-attested non-Git source tree."""
-    shutil.copytree(
-        root / "oncotracer_cli",
-        staging / "oncotracer_cli",
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
-    )
-    payload = staging / "payload"
-    payload_ignore = shutil.ignore_patterns(
-        "__pycache__", "*.pyc", "*.pyo", "*.nf", "nextflow.config", ".nextflow*", "work"
-    )
-    for name in PAYLOAD_ROOTS:
-        source = root / name
-        if not source.exists():
-            raise SystemExit(f"required payload path is missing: {source}")
-        shutil.copytree(source, payload / name, ignore=payload_ignore)
+    for name in ("oncotracer_cli", *PAYLOAD_ROOTS):
+        source_root = root / name
+        if not source_root.is_dir() or source_root.is_symlink():
+            raise SystemExit(
+                f"required payload path is missing or unsafe: {source_root}"
+            )
+        for source in (source_root, *sorted(source_root.rglob("*"))):
+            relative = source.relative_to(root).as_posix()
+            target = _payload_member_target(staging, relative)
+            if target is None:
+                continue
+            if source.is_symlink():
+                raise SystemExit(f"payload source must not be a symlink: {source}")
+            if source.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+            elif source.is_file():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+            else:
+                raise SystemExit(f"unsupported payload source object: {source}")
     _write_main_module(staging)
 
 
@@ -291,61 +323,72 @@ def write_build_metadata(
 ) -> None:
     provenance_payload = staging / PROVENANCE_PAYLOAD_PATH
     if not provenance_payload.is_file():
-        raise SystemExit(f"required provenance payload is missing: {provenance_payload}")
+        raise SystemExit(
+            f"required provenance payload is missing: {provenance_payload}"
+        )
     payload_sha256 = sha256_file(provenance_payload)
     metadata = (
         '"""Generated immutable source metadata for this OncoTracer build."""\n\n'
-        'from __future__ import annotations\n\n'
+        "from __future__ import annotations\n\n"
         'BUILD_METADATA_SCHEMA = "oncotracer-build-metadata-v1"\n'
-        f'SOURCE_SHA256_DEFINITION = {SOURCE_SHA256_DEFINITION!r}\n'
-        f'SOURCE_COMMIT = {source_commit!r}\n'
-        f'SOURCE_SHA256 = {source_sha256!r}\n'
-        f'SOURCE_TREE_DIRTY = {source_tree_dirty!r}\n'
-        f'SOURCE_METADATA_ORIGIN = {source_metadata_origin!r}\n'
-        'ONCOTRACER_SOURCE_COMMIT = SOURCE_COMMIT\n'
-        'ONCOTRACER_SOURCE_SHA256 = SOURCE_SHA256\n'
-        f'PROVENANCE_PAYLOAD_PATH = {PROVENANCE_PAYLOAD_PATH!r}\n'
-        f'PROVENANCE_PAYLOAD_SHA256 = {payload_sha256!r}\n'
+        f"SOURCE_SHA256_DEFINITION = {SOURCE_SHA256_DEFINITION!r}\n"
+        f"SOURCE_COMMIT = {source_commit!r}\n"
+        f"SOURCE_SHA256 = {source_sha256!r}\n"
+        f"SOURCE_TREE_DIRTY = {source_tree_dirty!r}\n"
+        f"SOURCE_METADATA_ORIGIN = {source_metadata_origin!r}\n"
+        "ONCOTRACER_SOURCE_COMMIT = SOURCE_COMMIT\n"
+        "ONCOTRACER_SOURCE_SHA256 = SOURCE_SHA256\n"
+        f"PROVENANCE_PAYLOAD_PATH = {PROVENANCE_PAYLOAD_PATH!r}\n"
+        f"PROVENANCE_PAYLOAD_SHA256 = {payload_sha256!r}\n"
     )
     metadata_path = staging / "oncotracer_cli" / "_build_metadata.py"
     metadata_path.write_text(metadata, encoding="utf-8")
     metadata_path.chmod(0o644)
 
 
-def remove_bytecode(staging: Path) -> None:
-    for bytecode in staging.rglob("*.py[co]"):
-        bytecode.unlink()
-    for cache in sorted(staging.rglob("__pycache__"), reverse=True):
-        shutil.rmtree(cache)
+def validate_python_sources(staging: Path) -> None:
+    """Compile native sources in memory without creating cleanup artifacts."""
+    for source in sorted((staging / "oncotracer_cli").rglob("*.py")):
+        try:
+            compile(source.read_bytes(), str(source), "exec")
+        except (SyntaxError, ValueError) as error:
+            raise SystemExit(
+                f"Python compilation failed for {source}: {error}"
+            ) from error
 
 
 def write_deterministic_zipapp(staging: Path, output: Path) -> None:
     """Write a byte-reproducible zipapp with normalized order, times, and modes."""
-    with output.open("wb") as target:
-        target.write(b"#!/usr/bin/env python3\n")
-        with zipfile.ZipFile(
-            target,
-            mode="w",
-            compression=zipfile.ZIP_DEFLATED,
-            compresslevel=9,
-        ) as archive:
-            for source in sorted(
-                (path for path in staging.rglob("*") if path.is_file()),
-                key=lambda path: path.relative_to(staging).as_posix(),
-            ):
-                relative = source.relative_to(staging).as_posix()
-                executable = bool(source.stat().st_mode & stat.S_IXUSR)
-                mode = 0o755 if executable else 0o644
-                info = zipfile.ZipInfo(relative, date_time=ZIP_TIMESTAMP)
-                info.compress_type = zipfile.ZIP_DEFLATED
-                info.create_system = 3
-                info.external_attr = (stat.S_IFREG | mode) << 16
-                archive.writestr(info, source.read_bytes(), compresslevel=9)
+    try:
+        with output.open("xb") as target:
+            target.write(b"#!/usr/bin/env python3\n")
+            with zipfile.ZipFile(
+                target,
+                mode="w",
+                compression=zipfile.ZIP_DEFLATED,
+                compresslevel=9,
+            ) as archive:
+                for source in sorted(
+                    (path for path in staging.rglob("*") if path.is_file()),
+                    key=lambda path: path.relative_to(staging).as_posix(),
+                ):
+                    relative = source.relative_to(staging).as_posix()
+                    executable = bool(source.stat().st_mode & stat.S_IXUSR)
+                    mode = 0o755 if executable else 0o644
+                    info = zipfile.ZipInfo(relative, date_time=ZIP_TIMESTAMP)
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    info.create_system = 3
+                    info.external_attr = (stat.S_IFREG | mode) << 16
+                    archive.writestr(info, source.read_bytes(), compresslevel=9)
+    except FileExistsError as error:
+        raise SystemExit(f"refusing to overwrite existing output: {output}") from error
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument(
+        "--root", type=Path, default=Path(__file__).resolve().parents[1]
+    )
     parser.add_argument("--output", type=Path, default=Path("dist/oncotracer"))
     parser.add_argument(
         "--source-commit",
@@ -385,9 +428,7 @@ def main() -> int:
             source_tree_dirty,
             source_metadata_origin,
         )
-        if not compileall.compile_dir(staging / "oncotracer_cli", quiet=1, force=True):
-            raise SystemExit("Python compilation failed")
-        remove_bytecode(staging)
+        validate_python_sources(staging)
         write_deterministic_zipapp(staging, output)
     output.chmod(output.stat().st_mode | 0o755)
     print(output)

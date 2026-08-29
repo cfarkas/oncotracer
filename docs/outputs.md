@@ -1,6 +1,6 @@
 # Output files
 
-Every run writes a numbered directory tree under the YAML `outdir`. Start with the summary, then move from the upstream caller through refined segments, final tables, and plots.
+Every run writes a numbered directory tree under the YAML `outdir`. OncoTracer claims only an absent or empty directory, records its exact runtime ownership in `.oncotracer-native/output-owner.json`, and prevents concurrent writers with an exclusive run lock. Resume and `--force` require that owner record to match; an existing nonempty unowned tree is preserved and rejected. Start with the summary, then move from the upstream caller through refined segments, final tables, and plots.
 
 Set one shell variable so the commands below are easy to reuse:
 
@@ -22,6 +22,7 @@ If `cat` says the file does not exist, either the run has not finished or `OUT` 
 | `04_cna_custom_plots/` | How do those tables look visually? | Derived presentation; use tables for exact values |
 | `05_cna_classifier/` | What optional CNA-pattern/pathology research interpretation was produced? | Optional and non-diagnostic |
 | `06_workflow_summary/` | Where are the important folders? | Index/pointer file, not a scientific result |
+| `07_methylation/` | What optional ONT modified-base/classifier result and provenance were produced? | Independent optional research result; review its status before predictions |
 
 Do not report temporary alignment/caller intermediates or `.oncotracer-native/` ledger files as scientific results. Preserve the ledger and trace for audit, but use the numbered stage-02/03 outputs for exact scientific values.
 
@@ -38,88 +39,43 @@ find "$OUT/01_samurai_illumina/alignment" -maxdepth 1 -name '*.bam' -print # ali
 
 Useful quality-control files include `fastqc/`, `multiqc/`, `picard/`, and `pipeline_info/`. Open the MultiQC HTML on a workstation before interpreting CNA calls.
 
-#### Illumina local panel of normals
+#### Independent tumor and normal outputs
 
-When `illumina_build_pon: true`, OncoTracer constructs a robust run-local
-qDNAseq reference from at least two selected `NORMAL` samples. For each matched
-genomic bin, the reference signal is the median normal log2 value. OncoTracer
-then subtracts that reference from each tumor profile and calls the corrected
-segments. Only `TUMOR` samples are written to the corrected bin, segment,
-combined-segment, and plot outputs; the controls remain reference inputs.
-
-Normal alignments and key panel artifacts are kept under the Illumina stage:
+Native qDNAseq writes one set of files for every QC-valid samplesheet row,
+including rows marked `normal`:
 
 ```text
-01_samurai_illumina/
-├── logs/
-│   └── normal_panel_manifest.tsv
-├── pon_alignment/
-└── qdnaseq_local_pon/
-    ├── all_segments.seg
-    ├── all_calls.seg
-    ├── all_tumors.qdnaseq_pon_corrected_bins.tsv
-    ├── qdnaseq_local_pon_summary.tsv
-    ├── qdnaseq_local_pon_versions.tsv
-    ├── qdnaseq_local_pon.done
-    ├── bins/
-    │   └── <tumor>_markdup_bins.bed
-    ├── segments/
-    │   ├── <tumor>_.seg
-    │   └── <tumor>.calls.seg
-    ├── pon/
-    │   ├── normal_panel_manifest.tsv
-    │   └── <PON>.reference_bins.tsv
-    ├── qc/
-    │   ├── sample_qc.tsv
-    │   └── normal_panel_sample_qc.tsv
-    ├── rds/
-    │   ├── <PON>.*.rds
-    │   └── <tumor>.qdnaseq_pon_corrected.segmented.rds
-    └── plots/
-        └── <tumor>.qdnaseq_pon_corrected_segment_plot.pdf
+01_samurai_illumina/qdnaseq/
+├── all_segments.seg
+├── all_calls.seg
+├── qdnaseq_sample_status.json
+├── qdnaseq_summary_mqc.txt
+├── bins/
+│   └── <sample>_markdup_bins.bed
+├── segments/
+│   ├── <sample>_.seg
+│   └── <sample>.calls.seg
+└── plots/
+    └── <sample>_markdup_segment_plot.pdf
 ```
 
-`<PON>` is the value of `illumina_pon_name`, whose default is
-`illumina_local_PoN`.
-
-| Artifact | What to audit |
-| --- | --- |
-| `pon/normal_panel_manifest.tsv` | Exact controls requested and used to construct the panel. The stable copy in `logs/` remains easy to find with the other run provenance. |
-| `pon/<PON>.reference_bins.tsv` | Per-bin robust normal reference used for correction. |
-| `qc/normal_panel_sample_qc.tsv` | Leave-one-out stability QC: each normal is compared with the median reference from the other `N-1` controls. |
-| `qc/sample_qc.tsv` | Per-sample correction/calling QC. |
-| `qdnaseq_local_pon_summary.tsv` | Cohort-level panel and tumor-processing summary. |
-| `qdnaseq_local_pon_versions.tsv` | Runtime and package provenance. |
-| `all_tumors.qdnaseq_pon_corrected_bins.tsv` | Combined corrected qDNAseq bin values for tumors only. |
-| `segments/<tumor>_.seg` | Per-tumor SAMURAI-compatible corrected segments. |
-| `segments/<tumor>.calls.seg` | Per-tumor corrected segments with discrete qDNAseq calls. |
-| `all_segments.seg` | Combined corrected segments for tumors only. |
-| `all_calls.seg` | Combined tumor-only segments with discrete qDNAseq calls. |
-| `qdnaseq_local_pon.done` | Completion marker written last after validation; its exact successful content is `QDNASEQ_LOCAL_PON_SUCCESS`. |
-
-Inspect the panel before using its CNA calls:
+The samplesheet preserves whether each input was submitted as `tumor` or
+`normal`. That status does not pool, average, or subtract samples: no local
+sample-derived panel is created. Audit independent completion as follows:
 
 ```bash
-# Run this command from the oncotracer directory.
-PON="$OUT/01_samurai_illumina/qdnaseq_local_pon"
-test -s "$OUT/01_samurai_illumina/logs/normal_panel_manifest.tsv"
-test -s "$PON/pon/normal_panel_manifest.tsv"
-test -s "$PON/pon/illumina_local_PoN.reference_bins.tsv" # change name if configured
-test "$(tr -d '\r\n' < "$PON/qdnaseq_local_pon.done")" = "QDNASEQ_LOCAL_PON_SUCCESS"
-sed -n '1,12p' "$PON/pon/normal_panel_manifest.tsv"
-sed -n '1,12p' "$PON/qc/normal_panel_sample_qc.tsv"
-sed -n '1,12p' "$PON/qdnaseq_local_pon_summary.tsv"
-sed -n '1,8p' "$PON/all_segments.seg"
-find "$PON/bins" "$PON/segments" -maxdepth 1 -type f -print | sort
+SHEET="$PWD/project/config/illumina.samplesheet.csv"
+QDNA="$OUT/01_samurai_illumina/qdnaseq"
+
+cat "$SHEET"
+cat "$QDNA/qdnaseq_sample_status.json"
+find "$QDNA/bins" "$QDNA/segments" "$QDNA/plots" -maxdepth 1 -type f -print | sort
 ```
 
-At the start of panel generation, OncoTracer invalidates any prior
-`qdnaseq_local_pon.done` marker. The helper writes results directly into the
-output directory and publishes that marker last; the wrapper then verifies the
-manifest and tumor-only outputs. A failed or interrupted run can leave partial
-files, but it cannot appear complete. Do not consume those files unless the
-new `.done` marker contains exactly `QDNASEQ_LOCAL_PON_SUCCESS` and the
-manifest, reference, QC, and tumor outputs are all present.
+`qdnaseq_sample_status.json` is authoritative for caller completeness. A
+failed or mathematically invalid sample is recorded there and excluded from
+aggregate tables without being repurposed as a reference for the remaining
+samples.
 
 ### ONT
 
@@ -127,15 +83,39 @@ manifest, reference, QC, and tumor outputs are all present.
 # Run this command from the oncotracer directory.
 find "$OUT/01_samurai_ont" -maxdepth 3 -type f | sort | sed -n '1,100p' # inventory
 sed -n '1,80p' "$OUT/01_samurai_ont/logs/run_summary.txt"               # used/skipped barcode summary
-sed -n '1,8p' "$OUT/01_samurai_ont/results/ichorcna/segments_logR_corrected_gistic.seg" # initial ichorCNA segments
+if test -s "$OUT/01_samurai_ont/results/ichorcna/ichorcna_sample_status.json"; then
+  cat "$OUT/01_samurai_ont/results/ichorcna/ichorcna_sample_status.json" # ichorCNA status
+  sed -n '1,8p' "$OUT/01_samurai_ont/results/ichorcna/segments_logR_corrected_gistic.seg"
+fi
+if test -s "$OUT/01_samurai_ont/qdnaseq/all_segments.seg"; then
+  cat "$OUT/01_samurai_ont/qdnaseq/qdnaseq_sample_status.json"        # qDNAseq status
+  sed -n '1,8p' "$OUT/01_samurai_ont/qdnaseq/all_segments.seg"          # qDNAseq segments
+fi
 find "$OUT/01_samurai_ont/bam" -maxdepth 1 -name '*.bam' -print        # aligned BAMs
 ```
 
+For ichorCNA, `ichorcna_sample_status.json` is authoritative for caller completeness. For qDNAseq, the equivalent record is `qdnaseq_sample_status.json`. A failed or mathematically invalid sample is recorded there and excluded from aggregate caller tables and downstream reports; later viable samples continue. `workflow_summary.json` reports `partial_failure` and lists both completed and failed samples. Nested partial caller files remain available for diagnosis but are not published as complete top-level inputs. For solid-biopsy qDNAseq, use a separate `outdir`; its initial caller output is `01_samurai_ont/qdnaseq/`.
+
 Also inspect `logs/used_fastq.tsv`, `logs/skipped_fastq.tsv`, `logs/skipped_samples.tsv`, and `logs/warning_samples.tsv`. A completed workflow can still contain a skipped barcode warning that matters scientifically.
+
+## Stage 07: optional ONT methylation
+
+This directory exists only when optional POD5 methylation was requested:
+
+```bash
+# Run this command from the oncotracer directory.
+cat "$OUT/07_methylation/methylation_status.json"
+cat "$OUT/07_methylation/methylation_provenance.json"
+find "$OUT/07_methylation" -maxdepth 3 -type f | sort | sed -n '1,120p'
+```
+
+Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, or `failed`. A zero-call sample is not sent to Sturgeon or MARLIN. `methylation_provenance.json` records the explicit POD5 inventory digest, executable and resource hashes, Dorado device, and the tested classifier interface-contract commit. It explicitly marks the classifier runtime as external and its installed source as unauthenticated; the commit is not installed-package identity.
+
+Methylation and CNA are independent branches: stage 07 remains valid when CNA fails, and stages 01–06 may remain valid when methylation is incomplete. In either partial case, the final command exits nonzero and `workflow_summary.json` records `cna_status`, `methylation_status`, and the relevant sample lists. Do not present a missing classifier output as a negative classification.
 
 ## Stage 02: refined segmentation
 
-The dataset subdirectory is normally `illumina_qdnaseq_100kb` or `ONT_ichorcna_500kb`, depending on the YAML. List it rather than guessing:
+The dataset subdirectory is normally `illumina_qdnaseq_100kb`, `ONT_ichorcna_500kb`, or an explicit ONT qDNAseq name such as `ONT_qdnaseq_100kb`, depending on the YAML. List it rather than guessing:
 
 ```bash
 # Run this command from the oncotracer directory.

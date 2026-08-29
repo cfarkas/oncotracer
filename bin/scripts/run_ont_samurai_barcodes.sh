@@ -2,22 +2,20 @@
 set -Eeuo pipefail
 trap 'echo "ERROR at line ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
+# Legacy v1.1 comparator/source support only. Native v2 does not package or
+# invoke this Nextflow-dependent launcher.
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
 ###############################################################################
 # ONT LP-WGS barcodes -> merged FASTQ.gz -> minimap2 BAM -> SAMURAI.
-# Supports local panels-of-normals (PoNs) for both:
-#   - ichorCNA/WisecondorX through SAMURAI --build_pon; and
-#   - qDNAseq through an additional local PBMC/normal post-processing step.
-#
-# Important qDNAseq note:
-#   SAMURAI v1.4.0 accepts normal BAMs in the solid_biopsy workflow, but the
-#   qDNAseq branch itself does not consume --build_pon. Therefore, this wrapper
-#   keeps the SAMURAI qDNAseq run untouched and then applies a local qDNAseq PoN
-#   correction using the status=normal BAMs prepared from --normal-folder.
+# This frozen comparator accepts TUMOR inputs only and rejects NORMAL inputs
+# instead of silently filtering them. It never constructs or applies a
+# sample-derived panel. Callers that require a canonical reference asset may
+# receive one explicitly with --normal_panel.
 ###############################################################################
 
-LPWGS_ROOT="/media/server/STORAGE/LPWGS_2025"
+LPWGS_ROOT="${LPWGS_ROOT:-$PWD}"
 FOLDER=""
 BARCODES_CSV=""
 SAMPLE_NAMES_CSV=""
@@ -32,25 +30,14 @@ CALLER="auto"
 NORMAL_PANEL=""
 SIZE_SELECTION=false
 
-# Local PoN options. Each --normal-folder needs one matching --normal-barcodes.
+# NORMAL folders are independent sample inputs. Each --normal-folder needs one
+# matching --normal-barcodes list.
 declare -a NORMAL_FOLDERS=()
 declare -a NORMAL_BARCODES_CSVS=()
 declare -a NORMAL_SAMPLE_NAMES_CSVS=()
-BUILD_PON=false
-BUILD_PON_EXPLICIT=false
-PON_NAME="ONT_local_cfDNA_PoN"
-FILTER_BAM_PON=false
 
-# qDNAseq local PoN options. These are used only when:
-#   --caller qdnaseq --analysis_type solid_biopsy --build-pon
-# or when normal folders are supplied and --no-build-pon is not used.
-QDNASEQ_LOCAL_PON="auto"          # auto|true|false
-QDNASEQ_PON_MIN_NORMALS=2
-QDNASEQ_MIN_MAPQ=37
-QDNASEQ_BIN_DATA=""              # optional local QDNAseq bin annotation path
+QDNASEQ_BIN_DATA=""
 QDNASEQ_RSCRIPT=""
-QDNASEQ_R_CONTAINER="${QDNASEQ_R_CONTAINER:-docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1}"
-QDNASEQ_BUILD_LOCAL_PON=false
 
 ICHORCNA_GC_WIG=""
 ICHORCNA_MAP_WIG=""
@@ -77,17 +64,14 @@ SAMURAI_PROFILE="singularity"
 usage() {
   cat <<'EOF'
 Usage:
-  run_ont_samurai_barcodes_local_pon.sh \
+  run_ont_samurai_barcodes.sh \
     --folder PATH \
     --barcodes barcode07,barcode08 \
     --sample-names G7_OC1,H8_OC3 \
-    --normal-folder PATH --normal-barcodes barcode12,barcode13 --normal-sample-names D12_CLAU,E13_JEREMY \
-    --normal-folder PATH --normal-barcodes barcode14,barcode15 --normal-sample-names CS_F14,BA_G15 \
     --outdir PATH \
     --analysis_type solid_biopsy \
     --caller qdnaseq \
-    --binsize 100 \
-    --build-pon
+    --binsize 100
 
 Core options:
   --folder PATH                         tumor/primary fastq_pass, run folder, or parent containing fastq_pass
@@ -95,32 +79,23 @@ Core options:
   --sample-names LIST                   comma-separated tumor/primary sample names; defaults to barcode names
   --outdir PATH                         output directory
   --ref FASTA                           default: <lpwgs-root>/references/samurai_hg38/genome.fa
-  --lpwgs-root PATH                     default: /media/server/STORAGE/LPWGS_2025
-  --status tumor|normal                 status for the primary --folder; default: tumor
+  --lpwgs-root PATH                     default: current directory
+  --status tumor                        frozen comparator accepts TUMOR only; default: tumor
 
-Local panel-of-normals options:
-  --normal-folder PATH                  repeatable; normal fastq_pass/run folder
-  --normal-barcodes LIST                repeatable; one comma-list per --normal-folder
-  --normal-sample-names LIST            repeatable; one comma-list per --normal-folder
-  --build-pon                           force SAMURAI --build_pon
-  --no-build-pon                        do not build/apply local PoN; supplied normal folders are still aligned/logged
-  --pon-name NAME                       default: ONT_local_cfDNA_PoN
-  --filter-bam-pon                      pass SAMURAI --filter_bam_pon for ichorCNA/WisecondorX
+Unsupported frozen-comparator options:
+  --normal-folder, --normal-barcodes, and --normal-sample-names fail explicitly.
+  Use native OncoTracer v2 to CNA-call mixed cohorts independently.
+  Removed panel options such as --build-pon also fail explicitly.
 
-qDNAseq local PoN options:
-  --qdnaseq-local-pon                   force local qDNAseq PBMC/normal PoN post-processing
-  --no-qdnaseq-local-pon                skip qDNAseq local PoN post-processing
-  --qdnaseq-pon-min-normals N           default: 2
-  --qdnaseq-min-mapq N                  default: 37
-  --qdnaseq-bin-data PATH               optional local QDNAseq bin annotation folder or file source
-  --qdnaseq-r-container URI             default: docker://quay.io/dincalcilab/qdnaseq:1.30.0-a28ebc1
+Advanced qDNAseq input:
+  --qdnaseq-bin-data PATH               optional local QDNAseq bin annotation path
 
 SAMURAI options:
   --analysis_type solid_biopsy|liquid_biopsy    default: solid_biopsy
   --caller auto|qdnaseq|ascat_sc|ichorcna|wisecondorx
                                             default: auto; solid->qdnaseq, liquid->ichorcna
   --binsize N                            default: 500 kbp
-  --normal_panel PATH                    optional prebuilt PoN; ignored if --build-pon is active; not used by qDNAseq
+  --normal_panel PATH                    optional canonical prebuilt caller panel; not used by qDNAseq
   --size_selection / --no-size_selection default: off
 
 ichorCNA reference options:
@@ -130,7 +105,7 @@ ichorCNA reference options:
   --ichorcna_reptime_wig PATH            optional, auto-filled for hg38/500kb
   --auto-ichorcna-refs                   default; use/download SAMURAI v1.4.0 hg38/500kb assets
   --no-auto-ichorcna-refs                require manual WIG paths
-  --auto-ichorcna-pon                    default; use bundled HD_ULP hg38/500kb PoN only when not building local PoN
+  --auto-ichorcna-pon                    default; use bundled canonical HD_ULP hg38/500kb panel
   --no-auto-ichorcna-pon                 do not auto-fill --normal_panel
 
 FASTQ/alignment options:
@@ -166,16 +141,16 @@ while [[ $# -gt 0 ]]; do
     --normal-folder|--normal_folder) NORMAL_FOLDERS+=("$2"); shift 2 ;;
     --normal-barcodes|--normal_barcodes) NORMAL_BARCODES_CSVS+=("$2"); shift 2 ;;
     --normal-sample-names|--normal_sample_names) NORMAL_SAMPLE_NAMES_CSVS+=("$2"); shift 2 ;;
-    --build-pon|--build_pon) BUILD_PON=true; BUILD_PON_EXPLICIT=true; shift ;;
-    --no-build-pon|--no_build_pon) BUILD_PON=false; BUILD_PON_EXPLICIT=true; shift ;;
-    --pon-name|--pon_name) PON_NAME="$2"; shift 2 ;;
-    --filter-bam-pon|--filter_bam_pon) FILTER_BAM_PON=true; shift ;;
-    --qdnaseq-local-pon|--qdnaseq_local_pon) QDNASEQ_LOCAL_PON="true"; shift ;;
-    --no-qdnaseq-local-pon|--no_qdnaseq_local_pon) QDNASEQ_LOCAL_PON="false"; shift ;;
-    --qdnaseq-pon-min-normals|--qdnaseq_pon_min_normals) QDNASEQ_PON_MIN_NORMALS="$2"; shift 2 ;;
-    --qdnaseq-min-mapq|--qdnaseq_min_mapq) QDNASEQ_MIN_MAPQ="$2"; shift 2 ;;
-    --qdnaseq-bin-data|--qdnaseq_bin_data) QDNASEQ_BIN_DATA="$2"; shift 2 ;;
-    --qdnaseq-r-container|--qdnaseq_r_container) QDNASEQ_R_CONTAINER="$2"; shift 2 ;;
+    --build-pon|--build_pon|--no-build-pon|--no_build_pon|\
+    --pon-name|--pon_name|--filter-bam-pon|--filter_bam_pon|\
+    --qdnaseq-local-pon|--qdnaseq_local_pon|\
+    --no-qdnaseq-local-pon|--no_qdnaseq_local_pon|\
+    --qdnaseq-pon-min-normals|--qdnaseq_pon_min_normals|\
+    --qdnaseq-min-mapq|--qdnaseq_min_mapq|\
+    --qdnaseq-r-container|--qdnaseq_r_container)
+      echo "ERROR: sample-derived panel construction has been removed; NORMAL samples are analyzed independently" >&2
+      exit 2
+      ;;
     --analysis_type|--analysis-type) ANALYSIS_TYPE="$2"; shift 2 ;;
     --caller) CALLER="$2"; shift 2 ;;
     --binsize) BINSIZE="$2"; shift 2 ;;
@@ -215,12 +190,13 @@ done
 [[ -n "$OUTDIR" ]] || { echo "ERROR: --outdir is required" >&2; usage >&2; exit 1; }
 
 [[ "$STATUS" == "tumor" || "$STATUS" == "normal" ]] || { echo "ERROR: --status must be tumor or normal" >&2; exit 1; }
+if [[ "$STATUS" == "normal" || ${#NORMAL_FOLDERS[@]} -gt 0 ]]; then
+  echo "ERROR: the frozen Nextflow comparator cannot CNA-call NORMAL rows independently; use native OncoTracer v2 for mixed cohorts" >&2
+  exit 2
+fi
 [[ "$ANALYSIS_TYPE" == "solid_biopsy" || "$ANALYSIS_TYPE" == "liquid_biopsy" ]] || { echo "ERROR: --analysis_type must be solid_biopsy or liquid_biopsy" >&2; exit 1; }
 [[ "$BINSIZE" =~ ^[0-9]+$ && "$BINSIZE" -gt 0 ]] || { echo "ERROR: --binsize must be a positive integer" >&2; exit 1; }
 [[ "$MIN_AGE_MINUTES" =~ ^[0-9]+$ ]] || { echo "ERROR: --min-age-minutes must be a non-negative integer" >&2; exit 1; }
-[[ "$QDNASEQ_PON_MIN_NORMALS" =~ ^[0-9]+$ && "$QDNASEQ_PON_MIN_NORMALS" -gt 0 ]] || { echo "ERROR: --qdnaseq-pon-min-normals must be a positive integer" >&2; exit 1; }
-[[ "$QDNASEQ_MIN_MAPQ" =~ ^[0-9]+$ ]] || { echo "ERROR: --qdnaseq-min-mapq must be a non-negative integer" >&2; exit 1; }
-[[ "$QDNASEQ_LOCAL_PON" == "auto" || "$QDNASEQ_LOCAL_PON" == "true" || "$QDNASEQ_LOCAL_PON" == "false" ]] || { echo "ERROR: --qdnaseq-local-pon mode must be auto, true, or false" >&2; exit 1; }
 [[ "$NFX_SYNTAX_PARSER" == "v1" || "$NFX_SYNTAX_PARSER" == "v2" ]] || { echo "ERROR: Nextflow syntax parser must be v1 or v2" >&2; exit 1; }
 [[ "$SAMURAI_PROFILE" == "docker" || "$SAMURAI_PROFILE" == "singularity" || "$SAMURAI_PROFILE" == "conda" ]] || { echo "ERROR: --profile must be docker, singularity, or conda" >&2; exit 1; }
 
@@ -247,29 +223,6 @@ PY_CONDA_CHECK
   [[ -x "$CONDA_PREFIX/bin/qpdf" ]] || { echo "ERROR: the active Conda prefix is missing qpdf: $CONDA_PREFIX/bin/qpdf" >&2; exit 1; }
 fi
 
-if (( ${#NORMAL_FOLDERS[@]} > 0 )); then
-  (( ${#NORMAL_BARCODES_CSVS[@]} == ${#NORMAL_FOLDERS[@]} )) || {
-    echo "ERROR: provide exactly one --normal-barcodes list for each --normal-folder" >&2
-    exit 1
-  }
-  if (( ${#NORMAL_SAMPLE_NAMES_CSVS[@]} > 0 && ${#NORMAL_SAMPLE_NAMES_CSVS[@]} != ${#NORMAL_FOLDERS[@]} )); then
-    echo "ERROR: provide either zero --normal-sample-names lists, or exactly one per --normal-folder" >&2
-    exit 1
-  fi
-  if [[ "$BUILD_PON_EXPLICIT" == "false" ]]; then
-    BUILD_PON=true
-  fi
-fi
-
-if [[ "$BUILD_PON" == "true" ]]; then
-  # Important: when building local PoN, do not silently use SAMURAI's bundled HD_ULP PoN.
-  AUTO_ICHORCNA_PON=false
-  if [[ -n "$NORMAL_PANEL" ]]; then
-    echo "WARNING: --normal_panel was provided but --build-pon is active; local PoN will be built and --normal_panel will be ignored." >&2
-    NORMAL_PANEL=""
-  fi
-fi
-
 if [[ "$CALLER" == "auto" ]]; then
   [[ "$ANALYSIS_TYPE" == "solid_biopsy" ]] && CALLER="qdnaseq" || CALLER="ichorcna"
 fi
@@ -285,23 +238,13 @@ else
   case "$CALLER" in ichorcna|wisecondorx) ;; *) echo "ERROR: liquid_biopsy supports ichorcna or wisecondorx" >&2; exit 1 ;; esac
 fi
 
-if [[ "$ANALYSIS_TYPE" == "liquid_biopsy" && "$CALLER" == "wisecondorx" && "$BUILD_PON" != "true" && -z "$NORMAL_PANEL" ]]; then
-  echo "ERROR: liquid_biopsy + wisecondorx requires --normal_panel or local --build-pon normals" >&2
+if [[ "$ANALYSIS_TYPE" == "liquid_biopsy" && "$CALLER" == "wisecondorx" && -z "$NORMAL_PANEL" ]]; then
+  echo "ERROR: liquid_biopsy + wisecondorx requires an explicit canonical --normal_panel" >&2
   exit 1
 fi
 
-if [[ "$CALLER" == "qdnaseq" && "$BUILD_PON" == "true" && "$QDNASEQ_LOCAL_PON" != "false" ]]; then
-  QDNASEQ_BUILD_LOCAL_PON=true
-fi
-if [[ "$CALLER" == "qdnaseq" && "$QDNASEQ_LOCAL_PON" == "true" ]]; then
-  QDNASEQ_BUILD_LOCAL_PON=true
-fi
-if [[ "$QDNASEQ_BUILD_LOCAL_PON" == "true" && "$ANALYSIS_TYPE" != "solid_biopsy" ]]; then
-  echo "ERROR: qDNAseq local PoN requires --analysis_type solid_biopsy" >&2
-  exit 1
-fi
 if [[ "$CALLER" == "qdnaseq" && -n "$NORMAL_PANEL" ]]; then
-  echo "WARNING: SAMURAI qDNAseq does not consume --normal_panel. Use --normal-folder + --build-pon for local qDNAseq PoN correction." >&2
+  echo "WARNING: SAMURAI qDNAseq does not consume --normal_panel; NORMAL samples remain independent inputs." >&2
 fi
 
 LPWGS_ROOT="$(readlink -m "$LPWGS_ROOT")"
@@ -310,10 +253,6 @@ cd "$LPWGS_ROOT"
 if [[ -f /opt/conda/etc/profile.d/conda.sh ]]; then
   # shellcheck source=/dev/null
   source /opt/conda/etc/profile.d/conda.sh
-  conda activate base
-elif [[ -f /home/server/anaconda3/etc/profile.d/conda.sh ]]; then
-  # shellcheck source=/dev/null
-  source /home/server/anaconda3/etc/profile.d/conda.sh
   conda activate base
 fi
 
@@ -426,7 +365,7 @@ resolve_ichorcna_refs() {
 
   if [[ -n "$NORMAL_PANEL" ]]; then
     NORMAL_PANEL="$(validate_file "$NORMAL_PANEL" "--normal_panel")"
-  elif [[ "$BUILD_PON" != "true" && "$ANALYSIS_TYPE" == "liquid_biopsy" && "$AUTO_ICHORCNA_PON" == "true" && "$BINSIZE" == "500" ]]; then
+  elif [[ "$ANALYSIS_TYPE" == "liquid_biopsy" && "$AUTO_ICHORCNA_PON" == "true" && "$BINSIZE" == "500" ]]; then
     local pon="HD_ULP_PoN_hg38_500kb_median_normAutosome_median.rds" found=""
     found="$(find_samurai_ichorcna_asset "$pon" || true)"
     [[ -n "$found" ]] || found="$(download_samurai_ichorcna_asset "$pon" || true)"
@@ -440,11 +379,7 @@ resolve_ichorcna_refs() {
   echo "  MAP WIG      : $ICHORCNA_MAP_WIG"
   echo "  Centromere   : ${ICHORCNA_CENTROMERE_FILE:-not_set}"
   echo "  Reptime WIG  : ${ICHORCNA_REPTIME_WIG:-not_set}"
-  if [[ "$BUILD_PON" == "true" ]]; then
-    echo "  Normal panel : will be built locally by SAMURAI from status=normal BAMs"
-  else
-    echo "  Normal panel : ${NORMAL_PANEL:-not_set}"
-  fi
+  echo "  Normal panel : ${NORMAL_PANEL:-not_set}"
 }
 
 resolve_fastq_pass() {
@@ -524,8 +459,8 @@ WARN_SAMPLE_LOG="$RUN_ROOT/logs/warning_samples.tsv"
 unset DISPLAY
 [[ -s "$REF_FAI" ]] || samtools faidx "$REF_FA"
 if [[ ! -s "$DICT" ]]; then
-  if [[ -s /home/server/anaconda3/pkgs/picard-2.20.4-0/share/picard-2.20.4-0/picard.jar ]]; then
-    java -jar /home/server/anaconda3/pkgs/picard-2.20.4-0/share/picard-2.20.4-0/picard.jar CreateSequenceDictionary R="$REF_FA" O="$DICT"
+  if command -v picard >/dev/null 2>&1; then
+    picard CreateSequenceDictionary R="$REF_FA" O="$DICT"
   else
     samtools dict "$REF_FA" > "$DICT"
   fi
@@ -581,7 +516,7 @@ if [[ "$SAMURAI_PROFILE" == "conda" && "$CALLER" == "qdnaseq" && -z "$QDNASEQ_BI
   QDNASEQ_BIN_DATA="$(bash "$QDNASEQ_BIN_HELPER" \
     --rscript "$QDNASEQ_RSCRIPT" \
     --binsize "$BINSIZE" \
-    --cache-dir "$LPWGS_ROOT/.oncotracer/qdnaseq-bin-data")"
+    --project-root "$LPWGS_ROOT")"
   [[ -s "$QDNASEQ_BIN_DATA" ]] || { echo "ERROR: qDNAseq annotation was not prepared: $QDNASEQ_BIN_DATA" >&2; exit 1; }
   echo "Using qDNAseq hg38 annotation: $QDNASEQ_BIN_DATA"
 fi
@@ -813,252 +748,10 @@ prepare_barcode_set() {
 }
 
 
-write_qdnaseq_local_pon_rscript() {
-  local rscript="$RUN_ROOT/scripts/qdnaseq_local_pon.R"
-  cat > "$rscript" <<'RSCRIPT'
-#!/usr/bin/env Rscript
-suppressPackageStartupMessages({
-  library(QDNAseq)
-  library(Biobase)
-})
-
-args <- commandArgs(trailingOnly = TRUE)
-get_arg <- function(flag, default = NULL) {
-  hit <- which(args == flag)
-  if (length(hit) == 0) return(default)
-  if (hit[1] == length(args)) stop("Missing value for ", flag)
-  args[hit[1] + 1]
-}
-truthy <- function(x) tolower(as.character(x)) %in% c("true", "t", "1", "yes", "y")
-
-samplesheet <- get_arg("--samplesheet")
-outdir <- get_arg("--outdir")
-binsize <- as.integer(get_arg("--binsize", "100"))
-genome <- get_arg("--genome", "hg38")
-min_mapq <- as.integer(get_arg("--min-mapq", "37"))
-min_normals <- as.integer(get_arg("--min-normals", "2"))
-paired_ends <- truthy(get_arg("--paired-ends", "false"))
-pon_name <- get_arg("--pon-name", "qdnaseq_local_pon")
-bin_data <- get_arg("--qdnaseq-bin-data", "")
-
-if (is.null(samplesheet) || !file.exists(samplesheet)) stop("Missing --samplesheet: ", samplesheet)
-if (is.null(outdir)) stop("Missing --outdir")
-dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
-
-message("qDNAseq local PoN correction")
-message("  samplesheet: ", samplesheet)
-message("  outdir     : ", outdir)
-message("  genome     : ", genome)
-message("  binsize    : ", binsize, " kbp")
-message("  min MAPQ   : ", min_mapq)
-message("  min normals: ", min_normals)
-
-ss <- read.csv(samplesheet, stringsAsFactors = FALSE, check.names = FALSE)
-needed <- c("sample", "bam", "status")
-missing <- setdiff(needed, names(ss))
-if (length(missing)) stop("Samplesheet is missing column(s): ", paste(missing, collapse = ", "))
-ss$status <- tolower(ss$status)
-ss <- ss[file.exists(ss$bam), , drop = FALSE]
-ss <- ss[ss$status %in% c("tumor", "normal"), , drop = FALSE]
-
-normals <- ss[ss$status == "normal", , drop = FALSE]
-tumors  <- ss[ss$status == "tumor",  , drop = FALSE]
-if (nrow(normals) < min_normals) stop("Only ", nrow(normals), " normal BAM(s) found; need at least ", min_normals)
-if (nrow(tumors) < 1) stop("No tumor BAMs found")
-
-all_samples <- rbind(normals, tumors)
-all_samples$sample <- make.names(all_samples$sample, unique = TRUE)
-bamfiles <- all_samples$bam
-names(bamfiles) <- all_samples$sample
-
-if (nzchar(bin_data)) {
-  options("QDNAseq::binAnnotationPath" = bin_data)
-  message("  QDNAseq bin data path: ", bin_data)
-}
-if (tolower(genome) == "hg38") {
-  suppressWarnings(suppressPackageStartupMessages(require(QDNAseq.hg38, quietly = TRUE)))
-}
-
-bins <- tryCatch(
-  getBinAnnotations(binSize = binsize, genome = genome),
-  error = function(e) {
-    stop(
-      "Could not load QDNAseq bin annotations for genome=", genome,
-      ", binsize=", binsize, " kbp. Install/load QDNAseq.hg38 or provide --qdnaseq-bin-data. Original error: ",
-      conditionMessage(e)
-    )
-  }
-)
-
-read_counts <- binReadCounts(
-  bins,
-  bamfiles = bamfiles,
-  bamnames = all_samples$sample,
-  minMapq = min_mapq,
-  pairedEnds = paired_ends
-)
-saveRDS(read_counts, file.path(outdir, paste0(pon_name, ".all_samples.readCounts.rds")))
-
-read_counts <- tryCatch(
-  applyFilters(read_counts, residual = TRUE, blacklist = TRUE),
-  error = function(e) {
-    message("applyFilters(residual=TRUE, blacklist=TRUE) failed; retrying applyFilters() defaults: ", conditionMessage(e))
-    applyFilters(read_counts)
-  }
-)
-read_counts <- estimateCorrection(read_counts)
-copy_numbers <- correctBins(read_counts)
-copy_numbers <- normalizeBins(copy_numbers)
-copy_numbers <- tryCatch(
-  smoothOutlierBins(copy_numbers),
-  error = function(e) {
-    message("smoothOutlierBins() failed; continuing without smoothing: ", conditionMessage(e))
-    copy_numbers
-  }
-)
-saveRDS(copy_numbers, file.path(outdir, paste0(pon_name, ".all_samples.qdnaseq_corrected.rds")))
-
-sample_names <- sampleNames(copy_numbers)
-normal_names <- all_samples$sample[all_samples$status == "normal"]
-tumor_names  <- all_samples$sample[all_samples$status == "tumor"]
-normal_idx <- match(normal_names, sample_names)
-tumor_idx  <- match(tumor_names,  sample_names)
-if (any(is.na(normal_idx))) stop("Normal sample(s) disappeared after qDNAseq correction: ", paste(normal_names[is.na(normal_idx)], collapse = ", "))
-if (any(is.na(tumor_idx)))  stop("Tumor sample(s) disappeared after qDNAseq correction: ", paste(tumor_names[is.na(tumor_idx)], collapse = ", "))
-
-if (!"copynumber" %in% assayDataElementNames(copy_numbers)) {
-  stop("The QDNAseq object does not contain a 'copynumber' assay. Found: ", paste(assayDataElementNames(copy_numbers), collapse = ", "))
-}
-cnmat <- assayDataElement(copy_numbers, "copynumber")
-log2mat <- log2(pmax(cnmat, 1e-8))
-
-pon_median <- apply(log2mat[, normal_idx, drop = FALSE], 1, median, na.rm = TRUE)
-pon_mad <- apply(log2mat[, normal_idx, drop = FALSE], 1, mad, na.rm = TRUE, constant = 1.4826)
-
-copy_numbers_tumor <- copy_numbers[, tumor_idx]
-tumor_log2_pon <- sweep(log2mat[, tumor_idx, drop = FALSE], 1, pon_median, FUN = "-")
-tumor_ratio_pon <- 2 ^ tumor_log2_pon
-tumor_ratio_pon[!is.finite(tumor_ratio_pon)] <- NA_real_
-assayDataElement(copy_numbers_tumor, "copynumber") <- tumor_ratio_pon
-saveRDS(copy_numbers_tumor, file.path(outdir, paste0(pon_name, ".tumors.qdnaseq_pon_corrected.rds")))
-
-fd <- as.data.frame(fData(copy_numbers_tumor))
-coord_cols <- intersect(c("chromosome", "start", "end", "use", "gc", "mappability", "blacklist", "residual"), names(fd))
-if (!all(c("chromosome", "start", "end") %in% names(fd))) {
-  fd$bin_index <- seq_len(nrow(fd))
-  coord_cols <- c("bin_index", coord_cols)
-}
-pon_ref <- fd[, coord_cols, drop = FALSE]
-pon_ref$pon_median_log2 <- pon_median
-pon_ref$pon_mad_log2 <- pon_mad
-pon_ref$n_normals <- length(normal_idx)
-write.table(pon_ref, file.path(outdir, paste0(pon_name, ".reference_bins.tsv")), sep = "\t", quote = FALSE, row.names = FALSE)
-
-bins_out <- fd[, coord_cols, drop = FALSE]
-for (nm in colnames(tumor_log2_pon)) {
-  bins_out[[paste0(nm, ".pon_log2")]] <- tumor_log2_pon[, nm]
-  mad_safe <- ifelse(is.na(pon_mad) | pon_mad == 0, NA_real_, pon_mad)
-  bins_out[[paste0(nm, ".pon_z")]] <- tumor_log2_pon[, nm] / mad_safe
-}
-write.table(bins_out, file.path(outdir, "all_tumors.qdnaseq_pon_corrected_bins.tsv"), sep = "\t", quote = FALSE, row.names = FALSE)
-
-segmented <- segmentBins(copy_numbers_tumor, transformFun = "sqrt")
-segmented <- tryCatch(normalizeSegmentedBins(segmented), error = function(e) {
-  message("normalizeSegmentedBins() failed; continuing with raw segmented bins: ", conditionMessage(e))
-  segmented
-})
-called <- tryCatch(callBins(segmented, method = "cutoff"), error = function(e) {
-  message("callBins(method='cutoff') failed; returning segmented-only object: ", conditionMessage(e))
-  NULL
-})
-saveRDS(segmented, file.path(outdir, paste0(pon_name, ".tumors.qdnaseq_pon_corrected.segmented.rds")))
-if (!is.null(called)) saveRDS(called, file.path(outdir, paste0(pon_name, ".tumors.qdnaseq_pon_corrected.called.rds")))
-
-try(exportBins(segmented, file = file.path(outdir, "all_tumors.qdnaseq_pon_corrected_segments.seg"), format = "seg", type = "segments"), silent = TRUE)
-if (!is.null(called)) {
-  try(exportBins(called, file = file.path(outdir, "all_tumors.qdnaseq_pon_corrected_calls.seg"), format = "seg", type = "calls"), silent = TRUE)
-}
-
-plot_dir <- file.path(outdir, "plots")
-dir.create(plot_dir, showWarnings = FALSE)
-for (nm in tumor_names) {
-  idx <- match(nm, sampleNames(segmented))
-  if (is.na(idx)) next
-  pdf(file.path(plot_dir, paste0(nm, ".qdnaseq_pon_corrected_segment_plot.pdf")), width = 14, height = 5)
-  try(plot(segmented[, idx], main = paste0(nm, " qDNAseq PoN-corrected")), silent = TRUE)
-  dev.off()
-}
-
-summary <- data.frame(
-  pon_name = pon_name,
-  genome = genome,
-  binsize_kbp = binsize,
-  min_mapq = min_mapq,
-  n_normals = nrow(normals),
-  normals = paste(normals$sample, collapse = ";"),
-  n_tumors = nrow(tumors),
-  tumors = paste(tumors$sample, collapse = ";"),
-  stringsAsFactors = FALSE
-)
-write.table(summary, file.path(outdir, "qdnaseq_local_pon_summary.tsv"), sep = "\t", quote = FALSE, row.names = FALSE)
-message("qDNAseq local PoN correction done: ", outdir)
-RSCRIPT
-  chmod +x "$rscript"
-  echo "$rscript"
-}
-
-run_qdnaseq_local_pon() {
-  [[ "$CALLER" == "qdnaseq" ]] || return 0
-  [[ "$QDNASEQ_BUILD_LOCAL_PON" == "true" ]] || return 0
-
-  if (( NORMAL_COUNT < QDNASEQ_PON_MIN_NORMALS )); then
-    echo "ERROR: qDNAseq local PoN requested, but only $NORMAL_COUNT normal BAM(s) were prepared. Need at least $QDNASEQ_PON_MIN_NORMALS." >&2
-    exit 1
-  fi
-
-  local rscript qpon_out qpon_log
-  rscript="$(write_qdnaseq_local_pon_rscript)"
-  qpon_out="$RUN_ROOT/results/qdnaseq_local_pon"
-  qpon_log="$RUN_ROOT/logs/qdnaseq_local_pon.log"
-  mkdir -p "$qpon_out"
-
-  local -a r_args=(
-    "$rscript"
-    --samplesheet "$SAMPLESHEET"
-    --outdir "$qpon_out"
-    --binsize "$BINSIZE"
-    --genome "$GENOME_KEY"
-    --min-mapq "$QDNASEQ_MIN_MAPQ"
-    --min-normals "$QDNASEQ_PON_MIN_NORMALS"
-    --paired-ends false
-    --pon-name "$PON_NAME"
-  )
-  [[ -n "$QDNASEQ_BIN_DATA" ]] && r_args+=( --qdnaseq-bin-data "$QDNASEQ_BIN_DATA" )
-
-  echo
-  echo "Running local qDNAseq PoN correction:"
-  printf ' %q' Rscript "${r_args[@]}"
-  echo
-
-  if command -v Rscript >/dev/null 2>&1 && Rscript -e 'suppressPackageStartupMessages(library(QDNAseq)); q("no")' >/dev/null 2>&1; then
-    Rscript "${r_args[@]}" 2>&1 | tee "$qpon_log"
-  else
-    local container_runner=""
-    container_runner="$(command -v singularity || command -v apptainer || true)"
-    [[ -n "$container_runner" ]] || { echo "ERROR: Rscript with QDNAseq not found, and neither singularity nor apptainer is available." >&2; exit 1; }
-    echo "Using container for qDNAseq local PoN: $QDNASEQ_R_CONTAINER"
-    "$container_runner" exec \
-      --bind "$RUN_ROOT:$RUN_ROOT" \
-      --bind "$LPWGS_ROOT:$LPWGS_ROOT" \
-      "$QDNASEQ_R_CONTAINER" \
-      Rscript "${r_args[@]}" 2>&1 | tee "$qpon_log"
-  fi
-}
-
 # Prepare primary/tumor samples.
 prepare_barcode_set "$FOLDER" "$BARCODES_CSV" "$SAMPLE_NAMES_CSV" "$STATUS" "primary"
 
-# Prepare local PoN normal samples, if provided.
+# Prepare independent NORMAL samples, if provided.
 for idx in "${!NORMAL_FOLDERS[@]}"; do
   ns_names=""
   if (( ${#NORMAL_SAMPLE_NAMES_CSVS[@]} > 0 )); then
@@ -1077,40 +770,23 @@ if (( n_samples == 0 )); then
   exit 0
 fi
 
-if [[ "$BUILD_PON" == "true" && "$NORMAL_COUNT" -eq 0 ]]; then
-  echo "ERROR: --build-pon is active, but no valid normal BAM was prepared." >&2
-  echo "Check: $SKIP_SAMPLE_LOG" >&2
-  exit 1
-fi
-
-if [[ "$BUILD_PON" == "true" && "$CALLER" == "qdnaseq" ]]; then
-  echo "INFO: qDNAseq local PoN correction is active. SAMURAI will run qDNAseq first; the wrapper will then subtract the median PBMC/normal log2 profile and re-segment." >&2
-elif [[ "$BUILD_PON" == "true" && "$ANALYSIS_TYPE" != "liquid_biopsy" ]]; then
-  echo "WARNING: SAMURAI --build_pon is mainly intended for ichorCNA/WisecondorX. Continuing because this caller exposes build_pon." >&2
-fi
-
 cat > "$RUN_ROOT/logs/run_summary.txt" <<EOF
 RUN_ROOT=$RUN_ROOT
 SAMPLESHEET=$SAMPLESHEET
 TUMOR_COUNT=$TUMOR_COUNT
 NORMAL_COUNT=$NORMAL_COUNT
-BUILD_PON=$BUILD_PON
-PON_NAME=$PON_NAME
+SAMPLE_DERIVED_PANEL_USED=false
 ANALYSIS_TYPE=$ANALYSIS_TYPE
 CALLER=$CALLER
 BINSIZE=$BINSIZE
 NORMAL_PANEL=${NORMAL_PANEL:-not_set}
-QDNASEQ_BUILD_LOCAL_PON=$QDNASEQ_BUILD_LOCAL_PON
-QDNASEQ_PON_MIN_NORMALS=$QDNASEQ_PON_MIN_NORMALS
-QDNASEQ_MIN_MAPQ=$QDNASEQ_MIN_MAPQ
 QDNASEQ_BIN_DATA=${QDNASEQ_BIN_DATA:-not_set}
-QDNASEQ_R_CONTAINER=$QDNASEQ_R_CONTAINER
 EOF
 
-cat > "$RUN_ROOT/logs/normal_panel_manifest.tsv" <<EOF
+cat > "$RUN_ROOT/logs/normal_sample_manifest.tsv" <<EOF
 sample	bam	status
 EOF
-awk -F',' 'NR>1 && $4=="normal" {print $1"\t"$2"\t"$4}' "$SAMPLESHEET" >> "$RUN_ROOT/logs/normal_panel_manifest.tsv"
+awk -F',' 'NR>1 && $4=="normal" {print $1"\t"$2"\t"$4}' "$SAMPLESHEET" >> "$RUN_ROOT/logs/normal_sample_manifest.tsv"
 
 echo
 echo "Prepared $n_samples sample(s): tumor=$TUMOR_COUNT normal=$NORMAL_COUNT"
@@ -1135,10 +811,7 @@ if [[ "$CALLER" == "qdnaseq" ]]; then
   [[ -n "$QDNASEQ_BIN_DATA" ]] && NF_CMD+=( --qdnaseq_bin_data "$QDNASEQ_BIN_DATA" )
 fi
 
-if [[ "$BUILD_PON" == "true" && "$CALLER" != "qdnaseq" ]]; then
-  NF_CMD+=( --build_pon --pon_name "$PON_NAME" )
-  [[ "$FILTER_BAM_PON" == "true" ]] && NF_CMD+=( --filter_bam_pon )
-elif [[ -n "$NORMAL_PANEL" && "$CALLER" != "qdnaseq" ]]; then
+if [[ -n "$NORMAL_PANEL" && "$CALLER" != "qdnaseq" ]]; then
   NF_CMD+=( --normal_panel "$NORMAL_PANEL" )
 fi
 
@@ -1192,7 +865,6 @@ if [[ "$nf_status" -ne 0 ]]; then
   rescue_ichorcna_partial_outputs || exit "$nf_status"
 fi
 
-run_qdnaseq_local_pon
 
 echo
 echo "Done."
@@ -1200,14 +872,7 @@ echo "Results: $RUN_ROOT/results"
 echo "BAMs: $RUN_ROOT/bam"
 echo "Merged FASTQ.gz: $RUN_ROOT/merged_fastq"
 echo "Samplesheet: $SAMPLESHEET"
-if [[ "$QDNASEQ_BUILD_LOCAL_PON" == "true" ]]; then
-  echo "qDNAseq local PoN output: $RUN_ROOT/results/qdnaseq_local_pon"
-elif [[ "$BUILD_PON" == "true" && "$CALLER" == "ichorcna" ]]; then
-  echo "Local PoN output should be under: $RUN_ROOT/results/ichorcna/PoN/"
-elif [[ "$BUILD_PON" == "true" && "$CALLER" == "wisecondorx" ]]; then
-  echo "Local PoN output should be under the WisecondorX results directory."
-fi
-echo "Normal BAM manifest: $RUN_ROOT/logs/normal_panel_manifest.tsv"
+echo "NORMAL sample manifest: $RUN_ROOT/logs/normal_sample_manifest.tsv"
 echo "Logs:"
 echo "  $USED_LOG"
 echo "  $SKIP_FILE_LOG"

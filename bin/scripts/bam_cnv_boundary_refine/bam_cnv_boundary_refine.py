@@ -602,35 +602,14 @@ def count_bam_coverage(path: Path, chrom: str, intervals: List[Tuple[int, int]],
 # Boundary refinement statistics
 ###############################################################################
 
-def compute_signal(tumor_counts: np.ndarray, normal_counts: Optional[np.ndarray]) -> np.ndarray:
-    counts = tumor_counts.astype(float)
-    if normal_counts is not None and normal_counts.size > 0 and not np.all(np.isnan(normal_counts)):
-        mat = normal_counts.astype(float)
-        # normalize each normal by its local median positive count to reduce library size effects
-        norm_rows = []
-        for row in mat:
-            pos = row[np.isfinite(row) & (row > 0)]
-            sf = np.median(pos) if len(pos) else 1.0
-            if not np.isfinite(sf) or sf <= 0:
-                sf = 1.0
-            norm_rows.append(row / sf)
-        matn = np.vstack(norm_rows)
-        pon = np.nanmedian(matn, axis=0)
-        pos_t = counts[np.isfinite(counts) & (counts > 0)]
-        sf_t = np.median(pos_t) if len(pos_t) else 1.0
-        if not np.isfinite(sf_t) or sf_t <= 0:
-            sf_t = 1.0
-        t = counts / sf_t
-        pc = max(0.01, np.nanmedian(pon[np.isfinite(pon)]) * 0.01) if np.any(np.isfinite(pon)) else 0.01
-        return np.log2((t + pc) / (pon + pc))
-    else:
-        pos = counts[np.isfinite(counts) & (counts > 0)]
-        med = np.median(pos) if len(pos) else 1.0
-        if not np.isfinite(med) or med <= 0:
-            med = 1.0
-        pc = max(0.5, med * 0.01)
-        return np.log2((counts + pc) / (med + pc))
-
+def compute_signal(sample_counts: np.ndarray) -> np.ndarray:
+    counts = sample_counts.astype(float)
+    positive = counts[np.isfinite(counts) & (counts > 0)]
+    median = np.median(positive) if len(positive) else 1.0
+    if not np.isfinite(median) or median <= 0:
+        median = 1.0
+    pseudocount = max(0.5, median * 0.01)
+    return np.log2((counts + pseudocount) / (median + pseudocount))
 
 def split_stats(y: np.ndarray, min_side: int):
     y = np.asarray(y, dtype=float)
@@ -920,7 +899,7 @@ def overlay_bins_with_segments(bins: pd.DataFrame, segs: pd.DataFrame) -> pd.Dat
 # Main boundary refinement
 ###############################################################################
 
-def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path) -> dict:
+def refine_one_boundary(row, sample_bams, args, prepared_dir: Path) -> dict:
     sample = row["sample"]
     chrom = row["chrom"]
     original_boundary = int(row["original_boundary"])
@@ -954,7 +933,7 @@ def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path)
         "left_median_coverage_units": np.nan,
         "right_median_coverage_units": np.nan,
         "median_coverage_units": np.nan,
-        "used_pon": False,
+        "sample_derived_panel_used": False,
         "best_bic_gain": np.nan,
         "best_left_mean_log2": np.nan,
         "best_right_mean_log2": np.nan,
@@ -996,25 +975,7 @@ def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path)
         base["decision_reason"] = "chromosome_not_found_in_sample_bam"
         return base
 
-    normal_counts = None
-    if args.pon_mode in ("auto", "on") and normal_bams:
-        mats = []
-        for nbam in normal_bams.values():
-            nc = count_bam_coverage(
-                nbam, chrom, intervals, args.coverage_mode, int(args.min_mapq),
-                args.include_duplicates, args.include_secondary, args.include_supplementary
-            )
-            if np.any(np.isfinite(nc)):
-                mats.append(nc)
-        if mats:
-            normal_counts = np.vstack(mats)
-            base["used_pon"] = True
-        elif args.pon_mode == "on":
-            base["coverage_resolution_status"] = "poor_bam_resolution"
-            base["decision_reason"] = "pon_requested_but_no_usable_normal_bam_coverage"
-            return base
-
-    y = compute_signal(tumor_counts, normal_counts)
+    y = compute_signal(tumor_counts)
     valid = np.isfinite(y)
     base["n_valid_fine_bins"] = int(np.sum(valid))
     base["median_coverage_units"] = float(np.nanmedian(tumor_counts)) if np.any(np.isfinite(tumor_counts)) else np.nan
@@ -1110,6 +1071,41 @@ def refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir: Path)
 ###############################################################################
 # Outputs
 ###############################################################################
+
+def write_cna_codification_runner(
+    cna_input: Path,
+    codification_script: Path,
+    cytoband_source: Path,
+) -> Path:
+    """Create a self-contained, relocatable CNA-codification helper."""
+    for source, label in (
+        (codification_script, "CNA codification script"),
+        (cytoband_source, "cytoband resource"),
+    ):
+        if not source.is_file():
+            raise FileNotFoundError(f"{label} missing: {source}")
+    resources = cna_input / "resources"
+    resources.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(codification_script, resources / "cna_to_cytogenomic_notation.py")
+    shutil.copy2(cytoband_source, resources / "hg38.cytoBand.txt.gz")
+
+    run_script = cna_input / "run_cna_codification.sh"
+    run_script.write_text("""#!/usr/bin/env bash
+set -Eeuo pipefail
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-python3}"
+mkdir -p "$SCRIPT_DIR/cytogenomic_notation"
+"$PYTHON_EXECUTABLE" "$SCRIPT_DIR/resources/cna_to_cytogenomic_notation.py" \
+  --input_dir "$SCRIPT_DIR/qdnaseq_bins" \
+  --cytoband "$SCRIPT_DIR/resources/hg38.cytoBand.txt.gz" \
+  --outdir "$SCRIPT_DIR/cytogenomic_notation" \
+  --genome-label GRCh38 --prefix seq \
+  --loss -0.30 --gain 0.25 --deep-loss -1.00 --amp 0.70 \
+  --min-bins 3 --min-mb 1.0 --max-gap-bp 500000 --qdnaseq
+""")
+    run_script.chmod(0o755)
+    return run_script
+
 
 def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats: pd.DataFrame, final_segments: pd.DataFrame, refined_bins: pd.DataFrame, args):
     tables = outdir / "01_tables"
@@ -1260,27 +1256,7 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
     pd.DataFrame(bed_manifest).to_csv(compat / "input_bed_files.tsv", sep="\t", index=False)
     pd.DataFrame(cna_manifest).to_csv(compat / "input_cna_files.tsv", sep="\t", index=False)
     pd.DataFrame(cytogenomic_manifest).to_csv(cna_input / "input_bed_files.tsv", sep="\t", index=False)
-    cytogenomic_out = cna_input / "cytogenomic_notation"
-    run_script = cna_input / "run_cna_codification.sh"
-    run_script.write_text(f"""#!/usr/bin/env bash
-set -Eeuo pipefail
-mkdir -p "{cytogenomic_out}"
-python /media/server/STORAGE/LPWGS_2025/cna_codification/scripts/cna_to_cytogenomic_notation.py \
-  --input_dir "{cna_bins}" \
-  --cytoband /media/server/STORAGE/LPWGS_2025/cna_codification/resources/hg38.cytoBand.txt.gz \
-  --outdir "{cytogenomic_out}" \
-  --genome-label GRCh38 \
-  --prefix seq \
-  --loss -0.30 \
-  --gain 0.25 \
-  --deep-loss -1.00 \
-  --amp 0.70 \
-  --min-bins 3 \
-  --min-mb 1.0 \
-  --max-gap-bp 500000 \
-  --qdnaseq
-""")
-    run_script.chmod(0o755)
+    write_cna_codification_runner(cna_input, args.codification_script, args.cytoband)
 
     readme = compat / "README.txt"
     readme.write_text(
@@ -1318,6 +1294,7 @@ python /media/server/STORAGE/LPWGS_2025/cna_codification/scripts/cna_to_cytogeno
         {"dataset": args.dataset_name, "category": "refined_bins_boundary_shift", "path": "04_final_results/refined_bins_boundary_bp_difference.xlsx", "description": "Excel copy of refined bins with boundary_bp_difference in bp."},
         {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/qdnaseq_bins/", "description": "Per-sample qDNAseq-style BED bins with final_log2 in column 5 for cna_to_cytogenomic_notation.py --qdnaseq; valid for ONT and Illumina refined outputs."},
         {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/run_cna_codification.sh", "description": "Runnable command for CNA-to-cytogenomic-notation conversion using the converter-ready BED bins."},
+        {"dataset": args.dataset_name, "category": "cna_cytogenomic_input", "path": "04_final_results/cna_cytogenomic_input/resources/", "description": "Self-contained converter and hg38 cytoband resource used by run_cna_codification.sh."},
     ]).to_csv(final_results / "final_results_manifest.csv", index=False)
 
     manifest_rows = [
@@ -1333,6 +1310,7 @@ python /media/server/STORAGE/LPWGS_2025/cna_codification/scripts/cna_to_cytogeno
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/refined_bins_boundary_bp_difference.xlsx", "description": "Excel copy of refined bins with boundary_bp_difference in bp."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/qdnaseq_bins/", "description": "Converter-ready qDNAseq-style BED bins with final_log2 in column 5 for cna_to_cytogenomic_notation.py --qdnaseq."},
         {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/run_cna_codification.sh", "description": "Runnable CNA-to-cytogenomic-notation command for the converter-ready BED bins."},
+        {"dataset": args.dataset_name, "category": "final_results", "path": "04_final_results/cna_cytogenomic_input/resources/", "description": "Self-contained converter and hg38 cytoband resource used by run_cna_codification.sh."},
         {"dataset": args.dataset_name, "category": "samurai_compatible_segments", "path": "02_samurai_compatible/all_segments.seg", "description": "GISTIC/SAMURAI-like final segment file for downstream analyses."},
         {"dataset": args.dataset_name, "category": "samurai_compatible_segments", "path": "02_samurai_compatible/segments_logR_corrected_gistic.seg", "description": "ichorCNA/SAMURAI-like final segment file with adj.seg values."},
         {"dataset": args.dataset_name, "category": "samurai_compatible_bins", "path": "02_samurai_compatible/bins/", "description": "Per-sample no-header BED files: chrom, start, end, final_log2."},
@@ -1384,24 +1362,7 @@ def refine_dataset(args):
     if missing:
         log(f"WARNING: missing BAMs for samples; these samples will fall back to prior segmentation: {missing}")
 
-    # Normal BAMs for local PON correction. In auto mode, BAMs not matched to tumor/bin samples are normals.
-    normal_bams = {}
-    if args.normal_samples == "none" or args.pon_mode == "off":
-        normal_bams = {}
-    elif args.normal_samples == "auto":
-        for name, path in all_bams.items():
-            if name not in samples:
-                normal_bams[name] = path
-        if args.normal_bam_dirs:
-            normal_bams.update(list_bams(args.normal_bam_dirs))
-    else:
-        names = [x.strip() for x in re.split(r",|;", args.normal_samples) if x.strip()]
-        for n in names:
-            if n in all_bams:
-                normal_bams[n] = all_bams[n]
-        if args.normal_bam_dirs:
-            normal_bams.update(list_bams(args.normal_bam_dirs))
-    log(f"Matched sample BAMs: {len(sample_bams)}; normal/PON BAMs: {len(normal_bams)}")
+    log(f"Matched independent sample BAMs: {len(sample_bams)}")
 
     prepared_dir = outdir / "_work" / "prepared_bams"
     bam_prep_records = []
@@ -1411,14 +1372,7 @@ def refine_dataset(args):
         rec["role"] = "sample"
         bam_prep_records.append(rec)
         prepared_sample_bams[s] = used
-    prepared_normal_bams = {}
-    for s, p in normal_bams.items():
-        used, rec = prepare_bam(p, s, prepared_dir)
-        rec["role"] = "normal_or_pon"
-        bam_prep_records.append(rec)
-        prepared_normal_bams[s] = used
     sample_bams = prepared_sample_bams
-    normal_bams = prepared_normal_bams
     if prepared_dir.exists() and not any(prepared_dir.iterdir()):
         try:
             prepared_dir.rmdir()
@@ -1431,7 +1385,7 @@ def refine_dataset(args):
     for idx, row in boundaries.iterrows():
         if idx % 25 == 0:
             log(f"Evaluating boundary {idx+1}/{len(boundaries)}")
-        rows.append(refine_one_boundary(row, sample_bams, normal_bams, args, prepared_dir))
+        rows.append(refine_one_boundary(row, sample_bams, args, prepared_dir))
     bstats = pd.DataFrame(rows) if rows else empty_boundary_stats()
 
     if prior.empty:
@@ -1465,6 +1419,8 @@ def main():
     p.add_argument("--bam-dirs", required=True)
     p.add_argument("--prior-seg", required=True)
     p.add_argument("--outdir", required=True)
+    p.add_argument("--codification-script", required=True, type=Path)
+    p.add_argument("--cytoband", required=True, type=Path)
     p.add_argument("--coarse-binsize-kb", type=float, required=True)
     p.add_argument("--fine-bin-kb", type=float, required=True)
     p.add_argument("--search-radius-bins", type=int, default=2)
@@ -1485,9 +1441,6 @@ def main():
     p.add_argument("--max-fine-bins-per-window", type=int, default=400)
     p.add_argument("--min-mapq", type=int, default=20)
     p.add_argument("--coverage-mode", choices=["bases", "starts"], default="bases")
-    p.add_argument("--normal-samples", default="auto")
-    p.add_argument("--normal-bam-dirs", default="")
-    p.add_argument("--pon-mode", choices=["auto", "on", "off"], default="auto")
     p.add_argument("--include-duplicates", action="store_true")
     p.add_argument("--include-supplementary", action="store_true")
     p.add_argument("--include-secondary", action="store_true")

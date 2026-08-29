@@ -1,5 +1,9 @@
 # cna_classifier_nf
 
+> **Legacy v1.1 source interface.** Native v2 runs the classifier scripts
+> directly, does not package this README, and never launches this Nextflow
+> workflow.
+
 Cancer-agnostic Nextflow pipeline for CNA-pattern classification from SAMURAI/QDNAseq-style low-pass WGS CNA codification outputs.
 
 The package was renamed from `cna_lymphoma_classifier_nf` to `cna_classifier_nf`. The original CNA/GISTIC/classification logic is preserved, but the reporting and interpretation layer is now pan-cancer and controlled by a single context flag:
@@ -92,11 +96,11 @@ Recommended lymphoma run:
 nextflow run ./cna_classifier_nf/main.nf \
   -profile conda \
   -resume \
-  --input /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina \
+  --input /path/to/my/analyses_dir/cna_input \
   --sample_set lymphoma \
-  --pathology /media/server/STORAGE/LPWGS_2025/complete_biopsy_database_sanitized.csv \
+  --pathology /path/to/my/analyses_dir/pathology.csv \
   --pathology_sample_col illumina_sample_id \
-  --outdir /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina/cna_classifier_nf_results \
+  --outdir /path/to/my/analyses_dir/cna_classifier_results \
   --gistic_exe auto \
   --gistic_refgene auto \
   --gistic_required false \
@@ -107,14 +111,14 @@ nextflow run ./cna_classifier_nf/main.nf \
 ## Basic run
 
 ```bash
-cd /media/server/STORAGE/LPWGS_2025
+cd /path/to/my/analyses_dir
 
 nextflow run ./cna_classifier_nf/main.nf \
   -profile conda \
   -resume \
-  --input /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina \
+  --input /path/to/my/analyses_dir/cna_input \
   --sample_set pan_cancer \
-  --outdir /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina/cna_classifier_nf_results \
+  --outdir /path/to/my/analyses_dir/cna_classifier_results \
   --gistic_exe auto \
   --gistic_refgene auto \
   --gistic_required false \
@@ -128,11 +132,11 @@ nextflow run ./cna_classifier_nf/main.nf \
 nextflow run ./cna_classifier_nf/main.nf \
   -profile conda \
   -resume \
-  --input /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina \
+  --input /path/to/my/analyses_dir/cna_input \
   --sample_set lymphoma \
-  --pathology /media/server/STORAGE/LPWGS_2025/complete_biopsy_database_sanitized.csv \
+  --pathology /path/to/my/analyses_dir/pathology.csv \
   --pathology_sample_col illumina_sample_id \
-  --outdir /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina/cna_classifier_nf_results \
+  --outdir /path/to/my/analyses_dir/cna_classifier_results \
   --gistic_exe auto \
   --gistic_refgene auto \
   --gistic_required false \
@@ -334,7 +338,7 @@ New in v9:
 Run lymphoma-context analysis:
 
 ```bash
-nextflow run ./cna_classifier_nf/main.nf   -profile conda   -resume   --input /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina   --sample_set lymphoma   --pathology /media/server/STORAGE/LPWGS_2025/complete_biopsy_database_sanitized.csv   --pathology_sample_col illumina_sample_id   --outdir /media/server/STORAGE/LPWGS_2025/CNA_analyses/illumina/cna_classifier_nf_results   --gistic_exe auto   --gistic_refgene auto   --gistic_required false   --knowledge_web true   --run_pdf_reports true   --run_clinician_reports true
+nextflow run ./cna_classifier_nf/main.nf   -profile conda   -resume   --input /path/to/my/analyses_dir/cna_input   --sample_set lymphoma   --pathology /path/to/my/analyses_dir/pathology.csv   --pathology_sample_col illumina_sample_id   --outdir /path/to/my/analyses_dir/cna_classifier_results   --gistic_exe auto   --gistic_refgene auto   --gistic_required false   --knowledge_web true   --run_pdf_reports true   --run_clinician_reports true
 ```
 
 To reduce runtime while testing, disable Hugging Face ranking/synthesis:

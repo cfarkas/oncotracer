@@ -19,16 +19,87 @@ For each branch of each quickstart, the audit program requires:
 - native workflow summary declares `engine=native` and `nextflow_used=false`;
 - a non-empty native argument-array trace with no Nextflow command;
 - CNA events matched by sample, state, chromosome, and at least 0.80 reciprocal interval overlap;
-- event recall and precision of at least 0.90;
-- at least 0.95 of each refined-bin grid shared exactly;
-- refined-bin Pearson correlation of at least 0.98;
-- median absolute refined-bin log₂ difference no greater than 0.08.
+- event-count recall and precision retained in the report as split/merge diagnostics;
+- sample-, chromosome-, and state-specific CNA genomic-coverage recall and precision of at least 0.90;
+- at least 0.95 of the original corrected-bin coordinate grid shared exactly;
+- corrected input log₂-signal Pearson correlation of at least 0.98;
+- median absolute corrected input log₂ difference no greater than 0.08.
 
 Each artifact includes `parity_report.json`, `parity_report.md`, `event_matches.tsv`, the native trace, run summaries, and `SHA256SUMS`.
 
 ## Release automation
 
 The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v2.0.0`. A release cannot be created from a stale or partially validated commit.
+
+## Hosted-runner capacity contract
+
+The full parity gates and five-environment container build are intentionally
+fail-closed before they download public reads, install scientific environments,
+pull pinned images, or publish anything. GitHub's documented standard public
+`ubuntu-24.04` runner contract is 4 CPUs, 16 GB RAM, and 14 GB SSD storage.
+Observed free space above that contract is incidental runner-image capacity and
+must not be made available by deleting runner tools, unrelated images, or global
+caches.
+
+The parity preflight requires every checked filesystem independently to meet
+the storage floor; capacities are never summed across devices. Its sealed
+evidence enumerates every checked path, device, and free-space observation.
+It also requires at least 15 GiB physical RAM and at least 47 GiB addressable memory. A runner
+below the addressable floor receives an exact 32 GiB run-owned swap file and
+must have 72 GiB free. A runner whose physical RAM already satisfies the
+47 GiB floor uses no job swap and must have 40 GiB free. This is a phase peak,
+not a sum of mutually exclusive Docker and Conda material. Frozen v1.1 runs first;
+only after its nested traces are authenticated does the job release exact image
+references proven absent before this run. It then creates only `core`, `qdnaseq`,
+and (for QuickStart 1) `ichorcna` from the committed definitions, records
+explicit exports and executable probes, and deletes only its run-ID-owned Conda
+package cache. Native execution uses those exact prefixes with the host backend.
+
+The measured shared reference is 15,852,699,648 bytes (rounded to 16 GiB).
+QuickStart 1 pinned image virtual sizes total 14,850,685,496 bytes (14 GiB),
+and its frozen outputs and inputs each round to 1 GiB. QuickStart 2 images total
+8,188,638,552 bytes (8 GiB), frozen output rounds to 6 GiB, and inputs round to
+2 GiB. The measured minimal native prefixes round to 3 GiB for QuickStart 1 and
+1 GiB for QuickStart 2. The 8 GiB and 7 GiB native transient allowances bound
+the larger mutually exclusive footprint: package solve/cache before its exact
+removal, or native-output growth afterwards. With 32 GiB job-owned swap and an
+8 GiB reserve, both low-memory frozen and native
+phase models peak at 72 GiB; removing the unnecessary swap allocation on an
+ample-memory runner makes the maximum 40 GiB. Each boundary immediately
+enforces the 8 GiB filesystem reserve and the physical/addressable memory
+floors before it records `df`, `du`, memory, swap, and
+Docker evidence in the sealed audit. Earlier hosted logs recorded 15.61 GiB
+physical RAM and 34 GiB total swap after adding the 32 GiB file, but no peak
+swap use, so reducing that allocation is not evidence-supported.
+
+The driver first uses preinstalled comparator commands, including a configured
+Conda prefix when present. It runs `apt-get` only when a command is missing and
+passwordless noninteractive sudo is available; otherwise it stops with the
+exact missing-command list. Thus an ample-memory preconfigured runner requires
+neither sudo package mutation nor sudo swap operations.
+
+The Native v2 CI Docker job and permanent release publisher each require 40 GiB
+free and 15 GiB physical RAM: 14 GiB for the final five scientific environments,
+18 GiB for transient solves, package downloads, and image export, plus an 8 GiB
+reserve. Their preflight runs before the Docker build, and the publisher runs it
+before any registry or release mutation.
+
+These requirements exceed the standard runner's guaranteed storage. A
+repository administrator may explicitly set `ONCOTRACER_HEAVY_RUNNER` to the
+label of a preconfigured runner satisfying the preflight. The variable only
+selects an existing runner; it does not provision, purchase, resize, or clean
+one. Leave it unset to use `ubuntu-24.04` and receive an actionable early
+failure when the observed machine is insufficient. Fork pull requests always
+remain on GitHub's isolated standard runner, even when the variable is set. If
+a self-hosted label is used, it must identify a dedicated ephemeral runner for
+trusted in-repository refs; never expose a persistent scientific server or a
+runner containing protected data to pull-request code.
+
+Until such a runner is configured, the exact-head hosted parity and release
+gates have a genuine infrastructure blocker. Broad Docker pruning, global Conda
+or Nextflow cleanup, and deletion of preinstalled runner software are not
+accepted remedies. The current public-runner specifications are maintained in
+the [GitHub-hosted runners reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 
 ## Repeat the complete gate on a validation server
 
@@ -53,6 +124,11 @@ The final `bundles/` directory contains separate QuickStart audit archives, a de
 
 The v2 release parity jobs keep the v1.1 OncoTracer source, SAMURAI source,
 Nextflow version, and every runtime container digest pinned. The QuickStart 1
+audit also pins all five ichorCNA assets to the exact SAMURAI commit by byte
+size and SHA-256, requires byte-identical frozen/native asset manifests, and
+seals those manifests into the artifact checksums. The upstream HD_ULP PoN is
+one of those static SAMURAI assets; it is not constructed from example NORMAL
+controls. The QuickStart 1
 ONT fixture can contain NA read-count bins. ichorCNA 0.5.1 performs two
 `quantile(copy, ...)` calls without `na.rm = TRUE` while creating a correction
 plot, after its analytical segment outputs have been written.
@@ -64,8 +140,44 @@ same checked compatibility shim and emits `<sample>.ichorcna_plot_compat.tsv`.
 The shim does not modify read counting, normalization, HMM fitting, segmentation,
 or copy-number calls.
 
-The Illumina parity contracts validate the BAM-stage SAMURAI execution actually
-invoked by OncoTracer. QuickStart 1 therefore expects six nested tasks for one
-sample, and QuickStart 2 expects fourteen nested tasks for three samples. Only
-the five runtime images used by those BAM-stage tasks are pinned and required;
-FASTQ QC and alignment occur in OncoTracer before SAMURAI is called.
+The Illumina GitHub parity contracts validate the BAM-stage SAMURAI execution
+actually invoked by OncoTracer. QuickStart 1 therefore expects six contracted
+nested tasks for one sample, and QuickStart 2 expects fourteen contracted tasks
+for three samples. Only the five runtime images used by those BAM-stage tasks
+are required by those contracts; FASTQ QC and alignment occur in OncoTracer
+before SAMURAI is called.
+
+Nested Nextflow resumes can distribute successful tasks across several trace
+files. Both the hosted release gate and the standalone validation-server driver
+therefore build a deterministic combined trace from the latest occurrence of
+each canonical task and require every contracted latest occurrence to be
+successful or cached with exit status zero. The audit preserves every regular,
+non-symlink source trace at its complete root-relative path, so equal basenames
+cannot collide, together with a manifest containing each trace's recorded
+nanosecond mtime, byte size, row counts, and full SHA-256. Hosted verification
+and the extracted server-bundle verifier independently render the combined
+trace again from those copied bytes and the manifest's ordering metadata; they
+do not trust the precomputed combined trace or archive-reset filesystem mtimes.
+
+Immediately before every outer comparator, the gate records that root's trace
+inventory. The sealed audit preserves the pre-run inventory, the post-run
+inventory, and their content delta. A successful run must create a new trace
+path or change trace content; touching an old file is not sufficient. The
+deterministic newest post-run trace is selected by `(mtime_ns, path)`, must be
+in the current invocation's content delta, and must contribute at least one
+selected contracted scientific task for every Illumina, ONT, and HCC1143
+contract. A stale contracted selection accompanied only by a newer unrelated
+startup or failure trace therefore fails closed.
+
+The ONT audit additionally requires the complete ten-process contract, including
+a freshly `COMPLETED`, exit-zero `ICHORCNA_RUN`; `CACHED` is rejected for this
+one deliberately non-cacheable task. Its compatibility marker must be inside
+the exact Nextflow work directory identified by that selected task's trace
+hash. That fresh task itself must come from the deterministic newest trace.
+An early failure with a new trace or a startup failure with no trace fails closed.
+An incomplete resume fragment, an unbound marker, a missing or modified raw
+trace, or a smaller process subset fails closed. Outer comparator sessions do
+not use `-resume`. A content-derived audit-policy digest seals the nested config
+and mounted compatibility sources, and ICHORCNA_RUN caching is disabled so a
+changed shim cannot reuse stale work. Release audit archives use sorted paths,
+fixed ownership and mtimes, and timestamp-free gzip output.

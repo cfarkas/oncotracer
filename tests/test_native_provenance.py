@@ -32,7 +32,9 @@ CLASSIFIER_OVERLAY_SHA256 = (
 class NativeProvenanceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.temporary = tempfile.TemporaryDirectory(prefix="oncotracer-provenance-test-")
+        cls.temporary = tempfile.TemporaryDirectory(
+            prefix="oncotracer-provenance-test-"
+        )
         cls.temp_root = Path(cls.temporary.name)
         cls.source_root = cls.temp_root / "source"
         for name in (
@@ -54,7 +56,14 @@ class NativeProvenanceTests(unittest.TestCase):
         )
         subprocess.run(["git", "init", "-q", str(cls.source_root)], check=True)
         subprocess.run(
-            ["git", "-C", str(cls.source_root), "config", "user.name", "OncoTracer test"],
+            [
+                "git",
+                "-C",
+                str(cls.source_root),
+                "config",
+                "user.name",
+                "OncoTracer test",
+            ],
             check=True,
         )
         subprocess.run(
@@ -93,7 +102,9 @@ class NativeProvenanceTests(unittest.TestCase):
             text=True,
         )
         if status.stdout.strip():
-            raise AssertionError(f"provenance fixture is unexpectedly dirty: {status.stdout}")
+            raise AssertionError(
+                f"provenance fixture is unexpectedly dirty: {status.stdout}"
+            )
         cls.commit = builder.git_commit(cls.source_root)
         cls.source_sha256 = builder.git_archive_sha256(cls.source_root, cls.commit)
         cls.first_binary = cls.temp_root / "oncotracer-first"
@@ -159,11 +170,37 @@ class NativeProvenanceTests(unittest.TestCase):
         )
 
     def test_two_consecutive_builds_are_byte_identical(self) -> None:
-        self.assertEqual(self.first_binary.read_bytes(), self.second_binary.read_bytes())
+        self.assertEqual(
+            self.first_binary.read_bytes(), self.second_binary.read_bytes()
+        )
         self.assertEqual(
             provenance.sha256_file(self.first_binary),
             provenance.sha256_file(self.second_binary),
         )
+
+    def test_builder_refuses_to_overwrite_an_existing_output(self) -> None:
+        output = self.temp_root / "preexisting-output"
+        output.write_bytes(b"preserve foreign output")
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(BUILD_SCRIPT),
+                "--root",
+                str(self.source_root),
+                "--output",
+                str(output),
+                "--source-commit",
+                self.commit,
+                "--source-sha256",
+                self.source_sha256,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("refusing to overwrite existing output", result.stderr)
+        self.assertEqual(output.read_bytes(), b"preserve foreign output")
 
     def test_zipapp_is_normalized_and_contains_no_forbidden_payload(self) -> None:
         with zipfile.ZipFile(self.first_binary) as archive:
@@ -178,11 +215,28 @@ class NativeProvenanceTests(unittest.TestCase):
             self.assertTrue(names)
             self.assertEqual(names, sorted(names))
             self.assertTrue(
-                all(info.date_time == builder.ZIP_TIMESTAMP for info in archive.infolist())
+                all(
+                    info.date_time == builder.ZIP_TIMESTAMP
+                    for info in archive.infolist()
+                )
             )
             self.assertIn("oncotracer_cli/_build_metadata.py", names)
             self.assertIn("payload/provenance/native-v2-sources.json", names)
+            self.assertIn("payload/bin/scripts/MARLIN-MIT-LICENSE.txt", names)
             self.assertNotIn("payload/bin/payload.ignored-sentinel", names)
+            obsolete_methylation_launchers = {
+                "payload/bin/scripts/run_ont_methylation_pod5_barcodes.sh",
+                "payload/bin/scripts/run_ont_sturgeon_samples.sh",
+                "payload/bin/scripts/run_ont_marlin_leukemia.sh",
+                "payload/bin/scripts/run_ont_alma_epigenetic_predictions.sh",
+                "payload/bin/scripts/run_ont_clinical_methylation_and_variants.sh",
+                "payload/bin/scripts/sturgeon_consolidate_report.sh",
+            }
+            self.assertTrue(obsolete_methylation_launchers.isdisjoint(names))
+            excluded_legacy_paths = {
+                f"payload/{name}" for name in builder.NATIVE_PAYLOAD_EXCLUDED_PATHS
+            }
+            self.assertTrue(excluded_legacy_paths.isdisjoint(names))
 
     def test_copied_executable_reports_embedded_source_and_own_hash(self) -> None:
         outside = self.temp_root / "outside-checkout"
@@ -292,7 +346,9 @@ class NativeProvenanceTests(unittest.TestCase):
         self.assertIsNone(record["source_sha256"])
         self.assertIsNone(record["source_tree_dirty"])
         self.assertEqual(record["source_metadata_origin"], "unbound-development")
-        with mock.patch("oncotracer_cli.provenance.get_provenance", return_value=record):
+        with mock.patch(
+            "oncotracer_cli.provenance.get_provenance", return_value=record
+        ):
             with self.assertRaises(provenance.ProvenanceError):
                 provenance.release_provenance()
         with self.assertRaises(SystemExit):

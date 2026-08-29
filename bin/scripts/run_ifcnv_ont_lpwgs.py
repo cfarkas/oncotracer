@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """
+Legacy standalone helper retained in source only. It is not packaged or invoked
+by the native v2 runtime.
+
 run_ifcnv_ont_lpwgs.py
 
 Dedicated ifCNV wrapper for ONT low-pass WGS BAM/CRAM files.
@@ -585,6 +588,8 @@ def build_or_use_bed(args: argparse.Namespace, conda: str, runner: Runner, outdi
     if args.fai:
         fai = Path(args.fai).resolve()
     else:
+        if not args.reference_fasta:
+            die("provide --reference-fasta, --fai, or a prepared --bed")
         fasta = Path(args.reference_fasta).resolve()
         if not fasta.exists() or fasta.stat().st_size == 0:
             die(f"--reference-fasta missing or empty: {fasta}")
@@ -792,8 +797,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--bed", default="", help="User-supplied BED. If absent, WGS tiling BED is generated.")
     p.add_argument(
         "--reference-fasta",
-        default="/media/server/STORAGE/LPWGS_2025/references/samurai_hg38/genome.fa",
-        help="Reference FASTA used to find/create .fai for BED generation.",
+        default="",
+        help="Reference FASTA used to find/create .fai for BED generation; required unless --fai or --bed is supplied.",
     )
     p.add_argument("--fai", default="", help="FAI file. Overrides --reference-fasta.fai.")
     p.add_argument("--bin-size-bp", type=int, default=500000, help="Tiling bin size for generated BED.")

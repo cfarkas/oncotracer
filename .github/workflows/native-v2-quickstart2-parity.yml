@@ -20,7 +20,9 @@ env:
 
 jobs:
   parity:
-    runs-on: ubuntu-24.04
+    # A repository variable is the only opt-in to a configured heavy runner.
+    # Fork pull requests always remain on GitHub's isolated standard runner.
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-24.04' || vars.ONCOTRACER_HEAVY_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 360
     defaults:
       run:
@@ -66,10 +68,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: native-v2-quickstart2-parity-${{ github.run_id }}
+          name: native-v2-quickstart2-parity-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 90
-          if-no-files-found: warn
+          if-no-files-found: error
           include-hidden-files: true
           path: |
-            parity-quickstart2/audit/**
-            parity-quickstart2/reports/**
+            oncotracer-parity-${{ github.run_id }}-${{ github.run_attempt }}-quickstart2/audit/**
+            oncotracer-parity-${{ github.run_id }}-${{ github.run_attempt }}-quickstart2/reports/**

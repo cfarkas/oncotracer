@@ -21,7 +21,7 @@ The five groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`.
 | BWA-MEM | Single-end or paired-end alignment to hg38 | `01_samurai_illumina/alignment/*.bam` |
 | SAMtools | FASTA/BAM indexing and BAM validation | BAM/BAI and reference indexes |
 | Picard | Duplicate marking and whole-genome metrics | stage-01 BAMs and metrics |
-| qDNAseq | Read-depth correction, segmentation, calls, and optional local normal panel | `01_samurai_illumina/qdnaseq/` or `qdnaseq_local_pon/` |
+| qDNAseq | Independent per-sample read-depth correction, segmentation, and calls | `01_samurai_illumina/qdnaseq/` |
 | Native boundary-refinement Python | Local BAM-depth boundary evaluation | `02_bam_refinement/` |
 | Native CNA codification/plotting | Event tables, cytogenomic notation, cohort and sample plots | stages 03 and 04 |
 
@@ -39,6 +39,17 @@ The standard Illumina configuration uses hg38, qDNAseq, and 100 kb coarse bins.
 | Native boundary refinement/codification/plotting | Refined segments and final result products | stages 02–04 |
 
 The standard ONT configuration uses hg38, ichorCNA, and 500 kb coarse bins.
+
+## Optional ONT methylation route
+
+| Program or library | Purpose | Representative output |
+| --- | --- | --- |
+| Dorado | Explicit-POD5 hg38 basecalling with an explicit 5mCG/5hmCG model | `07_methylation/modbam/` |
+| Modkit | CPU-threaded CpG conversion and deterministic bedMethyl pileup | `07_methylation/bedmethyl/` |
+| Sturgeon | User-installed/licensed CNS-tumor research classification | `07_methylation/sturgeon/` |
+| MARLIN adapter | Checksum-pinned leukemia research model preparation/prediction | `07_methylation/marlin/` |
+
+This optional branch is not part of the five managed core CNA environments or the stable container. Users provide exact local executables/models/resources. `--gpu` targets Dorado and exposes the device to MARLIN; it does not make Modkit or Sturgeon GPU programs. The branch aborts classification on zero usable modified-CpG calls while CNA continues.
 
 ## Optional interpretation route
 

@@ -25,7 +25,7 @@ ACTIVE_NATIVE_FILES = (
     "docs/quick_start.md",
     "docs/auto_params.md",
     "docs/public_cohort.md",
-    "docs/six_tumor_four_control.md",
+    "docs/six_tumor_four_normal.md",
     "docs/running.md",
     "docs/configuration_v2.md",
     "docs/containers.md",
@@ -72,6 +72,11 @@ REQUIRED_TEXT = {
         "oncotracer doctor --backend conda",
         "oncotracer doctor --backend docker",
         "oncotracer doctor --backend singularity",
+        "$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload",
+        "does not populate the persistent cache",
+        "never adopts a populated Conda directory",
+        "same-directory transaction",
+        "backend-specific",
     ),
     "docs/quick_start.md": (
         "complete native analysis",
@@ -100,24 +105,40 @@ REQUIRED_TEXT = {
         "does not start the scientific analysis",
         "oncotracer auto",
         "oncotracer run --backend conda",
-        "Zero normal rows run without a local panel",
-        "Exactly one normal is rejected",
-        "Two or more normals build and apply",
-        "tumor samples are exported downstream",
+        "Normal rows are ordinary, independently analyzed qDNAseq samples",
+        "does not pool them",
+        "generated YAML contains no local-panel settings",
     ),
-    "docs/six_tumor_four_control.md": (
-        "installed `oncotracer` executable",
+    "docs/configuration/ont.md": (
+        "ont_normal_folder",
+        "ont_normal_barcodes",
+        "ont_normal_sample_names",
+        "ont_analysis_type: solid_biopsy",
+        "ont_caller: qdnaseq",
+        "ont_binsize_kb: 100",
+        "never pools, averages, or subtracts the NORMAL group",
+        "version-selected upstream HD_ULP ichorCNA reference object",
+    ),
+    "docs/six_tumor_four_normal.md": (
+        "runs ten paired-end Illumina samples in one analysis",
         "does not invoke Nextflow",
-        "does not replace the checksum-validated public-data",
+        "checksum-validated public-data",
         "oncotracer install --conda",
         "oncotracer doctor --backend conda",
-        "oncotracer auto --mode illumina --reads-folder",
+        "ONCO001",
+        "ONCO006",
+        "CTRL001",
+        "CTRL004",
+        "Every sample is aligned, normalized, segmented, called, and reported",
+        "does **not** pool the four `CTRL` samples",
+        "--mode illumina",
+        "--reads-folder",
         "--sample-table",
         "--config-dir",
         "--outdir",
-        "illumina_pon_min_normals: 4",
-        "oncotracer run --backend conda --config",
-        "QDNASEQ_LOCAL_PON_SUCCESS",
+        "Run or resume the one native analysis",
+        "qdnaseq_sample_status.json",
+        "completed_samples",
         "nextflow_used",
     ),
     "docs/running.md": (
@@ -157,6 +178,12 @@ REQUIRED_TEXT = {
         "file is present in the release executable or container",
         "exact Git commit and deterministic",
         "Normal v2 execution does not invoke Nextflow",
+        "canonical path, file type, normalized mode, size, and SHA-256",
+        "process-scoped temporary payload",
+        "Installer ownership boundary",
+        "authenticated rollback journal",
+        "created directly at its final canonical prefix",
+        "exact file inventory",
     ),
     "docs/parity_release.md": (
         "Illumina ERR12341627",
@@ -191,6 +218,8 @@ REQUIRED_TEXT = {
         "exact",
         "Rscript",
         "do not substitute a login-shell",
+        "unset ONCOTRACER_PAYLOAD_CACHE",
+        "preserves them rather than recursively deleting",
     ),
 }
 
@@ -199,9 +228,9 @@ PARITY_REQUIREMENTS = (
     "engine=native",
     "nextflow_used=false",
     "at least 0.80 reciprocal interval overlap",
-    "event recall and precision of at least 0.90",
-    "at least 0.95 of each refined-bin grid shared exactly",
-    "Pearson correlation of at least 0.98",
+    "state-specific CNA genomic-coverage recall and precision of at least 0.90",
+    "at least 0.95 of the original corrected-bin coordinate grid shared exactly",
+    "corrected input log₂-signal Pearson correlation of at least 0.98",
     "no greater than 0.08",
 )
 
@@ -243,6 +272,31 @@ def check_native_runtime_boundary() -> None:
     installation_release = read("docs/installation.md").split("### Poetry", 1)[0]
     if "git clone" in installation_release:
         fail("global v2 release installation must not require a source checkout")
+
+    removed_local_panel_interface = (
+        "illumina_build_pon",
+        "illumina_pon_",
+        "ont_build_pon",
+        "qdnaseq_local_pon",
+        "normal_panel",
+    )
+    active_markdown = [
+        str(path.relative_to(ROOT))
+        for path in MARKDOWN_FILES
+        if path.name not in {"legacy_v1.md", "migration_v1_to_v2.md"}
+    ]
+    public_files = sorted(
+        {
+            *active_markdown,
+            "params/illumina.example.yml",
+            "params/ont.example.yml",
+        }
+    )
+    for relative_path in public_files:
+        text = read(relative_path)
+        for token in removed_local_panel_interface:
+            if token.casefold() in text.casefold():
+                fail(f"removed local-panel interface remains in {relative_path}: {token}")
 
 
 def check_parity_contract() -> None:
@@ -290,7 +344,7 @@ def check_navigation() -> None:
         "Home: index.md",
         "QuickStart 1 — Illumina + ONT: quick_start.md",
         "QuickStart 2 — HCC1143: public_cohort.md",
-        "Mock cohort — six tumors + four normals: six_tumor_four_control.md",
+        "Mock cohort — six tumors + four independent normals: six_tumor_four_normal.md",
         "Native architecture: native_architecture.md",
         "Parity and release gate: parity_release.md",
         "Migration from v1.1: migration_v1_to_v2.md",

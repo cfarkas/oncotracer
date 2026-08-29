@@ -268,13 +268,6 @@ process RUN_ILLUMINA_SAMURAI {
   def samuraiScript = scriptPath('scripts/run_illumina_samurai_fastq.sh')
   def samuraiRuntime = samuraiProfile()
   def forceOpt = asBool(params.force) ? '--force' : ''
-  def buildIlluminaPon = asBool(params.illumina_build_pon)
-  if( buildIlluminaPon && blank(params.illumina_pon_normal_samples) ) {
-    error 'Illumina PoN construction requires --illumina_pon_normal_samples with the explicit NORMAL sample IDs.'
-  }
-  def ponOpt = buildIlluminaPon ? '--build-pon' : ''
-  def ponNormalSamples = blank(params.illumina_pon_normal_samples) ? '' : params.illumina_pon_normal_samples.toString()
-  def ponCheck = buildIlluminaPon ? "test -s '${samuraiOutdir}/qdnaseq_local_pon/qdnaseq_local_pon_summary.tsv'" : ''
 
   """
   set -Eeuo pipefail
@@ -286,17 +279,10 @@ process RUN_ILLUMINA_SAMURAI {
     --binsize '${params.illumina_binsize_kb}' \\
     --lpwgs-root '${params.lpwgs_root}' \\
     --profile '${samuraiRuntime}' \\
-    --pon-normal-samples '${ponNormalSamples}' \\
-    --pon-min-normals '${params.illumina_pon_min_normals}' \\
-    --pon-name '${params.illumina_pon_name}' \\
-    --pon-min-mapq '${params.illumina_pon_min_mapq}' \\
-    --pon-r-container '${params.illumina_pon_r_container}' \\
-    ${ponOpt} \\
     ${forceOpt}
 
   test -d '${samuraiOutdir}/qdnaseq'
   test -d '${samuraiOutdir}/alignment'
-  ${ponCheck}
   echo "Illumina SAMURAI completed: ${samuraiOutdir}" > samurai_illumina_done.txt
   """
 
@@ -328,17 +314,6 @@ process RUN_ONT_SAMURAI {
   def samuraiRuntime = samuraiProfile()
   def sampleNamesOpt = blank(params.ont_sample_names) ? '' : "--sample-names '${params.ont_sample_names}'"
   def refOpt = blank(params.ont_ref) ? '' : "--ref '${params.ont_ref}'"
-  def normalOpt = ''
-  if( !blank(params.ont_normal_folder) ) {
-    normalOpt += " --normal-folder '${params.ont_normal_folder}'"
-  }
-  if( !blank(params.ont_normal_barcodes) ) {
-    normalOpt += " --normal-barcodes '${params.ont_normal_barcodes}'"
-  }
-  if( !blank(params.ont_normal_sample_names) ) {
-    normalOpt += " --normal-sample-names '${params.ont_normal_sample_names}'"
-  }
-  def ponOpt = asBool(params.ont_build_pon) ? '--build-pon' : ''
   def realignOpt = asBool(params.ont_force_realign) ? '--force-realign' : ''
 
   """
@@ -355,8 +330,6 @@ process RUN_ONT_SAMURAI {
     --min-age-minutes '${params.ont_min_age_minutes}' \\
     --profile '${samuraiRuntime}' \\
     ${refOpt} \\
-    ${normalOpt} \\
-    ${ponOpt} \\
     ${realignOpt}
 
   test -d '${samuraiOutdir}'
@@ -402,17 +375,13 @@ process RUN_BAM_REFINE {
       --ont-binsize-kb '${params.ont_binsize_kb}' \\
       --fine-bin-kb-ont '${params.fine_bin_kb_ont}' \\
       --coverage-mode-ont bases \\
-      --normal-samples auto \\
-      --pon-mode auto \\
       --min-local-log2-diff '${params.min_local_log2_diff_ont}' \
     """
   } else {
-    def useIlluminaPon = asBool(params.illumina_build_pon)
-    def qdnaseqDir = useIlluminaPon ? "${samuraiOutdir}/qdnaseq_local_pon" : "${samuraiOutdir}/qdnaseq"
-    def bamDir = useIlluminaPon ? "${samuraiOutdir}/pon_alignment" : "${samuraiOutdir}/alignment"
+
+    def qdnaseqDir = "${samuraiOutdir}/qdnaseq"
+    def bamDir = "${samuraiOutdir}/alignment"
     def priorSeg = "${qdnaseqDir}/all_segments.seg"
-    def normalSamples = useIlluminaPon ? params.illumina_pon_normal_samples.toString() : 'none'
-    def ponMode = useIlluminaPon ? 'on' : 'off'
     modeArgs = """--mode illumina \\
       --illumina-qdnaseq-dir '${qdnaseqDir}' \\
       --illumina-bam-dir '${bamDir}' \\
@@ -420,8 +389,6 @@ process RUN_BAM_REFINE {
       --illumina-binsize-kb '${params.illumina_binsize_kb}' \\
       --fine-bin-kb-illumina '${params.fine_bin_kb_illumina}' \\
       --coverage-mode-illumina starts \\
-      --normal-samples '${normalSamples}' \\
-      --pon-mode '${ponMode}' \\
       --min-local-log2-diff '${params.min_local_log2_diff_illumina}' \
     """
   }
@@ -612,9 +579,6 @@ process WRITE_SUMMARY {
   script:
   def outRoot = run_meta[1]
   def ds = run_meta[2]
-  def illuminaPonApplied = run_meta[0] == 'illumina' && asBool(params.illumina_build_pon)
-  def illuminaPonNormals = illuminaPonApplied ? params.illumina_pon_normal_samples.toString() : 'none'
-  def illuminaPonSummary = illuminaPonApplied ? "${outRoot}/01_samurai_illumina/qdnaseq_local_pon/qdnaseq_local_pon_summary.tsv" : 'none'
 
   """
   set -Eeuo pipefail
@@ -623,9 +587,7 @@ process WRITE_SUMMARY {
 mode=${run_meta[0]}
 dataset=${ds}
 outdir=${outRoot}
-illumina_pon_applied=${illuminaPonApplied}
-illumina_pon_normals=${illuminaPonNormals}
-illumina_pon_summary=${illuminaPonSummary}
+illumina_sample_derived_panel_used=false
 bam_refinement=${outRoot}/02_bam_refinement/${ds}
 cna_codification=${outRoot}/03_cna_codification
 cna_events=${outRoot}/03_cna_codification/cna_events.tsv

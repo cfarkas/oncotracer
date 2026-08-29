@@ -54,6 +54,18 @@ oncotracer install --singularity
 oncotracer doctor --backend singularity
 ```
 
+Poetry source-development route:
+
+```bash
+cd /path/to/my/oncotracer_source/
+./oncotracer install --poetry \
+  --prefix /path/to/my/oncotracer-v2-dev-envs
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer doctor \
+  --backend poetry
+
+cd /path/to/my/analyses_dir/
+```
+
 Choose one route for the real run.
 
 ## Step 2. Download the versioned manifest and all 12 FASTQs
@@ -245,8 +257,9 @@ oncotracer run \
 
 ```bash
 TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
 
-poetry run oncotracer run \
+"$ONCOTRACER_DEV" run \
   --backend poetry \
   --threads 16 \
   --config "$TUTORIAL_ROOT/config/illumina.auto.yml"

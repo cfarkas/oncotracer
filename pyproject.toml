@@ -13,6 +13,42 @@ oncotracer = "oncotracer_cli.cli:main"
 
 [tool.poetry]
 packages = [{ include = "oncotracer_cli" }]
+include = [
+  { path = "bin/cna_classifier_nf/VERSION.txt", format = ["wheel", "sdist"] },
+  { path = "bin/cna_classifier_nf/assets", format = ["wheel", "sdist"] },
+  { path = "bin/cna_classifier_nf/bin", format = ["wheel", "sdist"] },
+  { path = "bin/cna_classifier_nf/envs", format = ["wheel", "sdist"] },
+  { path = "bin/cna_classifier_nf/test", format = ["wheel", "sdist"] },
+  { path = "bin/cna_codification", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/MARLIN-MIT-LICENSE.txt", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/bam_cnv_boundary_refine.sh", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/bam_cnv_boundary_refine", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/download_helpers.sh", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/download_quickstart_data.sh", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/generate_auto_params.sh", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/ichorcna_plot_compat.R", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/native_ichorcna.R", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/native_marlin_predict.R", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/native_marlin_preflight.R", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/native_marlin_prepare.R", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/native_qdnaseq.R", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/prepare_qdnaseq_bin_data.sh", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/qdnaseq_post_normalization_qc.R", format = ["wheel", "sdist"] },
+  { path = "bin/scripts/v1_ichorcna_profile.R", format = ["wheel", "sdist"] },
+  { path = "examples/hcc1143_lpwgs/checksums.md5", format = ["wheel", "sdist"] },
+  { path = "examples/hcc1143_lpwgs/manifest.tsv", format = ["wheel", "sdist"] },
+  { path = "examples/hcc1143_lpwgs/samples.csv", format = ["wheel", "sdist"] },
+  { path = "examples/hcc1143_lpwgs/verify_outputs.py", format = ["wheel", "sdist"] },
+  { path = "examples/pathology", format = ["wheel", "sdist"] },
+  { path = "examples/prjna754199/export_gallery.py", format = ["wheel", "sdist"] },
+  { path = "examples/prjna754199/manifest.tsv", format = ["wheel", "sdist"] },
+  { path = "examples/prjna754199/samples.csv", format = ["wheel", "sdist"] },
+  { path = "examples/prjna754199/verify_outputs.py", format = ["wheel", "sdist"] },
+  { path = "examples/quickstart", format = ["wheel", "sdist"] },
+  { path = "params", format = ["wheel", "sdist"] },
+  { path = "environments", format = ["wheel", "sdist"] },
+  { path = "provenance", format = ["wheel", "sdist"] },
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

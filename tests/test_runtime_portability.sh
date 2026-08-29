@@ -87,4 +87,16 @@ CLONES="$(grep -c '^clone ' "$FAKE_GIT_LOG")"
   exit 1
 }
 
-echo "PASS: runtime portability and local SAMURAI cache tests"
+# The same CI path that protects runtime portability also executes the
+# first-time-user dry-run/resume regression suite. Running it as a module keeps
+# the repository root on sys.path, matching the permanent Native v2 CI job.
+(
+  cd "$ROOT"
+  python3 -m unittest -v \
+    tests/test_beginner_runtime.py \
+    tests/test_install_safety.py \
+    tests/test_payload_cache.py \
+    tests/test_standalone_dry_run.py
+)
+
+echo "PASS: runtime portability, local SAMURAI cache, and beginner CLI tests"

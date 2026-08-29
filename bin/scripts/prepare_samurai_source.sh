@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Legacy v1.1 comparator helper retained in source only. Native v2 does not
+# package or invoke the nested SAMURAI/Nextflow source launcher.
+
 usage() {
   cat <<'EOF'
 Usage: prepare_samurai_source.sh --lpwgs-root DIR [--revision TAG]

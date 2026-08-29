@@ -21,9 +21,9 @@ NATIVE_COMMAND_FILES = {
     "docs/quick_start.md": ("oncotracer quickstart 1",),
     "docs/public_cohort.md": ("oncotracer quickstart 2",),
     "docs/auto_params.md": ("oncotracer auto", "oncotracer run --backend conda"),
-    "docs/six_tumor_four_control.md": (
-        "oncotracer auto --mode illumina",
-        "oncotracer run --backend conda",
+    "docs/six_tumor_four_normal.md": (
+        "oncotracer auto",
+        "oncotracer run",
     ),
     "docs/running.md": ("oncotracer run --backend conda",),
     "docs/containers.md": ("oncotracer install --conda",),

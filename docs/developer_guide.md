@@ -28,7 +28,6 @@ Parse native R sources with the intended R installation when available:
 
 ```bash
 Rscript --vanilla -e "invisible(parse(file='bin/scripts/native_qdnaseq.R'))"
-Rscript --vanilla -e "invisible(parse(file='bin/scripts/native_qdnaseq_pon.R'))"
 Rscript --vanilla -e "invisible(parse(file='bin/scripts/native_ichorcna.R'))"
 ```
 

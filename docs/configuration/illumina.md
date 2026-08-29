@@ -1,6 +1,6 @@
 # Illumina configuration
 
-Use this route for single-end or paired-end Illumina FASTQs. Native v2 validates the inputs, aligns with BWA, performs samtools/Picard processing, runs qDNAseq or a local qDNAseq normal panel, refines CNA boundaries from BAM depth, and creates CNA tables, plots, and summaries.
+Use this route for single-end or paired-end Illumina FASTQs. Native v2 validates the inputs, aligns with BWA, performs samtools/Picard processing, runs qDNAseq independently for every selected sample, refines CNA boundaries from BAM depth, and creates CNA tables, plots, and summaries.
 
 ## Recommended: Automatic Setup
 
@@ -79,39 +79,17 @@ oncotracer run \
 cat "$PROJECT_DIR/results/illumina/06_workflow_summary/workflow_summary.txt"
 ```
 
-## Local qDNAseq panel of normals
+## Normal rows are independent samples
 
-Automatic Setup applies this rule:
+The `status` column records the submitted role of each library. It does not
+select samples for a local reference. Automatic Setup preserves every `NORMAL`
+row in the generated samplesheet, and native qDNAseq processes it through the
+same independent per-sample analysis as every `TUMOR` row.
 
-| Normal rows | Behavior |
-| ---: | --- |
-| 0 | Run qDNAseq without a local panel |
-| 1 | Reject the configuration |
-| 2 or more | Build and apply a run-local median-log₂ reference |
-
-Generated settings:
-
-```yaml
-illumina_build_pon: true
-illumina_pon_normal_samples: Control_A,Control_B
-illumina_pon_min_normals: 2
-illumina_pon_name: Control_A_Control_B_PoN
-illumina_pon_min_mapq: 37
-```
-
-All tumor and normal BAMs use the same alignment, bin definition, paired-read setting, and mapping-quality threshold. The panel stores the per-bin control reference and subtracts it from each tumor profile. Normal samples remain reference/QC inputs; corrected downstream bins, segments, CNA events, and plots contain tumor samples only.
-
-Review:
-
-```text
-01_samurai_illumina/qdnaseq_local_pon/
-├── pon/normal_panel_manifest.tsv
-├── qc/normal_panel_sample_qc.tsv
-├── all_tumors.qdnaseq_pon_corrected_bins.tsv
-└── qdnaseq_local_pon.done
-```
-
-The completion marker must contain `QDNASEQ_LOCAL_PON_SUCCESS`.
+OncoTracer does not pool normal rows, subtract their signal from tumor rows, or
+create a sample-derived panel. Audit `qdnaseq_sample_status.json` and the
+per-sample files under `01_samurai_illumina/qdnaseq/` to confirm that every
+expected tumor and normal completed.
 
 ## Manual samplesheet
 
@@ -145,11 +123,6 @@ illumina_samplesheet: $PROJECT_DIR/config/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
-illumina_build_pon: true
-illumina_pon_normal_samples: Control_A,Control_B
-illumina_pon_min_normals: 2
-illumina_pon_name: Control_A_Control_B_PoN
-illumina_pon_min_mapq: 37
 run_cna_classifier: false
 force: false
 YAML
@@ -172,10 +145,6 @@ oncotracer run \
 | `illumina_analysis_type` | `solid_biopsy` | Analysis preset |
 | `illumina_caller` | `qdnaseq` | Illumina CNA caller |
 | `illumina_binsize_kb` | `100` | Initial qDNAseq bin width |
-| `illumina_build_pon` | `false` or `true` | Enable local normal panel |
-| `illumina_pon_normal_samples` | comma-separated IDs | Exact normal sample set |
-| `illumina_pon_min_normals` | `2` or study-specific value | Minimum controls |
-| `illumina_pon_min_mapq` | `37` | Panel read mapping-quality threshold |
 | `run_cna_classifier` | `false` | Add native cancer-context reports |
 | `force` | `false` | Preserve reusable stages |
 
@@ -191,4 +160,4 @@ gzip -t "$PROJECT_DIR/input/illumina_fastq/Patient_A_R1.fastq.gz"
 gzip -t "$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz"
 ```
 
-Use a new YAML and `outdir` when changing bin size, panel membership, or other scientific settings.
+Use a new YAML and `outdir` when changing bin size, sample membership, or other scientific settings.

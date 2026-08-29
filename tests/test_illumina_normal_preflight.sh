@@ -66,12 +66,41 @@ printf '%s\n' \
   '[[ -n "$output" ]] || { echo "ERROR: mock curl did not receive --output" >&2; exit 98; }' \
   'printf "mock QDNAseq.hg38 source\n" > "$output"' \
   > "$MOCK_BIN/curl"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -Eeuo pipefail' \
+  'path="${@: -1}"' \
+  'if [[ "$path" == *.rda ]]; then' \
+  '  printf "450b77a74dbba381e2f664334de90e41ec5e9eb6a5a8946d036c4b3534254d98  %s\n" "$path"' \
+  'else' \
+  '  /usr/bin/sha256sum -- "$path"' \
+  'fi' \
+  > "$MOCK_BIN/sha256sum"
 chmod +x \
   "$MOCK_BIN/nextflow" \
   "$MOCK_BIN/samtools" \
   "$MOCK_BIN/Rscript" \
   "$MOCK_BIN/qpdf" \
-  "$MOCK_BIN/curl"
+  "$MOCK_BIN/curl" \
+  "$MOCK_BIN/sha256sum"
+
+TEST_PYTHON_HOOK="$TEST_TMP/python-hook"
+mkdir -p "$TEST_PYTHON_HOOK"
+printf '%s\n' \
+  'from pathlib import Path' \
+  'import oncotracer_cli.engine as engine' \
+  '' \
+  'def prepare_fixture(_root, project, binsize, _runner, _toolchain):' \
+  '    generation = "generation-" + "0" * 64' \
+  '    path = (Path(project) / ".oncotracer" / "reference-cache" /' \
+  '            f"qdnaseq-hg38-{binsize}kb-fixture" / "generations" / generation /' \
+  '            f"QDNAseq.hg38.{binsize}kbp.SR50.rds")' \
+  '    path.parent.mkdir(parents=True, exist_ok=True)' \
+  '    path.write_bytes(b"mock qDNAseq annotation\\n")' \
+  '    return path' \
+  '' \
+  'engine.prepare_qdnaseq_annotation = prepare_fixture' \
+  > "$TEST_PYTHON_HOOK/sitecustomize.py"
 
 LPWGS_ROOT="$TEST_TMP/lpwgs"
 REF_FA="$LPWGS_ROOT/reference/genome.fa"
@@ -100,6 +129,7 @@ run_wrapper() {
   local case_dir="$1"
   shift
   PATH="$MOCK_BIN:$ORIGINAL_PATH" \
+  PYTHONPATH="$ROOT_DIR:$TEST_PYTHON_HOOK${PYTHONPATH:+:$PYTHONPATH}" \
   CONDA_PREFIX="$MOCK_PREFIX" \
   MOCK_NEXTFLOW_LOG="$case_dir/nextflow.log" \
   MOCK_NEXTFLOW_EXIT_CODE="$MOCK_NEXTFLOW_EXIT" \
@@ -113,34 +143,30 @@ run_wrapper() {
       > "$case_dir/run.log" 2>&1
 }
 
-test_normal_rows_with_pon_off_fail() {
-  local case_dir="$TEST_TMP/pon_off"
+test_normal_rows_are_rejected_before_nextflow() {
+  local case_dir="$TEST_TMP/normal_rows"
   mkdir -p "$case_dir"
   write_sheet "$case_dir/samples.csv" \
     "TUMOR_A,$FASTQ_DIR/TUMOR_A.fastq,,TUMOR" \
     "CTRL_A,$FASTQ_DIR/CTRL_A.fastq,,NORMAL"
 
   if run_wrapper "$case_dir"; then
-    fail "NORMAL rows with PoN disabled should fail"
+    fail "the frozen comparator should reject NORMAL rows"
   fi
-
-  assert_contains "$case_dir/run.log" 'samplesheet contains NORMAL rows but --build-pon is off; refusing to ignore controls'
+  assert_contains "$case_dir/run.log" 'frozen Nextflow comparator cannot CNA-call NORMAL rows independently'
   assert_not_invoked "$case_dir"
 }
 
-test_build_pon_with_mismatched_list_fails() {
-  local case_dir="$TEST_TMP/mismatched_list"
+test_removed_panel_flags_fail_before_nextflow() {
+  local case_dir="$TEST_TMP/removed_panel_flag"
   mkdir -p "$case_dir"
   write_sheet "$case_dir/samples.csv" \
-    "TUMOR_A,$FASTQ_DIR/TUMOR_A.fastq,,TUMOR" \
-    "CTRL_A,$FASTQ_DIR/CTRL_A.fastq,,NORMAL" \
-    "CTRL_B,$FASTQ_DIR/CTRL_B.fastq,,NORMAL"
+    "TUMOR_A,$FASTQ_DIR/TUMOR_A.fastq,,TUMOR"
 
-  if run_wrapper "$case_dir" --build-pon --pon-normal-samples CTRL_A,CTRL_MISSING --pon-min-normals 2; then
-    fail "PoN normal list differing from NORMAL rows should fail"
+  if run_wrapper "$case_dir" --build-pon --pon-normal-samples CTRL_A --pon-min-normals 2; then
+    fail "removed panel options should fail"
   fi
-
-  assert_contains "$case_dir/run.log" 'do not exactly match samplesheet NORMAL rows'
+  assert_contains "$case_dir/run.log" 'local sample-derived panel construction was removed'
   assert_not_invoked "$case_dir"
 }
 
@@ -154,61 +180,37 @@ test_duplicate_ids_fail() {
   if run_wrapper "$case_dir"; then
     fail "duplicate sample IDs should fail"
   fi
-
   assert_contains "$case_dir/run.log" 'duplicate sample ID in samplesheet: DUP'
   assert_not_invoked "$case_dir"
 }
 
-test_one_normal_below_minimum_fails() {
-  local case_dir="$TEST_TMP/one_normal"
-  mkdir -p "$case_dir"
-  write_sheet "$case_dir/samples.csv" \
-    "TUMOR_A,$FASTQ_DIR/TUMOR_A.fastq,,TUMOR" \
-    "CTRL_A,$FASTQ_DIR/CTRL_A.fastq,,NORMAL"
-
-  if run_wrapper "$case_dir" --build-pon --pon-normal-samples CTRL_A --pon-min-normals 2; then
-    fail "one NORMAL with minimum two should fail"
-  fi
-
-  assert_contains "$case_dir/run.log" 'local Illumina PoN requires at least 2 NORMAL samples; found 1'
-  assert_not_invoked "$case_dir"
-}
-
-test_valid_preflight_reaches_mock_nextflow_only() {
-  local case_dir="$TEST_TMP/valid"
+test_tumor_only_comparator_reaches_mock_nextflow() {
+  local case_dir="$TEST_TMP/tumor_only"
   local status
   mkdir -p "$case_dir"
   write_sheet "$case_dir/samples.csv" \
-    "TUMOR_A,$FASTQ_DIR/TUMOR_A.fastq,,TUMOR" \
-    "CTRL_A,$FASTQ_DIR/CTRL_A.fastq,,NORMAL" \
-    "CTRL_B,$FASTQ_DIR/CTRL_B.fastq,,NORMAL"
+    "TUMOR_A,$FASTQ_DIR/TUMOR_A.fastq,,TUMOR"
 
   set +e
-  run_wrapper "$case_dir" \
-    --build-pon \
-    --pon-normal-samples CTRL_A,CTRL_B \
-    --pon-min-normals 2 \
-    --pon-name TEST_PON
+  run_wrapper "$case_dir"
   status=$?
   set -e
 
-  [[ $status -eq $MOCK_NEXTFLOW_EXIT ]] || fail "valid preflight returned $status instead of controlled mock exit $MOCK_NEXTFLOW_EXIT"
-  assert_contains "$case_dir/run.log" 'Validated 1 TUMOR and 2 NORMAL Illumina sample(s)'
+  [[ $status -eq $MOCK_NEXTFLOW_EXIT ]] ||
+    fail "tumor-only comparator returned $status instead of controlled mock exit $MOCK_NEXTFLOW_EXIT"
+  assert_contains "$case_dir/run.log" 'Validated 1 TUMOR and 0 NORMAL Illumina sample(s)'
   assert_contains "$case_dir/run.log" 'Detected Illumina read layout: single-end'
   assert_contains "$case_dir/run.log" 'Using qDNAseq hg38 annotation:'
   assert_contains "$case_dir/nextflow.log" "run $LPWGS_ROOT/.oncotracer/samurai/v1.4.0"
   assert_contains "$case_dir/nextflow.log" "--input $case_dir/out/input/samplesheet.csv"
   assert_contains "$case_dir/nextflow.log" '--qdnaseq_bin_data'
-  [[ "$(wc -l < "$case_dir/nextflow.log")" -eq 1 ]] || fail "valid preflight invoked Nextflow more than once"
-  [[ -s "$case_dir/out/input/samplesheet.csv" ]] || fail "validated samplesheet was not published"
-  [[ ! -d "$case_dir/out/alignment" ]] || fail "mocked preflight unexpectedly created alignment output"
-  [[ ! -d "$case_dir/out/qdnaseq" ]] || fail "mocked preflight unexpectedly created qDNAseq output"
+  [[ "$(wc -l < "$case_dir/nextflow.log")" -eq 1 ]] ||
+    fail "tumor-only comparator invoked Nextflow more than once"
 }
 
-test_normal_rows_with_pon_off_fail
-test_build_pon_with_mismatched_list_fails
+test_normal_rows_are_rejected_before_nextflow
+test_removed_panel_flags_fail_before_nextflow
 test_duplicate_ids_fail
-test_one_normal_below_minimum_fails
-test_valid_preflight_reaches_mock_nextflow_only
+test_tumor_only_comparator_reaches_mock_nextflow
 
-echo 'PASS: Illumina PoN wrapper preflight tests'
+echo 'PASS: Illumina frozen-comparator NORMAL fail-closed tests'
