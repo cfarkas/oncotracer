@@ -1153,9 +1153,24 @@ overall = {
 if not overall['passed']:
     raise SystemExit('QuickStart 1 parity failed')
 PY
+  # The native ichorCNA stage publishes every per-sample file to the caller
+  # results root, so the single ONT compatibility marker is present both in the
+  # sample directory and in the published root. Bind the evidence to marker
+  # content instead of the publication layout: at least one marker must exist
+  # and every copy must be byte-identical.
   mapfile -t native_markers < <(find "$TEST_ROOT/v2/ont" -type f \
     -name '*.ichorcna_plot_compat.tsv' -print | sort)
-  test "${#native_markers[@]}" -eq 1
+  if [[ "${#native_markers[@]}" -eq 0 ]]; then
+    echo "missing native ichorCNA plot-compat marker: $TEST_ROOT/v2/ont" >&2
+    exit 1
+  fi
+  mapfile -t native_marker_digests < <(
+    sha256sum -- "${native_markers[@]}" | awk '{print $1}' | sort -u)
+  if [[ "${#native_marker_digests[@]}" -ne 1 ]]; then
+    echo "divergent native ichorCNA plot-compat markers:" >&2
+    printf '  %s\n' "${native_markers[@]}" >&2
+    exit 1
+  fi
   cp "${native_markers[0]}" "$CONTEXT/v2-ont-ichorcna-plot-compat.tsv"
 else
   python3 "$REPO/tests/compare_native_parity.py" \
