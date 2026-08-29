@@ -256,7 +256,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -982,14 +982,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1191,6 +1191,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1981,7 +2009,7 @@
 <li>at least 80 GiB of addressable memory for the first uncached Illumina BWA index;</li>
 <li>one backend: Conda, Docker, or Singularity/Apptainer.</li>
 </ul>
-<p>The first analysis can take substantially longer because the reference, indexes, packages, and container layers are prepared. Later analyses reuse valid assets and content-matched native stages.</p>
+<p>The first analysis can take substantially longer because the reference, indexes, packages, and container layers are prepared. If <code>lpwgs_root/references/samurai_hg38</code> already exists, OncoTracer treats it as an external, read-only shared reference: every pinned file, index manifest, physical reader lock, and tool identity must validate, and OncoTracer will stop instead of repairing it in place. A plain existing FASTA/index directory is not auto-adopted. When that path is absent, FASTA/index, ichorCNA, and qDNAseq assets go to OncoTracer-owned, content-addressed caches below <code>lpwgs_root/.oncotracer/reference-cache/</code>. Later analyses reuse those validated assets even when they use a fresh result directory. Conda channel URLs are retained as informational provenance, but portability validity is based on stable package metadata and the exact indexing-executable SHA-256.</p>
 <h2 id="1-install-the-stable-copied-executable">1. Install the stable copied executable<a class="headerlink" href="#1-install-the-stable-copied-executable" title="Permanent link">&para;</a></h2>
 <p>Download the complete release asset set with GitHub CLI:</p>
 <div class="highlight"><pre><span></span><code>gh<span class="w"> </span>release<span class="w"> </span>download<span class="w"> </span>v2.0.0<span class="w"> </span><span class="se">\</span>
@@ -1997,6 +2025,7 @@ oncotracer<span class="w"> </span>--version
 oncotracer<span class="w"> </span>provenance<span class="w"> </span>--json
 </code></pre></div>
 <p>The copied executable is a deterministic Python zipapp containing the versioned OncoTracer source payload. It does not require a Git clone after installation.</p>
+<p>Normal commands that need bundled scripts verify and reuse a content-addressed cache at <code>$XDG_CACHE_HOME/oncotracer/2.0.0/&lt;executable-sha256&gt;/payload</code> (or <code>$HOME/.cache</code> when <code>XDG_CACHE_HOME</code> is unset). Each executable digest is isolated, and the exact payload inventory is checked before reuse. <code>--dry-run</code> instead uses an automatically removed temporary payload: it does not populate the persistent cache, save installation state, create results or environments, or pull an image/SIF.</p>
 <p>Keep these release files together for audit:</p>
 <div class="highlight"><pre><span></span><code>oncotracer
 SHA256SUMS
@@ -2026,6 +2055,21 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 </code></pre></div>
 <p>Use <code>--force</code> only when deliberately rebuilding all five prefixes.</p>
+<p>The prefix parent must be absent, empty, or already owned by this OncoTracer
+installer. OncoTracer never adopts a populated Conda directory or an unmarked
+fixed child (<code>core</code>, <code>qdnaseq</code>, <code>ichorcna</code>, <code>classifier</code>, <code>gistic</code>, or the
+optional Poetry runtime). Strict markers bind each managed path to an install
+ID, environment definition, exact file inventory, and OncoTracer source
+identity. Creation and updates run under an ownership-checked lock. For an
+owned replacement, OncoTracer journals the operation, moves only the verified
+old child to a same-filesystem backup, and creates the new Conda or Poetry
+environment directly at its final canonical prefix. Semantic probes and the
+exact inventory must pass there before commit; interruption restores the prior
+child. An unsealed tree left by SIGKILL is moved to a reported sibling
+<code>oncotracer-preserved</code> path rather than deleted. Shared runtime locks keep an
+installer from replacing a prefix while an analysis is consuming it. <code>--force</code>
+applies only to an intact owned installation and refuses prefixes used by
+active processes. Unrelated siblings under an owned prefix parent are preserved.</p>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
 <p>Install Docker Engine and ensure the current user can access the daemon:</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>info
@@ -2051,17 +2095,62 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--config<span class="w"> </span>/absolute/path/project/config/illumina.auto.yml
 </code></pre></div>
+<p>The first installation requires an absent SIF destination. OncoTracer writes a
+strict <code>.oncotracer.json</code> sidecar that binds the canonical path, source image,
+SIF SHA-256, install ID, and OncoTracer source identity. Reuse rechecks the
+sidecar and bytes, then verifies the native <code>doctor</code> and container provenance
+inside the image.
+<code>--force</code> is accepted only for an owned pair: a new image is pulled to a
+same-directory transaction, verified before publication, and atomically
+swapped with rollback protection. Existing unowned files, symlinks,
+hard-linked files, malformed sidecars, and active images fail closed without
+being removed.</p>
+<p>After any committed Conda, Poetry, or SIF transaction, OncoTracer retains the
+authenticated rollback tree and its journal instead of deleting either one.
+They are reported on standard error and stored beside the installation target:</p>
+<div class="highlight"><pre><span></span><code>.&lt;target&gt;.oncotracer-&lt;kind&gt;-txn-&lt;transaction-id&gt;.oncotracer-retained
+.oncotracer-&lt;kind&gt;-retained-journal-&lt;transaction-id&gt;-&lt;target-binding&gt;.json
+</code></pre></div>
+<p>These transaction-ID-bound paths are ignored by later installs, so an
+interrupted journal-retention step can be resumed and a new install can proceed
+without overwriting earlier evidence. OncoTracer never automatically removes
+retained rollback or audit material. An administrator may archive or remove an
+exact reported path only after inspecting it and confirming that no OncoTracer
+install is running; never use a wildcard cleanup command.</p>
+<p>Failed publications use the same rule: after restoring the prior target,
+OncoTracer writes a durable <code>rolled_back</code> journal, seals the exact rollback
+inventory, and retains both records. A later invocation can resume between any
+of those steps without overwriting earlier evidence.</p>
 <h3 id="poetry">Poetry<a class="headerlink" href="#poetry" title="Permanent link">&para;</a></h3>
-<p>Poetry is a source-development route, not the normal binary installation. Clone the repository only for development:</p>
+<p>Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development:</p>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cfarkas/oncotracer.git
 <span class="nb">cd</span><span class="w"> </span>oncotracer
-./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--version
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
+./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--prefix<span class="w"> </span>/path/to/my/oncotracer-v2-dev-envs
+
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>--version
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>doctor<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry
 </code></pre></div>
-<p><code>./oncotracer install --poetry</code> installs the locked Python launcher and the same five Conda scientific environments. Poetry alone does not provide R, BWA, samtools, Picard, HMMcopy, ichorCNA, or GISTIC2.</p>
+<p><code>./oncotracer install --poetry</code> installs the locked Python launcher into the
+explicit, OncoTracer-owned <code>poetry-runtime</code> child and creates the same five
+Conda scientific environments. It does not select or modify Poetry's global
+environment, another checkout's virtual environment, or an existing unowned
+prefix. OncoTracer first builds a wheel from an exact clean checkout in an
+isolated transaction tree, then invokes only the final virtual environment's
+Python and pip to install that wheel with dependencies and indexes disabled.
+Poetry's configuration, data, build environment, and caches remain inside the
+transaction; the checkout, ambient interpreter, global site-packages, and
+checkout-local <code>.venv</code> are unchanged.
+Poetry alone does not provide R, BWA, samtools, Picard, HMMcopy, ichorCNA, or
+GISTIC2.</p>
+<p>Installer options are backend-specific. <code>--prefix</code> is accepted only for Conda
+and Poetry, while <code>--image</code> and <code>--sif</code> apply only to the relevant container
+backend. OncoTracer rejects irrelevant combinations instead of silently
+ignoring a path or force request.</p>
 <h2 id="3-verify-provenance-and-health">3. Verify provenance and health<a class="headerlink" href="#3-verify-provenance-and-health" title="Permanent link">&para;</a></h2>
-<p>Run these checks after installation or after moving environments:</p>
+<p>Run these checks after installation or an ownership-verified replacement.
+Managed Conda and Poetry prefixes are canonical-path-bound and must not be moved:</p>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>--version
 oncotracer<span class="w"> </span>provenance<span class="w"> </span>--json
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda

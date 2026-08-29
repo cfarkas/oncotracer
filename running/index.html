@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1246,6 +1246,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -2087,14 +2115,15 @@
 <span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--config<span class="w"> </span>/absolute/path/project/config/illumina.auto.yml
 </code></pre></div>
-<p>The same YAML can be executed through Conda, Docker, Singularity/Apptainer, or Poetry. All backends use the same native stage graph.
+<p>The standard CNA YAML can be executed through Conda, Docker, Singularity/Apptainer, or Poetry. All backends use the same native stage graph.
 The caller stage is direct qDNAseq or direct HMMcopy/ichorCNA, followed by the same downstream refinement and reporting contract.</p>
+<p>The optional ONT POD5 methylation branch uses explicit user-installed/licensed resources and therefore supports host, Conda, or Poetry in v2.0.0, not the stable Docker or Singularity/Apptainer image.</p>
 <h2 id="native-stage-graph">Native stage graph<a class="headerlink" href="#native-stage-graph" title="Permanent link">&para;</a></h2>
 <p>For Illumina:</p>
 <div class="highlight"><pre><span></span><code>FASTQ validation
   -&gt; BWA alignment
   -&gt; samtools/Picard processing
-  -&gt; direct qDNAseq or local qDNAseq panel correction
+  -&gt; direct independent qDNAseq for every selected sample
   -&gt; BAM-supported boundary refinement
   -&gt; CNA event and cytogenomic notation tables
   -&gt; cohort and per-sample plots
@@ -2102,7 +2131,11 @@ The caller stage is direct qDNAseq or direct HMMcopy/ichorCNA, followed by the s
   -&gt; optional native classifier/GISTIC2/reports
 </code></pre></div>
 <p>For ONT:</p>
-<div class="highlight"><pre><span></span><code>barcode FASTQ discovery and merge
+<div class="highlight"><pre><span></span><code>optional explicit POD5 + barcode read IDs
+  -&gt; Dorado 5mCG/5hmCG -&gt; Modkit CpG pileup -&gt; Sturgeon or MARLIN
+  -&gt; methylation status (independent of CNA)
+
+barcode FASTQ discovery and merge
   -&gt; minimap2 alignment
   -&gt; HMMcopy readCounter
   -&gt; direct HMMcopy/ichorCNA
@@ -2119,52 +2152,56 @@ The caller stage is direct qDNAseq or direct HMMcopy/ichorCNA, followed by the s
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>docker
 
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>singularity
 
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="poetry">Poetry<a class="headerlink" href="#poetry" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
+<div class="highlight"><pre><span></span><code>./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--prefix<span class="w"> </span>/path/to/my/oncotracer-v2-dev-envs
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>doctor<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry
 
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h2 id="automatic-backend-selection">Automatic backend selection<a class="headerlink" href="#automatic-backend-selection" title="Permanent link">&para;</a></h2>
 <p>When <code>--backend</code> is omitted, OncoTracer uses the backend saved by the most recent successful <code>oncotracer install</code> command:</p>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <p>For auditable production commands, specifying <code>--backend</code> explicitly is recommended.</p>
 <h2 id="threads">Threads<a class="headerlink" href="#threads" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--threads<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <p>The selected thread count is passed to supported native stages. External tool behavior and memory requirements still depend on the specific stage.</p>
+<p>For optional methylation, <code>--gpu</code> accelerates Dorado modified-base basecalling and exposes the GPU to MARLIN. Modkit and Sturgeon remain CPU-threaded. Read <a href="../configuration/methylation/">Optional ONT methylation</a> before enabling it.</p>
 <h2 id="dry-run">Dry-run<a class="headerlink" href="#dry-run" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 </code></pre></div>
 <p>The dry-run validates paths and prints native argument arrays without launching the scientific tools.</p>
 <h2 id="resume-behavior">Resume behavior<a class="headerlink" href="#resume-behavior" title="Permanent link">&para;</a></h2>
 <p>Repeat the same command:</p>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <p>The native ledger records:</p>
 <ul>
@@ -2178,7 +2215,7 @@ poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="
 <h2 id="force">Force<a class="headerlink" href="#force" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--force
 </code></pre></div>
 <p>Use <code>--force</code> only when deliberately invalidating reusable stages. For a scientifically different analysis, prefer a new YAML and a new <code>outdir</code>.</p>
@@ -2190,22 +2227,24 @@ poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="
 &lt;outdir&gt;/06_workflow_summary/workflow_summary.json
 &lt;outdir&gt;/06_workflow_summary/native_run_manifest.json
 &lt;outdir&gt;/05_cna_classifier/native_classifier_summary.json  # when enabled
+&lt;outdir&gt;/07_methylation/methylation_status.json             # when enabled
+&lt;outdir&gt;/07_methylation/methylation_provenance.json         # when enabled
 </code></pre></div>
 <p>The trace is generated from argument arrays rather than shell strings. The engine checks the final trace and fails if a Nextflow invocation appears.</p>
 <p>Inspect the run identity:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">OUTDIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">OUTDIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span>
 
-grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;^(mode|dataset|engine|nextflow_used)=&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$OUTDIR</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
+grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^(mode|dataset|engine|nextflow_used)='</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$OUTDIR</span><span class="s2">/06_workflow_summary/workflow_summary.txt"</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,40p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDIR</span><span class="s2">/.oncotracer-native/trace.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,40p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUTDIR</span><span class="s2">/.oncotracer-native/trace.tsv"</span>
 </code></pre></div>
 <p>Expected native identity:</p>
 <div class="highlight"><pre><span></span><code>engine=native
 nextflow_used=false
 </code></pre></div>
 <h2 id="output-ownership-and-container-mounts">Output ownership and container mounts<a class="headerlink" href="#output-ownership-and-container-mounts" title="Permanent link">&para;</a></h2>
-<p>Docker runs as the invoking numeric user/group. The CLI derives mounts from the YAML paths, including <code>lpwgs_root</code>, <code>outdir</code>, samplesheet, FASTQ roots, and pathology table. Use absolute paths and keep related data below a small number of project roots.</p>
+<p>Docker runs as the invoking numeric user/group. The CLI derives mounts from the standard CNA YAML paths, including <code>lpwgs_root</code>, <code>outdir</code>, samplesheet, FASTQ roots, and pathology table. Use absolute paths and keep related data below a small number of project roots. Optional methylation is rejected for the v2.0.0 container backends.</p>
 <h2 id="stopping-and-restarting">Stopping and restarting<a class="headerlink" href="#stopping-and-restarting" title="Permanent link">&para;</a></h2>
 <p>Interrupting a run does not mark an incomplete stage as valid. Correct the cause and repeat the same command. OncoTracer reuses earlier valid stages and reruns the incomplete stage.</p>
 <p>Do not manually edit <code>.oncotracer-native/state.json</code>. Preserve it with the result tree for audit and resume.</p>

@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1068,21 +1068,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-local-panel-of-normals" class="md-nav__link">
+  <a href="#normal-samples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina local panel of normals
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-ont-normal-input" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional ONT normal input
+        Normal samples
       
     </span>
   </a>
@@ -1185,6 +1174,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1868,21 +1885,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-local-panel-of-normals" class="md-nav__link">
+  <a href="#normal-samples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina local panel of normals
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-ont-normal-input" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional ONT normal input
+        Normal samples
       
     </span>
   </a>
@@ -1993,34 +1999,20 @@ Tumor_B,/data/study/input/Tumor_B_R1.fastq.gz,/data/study/input/Tumor_B_R2.fastq
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
 <p><code>ont_barcodes</code> and <code>ont_sample_names</code> are positional and must have the same number of entries.</p>
+<p>The default above is the liquid-biopsy ichorCNA route. For a separate solid-biopsy qDNAseq analysis, use a new <code>outdir</code> and set <code>ont_analysis_type: solid_biopsy</code>, <code>ont_caller: qdnaseq</code>, and an explicit qDNAseq bin width. The engine rejects qDNAseq for other ONT analysis types.</p>
+<p>An optional ONT-only POD5 methylation branch is available with <code>--methylation</code> plus exactly one of <code>--sturgeon</code> or <code>--marlin</code>, and always requires <code>--pod5-dir /absolute/path</code>. It runs before CNA, but the two outcomes are preserved independently. See <a href="../configuration/methylation/">Optional ONT methylation</a> for the required checksum-pinned external resources and license/backend limitations.</p>
 <h2 id="run-a-yaml">Run a YAML<a class="headerlink" href="#run-a-yaml" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <p>Repeat the same command to reuse valid completed stages. Add <code>--dry-run</code> to inspect the native argument arrays, or <code>--force</code> only for a deliberate refresh.</p>
-<h2 id="illumina-local-panel-of-normals">Illumina local panel of normals<a class="headerlink" href="#illumina-local-panel-of-normals" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A,Control_B</span>
-<span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="nt">illumina_pon_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study_local_PoN</span>
-<span class="nt">illumina_pon_min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
-</code></pre></div>
-<p>Every listed panel sample must be present in the samplesheet and marked <code>normal</code>. Automatic Setup enforces the native contract:</p>
-<ul>
-<li>zero normals: no local panel;</li>
-<li>exactly one normal: configuration rejected;</li>
-<li>two or more normals: robust median-log₂ reference built and applied;</li>
-<li>corrected downstream bins, segments, events, and plots contain tumors only.</li>
-</ul>
-<h2 id="optional-ont-normal-input">Optional ONT normal input<a class="headerlink" href="#optional-ont-normal-input" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nt">ont_normal_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/data/study/input/normal_fastq_pass</span>
-<span class="nt">ont_normal_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
-<span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Normal_A,Normal_B</span>
-<span class="nt">ont_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
-<p>Review the supported study design and stage summaries before interpreting normalized calls.</p>
+<h2 id="normal-samples">Normal samples<a class="headerlink" href="#normal-samples" title="Permanent link">&para;</a></h2>
+<p>In an Illumina samplesheet, <code>status: normal</code> is preserved metadata for an
+independently analyzed qDNAseq sample. Automatic Setup does not pool normal
+rows, create a sample-derived reference, or exclude them from per-sample CNA
+outputs. Review <code>qdnaseq_sample_status.json</code> for exact completion status.</p>
 <h2 id="optional-native-cna-classifier">Optional native CNA classifier<a class="headerlink" href="#optional-native-cna-classifier" title="Permanent link">&para;</a></h2>
 <p>The complete classifier/report branch runs through the native executable; it is not delegated to Nextflow.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>

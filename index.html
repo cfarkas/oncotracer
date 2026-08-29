@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="six_tumor_four_control/" class="md-tabs__link">
+        <a href="six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -927,14 +927,14 @@
   
   
     <li class="md-nav__item">
-      <a href="six_tumor_four_control/" class="md-nav__link">
+      <a href="six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1136,6 +1136,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1867,6 +1895,7 @@
 
 <h1 id="oncotracer-v200">OncoTracer v2.0.0<a class="headerlink" href="#oncotracer-v200" title="Permanent link">&para;</a></h1>
 <p>OncoTracer is a native, auditable workflow for low-pass whole-genome sequencing (LP-WGS) copy-number analysis from Illumina and Oxford Nanopore Technologies (ONT) FASTQs.</p>
+<p>For ONT only, an optional explicit-POD5 branch can perform Dorado/Modkit modified-base processing followed by user-selected Sturgeon (CNS research) or MARLIN (leukemia research) classification. It runs before CNA but records and preserves the two outcomes independently.</p>
 <div class="highlight"><pre><span></span><code>Illumina FASTQ -&gt; BWA/Picard -&gt; qDNAseq -----------+
                                                     +-&gt; BAM-supported refinement
 ONT FASTQ ------&gt; minimap2 ---&gt; HMMcopy/ichorCNA --+              |
@@ -1886,32 +1915,32 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1"</span>
 </code></pre></div>
 <p>QuickStart 2 runs three public HCC1143 Illumina libraries:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 </code></pre></div>
 <p>The QuickStart pages reproduce the detailed style of the original documentation: prepare the backend, download and validate inputs, inspect generated YAML, run each analysis, verify output tables and PDFs, and resume safely.</p>
 <ul>
 <li><a href="quick_start/">QuickStart 1 — Illumina and ONT</a></li>
 <li><a href="public_cohort/">QuickStart 2 — HCC1143</a></li>
 <li><a href="full_tutorial/">Complete 12-library PRJNA754199 tutorial</a></li>
-<li><a href="six_tumor_four_control/">Mock six-tumor/four-normal cohort</a></li>
+<li><a href="six_tumor_four_normal/">Mock six-tumor/four-independent-normal cohort</a></li>
 </ul>
 <h2 id="run-your-own-fastqs">Run your own FASTQs<a class="headerlink" href="#run-your-own-fastqs" title="Permanent link">&para;</a></h2>
 <p>Automatic Setup is the recommended route:</p>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span>
 
-oncotracer<span class="w"> </span>run<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda
 </code></pre></div>
 <p>Use <code>--mode ont</code> for a <code>fastq_pass</code> directory organized by barcode. Automatic Setup creates the analysis YAML and, for Illumina, an exact four-column samplesheet. It does not start alignment or CNA calling.</p>

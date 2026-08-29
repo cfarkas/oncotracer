@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/configuration/">
       
       
-        <link rel="prev" href="../six_tumor_four_control/">
+        <link rel="prev" href="../six_tumor_four_normal/">
       
       
         <link rel="next" href="../running/">
@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1045,10 +1045,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-normal-control-rule" class="md-nav__link">
+  <a href="#illumina-normal-sample-rule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina normal-control rule
+        Illumina normal-sample rule
       
     </span>
   </a>
@@ -1174,6 +1174,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1890,10 +1918,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-normal-control-rule" class="md-nav__link">
+  <a href="#illumina-normal-sample-rule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina normal-control rule
+        Illumina normal-sample rule
       
     </span>
   </a>
@@ -1969,9 +1997,9 @@
 <td>Creates YAML, manifest, and Illumina samplesheet</td>
 </tr>
 <tr>
-<td>See four normal controls used as a panel</td>
-<td><a href="../six_tumor_four_control/">Mock cohort</a></td>
-<td>Demonstrates six tumors plus four normals</td>
+<td>Run six tumors and four normals independently</td>
+<td><a href="../six_tumor_four_normal/">Mock cohort</a></td>
+<td>Keeps all ten samples in one native qDNAseq run without creating a local panel</td>
 </tr>
 <tr>
 <td>Write an Illumina YAML manually</td>
@@ -2014,25 +2042,25 @@
 </code></pre></div>
 <p>The YAML contains paths and analysis settings; it does not contain sequencing reads. Nested YAML is not supported.</p>
 <h2 id="recommended-route-automatic-setup">Recommended route: Automatic Setup<a class="headerlink" href="#recommended-route-automatic-setup" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
 oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml"</span>
 </code></pre></div>
 <p>For ONT, use <code>--mode ont</code> and analyze <code>ont.auto.yml</code>.</p>
 <h2 id="second-option-create-a-manual-yaml">Second option: create a manual YAML<a class="headerlink" href="#second-option-create-a-manual-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml"</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
 <span class="s">mode: illumina</span>
 <span class="s">lpwgs_root: $PROJECT_DIR</span>
 <span class="s">outdir: $PROJECT_DIR/results</span>
@@ -2046,25 +2074,26 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml"</span>
 </code></pre></div>
 <p><code>--dry-run</code> validates the native route and prints argument arrays without running the scientific tools.</p>
 <h2 id="choose-one-execution-backend">Choose one execution backend<a class="headerlink" href="#choose-one-execution-backend" title="Permanent link">&para;</a></h2>
 <p>The YAML is backend-independent:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 
-oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
 <span class="c1"># or:</span>
-oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
 <span class="c1"># or:</span>
-oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>singularity<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-<span class="c1"># or, in a Poetry development checkout:</span>
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>poetry<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>singularity<span class="w"> </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
+<span class="c1"># or, after the isolated Poetry development install:</span>
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
 </code></pre></div>
 <p>Prepare the selected backend first with <code>oncotracer install</code>.</p>
 <h2 id="common-settings">Common settings<a class="headerlink" href="#common-settings" title="Permanent link">&para;</a></h2>
@@ -2106,14 +2135,10 @@ poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="
 </tr>
 </tbody>
 </table>
-<h2 id="illumina-normal-control-rule">Illumina normal-control rule<a class="headerlink" href="#illumina-normal-control-rule" title="Permanent link">&para;</a></h2>
-<ul>
-<li>zero normals: run without a local panel;</li>
-<li>one normal: reject configuration;</li>
-<li>two or more normals: build and apply a local qDNAseq panel;</li>
-<li>normal samples remain reference/QC inputs;</li>
-<li>tumor samples continue to the downstream CNA outputs.</li>
-</ul>
+<h2 id="illumina-normal-sample-rule">Illumina normal-sample rule<a class="headerlink" href="#illumina-normal-sample-rule" title="Permanent link">&para;</a></h2>
+<p>Every tumor and normal samplesheet row is analyzed independently. The status is
+preserved in the generated contract; normal rows are not pooled or applied to
+other samples as a local reference.</p>
 <h2 id="settings-to-leave-unchanged-initially">Settings to leave unchanged initially<a class="headerlink" href="#settings-to-leave-unchanged-initially" title="Permanent link">&para;</a></h2>
 <p>Keep the generated caller, analysis type, bin size, and refinement defaults for the first analysis. Use a new YAML and a new <code>outdir</code> for a scientifically different configuration so the original results and native stage records remain separate.</p>
 

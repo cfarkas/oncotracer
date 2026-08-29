@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1036,6 +1036,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -2029,14 +2057,14 @@
 <li>clonality or biallelic inactivation without orthogonal evidence.</li>
 </ul>
 <h2 id="read-the-outputs">Read the outputs<a class="headerlink" href="#read-the-outputs" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results/illumina_pathology/05_cna_classifier&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results/illumina_pathology/05_cna_classifier"</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_prepared/sample_cna_summary.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/02_classification/cna_patient_classification.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_knowledge/sample_knowledge_summary.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/07_pathology/pathology_concordance.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/07_pathology/pathology_status.txt&quot;</span>
-ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_report/cna_classifier_report.html&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,12p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_prepared/sample_cna_summary.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,12p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/02_classification/cna_patient_classification.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,12p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_knowledge/sample_knowledge_summary.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,12p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/07_pathology/pathology_concordance.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,120p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/07_pathology/pathology_status.txt"</span>
+ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_report/cna_classifier_report.html"</span>
 </code></pre></div>
 <table>
 <thead>

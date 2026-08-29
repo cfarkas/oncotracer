@@ -12,28 +12,28 @@
         <meta name="author" content="OncoTracer developers">
       
       
-        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/inputs/">
+        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/configuration/methylation/">
       
       
-        <link rel="prev" href="../public_cohort/">
+        <link rel="prev" href="../ont/">
       
       
-        <link rel="next" href="../configuration/yaml_basics/">
+        <link rel="next" href="../pathology/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Input Files and Folder Layouts - OncoTracer</title>
+        <title>Optional ONT Methylation - OncoTracer</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -52,9 +52,9 @@
       
     
     
-      <link rel="stylesheet" href="../stylesheets/oncotracer.css">
+      <link rel="stylesheet" href="../../stylesheets/oncotracer.css">
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#input-files-and-folder-layouts" class="md-skip">
+        <a href="#optional-ont-methylation-classification" class="md-skip">
           Skip to content
         </a>
       
@@ -86,7 +86,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="OncoTracer" class="md-header__button md-logo" aria-label="OncoTracer" data-md-component="logo">
+    <a href="../.." title="OncoTracer" class="md-header__button md-logo" aria-label="OncoTracer" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Input Files and Folder Layouts
+              Optional ONT Methylation
             
           </span>
         </div>
@@ -193,7 +193,7 @@
   
   
     <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
@@ -210,13 +210,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../installation/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../installation/" class="md-tabs__link">
           
   
   
@@ -236,7 +234,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../full_tutorial/" class="md-tabs__link">
+        <a href="../../full_tutorial/" class="md-tabs__link">
           
   
   
@@ -256,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_normal/" class="md-tabs__link">
+        <a href="../../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -272,11 +270,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../configuration/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -296,7 +296,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../outputs/" class="md-tabs__link">
+        <a href="../../outputs/" class="md-tabs__link">
           
   
   
@@ -316,7 +316,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../native_architecture/" class="md-tabs__link">
+        <a href="../../native_architecture/" class="md-tabs__link">
           
   
   
@@ -336,7 +336,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../troubleshooting/" class="md-tabs__link">
+        <a href="../../troubleshooting/" class="md-tabs__link">
           
   
   
@@ -370,7 +370,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="OncoTracer" class="md-nav__button md-logo" aria-label="OncoTracer" data-md-component="logo">
+    <a href="../.." title="OncoTracer" class="md-nav__button md-logo" aria-label="OncoTracer" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -400,7 +400,7 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -424,31 +424,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
   
@@ -466,7 +463,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -484,7 +481,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../installation/" class="md-nav__link">
         
   
   
@@ -512,7 +509,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../poetry/" class="md-nav__link">
+      <a href="../../poetry/" class="md-nav__link">
         
   
   
@@ -540,7 +537,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quick_start/" class="md-nav__link">
+      <a href="../../quick_start/" class="md-nav__link">
         
   
   
@@ -568,7 +565,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../auto_params/" class="md-nav__link">
+      <a href="../../auto_params/" class="md-nav__link">
         
   
   
@@ -596,7 +593,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../public_cohort/" class="md-nav__link">
+      <a href="../../public_cohort/" class="md-nav__link">
         
   
   
@@ -621,37 +618,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Input Files and Folder Layouts
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../inputs/" class="md-nav__link">
         
   
   
@@ -667,142 +637,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#recommended-project-tree" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommended project tree
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference-storage-safety" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference storage safety
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#illumina-input" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Illumina input
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Illumina input">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#automatic-sample-table" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Automatic sample table
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#supported-layouts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported layouts
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#manual-illumina-samplesheet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Manual Illumina samplesheet
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#illumina-normal-rows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Illumina normal rows
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ont-input" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ONT input
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-pathology-csv" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional pathology CSV
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pre-run-validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pre-run validation
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -815,7 +649,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/yaml_basics/" class="md-nav__link">
+      <a href="../yaml_basics/" class="md-nav__link">
         
   
   
@@ -904,7 +738,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../full_tutorial/" class="md-nav__link">
+      <a href="../../full_tutorial/" class="md-nav__link">
         
   
   
@@ -993,7 +827,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_normal/" class="md-nav__link">
+      <a href="../../six_tumor_four_normal/" class="md-nav__link">
         
   
   
@@ -1025,28 +859,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -1064,7 +901,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1082,7 +919,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -1110,7 +947,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../running/" class="md-nav__link">
+      <a href="../../running/" class="md-nav__link">
         
   
   
@@ -1138,7 +975,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration_v2/" class="md-nav__link">
+      <a href="../../configuration_v2/" class="md-nav__link">
         
   
   
@@ -1166,7 +1003,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/illumina/" class="md-nav__link">
+      <a href="../illumina/" class="md-nav__link">
         
   
   
@@ -1194,7 +1031,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/ont/" class="md-nav__link">
+      <a href="../ont/" class="md-nav__link">
         
   
   
@@ -1219,10 +1056,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../configuration/methylation/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1238,6 +1102,125 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-branch-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the branch does
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mandatory-input-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mandatory input contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backend-restriction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend restriction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cns-example-sturgeon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CNS example: Sturgeon
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leukemia-example-marlin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Leukemia example: MARLIN
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gpu-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GPU behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-before-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate before running
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resume-and-force" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resume and force
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-and-status-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output and status files
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1250,7 +1233,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/pathology/" class="md-nav__link">
+      <a href="../pathology/" class="md-nav__link">
         
   
   
@@ -1278,7 +1261,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/refinement/" class="md-nav__link">
+      <a href="../refinement/" class="md-nav__link">
         
   
   
@@ -1306,7 +1289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/parameter_reference/" class="md-nav__link">
+      <a href="../parameter_reference/" class="md-nav__link">
         
   
   
@@ -1334,7 +1317,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../containers/" class="md-nav__link">
+      <a href="../../containers/" class="md-nav__link">
         
   
   
@@ -1362,7 +1345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../programs/" class="md-nav__link">
+      <a href="../../programs/" class="md-nav__link">
         
   
   
@@ -1451,7 +1434,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../outputs/" class="md-nav__link">
+      <a href="../../outputs/" class="md-nav__link">
         
   
   
@@ -1479,7 +1462,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models_pathology/" class="md-nav__link">
+      <a href="../../models_pathology/" class="md-nav__link">
         
   
   
@@ -1507,7 +1490,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gallery/" class="md-nav__link">
+      <a href="../../gallery/" class="md-nav__link">
         
   
   
@@ -1596,7 +1579,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../native_architecture/" class="md-nav__link">
+      <a href="../../native_architecture/" class="md-nav__link">
         
   
   
@@ -1624,7 +1607,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../parity_release/" class="md-nav__link">
+      <a href="../../parity_release/" class="md-nav__link">
         
   
   
@@ -1652,7 +1635,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../migration_v1_to_v2/" class="md-nav__link">
+      <a href="../../migration_v1_to_v2/" class="md-nav__link">
         
   
   
@@ -1680,7 +1663,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../legacy_v1/" class="md-nav__link">
+      <a href="../../legacy_v1/" class="md-nav__link">
         
   
   
@@ -1769,7 +1752,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1797,7 +1780,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../citation_research_use/" class="md-nav__link">
+      <a href="../../citation_research_use/" class="md-nav__link">
         
   
   
@@ -1825,7 +1808,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../developer_guide/" class="md-nav__link">
+      <a href="../../developer_guide/" class="md-nav__link">
         
   
   
@@ -1880,10 +1863,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recommended-project-tree" class="md-nav__link">
+  <a href="#what-the-branch-does" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recommended project tree
+        What the branch does
       
     </span>
   </a>
@@ -1891,10 +1874,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#reference-storage-safety" class="md-nav__link">
+  <a href="#mandatory-input-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reference storage safety
+        Mandatory input contract
       
     </span>
   </a>
@@ -1902,60 +1885,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#illumina-input" class="md-nav__link">
+  <a href="#backend-restriction" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina input
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Illumina input">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#automatic-sample-table" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Automatic sample table
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#supported-layouts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported layouts
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#manual-illumina-samplesheet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Manual Illumina samplesheet
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#illumina-normal-rows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Illumina normal rows
+        Backend restriction
       
     </span>
   </a>
@@ -1963,10 +1896,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ont-input" class="md-nav__link">
+  <a href="#cns-example-sturgeon" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ONT input
+        CNS example: Sturgeon
       
     </span>
   </a>
@@ -1974,10 +1907,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-pathology-csv" class="md-nav__link">
+  <a href="#leukemia-example-marlin" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optional pathology CSV
+        Leukemia example: MARLIN
       
     </span>
   </a>
@@ -1985,10 +1918,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pre-run-validation" class="md-nav__link">
+  <a href="#gpu-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pre-run validation
+        GPU behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-before-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate before running
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resume-and-force" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resume and force
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-and-status-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output and status files
       
     </span>
   </a>
@@ -2012,7 +1978,7 @@
 
 
   
-    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/inputs.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/configuration/methylation.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2020,185 +1986,137 @@
   
 
 
-<h1 id="input-files-and-folder-layouts">Input files and folder layouts<a class="headerlink" href="#input-files-and-folder-layouts" title="Permanent link">&para;</a></h1>
-<p>OncoTracer accepts Illumina single-end or paired-end FASTQs, ONT FASTQs grouped by barcode, and an optional matched pathology table. Automatic Setup is recommended because it validates names and creates the exact flat YAML required by the native engine.</p>
-<h2 id="recommended-project-tree">Recommended project tree<a class="headerlink" href="#recommended-project-tree" title="Permanent link">&para;</a></h2>
-<p>The installed executable may live in <code>/usr/local/bin</code>; the project itself can be anywhere on storage visible to the selected backend.</p>
-<div class="highlight"><pre><span></span><code>project/
-├── input/
-│   ├── illumina_fastq/
-│   │   ├── Patient_A_R1.fastq.gz
-│   │   ├── Patient_A_R2.fastq.gz
-│   │   ├── Patient_B_R1.fastq.gz
-│   │   ├── Patient_B_R2.fastq.gz
-│   │   ├── Control_A_R1.fastq.gz
-│   │   ├── Control_A_R2.fastq.gz
-│   │   ├── Control_B_R1.fastq.gz
-│   │   └── Control_B_R2.fastq.gz
-│   ├── fastq_pass/
-│   │   ├── barcode01/
-│   │   │   └── reads_001.fastq.gz
-│   │   └── barcode02/
-│   │       └── reads_001.fastq.gz
-│   ├── illumina_samples.csv
-│   ├── ont_samples.csv
-│   └── pathology.csv
-├── config/
-├── results/
-└── reference_cache/
+<h1 id="optional-ont-methylation-classification">Optional ONT methylation classification<a class="headerlink" href="#optional-ont-methylation-classification" title="Permanent link">&para;</a></h1>
+<p>OncoTracer can run an optional methylation branch for Oxford Nanopore Technologies (ONT) analyses. Choose Sturgeon for a CNS-tumor research classifier or MARLIN for a leukemia research classifier. OncoTracer does not infer the disease type: the user must select exactly one classifier explicitly.</p>
+<p>This branch is research-only. A methylation class is not a diagnosis and must be reviewed with morphology, immunophenotyping, cytogenetics, validated molecular assays, and the assay-specific quality controls.</p>
+<h2 id="what-the-branch-does">What the branch does<a class="headerlink" href="#what-the-branch-does" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>explicit POD5 directory + selected barcode FASTQ read IDs
+  -&gt; Dorado hg38 basecalling with an explicit 5mCG/5hmCG model
+  -&gt; one aligned modBAM, then one read-ID-filtered modBAM per sample
+  -&gt; Modkit conversion of 5hmC to 5mC at CpG sites
+  -&gt; deterministic CpG bedMethyl pileup
+  -&gt; stop this sample's methylation branch if zero usable modified-CpG calls
+  -&gt; Sturgeon (CNS) or MARLIN (leukemia) classification
 </code></pre></div>
-<p>Keep inputs, configuration, reference/cache, and results below a small number of absolute project roots. OncoTracer derives Docker and Singularity mounts from the YAML paths.</p>
-<h2 id="reference-storage-safety">Reference storage safety<a class="headerlink" href="#reference-storage-safety" title="Permanent link">&para;</a></h2>
-<p>OncoTracer recognizes an existing <code>references/samurai_hg38</code> directory as an external shared reference. It reads that directory but never downloads, rebuilds, repairs, or removes files there. The FASTA, FAI, sequence dictionary, BWA index, minimap2 index, immutable manifests, physical reader locks, and indexing-tool identities must all match the pinned native-v2 contract. A plain pre-existing FASTA/index directory without OncoTracer's <code>.oncotracer/locks/</code> and <code>.oncotracer/reference-index-provenance/</code> records is intentionally rejected: OncoTracer does not adopt or add metadata to an external reference. An incomplete, changed, or internally symlinked shared reference fails before analysis.</p>
-<p>If <code>references/samurai_hg38</code> does not exist, OncoTracer creates a marker-owned, content-addressed cache under <code>.oncotracer/reference-cache/</code>. Only that owned cache may be populated or transactionally rebuilt. The pinned ichorCNA hg38/500 kb assets follow the same rule: an existing <code>references/samurai_ichorcna_hg38_500kb</code> is read-only; otherwise verified assets are downloaded to the owned cache. The full five-file ichorCNA bundle is held under a shared reader lease and re-hashed before and after caller execution; owned-cache repair takes the corresponding exclusive lease.</p>
-<p>qDNAseq hg38 annotations also use a marker-owned cache below <code>.oncotracer/reference-cache/</code>. OncoTracer verifies an immutable upstream commit and source SHA-256, builds a complete three-file bundle in a private staging directory, and publishes one content-addressed generation atomically while holding a physical lock. It revalidates that generation before and after qDNAseq uses it. A legacy <code>.oncotracer/qdnaseq-bin-data</code> directory is never adopted, repaired, overwritten, or deleted.</p>
-<p>Do not copy an ownership marker into an unrelated or shared directory to make OncoTracer overwrite it.</p>
-<h2 id="illumina-input">Illumina input<a class="headerlink" href="#illumina-input" title="Permanent link">&para;</a></h2>
-<h3 id="automatic-sample-table">Automatic sample table<a class="headerlink" href="#automatic-sample-table" title="Permanent link">&para;</a></h3>
-<p>Create a two-column CSV:</p>
-<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_fastq"</span>
-
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_samples.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'CSV'</span>
-<span class="s">sample_name,status</span>
-<span class="s">Patient_A,TUMOR</span>
-<span class="s">Patient_B,TUMOR</span>
-<span class="s">Control_A,NORMAL</span>
-<span class="s">Control_B,NORMAL</span>
-<span class="s">CSV</span>
-</code></pre></div>
-<p>The sample name must match the filename stem before a supported read suffix such as <code>_R1</code>, <code>_R2</code>, <code>_1</code>, or <code>_2</code>.</p>
-<p>Generate the YAML and four-column samplesheet:</p>
-<div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_fastq"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_samples.csv"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results/illumina"</span>
-</code></pre></div>
-<h3 id="supported-layouts">Supported layouts<a class="headerlink" href="#supported-layouts" title="Permanent link">&para;</a></h3>
-<p>Paired-end:</p>
-<div class="highlight"><pre><span></span><code>Patient_A_R1.fastq.gz
-Patient_A_R2.fastq.gz
-Patient_B_R1.fastq.gz
-Patient_B_R2.fastq.gz
-</code></pre></div>
-<p>Single-end:</p>
-<div class="highlight"><pre><span></span><code>Patient_A.fastq.gz
-Patient_B.fastq.gz
-</code></pre></div>
-<p>Use one layout per analysis. Do not mix paired-end and single-end rows in the same generated samplesheet.</p>
-<h3 id="manual-illumina-samplesheet">Manual Illumina samplesheet<a class="headerlink" href="#manual-illumina-samplesheet" title="Permanent link">&para;</a></h3>
-<p>Use a manual samplesheet for unusual filenames:</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.samplesheet.csv"</span><span class="w"> </span><span class="s">&lt;&lt;CSV</span>
-<span class="s">sample,fastq_1,fastq_2,status</span>
-<span class="s">Patient_A,$PWD/project/input/illumina_fastq/Patient_A_R1.fastq.gz,$PWD/project/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor</span>
-<span class="s">Patient_B,$PWD/project/input/illumina_fastq/Patient_B_R1.fastq.gz,$PWD/project/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor</span>
-<span class="s">Control_A,$PWD/project/input/illumina_fastq/Control_A_R1.fastq.gz,$PWD/project/input/illumina_fastq/Control_A_R2.fastq.gz,normal</span>
-<span class="s">Control_B,$PWD/project/input/illumina_fastq/Control_B_R1.fastq.gz,$PWD/project/input/illumina_fastq/Control_B_R2.fastq.gz,normal</span>
-<span class="s">CSV</span>
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Column</th>
-<th>Required content</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>sample</code></td>
-<td>Unique sample ID using letters, digits, <code>.</code>, <code>_</code>, or <code>-</code></td>
-</tr>
-<tr>
-<td><code>fastq_1</code></td>
-<td>Absolute single-end or R1 FASTQ path</td>
-</tr>
-<tr>
-<td><code>fastq_2</code></td>
-<td>Absolute R2 path, or empty for every row in a single-end run</td>
-</tr>
-<tr>
-<td><code>status</code></td>
-<td><code>tumor</code> or <code>normal</code></td>
-</tr>
-</tbody>
-</table>
-<p>A manually written YAML then points to the samplesheet:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina</span>
-<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project</span>
-<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/results/illumina</span>
-<span class="nt">illumina_samplesheet</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/config/illumina.samplesheet.csv</span>
-<span class="nt">illumina_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
-<span class="nt">illumina_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
-<span class="nt">illumina_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
-</code></pre></div>
-<h2 id="illumina-normal-rows">Illumina normal rows<a class="headerlink" href="#illumina-normal-rows" title="Permanent link">&para;</a></h2>
-<p>Every samplesheet row is an analysis sample. The <code>normal</code> value records the
-submitted sample status, but does not make that row a reference input. Native
-qDNAseq analyzes normal and tumor rows independently and writes per-sample
-outputs for both. OncoTracer does not create a local panel from the normal rows.</p>
-<h2 id="ont-input">ONT input<a class="headerlink" href="#ont-input" title="Permanent link">&para;</a></h2>
-<p><code>ont_folder</code> is the parent of barcode directories:</p>
-<div class="highlight"><pre><span></span><code>project/input/fastq_pass/
-├── barcode01/
-│   ├── reads_001.fastq.gz
-│   └── reads_002.fastq.gz
-└── barcode02/
-    └── reads_001.fastq.gz
-</code></pre></div>
-<p>FASTQs may end in <code>.fastq</code>, <code>.fq</code>, <code>.fastq.gz</code>, or <code>.fq.gz</code> and should be placed directly inside each selected barcode directory.</p>
-<p>Create a mapping table:</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/ont_samples.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'CSV'</span>
-<span class="s">barcode,sample_name,status</span>
-<span class="s">barcode01,Patient_A,TUMOR</span>
-<span class="s">barcode02,Patient_B,TUMOR</span>
-<span class="s">CSV</span>
-
-oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/ont_samples.csv"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/ont"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results/ont"</span>
-</code></pre></div>
-<p>Manual YAML lists are positional:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/fastq_pass</span>
-<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
-<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A,Patient_B</span>
-</code></pre></div>
-<p>The two lists must have identical lengths and order.</p>
-<h2 id="optional-pathology-csv">Optional pathology CSV<a class="headerlink" href="#optional-pathology-csv" title="Permanent link">&para;</a></h2>
-<p>A matched pathology table needs a sequencing sample identifier, case identifier, and diagnosis text:</p>
-<div class="highlight"><pre><span></span><code>illumina_sample_id,case_code,final_diagnosis
-Patient_A,Case_001,Diffuse large B-cell lymphoma
-Patient_B,Case_002,Reactive lymphoid tissue
-</code></pre></div>
-<p>Flat YAML:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">pathology_csv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/pathology.csv</span>
-<span class="nt">pathology_sample_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">illumina_sample_id</span>
-<span class="nt">pathology_case_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case_code</span>
-<span class="nt">pathology_diagnosis_col</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_diagnosis</span>
-<span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</code></pre></div>
-<p>The sample identifier must match the sequencing sample exactly. Do not commit identifiable clinical data to a public repository.</p>
-<h2 id="pre-run-validation">Pre-run validation<a class="headerlink" href="#pre-run-validation" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_fastq/Patient_A_R1.fastq.gz"</span>
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/illumina_fastq/Patient_A_R2.fastq.gz"</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,20p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina/illumina.samplesheet.csv"</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,160p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina/illumina.auto.yml"</span>
-</code></pre></div>
-<p>Confirm that:</p>
+<p>Methylation starts before the CNA branch. The two outcomes are independent:</p>
 <ul>
-<li>every path is absolute;</li>
-<li>FASTQs are non-empty and compressed files pass <code>gzip -t</code>;</li>
-<li>R1 and R2 belong to the same sample;</li>
-<li>all Illumina samples use one layout;</li>
-<li>every tumor/normal status matches the intended sample identity;</li>
-<li>ONT barcode and sample lists align positionally;</li>
-<li>sample names are unique and match pathology identifiers;</li>
-<li>the result directory is dedicated to the experiment.</li>
+<li>if methylation fails or has no usable modified-CpG calls, CNA still runs;</li>
+<li>if CNA fails, a completed methylation result remains available;</li>
+<li>the final summary records both statuses and returns nonzero when a requested branch is incomplete.</li>
 </ul>
+<p>No classifier is launched for a sample with zero usable modified-CpG calls. Its status is <code>no_cpg_modifications</code>, not a fabricated negative classification.</p>
+<h2 id="mandatory-input-contract">Mandatory input contract<a class="headerlink" href="#mandatory-input-contract" title="Permanent link">&para;</a></h2>
+<p>The command always requires an explicit non-empty POD5 directory:</p>
+<div class="highlight"><pre><span></span><code>--pod5-dir /absolute/path/to/pod5_pass
+</code></pre></div>
+<p>OncoTracer never searches the server for POD5 data. It rejects symlinks anywhere in the explicit POD5 tree, rejects empty POD5 files, and requires at least one regular non-empty <code>.pod5</code> file. The POD5 data must correspond to the read IDs in the selected <code>ont_folder</code> barcode FASTQs; those FASTQs define the sample-to-read mapping.</p>
+<p>Also provide:</p>
+<ul>
+<li>an hg38 FASTA through the normal OncoTracer reference route;</li>
+<li>a local Dorado executable;</li>
+<li>a local Modkit executable;</li>
+<li>an explicit Dorado basecalling-model directory;</li>
+<li>an explicit, compatible Dorado 5mCG/5hmCG model directory;</li>
+<li>classifier-specific executable/model/probe resources and exact SHA-256 values.</li>
+</ul>
+<p>OncoTracer does not download, install, discover, or update these optional resources. It writes only below <code>&lt;outdir&gt;/07_methylation/</code>; it never indexes or modifies the source POD5/FASTQ directories.</p>
+<h2 id="backend-restriction">Backend restriction<a class="headerlink" href="#backend-restriction" title="Permanent link">&para;</a></h2>
+<p>Use <code>host</code>, <code>conda</code>, or <code>poetry</code> with explicit local executable/resource paths. The v2.0.0 Docker and Singularity/Apptainer image deliberately does not redistribute Dorado, Sturgeon, their models, or user-licensed classifier resources, so the CLI rejects optional methylation with those container backends.</p>
+<h2 id="cns-example-sturgeon">CNS example: Sturgeon<a class="headerlink" href="#cns-example-sturgeon" title="Permanent link">&para;</a></h2>
+<p>Add the resource fields below to the same flat ONT YAML. Replace every path and SHA-256 with the exact local value:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">methylation_dorado_executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/ont/dorado/bin/dorado</span>
+<span class="nt">methylation_modkit_executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/ont/modkit/bin/modkit</span>
+<span class="nt">methylation_samtools_executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/usr/bin/samtools</span>
+<span class="nt">methylation_dorado_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/ont/models/dna_r10.4.1_e8.2_400bps_sup</span>
+<span class="nt">methylation_dorado_model_sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replace_with_model_tree_sha256</span>
+<span class="nt">methylation_dorado_modbase_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/ont/models/dna_r10.4.1_e8.2_400bps_sup_5mCG_5hmCG</span>
+<span class="nt">methylation_dorado_modbase_model_sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replace_with_modbase_model_tree_sha256</span>
+
+<span class="nt">sturgeon_interface_contract_commit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4c742ddea49b0077a8f8ff3d99daafb238d00706</span>
+<span class="nt">sturgeon_license_acknowledged</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">sturgeon_executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/sturgeon/bin/sturgeon</span>
+<span class="nt">sturgeon_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/sturgeon/models/general.zip</span>
+<span class="nt">sturgeon_model_sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replace_with_64_character_sha256</span>
+<span class="nt">sturgeon_probes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/sturgeon/probes/probes_hg38.bed</span>
+<span class="nt">sturgeon_probes_sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replace_with_64_character_sha256</span>
+</code></pre></div>
+<p>Then run:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/ont.yml"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--methylation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sturgeon<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pod5-dir<span class="w"> </span>/absolute/path/to/pod5_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--gpu
+</code></pre></div>
+<p>Sturgeon is not distributed by OncoTracer. The pinned commit above identifies the upstream interface contract against which this adapter was developed; it does <strong>not</strong> authenticate the source of the separately installed Sturgeon package. OncoTracer records the explicit external launcher path and SHA-256 and marks its installed source as unauthenticated. The user must separately obtain, install, and accept the applicable Sturgeon license. <code>sturgeon_license_acknowledged: true</code> is an explicit user attestation; it does not grant or replace that license.</p>
+<h2 id="leukemia-example-marlin">Leukemia example: MARLIN<a class="headerlink" href="#leukemia-example-marlin" title="Permanent link">&para;</a></h2>
+<p>Use the same Dorado/Modkit fields and add:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">marlin_interface_contract_commit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37c9836cc325ff2edccbdff06736604163db2c15</span>
+<span class="nt">marlin_rscript</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/marlin/bin/Rscript</span>
+<span class="nt">marlin_python</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/marlin/bin/python</span>
+<span class="nt">marlin_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/marlin/assets/MARLIN_model.h5</span>
+<span class="nt">marlin_model_sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replace_with_64_character_sha256</span>
+<span class="nt">marlin_features</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/marlin/assets/features.RData</span>
+<span class="nt">marlin_features_sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replace_with_64_character_sha256</span>
+<span class="nt">marlin_class_annotations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/marlin/assets/class_annotations.xlsx</span>
+<span class="nt">marlin_class_annotations_sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replace_with_64_character_sha256</span>
+<span class="nt">marlin_probe_bed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/opt/marlin/assets/MARLIN_probes_hg38.bed</span>
+<span class="nt">marlin_probe_bed_sha256</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">replace_with_64_character_sha256</span>
+</code></pre></div>
+<p>Then run:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/ont.yml"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--methylation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--marlin<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pod5-dir<span class="w"> </span>/absolute/path/to/pod5_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--gpu
+</code></pre></div>
+<p>The explicit Python must already provide <code>h5py</code>, NumPy, and TensorFlow. OncoTracer disables reticulate's managed environments and offline-locks its cache, so a missing dependency fails before POD5 basecalling instead of triggering a download. The native adapter preserves the preprocessing defined by the supported MARLIN interface-contract commit: per-probe beta is modified coverage divided by valid coverage; model features are ordered exactly, binarized at beta <code>0.5</code>, and uncovered features remain zero. OncoTracer does not alter classifier thresholds.</p>
+<p>The adapted MARLIN preprocessing code retains its upstream MIT terms; the complete copyright and permission notice is shipped in the executable payload as <code>bin/scripts/MARLIN-MIT-LICENSE.txt</code>.</p>
+<h2 id="gpu-behavior">GPU behavior<a class="headerlink" href="#gpu-behavior" title="Permanent link">&para;</a></h2>
+<p><code>--gpu</code> selects <code>cuda:all</code> for Dorado modified-base basecalling. It also makes the GPU visible to the external MARLIN R/Keras process; whether MARLIN uses it depends on that user-supplied environment. Modkit and Sturgeon do not gain GPU acceleration from this flag and remain CPU-threaded.</p>
+<p>Without <code>--gpu</code>, Dorado is forced to <code>cpu</code>, MARLIN receives no visible GPU, and all methylation tools run without GPU access. The selected device and executable hashes are written to methylation provenance.</p>
+<h2 id="validate-before-running">Validate before running<a class="headerlink" href="#validate-before-running" title="Permanent link">&para;</a></h2>
+<p>Compute exact file hashes with:</p>
+<div class="highlight"><pre><span></span><code>sha256sum<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/absolute/path/to/classifier-model<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/absolute/path/to/classifier-probes
+</code></pre></div>
+<p>Dorado model directories use an OncoTracer tree digest over sorted relative paths and file contents. Omit the two optional Dorado expected-tree hash fields on the first dry-run, copy the reported <code>asset_sha256</code> values from the JSON plan, then place those exact values in the YAML for the real run.</p>
+<p>Run a side-effect-free validation first:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/ont.yml"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--methylation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sturgeon<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pod5-dir<span class="w"> </span>/absolute/path/to/pod5_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--gpu<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run
+</code></pre></div>
+<p>The dry-run scans and hashes only the explicitly supplied inputs, prints the methylation-before-CNA plan, and creates no output, environment, image, model, or persistent configuration.</p>
+<h2 id="resume-and-force">Resume and force<a class="headerlink" href="#resume-and-force" title="Permanent link">&para;</a></h2>
+<p>Repeat the identical command to reuse content-matched Dorado, Modkit, and classifier outputs. Read-ID manifests are written deterministically so their timestamps remain stable when content is unchanged.</p>
+<p>Use <code>--force</code> only to deliberately invalidate these outputs. For a different POD5 set, model, classifier, reference, or biological analysis, use a new <code>outdir</code>.</p>
+<h2 id="output-and-status-files">Output and status files<a class="headerlink" href="#output-and-status-files" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>07_methylation/
+├── read_ids/
+├── modbam/
+├── bedmethyl/
+├── sturgeon/ or marlin/
+├── logs/
+├── sample_status/
+├── methylation_status.json
+└── methylation_provenance.json
+</code></pre></div>
+<p><code>methylation_status.json</code> reports each sample as <code>complete</code>, <code>no_cpg_modifications</code>, or <code>failed</code>. <code>methylation_provenance.json</code> records the explicit POD5 inventory digest, device choice, supported classifier interface-contract commit, external-runtime disclosure, executable SHA-256 values, resource SHA-256 values, and final status. The interface commit is not an assertion about the installed external package's source. Review these files before interpreting any prediction.</p>
 
 
 
@@ -2254,10 +2172,10 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,160p'</
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit", "navigation.tabs", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "content.code.copy", "content.action.edit", "navigation.tabs", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

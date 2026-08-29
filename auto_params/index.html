@@ -256,7 +256,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -639,10 +639,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-normal-controls-are-handled" class="md-nav__link">
+  <a href="#how-normal-samples-are-handled" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How normal controls are handled
+        How NORMAL samples are handled
       
     </span>
   </a>
@@ -1015,14 +1015,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1224,6 +1224,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1885,10 +1913,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-normal-controls-are-handled" class="md-nav__link">
+  <a href="#how-normal-samples-are-handled" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How normal controls are handled
+        How NORMAL samples are handled
       
     </span>
   </a>
@@ -2061,11 +2089,11 @@ CONTROL_01,NORMAL
 CONTROL_02,NORMAL
 </code></pre></div>
 <p>The following block is copy/paste ready and preserves the caller's working directory:</p>
-<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'CSV'</span>
 <span class="s">sample_name,status</span>
 <span class="s">TUMOR_01,TUMOR</span>
 <span class="s">TUMOR_02,TUMOR</span>
@@ -2075,33 +2103,27 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 
 oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,40p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.samplesheet.csv&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/auto_params_manifest.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,160p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,40p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.samplesheet.csv"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/auto_params_manifest.tsv"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <p>Automatic Setup writes absolute paths so that Docker and Singularity/Apptainer can mount the project consistently.</p>
-<h2 id="how-normal-controls-are-handled">How normal controls are handled<a class="headerlink" href="#how-normal-controls-are-handled" title="Permanent link">&para;</a></h2>
-<p>Normal rows are explicit qDNAseq reference inputs:</p>
-<ul>
-<li><strong>Zero normal rows run without a local panel.</strong></li>
-<li><strong>Exactly one normal is rejected.</strong></li>
-<li><strong>Two or more normals build and apply</strong> a local median-log₂ qDNAseq panel.</li>
-<li>Normal samples remain reference and quality-control inputs; <strong>tumor samples are exported downstream</strong> to CNA codification, plots, and optional classifier reports.</li>
-</ul>
-<p>Inspect the generated YAML for:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CONTROL_01,CONTROL_02</span>
-<span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-</code></pre></div>
-<p>For a study requiring four controls, edit <code>illumina_pon_min_normals: 4</code> before running.</p>
+<h2 id="how-normal-samples-are-handled">How NORMAL samples are handled<a class="headerlink" href="#how-normal-samples-are-handled" title="Permanent link">&para;</a></h2>
+<p>Normal rows are ordinary, independently analyzed qDNAseq samples. Automatic
+Setup preserves their <code>normal</code> status in <code>illumina.samplesheet.csv</code>.
+It does not pool them, construct a sample-derived reference, or apply their
+signal to the tumor rows. NORMAL-only and mixed cohorts are valid; every row is
+processed as its own sample.</p>
+<p>Inspect the generated samplesheet and manifest to confirm the intended role and
+identity of every sample. The generated YAML contains no local-panel settings.</p>
 <h2 id="what-automatic-setup-creates-for-illumina">What Automatic Setup creates for Illumina<a class="headerlink" href="#what-automatic-setup-creates-for-illumina" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>project/config/
 ├── auto_params_manifest.tsv
@@ -2153,11 +2175,11 @@ barcode01,PATIENT_A,TUMOR
 barcode02,PATIENT_B,TUMOR
 </code></pre></div>
 <p>Generate and run:</p>
-<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/ont&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results/ont&quot;</span>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/ont"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results/ont"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass/samples.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'CSV'</span>
 <span class="s">barcode,sample_name,status</span>
 <span class="s">barcode01,PATIENT_A,TUMOR</span>
 <span class="s">barcode02,PATIENT_B,TUMOR</span>
@@ -2165,15 +2187,15 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 
 oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/ont&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results/ont&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/ont"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results/ont"</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/ont/ont.auto.yml&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,160p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/ont/ont.auto.yml"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/ont/ont.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/ont/ont.auto.yml"</span>
 </code></pre></div>
 <p>The generated ONT YAML records positional barcode and sample lists:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
@@ -2184,10 +2206,10 @@ oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span clas
 <p>Add <code>--run-cna-classifier</code> during generation:</p>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--run-cna-classifier
 </code></pre></div>
 <p>Then inspect or extend the flat YAML:</p>
@@ -2202,32 +2224,34 @@ oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span clas
 <h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="poetry">Poetry<a class="headerlink" href="#poetry" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<div class="highlight"><pre><span></span><code>./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--prefix<span class="w"> </span>/path/to/my/oncotracer-v2-dev-envs
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <p>The YAML is backend-independent. Do not generate separate YAMLs for Conda and containers.</p>
 <h2 id="inspect-before-starting-the-analysis">Inspect before starting the analysis<a class="headerlink" href="#inspect-before-starting-the-analysis" title="Permanent link">&para;</a></h2>
 <p>Confirm:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;^(mode|lpwgs_root|outdir|illumina_samplesheet):&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq/TUMOR_01_R1.fastq.gz&quot;</span>
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq/TUMOR_01_R2.fastq.gz&quot;</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
+grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^(mode|lpwgs_root|outdir|illumina_samplesheet):'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq/TUMOR_01_R1.fastq.gz"</span>
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq/TUMOR_01_R2.fastq.gz"</span>
 </code></pre></div>
 <p>Also check that:</p>
 <ul>
@@ -2235,13 +2259,13 @@ gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</s
 <li>R1 and R2 are paired correctly;</li>
 <li>every configured path is absolute;</li>
 <li>the result directory is appropriate for this study;</li>
-<li>normal-control counts match the intended panel design;</li>
+<li>every submitted tumor/normal status matches the intended sample identity;</li>
 <li>pathology identifiers, when supplied, match sequencing IDs exactly.</li>
 </ul>
 <h2 id="dry-run-and-resume">Dry-run and resume<a class="headerlink" href="#dry-run-and-resume" title="Permanent link">&para;</a></h2>
 <p>Use <code>--dry-run</code> to inspect the native commands without executing scientific tools:</p>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 </code></pre></div>
 <p>Repeat the normal run command to resume. The native stage ledger reuses content-matched completed work automatically.</p>

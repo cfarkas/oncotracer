@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1036,6 +1036,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1355,10 +1383,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#illumina-local-panel-of-normals" class="md-nav__link">
+  <a href="#independent-tumor-and-normal-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina local panel of normals
+        Independent tumor and normal outputs
       
     </span>
   </a>
@@ -1383,6 +1411,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-07-optional-ont-methylation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 07: optional ONT methylation
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1893,10 +1932,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#illumina-local-panel-of-normals" class="md-nav__link">
+  <a href="#independent-tumor-and-normal-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Illumina local panel of normals
+        Independent tumor and normal outputs
       
     </span>
   </a>
@@ -1921,6 +1960,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stage-07-optional-ont-methylation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 07: optional ONT methylation
+      
+    </span>
+  </a>
   
 </li>
       
@@ -2005,11 +2055,11 @@
 
 
 <h1 id="output-files">Output files<a class="headerlink" href="#output-files" title="Permanent link">&para;</a></h1>
-<p>Every run writes a numbered directory tree under the YAML <code>outdir</code>. Start with the summary, then move from the upstream caller through refined segments, final tables, and plots.</p>
+<p>Every run writes a numbered directory tree under the YAML <code>outdir</code>. OncoTracer claims only an absent or empty directory, records its exact runtime ownership in <code>.oncotracer-native/output-owner.json</code>, and prevents concurrent writers with an exclusive run lock. Resume and <code>--force</code> require that owner record to match; an existing nonempty unowned tree is preserved and rejected. Start with the summary, then move from the upstream caller through refined segments, final tables, and plots.</p>
 <p>Set one shell variable so the commands below are easy to reuse:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/runs/my_first_run&quot;</span><span class="w"> </span><span class="c1"># replace this with the exact outdir from your YAML</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/runs/my_first_run"</span><span class="w"> </span><span class="c1"># replace this with the exact outdir from your YAML</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt"</span>
 </code></pre></div>
 <p>If <code>cat</code> says the file does not exist, either the run has not finished or <code>OUT</code> does not match the YAML.</p>
 <h2 id="which-result-is-authoritative">Which result is authoritative?<a class="headerlink" href="#which-result-is-authoritative" title="Permanent link">&para;</a></h2>
@@ -2052,147 +2102,83 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</
 <td>Where are the important folders?</td>
 <td>Index/pointer file, not a scientific result</td>
 </tr>
+<tr>
+<td><code>07_methylation/</code></td>
+<td>What optional ONT modified-base/classifier result and provenance were produced?</td>
+<td>Independent optional research result; review its status before predictions</td>
+</tr>
 </tbody>
 </table>
 <p>Do not report temporary alignment/caller intermediates or <code>.oncotracer-native/</code> ledger files as scientific results. Preserve the ledger and trace for audit, but use the numbered stage-02/03 outputs for exact scientific values.</p>
 <h2 id="stage-01-alignment-and-initial-caller">Stage 01: alignment and initial caller<a class="headerlink" href="#stage-01-alignment-and-initial-caller" title="Permanent link">&para;</a></h2>
 <h3 id="illumina">Illumina<a class="headerlink" href="#illumina" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,80p&#39;</span><span class="w"> </span><span class="c1"># inventory</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq/all_segments.seg&quot;</span><span class="w">          </span><span class="c1"># initial qDNAseq segments</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/alignment&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.bam&#39;</span><span class="w"> </span>-print<span class="w"> </span><span class="c1"># aligned BAMs</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,80p'</span><span class="w"> </span><span class="c1"># inventory</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,8p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq/all_segments.seg"</span><span class="w">          </span><span class="c1"># initial qDNAseq segments</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/alignment"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">'*.bam'</span><span class="w"> </span>-print<span class="w"> </span><span class="c1"># aligned BAMs</span>
 </code></pre></div>
 <p>Useful quality-control files include <code>fastqc/</code>, <code>multiqc/</code>, <code>picard/</code>, and <code>pipeline_info/</code>. Open the MultiQC HTML on a workstation before interpreting CNA calls.</p>
-<h4 id="illumina-local-panel-of-normals">Illumina local panel of normals<a class="headerlink" href="#illumina-local-panel-of-normals" title="Permanent link">&para;</a></h4>
-<p>When <code>illumina_build_pon: true</code>, OncoTracer constructs a robust run-local
-qDNAseq reference from at least two selected <code>NORMAL</code> samples. For each matched
-genomic bin, the reference signal is the median normal log2 value. OncoTracer
-then subtracts that reference from each tumor profile and calls the corrected
-segments. Only <code>TUMOR</code> samples are written to the corrected bin, segment,
-combined-segment, and plot outputs; the controls remain reference inputs.</p>
-<p>Normal alignments and key panel artifacts are kept under the Illumina stage:</p>
-<div class="highlight"><pre><span></span><code>01_samurai_illumina/
-├── logs/
-│   └── normal_panel_manifest.tsv
-├── pon_alignment/
-└── qdnaseq_local_pon/
-    ├── all_segments.seg
-    ├── all_calls.seg
-    ├── all_tumors.qdnaseq_pon_corrected_bins.tsv
-    ├── qdnaseq_local_pon_summary.tsv
-    ├── qdnaseq_local_pon_versions.tsv
-    ├── qdnaseq_local_pon.done
-    ├── bins/
-    │   └── &lt;tumor&gt;_markdup_bins.bed
-    ├── segments/
-    │   ├── &lt;tumor&gt;_.seg
-    │   └── &lt;tumor&gt;.calls.seg
-    ├── pon/
-    │   ├── normal_panel_manifest.tsv
-    │   └── &lt;PON&gt;.reference_bins.tsv
-    ├── qc/
-    │   ├── sample_qc.tsv
-    │   └── normal_panel_sample_qc.tsv
-    ├── rds/
-    │   ├── &lt;PON&gt;.*.rds
-    │   └── &lt;tumor&gt;.qdnaseq_pon_corrected.segmented.rds
-    └── plots/
-        └── &lt;tumor&gt;.qdnaseq_pon_corrected_segment_plot.pdf
+<h4 id="independent-tumor-and-normal-outputs">Independent tumor and normal outputs<a class="headerlink" href="#independent-tumor-and-normal-outputs" title="Permanent link">&para;</a></h4>
+<p>Native qDNAseq writes one set of files for every QC-valid samplesheet row,
+including rows marked <code>normal</code>:</p>
+<div class="highlight"><pre><span></span><code>01_samurai_illumina/qdnaseq/
+├── all_segments.seg
+├── all_calls.seg
+├── qdnaseq_sample_status.json
+├── qdnaseq_summary_mqc.txt
+├── bins/
+│   └── &lt;sample&gt;_markdup_bins.bed
+├── segments/
+│   ├── &lt;sample&gt;_.seg
+│   └── &lt;sample&gt;.calls.seg
+└── plots/
+    └── &lt;sample&gt;_markdup_segment_plot.pdf
 </code></pre></div>
-<p><code>&lt;PON&gt;</code> is the value of <code>illumina_pon_name</code>, whose default is
-<code>illumina_local_PoN</code>.</p>
-<table>
-<thead>
-<tr>
-<th>Artifact</th>
-<th>What to audit</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>pon/normal_panel_manifest.tsv</code></td>
-<td>Exact controls requested and used to construct the panel. The stable copy in <code>logs/</code> remains easy to find with the other run provenance.</td>
-</tr>
-<tr>
-<td><code>pon/&lt;PON&gt;.reference_bins.tsv</code></td>
-<td>Per-bin robust normal reference used for correction.</td>
-</tr>
-<tr>
-<td><code>qc/normal_panel_sample_qc.tsv</code></td>
-<td>Leave-one-out stability QC: each normal is compared with the median reference from the other <code>N-1</code> controls.</td>
-</tr>
-<tr>
-<td><code>qc/sample_qc.tsv</code></td>
-<td>Per-sample correction/calling QC.</td>
-</tr>
-<tr>
-<td><code>qdnaseq_local_pon_summary.tsv</code></td>
-<td>Cohort-level panel and tumor-processing summary.</td>
-</tr>
-<tr>
-<td><code>qdnaseq_local_pon_versions.tsv</code></td>
-<td>Runtime and package provenance.</td>
-</tr>
-<tr>
-<td><code>all_tumors.qdnaseq_pon_corrected_bins.tsv</code></td>
-<td>Combined corrected qDNAseq bin values for tumors only.</td>
-</tr>
-<tr>
-<td><code>segments/&lt;tumor&gt;_.seg</code></td>
-<td>Per-tumor SAMURAI-compatible corrected segments.</td>
-</tr>
-<tr>
-<td><code>segments/&lt;tumor&gt;.calls.seg</code></td>
-<td>Per-tumor corrected segments with discrete qDNAseq calls.</td>
-</tr>
-<tr>
-<td><code>all_segments.seg</code></td>
-<td>Combined corrected segments for tumors only.</td>
-</tr>
-<tr>
-<td><code>all_calls.seg</code></td>
-<td>Combined tumor-only segments with discrete qDNAseq calls.</td>
-</tr>
-<tr>
-<td><code>qdnaseq_local_pon.done</code></td>
-<td>Completion marker written last after validation; its exact successful content is <code>QDNASEQ_LOCAL_PON_SUCCESS</code>.</td>
-</tr>
-</tbody>
-</table>
-<p>Inspect the panel before using its CNA calls:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-<span class="nv">PON</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq_local_pon&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/logs/normal_panel_manifest.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/illumina_local_PoN.reference_bins.tsv&quot;</span><span class="w"> </span><span class="c1"># change name if configured</span>
-<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;QDNASEQ_LOCAL_PON_SUCCESS&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qc/normal_panel_sample_qc.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon_summary.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/all_segments.seg&quot;</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/bins&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/segments&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+<p>The samplesheet preserves whether each input was submitted as <code>tumor</code> or
+<code>normal</code>. That status does not pool, average, or subtract samples: no local
+sample-derived panel is created. Audit independent completion as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">SHEET</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.samplesheet.csv"</span>
+<span class="nv">QDNA</span><span class="o">=</span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq"</span>
+
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$SHEET</span><span class="s2">"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/qdnaseq_sample_status.json"</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/bins"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/segments"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/plots"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 </code></pre></div>
-<p>At the start of panel generation, OncoTracer invalidates any prior
-<code>qdnaseq_local_pon.done</code> marker. The helper writes results directly into the
-output directory and publishes that marker last; the wrapper then verifies the
-manifest and tumor-only outputs. A failed or interrupted run can leave partial
-files, but it cannot appear complete. Do not consume those files unless the
-new <code>.done</code> marker contains exactly <code>QDNASEQ_LOCAL_PON_SUCCESS</code> and the
-manifest, reference, QC, and tumor outputs are all present.</p>
+<p><code>qdnaseq_sample_status.json</code> is authoritative for caller completeness. A
+failed or mathematically invalid sample is recorded there and excluded from
+aggregate tables without being repurposed as a reference for the remaining
+samples.</p>
 <h3 id="ont">ONT<a class="headerlink" href="#ont" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,100p&#39;</span><span class="w"> </span><span class="c1"># inventory</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,80p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/logs/run_summary.txt&quot;</span><span class="w">               </span><span class="c1"># used/skipped barcode summary</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/results/ichorcna/segments_logR_corrected_gistic.seg&quot;</span><span class="w"> </span><span class="c1"># initial ichorCNA segments</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/bam&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.bam&#39;</span><span class="w"> </span>-print<span class="w">        </span><span class="c1"># aligned BAMs</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,100p'</span><span class="w"> </span><span class="c1"># inventory</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,80p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/logs/run_summary.txt"</span><span class="w">               </span><span class="c1"># used/skipped barcode summary</span>
+<span class="k">if</span><span class="w"> </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/results/ichorcna/ichorcna_sample_status.json"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span>cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/results/ichorcna/ichorcna_sample_status.json"</span><span class="w"> </span><span class="c1"># ichorCNA status</span>
+<span class="w">  </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,8p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/results/ichorcna/segments_logR_corrected_gistic.seg"</span>
+<span class="k">fi</span>
+<span class="k">if</span><span class="w"> </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/qdnaseq/all_segments.seg"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span>cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/qdnaseq/qdnaseq_sample_status.json"</span><span class="w">        </span><span class="c1"># qDNAseq status</span>
+<span class="w">  </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,8p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/qdnaseq/all_segments.seg"</span><span class="w">          </span><span class="c1"># qDNAseq segments</span>
+<span class="k">fi</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_ont/bam"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">'*.bam'</span><span class="w"> </span>-print<span class="w">        </span><span class="c1"># aligned BAMs</span>
 </code></pre></div>
+<p>For ichorCNA, <code>ichorcna_sample_status.json</code> is authoritative for caller completeness. For qDNAseq, the equivalent record is <code>qdnaseq_sample_status.json</code>. A failed or mathematically invalid sample is recorded there and excluded from aggregate caller tables and downstream reports; later viable samples continue. <code>workflow_summary.json</code> reports <code>partial_failure</code> and lists both completed and failed samples. Nested partial caller files remain available for diagnosis but are not published as complete top-level inputs. For solid-biopsy qDNAseq, use a separate <code>outdir</code>; its initial caller output is <code>01_samurai_ont/qdnaseq/</code>.</p>
 <p>Also inspect <code>logs/used_fastq.tsv</code>, <code>logs/skipped_fastq.tsv</code>, <code>logs/skipped_samples.tsv</code>, and <code>logs/warning_samples.tsv</code>. A completed workflow can still contain a skipped barcode warning that matters scientifically.</p>
-<h2 id="stage-02-refined-segmentation">Stage 02: refined segmentation<a class="headerlink" href="#stage-02-refined-segmentation" title="Permanent link">&para;</a></h2>
-<p>The dataset subdirectory is normally <code>illumina_qdnaseq_100kb</code> or <code>ONT_ichorcna_500kb</code>, depending on the YAML. List it rather than guessing:</p>
+<h2 id="stage-07-optional-ont-methylation">Stage 07: optional ONT methylation<a class="headerlink" href="#stage-07-optional-ont-methylation" title="Permanent link">&para;</a></h2>
+<p>This directory exists only when optional POD5 methylation was requested:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/02_bam_refinement&quot;</span><span class="w"> </span>-mindepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span>/02_bam_refinement/*/04_final_results/final_segments.tsv
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span>/02_bam_refinement/*/01_tables/boundary_refinement_statistics.csv
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/07_methylation/methylation_status.json"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/07_methylation/methylation_provenance.json"</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/07_methylation"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,120p'</span>
+</code></pre></div>
+<p>Start with <code>methylation_status.json</code>. Each sample is <code>complete</code>, <code>no_cpg_modifications</code>, or <code>failed</code>. A zero-call sample is not sent to Sturgeon or MARLIN. <code>methylation_provenance.json</code> records the explicit POD5 inventory digest, executable and resource hashes, Dorado device, and the tested classifier interface-contract commit. It explicitly marks the classifier runtime as external and its installed source as unauthenticated; the commit is not installed-package identity.</p>
+<p>Methylation and CNA are independent branches: stage 07 remains valid when CNA fails, and stages 01–06 may remain valid when methylation is incomplete. In either partial case, the final command exits nonzero and <code>workflow_summary.json</code> records <code>cna_status</code>, <code>methylation_status</code>, and the relevant sample lists. Do not present a missing classifier output as a negative classification.</p>
+<h2 id="stage-02-refined-segmentation">Stage 02: refined segmentation<a class="headerlink" href="#stage-02-refined-segmentation" title="Permanent link">&para;</a></h2>
+<p>The dataset subdirectory is normally <code>illumina_qdnaseq_100kb</code>, <code>ONT_ichorcna_500kb</code>, or an explicit ONT qDNAseq name such as <code>ONT_qdnaseq_100kb</code>, depending on the YAML. List it rather than guessing:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/02_bam_refinement"</span><span class="w"> </span>-mindepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,8p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">"</span>/02_bam_refinement/*/04_final_results/final_segments.tsv
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,8p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">"</span>/02_bam_refinement/*/01_tables/boundary_refinement_statistics.csv
 </code></pre></div>
 <p>Use <code>04_final_results/final_segments.tsv</code> as the primary refined segment table. <code>01_tables/</code> and <code>03_consolidated/</code> preserve detailed calculations and comparisons for audit. <code>02_samurai_compatible/</code> is an interoperability representation, not a second independent call set.</p>
 <p>Key files:</p>
@@ -2228,9 +2214,9 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&
 </table>
 <h2 id="stage-03-final-cna-tables">Stage 03: final CNA tables<a class="headerlink" href="#stage-03-final-cna-tables" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv&quot;</span>
-wc<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,12p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,12p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv"</span>
+wc<span class="w"> </span>-l<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv"</span>
 </code></pre></div>
 <ul>
 <li><code>cna_events.tsv</code> is the main event-level result for downstream analysis.</li>
@@ -2240,26 +2226,26 @@ wc<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;</spa
 <p>A table containing only a header can be a valid CNA-flat result; confirm the sample in the notation/QC outputs rather than assuming the workflow failed.</p>
 <h2 id="stage-04-plots">Stage 04: plots<a class="headerlink" href="#stage-04-plots" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
-xdg-open<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_per_sample_pages.pdf&quot;</span><span class="w">                  </span><span class="c1"># one page per sample</span>
-xdg-open<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf&quot;</span><span class="w">   </span><span class="c1"># cohort profiles</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+xdg-open<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_per_sample_pages.pdf"</span><span class="w">                  </span><span class="c1"># one page per sample</span>
+xdg-open<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf"</span><span class="w">   </span><span class="c1"># cohort profiles</span>
 </code></pre></div>
 <p>On a headless server, copy PDFs to your workstation. Common outputs include genome overview, event burden/counts, recurrent cytobands, gene-panel frequency, per-sample pages, and log2-ratio profiles. PNG/SVG files are convenient for slides; the TSV tables remain the source for exact values.</p>
 <h2 id="stage-05-optional-classifier-and-pathology">Stage 05: optional classifier and pathology<a class="headerlink" href="#stage-05-optional-classifier-and-pathology" title="Permanent link">&para;</a></h2>
 <p>This directory exists only when <code>run_cna_classifier: true</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/02_classification/cna_patient_classification.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/06_knowledge/sample_knowledge_summary.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,8p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/07_pathology/pathology_concordance.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,8p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/02_classification/cna_patient_classification.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,8p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/06_knowledge/sample_knowledge_summary.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,8p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/07_pathology/pathology_concordance.tsv"</span>
 </code></pre></div>
 <p>Read <a href="../models_pathology/">Models and pathology</a> before interpreting these files. They are research interpretations derived from stage 03, not replacements for the underlying event table or for diagnostic review.</p>
 <h2 id="confirm-a-run-before-sharing-it">Confirm a run before sharing it<a class="headerlink" href="#confirm-a-run-before-sharing-it" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run this command from the oncotracer directory.</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span><span class="w">                </span><span class="c1"># summary exists</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span><span class="w">                     </span><span class="c1"># event table exists</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv&quot;</span><span class="w">       </span><span class="c1"># notation table exists</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_per_sample_pages.pdf&quot;</span><span class="w">           </span><span class="c1"># plots exist</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.command.err&#39;</span><span class="w"> </span>-size<span class="w"> </span>+0c<span class="w"> </span>-print<span class="w">             </span><span class="c1"># review any non-empty task stderr files</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt"</span><span class="w">                </span><span class="c1"># summary exists</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv"</span><span class="w">                     </span><span class="c1"># event table exists</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv"</span><span class="w">       </span><span class="c1"># notation table exists</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/04_cna_custom_plots/cna_per_sample_pages.pdf"</span><span class="w">           </span><span class="c1"># plots exist</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">'*.command.err'</span><span class="w"> </span>-size<span class="w"> </span>+0c<span class="w"> </span>-print<span class="w">             </span><span class="c1"># review any non-empty task stderr files</span>
 </code></pre></div>
 <p>Non-empty standard error is not automatically a failure--many tools write progress there--but it must be reviewed. Preserve the YAML, samplesheet, <code>oncotracer provenance --json</code>, input/reference checksums, container digest or five Conda explicit specifications, and workflow summary with any released result.</p>
 

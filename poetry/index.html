@@ -256,7 +256,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -921,14 +921,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1130,6 +1130,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1852,29 +1880,49 @@
 <p>Poetry provides a managed Python launcher for OncoTracer's native v2 engine. It does not replace the scientific software runtime: installation also creates the same five isolated Conda environments used by the global executable.</p>
 <p>Poetry is intended for source development. Beginners who only want to run analyses should normally install the verified global executable and choose Conda, Docker, or Singularity/Apptainer.</p>
 <h2 id="install-poetry-and-the-launcher">Install Poetry and the launcher<a class="headerlink" href="#install-poetry-and-the-launcher" title="Permanent link">&para;</a></h2>
+<p>Use Poetry 2.0 or newer. OncoTracer rejects Poetry 1.x before it creates a lock,
+journal, environment, or target directory.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
 
-poetry<span class="w"> </span>install<span class="w"> </span>--no-interaction
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>--help
+./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--prefix<span class="w"> </span>/path/to/my/oncotracer-v2-dev-envs
+
+<span class="nv">ONCOTRACER_DEV</span><span class="o">=</span>/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>--help
 </code></pre></div>
+<p>The explicit prefix is a dedicated OncoTracer installation root, not a Conda
+base installation or a shared Poetry environment. It must be absent, empty, or
+already carry the exact ownership markers written by this installer. OncoTracer
+requires an exact clean Git checkout matching the launcher's source identity.
+It builds a wheel in an isolated transaction tree, creates the final canonical
+<code>poetry-runtime</code> path, and installs the wheel only through that target's Python
+and pip with indexes and dependency resolution disabled. An ownership-checked
+rollback transaction preserves the verified prior runtime until the replacement
+passes provenance, executable, and exact-inventory checks. It does not alter Poetry's global environment, ambient Python site-packages, the checkout, or a
+checkout-local <code>.venv</code>.</p>
 <h2 id="prepare-the-poetry-backend">Prepare the Poetry backend<a class="headerlink" href="#prepare-the-poetry-backend" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
 
-./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
+<span class="nv">ONCOTRACER_DEV</span><span class="o">=</span>/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--prefix<span class="w"> </span>/path/to/my/oncotracer-v2-dev-envs
+
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
 </code></pre></div>
 <h2 id="run-quickstart-1-through-poetry">Run QuickStart 1 through Poetry<a class="headerlink" href="#run-quickstart-1-through-poetry" title="Permanent link">&para;</a></h2>
 <p>Keep the source checkout separate from the analysis output. The output path below is explicit so it does not depend on whichever source directory contains <code>pyproject.toml</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
 
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="nv">ONCOTRACER_DEV</span><span class="o">=</span>/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart1-poetry
 </code></pre></div>
 <h2 id="run-quickstart-2-through-poetry">Run QuickStart 2 through Poetry<a class="headerlink" href="#run-quickstart-2-through-poetry" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
 
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="nv">ONCOTRACER_DEV</span><span class="o">=</span>/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry
 </code></pre></div>

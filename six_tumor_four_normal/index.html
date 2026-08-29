@@ -12,7 +12,7 @@
         <meta name="author" content="OncoTracer developers">
       
       
-        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/six_tumor_four_control/">
+        <link rel="canonical" href="https://cfarkas.github.io/oncotracer/six_tumor_four_normal/">
       
       
         <link rel="prev" href="../full_tutorial/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Mock cohort — six tumors + four normals - OncoTracer</title>
+        <title>Mock cohort — six tumors + four independent normals - OncoTracer</title>
       
     
     
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Mock cohort — six tumors + four normals
+              Mock cohort — six tumors + four independent normals
             
           </span>
         </div>
@@ -846,7 +846,7 @@
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -864,7 +864,7 @@
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -934,10 +934,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-run-or-resume-the-native-analysis" class="md-nav__link">
+  <a href="#4-run-or-resume-the-one-native-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Run or resume the native analysis
+        4. Run or resume the one native analysis
       
     </span>
   </a>
@@ -945,10 +945,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-audit-the-panel-and-native-outputs" class="md-nav__link">
+  <a href="#5-audit-independent-outputs-for-all-ten-samples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Audit the panel and native outputs
+        5. Audit independent outputs for all ten samples
       
     </span>
   </a>
@@ -1152,6 +1152,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1846,10 +1874,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-run-or-resume-the-native-analysis" class="md-nav__link">
+  <a href="#4-run-or-resume-the-one-native-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Run or resume the native analysis
+        4. Run or resume the one native analysis
       
     </span>
   </a>
@@ -1857,10 +1885,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-audit-the-panel-and-native-outputs" class="md-nav__link">
+  <a href="#5-audit-independent-outputs-for-all-ten-samples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Audit the panel and native outputs
+        5. Audit independent outputs for all ten samples
       
     </span>
   </a>
@@ -1884,7 +1912,7 @@
 
 
   
-    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/six_tumor_four_control.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/cfarkas/oncotracer/edit/main/docs/six_tumor_four_normal.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1893,37 +1921,49 @@
 
 
 <h1 id="mock-six-tumorfour-normal-study">Mock Six-Tumor/Four-Normal Study<a class="headerlink" href="#mock-six-tumorfour-normal-study" title="Permanent link">&para;</a></h1>
-<p>This native v2 example uses the installed <code>oncotracer</code> executable to build a run-local qDNAseq panel from four <code>NORMAL</code> samples and apply it to six <code>TUMOR</code> samples. <code>ONCO001</code>–<code>ONCO006</code> and <code>CTRL001</code>–<code>CTRL004</code> are placeholders for a paired-end Illumina cohort.</p>
+<p>This native v2 example runs ten paired-end Illumina samples in one analysis:
+<code>ONCO001</code>–<code>ONCO006</code> are marked <code>TUMOR</code>, and <code>CTRL001</code>–<code>CTRL004</code> are marked
+<code>NORMAL</code>. Every sample is aligned, normalized, segmented, called, and reported
+independently by qDNAseq. OncoTracer does <strong>not</strong> pool the four <code>CTRL</code> samples,
+does not construct a sample-derived reference from them, and does not subtract
+their signal from the <code>ONCO</code> samples.</p>
 <div class="admonition note">
 <p class="admonition-title">Mock inputs</p>
-<p>These 20 FASTQs are not bundled. Use de-identified paired-end files that you are permitted to analyze. This setup example does not replace the checksum-validated public-data <a href="../quick_start/">QuickStart 1</a>, <a href="../public_cohort/">QuickStart 2</a>, or stable-release parity gates.</p>
+<p>These 20 FASTQs are not bundled. Use de-identified paired-end files that you
+are permitted to analyze. This setup example does not replace the
+checksum-validated public-data <a href="../quick_start/">QuickStart 1</a>,
+<a href="../public_cohort/">QuickStart 2</a>, or stable-release parity gates.</p>
 </div>
-<p>The historical launcher is linked only from <a href="../legacy_v1/">Legacy v1.1</a>. Every command below uses native v2 and does not invoke Nextflow.</p>
+<p>The historical launcher is linked only from <a href="../legacy_v1/">Legacy v1.1</a>. Every
+command below uses native v2 and does not invoke Nextflow.</p>
 <h2 id="expected-cohort-behavior">Expected cohort behavior<a class="headerlink" href="#expected-cohort-behavior" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Role</th>
+<th>Recorded status</th>
 <th>Samples</th>
 <th>Native behavior</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Tumor</td>
+<td><code>TUMOR</code></td>
 <td><code>ONCO001</code>–<code>ONCO006</code></td>
-<td>Corrected CNA bins, segments, events, and plots are exported downstream</td>
+<td>Each sample receives its own qDNAseq bins, segments, calls, plot, and sample-status record</td>
 </tr>
 <tr>
-<td>Normal</td>
+<td><code>NORMAL</code></td>
 <td><code>CTRL001</code>–<code>CTRL004</code></td>
-<td>Build the local reference and remain panel/QC inputs</td>
+<td>Each sample receives the same independent qDNAseq analysis; the status is retained in the input contract</td>
 </tr>
 </tbody>
 </table>
-<p>Four controls are a small run-specific reference. Review their leave-one-out stability and other QC before interpreting tumor CNA calls.</p>
+<p><code>NORMAL</code> is sample metadata; it is not permission to turn these four libraries
+into a panel. Confirm the biological status and suitability of every sample
+before interpreting results.</p>
 <h2 id="1-verify-the-installed-executable-and-backend">1. Verify the installed executable and backend<a class="headerlink" href="#1-verify-the-installed-executable-and-backend" title="Permanent link">&para;</a></h2>
-<p>Follow <a href="../installation/">Installation</a>, then prepare and inspect the five isolated Conda environments:</p>
+<p>Follow <a href="../installation/">Installation</a>, then prepare and inspect the five
+isolated Conda environments:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Verify the installed executable, source identity, and scientific backend.</span>
 oncotracer<span class="w"> </span>--version
 oncotracer<span class="w"> </span>provenance<span class="w"> </span>--json
@@ -1931,12 +1971,13 @@ oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 </code></pre></div>
 <h2 id="2-create-the-project-and-sample-table">2. Create the project and sample table<a class="headerlink" href="#2-create-the-project-and-sample-table" title="Permanent link">&para;</a></h2>
-<p>Run the blocks from one working directory, or export <code>PROJECT_DIR</code> as an absolute path:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Create a project without requiring a source checkout.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROJECT_DIR</span><span class="k">:-</span><span class="nv">$PWD</span><span class="p">/oncotracer-onco6-ctrl4</span><span class="si">}</span><span class="s2">&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
+<p>Start from the directory where analysis data may be written:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-onco6-ctrl4"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results"</span>
+
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'CSV'</span>
 <span class="s">sample_name,status</span>
 <span class="s">ONCO001,TUMOR</span>
 <span class="s">ONCO002,TUMOR</span>
@@ -1949,7 +1990,7 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 <span class="s">CTRL003,NORMAL</span>
 <span class="s">CTRL004,NORMAL</span>
 <span class="s">CSV</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv"</span>
 </code></pre></div>
 <p>Automatic Setup expects exactly one R1/R2 pair for each row:</p>
 <div class="highlight"><pre><span></span><code>ONCO001_R1.fastq.gz       ONCO001_R2.fastq.gz
@@ -1963,87 +2004,142 @@ CTRL002_R1.fastq.gz       CTRL002_R2.fastq.gz
 CTRL003_R1.fastq.gz       CTRL003_R2.fastq.gz
 CTRL004_R1.fastq.gz       CTRL004_R2.fastq.gz
 </code></pre></div>
-<p>Place them in <code>$PROJECT_DIR/input/fastq</code>. Each identifier must match the filename before <code>_R1</code> and <code>_R2</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Require 20 non-empty, complete gzip files.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROJECT_DIR</span><span class="k">:-</span><span class="nv">$PWD</span><span class="p">/oncotracer-onco6-ctrl4</span><span class="si">}</span><span class="s2">&quot;</span>
+<p>Place them in <code>$PROJECT_DIR/input/fastq</code>. Each identifier must match the
+filename before <code>_R1</code> and <code>_R2</code>, then validate all inputs:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-onco6-ctrl4"</span>
 <span class="nv">SAMPLES</span><span class="o">=(</span>ONCO001<span class="w"> </span>ONCO002<span class="w"> </span>ONCO003<span class="w"> </span>ONCO004<span class="w"> </span>ONCO005<span class="w"> </span>ONCO006<span class="w"> </span>CTRL001<span class="w"> </span>CTRL002<span class="w"> </span>CTRL003<span class="w"> </span>CTRL004<span class="o">)</span>
-<span class="k">for</span><span class="w"> </span>sample<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SAMPLES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="k">for</span><span class="w"> </span>sample<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SAMPLES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>R1<span class="w"> </span>R2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-<span class="w">    </span><span class="nv">fastq</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq/</span><span class="si">${</span><span class="nv">sample</span><span class="si">}</span><span class="s2">_</span><span class="si">${</span><span class="nv">read</span><span class="si">}</span><span class="s2">.fastq.gz&quot;</span>
-<span class="w">    </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span>
-<span class="w">    </span>gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$fastq</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nv">fastq</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq/</span><span class="si">${</span><span class="nv">sample</span><span class="si">}</span><span class="s2">_</span><span class="si">${</span><span class="nv">read</span><span class="si">}</span><span class="s2">.fastq.gz"</span>
+<span class="w">    </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$fastq</span><span class="s2">"</span>
+<span class="w">    </span>gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$fastq</span><span class="s2">"</span>
 <span class="w">  </span><span class="k">done</span>
 <span class="k">done</span>
-<span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;Validated %s paired-end samples.\n&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${#</span><span class="nv">SAMPLES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nb">printf</span><span class="w"> </span><span class="s1">'Validated %s paired-end samples.\n'</span><span class="w"> </span><span class="s2">"</span><span class="si">${#</span><span class="nv">SAMPLES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span>
 </code></pre></div>
 <h2 id="3-generate-and-inspect-the-native-yaml">3. Generate and inspect the native YAML<a class="headerlink" href="#3-generate-and-inspect-the-native-yaml" title="Permanent link">&para;</a></h2>
 <p>The option names below are the exact native v2 parser interface:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Validate inputs and atomically publish YAML, samplesheet, and manifest.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROJECT_DIR</span><span class="k">:-</span><span class="nv">$PWD</span><span class="p">/oncotracer-onco6-ctrl4</span><span class="si">}</span><span class="s2">&quot;</span>
-oncotracer<span class="w"> </span>auto<span class="w"> </span>--mode<span class="w"> </span>illumina<span class="w"> </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/auto_params_manifest.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,tumor$&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">6</span>
-<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;,normal$&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">4</span>
-awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">&#39;\t&#39;</span><span class="w"> </span><span class="s1">&#39;NR == 2 { exit !($1 == &quot;illumina&quot; &amp;&amp; $2 == 6 &amp;&amp; $3 == 4) }&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/auto_params_manifest.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,140p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/auto_params_manifest.tsv&quot;</span>
-</code></pre></div>
-<p>The generated YAML records:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;CTRL001,CTRL002,CTRL003,CTRL004&quot;</span>
-<span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="nt">illumina_pon_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CTRL001_CTRL002_CTRL003_CTRL004_PoN</span>
-<span class="nt">illumina_pon_min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
-</code></pre></div>
-<p>Automatic Setup rejects a single normal, duplicate or invalid sample identifiers, missing mates, corrupt gzip streams, and normal-only cohorts. It publishes generated files only after validation succeeds. The manifest records SHA-256 values for the YAML and samplesheet; archive all three files.</p>
-<h2 id="4-run-or-resume-the-native-analysis">4. Run or resume the native analysis<a class="headerlink" href="#4-run-or-resume-the-native-analysis" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run all native Illumina stages with the prepared Conda backend.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROJECT_DIR</span><span class="k">:-</span><span class="nv">$PWD</span><span class="p">/oncotracer-onco6-ctrl4</span><span class="si">}</span><span class="s2">&quot;</span>
-oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span>--threads<span class="w"> </span><span class="m">16</span>
-</code></pre></div>
-<p>Repeat that command to reuse valid content-matched stages. Add <code>--force</code> only to deliberately invalidate reusable work. Do not delete <code>.oncotracer-native/state.json</code>, reference indexes, or active outputs to resume. Docker and Singularity use the same command with the matching installed backend; see <a href="../containers/">Execution backends</a>.</p>
-<h2 id="5-audit-the-panel-and-native-outputs">5. Audit the panel and native outputs<a class="headerlink" href="#5-audit-the-panel-and-native-outputs" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Require panel completion, native identity, and principal result files.</span>
-<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PROJECT_DIR</span><span class="k">:-</span><span class="nv">$PWD</span><span class="p">/oncotracer-onco6-ctrl4</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
-<span class="nv">PON</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq_local_pon&quot;</span>
-<span class="nv">SUMMARY</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.json&quot;</span>
-<span class="nv">TRACE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/.oncotracer-native/trace.tsv&quot;</span>
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-onco6-ctrl4"</span>
+oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results"</span>
 
-<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>QDNASEQ_LOCAL_PON_SUCCESS
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qc/normal_panel_sample_qc.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/all_tumors.qdnaseq_pon_corrected_bins.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/native_run_manifest.json&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TRACE</span><span class="s2">&quot;</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml"</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv"</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/auto_params_manifest.tsv"</span>
+<span class="nb">test</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">',tumor$'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">6</span>
+<span class="nb">test</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">',normal$'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv"</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">4</span>
+awk<span class="w"> </span>-F<span class="w"> </span><span class="s1">'\t'</span><span class="w"> </span><span class="s1">'NR == 2 { exit !($1 == "illumina" &amp;&amp; $2 == 6 &amp;&amp; $3 == 4) }'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/auto_params_manifest.tsv"</span>
 
-python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SUMMARY</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
-<span class="s">import json</span>
-<span class="s">import sys</span>
-
-<span class="s">with open(sys.argv[1], encoding=&quot;utf-8&quot;) as handle:</span>
-<span class="s">    summary = json.load(handle)</span>
-<span class="s">assert summary[&quot;engine&quot;] == &quot;native&quot;</span>
-<span class="s">assert summary[&quot;nextflow_used&quot;] is False</span>
-<span class="s">assert summary[&quot;mode&quot;] == &quot;illumina&quot;</span>
-<span class="s">PY</span>
-
-<span class="k">if</span><span class="w"> </span>grep<span class="w"> </span>-Eiq<span class="w"> </span><span class="s1">&#39;(^|[[:space:]/])nextflow([[:space:]]|$)&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TRACE</span><span class="s2">&quot;</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
-<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;ERROR: native trace contains a Nextflow command&quot;</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="k">if</span><span class="w"> </span>grep<span class="w"> </span>-Eiq<span class="w"> </span><span class="s1">'panel|pool.*normal|normal.*reference'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"ERROR: generated configuration requests a local normal panel"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
 <span class="w">  </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
 <span class="k">fi</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,10p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,10p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qc/normal_panel_sample_qc.tsv&quot;</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/bins&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*_markdup_bins.bed&#39;</span><span class="w"> </span>-printf<span class="w"> </span><span class="s1">&#39;%f\n&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,140p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/auto_params_manifest.tsv"</span>
 </code></pre></div>
-<p>The normal manifest and QC must contain <code>CTRL001</code> through <code>CTRL004</code>. Corrected downstream outputs must contain <code>ONCO001</code> through <code>ONCO006</code>, while controls remain reference/QC inputs.</p>
-<p>This is a research-use example, not a diagnostic protocol. Preserve input checksums, the generated contract, native trace, run manifest, exact source and reference identities, environment specifications, and primary stage-02/03 tables with any interpretation.</p>
+<p>Automatic Setup rejects duplicate or invalid sample identifiers, missing
+mates, and corrupt gzip streams. It publishes generated
+files only after validation succeeds. The manifest records SHA-256 values for
+the YAML and samplesheet; archive all three files. One, four, or any other
+number of <code>NORMAL</code> rows does not activate a local panel.</p>
+<h2 id="4-run-or-resume-the-one-native-analysis">4. Run or resume the one native analysis<a class="headerlink" href="#4-run-or-resume-the-one-native-analysis" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-onco6-ctrl4"</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span>
+</code></pre></div>
+<p>That single command analyzes all ten rows. Repeat it to reuse valid
+content-matched stages. Add <code>--force</code> only to deliberately invalidate reusable
+work. Do not delete <code>.oncotracer-native/state.json</code>, reference indexes, or
+active outputs to resume. Docker and Singularity use the same command with the
+matching installed backend; see <a href="../containers/">Execution backends</a>.</p>
+<h2 id="5-audit-independent-outputs-for-all-ten-samples">5. Audit independent outputs for all ten samples<a class="headerlink" href="#5-audit-independent-outputs-for-all-ten-samples" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+<span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-onco6-ctrl4"</span>
+<span class="nv">OUT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results"</span>
+<span class="nv">QDNA</span><span class="o">=</span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/01_samurai_illumina/qdnaseq"</span>
+<span class="nv">SUMMARY</span><span class="o">=</span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.json"</span>
+<span class="nv">TRACE</span><span class="o">=</span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/.oncotracer-native/trace.tsv"</span>
+
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/qdnaseq_sample_status.json"</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/qdnaseq_sample_roles.tsv"</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/all_segments.seg"</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/all_calls.seg"</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv"</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/native_run_manifest.json"</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$TRACE</span><span class="s2">"</span>
+
+python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/qdnaseq_sample_status.json"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/qdnaseq_sample_roles.tsv"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$SUMMARY</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import csv</span>
+<span class="s">import json</span>
+<span class="s">import sys</span>
+
+<span class="s">expected = {</span>
+<span class="s">    "ONCO001", "ONCO002", "ONCO003", "ONCO004", "ONCO005", "ONCO006",</span>
+<span class="s">    "CTRL001", "CTRL002", "CTRL003", "CTRL004",</span>
+<span class="s">}</span>
+<span class="s">with open(sys.argv[1], encoding="utf-8") as handle:</span>
+<span class="s">    qdnaseq = json.load(handle)</span>
+<span class="s">assert qdnaseq["overall_status"] == "complete"</span>
+<span class="s">assert set(qdnaseq["completed_samples"]) == expected</span>
+<span class="s">assert qdnaseq["failed_samples"] == []</span>
+
+<span class="s">with open(sys.argv[2], encoding="utf-8", newline="") as handle:</span>
+<span class="s">    roles = {row["sample"]: row["status"] for row in csv.DictReader(handle, delimiter="\t")}</span>
+<span class="s">assert set(roles) == expected</span>
+<span class="s">assert {sample for sample, role in roles.items() if role == "normal"} == {</span>
+<span class="s">    "CTRL001", "CTRL002", "CTRL003", "CTRL004",</span>
+<span class="s">}</span>
+
+<span class="s">with open(sys.argv[3], encoding="utf-8") as handle:</span>
+<span class="s">    summary = json.load(handle)</span>
+<span class="s">assert summary["engine"] == "native"</span>
+<span class="s">assert summary["nextflow_used"] is False</span>
+<span class="s">assert summary["mode"] == "illumina"</span>
+<span class="s">assert summary["sample_derived_panel_used"] is False</span>
+<span class="s">assert set(summary["normal_samples"]) == {"CTRL001", "CTRL002", "CTRL003", "CTRL004"}</span>
+<span class="s">PY</span>
+
+<span class="nv">SAMPLES</span><span class="o">=(</span>ONCO001<span class="w"> </span>ONCO002<span class="w"> </span>ONCO003<span class="w"> </span>ONCO004<span class="w"> </span>ONCO005<span class="w"> </span>ONCO006<span class="w"> </span>CTRL001<span class="w"> </span>CTRL002<span class="w"> </span>CTRL003<span class="w"> </span>CTRL004<span class="o">)</span>
+<span class="k">for</span><span class="w"> </span>sample<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">SAMPLES</span><span class="p">[@]</span><span class="si">}</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/bins/</span><span class="si">${</span><span class="nv">sample</span><span class="si">}</span><span class="s2">_markdup_bins.bed"</span>
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/segments/</span><span class="si">${</span><span class="nv">sample</span><span class="si">}</span><span class="s2">_.seg"</span>
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/segments/</span><span class="si">${</span><span class="nv">sample</span><span class="si">}</span><span class="s2">.calls.seg"</span>
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/plots/</span><span class="si">${</span><span class="nv">sample</span><span class="si">}</span><span class="s2">_markdup_segment_plot.pdf"</span>
+<span class="k">done</span>
+
+<span class="k">if</span><span class="w"> </span>grep<span class="w"> </span>-Eiq<span class="w"> </span><span class="s1">'(^|[[:space:]/])nextflow([[:space:]]|$)|panel|pool.*normal'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$TRACE</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"ERROR: native trace contains a forbidden workflow or local-panel command"</span><span class="w"> </span>&gt;<span class="p">&amp;</span><span class="m">2</span>
+<span class="w">  </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span>
+<span class="k">fi</span>
+
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/qdnaseq_sample_roles.tsv"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/qdnaseq_sample_status.json"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt"</span>
+</code></pre></div>
+<p>The generated samplesheet is the preserved status contract: it must still show
+six <code>tumor</code> rows and four <code>normal</code> rows. The qDNAseq status record and per-sample
+files prove that every <code>CTRL</code> and every <code>ONCO</code> sample was analyzed independently.</p>
+<p>This is a research-use example, not a diagnostic protocol. Preserve input
+checksums, the generated contract, native trace, run manifest, exact source and
+reference identities, environment specifications, and primary stage-02/03
+tables with any interpretation.</p>
 
 
 

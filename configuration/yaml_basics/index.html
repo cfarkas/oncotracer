@@ -256,7 +256,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -756,10 +756,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#local-illumina-normal-panel" class="md-nav__link">
+  <a href="#illumina-normal-status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Local Illumina normal panel
+        Illumina normal status
       
     </span>
   </a>
@@ -965,14 +965,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../six_tumor_four_control/" class="md-nav__link">
+      <a href="../../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1174,6 +1174,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1868,10 +1896,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#local-illumina-normal-panel" class="md-nav__link">
+  <a href="#illumina-normal-status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Local Illumina normal panel
+        Illumina normal status
       
     </span>
   </a>
@@ -1993,10 +2021,10 @@
 </table>
 <p>Do not place shell variables such as <code>$PWD</code> inside the YAML; expand them when creating the file.</p>
 <h2 id="minimal-illumina-yaml">Minimal Illumina YAML<a class="headerlink" href="#minimal-illumina-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml"</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
 <span class="s">mode: illumina</span>
 <span class="s">lpwgs_root: $PROJECT_DIR</span>
 <span class="s">outdir: $PROJECT_DIR/results/illumina</span>
@@ -2009,13 +2037,13 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 <span class="s">YAML</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml"</span>
 </code></pre></div>
 <h2 id="minimal-ont-yaml">Minimal ONT YAML<a class="headerlink" href="#minimal-ont-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml&quot;</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml"</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
 <span class="s">mode: ont</span>
 <span class="s">lpwgs_root: $PROJECT_DIR</span>
 <span class="s">outdir: $PROJECT_DIR/results/ont</span>
@@ -2031,15 +2059,12 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 <span class="s">YAML</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml"</span>
 </code></pre></div>
-<h2 id="local-illumina-normal-panel">Local Illumina normal panel<a class="headerlink" href="#local-illumina-normal-panel" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A,Control_B</span>
-<span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="nt">illumina_pon_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">study_local_PoN</span>
-<span class="nt">illumina_pon_min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
-</code></pre></div>
+<h2 id="illumina-normal-status">Illumina normal status<a class="headerlink" href="#illumina-normal-status" title="Permanent link">&para;</a></h2>
+<p>Record <code>normal</code> in the fourth column of <code>illumina_samplesheet</code> for each normal
+sample. No extra YAML fields are needed: every row is analyzed independently,
+and normal rows are never pooled into a sample-derived reference.</p>
 <h2 id="native-classifier-and-pathology">Native classifier and pathology<a class="headerlink" href="#native-classifier-and-pathology" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="nt">cna_classifier_sample_set</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">broad_cancer</span>
@@ -2057,12 +2082,12 @@ oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span clas
 <span class="nt">pathology_use_biomed_models</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
 <h2 id="validate-before-execution">Validate before execution<a class="headerlink" href="#validate-before-execution" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.manual.yml&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.manual.yml"</span>
 
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;^(mode|lpwgs_root|outdir):&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
+grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^(mode|lpwgs_root|outdir):'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
 oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 </code></pre></div>
 <p><code>--dry-run</code> prints the native argument arrays without launching the scientific tools.</p>
@@ -2071,7 +2096,7 @@ oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span clas
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--threads<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.manual.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.manual.yml"</span>
 </code></pre></div>
 <p><code>--force</code> and <code>--dry-run</code> may also be supplied on the CLI. The installed backend is used when <code>--backend</code> is omitted.</p>
 

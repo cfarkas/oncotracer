@@ -252,7 +252,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -825,14 +825,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1034,6 +1034,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1894,7 +1922,7 @@
 <p>This page covers the native v2 source tree, copied executable, documentation, and release checks. Work from a dedicated source checkout and branch; do not develop directly in a released asset directory.</p>
 <h2 id="source-checks">Source checks<a class="headerlink" href="#source-checks" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>-q<span class="w"> </span>oncotracer_cli<span class="w"> </span>tests<span class="w"> </span>scripts<span class="w"> </span>bin
-find<span class="w"> </span>bin<span class="w"> </span>examples<span class="w"> </span>tests<span class="w"> </span>scripts<span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.sh&#39;</span><span class="w"> </span>-print0<span class="w"> </span><span class="se">\</span>
+find<span class="w"> </span>bin<span class="w"> </span>examples<span class="w"> </span>tests<span class="w"> </span>scripts<span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-name<span class="w"> </span><span class="s1">'*.sh'</span><span class="w"> </span>-print0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-0<span class="w"> </span>-n1<span class="w"> </span>bash<span class="w"> </span>-n
 
 python3<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>-v<span class="w"> </span><span class="se">\</span>
@@ -1912,44 +1940,43 @@ python3<span class="w"> </span>tests/test_examples_start_from_clone.py
 python3<span class="w"> </span>tests/test_copy_paste_paths.py
 </code></pre></div>
 <p>Parse native R sources with the intended R installation when available:</p>
-<div class="highlight"><pre><span></span><code>Rscript<span class="w"> </span>--vanilla<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;invisible(parse(file=&#39;bin/scripts/native_qdnaseq.R&#39;))&quot;</span>
-Rscript<span class="w"> </span>--vanilla<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;invisible(parse(file=&#39;bin/scripts/native_qdnaseq_pon.R&#39;))&quot;</span>
-Rscript<span class="w"> </span>--vanilla<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;invisible(parse(file=&#39;bin/scripts/native_ichorcna.R&#39;))&quot;</span>
+<div class="highlight"><pre><span></span><code>Rscript<span class="w"> </span>--vanilla<span class="w"> </span>-e<span class="w"> </span><span class="s2">"invisible(parse(file='bin/scripts/native_qdnaseq.R'))"</span>
+Rscript<span class="w"> </span>--vanilla<span class="w"> </span>-e<span class="w"> </span><span class="s2">"invisible(parse(file='bin/scripts/native_ichorcna.R'))"</span>
 </code></pre></div>
 <h2 id="build-the-deterministic-copied-executable">Build the deterministic copied executable<a class="headerlink" href="#build-the-deterministic-copied-executable" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">SOURCE_COMMIT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>HEAD<span class="k">)</span><span class="s2">&quot;</span>
-<span class="nv">SOURCE_SHA256</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>
-<span class="w">  </span>git<span class="w"> </span>-c<span class="w"> </span>tar.umask<span class="o">=</span><span class="m">0002</span><span class="w"> </span>archive<span class="w"> </span>--format<span class="o">=</span>tar<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SOURCE_COMMIT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="p">|</span><span class="w"> </span>sha256sum<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $1}&#39;</span>
-<span class="k">)</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">SOURCE_COMMIT</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>HEAD<span class="k">)</span><span class="s2">"</span>
+<span class="nv">SOURCE_SHA256</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>
+<span class="w">  </span>git<span class="w"> </span>-c<span class="w"> </span>tar.umask<span class="o">=</span><span class="m">0002</span><span class="w"> </span>archive<span class="w"> </span>--format<span class="o">=</span>tar<span class="w"> </span><span class="s2">"</span><span class="nv">$SOURCE_COMMIT</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="p">|</span><span class="w"> </span>sha256sum<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{print $1}'</span>
+<span class="k">)</span><span class="s2">"</span>
 
 python3<span class="w"> </span>scripts/build_native_binary.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output<span class="w"> </span>dist/oncotracer<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--source-commit<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SOURCE_COMMIT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--source-sha256<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SOURCE_SHA256</span><span class="s2">&quot;</span>
+<span class="w">  </span>--source-commit<span class="w"> </span><span class="s2">"</span><span class="nv">$SOURCE_COMMIT</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source-sha256<span class="w"> </span><span class="s2">"</span><span class="nv">$SOURCE_SHA256</span><span class="s2">"</span>
 
 chmod<span class="w"> </span><span class="m">0755</span><span class="w"> </span>dist/oncotracer
 </code></pre></div>
 <p>Test from outside the checkout so imports cannot fall back to the working tree:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">BINARY</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/dist/oncotracer&quot;</span>
-<span class="nv">TMP_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">BINARY</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span><span class="s2">/dist/oncotracer"</span>
+<span class="nv">TMP_DIR</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span><span class="s2">"</span>
 
-<span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TMP_DIR</span><span class="s2">&quot;</span>
-<span class="s2">&quot;</span><span class="nv">$BINARY</span><span class="s2">&quot;</span><span class="w"> </span>--version
-<span class="s2">&quot;</span><span class="nv">$BINARY</span><span class="s2">&quot;</span><span class="w"> </span>provenance<span class="w"> </span>--json
-<span class="s2">&quot;</span><span class="nv">$BINARY</span><span class="s2">&quot;</span><span class="w"> </span>--help
+<span class="nb">cd</span><span class="w"> </span><span class="s2">"</span><span class="nv">$TMP_DIR</span><span class="s2">"</span>
+<span class="s2">"</span><span class="nv">$BINARY</span><span class="s2">"</span><span class="w"> </span>--version
+<span class="s2">"</span><span class="nv">$BINARY</span><span class="s2">"</span><span class="w"> </span>provenance<span class="w"> </span>--json
+<span class="s2">"</span><span class="nv">$BINARY</span><span class="s2">"</span><span class="w"> </span>--help
 </code></pre></div>
 <p>The zipapp must contain native scripts, environment definitions, classifier assets, and no <code>.nf</code> workflow or <code>nextflow.config</code> payload.</p>
 <h2 id="test-the-public-command-surface">Test the public command surface<a class="headerlink" href="#test-the-public-command-surface" title="Permanent link">&para;</a></h2>
 <p>Preparation-only checks are useful before full scientific runs:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">BINARY</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/dist/oncotracer&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">BINARY</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/dist/oncotracer"</span>
 
-<span class="s2">&quot;</span><span class="nv">$BINARY</span><span class="s2">&quot;</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/test/developer-quickstart1&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="s2">"</span><span class="nv">$BINARY</span><span class="s2">"</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/test/developer-quickstart1"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--download-only
 
-<span class="s2">&quot;</span><span class="nv">$BINARY</span><span class="s2">&quot;</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/test/developer-quickstart2&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="s2">"</span><span class="nv">$BINARY</span><span class="s2">"</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/test/developer-quickstart2"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--download-only
 </code></pre></div>
 <p>Then run the complete examples through the intended backend on a suitable validation host.</p>

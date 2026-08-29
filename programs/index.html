@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1059,6 +1059,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../configuration/pathology/" class="md-nav__link">
         
   
@@ -1257,6 +1285,17 @@
     <span class="md-ellipsis">
       
         ONT route
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-ont-methylation-route" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional ONT methylation route
       
     </span>
   </a>
@@ -1857,6 +1896,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#optional-ont-methylation-route" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional ONT methylation route
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#optional-interpretation-route" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1997,8 +2047,8 @@
 </tr>
 <tr>
 <td>qDNAseq</td>
-<td>Read-depth correction, segmentation, calls, and optional local normal panel</td>
-<td><code>01_samurai_illumina/qdnaseq/</code> or <code>qdnaseq_local_pon/</code></td>
+<td>Independent per-sample read-depth correction, segmentation, and calls</td>
+<td><code>01_samurai_illumina/qdnaseq/</code></td>
 </tr>
 <tr>
 <td>Native boundary-refinement Python</td>
@@ -2056,6 +2106,39 @@
 </tbody>
 </table>
 <p>The standard ONT configuration uses hg38, ichorCNA, and 500 kb coarse bins.</p>
+<h2 id="optional-ont-methylation-route">Optional ONT methylation route<a class="headerlink" href="#optional-ont-methylation-route" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Program or library</th>
+<th>Purpose</th>
+<th>Representative output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dorado</td>
+<td>Explicit-POD5 hg38 basecalling with an explicit 5mCG/5hmCG model</td>
+<td><code>07_methylation/modbam/</code></td>
+</tr>
+<tr>
+<td>Modkit</td>
+<td>CPU-threaded CpG conversion and deterministic bedMethyl pileup</td>
+<td><code>07_methylation/bedmethyl/</code></td>
+</tr>
+<tr>
+<td>Sturgeon</td>
+<td>User-installed/licensed CNS-tumor research classification</td>
+<td><code>07_methylation/sturgeon/</code></td>
+</tr>
+<tr>
+<td>MARLIN adapter</td>
+<td>Checksum-pinned leukemia research model preparation/prediction</td>
+<td><code>07_methylation/marlin/</code></td>
+</tr>
+</tbody>
+</table>
+<p>This optional branch is not part of the five managed core CNA environments or the stable container. Users provide exact local executables/models/resources. <code>--gpu</code> targets Dorado and exposes the device to MARLIN; it does not make Modkit or Sturgeon GPU programs. The branch aborts classification on zero usable modified-CpG calls while CNA continues.</p>
 <h2 id="optional-interpretation-route">Optional interpretation route<a class="headerlink" href="#optional-interpretation-route" title="Permanent link">&para;</a></h2>
 <p>When <code>run_cna_classifier: true</code>, the native classifier uses Python packages such as pandas, NumPy, SciPy, scikit-learn, Matplotlib, Jinja2, ReportLab, openpyxl, and optional Transformers/PyTorch support. GISTIC2 is isolated in its own prefix because it requires the MATLAB Compiler Runtime.</p>
 <h2 id="inspect-the-installed-toolchain">Inspect the installed toolchain<a class="headerlink" href="#inspect-the-installed-toolchain" title="Permanent link">&para;</a></h2>
@@ -2073,13 +2156,13 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>singularity
 </code></pre></div>
 <h2 id="provenance-from-a-completed-analysis">Provenance from a completed analysis<a class="headerlink" href="#provenance-from-a-completed-analysis" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span>
 
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/native_run_manifest.json&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/.oncotracer-native/trace.tsv&quot;</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*versions*&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*manifest*&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*SHA256SUMS*&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/native_run_manifest.json"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/.oncotracer-native/trace.tsv"</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">'*versions*'</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">'*manifest*'</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">'*SHA256SUMS*'</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 </code></pre></div>
 <p>Preserve:</p>

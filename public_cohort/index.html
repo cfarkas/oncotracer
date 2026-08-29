@@ -256,7 +256,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -1026,14 +1026,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1235,6 +1235,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -2097,17 +2125,17 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 </code></pre></div>
 <p>A successful command ends with:</p>
 <div class="highlight"><pre><span></span><code>QuickStart 2 completed: .../oncotracer-quickstart2
 </code></pre></div>
 <h2 id="step-1-download-and-validate-the-public-data-only">Step 1. Download and validate the public data only<a class="headerlink" href="#step-1-download-and-validate-the-public-data-only" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
-<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--download-only
 </code></pre></div>
 <p>The versioned <code>examples/hcc1143_lpwgs/manifest.tsv</code> supplies each ENA URL, sample ID, run accession, read end, expected byte count, and MD5. Completed valid FASTQs are reused when the command is repeated.</p>
@@ -2131,14 +2159,14 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 </code></pre></div>
 <p>Inspect the generated files:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
-<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/public/hcc1143_lpwgs/samples.csv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,160p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/illumina.samplesheet.csv&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/auto_params_manifest.tsv&quot;</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/public/hcc1143_lpwgs/samples.csv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,160p'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,20p'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/illumina.samplesheet.csv"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/auto_params_manifest.tsv"</span>
 </code></pre></div>
 <p>The sample table contains:</p>
 <div class="highlight"><pre><span></span><code>sample_name,status
@@ -2148,31 +2176,31 @@ HCC1143_TRAMETINIB,TUMOR
 </code></pre></div>
 <h2 id="step-2-run-the-generated-yaml">Step 2. Run the generated YAML<a class="headerlink" href="#step-2-run-the-generated-yaml" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
-<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <p>The analysis runs alignment, Picard processing, qDNAseq, BAM-supported boundary refinement, CNA codification, cytogenomic notation, cohort/per-sample plots, and workflow summaries.</p>
 <h2 id="step-3-verify-the-required-result-groups">Step 3. Verify the required result groups<a class="headerlink" href="#step-3-verify-the-required-result-groups" title="Permanent link">&para;</a></h2>
 <p>The complete QuickStart command reuses valid completed stages and performs the bundled output checks:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
-<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">"</span>
 </code></pre></div>
 <p>Review:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
-<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
-<span class="nv">OUTDIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/hcc1143_lpwgs&quot;</span>
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
+<span class="nv">OUTDIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/hcc1143_lpwgs"</span>
 
-head<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDIR</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,30p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDIR</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span>
-ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDIR</span><span class="s2">/04_cna_custom_plots/cna_per_sample_pages.pdf&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDIR</span><span class="s2">/.oncotracer-native/trace.tsv&quot;</span>
+head<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUTDIR</span><span class="s2">/06_workflow_summary/workflow_summary.txt"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,30p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUTDIR</span><span class="s2">/03_cna_codification/cna_events.tsv"</span>
+ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">"</span><span class="nv">$OUTDIR</span><span class="s2">/04_cna_custom_plots/cna_per_sample_pages.pdf"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUTDIR</span><span class="s2">/.oncotracer-native/trace.tsv"</span>
 </code></pre></div>
 <p>Required outputs include:</p>
 <div class="highlight"><pre><span></span><code>runs/hcc1143_lpwgs/
@@ -2199,7 +2227,7 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDI
 oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-conda&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-conda"</span>
 </code></pre></div>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
@@ -2207,7 +2235,7 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-docker&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-docker"</span>
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
@@ -2215,25 +2243,26 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-singularity&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-singularity"</span>
 </code></pre></div>
 <h3 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h3>
 <p>Poetry is a source-development route. Keep the source checkout separate from the analysis output:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
 
-./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--prefix<span class="w"> </span>/path/to/my/oncotracer-v2-dev-envs
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry
 </code></pre></div>
 <h2 id="run-the-prepared-yaml-through-another-backend">Run the prepared YAML through another backend<a class="headerlink" href="#run-the-prepared-yaml-through-another-backend" title="Permanent link">&para;</a></h2>
 <p>The downloaded FASTQs and generated YAML are backend-independent:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
-<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <h2 id="resume">Resume<a class="headerlink" href="#resume" title="Permanent link">&para;</a></h2>
 <p>Repeat the same QuickStart or <code>oncotracer run</code> command with the same test root and result directory:</p>
@@ -2241,7 +2270,7 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 </code></pre></div>
 <p>The native ledger checks the stage command, relevant input metadata, and expected outputs before reuse. Use <code>--force</code> only for a deliberate full refresh.</p>
 <h2 id="continue">Continue<a class="headerlink" href="#continue" title="Permanent link">&para;</a></h2>

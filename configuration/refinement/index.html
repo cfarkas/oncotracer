@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../six_tumor_four_control/" class="md-nav__link">
+      <a href="../../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1039,6 +1039,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -2075,88 +2103,88 @@
 </table>
 <h2 id="reproducible-public-data-methods-comparison">Reproducible public-data methods comparison<a class="headerlink" href="#reproducible-public-data-methods-comparison" title="Permanent link">&para;</a></h2>
 <p>Prepare QuickStart 1 without analysis:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison"</span>
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--download-only
 </code></pre></div>
 <p>Run the default Illumina analysis:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.quickstart.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.quickstart.yml"</span>
 </code></pre></div>
 <p>Create a separate conservative configuration. The script changes <code>outdir</code> and appends non-default refinement values while leaving the original YAML unchanged:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
-<span class="nv">DEFAULT_CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.quickstart.yml&quot;</span>
-<span class="nv">CONSERVATIVE_CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.conservative.yml&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison"</span>
+<span class="nv">DEFAULT_CONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.quickstart.yml"</span>
+<span class="nv">CONSERVATIVE_CONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.conservative.yml"</span>
 
 python3<span class="w"> </span>-<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$DEFAULT_CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CONSERVATIVE_CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina_conservative&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$DEFAULT_CONFIG</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$CONSERVATIVE_CONFIG</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina_conservative"</span><span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
 <span class="s">from pathlib import Path</span>
 <span class="s">import sys</span>
 
 <span class="s">source = Path(sys.argv[1])</span>
 <span class="s">destination = Path(sys.argv[2])</span>
 <span class="s">outdir = Path(sys.argv[3]).resolve()</span>
-<span class="s">lines = source.read_text(encoding=&quot;utf-8&quot;).splitlines()</span>
+<span class="s">lines = source.read_text(encoding="utf-8").splitlines()</span>
 <span class="s">updated = []</span>
 <span class="s">for line in lines:</span>
-<span class="s">    if line.startswith(&quot;outdir:&quot;):</span>
-<span class="s">        updated.append(f&quot;outdir: {outdir}&quot;)</span>
+<span class="s">    if line.startswith("outdir:"):</span>
+<span class="s">        updated.append(f"outdir: {outdir}")</span>
 <span class="s">    else:</span>
 <span class="s">        updated.append(line)</span>
 <span class="s">updated.extend(</span>
 <span class="s">    [</span>
-<span class="s">        &quot;fine_bin_kb_illumina: 20&quot;,</span>
-<span class="s">        &quot;search_radius_bins: 2&quot;,</span>
-<span class="s">        &quot;min_mapq: 30&quot;,</span>
-<span class="s">        &quot;min_local_log2_diff_illumina: 0.15&quot;,</span>
-<span class="s">        &quot;min_bic_gain: 8&quot;,</span>
-<span class="s">        &quot;permutations: 500&quot;,</span>
-<span class="s">        &quot;permutation_p: 0.05&quot;,</span>
-<span class="s">        &quot;accept_rule: p_and_bic&quot;,</span>
+<span class="s">        "fine_bin_kb_illumina: 20",</span>
+<span class="s">        "search_radius_bins: 2",</span>
+<span class="s">        "min_mapq: 30",</span>
+<span class="s">        "min_local_log2_diff_illumina: 0.15",</span>
+<span class="s">        "min_bic_gain: 8",</span>
+<span class="s">        "permutations: 500",</span>
+<span class="s">        "permutation_p: 0.05",</span>
+<span class="s">        "accept_rule: p_and_bic",</span>
 <span class="s">    ]</span>
 <span class="s">)</span>
-<span class="s">destination.write_text(&quot;\n&quot;.join(updated) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)</span>
+<span class="s">destination.write_text("\n".join(updated) + "\n", encoding="utf-8")</span>
 <span class="s">PY</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,220p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONSERVATIVE_CONFIG</span><span class="s2">&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,220p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$CONSERVATIVE_CONFIG</span><span class="s2">"</span>
 </code></pre></div>
 <p>Validate the native command graph before computation:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.conservative.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.conservative.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 </code></pre></div>
 <p>Run the comparison:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.conservative.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/illumina.conservative.yml"</span>
 </code></pre></div>
 <p>Compare the final tables:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
-<span class="nv">DEFAULT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
-<span class="nv">EXPERIMENT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison"</span>
+<span class="nv">DEFAULT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"</span>
+<span class="nv">EXPERIMENT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"</span>
 
-ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEFAULT</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$EXPERIMENT</span><span class="s2">&quot;</span>
-diff<span class="w"> </span>-u<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DEFAULT</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$EXPERIMENT</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">"</span><span class="nv">$DEFAULT</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$EXPERIMENT</span><span class="s2">"</span>
+diff<span class="w"> </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$DEFAULT</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$EXPERIMENT</span><span class="s2">"</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 </code></pre></div>
 <p>Also compare:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-refinement-comparison"</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,20p'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,20p'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv"</span>
 </code></pre></div>
 <h2 id="reporting-a-comparison">Reporting a comparison<a class="headerlink" href="#reporting-a-comparison" title="Permanent link">&para;</a></h2>
 <p>Predefine the comparison, use a new <code>outdir</code>, retain the default analysis, and report every non-default setting. Do not tune thresholds toward a desired diagnosis. Review coverage, confidence intervals, segment amplitude, caller uncertainty, and orthogonal evidence before treating a shifted boundary as meaningful.</p>

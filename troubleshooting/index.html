@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1036,6 +1036,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1737,10 +1765,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#10-illumina-panel-of-normals-errors" class="md-nav__link">
+  <a href="#10-confirm-independent-illumina-normal-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        10. Illumina panel-of-normals errors
+        10. Confirm independent Illumina normal outputs
       
     </span>
   </a>
@@ -1792,10 +1820,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#15-report-a-reproducible-problem" class="md-nav__link">
+  <a href="#15-standalone-payload-cache-safety" class="md-nav__link">
     <span class="md-ellipsis">
       
-        15. Report a reproducible problem
+        15. Standalone payload-cache safety
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-report-a-reproducible-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Report a reproducible problem
       
     </span>
   </a>
@@ -2000,10 +2039,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#10-illumina-panel-of-normals-errors" class="md-nav__link">
+  <a href="#10-confirm-independent-illumina-normal-outputs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        10. Illumina panel-of-normals errors
+        10. Confirm independent Illumina normal outputs
       
     </span>
   </a>
@@ -2055,10 +2094,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#15-report-a-reproducible-problem" class="md-nav__link">
+  <a href="#15-standalone-payload-cache-safety" class="md-nav__link">
     <span class="md-ellipsis">
       
-        15. Report a reproducible problem
+        15. Standalone payload-cache safety
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-report-a-reproducible-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Report a reproducible problem
       
     </span>
   </a>
@@ -2104,13 +2154,13 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>poetry
 </code></pre></div>
 <h2 id="2-validate-the-configuration-without-computation">2. Validate the configuration without computation<a class="headerlink" href="#2-validate-the-configuration-without-computation" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,220p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,220p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 </code></pre></div>
 <p>The YAML must be flat. Check absolute paths, mode-specific required fields, and a dedicated <code>outdir</code>.</p>
@@ -2120,16 +2170,16 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 &lt;outdir&gt;/.oncotracer-native/state.json
 </code></pre></div>
 <p>The trace records stage, start/end time, exit code, working directory, and a shell-escaped rendering of the original argument array.</p>
-<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span>
 
-column<span class="w"> </span>-t<span class="w"> </span>-s<span class="w"> </span><span class="s1">$&#39;\t&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/.oncotracer-native/trace.tsv&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-30
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+column<span class="w"> </span>-t<span class="w"> </span>-s<span class="w"> </span><span class="s1">$'\t'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/.oncotracer-native/trace.tsv"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-30
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt"</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 </code></pre></div>
 <p>Search stage logs and non-empty error files:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span>
 
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">&quot;</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.stderr.log&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.command.err&#39;</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*error*log&#39;</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">"</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="se">\(</span><span class="w"> </span>-name<span class="w"> </span><span class="s1">'*.stderr.log'</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">'*.command.err'</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s1">'*error*log'</span><span class="w"> </span><span class="se">\)</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-size<span class="w"> </span>+0c<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 </code></pre></div>
 <p>Many programs write progress to standard error; inspect content and exit status rather than treating any non-empty file as automatic failure.</p>
@@ -2137,21 +2187,21 @@ find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT<
 <p>Repeat the same <code>oncotracer run</code> or QuickStart command. The native ledger reuses a stage only when its signature and expected outputs remain valid.</p>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <p>Use <code>--force</code> only to deliberately invalidate reusable stages:</p>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--force
 </code></pre></div>
-<p>Do not run two writers against the same <code>outdir</code> concurrently.</p>
+<p>OncoTracer now rejects a second writer while the first process holds the exact <code>outdir</code> run lock. A new run may claim only an absent or empty output directory. Resume and <code>--force</code> require the existing <code>.oncotracer-native/output-owner.json</code> to match the same exact OncoTracer runtime and canonical location; they never adopt or delete a nonempty unowned directory. Preserve an unowned or mismatched tree and choose a new <code>outdir</code>.</p>
 <h2 id="5-public-quickstart-download-problems">5. Public QuickStart download problems<a class="headerlink" href="#5-public-quickstart-download-problems" title="Permanent link">&para;</a></h2>
 <p>Download and validate without analysis. Replace the example analyses directory with a directory where you have write permission:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--download-only
 </code></pre></div>
 <p>Repeat the command after a transient interruption. Completed files are accepted only when expected byte count and MD5 match. A partial temporary download is not treated as valid.</p>
@@ -2159,7 +2209,7 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--download-only
 </code></pre></div>
 <h2 id="6-conda-solver-or-prefix-problems">6. Conda solver or prefix problems<a class="headerlink" href="#6-conda-solver-or-prefix-problems" title="Permanent link">&para;</a></h2>
@@ -2168,10 +2218,26 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 </code></pre></div>
 <p>Do not set <code>R_HOME</code>, <code>R_LIBS</code>, <code>R_LIBS_USER</code>, or <code>R_LIBS_SITE</code> to another R installation. Native qDNAseq and ichorCNA stages invoke the exact <code>Rscript</code> in their own prefix with those ambient variables removed. Diagnose the exact prefixes; do not substitute a login-shell <code>command -v</code> result.</p>
+<p>An ownership error means the selected <code>--prefix</code> is populated but was not
+created by this installer, a fixed child has lost or mismatched its marker, a
+symlink is present in the target path, or an interrupted journal cannot be
+authenticated. Do not add a marker manually and do not delete the path broadly.
+Preserve it, inspect the reported path, and choose a new absent or empty
+dedicated prefix. <code>--force</code> intentionally cannot adopt or erase an unowned
+directory. If a managed prefix is reported active, allow the named process to
+finish or select another prefix instead of replacing files beneath it. After an
+uncatchable interruption, OncoTracer can report an <code>oncotracer-preserved</code> sibling
+containing an unsealed package-manager tree. It is not automatically deleted:
+inspect it, confirm it contains no unique or foreign data, and remove only that
+exact path when appropriate. Rerunning the installer recovers the journal and
+restores or completes the managed installation.</p>
 <p>Check storage and inode availability when environment creation fails:</p>
-<div class="highlight"><pre><span></span><code>df<span class="w"> </span>-h<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">&quot;</span>
-df<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code>df<span class="w"> </span>-h<span class="w"> </span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">"</span>
+df<span class="w"> </span>-i<span class="w"> </span><span class="s2">"</span><span class="nv">$HOME</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">"</span>
 </code></pre></div>
+<p>Poetry installation additionally requires Poetry 2.0 or newer and an exact,
+clean Git checkout matching the executable provenance. Version, dirty-tree, or
+source-identity failures occur before managed targets are changed.</p>
 <h2 id="7-docker-errors">7. Docker errors<a class="headerlink" href="#7-docker-errors" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>info
 oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
@@ -2186,10 +2252,10 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 <li>the requested image tag/digest is unavailable.</li>
 </ul>
 <p>Use absolute paths and test project permissions:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
-touch<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/.write-test&quot;</span>
-rm<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/.write-test&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results"</span>
+touch<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/.write-test"</span>
+rm<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/.write-test"</span>
 </code></pre></div>
 <h2 id="8-singularity-or-apptainer-errors">8. Singularity or Apptainer errors<a class="headerlink" href="#8-singularity-or-apptainer-errors" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>apptainer<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>singularity
@@ -2197,6 +2263,14 @@ oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>singularity
 </code></pre></div>
 <p>Check that the recorded SIF exists and all YAML paths are bind-visible. On managed HPC systems, ask the administrator about allowed bind roots and cache locations.</p>
+<p>The installed SIF must have its adjacent strict <code>.oncotracer.json</code> sidecar. A
+missing, malformed, path-mismatched, source-mismatched, or checksum-mismatched
+pair is preserved and rejected; <code>--force</code> does not make an unowned file safe to
+replace. Choose a new absent <code>--sif</code> destination. For an intact owned pair,
+<code>--force</code> pulls and validates a same-directory candidate before an atomic swap,
+so a pull, doctor, provenance, or publication failure leaves the prior image
+available. Never pre-delete a shared or active SIF to work around an ownership
+error.</p>
 <h2 id="9-illumina-input-errors">9. Illumina input errors<a class="headerlink" href="#9-illumina-input-errors" title="Permanent link">&para;</a></h2>
 <p>Automatic Setup supports one consistent layout per run:</p>
 <ul>
@@ -2204,35 +2278,33 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 <li>exactly one R1/R2 pair per sample.</li>
 </ul>
 <p>Check names and gzip integrity:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">READS</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">READS</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq"</span>
 
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS</span><span class="s2">&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS</span><span class="s2">/Patient_A_R1.fastq.gz&quot;</span>
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS</span><span class="s2">/Patient_A_R2.fastq.gz&quot;</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$READS</span><span class="s2">"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$READS</span><span class="s2">/Patient_A_R1.fastq.gz"</span>
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$READS</span><span class="s2">/Patient_A_R2.fastq.gz"</span>
 </code></pre></div>
-<p>Common failures include duplicate sample IDs, missing mates, mixed single/paired layouts, exactly one <code>NORMAL</code> sample, or a normal-only cohort.</p>
-<h2 id="10-illumina-panel-of-normals-errors">10. Illumina panel-of-normals errors<a class="headerlink" href="#10-illumina-panel-of-normals-errors" title="Permanent link">&para;</a></h2>
-<p>The generated/manual samplesheet must mark every selected panel sample as <code>normal</code>, and at least two controls are required.</p>
-<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
-<span class="nv">SHEET</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.samplesheet.csv&quot;</span>
+<p>Common failures include duplicate sample IDs, missing mates, mixed single/paired layouts.</p>
+<h2 id="10-confirm-independent-illumina-normal-outputs">10. Confirm independent Illumina normal outputs<a class="headerlink" href="#10-confirm-independent-illumina-normal-outputs" title="Permanent link">&para;</a></h2>
+<p>The generated/manual samplesheet preserves each submitted <code>normal</code> status, but
+normal rows are not reference inputs. Confirm that each expected normal has its
+own qDNAseq status and result files:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">SHEET</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.samplesheet.csv"</span>
+<span class="nv">QDNA</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results/01_samurai_illumina/qdnaseq"</span>
 
-grep<span class="w"> </span><span class="s1">&#39;^illumina_pon_&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,40p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SHEET</span><span class="s2">&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,40p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$SHEET</span><span class="s2">"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/qdnaseq_sample_status.json"</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/bins"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/segments"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/plots"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 </code></pre></div>
-<p>A successful local panel writes:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">PON</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results/01_samurai_illumina/qdnaseq_local_pon&quot;</span>
-
-<span class="nb">test</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;\r\n&#39;</span><span class="w"> </span>&lt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qdnaseq_local_pon.done&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>QDNASEQ_LOCAL_PON_SUCCESS
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/pon/normal_panel_manifest.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PON</span><span class="s2">/qc/normal_panel_sample_qc.tsv&quot;</span>
-</code></pre></div>
-<p>Do not consume partial panel outputs when the exact completion marker is absent.</p>
+<p>If a normal row is absent from <code>completed_samples</code>, inspect its entry in the
+same status JSON. A mathematically invalid sample may fail post-normalization
+QC without stopping later viable samples; OncoTracer must not silently turn the
+remaining normals into a panel.</p>
 <h2 id="11-ont-barcode-errors">11. ONT barcode errors<a class="headerlink" href="#11-ont-barcode-errors" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">FASTQ_PASS</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">FASTQ_PASS</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq_pass"</span>
 
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$FASTQ_PASS</span><span class="s2">&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$FASTQ_PASS</span><span class="s2">&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-40
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$FASTQ_PASS</span><span class="s2">"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$FASTQ_PASS</span><span class="s2">"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-40
 </code></pre></div>
 <p>Confirm that:</p>
 <ul>
@@ -2244,22 +2316,24 @@ find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$FAST
 </ul>
 <p>Review used/skipped/warning logs beneath <code>01_samurai_ont/logs/</code>.</p>
 <h2 id="12-reference-or-indexing-failures">12. Reference or indexing failures<a class="headerlink" href="#12-reference-or-indexing-failures" title="Permanent link">&para;</a></h2>
-<p>The first Illumina run creates a BWA hg38 index and can require at least 80 GiB of addressable memory. Check free storage, memory, and interrupted reference files:</p>
+<p>The first Illumina run creates a BWA hg38 index in the OncoTracer-owned cache and can require at least 80 GiB of addressable memory. Check free storage, memory, and the two possible reference locations:</p>
 <div class="highlight"><pre><span></span><code>free<span class="w"> </span>-h
-df<span class="w"> </span>-h<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/references&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-ls<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-50
+df<span class="w"> </span>-h<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/references"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-ls<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-50
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/.oncotracer/reference-cache"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-ls<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-50
 </code></pre></div>
-<p>Do not delete a valid shared reference during another active run. Use a new project root or coordinate maintenance when a reference cache is known to be corrupt.</p>
+<p>An existing <code>project/references/samurai_hg38</code> or <code>project/references/samurai_ichorcna_hg38_500kb</code> is external and read-only. A checksum, manifest, physical-lock, tool-identity, layout, or symlink error there stops the run without repair. This includes an otherwise usable FASTA/index directory created by another tool but lacking OncoTracer's exact <code>.oncotracer</code> manifests and locks. Do not manufacture or copy those records. Coordinate shared-reference maintenance outside OncoTracer, or use a new project root so OncoTracer can create its own content-addressed cache. Never delete a valid shared reference during another active run.</p>
+<p>qDNAseq annotations are published under <code>project/.oncotracer/reference-cache/qdnaseq-hg38-&lt;binsize&gt;kb-*/generations/</code>. A failed build leaves no current-generation pointer and is safe to rerun. A changed published generation fails closed rather than being repaired in place. OncoTracer deliberately ignores and preserves the older <code>project/.oncotracer/qdnaseq-bin-data</code> location.</p>
 <h2 id="13-classifier-or-gistic2-failures">13. Classifier or GISTIC2 failures<a class="headerlink" href="#13-classifier-or-gistic2-failures" title="Permanent link">&para;</a></h2>
 <p>First confirm the CNA-only stages completed:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span>
 
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv&quot;</span>
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv&quot;</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_events.tsv"</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/03_cna_codification/cna_cytogenomic_notation.tsv"</span>
 </code></pre></div>
 <p>Then inspect:</p>
-<div class="highlight"><pre><span></span><code>find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-100
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/native_classifier_summary.json&quot;</span>
+<div class="highlight"><pre><span></span><code>find<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">3</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-100
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier/native_classifier_summary.json"</span>
 </code></pre></div>
 <p>Keep <code>gistic_required: false</code> unless the study requires a fatal GISTIC2 branch. Start with deterministic offline settings before enabling model/network enrichment.</p>
 <h2 id="14-confirm-stable-release-identity">14. Confirm stable release identity<a class="headerlink" href="#14-confirm-stable-release-identity" title="Permanent link">&para;</a></h2>
@@ -2267,7 +2341,17 @@ cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</
 sha256sum<span class="w"> </span>oncotracer<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
 </code></pre></div>
 <p>For a stable asset, <code>source_commit</code>, <code>source_sha256</code>, and binary checksum must agree with <code>release-provenance.json</code> and <code>SHA256SUMS</code> from the same release.</p>
-<h2 id="15-report-a-reproducible-problem">15. Report a reproducible problem<a class="headerlink" href="#15-report-a-reproducible-problem" title="Permanent link">&para;</a></h2>
+<h2 id="15-standalone-payload-cache-safety">15. Standalone payload-cache safety<a class="headerlink" href="#15-standalone-payload-cache-safety" title="Permanent link">&para;</a></h2>
+<p>The copied executable normally manages its own content-addressed directory below the XDG cache. If <code>ONCOTRACER_PAYLOAD_CACHE</code> is set accidentally, return to the safe default before retrying:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">unset</span><span class="w"> </span>ONCOTRACER_PAYLOAD_CACHE
+oncotracer<span class="w"> </span>--version
+</code></pre></div>
+<p>The override is an advanced integration option. It must name an absent or empty dedicated path, or a complete cache already owned by that exact executable archive. Never point it at a home directory, XDG root, shared reference, analysis, or scientific-data directory. OncoTracer rejects symlinked, unowned, mismatched, or unexpectedly populated paths and preserves them rather than recursively deleting them. Inspect an ownership or integrity error; do not respond with a broad cache deletion.</p>
+<p>The default cache layout is:</p>
+<div class="highlight"><pre><span></span><code>${XDG_CACHE_HOME:-$HOME/.cache}/oncotracer/2.0.0/&lt;executable-sha256&gt;/payload
+</code></pre></div>
+<p>Every <code>--dry-run</code> uses a separate temporary payload and removes it on success, error, or interruption. A dry-run must not create persistent XDG state, outputs, environments, images, or SIF files.</p>
+<h2 id="16-report-a-reproducible-problem">16. Report a reproducible problem<a class="headerlink" href="#16-report-a-reproducible-problem" title="Permanent link">&para;</a></h2>
 <p>Include only de-identified information:</p>
 <ul>
 <li>exact OncoTracer version and provenance JSON;</li>

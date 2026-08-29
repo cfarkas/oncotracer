@@ -18,7 +18,7 @@
         <link rel="prev" href="../configuration/yaml_basics/">
       
       
-        <link rel="next" href="../six_tumor_four_control/">
+        <link rel="next" href="../six_tumor_four_normal/">
       
       
         
@@ -256,7 +256,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -1109,14 +1109,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1318,6 +1318,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -2290,21 +2318,30 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>singularity
 </code></pre></div>
+<p>Poetry source-development route:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
+./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--prefix<span class="w"> </span>/path/to/my/oncotracer-v2-dev-envs
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>doctor<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>poetry
+
+<span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+</code></pre></div>
 <p>Choose one route for the real run.</p>
 <h2 id="step-2-download-the-versioned-manifest-and-all-12-fastqs">Step 2. Download the versioned manifest and all 12 FASTQs<a class="headerlink" href="#step-2-download-the-versioned-manifest-and-all-12-fastqs" title="Permanent link">&para;</a></h2>
 <p>The following block uses only Python's standard library. It renames each archive FASTQ to the manifest sample alias so Automatic Setup can match the sample table directly. Existing files are reused only when both expected byte count and MD5 match.</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
-<span class="nv">MANIFEST</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/manifest.tsv&quot;</span>
-<span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/input/fastq&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199"</span>
+<span class="nv">MANIFEST</span><span class="o">=</span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/manifest.tsv"</span>
+<span class="nv">READS_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/input/fastq"</span>
 
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/results&quot;</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$READS_DIR</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/results"</span>
 
 python3<span class="w"> </span>-<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;https://raw.githubusercontent.com/cfarkas/oncotracer/v2.0.0/examples/prjna754199/manifest.tsv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$MANIFEST</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="w">  </span><span class="s2">"https://raw.githubusercontent.com/cfarkas/oncotracer/v2.0.0/examples/prjna754199/manifest.tsv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$MANIFEST</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$READS_DIR</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
 <span class="s">from __future__ import annotations</span>
 
 <span class="s">import csv</span>
@@ -2324,21 +2361,21 @@ python3<span class="w"> </span>-<span class="w"> </span><span class="se">\</span
 
 <span class="s">def md5(path: pathlib.Path) -&gt; str:</span>
 <span class="s">    digest = hashlib.md5()</span>
-<span class="s">    with path.open(&quot;rb&quot;) as handle:</span>
-<span class="s">        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b&quot;&quot;):</span>
+<span class="s">    with path.open("rb") as handle:</span>
+<span class="s">        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):</span>
 <span class="s">            digest.update(chunk)</span>
 <span class="s">    return digest.hexdigest()</span>
 
-<span class="s">with manifest_path.open(newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
-<span class="s">    rows = list(csv.DictReader(handle, delimiter=&quot;\t&quot;))</span>
+<span class="s">with manifest_path.open(newline="", encoding="utf-8") as handle:</span>
+<span class="s">    rows = list(csv.DictReader(handle, delimiter="\t"))</span>
 
 <span class="s">if len(rows) != 12:</span>
-<span class="s">    raise SystemExit(f&quot;Expected 12 manifest rows, observed {len(rows)}&quot;)</span>
+<span class="s">    raise SystemExit(f"Expected 12 manifest rows, observed {len(rows)}")</span>
 
 <span class="s">for row in rows:</span>
-<span class="s">    destination = reads_dir / f&quot;{row[&#39;sample_alias&#39;]}.fastq.gz&quot;</span>
-<span class="s">    expected_bytes = int(row[&quot;fastq_bytes&quot;])</span>
-<span class="s">    expected_md5 = row[&quot;fastq_md5&quot;]</span>
+<span class="s">    destination = reads_dir / f"{row['sample_alias']}.fastq.gz"</span>
+<span class="s">    expected_bytes = int(row["fastq_bytes"])</span>
+<span class="s">    expected_md5 = row["fastq_md5"]</span>
 
 <span class="s">    valid = (</span>
 <span class="s">        destination.is_file()</span>
@@ -2346,46 +2383,46 @@ python3<span class="w"> </span>-<span class="w"> </span><span class="se">\</span
 <span class="s">        and md5(destination) == expected_md5</span>
 <span class="s">    )</span>
 <span class="s">    if not valid:</span>
-<span class="s">        temporary = destination.with_suffix(destination.suffix + &quot;.part&quot;)</span>
+<span class="s">        temporary = destination.with_suffix(destination.suffix + ".part")</span>
 <span class="s">        temporary.unlink(missing_ok=True)</span>
-<span class="s">        print(f&quot;Downloading {row[&#39;run_accession&#39;]} -&gt; {destination.name}&quot;, flush=True)</span>
-<span class="s">        urllib.request.urlretrieve(row[&quot;https_url&quot;], temporary)</span>
+<span class="s">        print(f"Downloading {row['run_accession']} -&gt; {destination.name}", flush=True)</span>
+<span class="s">        urllib.request.urlretrieve(row["https_url"], temporary)</span>
 <span class="s">        if temporary.stat().st_size != expected_bytes:</span>
-<span class="s">            raise SystemExit(f&quot;Byte-count mismatch: {destination.name}&quot;)</span>
+<span class="s">            raise SystemExit(f"Byte-count mismatch: {destination.name}")</span>
 <span class="s">        if md5(temporary) != expected_md5:</span>
-<span class="s">            raise SystemExit(f&quot;MD5 mismatch: {destination.name}&quot;)</span>
+<span class="s">            raise SystemExit(f"MD5 mismatch: {destination.name}")</span>
 <span class="s">        temporary.replace(destination)</span>
-<span class="s">    print(f&quot;VALID {destination.name}&quot;, flush=True)</span>
+<span class="s">    print(f"VALID {destination.name}", flush=True)</span>
 
-<span class="s">samples = reads_dir / &quot;samples.csv&quot;</span>
-<span class="s">with samples.open(&quot;w&quot;, newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
+<span class="s">samples = reads_dir / "samples.csv"</span>
+<span class="s">with samples.open("w", newline="", encoding="utf-8") as handle:</span>
 <span class="s">    writer = csv.writer(handle)</span>
-<span class="s">    writer.writerow([&quot;sample_name&quot;, &quot;status&quot;])</span>
+<span class="s">    writer.writerow(["sample_name", "status"])</span>
 <span class="s">    for row in rows:</span>
-<span class="s">        writer.writerow([row[&quot;sample_alias&quot;], &quot;TUMOR&quot;])</span>
+<span class="s">        writer.writerow([row["sample_alias"], "TUMOR"])</span>
 
-<span class="s">print(f&quot;Wrote {samples}&quot;)</span>
+<span class="s">print(f"Wrote {samples}")</span>
 <span class="s">PY</span>
 
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">&quot;</span>/*.fastq.gz
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$READS_DIR</span><span class="s2">/samples.csv&quot;</span>
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$READS_DIR</span><span class="s2">"</span>/*.fastq.gz
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$READS_DIR</span><span class="s2">/samples.csv"</span>
 </code></pre></div>
 <p>Preserve <code>manifest.tsv</code> with the study record.</p>
 <h2 id="step-3-generate-the-single-end-yaml-automatically">Step 3. Generate the single-end YAML automatically<a class="headerlink" href="#step-3-generate-the-single-end-yaml-automatically" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199"</span>
 
 oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/input/fastq/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/results&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/input/fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/input/fastq/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/results"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--run-cna-classifier
 </code></pre></div>
 <p>Add deterministic sarcoma-context settings:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199/config/illumina.auto.yml&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">CONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199/config/illumina.auto.yml"</span>
 
-cat<span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;YAML&#39;</span>
+cat<span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt;'YAML'</span>
 <span class="s">cna_classifier_sample_set: sarcoma</span>
 <span class="s">pathology_use_biomed_models: false</span>
 <span class="s">run_gistic: true</span>
@@ -2395,7 +2432,7 @@ cat<span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="s2">&quo
 <span class="s">knowledge_deep_literature: false</span>
 <span class="s">YAML</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,220p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,220p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
 </code></pre></div>
 <p>Automatic Setup creates:</p>
 <div class="highlight"><pre><span></span><code>oncotracer-prjna754199/config/
@@ -2404,59 +2441,60 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,220
 └── illumina.samplesheet.csv
 </code></pre></div>
 <p>Inspect the exact 12-row samplesheet:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199"</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,20p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/auto_params_manifest.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,20p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.samplesheet.csv"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/auto_params_manifest.tsv"</span>
 </code></pre></div>
 <h2 id="step-4-dry-run-the-native-stage-graph">Step 4. Dry-run the native stage graph<a class="headerlink" href="#step-4-dry-run-the-native-stage-graph" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 </code></pre></div>
 <p>The dry-run prints native argument arrays and validates the configuration without starting alignment or CNA calling.</p>
 <h2 id="step-5-run-the-complete-analysis">Step 5. Run the complete analysis<a class="headerlink" href="#step-5-run-the-complete-analysis" title="Permanent link">&para;</a></h2>
 <p>Choose exactly one backend.</p>
 <h3 id="conda">Conda<a class="headerlink" href="#conda" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">TUTORIAL_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199"</span>
+<span class="nv">ONCOTRACER_DEV</span><span class="o">=</span>/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
 
-poetry<span class="w"> </span>run<span class="w"> </span>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TUTORIAL_ROOT</span><span class="s2">/config/illumina.auto.yml"</span>
 </code></pre></div>
 <p>Keep the terminal open until the command returns. Repeat the same command to resume content-matched completed stages.</p>
 <h2 id="step-6-verify-the-completed-result-tree">Step 6. Verify the completed result tree<a class="headerlink" href="#step-6-verify-the-completed-result-tree" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">OUTDIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">OUTDIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-prjna754199/results"</span>
 
-python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUTDIR</span><span class="s2">&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="nv">$OUTDIR</span><span class="s2">"</span><span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
 <span class="s">from __future__ import annotations</span>
 
 <span class="s">import pathlib</span>
@@ -2464,27 +2502,27 @@ python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;<
 
 <span class="s">outdir = pathlib.Path(sys.argv[1])</span>
 <span class="s">required = [</span>
-<span class="s">    outdir / &quot;06_workflow_summary&quot; / &quot;workflow_summary.txt&quot;,</span>
-<span class="s">    outdir / &quot;06_workflow_summary&quot; / &quot;workflow_summary.json&quot;,</span>
-<span class="s">    outdir / &quot;06_workflow_summary&quot; / &quot;native_run_manifest.json&quot;,</span>
-<span class="s">    outdir / &quot;03_cna_codification&quot; / &quot;cna_events.tsv&quot;,</span>
-<span class="s">    outdir / &quot;03_cna_codification&quot; / &quot;cna_cytogenomic_notation.tsv&quot;,</span>
-<span class="s">    outdir / &quot;04_cna_custom_plots&quot; / &quot;cna_per_sample_pages.pdf&quot;,</span>
-<span class="s">    outdir / &quot;.oncotracer-native&quot; / &quot;trace.tsv&quot;,</span>
-<span class="s">    outdir / &quot;.oncotracer-native&quot; / &quot;state.json&quot;,</span>
+<span class="s">    outdir / "06_workflow_summary" / "workflow_summary.txt",</span>
+<span class="s">    outdir / "06_workflow_summary" / "workflow_summary.json",</span>
+<span class="s">    outdir / "06_workflow_summary" / "native_run_manifest.json",</span>
+<span class="s">    outdir / "03_cna_codification" / "cna_events.tsv",</span>
+<span class="s">    outdir / "03_cna_codification" / "cna_cytogenomic_notation.tsv",</span>
+<span class="s">    outdir / "04_cna_custom_plots" / "cna_per_sample_pages.pdf",</span>
+<span class="s">    outdir / ".oncotracer-native" / "trace.tsv",</span>
+<span class="s">    outdir / ".oncotracer-native" / "state.json",</span>
 <span class="s">]</span>
 <span class="s">missing = [path for path in required if not path.is_file() or path.stat().st_size == 0]</span>
 <span class="s">if missing:</span>
-<span class="s">    raise SystemExit(&quot;Missing or empty outputs:\n&quot; + &quot;\n&quot;.join(map(str, missing)))</span>
+<span class="s">    raise SystemExit("Missing or empty outputs:\n" + "\n".join(map(str, missing)))</span>
 
-<span class="s">summary = (outdir / &quot;06_workflow_summary&quot; / &quot;workflow_summary.txt&quot;).read_text(</span>
-<span class="s">    encoding=&quot;utf-8&quot;</span>
+<span class="s">summary = (outdir / "06_workflow_summary" / "workflow_summary.txt").read_text(</span>
+<span class="s">    encoding="utf-8"</span>
 <span class="s">)</span>
-<span class="s">for required_text in (&quot;mode=illumina&quot;, &quot;engine=native&quot;, &quot;nextflow_used=false&quot;):</span>
+<span class="s">for required_text in ("mode=illumina", "engine=native", "nextflow_used=false"):</span>
 <span class="s">    if required_text not in summary:</span>
-<span class="s">        raise SystemExit(f&quot;Summary is missing {required_text!r}&quot;)</span>
+<span class="s">        raise SystemExit(f"Summary is missing {required_text!r}")</span>
 
-<span class="s">print(&quot;SUCCESS: complete PRJNA754199 native tutorial outputs are present.&quot;)</span>
+<span class="s">print("SUCCESS: complete PRJNA754199 native tutorial outputs are present.")</span>
 <span class="s">PY</span>
 </code></pre></div>
 <p>Start review from:</p>

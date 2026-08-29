@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../six_tumor_four_control/" class="md-nav__link">
+      <a href="../../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1039,6 +1039,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1267,6 +1295,17 @@
     <span class="md-ellipsis">
       
         ONT YAML fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-ont-methylation-yaml-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional ONT methylation YAML fields
       
     </span>
   </a>
@@ -1967,6 +2006,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#optional-ont-methylation-yaml-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional ONT methylation YAML fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#native-classifier-and-pathology-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2046,52 +2096,68 @@ oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
 <thead>
 <tr>
 <th>Option</th>
+<th>Accepted with</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>--conda</code></td>
+<td>exactly one backend</td>
 <td>Create/update five isolated Conda prefixes</td>
 </tr>
 <tr>
 <td><code>--docker</code></td>
+<td>exactly one backend</td>
 <td>Validate Docker, pull the native image, and run its host doctor</td>
 </tr>
 <tr>
 <td><code>--singularity</code></td>
+<td>exactly one backend</td>
 <td>Pull/reuse a SIF through Apptainer or Singularity</td>
 </tr>
 <tr>
 <td><code>--poetry</code></td>
-<td>Install the source-development launcher and the five Conda prefixes</td>
+<td>exactly one backend</td>
+<td>Install an isolated source-development launcher and the five Conda prefixes</td>
 </tr>
 <tr>
 <td><code>--prefix PATH</code></td>
-<td>Alternate parent for the five Conda prefixes</td>
+<td>Conda, Poetry</td>
+<td>Dedicated owned parent for fixed managed children</td>
 </tr>
 <tr>
 <td><code>--image IMAGE</code></td>
+<td>Docker, Singularity</td>
 <td>Override the default native container image</td>
 </tr>
 <tr>
 <td><code>--sif PATH</code></td>
-<td>Override the Singularity/Apptainer image path</td>
+<td>Singularity</td>
+<td>Override the managed Singularity/Apptainer image path</td>
 </tr>
 <tr>
 <td><code>--force</code></td>
-<td>Recreate damaged/changed managed assets deliberately</td>
+<td>Conda, Poetry, Singularity</td>
+<td>Transactionally replace intact, owned assets only</td>
 </tr>
 <tr>
 <td><code>--dry-run</code></td>
-<td>Print installation commands without executing them</td>
+<td>every backend</td>
+<td>Print installation commands without executing them or writing state</td>
 </tr>
 <tr>
 <td><code>--root PATH</code></td>
+<td>Conda, Poetry</td>
 <td>Explicit source or extracted payload root</td>
 </tr>
 </tbody>
 </table>
+<p>Backend-irrelevant options are errors; they are never silently ignored. Conda
+and Poetry prefixes must be absent, empty, or have exact root and child
+ownership markers. A SIF destination must be absent on first installation or
+form an intact file/sidecar pair already owned by OncoTracer. <code>--force</code> cannot
+adopt, unlink, or recursively remove an unowned target.</p>
 <h2 id="oncotracer-doctor"><code>oncotracer doctor</code><a class="headerlink" href="#oncotracer-doctor" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>docker
@@ -2104,11 +2170,11 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1"</span>
 
 oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2&quot;</span>
+<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 </code></pre></div>
 <table>
 <thead>
@@ -2163,10 +2229,10 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <h2 id="oncotracer-auto"><code>oncotracer auto</code><a class="headerlink" href="#oncotracer-auto" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/input/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results"</span>
 </code></pre></div>
 <table>
 <thead>
@@ -2224,7 +2290,7 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--threads<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/illumina.auto.yml"</span>
 </code></pre></div>
 <table>
 <thead>
@@ -2266,9 +2332,30 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <td><code>--root PATH</code></td>
 <td>Explicit payload/source root</td>
 </tr>
+<tr>
+<td><code>--methylation</code></td>
+<td>Enable the optional ONT POD5 methylation branch</td>
+</tr>
+<tr>
+<td><code>--sturgeon</code></td>
+<td>Select the supported CNS-tumor research classifier; mutually exclusive with <code>--marlin</code></td>
+</tr>
+<tr>
+<td><code>--marlin</code></td>
+<td>Select the supported leukemia research classifier; mutually exclusive with <code>--sturgeon</code></td>
+</tr>
+<tr>
+<td><code>--pod5-dir PATH</code></td>
+<td>Required explicit non-empty POD5 directory whenever methylation is enabled</td>
+</tr>
+<tr>
+<td><code>--gpu</code></td>
+<td>Use <code>cuda:all</code> for Dorado and expose the GPU to MARLIN; requires <code>--methylation</code></td>
+</tr>
 </tbody>
 </table>
 <p>Repeating the same command reuses valid content-matched stages automatically.</p>
+<p>Optional methylation is ONT-only and supports the <code>host</code>, <code>conda</code>, and <code>poetry</code> backends with explicit user-installed resources. The stable container does not redistribute the licensed tools/models, so Docker and Singularity/Apptainer reject this branch.</p>
 <h2 id="common-yaml-fields">Common YAML fields<a class="headerlink" href="#common-yaml-fields" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2292,7 +2379,7 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <tr>
 <td><code>outdir</code></td>
 <td>required absolute directory</td>
-<td>Numbered native result tree</td>
+<td>Dedicated absent, empty, or exact-runtime-owned native result tree</td>
 </tr>
 <tr>
 <td><code>force</code></td>
@@ -2336,34 +2423,11 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <td><code>100</code></td>
 <td>Coarse qDNAseq bin width</td>
 </tr>
-<tr>
-<td><code>illumina_build_pon</code></td>
-<td><code>false</code></td>
-<td>Build/apply local qDNAseq normal panel</td>
-</tr>
-<tr>
-<td><code>illumina_pon_normal_samples</code></td>
-<td>comma-separated IDs</td>
-<td>Every and only selected normal samples</td>
-</tr>
-<tr>
-<td><code>illumina_pon_min_normals</code></td>
-<td><code>2</code></td>
-<td>Minimum selected controls; must be at least two</td>
-</tr>
-<tr>
-<td><code>illumina_pon_name</code></td>
-<td><code>illumina_local_PoN</code></td>
-<td>Safe panel artifact name</td>
-</tr>
-<tr>
-<td><code>illumina_pon_min_mapq</code></td>
-<td><code>37</code></td>
-<td>Panel construction mapping-quality threshold</td>
-</tr>
 </tbody>
 </table>
-<p>Automatic Setup writes no panel for zero normals, rejects exactly one normal, and enables the local panel for two or more. Normal samples remain reference/QC inputs; downstream corrected outputs contain tumors.</p>
+<p>The samplesheet <code>status</code> column preserves <code>tumor</code> or <code>normal</code> metadata. Every
+row is analyzed independently; normal rows are not used to construct or apply a
+local sample-derived reference.</p>
 <h2 id="ont-yaml-fields">ONT YAML fields<a class="headerlink" href="#ont-yaml-fields" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2390,6 +2454,21 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <td>Positional biological sample names</td>
 </tr>
 <tr>
+<td><code>ont_normal_folder</code></td>
+<td>optional path</td>
+<td>Parent containing independent NORMAL barcode directories; requires solid-biopsy qDNAseq</td>
+</tr>
+<tr>
+<td><code>ont_normal_barcodes</code></td>
+<td>required with <code>ont_normal_folder</code></td>
+<td>NORMAL barcode selection; each barcode is analyzed as its own sample</td>
+</tr>
+<tr>
+<td><code>ont_normal_sample_names</code></td>
+<td>NORMAL barcode names when omitted</td>
+<td>Positional NORMAL sample names; never pooled into a panel</td>
+</tr>
+<tr>
 <td><code>ont_analysis_type</code></td>
 <td><code>liquid_biopsy</code></td>
 <td>Analysis preset</td>
@@ -2397,37 +2476,17 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 <tr>
 <td><code>ont_caller</code></td>
 <td><code>ichorcna</code></td>
-<td>Native ONT CNA caller</td>
+<td><code>ichorcna</code>, or <code>qdnaseq</code> only with explicit <code>ont_analysis_type: solid_biopsy</code></td>
 </tr>
 <tr>
 <td><code>ont_binsize_kb</code></td>
 <td><code>500</code></td>
-<td>Coarse ichorCNA/HMMcopy bin width</td>
+<td>Coarse caller bin width; set explicitly for qDNAseq solid-biopsy runs</td>
 </tr>
 <tr>
 <td><code>ont_ref</code></td>
 <td>optional FASTA</td>
 <td>Custom reference</td>
-</tr>
-<tr>
-<td><code>ont_normal_folder</code></td>
-<td>optional path</td>
-<td>Parent containing normal barcodes</td>
-</tr>
-<tr>
-<td><code>ont_normal_barcodes</code></td>
-<td>optional names</td>
-<td>Positional normal barcode selection</td>
-</tr>
-<tr>
-<td><code>ont_normal_sample_names</code></td>
-<td>optional names</td>
-<td>Positional normal sample names</td>
-</tr>
-<tr>
-<td><code>ont_build_pon</code></td>
-<td><code>false</code></td>
-<td>Explicit local-normal route request</td>
 </tr>
 <tr>
 <td><code>ont_min_age_minutes</code></td>
@@ -2441,7 +2500,141 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 </tr>
 </tbody>
 </table>
-<p><code>ont_barcodes</code> and <code>ont_sample_names</code> must have equal lengths and order.</p>
+<p><code>ont_barcodes</code> and <code>ont_sample_names</code> must have equal lengths and order. The corresponding NORMAL lists must also match, sample names and resolved barcode directories must be unique across both groups, and a mixed TUMOR/NORMAL run uses native qDNAseq rather than the frozen Nextflow comparator.</p>
+<h2 id="optional-ont-methylation-yaml-fields">Optional ONT methylation YAML fields<a class="headerlink" href="#optional-ont-methylation-yaml-fields" title="Permanent link">&para;</a></h2>
+<p>CLI values override <code>methylation</code>, classifier, POD5, and GPU YAML values. There is no POD5 discovery; one explicit path is always required.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Typical/default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>methylation</code></td>
+<td><code>false</code></td>
+<td>Enable optional ONT methylation when not using <code>--methylation</code></td>
+</tr>
+<tr>
+<td><code>methylation_classifier</code></td>
+<td>required when enabled</td>
+<td>Exactly <code>sturgeon</code> or <code>marlin</code></td>
+</tr>
+<tr>
+<td><code>methylation_pod5_dir</code></td>
+<td>required when enabled</td>
+<td>Explicit directory containing non-empty <code>.pod5</code> files</td>
+</tr>
+<tr>
+<td><code>methylation_gpu</code></td>
+<td><code>false</code></td>
+<td>Dorado <code>cuda:all</code>; MARLIN GPU visibility; Modkit/Sturgeon remain CPU</td>
+</tr>
+<tr>
+<td><code>methylation_reference_build</code></td>
+<td><code>hg38</code></td>
+<td>Only supported methylation reference build in v2.0.0</td>
+</tr>
+<tr>
+<td><code>methylation_dorado_executable</code></td>
+<td>required local executable</td>
+<td>Dorado binary; no download or installation</td>
+</tr>
+<tr>
+<td><code>methylation_modkit_executable</code></td>
+<td>required local executable</td>
+<td>Modkit binary; no download or installation</td>
+</tr>
+<tr>
+<td><code>methylation_samtools_executable</code></td>
+<td><code>samtools</code></td>
+<td>Explicit or PATH-resolved SAMtools binary</td>
+</tr>
+<tr>
+<td><code>methylation_dorado_model</code></td>
+<td>required directory</td>
+<td>Explicit compatible Dorado basecalling model</td>
+</tr>
+<tr>
+<td><code>methylation_dorado_model_sha256</code></td>
+<td>optional expected digest</td>
+<td>OncoTracer directory-tree digest; always recorded</td>
+</tr>
+<tr>
+<td><code>methylation_dorado_modbase_model</code></td>
+<td>required directory</td>
+<td>Explicit compatible 5mCG/5hmCG model</td>
+</tr>
+<tr>
+<td><code>methylation_dorado_modbase_model_sha256</code></td>
+<td>optional expected digest</td>
+<td>OncoTracer directory-tree digest; always recorded</td>
+</tr>
+<tr>
+<td><code>sturgeon_interface_contract_commit</code></td>
+<td>fixed supported upstream interface commit; does not authenticate the installed package</td>
+<td><code>4c742ddea49b0077a8f8ff3d99daafb238d00706</code></td>
+</tr>
+<tr>
+<td><code>sturgeon_license_acknowledged</code></td>
+<td>required <code>true</code></td>
+<td>User attests to separately obtaining/accepting the Sturgeon license</td>
+</tr>
+<tr>
+<td><code>sturgeon_executable</code></td>
+<td>required</td>
+<td>User-installed Sturgeon executable</td>
+</tr>
+<tr>
+<td><code>sturgeon_model</code>, <code>sturgeon_model_sha256</code></td>
+<td>required pair</td>
+<td>Explicit model and exact file SHA-256</td>
+</tr>
+<tr>
+<td><code>sturgeon_probes</code>, <code>sturgeon_probes_sha256</code></td>
+<td>required pair</td>
+<td>Explicit hg38 probes and exact file SHA-256</td>
+</tr>
+<tr>
+<td><code>marlin_interface_contract_commit</code></td>
+<td>fixed supported upstream interface commit; does not authenticate an external runtime</td>
+<td><code>37c9836cc325ff2edccbdff06736604163db2c15</code></td>
+</tr>
+<tr>
+<td><code>marlin_rscript</code></td>
+<td>required</td>
+<td>Rscript from the user-prepared MARLIN environment</td>
+</tr>
+<tr>
+<td><code>marlin_python</code></td>
+<td>required</td>
+<td>Exact Python with h5py, NumPy, and TensorFlow; automatic environments are forbidden</td>
+</tr>
+<tr>
+<td><code>marlin_model</code>, <code>marlin_model_sha256</code></td>
+<td>required pair</td>
+<td>Explicit MARLIN model and exact file SHA-256</td>
+</tr>
+<tr>
+<td><code>marlin_features</code>, <code>marlin_features_sha256</code></td>
+<td>required pair</td>
+<td>Explicit feature RData and exact file SHA-256</td>
+</tr>
+<tr>
+<td><code>marlin_class_annotations</code>, <code>marlin_class_annotations_sha256</code></td>
+<td>required pair</td>
+<td>Explicit class workbook and exact file SHA-256</td>
+</tr>
+<tr>
+<td><code>marlin_probe_bed</code>, <code>marlin_probe_bed_sha256</code></td>
+<td>required pair</td>
+<td>Explicit hg38 probe BED and exact file SHA-256</td>
+</tr>
+</tbody>
+</table>
+<p>The classifier is not invoked for a sample with zero usable modified-CpG calls. CNA continues, and the final status reports the two branches independently. See <a href="../methylation/">Optional ONT methylation</a> for the complete setup, dry-run, resume, license, and output contract.</p>
 <h2 id="native-classifier-and-pathology-fields">Native classifier and pathology fields<a class="headerlink" href="#native-classifier-and-pathology-fields" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

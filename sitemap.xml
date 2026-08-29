@@ -2,122 +2,126 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://cfarkas.github.io/oncotracer/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/auto_params/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/citation_research_use/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/configuration/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/configuration_v2/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/containers/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/developer_guide/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/full_tutorial/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/gallery/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/inputs/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/installation/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/legacy_v1/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/migration_v1_to_v2/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/models_pathology/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/native_architecture/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/outputs/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/parity_release/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/poetry/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/programs/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/public_cohort/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/quick_start/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/running/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
-         <loc>https://cfarkas.github.io/oncotracer/six_tumor_four_control/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <loc>https://cfarkas.github.io/oncotracer/six_tumor_four_normal/</loc>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/troubleshooting/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/configuration/illumina/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
+    </url>
+    <url>
+         <loc>https://cfarkas.github.io/oncotracer/configuration/methylation/</loc>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/configuration/ont/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/configuration/parameter_reference/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/configuration/pathology/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/configuration/refinement/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
     <url>
          <loc>https://cfarkas.github.io/oncotracer/configuration/yaml_basics/</loc>
-         <lastmod>2026-08-08</lastmod>
+         <lastmod>2026-08-29</lastmod>
     </url>
 </urlset>

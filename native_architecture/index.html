@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../six_tumor_four_control/" class="md-nav__link">
+      <a href="../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1036,6 +1036,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1487,6 +1515,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installer-ownership-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installer ownership boundary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#native-invariant" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1791,6 +1830,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installer-ownership-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installer ownership boundary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#native-invariant" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1840,7 +1890,58 @@
 </ul>
 <p>The optional classifier is a direct native stage graph over its versioned Python scripts and assets. No <code>.nf</code> file is present in the release executable or container.</p>
 <h2 id="single-file-executable">Single-file executable<a class="headerlink" href="#single-file-executable" title="Permanent link">&para;</a></h2>
-<p><code>scripts/build_native_binary.py</code> creates a compressed Python zipapp containing the CLI and the complete versioned payload (<code>bin</code>, examples, parameter templates, environment definitions, and stable source-input provenance). The build embeds the exact Git commit and deterministic <code>git archive</code> SHA-256. At first use, payload files are extracted atomically into a versioned user cache and verified against the executable SHA-256.</p>
+<p><code>scripts/build_native_binary.py</code> creates a compressed Python zipapp containing the CLI and the complete versioned payload (<code>bin</code>, examples, parameter templates, environment definitions, and stable source-input provenance). The build embeds the exact Git commit and deterministic <code>git archive</code> SHA-256. At first use, payload files are staged and published atomically under <code>$XDG_CACHE_HOME/oncotracer/2.0.0/&lt;executable-sha256&gt;/payload</code>. The complete executable SHA-256 gives two different v2.0.0 binaries separate cache roots and locks.</p>
+<p>On every reuse, OncoTracer independently derives the expected payload inventory from the executable and verifies each canonical path, file type, normalized mode, size, and SHA-256. Symlinks, special files, missing paths, and extras cannot be accepted as a valid cache. An explicit <code>--root</code> or <code>ONCOTRACER_ROOT</code> containing <code>bin/scripts</code> takes precedence over extraction.</p>
+<p>All standalone <code>--dry-run</code> commands use a process-scoped temporary payload and remove it after success, validation failure, or interruption. They do not populate the persistent XDG cache or create installation configuration, result directories, Conda environments, container images, or SIF files.</p>
+<h2 id="installer-ownership-boundary">Installer ownership boundary<a class="headerlink" href="#installer-ownership-boundary" title="Permanent link">&para;</a></h2>
+<p>Managed Conda/Poetry installations use a strict root marker plus one strict
+marker for each fixed child. The records bind canonical paths, a random install
+ID, the environment or lock-file digest, exact file inventory, and OncoTracer
+source identity. An ownership-checked sibling lock serializes operations. For
+each changed child, an authenticated rollback journal records the prior state,
+the exact-owned old child moves to a same-filesystem backup, and the replacement
+is created directly at its final canonical prefix. Semantic probes and the
+inventory run at that final path before commit; unrelated siblings are outside
+the transaction. Populated unowned paths, marker mismatches, symlinked paths,
+foreign entries, and active prefixes fail before replacement. A shared lock
+is held for the complete lifetime of each managed analysis, so the exclusive
+installer cannot publish beneath a consumer. A durable staging journal exists
+before transaction creation or package-manager execution. If SIGKILL leaves an
+unsealed final-prefix tree, recovery restores the prior state and moves the
+unknown tree to a reported sibling preservation path instead of deleting it.
+After any failed publication, recovery records the restored target in a durable
+<code>rolled_back</code> journal and seals the exact transaction inventory before retaining
+the transaction root, so interruption between root and journal retention resumes.
+After commit, the exact inventory-authenticated transaction root is atomically
+renamed with no replacement to a transaction-ID-bound retained rollback path.
+The canonical journal is then atomically renamed to a target-bound retained
+audit record. Recovery accepts either the original transaction name or its
+exact retained name, verifies the complete sealed inventory, and resumes this
+order idempotently. No installer path recursively deletes transaction contents,
+rollback roots, journals, or temporary metadata; later transactions ignore the
+retained names. Their exact paths are reported for deliberate administrator
+archival or removal after active-use checks.
+Poetry's launcher is a fixed isolated <code>poetry-runtime</code> child built from an
+exact clean checkout in isolated state and installed only by the final target
+interpreter; it is never an ambient or checkout-local virtual environment.</p>
+<p>Native child processes receive invocation-private HOME, XDG, Matplotlib, and
+Fontconfig state below the analysis output's <code>.oncotracer-native/runtime-cache</code>.
+OncoTracer audits the selected Fontconfig include graph, exposes one private
+cache destination, and checks the containment contract before and after each
+child. While the shared managed-runtime lock is still held, it also rechecks
+every managed child inventory and ownership identity after analysis or doctor
+use. This contract covers commands launched by OncoTracer; invoking a managed
+prefix's binaries directly is outside that runtime containment boundary.</p>
+<p>All final-prefix and backup publications use no-replacement renames. Metadata
+updates atomically exchange names and retain the prior bytes under a unique name.</p>
+<p>A managed SIF has an adjacent strict sidecar binding its canonical path, image
+reference, bytes, install ID, and source identity. Every reuse verifies the
+file SHA-256 and executes container <code>doctor</code> and <code>provenance</code>. Replacement pulls
+into a same-directory owned transaction and verifies the candidate before an
+atomic, rollback-protected swap. Neither <code>--force</code> path adopts or pre-deletes an
+unowned destination. Install dry-runs perform the same read-only target checks
+but create no locks, markers, transactions, environments, images, or saved
+configuration.</p>
 <p>The release file can therefore be installed directly:</p>
 <div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0755</span><span class="w"> </span>oncotracer<span class="w"> </span>/usr/local/bin/oncotracer
 oncotracer<span class="w"> </span>provenance<span class="w"> </span>--json

@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://cfarkas.github.io/oncotracer/configuration/pathology/">
       
       
-        <link rel="prev" href="../ont/">
+        <link rel="prev" href="../methylation/">
       
       
         <link rel="next" href="../refinement/">
@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../six_tumor_four_control/" class="md-nav__link">
+      <a href="../../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1039,6 +1039,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -2047,10 +2075,10 @@
 └── results/
 </code></pre></div>
 <h2 id="step-1-create-the-sequencing-sample-table">Step 1. Create the sequencing sample table<a class="headerlink" href="#step-1-create-the-sequencing-sample-table" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'CSV'</span>
 <span class="s">sample_name,status</span>
 <span class="s">I7738,TUMOR</span>
 <span class="s">V480,TUMOR</span>
@@ -2058,70 +2086,70 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 </code></pre></div>
 <p>Place the matching R1/R2 FASTQs under <code>$PROJECT_DIR/input/fastq</code>.</p>
 <h2 id="step-2-create-the-de-identified-pathology-csv">Step 2. Create the de-identified pathology CSV<a class="headerlink" href="#step-2-create-the-de-identified-pathology-csv" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'CSV'</span>
 <span class="s">illumina_sample_id,case_code,final_diagnosis</span>
-<span class="s">I7738,Case_07738,&quot;Glioblastoma, IDH-wildtype.&quot;</span>
-<span class="s">V480,Case_00480,&quot;Diffuse large B-cell lymphoma, NOS.&quot;</span>
+<span class="s">I7738,Case_07738,"Glioblastoma, IDH-wildtype."</span>
+<span class="s">V480,Case_00480,"Diffuse large B-cell lymphoma, NOS."</span>
 <span class="s">CSV</span>
 
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv"</span>
 </code></pre></div>
 <p>Quotes protect diagnosis text containing commas. Use research identifiers and include only fields required by the approved analysis.</p>
 <h2 id="step-3-verify-exact-sample-matching">Step 3. Verify exact sample matching<a class="headerlink" href="#step-3-verify-exact-sample-matching" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
 python3<span class="w"> </span>-<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
 <span class="s">import csv</span>
 <span class="s">import sys</span>
 
 <span class="s">sample_table, pathology = sys.argv[1:3]</span>
-<span class="s">with open(sample_table, newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
+<span class="s">with open(sample_table, newline="", encoding="utf-8") as handle:</span>
 <span class="s">    sequencing_ids = {</span>
-<span class="s">        row[&quot;sample_name&quot;].strip() for row in csv.DictReader(handle)</span>
+<span class="s">        row["sample_name"].strip() for row in csv.DictReader(handle)</span>
 <span class="s">    }</span>
-<span class="s">with open(pathology, newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
+<span class="s">with open(pathology, newline="", encoding="utf-8") as handle:</span>
 <span class="s">    pathology_ids = {</span>
-<span class="s">        row[&quot;illumina_sample_id&quot;].strip() for row in csv.DictReader(handle)</span>
+<span class="s">        row["illumina_sample_id"].strip() for row in csv.DictReader(handle)</span>
 <span class="s">    }</span>
 
 <span class="s">missing_pathology = sequencing_ids - pathology_ids</span>
 <span class="s">missing_sequence = pathology_ids - sequencing_ids</span>
 <span class="s">if missing_pathology or missing_sequence:</span>
 <span class="s">    raise SystemExit(</span>
-<span class="s">        f&quot;Missing pathology={sorted(missing_pathology)}; &quot;</span>
-<span class="s">        f&quot;missing sequencing={sorted(missing_sequence)}&quot;</span>
+<span class="s">        f"Missing pathology={sorted(missing_pathology)}; "</span>
+<span class="s">        f"missing sequencing={sorted(missing_sequence)}"</span>
 <span class="s">    )</span>
-<span class="s">print(&quot;OK: every pathology identifier matches a sequencing sample&quot;)</span>
+<span class="s">print("OK: every pathology identifier matches a sequencing sample")</span>
 <span class="s">PY</span>
 </code></pre></div>
 <h2 id="step-4-generate-the-yaml-with-the-classifier-enabled">Step 4. Generate the YAML with the classifier enabled<a class="headerlink" href="#step-4-generate-the-yaml-with-the-classifier-enabled" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
 oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina_pathology&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina_pathology"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--run-cna-classifier
 </code></pre></div>
 <p>Add the study-defined context and pathology columns with the real absolute pathology path:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-<span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+<span class="nv">CONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml"</span>
 
-python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;PY&#39;</span>
+python3<span class="w"> </span>-<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/pathology.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
 <span class="s">from pathlib import Path</span>
 <span class="s">import sys</span>
 
 <span class="s">config = Path(sys.argv[1])</span>
 <span class="s">pathology = Path(sys.argv[2]).resolve()</span>
-<span class="s">with config.open(&quot;a&quot;, encoding=&quot;utf-8&quot;) as handle:</span>
+<span class="s">with config.open("a", encoding="utf-8") as handle:</span>
 <span class="s">    handle.write(</span>
-<span class="s">        f&quot;&quot;&quot;cna_classifier_sample_set: broad_cancer</span>
+<span class="s">        f"""cna_classifier_sample_set: broad_cancer</span>
 
 <span class="s">pathology_csv: {pathology}</span>
 <span class="s">pathology_sample_col: illumina_sample_id</span>
@@ -2137,11 +2165,11 @@ python3<span class="w"> </span>-<span class="w"> </span><span class="s2">&quot;<
 <span class="s">knowledge_web: false</span>
 <span class="s">knowledge_literature_llm: false</span>
 <span class="s">knowledge_deep_literature: false</span>
-<span class="s">&quot;&quot;&quot;</span>
+<span class="s">"""</span>
 <span class="s">    )</span>
 <span class="s">PY</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,240p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,240p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
 </code></pre></div>
 <h2 id="context-selection">Context selection<a class="headerlink" href="#context-selection" title="Permanent link">&para;</a></h2>
 <p>Choose <code>cna_classifier_sample_set</code> from the study design before reviewing results. Supported contexts include:</p>
@@ -2154,34 +2182,34 @@ sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,240
 </ul>
 <p>Do not choose a context because it produces the desired classification.</p>
 <h2 id="step-5-dry-run-and-execute">Step 5. Dry-run and execute<a class="headerlink" href="#step-5-dry-run-and-execute" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-<span class="nv">CONFIG</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+<span class="nv">CONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.auto.yml"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CONFIG</span><span class="s2">&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$CONFIG</span><span class="s2">"</span>
 </code></pre></div>
 <p>The same YAML can be run through Docker or Singularity after installing that backend.</p>
 <h2 id="step-6-inspect-classifier-and-pathology-outputs">Step 6. Inspect classifier and pathology outputs<a class="headerlink" href="#step-6-inspect-classifier-and-pathology-outputs" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project/results/illumina_pathology&quot;</span>
-<span class="nv">CLASSIFIER</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">OUT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/results/illumina_pathology"</span>
+<span class="nv">CLASSIFIER</span><span class="o">=</span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/05_cna_classifier"</span>
 
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/01_prepared/sample_cna_summary.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/02_classification/cna_patient_classification.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,12p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/07_pathology/pathology_concordance.tsv&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,120p&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/07_pathology/pathology_status.txt&quot;</span>
-ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/03_report/cna_classifier_report.html&quot;</span>
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CLASSIFIER</span><span class="s2">/03_report/clinician_reports&quot;</span><span class="w"> </span><span class="se">\</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,12p'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$CLASSIFIER</span><span class="s2">/01_prepared/sample_cna_summary.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,12p'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$CLASSIFIER</span><span class="s2">/02_classification/cna_patient_classification.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,12p'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$CLASSIFIER</span><span class="s2">/07_pathology/pathology_concordance.tsv"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,120p'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"</span><span class="nv">$CLASSIFIER</span><span class="s2">/07_pathology/pathology_status.txt"</span>
+ls<span class="w"> </span>-lh<span class="w"> </span><span class="s2">"</span><span class="nv">$CLASSIFIER</span><span class="s2">/03_report/cna_classifier_report.html"</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$CLASSIFIER</span><span class="s2">/03_report/clinician_reports"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-maxdepth<span class="w"> </span><span class="m">1</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
 </code></pre></div>
 <table>

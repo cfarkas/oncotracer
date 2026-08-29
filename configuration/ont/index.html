@@ -18,7 +18,7 @@
         <link rel="prev" href="../illumina/">
       
       
-        <link rel="next" href="../pathology/">
+        <link rel="next" href="../methylation/">
       
       
         
@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../six_tumor_four_control/" class="md-nav__link">
+      <a href="../../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1163,10 +1163,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-normalcontrol-barcodes" class="md-nav__link">
+  <a href="#explicit-solid-biopsy-qdnaseq-route" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optional normal/control barcodes
+        Explicit solid-biopsy qDNAseq route
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-pod5-methylation-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional POD5 methylation classification
       
     </span>
   </a>
@@ -1232,6 +1243,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1946,10 +1985,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-normalcontrol-barcodes" class="md-nav__link">
+  <a href="#explicit-solid-biopsy-qdnaseq-route" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Optional normal/control barcodes
+        Explicit solid-biopsy qDNAseq route
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-pod5-methylation-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional POD5 methylation classification
       
     </span>
   </a>
@@ -2037,7 +2087,8 @@
 
 
 <h1 id="ont-configuration">ONT configuration<a class="headerlink" href="#ont-configuration" title="Permanent link">&para;</a></h1>
-<p>Use this route for Oxford Nanopore Technologies FASTQs organized in barcode directories. Native v2 discovers and merges the selected reads, aligns with minimap2, counts genomic bins with HMMcopy, runs ichorCNA, refines CNA boundaries from BAM depth, and creates tables, plots, and summaries.</p>
+<p>Use this route for Oxford Nanopore Technologies FASTQs organized in barcode directories. Native v2 discovers and merges the selected reads, aligns with minimap2, runs the explicitly selected CNA caller, refines CNA boundaries from BAM depth, and creates tables, plots, and summaries. The default liquid-biopsy route uses HMMcopy/ichorCNA; an explicit solid-biopsy route can use qDNAseq.</p>
+<p>The liquid-biopsy caller uses the version-selected upstream HD_ULP ichorCNA reference object as a static scientific asset. That caller resource is not created from the cohort, and no submitted <code>NORMAL</code> sample is pooled into it.</p>
 <h2 id="recommended-automatic-setup">Recommended: Automatic Setup<a class="headerlink" href="#recommended-automatic-setup" title="Permanent link">&para;</a></h2>
 <h3 id="arrange-barcode-fastqs">Arrange barcode FASTQs<a class="headerlink" href="#arrange-barcode-fastqs" title="Permanent link">&para;</a></h3>
 <p>Point <code>--reads-folder</code> at the parent <code>fastq_pass</code> directory:</p>
@@ -2045,71 +2096,69 @@
 ├── barcode01/
 │   ├── reads_001.fastq.gz
 │   └── reads_002.fastq.gz
-├── barcode02/
-│   └── reads_001.fastq.gz
-└── barcode03/
+└── barcode02/
     └── reads_001.fastq.gz
 </code></pre></div>
 <p>Each selected barcode may contain one or more <code>.fastq</code>, <code>.fq</code>, <code>.fastq.gz</code>, or <code>.fq.gz</code> files directly inside it.</p>
 <h3 id="create-the-barcode-table">Create the barcode table<a class="headerlink" href="#create-the-barcode-table" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/ont_samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/ont_samples.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'CSV'</span>
 <span class="s">barcode,sample_name,status</span>
 <span class="s">barcode01,Patient_A,TUMOR</span>
-<span class="s">barcode02,Patient_B,TUMOR</span>
-<span class="s">barcode03,Patient_Normal,NORMAL</span>
+<span class="s">barcode02,Control_A,NORMAL</span>
 <span class="s">CSV</span>
 </code></pre></div>
-<p><code>barcode</code> must match a directory name exactly. At least one row must be <code>TUMOR</code>.</p>
+<p><code>barcode</code> must match a directory name exactly.</p>
 <h3 id="generate-the-yaml">Generate the YAML<a class="headerlink" href="#generate-the-yaml" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
 oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>ont<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/ont_samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/ont&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/ont_samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/ont"</span>
 </code></pre></div>
 <p>Automatic Setup validates selected barcode directories and compressed FASTQs. It writes <code>ont.auto.yml</code> and <code>auto_params_manifest.tsv</code>; it does not start alignment or CNA analysis.</p>
 <h3 id="inspect-and-run">Inspect and run<a class="headerlink" href="#inspect-and-run" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,200p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont/ont.auto.yml&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont/auto_params_manifest.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,200p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont/ont.auto.yml"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont/auto_params_manifest.tsv"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont/ont.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont/ont.auto.yml"</span>
 
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/ont/06_workflow_summary/workflow_summary.txt&quot;</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/ont/06_workflow_summary/workflow_summary.txt"</span>
 </code></pre></div>
 <p>A generated YAML resembles:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span>
 <span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project</span>
 <span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/results/ont</span>
 <span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/fastq_pass</span>
-<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
-<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A,Patient_B</span>
-<span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_biopsy</span>
-<span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ichorcna</span>
-<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
-<span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_A</span>
 <span class="nt">ont_normal_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/fastq_pass</span>
-<span class="nt">ont_normal_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode03</span>
-<span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Patient_Normal</span>
+<span class="nt">ont_normal_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode02</span>
+<span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A</span>
+<span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
+<span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
+<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
 <span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 <span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>Barcode and sample-name lists are positional. The first barcode maps to the first sample name.</p>
+<p>Barcode and sample-name lists are positional. The first barcode maps to the first sample name.
+<code>ont_barcodes</code>/<code>ont_sample_names</code> identify TUMOR samples. When the input table contains NORMAL rows, Automatic Setup writes them separately as <code>ont_normal_folder</code>, <code>ont_normal_barcodes</code>, and <code>ont_normal_sample_names</code>. Native v2 runs qDNAseq for every TUMOR and NORMAL sample independently; it never pools, averages, or subtracts the NORMAL group. Mixed or NORMAL-containing ONT cohorts therefore use <code>ont_analysis_type: solid_biopsy</code> and <code>ont_caller: qdnaseq</code>. The frozen Nextflow comparator does not support this role-preserving route.</p>
 <h2 id="manual-yaml">Manual YAML<a class="headerlink" href="#manual-yaml" title="Permanent link">&para;</a></h2>
 <p>Use a manual file when selecting a subset of barcodes, using a custom reference, or applying advanced settings:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/manual_ont&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/manual_ont"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml&quot;</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml"</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
 <span class="s">mode: ont</span>
 <span class="s">lpwgs_root: $PROJECT_DIR</span>
 <span class="s">outdir: $PROJECT_DIR/results/manual_ont</span>
@@ -2126,21 +2175,42 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont.manual.yml"</span>
 </code></pre></div>
-<h2 id="optional-normalcontrol-barcodes">Optional normal/control barcodes<a class="headerlink" href="#optional-normalcontrol-barcodes" title="Permanent link">&para;</a></h2>
-<p>Add:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">ont_normal_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/normal_fastq_pass</span>
-<span class="nt">ont_normal_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
-<span class="nt">ont_normal_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Normal_A,Normal_B</span>
-<span class="nt">ont_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<h2 id="explicit-solid-biopsy-qdnaseq-route">Explicit solid-biopsy qDNAseq route<a class="headerlink" href="#explicit-solid-biopsy-qdnaseq-route" title="Permanent link">&para;</a></h2>
+<p>For a solid-tumor ONT cohort, select qDNAseq explicitly and use a new <code>outdir</code> so its caller and reports remain separate from an ichorCNA run:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ont</span>
+<span class="nt">lpwgs_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project</span>
+<span class="nt">outdir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/results/ont_solid_qdnaseq</span>
+<span class="nt">ont_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/input/fastq_pass</span>
+<span class="nt">ont_barcodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barcode01,barcode02</span>
+<span class="nt">ont_sample_names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Tumor_A,Tumor_B</span>
+<span class="nt">ont_analysis_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">solid_biopsy</span>
+<span class="nt">ont_caller</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qdnaseq</span>
+<span class="nt">ont_binsize_kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="nt">ont_min_age_minutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="nt">run_cna_classifier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">force</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>Review the supported study design and native summary before interpreting normalized calls.</p>
+<p>This route reuses the native qDNAseq implementation and its existing scientific settings, passes the long-read BAMs as unpaired data, and writes initial caller output under <code>01_samurai_ont/qdnaseq/</code>. It does not combine or overwrite <code>01_samurai_ont/results/ichorcna/</code>; retaining a distinct <code>outdir</code> also keeps the downstream stage-02 through stage-06 products separate. <code>ont_caller: qdnaseq</code> is rejected unless <code>ont_analysis_type: solid_biopsy</code> is present.</p>
+<h2 id="optional-pod5-methylation-classification">Optional POD5 methylation classification<a class="headerlink" href="#optional-pod5-methylation-classification" title="Permanent link">&para;</a></h2>
+<p>For an ONT run, <code>--methylation</code> can run modified-base basecalling and either Sturgeon (<code>--sturgeon</code>, CNS-tumor research) or MARLIN (<code>--marlin</code>, leukemia research) before the CNA branch. An explicit non-empty POD5 directory is mandatory; OncoTracer never searches for POD5 files:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
+
+oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project/config/ont.manual.yml"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--methylation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sturgeon<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pod5-dir<span class="w"> </span>/absolute/path/to/pod5_pass<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--gpu
+</code></pre></div>
+<p>The YAML must also contain explicit, checksum-pinned Dorado/Modkit/classifier resources. If Modkit detects zero usable modified-CpG calls, OncoTracer records <code>no_cpg_modifications</code>, skips the methylation classifier, and continues CNA. A CNA failure likewise does not discard a completed methylation result. Read <a href="../methylation/">Optional ONT methylation</a> before enabling this research branch, especially the Sturgeon license, hg38 model/probe, backend, and GPU limitations.</p>
 <h2 id="custom-reference">Custom reference<a class="headerlink" href="#custom-reference" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nt">ont_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/absolute/path/project/reference/custom_reference.fa</span>
 </code></pre></div>
@@ -2167,12 +2237,12 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 <tr>
 <td><code>ont_folder</code></td>
 <td>absolute directory</td>
-<td>Parent containing tumor barcode directories</td>
+<td>Parent containing selected barcode directories</td>
 </tr>
 <tr>
 <td><code>ont_barcodes</code></td>
 <td>comma-separated names</td>
-<td>Tumor barcode selection</td>
+<td>Barcode selection</td>
 </tr>
 <tr>
 <td><code>ont_sample_names</code></td>
@@ -2187,32 +2257,17 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 <tr>
 <td><code>ont_caller</code></td>
 <td><code>ichorcna</code></td>
-<td>ONT CNA caller</td>
+<td><code>ichorcna</code>, or <code>qdnaseq</code> for an explicit <code>solid_biopsy</code> analysis</td>
 </tr>
 <tr>
 <td><code>ont_binsize_kb</code></td>
 <td><code>500</code></td>
-<td>Initial genomic bin width</td>
+<td>Initial caller bin width; set it explicitly for qDNAseq</td>
 </tr>
 <tr>
 <td><code>ont_ref</code></td>
 <td>optional FASTA</td>
 <td>Custom reference</td>
-</tr>
-<tr>
-<td><code>ont_normal_folder</code></td>
-<td>optional directory</td>
-<td>Parent containing normal barcodes</td>
-</tr>
-<tr>
-<td><code>ont_normal_barcodes</code></td>
-<td>optional names</td>
-<td>Normal barcode selection</td>
-</tr>
-<tr>
-<td><code>ont_normal_sample_names</code></td>
-<td>optional names</td>
-<td>Positional normal sample names</td>
 </tr>
 <tr>
 <td><code>ont_min_age_minutes</code></td>
@@ -2223,6 +2278,11 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 <td><code>ont_force_realign</code></td>
 <td><code>false</code></td>
 <td>Deliberate alignment refresh</td>
+</tr>
+<tr>
+<td><code>--methylation --sturgeon|--marlin --pod5-dir PATH</code></td>
+<td>optional CLI branch</td>
+<td>Explicit POD5 methylation/classifier route; see the dedicated page</td>
 </tr>
 <tr>
 <td><code>run_cna_classifier</code></td>
@@ -2237,12 +2297,12 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 </tbody>
 </table>
 <h2 id="pre-run-checks">Pre-run checks<a class="headerlink" href="#pre-run-checks" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
-find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass&quot;</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-30
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass/barcode01/reads_001.fastq.gz&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,200p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont/ont.auto.yml&quot;</span>
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>d<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+find<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass"</span><span class="w"> </span>-maxdepth<span class="w"> </span><span class="m">2</span><span class="w"> </span>-type<span class="w"> </span>f<span class="w"> </span>-print<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-30
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/fastq_pass/barcode01/reads_001.fastq.gz"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,200p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/ont/ont.auto.yml"</span>
 </code></pre></div>
 <p>Confirm that every listed barcode exists, contains non-empty FASTQs, and maps to exactly one intended sample name.</p>
 

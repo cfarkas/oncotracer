@@ -254,7 +254,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../six_tumor_four_control/" class="md-tabs__link">
+        <a href="../../six_tumor_four_normal/" class="md-tabs__link">
           
   
   
@@ -827,14 +827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../six_tumor_four_control/" class="md-nav__link">
+      <a href="../../six_tumor_four_normal/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Mock cohort — six tumors + four normals
+    Mock cohort — six tumors + four independent normals
   
 
     
@@ -1124,10 +1124,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#local-qdnaseq-panel-of-normals" class="md-nav__link">
+  <a href="#normal-rows-are-independent-samples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Local qDNAseq panel of normals
+        Normal rows are independent samples
       
     </span>
   </a>
@@ -1202,6 +1202,34 @@
     
   
     ONT Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../methylation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ONT Methylation
   
 
     
@@ -1913,10 +1941,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#local-qdnaseq-panel-of-normals" class="md-nav__link">
+  <a href="#normal-rows-are-independent-samples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Local qDNAseq panel of normals
+        Normal rows are independent samples
       
     </span>
   </a>
@@ -1993,7 +2021,7 @@
 
 
 <h1 id="illumina-configuration">Illumina configuration<a class="headerlink" href="#illumina-configuration" title="Permanent link">&para;</a></h1>
-<p>Use this route for single-end or paired-end Illumina FASTQs. Native v2 validates the inputs, aligns with BWA, performs samtools/Picard processing, runs qDNAseq or a local qDNAseq normal panel, refines CNA boundaries from BAM depth, and creates CNA tables, plots, and summaries.</p>
+<p>Use this route for single-end or paired-end Illumina FASTQs. Native v2 validates the inputs, aligns with BWA, performs samtools/Picard processing, runs qDNAseq independently for every selected sample, refines CNA boundaries from BAM depth, and creates CNA tables, plots, and summaries.</p>
 <h2 id="recommended-automatic-setup">Recommended: Automatic Setup<a class="headerlink" href="#recommended-automatic-setup" title="Permanent link">&para;</a></h2>
 <h3 id="arrange-the-fastqs">Arrange the FASTQs<a class="headerlink" href="#arrange-the-fastqs" title="Permanent link">&para;</a></h3>
 <p>Paired-end example:</p>
@@ -2009,10 +2037,10 @@
 </code></pre></div>
 <p>Single-end files may be named <code>&lt;sample&gt;.fastq.gz</code>. Do not mix layouts in one run.</p>
 <h3 id="create-the-sample-table">Create the sample table<a class="headerlink" href="#create-the-sample-table" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_samples.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;&#39;CSV&#39;</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_samples.csv"</span><span class="w"> </span><span class="s">&lt;&lt;'CSV'</span>
 <span class="s">sample_name,status</span>
 <span class="s">Patient_A,TUMOR</span>
 <span class="s">Patient_B,TUMOR</span>
@@ -2022,14 +2050,14 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 </code></pre></div>
 <p><code>sample_name</code> must match the FASTQ filename prefix exactly.</p>
 <h3 id="generate-the-yaml-and-samplesheet">Generate the YAML and samplesheet<a class="headerlink" href="#generate-the-yaml-and-samplesheet" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
 oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--mode<span class="w"> </span>illumina<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_samples.csv&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina&quot;</span>
+<span class="w">  </span>--reads-folder<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sample-table<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_samples.csv"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config-dir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--outdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina"</span>
 </code></pre></div>
 <p>Automatic Setup validates every gzip file and writes:</p>
 <div class="highlight"><pre><span></span><code>project/config/illumina/
@@ -2039,64 +2067,33 @@ oncotracer<span class="w"> </span>auto<span class="w"> </span><span class="se">\
 </code></pre></div>
 <p>It does not start the analysis.</p>
 <h3 id="inspect-and-run">Inspect and run<a class="headerlink" href="#inspect-and-run" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,180p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,30p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.samplesheet.csv&quot;</span>
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/auto_params_manifest.tsv&quot;</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,180p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,30p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.samplesheet.csv"</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/auto_params_manifest.tsv"</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.auto.yml"</span>
 
-cat<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina/06_workflow_summary/workflow_summary.txt&quot;</span>
+cat<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/results/illumina/06_workflow_summary/workflow_summary.txt"</span>
 </code></pre></div>
-<h2 id="local-qdnaseq-panel-of-normals">Local qDNAseq panel of normals<a class="headerlink" href="#local-qdnaseq-panel-of-normals" title="Permanent link">&para;</a></h2>
-<p>Automatic Setup applies this rule:</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: right;">Normal rows</th>
-<th>Behavior</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: right;">0</td>
-<td>Run qDNAseq without a local panel</td>
-</tr>
-<tr>
-<td style="text-align: right;">1</td>
-<td>Reject the configuration</td>
-</tr>
-<tr>
-<td style="text-align: right;">2 or more</td>
-<td>Build and apply a run-local median-log₂ reference</td>
-</tr>
-</tbody>
-</table>
-<p>Generated settings:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">illumina_build_pon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">illumina_pon_normal_samples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A,Control_B</span>
-<span class="nt">illumina_pon_min_normals</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="nt">illumina_pon_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Control_A_Control_B_PoN</span>
-<span class="nt">illumina_pon_min_mapq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
-</code></pre></div>
-<p>All tumor and normal BAMs use the same alignment, bin definition, paired-read setting, and mapping-quality threshold. The panel stores the per-bin control reference and subtracts it from each tumor profile. Normal samples remain reference/QC inputs; corrected downstream bins, segments, CNA events, and plots contain tumor samples only.</p>
-<p>Review:</p>
-<div class="highlight"><pre><span></span><code>01_samurai_illumina/qdnaseq_local_pon/
-├── pon/normal_panel_manifest.tsv
-├── qc/normal_panel_sample_qc.tsv
-├── all_tumors.qdnaseq_pon_corrected_bins.tsv
-└── qdnaseq_local_pon.done
-</code></pre></div>
-<p>The completion marker must contain <code>QDNASEQ_LOCAL_PON_SUCCESS</code>.</p>
+<h2 id="normal-rows-are-independent-samples">Normal rows are independent samples<a class="headerlink" href="#normal-rows-are-independent-samples" title="Permanent link">&para;</a></h2>
+<p>The <code>status</code> column records the submitted role of each library. It does not
+select samples for a local reference. Automatic Setup preserves every <code>NORMAL</code>
+row in the generated samplesheet, and native qDNAseq processes it through the
+same independent per-sample analysis as every <code>TUMOR</code> row.</p>
+<p>OncoTracer does not pool normal rows, subtract their signal from tumor rows, or
+create a sample-derived panel. Audit <code>qdnaseq_sample_status.json</code> and the
+per-sample files under <code>01_samurai_illumina/qdnaseq/</code> to confirm that every
+expected tumor and normal completed.</p>
 <h2 id="manual-samplesheet">Manual samplesheet<a class="headerlink" href="#manual-samplesheet" title="Permanent link">&para;</a></h2>
 <p>Use a manual samplesheet for unusual filenames:</p>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv&quot;</span><span class="w"> </span><span class="s">&lt;&lt;CSV</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.samplesheet.csv"</span><span class="w"> </span><span class="s">&lt;&lt;CSV</span>
 <span class="s">sample,fastq_1,fastq_2,status</span>
 <span class="s">Patient_A,$PROJECT_DIR/input/illumina_fastq/Patient_A_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor</span>
 <span class="s">Patient_B,$PROJECT_DIR/input/illumina_fastq/Patient_B_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor</span>
@@ -2106,9 +2103,9 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 </code></pre></div>
 <p>For single-end data, retain the four-column header and leave <code>fastq_2</code> empty for every row.</p>
 <h2 id="manual-yaml">Manual YAML<a class="headerlink" href="#manual-yaml" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
 
-cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml"</span><span class="w"> </span><span class="s">&lt;&lt;YAML</span>
 <span class="s">mode: illumina</span>
 <span class="s">lpwgs_root: $PROJECT_DIR</span>
 <span class="s">outdir: $PROJECT_DIR/results/manual_illumina</span>
@@ -2116,23 +2113,18 @@ cat<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</
 <span class="s">illumina_analysis_type: solid_biopsy</span>
 <span class="s">illumina_caller: qdnaseq</span>
 <span class="s">illumina_binsize_kb: 100</span>
-<span class="s">illumina_build_pon: true</span>
-<span class="s">illumina_pon_normal_samples: Control_A,Control_B</span>
-<span class="s">illumina_pon_min_normals: 2</span>
-<span class="s">illumina_pon_name: Control_A_Control_B_PoN</span>
-<span class="s">illumina_pon_min_mapq: 37</span>
 <span class="s">run_cna_classifier: false</span>
 <span class="s">force: false</span>
 <span class="s">YAML</span>
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 
 oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--config<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml&quot;</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina.manual.yml"</span>
 </code></pre></div>
 <h2 id="main-illumina-settings">Main Illumina settings<a class="headerlink" href="#main-illumina-settings" title="Permanent link">&para;</a></h2>
 <table>
@@ -2165,26 +2157,6 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 <td>Initial qDNAseq bin width</td>
 </tr>
 <tr>
-<td><code>illumina_build_pon</code></td>
-<td><code>false</code> or <code>true</code></td>
-<td>Enable local normal panel</td>
-</tr>
-<tr>
-<td><code>illumina_pon_normal_samples</code></td>
-<td>comma-separated IDs</td>
-<td>Exact normal sample set</td>
-</tr>
-<tr>
-<td><code>illumina_pon_min_normals</code></td>
-<td><code>2</code> or study-specific value</td>
-<td>Minimum controls</td>
-</tr>
-<tr>
-<td><code>illumina_pon_min_mapq</code></td>
-<td><code>37</code></td>
-<td>Panel read mapping-quality threshold</td>
-</tr>
-<tr>
 <td><code>run_cna_classifier</code></td>
 <td><code>false</code></td>
 <td>Add native cancer-context reports</td>
@@ -2197,15 +2169,15 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 </tbody>
 </table>
 <h2 id="pre-run-checks">Pre-run checks<a class="headerlink" href="#pre-run-checks" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/project&quot;</span>
-<span class="nv">SHEET</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.samplesheet.csv&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nv">PROJECT_DIR</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/project"</span>
+<span class="nv">SHEET</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/config/illumina/illumina.samplesheet.csv"</span>
 
-<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SHEET</span><span class="s2">&quot;</span>
-sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;1,30p&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SHEET</span><span class="s2">&quot;</span>
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R1.fastq.gz&quot;</span>
-gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R2.fastq.gz&quot;</span>
+<span class="nb">test</span><span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$SHEET</span><span class="s2">"</span>
+sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'1,30p'</span><span class="w"> </span><span class="s2">"</span><span class="nv">$SHEET</span><span class="s2">"</span>
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R1.fastq.gz"</span>
+gzip<span class="w"> </span>-t<span class="w"> </span><span class="s2">"</span><span class="nv">$PROJECT_DIR</span><span class="s2">/input/illumina_fastq/Patient_A_R2.fastq.gz"</span>
 </code></pre></div>
-<p>Use a new YAML and <code>outdir</code> when changing bin size, panel membership, or other scientific settings.</p>
+<p>Use a new YAML and <code>outdir</code> when changing bin size, sample membership, or other scientific settings.</p>
 
 
 
