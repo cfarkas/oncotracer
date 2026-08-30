@@ -305,9 +305,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      # A self-hosted runner may reach the internet only through an egress
+      # proxy. BuildKit runs in its own container and inherits neither the
+      # Docker daemon's proxy configuration nor the job environment, so the
+      # proxy must be passed to the builder explicitly. This resolves to an
+      # empty value, and therefore changes nothing, on hosted runners.
+      - name: Resolve runner egress proxy for BuildKit
+        if: steps.gate.outputs.ready == 'true'
+        id: proxy
+        run: |
+          set -Eeuo pipefail
+          http="${HTTP_PROXY:-}"
+          https="${HTTPS_PROXY:-$http}"
+          if [[ -n "$http" ]]; then
+            printf 'http=env.http_proxy=%s\n' "$http" >> "$GITHUB_OUTPUT"
+            printf 'https=env.https_proxy=%s\n' "$https" >> "$GITHUB_OUTPUT"
+            printf 'noproxy=env.no_proxy=%s\n' "${NO_PROXY:-localhost,127.0.0.1}" \
+              >> "$GITHUB_OUTPUT"
+          else
+            printf 'http=\nhttps=\nnoproxy=\n' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Docker Buildx
         if: steps.gate.outputs.ready == 'true'
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            ${{ steps.proxy.outputs.http }}
+            ${{ steps.proxy.outputs.https }}
+            ${{ steps.proxy.outputs.noproxy }}
 
       - name: Build native release container locally
         if: steps.gate.outputs.ready == 'true'
