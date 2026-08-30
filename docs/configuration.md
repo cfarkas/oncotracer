@@ -118,7 +118,7 @@ Prepare the selected backend first with `oncotracer install`.
 ## Illumina normal-sample rule
 
 Every tumor and normal samplesheet row is analyzed independently. The status is
-preserved in the generated contract; normal rows are not pooled or applied to
+preserved in the generated samplesheet; normal rows are not pooled or applied to
 other samples as a local reference.
 
 ## Settings to leave unchanged initially

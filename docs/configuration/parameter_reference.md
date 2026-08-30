@@ -209,7 +209,7 @@ CLI values override `methylation`, classifier, POD5, and GPU YAML values. There 
 | `marlin_class_annotations`, `marlin_class_annotations_sha256` | required pair | Explicit class workbook and exact file SHA-256 |
 | `marlin_probe_bed`, `marlin_probe_bed_sha256` | required pair | Explicit hg38 probe BED and exact file SHA-256 |
 
-The classifier is not invoked for a sample with zero usable modified-CpG calls. CNA continues, and the final status reports the two branches independently. See [Optional ONT methylation](methylation.md) for the complete setup, dry-run, resume, license, and output contract.
+The classifier is not invoked for a sample with zero usable modified-CpG calls. CNA continues, and the final status reports the two branches independently. See [Optional ONT methylation](methylation.md) for the complete setup, dry-run, resume, license, and outputs.
 
 ## Native classifier and pathology fields
 

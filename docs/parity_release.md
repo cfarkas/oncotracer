@@ -31,13 +31,13 @@ Each artifact includes `parity_report.json`, `parity_report.md`, `event_matches.
 
 The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v2.0.0`. A release cannot be created from a stale or partially validated commit.
 
-## Hosted-runner capacity contract
+## Hosted-runner capacity limits
 
 The full parity gates and five-environment container build are intentionally
 fail-closed before they download public reads, install scientific environments,
 pull pinned images, or publish anything. GitHub's documented standard public
-`ubuntu-24.04` runner contract is 4 CPUs, 16 GB RAM, and 14 GB SSD storage.
-Observed free space above that contract is incidental runner-image capacity and
+`ubuntu-24.04` runner provides 4 CPUs, 16 GB RAM, and 14 GB SSD storage.
+Observed free space above that allowance is incidental runner-image capacity and
 must not be made available by deleting runner tools, unrelated images, or global
 caches.
 
@@ -140,17 +140,17 @@ same checked compatibility shim and emits `<sample>.ichorcna_plot_compat.tsv`.
 The shim does not modify read counting, normalization, HMM fitting, segmentation,
 or copy-number calls.
 
-The Illumina GitHub parity contracts validate the BAM-stage SAMURAI execution
-actually invoked by OncoTracer. QuickStart 1 therefore expects six contracted
-nested tasks for one sample, and QuickStart 2 expects fourteen contracted tasks
+The Illumina GitHub parity checks validate the BAM-stage SAMURAI execution
+actually invoked by OncoTracer. QuickStart 1 therefore expects six required
+nested tasks for one sample, and QuickStart 2 expects fourteen required tasks
 for three samples. Only the five runtime images used by those BAM-stage tasks
-are required by those contracts; FASTQ QC and alignment occur in OncoTracer
+are required by those checks; FASTQ QC and alignment occur in OncoTracer
 before SAMURAI is called.
 
 Nested Nextflow resumes can distribute successful tasks across several trace
 files. Both the hosted release gate and the standalone validation-server driver
 therefore build a deterministic combined trace from the latest occurrence of
-each canonical task and require every contracted latest occurrence to be
+each canonical task and require every required latest occurrence to be
 successful or cached with exit status zero. The audit preserves every regular,
 non-symlink source trace at its complete root-relative path, so equal basenames
 cannot collide, together with a manifest containing each trace's recorded
@@ -165,11 +165,11 @@ inventory, and their content delta. A successful run must create a new trace
 path or change trace content; touching an old file is not sufficient. The
 deterministic newest post-run trace is selected by `(mtime_ns, path)`, must be
 in the current invocation's content delta, and must contribute at least one
-selected contracted scientific task for every Illumina, ONT, and HCC1143
-contract. A stale contracted selection accompanied only by a newer unrelated
+selected required scientific task for every Illumina, ONT, and HCC1143
+run. A stale required-task selection accompanied only by a newer unrelated
 startup or failure trace therefore fails closed.
 
-The ONT audit additionally requires the complete ten-process contract, including
+The ONT audit additionally requires the complete ten-process set, including
 a freshly `COMPLETED`, exit-zero `ICHORCNA_RUN`; `CACHED` is rejected for this
 one deliberately non-cacheable task. Its compatibility marker must be inside
 the exact Nextflow work directory identified by that selected task's trace

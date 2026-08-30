@@ -6,7 +6,7 @@
 
 OncoTracer v2 is a **native, auditable LP-WGS copy-number analysis** application for Illumina and Oxford Nanopore Technologies (ONT) FASTQs. Its normal execution path does not invoke Nextflow. The installed `oncotracer` executable schedules alignment, copy-number calling, BAM-supported boundary refinement, CNA codification, plots, reports, and optional cancer-context interpretation directly.
 
-ONT runs can additionally request an explicit-POD5 methylation branch with `--methylation --sturgeon` for CNS-tumor research or `--methylation --marlin` for leukemia research. The branch always requires `--pod5-dir`, runs before but independently from CNA, and skips classification rather than inventing a result when no usable modified-CpG calls are detected. See the [complete methylation contract](https://cfarkas.github.io/oncotracer/configuration/methylation/).
+ONT runs can additionally request an explicit-POD5 methylation branch with `--methylation --sturgeon` for CNS-tumor research or `--methylation --marlin` for leukemia research. The branch always requires `--pod5-dir`, runs before but independently from CNA, and skips classification rather than inventing a result when no usable modified-CpG calls are detected. See the [complete methylation guide](https://cfarkas.github.io/oncotracer/configuration/methylation/).
 
 ```text
 Illumina FASTQ -> BWA/Picard -> qDNAseq -----------+
@@ -85,3 +85,15 @@ Set `run_cna_classifier: true` in the YAML to run the complete native cancer-con
 Stable v2 releases require native source and copied-executable tests, five managed environment solves, container validation, complete QuickStart 1 parity for Illumina and ONT, complete HCC1143 QuickStart 2 parity, semantic CNA-event and refined-bin concordance, output hashes, and a trace containing no Nextflow command. Each release records the exact commit, deterministic source-tree SHA-256, executable SHA-256, container digest, workflow runs, and artifacts in `release-provenance.json`.
 
 OncoTracer is for research use and is not a standalone diagnostic system.
+
+## Documentation
+
+- [Install requirements](https://cfarkas.github.io/oncotracer/installation/)
+- [QuickStart 1 — Illumina + ONT](https://cfarkas.github.io/oncotracer/quick_start/)
+- [QuickStart 2 — HCC1143](https://cfarkas.github.io/oncotracer/public_cohort/)
+- [Full tutorial — PRJNA754199](https://cfarkas.github.io/oncotracer/full_tutorial/)
+- [Run your own FASTQs](https://cfarkas.github.io/oncotracer/auto_params/)
+- [Execution environments](https://cfarkas.github.io/oncotracer/containers/)
+- [Optional ONT methylation](https://cfarkas.github.io/oncotracer/configuration/methylation/)
+- [Output files](https://cfarkas.github.io/oncotracer/outputs/)
+- [Troubleshooting](https://cfarkas.github.io/oncotracer/troubleshooting/)

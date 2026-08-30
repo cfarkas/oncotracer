@@ -57,7 +57,7 @@ class NativeDocumentationTests(unittest.TestCase):
         text = (ROOT / "docs/parity_release.md").read_text(encoding="utf-8")
         self.assertIn("state-specific CNA genomic-coverage recall and precision", text)
         self.assertIn("corrected input log₂-signal Pearson correlation", text)
-        self.assertIn("complete ten-process contract", text)
+        self.assertIn("complete ten-process set", text)
         self.assertIn("exact Nextflow work directory", text)
         self.assertIn("An incomplete resume fragment", text)
         self.assertNotIn("four-process final-resume", text)

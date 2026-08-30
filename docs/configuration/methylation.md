@@ -24,7 +24,7 @@ Methylation starts before the CNA branch. The two outcomes are independent:
 
 No classifier is launched for a sample with zero usable modified-CpG calls. Its status is `no_cpg_modifications`, not a fabricated negative classification.
 
-## Mandatory input contract
+## What you must provide
 
 The command always requires an explicit non-empty POD5 directory:
 
@@ -85,7 +85,7 @@ oncotracer run \
   --gpu
 ```
 
-Sturgeon is not distributed by OncoTracer. The pinned commit above identifies the upstream interface contract against which this adapter was developed; it does **not** authenticate the source of the separately installed Sturgeon package. OncoTracer records the explicit external launcher path and SHA-256 and marks its installed source as unauthenticated. The user must separately obtain, install, and accept the applicable Sturgeon license. `sturgeon_license_acknowledged: true` is an explicit user attestation; it does not grant or replace that license.
+Sturgeon is not distributed by OncoTracer. The pinned commit above identifies the upstream interface this adapter was developed against; it does **not** authenticate the source of the separately installed Sturgeon package. OncoTracer records the explicit external launcher path and SHA-256 and marks its installed source as unauthenticated. The user must separately obtain, install, and accept the applicable Sturgeon license. `sturgeon_license_acknowledged: true` is an explicit user attestation; it does not grant or replace that license.
 
 ## Leukemia example: MARLIN
 
@@ -119,7 +119,7 @@ oncotracer run \
   --gpu
 ```
 
-The explicit Python must already provide `h5py`, NumPy, and TensorFlow. OncoTracer disables reticulate's managed environments and offline-locks its cache, so a missing dependency fails before POD5 basecalling instead of triggering a download. The native adapter preserves the preprocessing defined by the supported MARLIN interface-contract commit: per-probe beta is modified coverage divided by valid coverage; model features are ordered exactly, binarized at beta `0.5`, and uncovered features remain zero. OncoTracer does not alter classifier thresholds.
+The explicit Python must already provide `h5py`, NumPy, and TensorFlow. OncoTracer disables reticulate's managed environments and offline-locks its cache, so a missing dependency fails before POD5 basecalling instead of triggering a download. The native adapter preserves the preprocessing defined by the supported MARLIN interface commit: per-probe beta is modified coverage divided by valid coverage; model features are ordered exactly, binarized at beta `0.5`, and uncovered features remain zero. OncoTracer does not alter classifier thresholds.
 
 The adapted MARLIN preprocessing code retains its upstream MIT terms; the complete copyright and permission notice is shipped in the executable payload as `bin/scripts/MARLIN-MIT-LICENSE.txt`.
 
@@ -178,4 +178,4 @@ Use `--force` only to deliberately invalidate these outputs. For a different POD
 └── methylation_provenance.json
 ```
 
-`methylation_status.json` reports each sample as `complete`, `no_cpg_modifications`, or `failed`. `methylation_provenance.json` records the explicit POD5 inventory digest, device choice, supported classifier interface-contract commit, external-runtime disclosure, executable SHA-256 values, resource SHA-256 values, and final status. The interface commit is not an assertion about the installed external package's source. Review these files before interpreting any prediction.
+`methylation_status.json` reports each sample as `complete`, `no_cpg_modifications`, or `failed`. `methylation_provenance.json` records the explicit POD5 inventory digest, device choice, supported classifier interface commit, external-runtime disclosure, executable SHA-256 values, resource SHA-256 values, and final status. The interface commit is not an assertion about the installed external package's source. Review these files before interpreting any prediction.
