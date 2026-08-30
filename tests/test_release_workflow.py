@@ -71,9 +71,13 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(text.count("docker buildx imagetools create"), 1)
         self.assertIn('--tag "$CANDIDATE_TAG" "$PUBLISHED_IMAGE"', text)
         publisher = REGISTRY_PUT.read_text(encoding="utf-8")
-        self.assertEqual(publisher.count("--header 'If-None-Match: *'"), 2)
-        self.assertIn('test "$PROBE_STATUS" = 412', publisher)
+        # GHCR ignores If-None-Match, so the header is sent only on the real
+        # write and safety comes from confirming absence immediately before it
+        # and the exact digest immediately after.
+        self.assertEqual(publisher.count("--header 'If-None-Match: *'"), 1)
+        self.assertIn("appeared before its conditional write", publisher)
         self.assertIn('if [[ "$CREATE_STATUS" == 201 ]]', publisher)
+        self.assertNotIn("PROBE_STATUS", publisher)
         self.assertIn('test "$AUTHENTICATED_REGISTRY_STATE" = "$REGISTRY_STATE"', text)
         self.assertIn(
             'test "$PREPUBLISH_REGISTRY_STATE" = "$EXPECTED_REGISTRY_STATE"',
@@ -266,10 +270,12 @@ printf '%s\n' "$FAKE_MAIN"
             self.assertEqual(success.returncode, 0, success.stderr)
             self.assertEqual(state.read_text(encoding="utf-8"), "present\n")
 
+            # A target that already exists must never be overwritten.
+            already_present = publish()
+            self.assertNotEqual(already_present.returncode, 0)
+            self.assertIn("was not absent", already_present.stderr)
+
             state.write_text("absent\n", encoding="utf-8")
-            ignored_condition = publish(FAKE_PROBE_STATUS="201")
-            self.assertNotEqual(ignored_condition.returncode, 0)
-            self.assertEqual(state.read_text(encoding="utf-8"), "absent\n")
 
             conflict = publish(FAKE_CREATE_STATUS="412")
             self.assertNotEqual(conflict.returncode, 0)

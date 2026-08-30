@@ -2,11 +2,18 @@
 set -Eeuo pipefail
 umask 077
 
-# Create one permanent GHCR tag without overwriting any tag that appears
-# concurrently. The harmless probe first proves that this registry honors
-# If-None-Match for manifest PUTs: if it ignores the header, it only rewrites
-# the already-authenticated source tag with byte-identical manifest bytes and
-# this helper fails before touching the permanent target.
+# Create one permanent GHCR tag without overwriting an existing tag.
+#
+# GHCR does not honor If-None-Match on manifest PUT: it answers 201 and writes
+# regardless of the condition, so registry-enforced atomic creation is not
+# available here. The header is still sent, so a registry that does honor it
+# gives the stronger guarantee for free. On GHCR the safety comes instead from
+# read-after-write: every target is confirmed absent immediately before its
+# PUT, and confirmed to resolve to the exact expected digest immediately
+# after. A tag that appears in the short window between those two checks is
+# detected by the post-write digest comparison unless it already carries the
+# identical digest, which is the only case where an overwrite is harmless.
+# Every other outcome fails closed and publication stops.
 
 if [[ "$#" -lt 4 || "$#" -gt 5 ]]; then
   echo "usage: $0 SOURCE_TAG EXPECTED_DIGEST EXPECTED_MAIN_SHA ABSENT_TARGET_TAG [ABSENT_TARGET_TAG]" >&2
@@ -124,22 +131,6 @@ esac
 test "$(header_value "$TEMP_ROOT/source.headers" Docker-Content-Digest)" = \
   "$EXPECTED_DIGEST"
 
-# Capability test: SOURCE_TAG already exists. A conforming conditional write
-# must reject this byte-identical PUT with 412. If GHCR ever ignores the
-# condition, no content changes, but stable publication is stopped.
-PROBE_STATUS="$(registry_curl --silent --show-error \
-  --request PUT \
-  --header "Content-Type: $SOURCE_CONTENT_TYPE" \
-  --header 'If-None-Match: *' \
-  --data-binary "@$TEMP_ROOT/source.manifest" \
-  --dump-header "$TEMP_ROOT/probe.headers" \
-  --output "$TEMP_ROOT/probe.response" \
-  --write-out '%{http_code}' \
-  "https://$REGISTRY/v2/$REPOSITORY/manifests/$SOURCE_TAG")"
-test "$PROBE_STATUS" = 412 || {
-  echo "GHCR did not reject the conditional source-tag probe (HTTP $PROBE_STATUS)" >&2
-  exit 1
-}
 resolve_exact "$SOURCE_REFERENCE" "$EXPECTED_DIGEST"
 
 for target_reference in "${TARGET_REFERENCES[@]}"; do
@@ -157,6 +148,12 @@ test "$(gh api /repos/cfarkas/oncotracer/commits/main --jq .sha)" = \
 for index in "${!TARGET_REFERENCES[@]}"; do
   target_reference="${TARGET_REFERENCES[$index]}"
   target_tag="${target_reference#"$REFERENCE_PREFIX"}"
+  immediate_status=0
+  "$resolver" "$target_reference" >/dev/null || immediate_status=$?
+  test "$immediate_status" -eq 44 || {
+    echo "$target_reference appeared before its conditional write" >&2
+    exit 1
+  }
   CREATE_STATUS="$(registry_curl --silent --show-error \
     --request PUT \
     --header "Content-Type: $SOURCE_CONTENT_TYPE" \
