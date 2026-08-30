@@ -3434,7 +3434,7 @@ run_native_environment_probe ichorcna readcounter 255 \\
             encoding="utf-8"
         )
         for required in (
-            "Hosted-runner capacity contract",
+            "Hosted-runner capacity limits",
             "72 GiB free",
             "15 GiB physical RAM",
             "47 GiB",
