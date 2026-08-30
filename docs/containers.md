@@ -168,13 +168,15 @@ Start from the directory where you want the tutorials to create their input, con
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer quickstart 1 \
-  --backend docker \
-  --test-root "$PWD/oncotracer-quickstart1-docker"
+oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1-docker" --download-only
+oncotracer run --backend docker \
+  --config "$PWD/oncotracer-quickstart1-docker/configs/illumina.quickstart.yml"
+oncotracer run --backend docker \
+  --config "$PWD/oncotracer-quickstart1-docker/configs/ont.quickstart.yml"
 
-oncotracer quickstart 2 \
-  --backend singularity \
-  --test-root "$PWD/oncotracer-quickstart2-singularity"
+oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2-singularity" --download-only
+oncotracer run --backend singularity \
+  --config "$PWD/oncotracer-quickstart2-singularity/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
 Preparation and YAML content are backend-independent. The same generated config can be moved between supported backends when all absolute paths remain available.

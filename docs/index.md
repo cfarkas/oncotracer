@@ -27,9 +27,11 @@ cd /path/to/my/analyses_dir/
 oncotracer install --conda
 oncotracer doctor --backend conda
 
-oncotracer quickstart 1 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart1"
+oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/illumina.quickstart.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/ont.quickstart.yml"
 ```
 
 QuickStart 2 runs three public HCC1143 Illumina libraries:
@@ -37,9 +39,9 @@ QuickStart 2 runs three public HCC1143 Illumina libraries:
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer quickstart 2 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart2"
+oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
 The QuickStart pages reproduce the detailed style of the original documentation: prepare the backend, download and validate inputs, inspect generated YAML, run each analysis, verify output tables and PDFs, and resume safely.

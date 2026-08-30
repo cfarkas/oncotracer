@@ -89,16 +89,25 @@ def check_release_install(relative_path: str) -> None:
 
 
 def check_native_quickstarts() -> None:
+    # The published examples download public data, then analyze it with the same
+    # `oncotracer run` command a reader uses on their own FASTQs.
     quickstart1 = find_block(
         "docs/quick_start.md",
         "oncotracer install --conda",
         "oncotracer quickstart 1",
-        "--backend conda",
-        '--test-root "$PWD/oncotracer-quickstart1"',
+        "--download-only",
+        "oncotracer run --backend conda",
+        "configs/illumina.quickstart.yml",
+        "configs/ont.quickstart.yml",
     )
     require_order(
         quickstart1,
-        (ANALYSES_CD, "oncotracer install --conda", "oncotracer quickstart 1"),
+        (
+            ANALYSES_CD,
+            "oncotracer install --conda",
+            "oncotracer quickstart 1",
+            "oncotracer run --backend conda",
+        ),
         "QuickStart 1",
     )
 
@@ -106,23 +115,30 @@ def check_native_quickstarts() -> None:
         "docs/public_cohort.md",
         "oncotracer install --conda",
         "oncotracer quickstart 2",
-        "--backend conda",
-        '--test-root "$PWD/oncotracer-quickstart2"',
+        "--download-only",
+        "oncotracer run --backend conda",
+        "configs/hcc1143_lpwgs/illumina.auto.yml",
     )
     require_order(
         quickstart2,
-        (ANALYSES_CD, "oncotracer install --conda", "oncotracer quickstart 2"),
+        (
+            ANALYSES_CD,
+            "oncotracer install --conda",
+            "oncotracer quickstart 2",
+            "oncotracer run --backend conda",
+        ),
         "QuickStart 2",
     )
 
     readme = find_block(
         "README.md",
         "oncotracer quickstart 1",
-        "oncotracer quickstart 2",
+        "--download-only",
+        "oncotracer run --backend conda",
     )
     require_order(
         readme,
-        (ANALYSES_CD, "oncotracer quickstart 1", "oncotracer quickstart 2"),
+        (ANALYSES_CD, "oncotracer quickstart 1", "oncotracer run --backend conda"),
         "README public QuickStarts",
     )
 

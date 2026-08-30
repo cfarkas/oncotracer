@@ -25,9 +25,9 @@ cd /path/to/my/analyses_dir/
 oncotracer install --conda
 oncotracer doctor --backend conda
 
-oncotracer quickstart 2 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart2"
+oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
 A successful command ends with:
@@ -114,9 +114,9 @@ The complete QuickStart command reuses valid completed stages and performs the b
 cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart2"
 
-oncotracer quickstart 2 \
-  --backend conda \
-  --test-root "$TEST_ROOT"
+oncotracer quickstart 2 --test-root "$TEST_ROOT" --download-only
+oncotracer run --backend conda \
+  --config "$TEST_ROOT/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
 Review:
@@ -161,9 +161,9 @@ runs/hcc1143_lpwgs/
 cd /path/to/my/analyses_dir/
 
 oncotracer install --conda
-oncotracer quickstart 2 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart2-conda"
+oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2-conda" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart2-conda/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
 ### Docker
@@ -172,9 +172,9 @@ oncotracer quickstart 2 \
 cd /path/to/my/analyses_dir/
 
 oncotracer install --docker
-oncotracer quickstart 2 \
-  --backend docker \
-  --test-root "$PWD/oncotracer-quickstart2-docker"
+oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2-docker" --download-only
+oncotracer run --backend docker \
+  --config "$PWD/oncotracer-quickstart2-docker/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
 ### Singularity or Apptainer
@@ -183,9 +183,9 @@ oncotracer quickstart 2 \
 cd /path/to/my/analyses_dir/
 
 oncotracer install --singularity
-oncotracer quickstart 2 \
-  --backend singularity \
-  --test-root "$PWD/oncotracer-quickstart2-singularity"
+oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2-singularity" --download-only
+oncotracer run --backend singularity \
+  --config "$PWD/oncotracer-quickstart2-singularity/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
 ### Poetry launcher
@@ -197,9 +197,9 @@ cd /path/to/my/oncotracer_source/
 
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer quickstart 2 \
-  --backend poetry \
-  --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer quickstart 2 --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry --download-only
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer run --backend poetry \
+  --config /path/to/my/analyses_dir/oncotracer-quickstart2-poetry/configs/hcc1143_lpwgs/illumina.auto.yml
 ```
 
 ## Run the prepared YAML through another backend
@@ -222,9 +222,9 @@ Repeat the same QuickStart or `oncotracer run` command with the same test root a
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer quickstart 2 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart2"
+oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
 The native ledger checks the stage command, relevant input metadata, and expected outputs before reuse. Use `--force` only for a deliberate full refresh.
