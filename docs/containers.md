@@ -1,6 +1,6 @@
 # Execution backends
 
-All backends use the same native stage graph, flat YAML, result directory layout, and audit contract. The backend changes how the scientific programs are supplied; it does not select a different analysis pipeline.
+All backends use the same native stage graph, flat YAML, result directory layout, and audit records. The backend changes how the scientific programs are supplied; it does not select a different analysis pipeline.
 
 | Backend | Install command | Primary use |
 | --- | --- | --- |

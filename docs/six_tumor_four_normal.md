@@ -21,7 +21,7 @@ command below uses native v2 and does not invoke Nextflow.
 | Recorded status | Samples | Native behavior |
 | --- | --- | --- |
 | `TUMOR` | `ONCO001`–`ONCO006` | Each sample receives its own qDNAseq bins, segments, calls, plot, and sample-status record |
-| `NORMAL` | `CTRL001`–`CTRL004` | Each sample receives the same independent qDNAseq analysis; the status is retained in the input contract |
+| `NORMAL` | `CTRL001`–`CTRL004` | Each sample receives the same independent qDNAseq analysis; the status is retained in the input samplesheet |
 
 `NORMAL` is sample metadata; it is not permission to turn these four libraries
 into a panel. Confirm the biological status and suitability of every sample
@@ -225,11 +225,11 @@ cat "$QDNA/qdnaseq_sample_status.json"
 cat "$OUT/06_workflow_summary/workflow_summary.txt"
 ```
 
-The generated samplesheet is the preserved status contract: it must still show
+The generated samplesheet is the preserved status record: it must still show
 six `tumor` rows and four `normal` rows. The qDNAseq status record and per-sample
 files prove that every `CTRL` and every `ONCO` sample was analyzed independently.
 
 This is a research-use example, not a diagnostic protocol. Preserve input
-checksums, the generated contract, native trace, run manifest, exact source and
+checksums, the generated samplesheet, native trace, run manifest, exact source and
 reference identities, environment specifications, and primary stage-02/03
 tables with any interpretation.

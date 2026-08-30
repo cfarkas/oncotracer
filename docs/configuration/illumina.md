@@ -141,7 +141,7 @@ oncotracer run \
 
 | Setting | Typical value | Purpose |
 | --- | --- | --- |
-| `illumina_samplesheet` | absolute CSV path | Exact FASTQ/sample/status contract |
+| `illumina_samplesheet` | absolute CSV path | Exact list of FASTQ files, sample names, and tumor/normal status |
 | `illumina_analysis_type` | `solid_biopsy` | Analysis preset |
 | `illumina_caller` | `qdnaseq` | Illumina CNA caller |
 | `illumina_binsize_kb` | `100` | Initial qDNAseq bin width |

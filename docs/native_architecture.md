@@ -59,10 +59,10 @@ interpreter; it is never an ambient or checkout-local virtual environment.
 Native child processes receive invocation-private HOME, XDG, Matplotlib, and
 Fontconfig state below the analysis output's `.oncotracer-native/runtime-cache`.
 OncoTracer audits the selected Fontconfig include graph, exposes one private
-cache destination, and checks the containment contract before and after each
+cache destination, and checks the containment rules before and after each
 child. While the shared managed-runtime lock is still held, it also rechecks
 every managed child inventory and ownership identity after analysis or doctor
-use. This contract covers commands launched by OncoTracer; invoking a managed
+use. These rules cover commands launched by OncoTracer; invoking a managed
 prefix's binaries directly is outside that runtime containment boundary.
 
 All final-prefix and backup publications use no-replacement renames. Metadata

@@ -10,7 +10,7 @@ oncotracer run \
 ```
 
 The standard CNA YAML can be executed through Conda, Docker, Singularity/Apptainer, or Poetry. All backends use the same native stage graph.
-The caller stage is direct qDNAseq or direct HMMcopy/ichorCNA, followed by the same downstream refinement and reporting contract.
+The caller stage is direct qDNAseq or direct HMMcopy/ichorCNA, followed by the same downstream refinement and reporting steps.
 
 The optional ONT POD5 methylation branch uses explicit user-installed/licensed resources and therefore supports host, Conda, or Poetry in v2.0.0, not the stable Docker or Singularity/Apptainer image.
 
@@ -146,7 +146,7 @@ The native ledger records:
 - SHA-256 values for small outputs;
 - completion time and stage status.
 
-A stage is reused only when its recorded contract still matches. There is no separate `-resume` option and no external workflow work directory.
+A stage is reused only when its recorded inputs and settings still match. There is no separate `-resume` option and no external workflow work directory.
 
 ## Force
 

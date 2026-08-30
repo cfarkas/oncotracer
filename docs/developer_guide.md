@@ -100,7 +100,7 @@ Documentation regression checks require:
 
 ## Scientific changes
 
-Changes to reference assets, alignment, callers, normal correction, thresholds, refinement, event schemas, or reports require complete QuickStart 1 and QuickStart 2 parity review. Do not weaken a threshold merely to obtain a green check. Document any intentional scientific difference and update the audit schema when the output contract changes.
+Changes to reference assets, alignment, callers, normal correction, thresholds, refinement, event schemas, or reports require complete QuickStart 1 and QuickStart 2 parity review. Do not weaken a threshold merely to obtain a green check. Document any intentional scientific difference and update the audit schema when the output format changes.
 
 ## Release identity
 

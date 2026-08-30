@@ -88,7 +88,7 @@ The stable release also ships `release-provenance.json`, containing the exact Gi
 | Singularity/Apptainer | `oncotracer install --singularity` | HPC systems |
 | Poetry | `./oncotracer install --poetry` from a source checkout | Launcher development with the same Conda scientific environments |
 
-All backends use the same native stage graph and output contract.
+All backends use the same native stage graph and the same output layout.
 
 ## Continue
 
