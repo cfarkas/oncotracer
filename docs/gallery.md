@@ -62,7 +62,7 @@ The example contains three paired-end LP-WGS libraries (six physical FASTQ files
 | Experimental status | All are `TUMOR`; DMSO is a treatment control, not a normal genome |
 | Download validation | Exact ENA byte count, ENA MD5, and `gzip -t`; values stored in `examples/hcc1143_lpwgs/manifest.tsv` |
 | Complete reproduction guide | [QuickStart Example 2](public_cohort.md) |
-| Analysis command | First run `cd /path/to/my/analyses_dir/`, then `oncotracer quickstart 2 --backend conda --test-root "$PWD/oncotracer-quickstart2"` |
+| Analysis command | First run `cd /path/to/my/analyses_dir/`, then `oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2" --download-only`, then `oncotracer run --backend conda --config "$PWD/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"` |
 | Expected result source | `/path/to/my/analyses_dir/oncotracer-quickstart2/runs/hcc1143_lpwgs/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf` |
 | OncoTracer commit | _to be recorded after verified run_ |
 | Container digest | _to be recorded after verified run_ |

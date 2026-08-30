@@ -23,9 +23,11 @@ cd /path/to/my/analyses_dir/
 oncotracer install --conda
 oncotracer doctor --backend conda
 
-oncotracer quickstart 1 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart1"
+oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/illumina.quickstart.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/ont.quickstart.yml"
 ```
 
 A successful command ends with:
@@ -199,9 +201,11 @@ Run the complete QuickStart command against the same root. Content-matched compl
 cd /path/to/my/analyses_dir/
 TEST_ROOT="$PWD/oncotracer-quickstart1"
 
-oncotracer quickstart 1 \
-  --backend conda \
-  --test-root "$TEST_ROOT"
+oncotracer quickstart 1 --test-root "$TEST_ROOT" --download-only
+oncotracer run --backend conda \
+  --config "$TEST_ROOT/configs/illumina.quickstart.yml"
+oncotracer run --backend conda \
+  --config "$TEST_ROOT/configs/ont.quickstart.yml"
 ```
 
 The verifier checks, among other files:
@@ -242,9 +246,11 @@ The following commands run the complete example. Choose one backend.
 cd /path/to/my/analyses_dir/
 
 oncotracer install --conda
-oncotracer quickstart 1 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart1-conda"
+oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1-conda" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1-conda/configs/illumina.quickstart.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1-conda/configs/ont.quickstart.yml"
 ```
 
 ### Docker
@@ -253,9 +259,11 @@ oncotracer quickstart 1 \
 cd /path/to/my/analyses_dir/
 
 oncotracer install --docker
-oncotracer quickstart 1 \
-  --backend docker \
-  --test-root "$PWD/oncotracer-quickstart1-docker"
+oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1-docker" --download-only
+oncotracer run --backend docker \
+  --config "$PWD/oncotracer-quickstart1-docker/configs/illumina.quickstart.yml"
+oncotracer run --backend docker \
+  --config "$PWD/oncotracer-quickstart1-docker/configs/ont.quickstart.yml"
 ```
 
 ### Singularity or Apptainer
@@ -264,9 +272,11 @@ oncotracer quickstart 1 \
 cd /path/to/my/analyses_dir/
 
 oncotracer install --singularity
-oncotracer quickstart 1 \
-  --backend singularity \
-  --test-root "$PWD/oncotracer-quickstart1-singularity"
+oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1-singularity" --download-only
+oncotracer run --backend singularity \
+  --config "$PWD/oncotracer-quickstart1-singularity/configs/illumina.quickstart.yml"
+oncotracer run --backend singularity \
+  --config "$PWD/oncotracer-quickstart1-singularity/configs/ont.quickstart.yml"
 ```
 
 ### Poetry launcher
@@ -278,9 +288,11 @@ cd /path/to/my/oncotracer_source/
 
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer quickstart 1 \
-  --backend poetry \
-  --test-root /path/to/my/analyses_dir/oncotracer-quickstart1-poetry
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer quickstart 1 --test-root /path/to/my/analyses_dir/oncotracer-quickstart1-poetry --download-only
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer run --backend poetry \
+  --config /path/to/my/analyses_dir/oncotracer-quickstart1-poetry/configs/illumina.quickstart.yml
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer run --backend poetry \
+  --config /path/to/my/analyses_dir/oncotracer-quickstart1-poetry/configs/ont.quickstart.yml
 ```
 
 ## Run generated YAMLs through another backend
@@ -307,9 +319,11 @@ Repeat the same command with the same `--test-root` or YAML. The native stage le
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer quickstart 1 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart1"
+oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/illumina.quickstart.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/ont.quickstart.yml"
 ```
 
 Use `--force` only when deliberately invalidating reusable native stages.

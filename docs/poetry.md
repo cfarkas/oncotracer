@@ -50,9 +50,11 @@ Keep the source checkout separate from the analysis output. The output path belo
 cd /path/to/my/oncotracer_source/
 
 ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
-"$ONCOTRACER_DEV" quickstart 1 \
-  --backend poetry \
-  --test-root /path/to/my/analyses_dir/oncotracer-quickstart1-poetry
+"$ONCOTRACER_DEV" quickstart 1 --test-root /path/to/my/analyses_dir/oncotracer-quickstart1-poetry --download-only
+"$ONCOTRACER_DEV" run --backend poetry \
+  --config /path/to/my/analyses_dir/oncotracer-quickstart1-poetry/configs/illumina.quickstart.yml
+"$ONCOTRACER_DEV" run --backend poetry \
+  --config /path/to/my/analyses_dir/oncotracer-quickstart1-poetry/configs/ont.quickstart.yml
 ```
 
 ## Run QuickStart 2 through Poetry
@@ -61,9 +63,9 @@ ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
 cd /path/to/my/oncotracer_source/
 
 ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
-"$ONCOTRACER_DEV" quickstart 2 \
-  --backend poetry \
-  --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry
+"$ONCOTRACER_DEV" quickstart 2 --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry --download-only
+"$ONCOTRACER_DEV" run --backend poetry \
+  --config /path/to/my/analyses_dir/oncotracer-quickstart2-poetry/configs/hcc1143_lpwgs/illumina.auto.yml
 ```
 
 For a different managed runtime, install it explicitly with `oncotracer install --docker`, `--singularity`, or `--conda`, then select the matching `--backend`. Every v2 route executes the native stage graph and records `nextflow_used=false`.

@@ -7,7 +7,7 @@ Use [Automatic Setup](../auto_params.md) for a first analysis. This page documen
 ```text
 oncotracer install ...
 oncotracer doctor ...
-oncotracer quickstart 1|2 ...
+oncotracer quickstart 1|2 --download-only ...
 oncotracer auto ...
 oncotracer run ...
 oncotracer provenance --json
@@ -58,16 +58,22 @@ The command returns JSON and exits nonzero when required source identity, prefix
 
 ## `oncotracer quickstart`
 
+This command downloads and checksum-validates the public example FASTQs and
+writes their YAML. It exists only to fetch example data. Analyze the result
+with `oncotracer run`, exactly as you would for your own FASTQs.
+
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer quickstart 1 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart1"
+oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/illumina.quickstart.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/ont.quickstart.yml"
 
-oncotracer quickstart 2 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart2"
+oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2" --download-only
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
 | Option | Meaning |
@@ -75,13 +81,8 @@ oncotracer quickstart 2 \
 | `1` | Public one-sample Illumina plus one-sample ONT example |
 | `2` | Public three-library HCC1143 Illumina example |
 | `--test-root PATH` | Required isolated input/config/result root |
-| `--download-only` | Download/validate inputs and generate YAML without analysis |
-| `--backend NAME` | `host`, `conda`, `docker`, `singularity`, or `poetry` |
-| `--threads N` | Native stage thread limit where supported |
-| `--force` | Deliberately invalidate reusable stages |
-| `--dry-run` | Print planned operations without computation |
-| `--image IMAGE` | Container override for Docker |
-| `--sif PATH` | Image override for Singularity/Apptainer |
+| `--download-only` | Download and validate inputs and generate YAML; use this |
+| `--dry-run` | Print planned operations without writing files |
 
 ## `oncotracer auto`
 

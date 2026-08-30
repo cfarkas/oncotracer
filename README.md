@@ -10,9 +10,8 @@ ONT runs can additionally request an explicit-POD5 methylation branch with `--me
 
 ```text
 Illumina FASTQ -> BWA/Picard -> qDNAseq -----------+
-                                                    +-> boundary refinement -> CNA tables -> plots/reports
+                                                   +-> boundary refinement -> CNA tables -> plots/reports
 ONT FASTQ ------> minimap2 ---> HMMcopy/ichorCNA --+
-                                                    +-> optional native CNA classifier/GISTIC2
 ```
 
 ## Install the verified global executable
@@ -46,21 +45,22 @@ oncotracer doctor --backend conda
 
 ## Run the same complete public examples shown in the documentation
 
-Choose an existing analyses directory first. Every `$PWD` path below is created inside that directory.
+Choose an existing analyses directory first; every `$PWD` path is created inside it. Step 1 only fetches the public example data — your own FASTQs are already on disk. Step 2 is the command you reuse for everything.
 
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer quickstart 1 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart1"
+# 1. Download the public example FASTQs and write their YAML.
+oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1" --download-only
 
-oncotracer quickstart 2 \
-  --backend conda \
-  --test-root "$PWD/oncotracer-quickstart2"
+# 2. Analyze them with the same command you will use on your own data.
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/illumina.quickstart.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/configs/ont.quickstart.yml"
 ```
 
-QuickStart 1 analyzes one public Illumina library and one public ONT library. QuickStart 2 analyzes all three HCC1143 Illumina libraries. Both commands download and validate the public FASTQs, create the YAML files, run the native stages, and verify the required outputs. The [complete documentation](https://cfarkas.github.io/oncotracer/) also presents the same examples step by step: download only, inspect the generated YAML, run each branch separately, resume, verify outputs, and choose Conda, Docker, Singularity/Apptainer, or Poetry.
+QuickStart 1 analyzes one public Illumina library and one public ONT library. [QuickStart 2](https://cfarkas.github.io/oncotracer/public_cohort/) analyzes all three HCC1143 Illumina libraries with the same two steps. The [complete documentation](https://cfarkas.github.io/oncotracer/) walks through both step by step: inspect the generated YAML, run each branch separately, resume, verify outputs, and choose Conda, Docker, Singularity/Apptainer, or Poetry.
 
 ## Analyze your own FASTQs
 
