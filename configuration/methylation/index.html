@@ -1130,10 +1130,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mandatory-input-contract" class="md-nav__link">
+  <a href="#what-you-must-provide" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Mandatory input contract
+        What you must provide
       
     </span>
   </a>
@@ -1874,10 +1874,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mandatory-input-contract" class="md-nav__link">
+  <a href="#what-you-must-provide" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Mandatory input contract
+        What you must provide
       
     </span>
   </a>
@@ -2005,7 +2005,7 @@
 <li>the final summary records both statuses and returns nonzero when a requested branch is incomplete.</li>
 </ul>
 <p>No classifier is launched for a sample with zero usable modified-CpG calls. Its status is <code>no_cpg_modifications</code>, not a fabricated negative classification.</p>
-<h2 id="mandatory-input-contract">Mandatory input contract<a class="headerlink" href="#mandatory-input-contract" title="Permanent link">&para;</a></h2>
+<h2 id="what-you-must-provide">What you must provide<a class="headerlink" href="#what-you-must-provide" title="Permanent link">&para;</a></h2>
 <p>The command always requires an explicit non-empty POD5 directory:</p>
 <div class="highlight"><pre><span></span><code>--pod5-dir /absolute/path/to/pod5_pass
 </code></pre></div>
@@ -2051,7 +2051,7 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 <span class="w">  </span>--pod5-dir<span class="w"> </span>/absolute/path/to/pod5_pass<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--gpu
 </code></pre></div>
-<p>Sturgeon is not distributed by OncoTracer. The pinned commit above identifies the upstream interface contract against which this adapter was developed; it does <strong>not</strong> authenticate the source of the separately installed Sturgeon package. OncoTracer records the explicit external launcher path and SHA-256 and marks its installed source as unauthenticated. The user must separately obtain, install, and accept the applicable Sturgeon license. <code>sturgeon_license_acknowledged: true</code> is an explicit user attestation; it does not grant or replace that license.</p>
+<p>Sturgeon is not distributed by OncoTracer. The pinned commit above identifies the upstream interface this adapter was developed against; it does <strong>not</strong> authenticate the source of the separately installed Sturgeon package. OncoTracer records the explicit external launcher path and SHA-256 and marks its installed source as unauthenticated. The user must separately obtain, install, and accept the applicable Sturgeon license. <code>sturgeon_license_acknowledged: true</code> is an explicit user attestation; it does not grant or replace that license.</p>
 <h2 id="leukemia-example-marlin">Leukemia example: MARLIN<a class="headerlink" href="#leukemia-example-marlin" title="Permanent link">&para;</a></h2>
 <p>Use the same Dorado/Modkit fields and add:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">marlin_interface_contract_commit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37c9836cc325ff2edccbdff06736604163db2c15</span>
@@ -2077,7 +2077,7 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 <span class="w">  </span>--pod5-dir<span class="w"> </span>/absolute/path/to/pod5_pass<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--gpu
 </code></pre></div>
-<p>The explicit Python must already provide <code>h5py</code>, NumPy, and TensorFlow. OncoTracer disables reticulate's managed environments and offline-locks its cache, so a missing dependency fails before POD5 basecalling instead of triggering a download. The native adapter preserves the preprocessing defined by the supported MARLIN interface-contract commit: per-probe beta is modified coverage divided by valid coverage; model features are ordered exactly, binarized at beta <code>0.5</code>, and uncovered features remain zero. OncoTracer does not alter classifier thresholds.</p>
+<p>The explicit Python must already provide <code>h5py</code>, NumPy, and TensorFlow. OncoTracer disables reticulate's managed environments and offline-locks its cache, so a missing dependency fails before POD5 basecalling instead of triggering a download. The native adapter preserves the preprocessing defined by the supported MARLIN interface commit: per-probe beta is modified coverage divided by valid coverage; model features are ordered exactly, binarized at beta <code>0.5</code>, and uncovered features remain zero. OncoTracer does not alter classifier thresholds.</p>
 <p>The adapted MARLIN preprocessing code retains its upstream MIT terms; the complete copyright and permission notice is shipped in the executable payload as <code>bin/scripts/MARLIN-MIT-LICENSE.txt</code>.</p>
 <h2 id="gpu-behavior">GPU behavior<a class="headerlink" href="#gpu-behavior" title="Permanent link">&para;</a></h2>
 <p><code>--gpu</code> selects <code>cuda:all</code> for Dorado modified-base basecalling. It also makes the GPU visible to the external MARLIN R/Keras process; whether MARLIN uses it depends on that user-supplied environment. Modkit and Sturgeon do not gain GPU acceleration from this flag and remain CPU-threaded.</p>
@@ -2116,7 +2116,7 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 ├── methylation_status.json
 └── methylation_provenance.json
 </code></pre></div>
-<p><code>methylation_status.json</code> reports each sample as <code>complete</code>, <code>no_cpg_modifications</code>, or <code>failed</code>. <code>methylation_provenance.json</code> records the explicit POD5 inventory digest, device choice, supported classifier interface-contract commit, external-runtime disclosure, executable SHA-256 values, resource SHA-256 values, and final status. The interface commit is not an assertion about the installed external package's source. Review these files before interpreting any prediction.</p>
+<p><code>methylation_status.json</code> reports each sample as <code>complete</code>, <code>no_cpg_modifications</code>, or <code>failed</code>. <code>methylation_provenance.json</code> records the explicit POD5 inventory digest, device choice, supported classifier interface commit, external-runtime disclosure, executable SHA-256 values, resource SHA-256 values, and final status. The interface commit is not an assertion about the installed external package's source. Review these files before interpreting any prediction.</p>
 
 
 

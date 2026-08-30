@@ -2116,7 +2116,7 @@
 <span class="w">  </span>--config<span class="w"> </span>/absolute/path/project/config/illumina.auto.yml
 </code></pre></div>
 <p>The standard CNA YAML can be executed through Conda, Docker, Singularity/Apptainer, or Poetry. All backends use the same native stage graph.
-The caller stage is direct qDNAseq or direct HMMcopy/ichorCNA, followed by the same downstream refinement and reporting contract.</p>
+The caller stage is direct qDNAseq or direct HMMcopy/ichorCNA, followed by the same downstream refinement and reporting steps.</p>
 <p>The optional ONT POD5 methylation branch uses explicit user-installed/licensed resources and therefore supports host, Conda, or Poetry in v2.0.0, not the stable Docker or Singularity/Apptainer image.</p>
 <h2 id="native-stage-graph">Native stage graph<a class="headerlink" href="#native-stage-graph" title="Permanent link">&para;</a></h2>
 <p>For Illumina:</p>
@@ -2211,7 +2211,7 @@ oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span clas
 <li>SHA-256 values for small outputs;</li>
 <li>completion time and stage status.</li>
 </ul>
-<p>A stage is reused only when its recorded contract still matches. There is no separate <code>-resume</code> option and no external workflow work directory.</p>
+<p>A stage is reused only when its recorded inputs and settings still match. There is no separate <code>-resume</code> option and no external workflow work directory.</p>
 <h2 id="force">Force<a class="headerlink" href="#force" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>

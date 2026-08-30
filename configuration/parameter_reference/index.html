@@ -2079,7 +2079,7 @@
 <h2 id="command-structure">Command structure<a class="headerlink" href="#command-structure" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>oncotracer install ...
 oncotracer doctor ...
-oncotracer quickstart 1|2 ...
+oncotracer quickstart 1|2 --download-only ...
 oncotracer auto ...
 oncotracer run ...
 oncotracer provenance --json
@@ -2166,15 +2166,20 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 </code></pre></div>
 <p>The command returns JSON and exits nonzero when required source identity, prefixes, packages, or semantic executable probes fail.</p>
 <h2 id="oncotracer-quickstart"><code>oncotracer quickstart</code><a class="headerlink" href="#oncotracer-quickstart" title="Permanent link">&para;</a></h2>
+<p>This command downloads and checksum-validates the public example FASTQs and
+writes their YAML. It exists only to fetch example data. Analyze the result
+with <code>oncotracer run</code>, exactly as you would for your own FASTQs.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1/configs/illumina.quickstart.yml"</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1/configs/ont.quickstart.yml"</span>
 
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <table>
 <thead>
@@ -2198,31 +2203,11 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 </tr>
 <tr>
 <td><code>--download-only</code></td>
-<td>Download/validate inputs and generate YAML without analysis</td>
-</tr>
-<tr>
-<td><code>--backend NAME</code></td>
-<td><code>host</code>, <code>conda</code>, <code>docker</code>, <code>singularity</code>, or <code>poetry</code></td>
-</tr>
-<tr>
-<td><code>--threads N</code></td>
-<td>Native stage thread limit where supported</td>
-</tr>
-<tr>
-<td><code>--force</code></td>
-<td>Deliberately invalidate reusable stages</td>
+<td>Download and validate inputs and generate YAML; use this</td>
 </tr>
 <tr>
 <td><code>--dry-run</code></td>
-<td>Print planned operations without computation</td>
-</tr>
-<tr>
-<td><code>--image IMAGE</code></td>
-<td>Container override for Docker</td>
-</tr>
-<tr>
-<td><code>--sif PATH</code></td>
-<td>Image override for Singularity/Apptainer</td>
+<td>Print planned operations without writing files</td>
 </tr>
 </tbody>
 </table>
@@ -2634,7 +2619,7 @@ local sample-derived reference.</p>
 </tr>
 </tbody>
 </table>
-<p>The classifier is not invoked for a sample with zero usable modified-CpG calls. CNA continues, and the final status reports the two branches independently. See <a href="../methylation/">Optional ONT methylation</a> for the complete setup, dry-run, resume, license, and output contract.</p>
+<p>The classifier is not invoked for a sample with zero usable modified-CpG calls. CNA continues, and the final status reports the two branches independently. See <a href="../methylation/">Optional ONT methylation</a> for the complete setup, dry-run, resume, license, and outputs.</p>
 <h2 id="native-classifier-and-pathology-fields">Native classifier and pathology fields<a class="headerlink" href="#native-classifier-and-pathology-fields" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

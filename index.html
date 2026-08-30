@@ -1913,16 +1913,18 @@ ONT FASTQ ------&gt; minimap2 ---&gt; HMMcopy/ichorCNA --+              |
 oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1/configs/illumina.quickstart.yml"</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1/configs/ont.quickstart.yml"</span>
 </code></pre></div>
 <p>QuickStart 2 runs three public HCC1143 Illumina libraries:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <p>The QuickStart pages reproduce the detailed style of the original documentation: prepare the backend, download and validate inputs, inspect generated YAML, run each analysis, verify output tables and PDFs, and resume safely.</p>
 <ul>
@@ -1986,7 +1988,7 @@ oncotracer<span class="w"> </span>run<span class="w"> </span>--config<span class
 </tr>
 </tbody>
 </table>
-<p>All backends use the same native stage graph and output contract.</p>
+<p>All backends use the same native stage graph and the same output layout.</p>
 <h2 id="continue">Continue<a class="headerlink" href="#continue" title="Permanent link">&para;</a></h2>
 <ol>
 <li><a href="installation/">Install the verified executable and one backend</a>.</li>

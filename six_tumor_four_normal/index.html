@@ -1954,7 +1954,7 @@ command below uses native v2 and does not invoke Nextflow.</p>
 <tr>
 <td><code>NORMAL</code></td>
 <td><code>CTRL001</code>–<code>CTRL004</code></td>
-<td>Each sample receives the same independent qDNAseq analysis; the status is retained in the input contract</td>
+<td>Each sample receives the same independent qDNAseq analysis; the status is retained in the input samplesheet</td>
 </tr>
 </tbody>
 </table>
@@ -2133,11 +2133,11 @@ cat<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span
 cat<span class="w"> </span><span class="s2">"</span><span class="nv">$QDNA</span><span class="s2">/qdnaseq_sample_status.json"</span>
 cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUT</span><span class="s2">/06_workflow_summary/workflow_summary.txt"</span>
 </code></pre></div>
-<p>The generated samplesheet is the preserved status contract: it must still show
+<p>The generated samplesheet is the preserved status record: it must still show
 six <code>tumor</code> rows and four <code>normal</code> rows. The qDNAseq status record and per-sample
 files prove that every <code>CTRL</code> and every <code>ONCO</code> sample was analyzed independently.</p>
 <p>This is a research-use example, not a diagnostic protocol. Preserve input
-checksums, the generated contract, native trace, run manifest, exact source and
+checksums, the generated samplesheet, native trace, run manifest, exact source and
 reference identities, environment specifications, and primary stage-02/03
 tables with any interpretation.</p>
 

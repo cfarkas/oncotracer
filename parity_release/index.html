@@ -1565,10 +1565,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hosted-runner-capacity-contract" class="md-nav__link">
+  <a href="#hosted-runner-capacity-limits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hosted-runner capacity contract
+        Hosted-runner capacity limits
       
     </span>
   </a>
@@ -1885,10 +1885,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hosted-runner-capacity-contract" class="md-nav__link">
+  <a href="#hosted-runner-capacity-limits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hosted-runner capacity contract
+        Hosted-runner capacity limits
       
     </span>
   </a>
@@ -1965,12 +1965,12 @@
 <p>Each artifact includes <code>parity_report.json</code>, <code>parity_report.md</code>, <code>event_matches.tsv</code>, the native trace, run summaries, and <code>SHA256SUMS</code>.</p>
 <h2 id="release-automation">Release automation<a class="headerlink" href="#release-automation" title="Permanent link">&para;</a></h2>
 <p>The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current <code>main</code> SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates <code>v2.0.0</code>. A release cannot be created from a stale or partially validated commit.</p>
-<h2 id="hosted-runner-capacity-contract">Hosted-runner capacity contract<a class="headerlink" href="#hosted-runner-capacity-contract" title="Permanent link">&para;</a></h2>
+<h2 id="hosted-runner-capacity-limits">Hosted-runner capacity limits<a class="headerlink" href="#hosted-runner-capacity-limits" title="Permanent link">&para;</a></h2>
 <p>The full parity gates and five-environment container build are intentionally
 fail-closed before they download public reads, install scientific environments,
 pull pinned images, or publish anything. GitHub's documented standard public
-<code>ubuntu-24.04</code> runner contract is 4 CPUs, 16 GB RAM, and 14 GB SSD storage.
-Observed free space above that contract is incidental runner-image capacity and
+<code>ubuntu-24.04</code> runner provides 4 CPUs, 16 GB RAM, and 14 GB SSD storage.
+Observed free space above that allowance is incidental runner-image capacity and
 must not be made available by deleting runner tools, unrelated images, or global
 caches.</p>
 <p>The parity preflight requires every checked filesystem independently to meet
@@ -2056,16 +2056,16 @@ an unexpected function shape, and writes an audit marker. Native v2 applies the
 same checked compatibility shim and emits <code>&lt;sample&gt;.ichorcna_plot_compat.tsv</code>.
 The shim does not modify read counting, normalization, HMM fitting, segmentation,
 or copy-number calls.</p>
-<p>The Illumina GitHub parity contracts validate the BAM-stage SAMURAI execution
-actually invoked by OncoTracer. QuickStart 1 therefore expects six contracted
-nested tasks for one sample, and QuickStart 2 expects fourteen contracted tasks
+<p>The Illumina GitHub parity checks validate the BAM-stage SAMURAI execution
+actually invoked by OncoTracer. QuickStart 1 therefore expects six required
+nested tasks for one sample, and QuickStart 2 expects fourteen required tasks
 for three samples. Only the five runtime images used by those BAM-stage tasks
-are required by those contracts; FASTQ QC and alignment occur in OncoTracer
+are required by those checks; FASTQ QC and alignment occur in OncoTracer
 before SAMURAI is called.</p>
 <p>Nested Nextflow resumes can distribute successful tasks across several trace
 files. Both the hosted release gate and the standalone validation-server driver
 therefore build a deterministic combined trace from the latest occurrence of
-each canonical task and require every contracted latest occurrence to be
+each canonical task and require every required latest occurrence to be
 successful or cached with exit status zero. The audit preserves every regular,
 non-symlink source trace at its complete root-relative path, so equal basenames
 cannot collide, together with a manifest containing each trace's recorded
@@ -2079,10 +2079,10 @@ inventory, and their content delta. A successful run must create a new trace
 path or change trace content; touching an old file is not sufficient. The
 deterministic newest post-run trace is selected by <code>(mtime_ns, path)</code>, must be
 in the current invocation's content delta, and must contribute at least one
-selected contracted scientific task for every Illumina, ONT, and HCC1143
-contract. A stale contracted selection accompanied only by a newer unrelated
+selected required scientific task for every Illumina, ONT, and HCC1143
+run. A stale required-task selection accompanied only by a newer unrelated
 startup or failure trace therefore fails closed.</p>
-<p>The ONT audit additionally requires the complete ten-process contract, including
+<p>The ONT audit additionally requires the complete ten-process set, including
 a freshly <code>COMPLETED</code>, exit-zero <code>ICHORCNA_RUN</code>; <code>CACHED</code> is rejected for this
 one deliberately non-cacheable task. Its compatibility marker must be inside
 the exact Nextflow work directory identified by that selected task's trace

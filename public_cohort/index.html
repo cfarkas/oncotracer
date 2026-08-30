@@ -2123,9 +2123,9 @@
 oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
 oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span class="w"> </span>conda
 
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <p>A successful command ends with:</p>
 <div class="highlight"><pre><span></span><code>QuickStart 2 completed: .../oncotracer-quickstart2
@@ -2188,9 +2188,9 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 <span class="nv">TEST_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
 
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$TEST_ROOT</span><span class="s2">/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <p>Review:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
@@ -2225,25 +2225,25 @@ cat<span class="w"> </span><span class="s2">"</span><span class="nv">$OUTDIR</sp
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
 oncotracer<span class="w"> </span>install<span class="w"> </span>--conda
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-conda"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-conda"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-conda/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
 oncotracer<span class="w"> </span>install<span class="w"> </span>--docker
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-docker"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-docker"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-docker/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="singularity-or-apptainer">Singularity or Apptainer<a class="headerlink" href="#singularity-or-apptainer" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
 oncotracer<span class="w"> </span>install<span class="w"> </span>--singularity
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-singularity"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-singularity"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-singularity/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <h3 id="poetry-launcher">Poetry launcher<a class="headerlink" href="#poetry-launcher" title="Permanent link">&para;</a></h3>
 <p>Poetry is a source-development route. Keep the source checkout separate from the analysis output:</p>
@@ -2251,9 +2251,9 @@ oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class=
 
 ./oncotracer<span class="w"> </span>install<span class="w"> </span>--poetry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--prefix<span class="w"> </span>/path/to/my/oncotracer-v2-dev-envs
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry<span class="w"> </span>--download-only
+/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry/configs/hcc1143_lpwgs/illumina.auto.yml
 </code></pre></div>
 <h2 id="run-the-prepared-yaml-through-another-backend">Run the prepared YAML through another backend<a class="headerlink" href="#run-the-prepared-yaml-through-another-backend" title="Permanent link">&para;</a></h2>
 <p>The downloaded FASTQs and generated YAML are backend-independent:</p>
@@ -2268,9 +2268,9 @@ oncotracer<span class="w"> </span>run<span class="w"> </span><span class="se">\<
 <p>Repeat the same QuickStart or <code>oncotracer run</code> command with the same test root and result directory:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>conda<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <p>The native ledger checks the stage command, relevant input metadata, and expected outputs before reuse. Use <code>--force</code> only for a deliberate full refresh.</p>
 <h2 id="continue">Continue<a class="headerlink" href="#continue" title="Permanent link">&para;</a></h2>

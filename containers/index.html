@@ -1943,7 +1943,7 @@
 
 
 <h1 id="execution-backends">Execution backends<a class="headerlink" href="#execution-backends" title="Permanent link">&para;</a></h1>
-<p>All backends use the same native stage graph, flat YAML, result directory layout, and audit contract. The backend changes how the scientific programs are supplied; it does not select a different analysis pipeline.</p>
+<p>All backends use the same native stage graph, flat YAML, result directory layout, and audit records. The backend changes how the scientific programs are supplied; it does not select a different analysis pipeline.</p>
 <table>
 <thead>
 <tr>
@@ -2082,13 +2082,15 @@ oncotracer<span class="w"> </span>doctor<span class="w"> </span>--backend<span c
 <p>Start from the directory where you want the tutorials to create their input, configuration, and result folders:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/analyses_dir/
 
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1-docker"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1-docker"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1-docker/configs/illumina.quickstart.yml"</span>
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>docker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart1-docker/configs/ont.quickstart.yml"</span>
 
-oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-singularity"</span>
+oncotracer<span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-singularity"</span><span class="w"> </span>--download-only
+oncotracer<span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>singularity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/oncotracer-quickstart2-singularity/configs/hcc1143_lpwgs/illumina.auto.yml"</span>
 </code></pre></div>
 <p>Preparation and YAML content are backend-independent. The same generated config can be moved between supported backends when all absolute paths remain available.</p>
 

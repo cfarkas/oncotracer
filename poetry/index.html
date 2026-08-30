@@ -1914,17 +1914,19 @@ checkout-local <code>.venv</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
 
 <span class="nv">ONCOTRACER_DEV</span><span class="o">=</span>/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
-<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart1-poetry
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">1</span><span class="w"> </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart1-poetry<span class="w"> </span>--download-only
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart1-poetry/configs/illumina.quickstart.yml
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart1-poetry/configs/ont.quickstart.yml
 </code></pre></div>
 <h2 id="run-quickstart-2-through-poetry">Run QuickStart 2 through Poetry<a class="headerlink" href="#run-quickstart-2-through-poetry" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/my/oncotracer_source/
 
 <span class="nv">ONCOTRACER_DEV</span><span class="o">=</span>/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
-<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>quickstart<span class="w"> </span><span class="m">2</span><span class="w"> </span>--test-root<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry<span class="w"> </span>--download-only
+<span class="s2">"</span><span class="nv">$ONCOTRACER_DEV</span><span class="s2">"</span><span class="w"> </span>run<span class="w"> </span>--backend<span class="w"> </span>poetry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>/path/to/my/analyses_dir/oncotracer-quickstart2-poetry/configs/hcc1143_lpwgs/illumina.auto.yml
 </code></pre></div>
 <p>For a different managed runtime, install it explicitly with <code>oncotracer install --docker</code>, <code>--singularity</code>, or <code>--conda</code>, then select the matching <code>--backend</code>. Every v2 route executes the native stage graph and records <code>nextflow_used=false</code>.</p>
 
