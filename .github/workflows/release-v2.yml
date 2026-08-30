@@ -320,10 +320,8 @@ jobs:
           if [[ -n "$http" ]]; then
             printf 'http=env.http_proxy=%s\n' "$http" >> "$GITHUB_OUTPUT"
             printf 'https=env.https_proxy=%s\n' "$https" >> "$GITHUB_OUTPUT"
-            printf 'noproxy=env.no_proxy=%s\n' "${NO_PROXY:-localhost,127.0.0.1}" \
-              >> "$GITHUB_OUTPUT"
           else
-            printf 'http=\nhttps=\nnoproxy=\n' >> "$GITHUB_OUTPUT"
+            printf 'http=\nhttps=\n' >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Docker Buildx
@@ -333,7 +331,6 @@ jobs:
           driver-opts: |
             ${{ steps.proxy.outputs.http }}
             ${{ steps.proxy.outputs.https }}
-            ${{ steps.proxy.outputs.noproxy }}
 
       - name: Build native release container locally
         if: steps.gate.outputs.ready == 'true'
