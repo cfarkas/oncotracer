@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 ACTIVE = [
     ROOT / "README.md",
@@ -27,6 +29,47 @@ ACTIVE = [
 
 
 class NativeDocumentationTests(unittest.TestCase):
+    def test_source_installation_uses_main_without_stale_branch_links(self) -> None:
+        for relative in ("README.md", "docs/installation.md"):
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            self.assertIn(
+                "git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src",
+                text,
+            )
+            self.assertNotIn("improve/beginner-setup-methylation", text)
+            self.assertIn("not in the v2.0.0 release executable", text)
+
+    def test_pages_validates_prs_and_deploys_only_main_artifacts(self) -> None:
+        text = (ROOT / ".github/workflows/docs.yml").read_text(encoding="utf-8")
+        workflow = yaml.load(text, Loader=yaml.BaseLoader)
+        self.assertEqual(workflow["permissions"], {"contents": "read"})
+        self.assertIn("pull_request", workflow["on"])
+        self.assertEqual(workflow["on"]["push"]["branches"], ["main"])
+        self.assertEqual(workflow["concurrency"]["cancel-in-progress"], "false")
+        self.assertIn("github.event.pull_request.number", workflow["concurrency"]["group"])
+
+        build = workflow["jobs"]["build"]
+        deploy = workflow["jobs"]["deploy"]
+        trusted_main = "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'"
+        self.assertEqual(deploy["if"], trusted_main)
+        self.assertEqual(deploy["needs"], "build")
+        self.assertEqual(deploy["permissions"], {"pages": "write", "id-token": "write"})
+        self.assertEqual(deploy["environment"]["name"], "github-pages")
+        self.assertNotIn("permissions", build)
+        self.assertNotIn("contents: write", text)
+        self.assertNotIn("gh-deploy", text)
+        self.assertNotIn("pull_request_target", text)
+        self.assertIn("python3 tests/test_docs_style.py", text)
+        self.assertIn("python3 -m unittest tests.test_native_docs -q", text)
+        self.assertIn("mkdocs build --strict --site-dir site", text)
+        self.assertIn('Path("site/build-info.json")', text)
+        self.assertIn('"source_commit": os.environ["GITHUB_SHA"]', text)
+        self.assertEqual(build["steps"][0]["with"]["persist-credentials"], "false")
+        for action in ("actions/configure-pages@v5", "actions/upload-pages-artifact@v4"):
+            step = next(step for step in build["steps"] if step.get("uses") == action)
+            self.assertEqual(step["if"], trusted_main)
+        self.assertEqual(deploy["steps"][0]["uses"], "actions/deploy-pages@v4")
+
     def test_beginner_guides_stay_short_and_use_public_commands(self) -> None:
         budgets = {
             "README.md": 800,

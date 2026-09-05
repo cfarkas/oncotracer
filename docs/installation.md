@@ -2,10 +2,10 @@
 
 ## Current source for the new setup workflow
 
-The new `setup`, `check`, `system`, `reference`, `uninstall`, `--modbam`, `--cpu`, and `--methylation-only` options are not in the v2.0.0 release executable. Until [the usability changes](https://github.com/cfarkas/oncotracer/pull/46) reach `main`, use the development branch below in a separate Python environment. You need Linux, Python 3.10–3.13, Git, and Conda:
+The new `setup`, `check`, `system`, `reference`, `uninstall`, `--modbam`, `--cpu`, and `--methylation-only` options are available from `main`, but are not in the v2.0.0 release executable. Install current source in a separate Python environment. You need Linux, Python 3.10–3.13, Git, and Conda:
 
 ```bash
-git clone --branch improve/beginner-setup-methylation https://github.com/cfarkas/oncotracer.git oncotracer-src
+git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
 python3 -m venv oncotracer-env
 oncotracer-env/bin/python -m pip install -e ./oncotracer-src
 source oncotracer-env/bin/activate

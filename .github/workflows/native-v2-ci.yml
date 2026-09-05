@@ -50,7 +50,7 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install \
             pandas openpyxl numpy scipy scikit-learn matplotlib jinja2 \
-            requests reportlab pypdf
+            requests reportlab pypdf pyyaml
       - name: Parse Python, Bash, and native R sources
         run: |
           python3 -m compileall -q oncotracer_cli tests scripts bin

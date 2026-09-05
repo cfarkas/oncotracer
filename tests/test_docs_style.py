@@ -42,7 +42,7 @@ REQUIRED_TEXT = {
     "README.md": (
         "copy-number changes",
         "not in the v2.0.0 release executable",
-        "git clone --branch improve/beginner-setup-methylation https://github.com/cfarkas/oncotracer.git oncotracer-src",
+        "git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src",
         "pip install -e ./oncotracer-src",
         "oncotracer setup --project",
         "oncotracer check --config",
