@@ -1,6 +1,6 @@
-# Automatic Setup for your FASTQs
+# Batch setup from FASTQs and a sample table
 
-Automatic Setup is the recommended way to create a native OncoTracer YAML. It validates the input names, creates an exact samplesheet or barcode mapping, writes an audit manifest, and stops. It does not start the scientific analysis.
+Use `oncotracer auto` when you have many FASTQ files and a sample table. It validates input names and generates a YAML configuration and sample mapping; it does not start the scientific analysis. For a first project or methylation, [guided setup](setup.md) asks for the needed paths and explains the saved settings.
 
 Use:
 
@@ -38,12 +38,13 @@ CONTROL_01,NORMAL
 CONTROL_02,NORMAL
 ```
 
-The following block is copy/paste ready and preserves the caller's working directory:
+Save the table as `samples.csv` in a project input directory and place your FASTQs in `project/input/fastq/` before continuing. The names in the table must match the read filenames; the example names below are placeholders.
+
+The following block creates the example table. Replace its rows with your real sample names:
 
 ```bash
 mkdir -p "$PWD/project/input/fastq" \
-  "$PWD/project/config" \
-  "$PWD/project/results"
+  "$PWD/project/config"
 
 cat > "$PWD/project/input/samples.csv" <<'CSV'
 sample_name,status
@@ -52,6 +53,11 @@ TUMOR_02,TUMOR
 CONTROL_01,NORMAL
 CONTROL_02,NORMAL
 CSV
+```
+
+After placing the FASTQs in that folder, generate and run the configuration:
+
+```bash
 
 oncotracer auto \
   --mode illumina \
@@ -67,6 +73,8 @@ cat "$PWD/project/config/auto_params_manifest.tsv"
 oncotracer run --backend conda \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
+
+`--reads-folder` and `--sample-table` are existing inputs. `--config-dir` is where the YAML is written; `--outdir` is where analysis results will go. `--config` in the final command selects the YAML that was just generated. Use quoted absolute paths if running these commands from different directories.
 
 Automatic Setup writes absolute paths so that Docker and Singularity/Apptainer can mount the project consistently.
 

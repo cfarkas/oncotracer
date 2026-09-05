@@ -50,7 +50,7 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install \
             pandas openpyxl numpy scipy scikit-learn matplotlib jinja2 \
-            requests reportlab pypdf
+            requests reportlab pypdf pyyaml
       - name: Parse Python, Bash, and native R sources
         run: |
           python3 -m compileall -q oncotracer_cli tests scripts bin
@@ -66,11 +66,16 @@ jobs:
             tests/test_command_runner_containment.py \
             tests/test_native_methylation.py \
             tests/test_beginner_runtime.py \
+            tests/test_setup.py \
             tests/test_install_safety.py \
             tests/test_compare_native_parity.py \
             tests/test_native_docs.py \
             tests/test_poetry_cli.py \
             tests/test_native_classifier.py \
+            tests/test_report_llm.py \
+            tests/test_system_check.py \
+            tests/test_uninstall.py \
+            tests/test_reference_bundle.py \
             tests/test_native_provenance.py \
             tests/test_ichorcna_plot_compat.py \
             tests/test_qdnaseq_helper.py \
@@ -106,6 +111,9 @@ jobs:
           cd "$RUNNER_TEMP/outside-checkout"
           ./oncotracer --version | grep -F 'OncoTracer 2.0.0'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA analysis.'
+          ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
+            python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
+            SetupTests.test_installed_setup_and_check_from_outside_checkout -v
           ./oncotracer provenance --json | tee provenance.json
           jq -e \
             --arg commit '${{ steps.source.outputs.source_commit }}' \
@@ -132,6 +140,7 @@ jobs:
               'oncotracer_cli/classifier.py',
               'oncotracer_cli/methylation.py',
               'payload/bin/cna_classifier_nf/bin/01_prepare_cna_inputs.py',
+              'payload/bin/cna_classifier_nf/bin/llm_runtime.py',
               'payload/bin/cna_classifier_nf/bin/08_clinician_driver_reports.py',
               'payload/bin/cna_classifier_nf/assets/pancancer_cna_regions.tsv',
               'payload/environments/native-classifier.yml',

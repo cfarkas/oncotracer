@@ -26,8 +26,10 @@ nav:
   - Home: index.md
   - Getting Started:
       - Install Requirements: installation.md
-      - Poetry Launcher: poetry.md
       - QuickStart 1 — Illumina + ONT: quick_start.md
+      - Set Up Your Own Data: setup.md
+      - ONT Methylation: configuration/methylation.md
+      - Prebuilt Genome Indexes: reference_indexes.md
       - Automatic Setup for Your FASTQs: auto_params.md
       - QuickStart 2 — HCC1143: public_cohort.md
       - Input Files and Folder Layouts: inputs.md
@@ -42,15 +44,17 @@ nav:
       - Canonical Native YAML: configuration_v2.md
       - Illumina Setup: configuration/illumina.md
       - ONT Setup: configuration/ont.md
-      - Optional ONT Methylation: configuration/methylation.md
+      - Methylation Resource Reference: configuration/methylation_reference.md
       - Pathology and Classifier: configuration/pathology.md
       - Advanced Refinement: configuration/refinement.md
       - All Parameters: configuration/parameter_reference.md
       - Execution Environments: containers.md
+      - Poetry Development Install: poetry.md
       - Programs and Provenance: programs.md
   - Understand Results:
       - Output Files: outputs.md
       - Models and Pathology: models_pathology.md
+      - LLM-Assisted Reports: llm_reports.md
       - Results Gallery: gallery.md
   - Assurance and Migration:
       - Native architecture: native_architecture.md
@@ -58,6 +62,7 @@ nav:
       - Migration from v1.1: migration_v1_to_v2.md
       - Legacy v1.1: legacy_v1.md
   - Help and About:
+      - Uninstall: uninstall.md
       - Troubleshooting: troubleshooting.md
       - Citation and Research Use: citation_research_use.md
       - Developer Guide: developer_guide.md

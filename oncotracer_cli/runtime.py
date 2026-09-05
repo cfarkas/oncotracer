@@ -549,10 +549,17 @@ def parse_scalar(value: str):
     value = value.strip()
     if not value:
         return ""
-    if (value.startswith("'") and value.endswith("'")) or (
-        value.startswith('"') and value.endswith('"')
-    ):
-        return value[1:-1]
+    if value.startswith('"'):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError as error:
+            raise OncoTracerError(
+                f"invalid double-quoted YAML value: {value}"
+            ) from error
+    if value.startswith("'"):
+        if not value.endswith("'") or len(value) < 2:
+            raise OncoTracerError(f"unclosed single-quoted YAML value: {value}")
+        return value[1:-1].replace("''", "'")
     lowered = value.lower()
     if lowered in {"true", "yes", "on"}:
         return True
@@ -596,9 +603,26 @@ def load_flat_yaml(path: Path) -> dict[str, object]:
             raise OncoTracerError(f"empty YAML key ({path}:{line_number})")
         if key in values:
             raise OncoTracerError(f"duplicate YAML key {key!r} ({path}:{line_number})")
-        # Generated OncoTracer values never contain unquoted inline comments.
-        if " #" in value:
-            value = value.split(" #", 1)[0]
+        # A # inside a quoted path is data, not a YAML comment.
+        quote = None
+        escaped = False
+        for index, char in enumerate(value):
+            if escaped:
+                escaped = False
+                continue
+            if quote == '"' and char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            elif quote is None and char in {"'", '"'}:
+                quote = char
+            elif (
+                quote is None
+                and char == "#"
+                and (index == 0 or value[index - 1].isspace())
+            ):
+                value = value[:index]
+                break
         values[key] = parse_scalar(value)
     return values
 
@@ -618,6 +642,14 @@ def render_flat_yaml(values: Mapping[str, object]) -> str:
             rendered = "[" + ", ".join(str(item) for item in value) + "]"
         else:
             rendered = str(value)
+            if (
+                not rendered
+                or rendered != rendered.strip()
+                or any(char in rendered for char in "#\n\r\t\"'[]{}")
+                or ": " in rendered
+                or parse_scalar(rendered) != rendered
+            ):
+                rendered = json.dumps(rendered, ensure_ascii=False)
         lines.append(f"{key}: {rendered}")
     return "\n".join(lines) + "\n"
 

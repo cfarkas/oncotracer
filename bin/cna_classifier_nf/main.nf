@@ -638,6 +638,7 @@ process KNOWLEDGE_ENRICHMENT {
       --literature-llm-max-features ${params.knowledge_literature_llm_max_features} \
       --literature-llm-max-input-chars ${params.knowledge_literature_llm_max_input_chars} \
       --literature-llm-max-new-tokens ${params.knowledge_literature_llm_max_new_tokens} \
+      --llm-threads ${params.knowledge_llm_threads} \
       --deep-literature '${asBool(params.knowledge_deep_literature) ? 'true' : 'false'}' \
       --deep-max-papers-per-feature ${params.knowledge_deep_max_papers_per_feature} \
       --deep-top-papers-per-sample ${params.knowledge_deep_top_papers_per_sample} \

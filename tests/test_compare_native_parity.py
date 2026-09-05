@@ -2400,6 +2400,19 @@ printf '%s\\n' "$selected_output"
             untampered_swap = swap_phase.read_text(encoding="utf-8")
             swap_phase.write_text(
                 untampered_swap.replace(
+                    "active_swap_size_bytes\t34359738368", "active_swap_size_bytes\t34359734272"
+                ), encoding="utf-8",
+            )
+            audit_module.verify_minimal_native_environments(context, "quickstart2", resource_sha)
+            swap_phase.write_text(
+                untampered_swap.replace(
+                    "active_swap_size_bytes\t34359738368", "active_swap_size_bytes\t34359730176"
+                ), encoding="utf-8",
+            )
+            with self.assertRaisesRegex(audit_module.AuditError, "planned swap"):
+                audit_module.verify_minimal_native_environments(context, "quickstart2", resource_sha)
+            swap_phase.write_text(
+                untampered_swap.replace(
                     "active_swap_size_bytes\t34359738368", "active_swap_size_bytes\t0"
                 ),
                 encoding="utf-8",

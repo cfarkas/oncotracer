@@ -9,40 +9,94 @@ on:
       - "docs/**"
       - "mkdocs.yml"
       - ".github/workflows/docs.yml"
+      - "tests/test_native_docs.py"
+      - "tests/test_docs_style.py"
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/docs.yml"
+      - "tests/test_native_docs.py"
+      - "tests/test_docs_style.py"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: github-pages
-  cancel-in-progress: true
+  group: documentation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: docs/requirements.txt
 
       - name: Install documentation dependencies
         run: python3 -m pip install -r docs/requirements.txt
 
+      - name: Check documentation and command examples
+        run: |
+          python3 tests/test_docs_style.py
+          python3 -m unittest tests.test_native_docs -q
+
       - name: Validate the complete native v2 site
         run: mkdocs build --strict --site-dir site
 
-      - name: Configure Git identity
+      - name: Record the published source identity
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
 
-      - name: Publish GitHub Pages from the validated site
-        run: mkdocs gh-deploy --force --clean
+          server = os.environ["GITHUB_SERVER_URL"]
+          repository = os.environ["GITHUB_REPOSITORY"]
+          run_id = os.environ["GITHUB_RUN_ID"]
+          record = {
+              "source_commit": os.environ["GITHUB_SHA"],
+              "repository": repository,
+              "run_url": f"{server}/{repository}/actions/runs/{run_id}",
+          }
+          Path("site/build-info.json").write_text(
+              json.dumps(record, indent=2) + "\n", encoding="utf-8"
+          )
+          PY
+
+      - name: Configure Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload the validated site
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish the validated site
+        id: deployment
+        uses: actions/deploy-pages@v4

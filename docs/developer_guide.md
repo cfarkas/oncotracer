@@ -89,6 +89,14 @@ python3 -m pip install -r docs/requirements.txt
 mkdocs build --strict
 ```
 
+Pull requests validate the site without publishing it. After a merge, the
+`Deploy documentation` workflow builds the site once and publishes that artifact
+to GitHub Pages from `main`. Set **Settings → Pages → Source** to **GitHub Actions**
+and allow `main` in the `github-pages` deployment environment. No generated branch
+or write access to repository contents is needed. The live `build-info.json`
+records the source commit and deployment run; website publication does not
+publish or replace a software release.
+
 Documentation regression checks require:
 
 - release installation independent of a source checkout;

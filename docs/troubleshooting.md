@@ -1,5 +1,21 @@
 # Troubleshooting
 
+## Start with the command and configuration
+
+For current source, run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing paths and settings without starting analysis. `oncotracer doctor --backend conda` checks the installed analysis tools.
+
+| Message or symptom | What to do |
+| --- | --- |
+| `setup` or `check` is not recognized | You may have the v2.0.0 executable. Use [current-source installation](installation.md#current-source-for-the-new-setup-workflow), or its older `auto` and `run --dry-run` commands |
+| A path does not exist | Use the actual absolute path; `/data/...` and `/work/...` in examples must be replaced |
+| Setup refuses to overwrite a YAML | Edit that existing file, or choose a new `--project` |
+| Both POD5 and BAM inputs are configured | Keep only the input type you want to use |
+| CPU methylation basecalling is very slow | Reuse completed modified-base BAMs with `--modbam` if available; raw signal can take days on CPU |
+| No FASTQ-selected reads with MM/ML tags | Match the FASTQs to BAMs made with modified-base calling, or use raw POD5 |
+| `no_classifier_probes` | Check usable human alignment and hg38 probe coordinates. CpG calls elsewhere cannot support a MARLIN prediction |
+
+For methylation, `install --conda` does not install optional Dorado, Modkit, or classifier resources. See the [methylation guide](configuration/methylation.md).
+
 Start with the exact command, backend, YAML, `outdir`, and source identity. Avoid deleting reference indexes, `.oncotracer-native/state.json`, or partial outputs before identifying the failing stage.
 
 ## 1. Verify the installed executable and backend
