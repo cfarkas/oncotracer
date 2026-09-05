@@ -18,7 +18,7 @@ walkthrough, not a study with recruited non-expert participants.
 | New commands absent from the published executable | Source and v2.0.0 release instructions clearly separated |
 | Plain pip installation loses the source identity required by the installer | Current-source instructions retain an editable, clean Git checkout |
 | Users cannot tell whether their computer can run the workflow | `system` reports CPU allowance, available RAM, visible container limits, disk and task-specific planning guidance; `check` includes the warnings |
-| Low-RAM users must build genome indexes | Streaming, checksum-verified `reference export/install` transfers validated hg38/BWA/minimap2 files without building or loading an index on import |
+| Low-RAM users must build genome indexes | Published hg38/BWA/minimap2 bundle with streaming, checksum-verified `reference install`; no index construction or loading during import |
 | No clear uninstall path | Ownership-checked `uninstall` previews exact tools, refuses active/changed installations, retains recovery copies by default, and provides explicit permanent removal |
 | Report LLM ignores local-only settings and guesses model type from its name | Shared CPU loader respects local-only for every model component, supports encoder–decoder/causal models, pins resolved Hub snapshots, and caches failed loads |
 | Uncited prose or stray numbers can enter literature interpretation | Structured draft claims require known source IDs; reference selection accepts only visible IDs; rejected generations retain labeled deterministic text |
@@ -42,12 +42,29 @@ with CPU-only PyTorch 2.6.0 and both Transformers 4.57.6 and 5.16.1. These check
 loading, context budgets, citation structure, fallback and rendering, not medical
 accuracy. No trained report model or patient input is uploaded to an LLM service.
 Uninstall tests use disposable, ownership-marked fixtures, not installed tools.
+A copied executable was also removed through the public command, verified in its
+recovery folder, restored, and executed successfully.
 Reference tests cover corruption, unsafe paths, no overwrites and platform selection.
 The real 14.76-GiB hg38/BWA/minimap2 bundle was exported from the existing validated
-public reference, then imported locally under a 1-GiB address-space limit. Import
-completed with 43,456 KiB peak resident memory and no index builds. This measures
-transfer/validation only, not alignment or downstream analysis memory. Public
-hosting of the reference assets is a separate publication step.
+public reference and [published separately](https://github.com/cfarkas/oncotracer/releases/tag/hg38-reference-v1).
+All 23 GitHub asset sizes and SHA-256 digests match the local inventory. A fresh
+public-source installation downloaded and installed the complete bundle over
+unauthenticated HTTPS under a 1-GiB address-space limit: 42,940 KiB peak resident
+memory, 13 minutes 14 seconds, no swap and no index builds. Local transfer separately
+peaked at 43,456 KiB. These measure import, not alignment or downstream analysis RAM.
+
+Fresh Bioconda BWA/minimap2 installations matched the bundle's tool hashes and the
+builds selected by hosted CI. Normal engine validation and both index readers
+accepted the public download; three synthetic short reads and three synthetic
+long reads mapped to their expected hg38 loci. This opt-in test used two alignment
+threads, a 16-GiB address-space cap, 8,088,628 KiB peak RSS and no index builds.
+It is a tiny-read index check, not a full CNA or methylation-classifier run.
+
+The source regression suite passes 363 tests with three opt-in skips; installed
+setup, real tiny-model CPU inference and real-reference alignment are exercised
+separately. Shell, copy-paste, example and strict documentation checks pass. Fresh
+GitHub source installation, tagged-source reference previews, and analysis-tool
+installation previews work outside the development checkout.
 
 ## Remaining limits
 
@@ -58,7 +75,8 @@ hosting of the reference assets is a separate publication step.
   Optional models remain explicitly model-dependent; swap is not counted as RAM.
 - Citation checks establish source identity and response structure, not whether a
   generated claim is supported scientifically. Generated text remains a reviewable draft.
-- Trained MARLIN/Sturgeon inference and the full public-data QuickStarts were not
-  rerun for this audit. Synthetic integration is not clinical validation.
-- The new commands require this source revision; publishing a new release is a
-  separate step. Existing v2.0.0 binaries and containers are unchanged.
+- Trained MARLIN/Sturgeon inference and full public-data QuickStarts were not rerun
+  locally. Hosted QuickStart parity remains a separate required software-release
+  gate; synthetic integration is not clinical validation.
+- The new commands require the updated source. Only the reference assets are newly
+  released; existing v2.0.0 binaries and containers are unchanged.
