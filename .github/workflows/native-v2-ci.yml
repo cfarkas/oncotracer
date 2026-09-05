@@ -66,6 +66,7 @@ jobs:
             tests/test_command_runner_containment.py \
             tests/test_native_methylation.py \
             tests/test_beginner_runtime.py \
+            tests/test_setup.py \
             tests/test_install_safety.py \
             tests/test_compare_native_parity.py \
             tests/test_native_docs.py \
@@ -106,6 +107,9 @@ jobs:
           cd "$RUNNER_TEMP/outside-checkout"
           ./oncotracer --version | grep -F 'OncoTracer 2.0.0'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA analysis.'
+          ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
+            python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
+            SetupTests.test_installed_setup_and_check_from_outside_checkout -v
           ./oncotracer provenance --json | tee provenance.json
           jq -e \
             --arg commit '${{ steps.source.outputs.source_commit }}' \

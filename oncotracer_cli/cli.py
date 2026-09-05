@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 from . import __version__
+from .setup import add_setup_commands
 from .engine import Toolchain, run_native
 from .install_safety import (
     install_conda_managed,
@@ -382,6 +383,10 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
                 methylation_classifier=args.methylation_classifier,
                 methylation_pod5_dir=Path(args.pod5_dir) if args.pod5_dir else None,
                 methylation_gpu=args.gpu,
+                methylation_modbam=(
+                    Path(args.modbam) if getattr(args, "modbam", None) else None
+                ),
+                methylation_only=getattr(args, "methylation_only", None),
             )
         finally:
             os.environ.clear()
@@ -476,9 +481,28 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
 
 
 def _methylation_requested(config_path: Path, args: argparse.Namespace) -> bool:
+    if any(
+        getattr(args, key, None)
+        for key in (
+            "methylation_only",
+            "modbam",
+            "pod5_dir",
+            "methylation_classifier",
+            "gpu",
+        )
+    ):
+        return True
+    config = load_flat_yaml(config_path)
+    if str(config.get("methylation_only") or "").strip().lower() in {
+        "true",
+        "yes",
+        "on",
+        "1",
+    }:
+        return True
     if args.methylation is not None:
         return bool(args.methylation)
-    value = load_flat_yaml(config_path).get("methylation")
+    value = config.get("methylation")
     if isinstance(value, bool):
         return value
     return str(value or "").strip().lower() in {"true", "yes", "on", "1"}
@@ -491,7 +515,7 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
         config_path, args
     ):
         raise OncoTracerError(
-            "the optional POD5 methylation branch requires backend host, conda, "
+            "the optional methylation branch requires backend host, conda, "
             "or poetry with explicit user-installed Dorado/Modkit/classifier assets; "
             "the stable OncoTracer container does not redistribute those licensed resources"
         )
@@ -764,7 +788,27 @@ def command_quickstart(args: argparse.Namespace) -> int:
             ]
             for path in required:
                 require_file(path, "QuickStart 2 output")
-    print(f"QuickStart {args.number} completed: {test_root}")
+    if args.download_only:
+        print(f"QuickStart {args.number} data prepared: {test_root}")
+        print("No analysis has run. Inspect these configurations, then run each:")
+        for config in configs:
+            print(
+                shlex.join(
+                    [
+                        "oncotracer",
+                        "run",
+                        "--backend",
+                        _backend_from(args),
+                        "--config",
+                        str(config),
+                    ]
+                )
+            )
+        print(
+            "To run both analyses and verify the example outputs, repeat quickstart without --download-only."
+        )
+    else:
+        print(f"QuickStart {args.number} completed: {test_root}")
     return 0
 
 
@@ -1300,7 +1344,7 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
         "--methylation",
         action="store_true",
         default=None,
-        help="enable the optional ONT-only POD5 methylation branch",
+        help="add ONT methylation to copy-number analysis; choose --marlin or --sturgeon",
     )
     classifier = parser.add_mutually_exclusive_group()
     classifier.add_argument(
@@ -1317,15 +1361,34 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
         const="marlin",
         help="classify leukemia methylation with explicit MARLIN resources",
     )
-    parser.add_argument(
+    inputs = parser.add_mutually_exclusive_group()
+    inputs.add_argument(
         "--pod5-dir",
-        help="required explicit non-empty POD5 directory for --methylation",
+        help="directory of raw signal to basecall; requires local Dorado models",
+    )
+    inputs.add_argument(
+        "--modbam",
+        help="existing modified-base BAM file or directory; reuses calls and aligns on CPU",
     )
     parser.add_argument(
+        "--methylation-only",
+        action="store_true",
+        default=None,
+        help="run ONT methylation without copy-number analysis",
+    )
+    device = parser.add_mutually_exclusive_group()
+    device.add_argument(
         "--gpu",
         action="store_true",
         default=None,
         help="use GPU for methylation Dorado and expose it to MARLIN",
+    )
+    device.add_argument(
+        "--cpu",
+        dest="gpu",
+        action="store_false",
+        default=None,
+        help="keep methylation on CPU, overriding methylation_gpu in YAML",
     )
 
 
@@ -1338,6 +1401,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--version", action="version", version=f"OncoTracer {__version__}"
     )
     subparsers = parser.add_subparsers(dest="command")
+    add_setup_commands(subparsers)
 
     install = subparsers.add_parser("install", help="Prepare one execution backend")
     group = install.add_mutually_exclusive_group(required=True)
@@ -1413,6 +1477,8 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "quickstart",
             "doctor",
             "provenance",
+            "setup",
+            "check",
         }
         or values[0] in {"-h", "--help", "--version"}
     ):
@@ -1463,7 +1529,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not hasattr(args, "func"):
             parser.print_help()
             return 2
-        with isolated_payload_cache(bool(getattr(args, "dry_run", False))):
+        with isolated_payload_cache(
+            bool(getattr(args, "dry_run", False)) or args.command == "check"
+        ):
             return int(args.func(args))
     except OncoTracerError as error:
         print(f"ERROR: {error}", file=sys.stderr)

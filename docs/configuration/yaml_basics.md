@@ -1,6 +1,6 @@
 # Manual YAML editing
 
-Automatic Setup is the recommended route. Manual flat YAML is useful for unusual filenames, prebuilt samplesheets, custom references, or advanced classifier and refinement settings.
+[Guided setup](../setup.md) creates a commented YAML for you. Edit that file when you need to change settings; the examples below are for writing one by hand.
 
 ## Flat YAML only
 
@@ -43,6 +43,8 @@ illumina_binsize_kb: 100
 | Comma-separated names | `barcode01,barcode02` |
 
 Do not place shell variables such as `$PWD` inside the YAML; expand them when creating the file.
+
+With current source, quote paths containing spaces, `#`, or apostrophes, for example `outdir: "/work/study #1/results"`. Run `oncotracer check --config /work/study/config/run.yml` after editing.
 
 ## Minimal Illumina YAML
 

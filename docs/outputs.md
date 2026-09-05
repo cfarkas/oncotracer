@@ -100,7 +100,7 @@ Also inspect `logs/used_fastq.tsv`, `logs/skipped_fastq.tsv`, `logs/skipped_samp
 
 ## Stage 07: optional ONT methylation
 
-This directory exists only when optional POD5 methylation was requested:
+This directory exists when methylation was requested, using POD5 or existing modified-base BAMs:
 
 ```bash
 # Run this command from the oncotracer directory.
@@ -109,7 +109,9 @@ cat "$OUT/07_methylation/methylation_provenance.json"
 find "$OUT/07_methylation" -maxdepth 3 -type f | sort | sed -n '1,120p'
 ```
 
-Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, or `failed`. A zero-call sample is not sent to Sturgeon or MARLIN. `methylation_provenance.json` records the explicit POD5 inventory digest, executable and resource hashes, Dorado device, and the tested classifier interface commit. It explicitly marks the classifier runtime as external and its installed source as unauthenticated; the commit is not installed-package identity.
+Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, `no_classifier_probes` (MARLIN, current source), or `failed`. A zero-call sample is not sent to the classifier. For MARLIN, `covered_classifier_probes` counts the supplied probes with data; zero means no prediction was made. `methylation_provenance.json` records input inventories, tools, models, and device choice. See the [resource reference](configuration/methylation_reference.md) for exact provenance fields.
+
+With `methylation_only: true`, `cna_status` is `not_requested`; absence of CNA outputs is expected.
 
 Methylation and CNA are independent branches: stage 07 remains valid when CNA fails, and stages 01–06 may remain valid when methylation is incomplete. In either partial case, the final command exits nonzero and `workflow_summary.json` records `cna_status`, `methylation_status`, and the relevant sample lists. Do not present a missing classifier output as a negative classification.
 

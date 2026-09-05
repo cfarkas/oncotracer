@@ -1,12 +1,14 @@
 # Native CLI and YAML parameter reference
 
-Use [Automatic Setup](../auto_params.md) for a first analysis. This page documents the installed v2 command interface and the flat YAML fields used by the native engine.
+Start with [guided setup](../setup.md), or [batch setup](../auto_params.md) for many libraries. This page lists the commands and YAML fields. `setup`, `check`, `--modbam`, `--cpu`, and `--methylation-only` require current source; they are not in the v2.0.0 release executable.
 
 ## Command structure
 
 ```text
 oncotracer install ...
 oncotracer doctor ...
+oncotracer setup --project PATH ...
+oncotracer check --config FILE
 oncotracer quickstart 1|2 --download-only ...
 oncotracer auto ...
 oncotracer run ...
@@ -58,9 +60,7 @@ The command returns JSON and exits nonzero when required source identity, prefix
 
 ## `oncotracer quickstart`
 
-This command downloads and checksum-validates the public example FASTQs and
-writes their YAML. It exists only to fetch example data. Analyze the result
-with `oncotracer run`, exactly as you would for your own FASTQs.
+With `--download-only`, this command downloads and checks the public FASTQs and writes their YAML. Analyze each configuration with `oncotracer run`, as for your own data. Without `--download-only`, `quickstart` also runs the analyses and verifies the example outputs.
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -81,7 +81,7 @@ oncotracer run --backend conda \
 | `1` | Public one-sample Illumina plus one-sample ONT example |
 | `2` | Public three-library HCC1143 Illumina example |
 | `--test-root PATH` | Required isolated input/config/result root |
-| `--download-only` | Download and validate inputs and generate YAML; use this |
+| `--download-only` | Prepare inputs and YAML without starting analysis |
 | `--dry-run` | Print planned operations without writing files |
 
 ## `oncotracer auto`
@@ -127,10 +127,13 @@ oncotracer run \
 | `--image IMAGE` | Docker image override |
 | `--sif PATH` | Singularity/Apptainer image override |
 | `--root PATH` | Explicit payload/source root |
-| `--methylation` | Enable the optional ONT POD5 methylation branch |
+| `--methylation` | Add ONT methylation analysis to the copy-number workflow |
 | `--sturgeon` | Select the supported CNS-tumor research classifier; mutually exclusive with `--marlin` |
 | `--marlin` | Select the supported leukemia research classifier; mutually exclusive with `--sturgeon` |
-| `--pod5-dir PATH` | Required explicit non-empty POD5 directory whenever methylation is enabled |
+| `--pod5-dir PATH` | Raw POD5 input for methylation basecalling; choose this or `--modbam` |
+| `--modbam PATH` | Current source: reuse calls from an existing modified-base BAM or directory of BAMs; CPU alignment |
+| `--methylation-only` | Current source: request methylation and skip copy-number analysis |
+| `--cpu` | Current source: keep methylation on CPU, overriding GPU YAML settings |
 | `--gpu` | Use `cuda:all` for Dorado and expose the GPU to MARLIN; requires `--methylation` |
 
 Repeating the same command reuses valid content-matched stages automatically.
@@ -181,21 +184,24 @@ local sample-derived reference.
 
 ## Optional ONT methylation YAML fields
 
-CLI values override `methylation`, classifier, POD5, and GPU YAML values. There is no POD5 discovery; one explicit path is always required.
+CLI values override methylation, classifier, input, and GPU YAML values. Choose one explicit methylation input: POD5 or (on current source) modified-base BAM. Conflicting input types in flags and YAML are rejected.
 
 | Field | Typical/default | Meaning |
 | --- | --- | --- |
 | `methylation` | `false` | Enable optional ONT methylation when not using `--methylation` |
 | `methylation_classifier` | required when enabled | Exactly `sturgeon` or `marlin` |
-| `methylation_pod5_dir` | required when enabled | Explicit directory containing non-empty `.pod5` files |
+| `methylation_pod5_dir` | one input required | Explicit directory containing non-empty `.pod5` files |
+| `methylation_modbam` | one input required | Current source: existing modified-base BAM file or directory; replaces POD5 input |
+| `methylation_only` | `false` | Current source: skip CNA; enabled by `setup --analysis methylation` |
+| `threads` | up to 16 if not set | Current source: CPU worker threads; `--threads` overrides this value |
 | `methylation_gpu` | `false` | Dorado `cuda:all`; MARLIN GPU visibility; Modkit/Sturgeon remain CPU |
 | `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.0.0 |
 | `methylation_dorado_executable` | required local executable | Dorado binary; no download or installation |
 | `methylation_modkit_executable` | required local executable | Modkit binary; no download or installation |
 | `methylation_samtools_executable` | `samtools` | Explicit or PATH-resolved SAMtools binary |
-| `methylation_dorado_model` | required directory | Explicit compatible Dorado basecalling model |
+| `methylation_dorado_model` | required for POD5 | Explicit compatible Dorado basecalling model |
 | `methylation_dorado_model_sha256` | optional expected digest | OncoTracer directory-tree digest; always recorded |
-| `methylation_dorado_modbase_model` | required directory | Explicit compatible 5mCG/5hmCG model |
+| `methylation_dorado_modbase_model` | required for POD5 | Explicit compatible 5mCG/5hmCG model |
 | `methylation_dorado_modbase_model_sha256` | optional expected digest | OncoTracer directory-tree digest; always recorded |
 | `sturgeon_interface_contract_commit` | fixed supported upstream interface commit; does not authenticate the installed package | `4c742ddea49b0077a8f8ff3d99daafb238d00706` |
 | `sturgeon_license_acknowledged` | required `true` | User attests to separately obtaining/accepting the Sturgeon license |

@@ -1,8 +1,6 @@
-# QuickStart 2: three public HCC1143 libraries
+# QuickStart 2: three HCC1143 libraries
 
-QuickStart 2 runs the complete native Illumina workflow for three public HCC1143 libraries. It downloads all six paired-end FASTQs, validates each exact size and MD5 checksum, creates the sample table and YAML automatically, runs the analysis, and verifies the required outputs.
-
-The three sample/run mappings are:
+This example analyzes three public Illumina libraries. Preparation downloads all six paired-end FASTQs and validates each exact size and MD5 checksum. You then run the same `oncotracer run` command used for your own data.
 
 | Sample | Public run |
 | --- | --- |
@@ -10,14 +8,11 @@ The three sample/run mappings are:
 | `HCC1143_BEZ235` | `SRR7085655` |
 | `HCC1143_TRAMETINIB` | `SRR7085657` |
 
-## Estimated resources
+Start with [QuickStart 1](quick_start.md) if you have not tested your installation. This larger example needs storage for six FASTQs, reference files, BAMs, and outputs. The first uncached Illumina index requires at least 80 GiB of addressable memory.
 
-The complete input is larger than QuickStart 1. Provide enough storage for six FASTQs, hg38, BAMs, qDNAseq outputs, refinement tables, PDFs, and the selected backend. The first uncached Illumina run also creates the hg38 BWA index and should have at least 80 GiB of addressable memory.
+## Prepare and analyze
 
-!!! important "Choose the analyses directory first"
-    Every copy/paste block below that uses `$PWD` begins with `cd /path/to/my/analyses_dir/`. Replace that placeholder with an existing directory where you want OncoTracer to create the downloaded FASTQs, YAML files, reference cache, BAMs, and results.
-
-## One-command QuickStart
+Replace the first path with an existing analysis directory. `$PWD` means that directory; `--test-root` is the new example folder underneath it.
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -30,208 +25,29 @@ oncotracer run --backend conda \
   --config "$PWD/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"
 ```
 
-A successful command ends with:
+Skip `install` and `doctor` if this backend is already installed and checked. `--download-only` prepares the reads and settings without analysis. `--config` selects the generated YAML; `--backend conda` selects the analysis tools.
 
-```text
-QuickStart 2 completed: .../oncotracer-quickstart2
-```
+Before running, open `configs/hcc1143_lpwgs/illumina.auto.yml` and `illumina.samplesheet.csv` to inspect the paths and sample names. Current-source users can also run `oncotracer check --config PATH_TO_YAML`.
 
-## Step 1. Download and validate the public data only
+## Read and verify the outputs
 
-```bash
-cd /path/to/my/analyses_dir/
-TEST_ROOT="$PWD/oncotracer-quickstart2"
+Results are under `oncotracer-quickstart2/runs/hcc1143_lpwgs/`. Open:
 
-oncotracer quickstart 2 \
-  --test-root "$TEST_ROOT" \
-  --download-only
-```
+- `06_workflow_summary/workflow_summary.txt` for completion status;
+- `03_cna_codification/cna_events.tsv` for copy-number changes;
+- `04_cna_custom_plots/cna_per_sample_pages.pdf` for plots.
 
-The versioned `examples/hcc1143_lpwgs/manifest.tsv` supplies each ENA URL, sample ID, run accession, read end, expected byte count, and MD5. Completed valid FASTQs are reused when the command is repeated.
-
-The preparation creates:
-
-```text
-oncotracer-quickstart2/
-├── public/
-│   └── hcc1143_lpwgs/
-│       ├── HCC1143_DMSO_R1.fastq.gz
-│       ├── HCC1143_DMSO_R2.fastq.gz
-│       ├── HCC1143_BEZ235_R1.fastq.gz
-│       ├── HCC1143_BEZ235_R2.fastq.gz
-│       ├── HCC1143_TRAMETINIB_R1.fastq.gz
-│       ├── HCC1143_TRAMETINIB_R2.fastq.gz
-│       └── samples.csv
-├── configs/
-│   └── hcc1143_lpwgs/
-│       ├── auto_params_manifest.tsv
-│       ├── illumina.auto.yml
-│       └── illumina.samplesheet.csv
-└── runs/
-```
-
-Inspect the generated files:
+To run the example's required-output checks, use the command without `--download-only`:
 
 ```bash
 cd /path/to/my/analyses_dir/
-TEST_ROOT="$PWD/oncotracer-quickstart2"
-
-cat "$TEST_ROOT/public/hcc1143_lpwgs/samples.csv"
-sed -n '1,160p' \
-  "$TEST_ROOT/configs/hcc1143_lpwgs/illumina.auto.yml"
-sed -n '1,20p' \
-  "$TEST_ROOT/configs/hcc1143_lpwgs/illumina.samplesheet.csv"
-cat "$TEST_ROOT/configs/hcc1143_lpwgs/auto_params_manifest.tsv"
+oncotracer quickstart 2 --backend conda --test-root "$PWD/oncotracer-quickstart2"
 ```
 
-The sample table contains:
-
-```csv
-sample_name,status
-HCC1143_DMSO,TUMOR
-HCC1143_BEZ235,TUMOR
-HCC1143_TRAMETINIB,TUMOR
-```
-
-## Step 2. Run the generated YAML
-
-```bash
-cd /path/to/my/analyses_dir/
-TEST_ROOT="$PWD/oncotracer-quickstart2"
-
-oncotracer run \
-  --backend conda \
-  --config "$TEST_ROOT/configs/hcc1143_lpwgs/illumina.auto.yml"
-```
-
-The analysis runs alignment, Picard processing, qDNAseq, BAM-supported boundary refinement, CNA codification, cytogenomic notation, cohort/per-sample plots, and workflow summaries.
-
-## Step 3. Verify the required result groups
-
-The complete QuickStart command reuses valid completed stages and performs the bundled output checks:
-
-```bash
-cd /path/to/my/analyses_dir/
-TEST_ROOT="$PWD/oncotracer-quickstart2"
-
-oncotracer quickstart 2 --test-root "$TEST_ROOT" --download-only
-oncotracer run --backend conda \
-  --config "$TEST_ROOT/configs/hcc1143_lpwgs/illumina.auto.yml"
-```
-
-Review:
-
-```bash
-cd /path/to/my/analyses_dir/
-TEST_ROOT="$PWD/oncotracer-quickstart2"
-OUTDIR="$TEST_ROOT/runs/hcc1143_lpwgs"
-
-head -n 20 "$OUTDIR/06_workflow_summary/workflow_summary.txt"
-sed -n '1,30p' "$OUTDIR/03_cna_codification/cna_events.tsv"
-ls -lh "$OUTDIR/04_cna_custom_plots/cna_per_sample_pages.pdf"
-cat "$OUTDIR/.oncotracer-native/trace.tsv"
-```
-
-Required outputs include:
-
-```text
-runs/hcc1143_lpwgs/
-├── 01_samurai_illumina/
-├── 02_bam_refinement/
-├── 03_cna_codification/
-│   ├── cna_events.tsv
-│   └── cna_cytogenomic_notation.tsv
-├── 04_cna_custom_plots/
-│   ├── cna_per_sample_pages.pdf
-│   └── cohort plots
-├── 06_workflow_summary/
-│   ├── workflow_summary.txt
-│   ├── workflow_summary.json
-│   └── native_run_manifest.json
-└── .oncotracer-native/
-    ├── trace.tsv
-    └── state.json
-```
-
-## Choose one of four execution methods
-
-### Conda
-
-```bash
-cd /path/to/my/analyses_dir/
-
-oncotracer install --conda
-oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2-conda" --download-only
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart2-conda/configs/hcc1143_lpwgs/illumina.auto.yml"
-```
-
-### Docker
-
-```bash
-cd /path/to/my/analyses_dir/
-
-oncotracer install --docker
-oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2-docker" --download-only
-oncotracer run --backend docker \
-  --config "$PWD/oncotracer-quickstart2-docker/configs/hcc1143_lpwgs/illumina.auto.yml"
-```
-
-### Singularity or Apptainer
-
-```bash
-cd /path/to/my/analyses_dir/
-
-oncotracer install --singularity
-oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2-singularity" --download-only
-oncotracer run --backend singularity \
-  --config "$PWD/oncotracer-quickstart2-singularity/configs/hcc1143_lpwgs/illumina.auto.yml"
-```
-
-### Poetry launcher
-
-Poetry is a source-development route. Keep the source checkout separate from the analysis output:
-
-```bash
-cd /path/to/my/oncotracer_source/
-
-./oncotracer install --poetry \
-  --prefix /path/to/my/oncotracer-v2-dev-envs
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer quickstart 2 --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry --download-only
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer run --backend poetry \
-  --config /path/to/my/analyses_dir/oncotracer-quickstart2-poetry/configs/hcc1143_lpwgs/illumina.auto.yml
-```
-
-## Run the prepared YAML through another backend
-
-The downloaded FASTQs and generated YAML are backend-independent:
-
-```bash
-cd /path/to/my/analyses_dir/
-TEST_ROOT="$PWD/oncotracer-quickstart2"
-
-oncotracer run \
-  --backend docker \
-  --config "$TEST_ROOT/configs/hcc1143_lpwgs/illumina.auto.yml"
-```
+It reuses matching completed stages and checks the required summary, event table, and sample PDF. Success ends with `QuickStart 2 completed:` and the example path.
 
 ## Resume
 
-Repeat the same QuickStart or `oncotracer run` command with the same test root and result directory:
+After correcting an error, repeat the same `run` command. Keep the YAML and output directory unchanged, and leave `--force` off for a normal resume.
 
-```bash
-cd /path/to/my/analyses_dir/
-
-oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2" --download-only
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"
-```
-
-The native ledger checks the stage command, relevant input metadata, and expected outputs before reuse. Use `--force` only for a deliberate full refresh.
-
-## Continue
-
-- [QuickStart 1](quick_start.md) demonstrates both Illumina and ONT.
-- [Automatic Setup](auto_params.md) prepares your own FASTQs.
-- [Full Tutorial](full_tutorial.md) processes the versioned 12-library PRJNA754199 manifest.
-- [Output Files](outputs.md) explains the result tree.
+For Docker use `--backend docker`, or for Apptainer use `--backend singularity`, after [installing that backend](containers.md). For your own samples, follow [project setup](setup.md) or [batch setup](auto_params.md).
