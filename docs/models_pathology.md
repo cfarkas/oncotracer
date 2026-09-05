@@ -47,18 +47,23 @@ gistic_required: false
 knowledge_web: false
 knowledge_literature_llm: false
 knowledge_deep_literature: false
+knowledge_deep_enable_llm_ranker: false
 ```
 
 This mode is easiest to reproduce and review. Enable network/model assistance only after the deterministic route succeeds and governance permits it.
 
-## Optional model-assisted mode
+## Optional pathology matching models
 
 ```yaml
 pathology_use_biomed_models: true
 pathology_biomed_local_files_only: false
 ```
 
-The first model-assisted run may download large model packages. OncoTracer records attempts and status in `07_pathology/pathology_model_trials.tsv`. Manually verify generated citations, summaries, and classifications.
+These models score compatibility with supplied pathology text; they do not write
+the report's literature paragraphs. Attempts are recorded in
+`07_pathology/pathology_model_trials.tsv`. The first run may download model weights.
+
+For the machinery that writes report text, see [LLM-assisted reports](llm_reports.md).
 
 ## What CNA data can support
 

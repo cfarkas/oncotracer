@@ -64,6 +64,7 @@ DEFAULTS: dict[str, object] = {
     "knowledge_literature_llm_max_features": 24,
     "knowledge_literature_llm_max_input_chars": 2800,
     "knowledge_literature_llm_max_new_tokens": 96,
+    "knowledge_llm_threads": 4,
     "knowledge_deep_literature": True,
     "knowledge_deep_max_papers_per_feature": 50,
     "knowledge_deep_top_papers_per_sample": 12,
@@ -549,6 +550,7 @@ def run_native_classifier(
             "--literature-llm-max-features", _string(config, "knowledge_literature_llm_max_features"),
             "--literature-llm-max-input-chars", _string(config, "knowledge_literature_llm_max_input_chars"),
             "--literature-llm-max-new-tokens", _string(config, "knowledge_literature_llm_max_new_tokens"),
+            "--llm-threads", _string(config, "knowledge_llm_threads"),
             "--deep-literature", str(_bool(config, "knowledge_deep_literature")).lower(),
             "--deep-max-papers-per-feature", _string(config, "knowledge_deep_max_papers_per_feature"),
             "--deep-top-papers-per-sample", _string(config, "knowledge_deep_top_papers_per_sample"),
@@ -568,10 +570,12 @@ def run_native_classifier(
         knowledge / "sample_literature.tsv",
         knowledge / "sample_literature_summary.tsv",
         knowledge / "knowledge_metrics.json",
+        knowledge / "knowledge_llm_trials.tsv",
+        knowledge / "knowledge_literature_ranker_trials.tsv",
     ]
     _stage(
         "classifier-knowledge", knowledge_command,
-        [classification / "cna_patient_classification.tsv", prepared / "clean_events.tsv", prepared / "driver_region_hits.tsv", region_catalog],
+        [classification / "cna_patient_classification.tsv", prepared / "clean_events.tsv", prepared / "driver_region_hits.tsv", region_catalog, scripts / "05_scrape_cna_knowledge.py", scripts / "llm_runtime.py"],
         knowledge_outputs, cwd=knowledge, runner=runner, ledger=ledger, force=force,
         containment=classifier_environment,
     )

@@ -36,6 +36,7 @@ class ParityResourceGuardTests(unittest.TestCase):
         memory_gib: int = 15,
         swap_gib: int = 32,
         active_swap_gib: int = 32,
+        swap_header_bytes: int = 0,
         swap_required: int = 1,
         planned_swap_gib: int = 32,
     ) -> subprocess.CompletedProcess[str]:
@@ -47,7 +48,7 @@ class ParityResourceGuardTests(unittest.TestCase):
                 str(available_gib * GIB_KIB),
                 str(memory_gib * GIB_KIB),
                 str(swap_gib * GIB_KIB),
-                str(active_swap_gib * GIB_BYTES),
+                str(active_swap_gib * GIB_BYTES - swap_header_bytes),
                 str(swap_required),
                 "15",
                 "47",
@@ -85,6 +86,8 @@ class ParityResourceGuardTests(unittest.TestCase):
         self.assertNotEqual(self.run_guard(memory_gib=14).returncode, 0)
         self.assertNotEqual(self.run_guard(swap_gib=0).returncode, 0)
         self.assertNotEqual(self.run_guard(active_swap_gib=31).returncode, 0)
+        self.assertEqual(self.run_guard(swap_header_bytes=4096).returncode, 0)
+        self.assertNotEqual(self.run_guard(swap_header_bytes=8192).returncode, 0)
         preflight = self.run_guard(
             phase="preflight-passed",
             swap_gib=0,

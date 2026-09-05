@@ -1108,7 +1108,8 @@ def verify_hosted_resource_evidence(
                 raise AuditError(f"resource phase {phase!r} falsely records job swap")
         elif (
             swap_required != 1
-            or swap_size < thresholds["planned_swap_gib"] * 1024**3
+            # Hosted x86-64 Linux excludes the 4-KiB swap header from usable size.
+            or swap_size < thresholds["planned_swap_gib"] * 1024**3 - 4096
             or swap_used > swap_size
         ):
             raise AuditError(f"resource phase {phase!r} lacks exact planned swap")

@@ -20,6 +20,7 @@ from .engine import (
     run_native,
 )
 from .methylation import SUPPORTED_CLASSIFIER_INTERFACE_COMMITS, directory_sha256
+from .system_check import resource_report
 from .runtime import (
     OncoTracerError,
     load_flat_yaml,
@@ -490,6 +491,7 @@ def command_check(args: argparse.Namespace) -> int:
     errors: list[str] = []
     warnings: list[str] = []
     plan = None
+    config = {}
     path = Path(args.config).expanduser().resolve()
     try:
         config = load_flat_yaml(require_file(path, "Configuration YAML"))
@@ -569,12 +571,15 @@ def command_check(args: argparse.Namespace) -> int:
             plan = json.loads(output.getvalue())
     except (OncoTracerError, OSError, ValueError) as error:
         errors.append(str(error))
+    resources = resource_report(config)
+    warnings.extend(resources["warnings"])
     result = {
         "valid": not errors,
         "config": str(path),
         "errors": errors,
         "warnings": warnings,
         "plan": plan,
+        "resources": resources,
     }
     if args.json:
         print(json.dumps(result, indent=2))
@@ -589,6 +594,11 @@ def command_check(args: argparse.Namespace) -> int:
         for warning in warnings:
             print(f"  Note: {warning}")
         if plan:
+            hardware = resources["hardware"]
+            available = hardware["ram_available_bytes"]
+            if available is not None:
+                print(f"  Hardware: {available / 1024**3:.1f} GiB RAM available; {hardware['cpu_workers_available']} CPU workers")
+            print("  Capacity details: oncotracer system --config " + shlex.quote(str(path)))
             print(
                 f"  Samples: {', '.join(plan['samples'])}\n  Results: {plan['outdir']}\n  CPU threads: {plan['threads']}"
             )

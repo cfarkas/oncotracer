@@ -2,6 +2,10 @@
 
 Use this page after [installing current source](installation.md#current-source-for-the-new-setup-workflow). `setup` creates the same YAML configuration that `run` reads. YAML is a text file of `key: value` settings; you can open it in any text editor.
 
+Before a large download, run `oncotracer system --path /absolute/path/to/my-study`.
+It reports usable CPU, available RAM, disk space and workflow limits. Low-RAM
+computers can [reuse prebuilt genome indexes](reference_indexes.md).
+
 ## Let setup ask for the paths
 
 ```bash

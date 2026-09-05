@@ -72,6 +72,10 @@ jobs:
             tests/test_native_docs.py \
             tests/test_poetry_cli.py \
             tests/test_native_classifier.py \
+            tests/test_report_llm.py \
+            tests/test_system_check.py \
+            tests/test_uninstall.py \
+            tests/test_reference_bundle.py \
             tests/test_native_provenance.py \
             tests/test_ichorcna_plot_compat.py \
             tests/test_qdnaseq_helper.py \
@@ -136,6 +140,7 @@ jobs:
               'oncotracer_cli/classifier.py',
               'oncotracer_cli/methylation.py',
               'payload/bin/cna_classifier_nf/bin/01_prepare_cna_inputs.py',
+              'payload/bin/cna_classifier_nf/bin/llm_runtime.py',
               'payload/bin/cna_classifier_nf/bin/08_clinician_driver_reports.py',
               'payload/bin/cna_classifier_nf/assets/pancancer_cna_regions.tsv',
               'payload/environments/native-classifier.yml',
