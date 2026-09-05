@@ -23,6 +23,7 @@ from oncotracer_cli.cli import (  # noqa: E402
     _configured_native_prefixes,
     _probe_native_prefixes,
     _run,
+    _run_docker,
     command_doctor,
     execute_run,
     _legacy_to_modern,
@@ -47,6 +48,23 @@ class NativeCliTests(unittest.TestCase):
         args = parser.parse_args(["run", "--config", "x.yml", "--backend", "conda"])
         self.assertEqual(args.command, "run")
         self.assertEqual(args.backend, "conda")
+
+    def test_native_docker_uses_invoking_uid_gid(self) -> None:
+        config = Path("/data/study/config/run.yml")
+        args = build_parser().parse_args(["run", "--config", str(config), "--backend", "docker", "--dry-run"])
+        with (
+            patch("oncotracer_cli.cli.os.getuid", return_value=4321),
+            patch("oncotracer_cli.cli.os.getgid", return_value=8765),
+            patch("oncotracer_cli.cli._load_install_config", return_value={}),
+            patch("oncotracer_cli.cli._project_mounts", return_value=[config.parent]),
+            patch("oncotracer_cli.cli._run") as execute,
+        ):
+            _run_docker(config, args)
+        command = execute.call_args.args[0]
+        self.assertEqual(command[command.index("--user") + 1], "4321:8765")
+        self.assertEqual(command[command.index("--volume") + 1], f"{config.parent}:{config.parent}")
+        self.assertIn("internal-run", command)
+        self.assertEqual(execute.call_args.kwargs, {"dry_run": True})
 
     def test_legacy_params_file_is_native_run(self) -> None:
         self.assertEqual(

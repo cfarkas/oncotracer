@@ -2,7 +2,8 @@
 
 Choose **MARLIN** for leukemia research or **Sturgeon** for CNS-tumor research. You must select the appropriate classifier; OncoTracer does not decide the disease family for you. Predictions need review alongside the other laboratory findings.
 
-This guide uses the new setup workflow from [current source](../installation.md#current-source-for-the-new-setup-workflow). The v2.0.0 executable supports the older POD5 route; see the [detailed resource reference](methylation_reference.md).
+Start with [installation](../installation.md). Tool and model details are in the
+[resource reference](methylation_reference.md).
 
 ## What you need
 

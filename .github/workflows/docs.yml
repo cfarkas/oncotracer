@@ -11,6 +11,7 @@ on:
       - ".github/workflows/docs.yml"
       - "tests/test_native_docs.py"
       - "tests/test_docs_style.py"
+      - "tests/test_documented_workflows.py"
   pull_request:
     paths:
       - "README.md"
@@ -19,6 +20,7 @@ on:
       - ".github/workflows/docs.yml"
       - "tests/test_native_docs.py"
       - "tests/test_docs_style.py"
+      - "tests/test_documented_workflows.py"
   workflow_dispatch:
 
 permissions:
@@ -51,6 +53,7 @@ jobs:
         run: |
           python3 tests/test_docs_style.py
           python3 -m unittest tests.test_native_docs -q
+          python3 -m unittest tests.test_documented_workflows -q
 
       - name: Validate the complete native v2 site
         run: mkdocs build --strict --site-dir site

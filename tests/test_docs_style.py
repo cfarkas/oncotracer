@@ -41,14 +41,13 @@ ACTIVE_NATIVE_FILES = (
 REQUIRED_TEXT = {
     "README.md": (
         "copy-number changes",
-        "not in the v2.0.0 release executable",
         "git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src",
         "pip install -e ./oncotracer-src",
         "oncotracer setup --project",
         "oncotracer check --config",
         "oncotracer install --conda",
-        "oncotracer quickstart 1",
-        "--download-only",
+        "docs/quick_start.md",
+        "docs/public_cohort.md",
         "oncotracer run --backend conda",
         "run_cna_classifier: true",
         "release-provenance.json",
@@ -57,12 +56,24 @@ REQUIRED_TEXT = {
         "oncotracer setup --project",
         "oncotracer check --config",
         "oncotracer run --config",
-        "v2.0.0 executable does not include",
         "native_architecture.md",
         "parity_release.md",
     ),
     "docs/installation.md": (
-        "It does not require a Git clone after installation",
+        "git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src",
+        "pip install -e ./oncotracer-src",
+        "source oncotracer-env/bin/activate",
+        "oncotracer system --path",
+        "oncotracer install --conda",
+        "oncotracer doctor --backend conda",
+        "oncotracer setup --project",
+        "oncotracer check --config",
+        "oncotracer run --backend conda",
+        "Requirements",
+        "installation_details.md",
+        "reference_indexes.md",
+    ),
+    "docs/installation_details.md": (
         "Five isolated, versioned environments are created",
         "core alignment",
         "qDNAseq with its pinned R 4.1 stack",
@@ -81,24 +92,32 @@ REQUIRED_TEXT = {
     "docs/quick_start.md": (
         "complete native analysis",
         "approximately 225 MB",
-        "oncotracer quickstart 1",
+        "oncotracer setup --non-interactive",
+        "oncotracer check --config",
+        "oncotracer run --backend conda",
+        "--reference-root",
+        "md5sum -c",
         "--backend conda",
         "--backend docker",
         "--backend singularity",
         "03_cna_codification/cna_events.tsv",
         ".oncotracer-native/trace.tsv",
-        "--download-only",
+        "normal run prepare missing reference files",
     ),
     "docs/public_cohort.md": (
         "all six paired-end FASTQs",
-        "validates each exact size and MD5 checksum",
+        "exact size and MD5 checksum",
         "HCC1143_DMSO",
         "HCC1143_BEZ235",
         "HCC1143_TRAMETINIB",
         "SRR7085656",
         "SRR7085655",
         "SRR7085657",
-        "oncotracer quickstart 2",
+        "oncotracer setup --non-interactive",
+        "--samplesheet",
+        "oncotracer check --config",
+        "oncotracer run --backend conda",
+        "md5sum -c",
         "## Resume",
     ),
     "docs/auto_params.md": (
@@ -194,14 +213,6 @@ REQUIRED_TEXT = {
         "oncotracer-v2.0.0-parity-audit.tar.gz",
         "SHA256SUMS",
     ),
-    "docs/migration_v1_to_v2.md": (
-        "nextflow run main.nf --conda -params-file run.yml -resume",
-        "oncotracer run --backend conda --config run.yml",
-        "never forwards that command to Nextflow",
-        "immutable",
-        "v1.1",
-        "git -c tar.umask=0002 archive --format=tar <exact-commit>",
-    ),
     "docs/citation_research_use.md": (
         "version 2.0.0",
         "oncotracer provenance --json",
@@ -269,9 +280,11 @@ def check_native_runtime_boundary() -> None:
             if phrase.casefold() in text.casefold():
                 fail(f"obsolete v1 runtime instruction in {relative_path}: {phrase}")
 
-    installation_release = read("docs/installation.md").split("## 1. Install the stable copied executable", 1)[1].split("### Poetry", 1)[0]
-    if "git clone" in installation_release:
-        fail("global v2 release installation must not require a source checkout")
+    for relative_path in ("README.md", "docs/installation.md", "docs/index.md"):
+        text = read(relative_path)
+        for obsolete in ("gh release download v2.0.0", "not in the v2.0.0 release executable", "available from main"):
+            if obsolete in text:
+                fail(f"first-use instructions contain an obsolete installation route: {relative_path}")
 
     removed_local_panel_interface = (
         "illumina_build_pon",
@@ -283,7 +296,6 @@ def check_native_runtime_boundary() -> None:
     active_markdown = [
         str(path.relative_to(ROOT))
         for path in MARKDOWN_FILES
-        if path.name not in {"legacy_v1.md", "migration_v1_to_v2.md"}
     ]
     public_files = sorted(
         {
@@ -347,8 +359,7 @@ def check_navigation() -> None:
         "Mock cohort — six tumors + four independent normals: six_tumor_four_normal.md",
         "Native architecture: native_architecture.md",
         "Parity and release gate: parity_release.md",
-        "Migration from v1.1: migration_v1_to_v2.md",
-        "Legacy v1.1: legacy_v1.md",
+        "Advanced Installation: installation_details.md",
     ):
         if entry not in text:
             fail(f"mkdocs navigation is missing: {entry}")
