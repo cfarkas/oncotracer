@@ -155,7 +155,7 @@ record_phase_resources() {
   swap_total_kib="$(awk '$1 == "SwapTotal:" {print $2}' /proc/meminfo)"
   if (( PARITY_SWAP_GIB > 0 )) && [[ "$phase" != preflight-passed ]]; then
     swap_required=1
-    swap_row="$(swapon --show --bytes --noheadings --raw --output=NAME,SIZE,USED |
+    swap_row="$(swapon --show=NAME,SIZE,USED --bytes --noheadings --raw |
       awk -v expected="$SWAP_FILE" '$1 == expected {print $2, $3}')"
     [[ -n "$swap_row" ]] || {
       echo "ERROR: active job swap evidence is missing for parity phase $phase" >&2
@@ -203,7 +203,7 @@ record_phase_resources() {
     if (( PARITY_SWAP_GIB == 0 )); then
       printf 'none (physical memory satisfies the addressable floor)\n'
     else
-      swapon --show --bytes --output=NAME,SIZE,USED,PRIO
+      swapon --show=NAME,SIZE,USED,PRIO --bytes
     fi
     printf '\n[docker]\n'
     docker system df

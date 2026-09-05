@@ -653,6 +653,17 @@ def metric_card_table(row: pd.Series) -> Table:
     return tbl
 
 
+def literature_label(sources: Any) -> str:
+    sources = safe_str(sources)
+    if "huggingface_llm" in sources:
+        return "Literature interpretation including AI draft — source review required"
+    if "deterministic_pubmed_text_fallback" in sources:
+        return "Catalog interpretation and retrieved abstract excerpts — no AI generation"
+    if "built_in_catalog" in sources:
+        return "Built-in catalog interpretation — no retrieved abstract synthesis"
+    return "Literature interpretation — check source and generation status"
+
+
 def interpretation_paragraphs(row: pd.Series, ksummary: pd.Series | None, sk: pd.DataFrame) -> list[Any]:
     story: list[Any] = []
     sample = safe_str(row.get("sample"))
@@ -663,14 +674,14 @@ def interpretation_paragraphs(row: pd.Series, ksummary: pd.Series | None, sk: pd
     n_chr = fmt(row.get("n_chromosomes_affected", 0), 0)
     n_arms = fmt(row.get("n_arms_affected", 0), 0)
     flags = split_field(row.get("driver_region_flags", ""))
-    story.append(para(f"Sample {sample} shows {n_events} high-confidence CNA events, covering approximately {altered} Mb and affecting {n_chr} chromosomes / {n_arms} chromosome arms under the current thresholds."))
+    story.append(para(f"Sample {sample} shows {n_events} CNA events meeting the configured thresholds, covering approximately {altered} Mb and affecting {n_chr} chromosomes / {n_arms} chromosome arms."))
     if refined:
         story.append(para(f"Knowledge-refined CNA pattern: {refined}. {rationale}"))
     if ksummary is not None and not ksummary.empty:
         lit_syn = safe_str(ksummary.get("knowledge_literature_synthesis", ""))
         lit_stat = safe_str(ksummary.get("knowledge_literature_llm_status", ""))
         if lit_syn:
-            story.append(para("Literature/LLM-supported interpretation: " + lit_syn))
+            story.append(para(literature_label(ksummary.get("knowledge_literature_sources", "")) + ": " + lit_syn))
         if lit_stat:
             story.append(para("Literature model trace: " + lit_stat, "small"))
     if flags:
@@ -723,7 +734,7 @@ def knowledge_feature_blocks(sk: pd.DataFrame) -> list[Any]:
                 ("Top PMIDs", r.get("top_pmids", "")),
             ], col_widths=[3.4*cm, USABLE_WIDTH-3.4*cm])],
             [raw_para("<b>Biological interpretation.</b> " + esc(r.get("biological_interpretation", "")), "body")],
-            [raw_para("<b>PubMed / LLM literature synthesis.</b> " + esc(r.get("literature_synthesis", "")), "body")],
+            [raw_para("<b>" + esc(literature_label(r.get("literature_synthesis_source", ""))) + ".</b> " + esc(r.get("literature_synthesis", "")), "body")],
             [raw_para("<b>Literature synthesis source.</b> " + esc(r.get("literature_synthesis_source", "")) + "; model/status: " + esc(r.get("literature_llm_model_used", "")) + " / " + esc(r.get("literature_llm_status", "")), "small")],
             [raw_para("<b>Classification relevance.</b> " + esc(r.get("classification_hint", "")), "body")],
             [raw_para("<b>Caveat.</b> " + esc(r.get("caveat", "")), "small")],
@@ -1038,7 +1049,7 @@ def html_interpretation(row: pd.Series, data: dict[str, Any]) -> str:
     rationale = safe_str(data["ks_row"].get("knowledge_refined_class_rationale")) if not data["ks_row"].empty else ""
     flags = split_field(row.get("driver_region_flags", ""))
     bits = [
-        f"<p>Sample <strong>{html.escape(sample)}</strong> shows <strong>{html.escape(fmt(row.get('n_cna_events', 0), 0))}</strong> high-confidence CNA events, covering approximately <strong>{html.escape(fmt(row.get('altered_mb', 0), 1))} Mb</strong> and affecting <strong>{html.escape(fmt(row.get('n_chromosomes_affected', 0), 0))}</strong> chromosomes / <strong>{html.escape(fmt(row.get('n_arms_affected', 0), 0))}</strong> chromosome arms under the current thresholds.</p>"
+        f"<p>Sample <strong>{html.escape(sample)}</strong> shows <strong>{html.escape(fmt(row.get('n_cna_events', 0), 0))}</strong> CNA events meeting the configured thresholds, covering approximately <strong>{html.escape(fmt(row.get('altered_mb', 0), 1))} Mb</strong> and affecting <strong>{html.escape(fmt(row.get('n_chromosomes_affected', 0), 0))}</strong> chromosomes / <strong>{html.escape(fmt(row.get('n_arms_affected', 0), 0))}</strong> chromosome arms.</p>"
     ]
     if refined:
         bits.append(f"<p>Knowledge-refined CNA pattern: <strong>{html.escape(refined)}</strong>. {html.escape(rationale)}</p>")
@@ -1046,7 +1057,7 @@ def html_interpretation(row: pd.Series, data: dict[str, Any]) -> str:
         lit_syn = safe_str(data["ks_row"].get("knowledge_literature_synthesis", ""))
         lit_stat = safe_str(data["ks_row"].get("knowledge_literature_llm_status", ""))
         if lit_syn:
-            bits.append(f"<p><strong>Literature/LLM-supported interpretation.</strong> {html.escape(lit_syn)}</p>")
+            bits.append(f"<p><strong>{html.escape(literature_label(data['ks_row'].get('knowledge_literature_sources', '')))}.</strong> {html.escape(lit_syn)}</p>")
         if lit_stat:
             bits.append(f"<p class='muted'><strong>Literature model trace.</strong> {html.escape(lit_stat)}</p>")
     if flags:
@@ -1080,7 +1091,7 @@ def html_knowledge_cards(sk: pd.DataFrame) -> str:
           <h3>{html.escape(title)}</h3>
           {html_table(meta, css_class='table kv-table')}
           <p><strong>Biological interpretation.</strong> {html.escape(safe_str(r.get('biological_interpretation', '')))}</p>
-          <p><strong>PubMed / LLM literature synthesis.</strong> {html.escape(safe_str(r.get('literature_synthesis', '')))}</p>
+          <p><strong>{html.escape(literature_label(r.get('literature_synthesis_source', '')))}.</strong> {html.escape(safe_str(r.get('literature_synthesis', '')))}</p>
           <p class='muted'><strong>Literature synthesis source.</strong> {html.escape(safe_str(r.get('literature_synthesis_source', '')))}; model/status: {html.escape(safe_str(r.get('literature_llm_model_used', '')))} / {html.escape(safe_str(r.get('literature_llm_status', '')))}</p>
           <p><strong>Classification relevance.</strong> {html.escape(safe_str(r.get('classification_hint', '')))}</p>
           <p class='muted'><strong>Caveat.</strong> {html.escape(safe_str(r.get('caveat', '')))}</p>

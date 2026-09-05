@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import io
+import contextlib
 import json
 import os
 import sys
 import tempfile
 import unittest
+import random
+import shutil
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
@@ -23,6 +27,8 @@ from oncotracer_cli.methylation import (  # noqa: E402
     SUPPORTED_CLASSIFIER_INTERFACE_COMMITS,
     _accelerator_environment,
     _bedmethyl_counts,
+    _marlin_probe_coverage,
+    _select_modbam_input,
     resolve_methylation_request,
     run_methylation,
     write_global_methylation_failure,
@@ -157,6 +163,9 @@ class FakeRunner:
         self.calls: list[tuple[str, list[str]]] = []
         self.environments: dict[str, dict[str, str | None]] = {}
 
+    def pipeline(self, stage, left, right, **kwargs):
+        self.calls.append((stage, [str(value) for value in [*left, "|", *right]]))
+
     def run(self, stage, command, **kwargs):
         argv = [str(value) for value in command]
         self.calls.append((stage, argv))
@@ -167,6 +176,12 @@ class FakeRunner:
                 self.mutate_pod5.write_bytes(
                     self.mutate_pod5.read_bytes() + b"-changed"
                 )
+        elif stage == "methylation-modbam-align":
+            kwargs["stdout"].write(b"realigned-bam")
+        elif stage in {"methylation-input-merge", "methylation-input-select"}:
+            Path(argv[argv.index("-o") + 1]).write_bytes(b"input-bam")
+        elif stage == "methylation-input-count":
+            kwargs["stdout"].write(f"{self.matching_reads}\n")
         elif stage == "methylation-dorado-sort":
             Path(argv[argv.index("-o") + 1]).write_bytes(b"sorted-bam")
         elif stage.startswith("methylation-dorado-index") or stage.startswith(
@@ -199,6 +214,285 @@ class FakeRunner:
 
 
 class NativeMethylationTests(unittest.TestCase):
+    def test_modbam_flag_is_not_silently_discarded_by_containers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "run.yml"
+            config.write_text("mode: ont\n")
+            for backend in ("docker", "singularity"):
+                args = build_parser().parse_args(
+                    [
+                        "run",
+                        "--backend",
+                        backend,
+                        "--config",
+                        str(config),
+                        "--modbam",
+                        "/data/bam_pass",
+                        "--dry-run",
+                    ]
+                )
+                with (
+                    self.subTest(backend=backend),
+                    self.assertRaisesRegex(OncoTracerError, "requires backend host"),
+                ):
+                    execute_run(config, args)
+
+    @unittest.skipUnless(
+        shutil.which("samtools") and shutil.which("awk"),
+        "optional real samtools is not installed",
+    )
+    def test_real_bam_selection_rejects_duplicate_reads_and_missing_tags(self):
+        for variant, expected in (
+            ("duplicate", "one primary BAM record"),
+            ("untagged", "No FASTQ-selected reads"),
+        ):
+            with (
+                self.subTest(variant=variant),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                fixture = Fixture(Path(directory))
+                tags = "\tMM:Z:C+m,0;\tML:B:C,240" if variant == "duplicate" else ""
+                record = f"read-1\t4\t*\t0\t0\t*\t*\t0\t0\tACGT\tIIII{tags}\n"
+                sam = fixture._asset(
+                    "input.sam", "@HD\tVN:1.6\tSO:unknown\n" + record * 2
+                )
+                bam = fixture.root / "input.bam"
+                subprocess.run(
+                    ["samtools", "view", "-b", "-o", str(bam), str(sam)],
+                    check=True,
+                    capture_output=True,
+                )
+                config = fixture.config()
+                config.pop("methylation_pod5_dir")
+                config.update(
+                    methylation_modbam=str(bam),
+                    methylation_samtools_executable=shutil.which("samtools"),
+                )
+                request = resolve_methylation_request(config, mode="ont")
+                ids = fixture._asset("selected.txt", "read-1\n")
+                output = fixture.root / "selected"
+                output.mkdir()
+                runner = CommandRunner(output / "trace.tsv", echo=False)
+                with self.assertRaisesRegex(OncoTracerError, expected):
+                    _select_modbam_input(request, ids, output, runner, 2)
+
+    def test_methylation_only_execution_skips_cna_and_indexes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Fixture(Path(directory))
+            config = fixture.config()
+            config.update(methylation_only=True, threads=3)
+            path = fixture._asset("run.yml", render_flat_yaml(config))
+            status = {
+                "overall_status": "complete",
+                "classifier": "sturgeon",
+                "completed_samples": ["SNC_F"],
+            }
+            with (
+                patch(
+                    "oncotracer_cli.engine.prepare_reference", return_value={}
+                ) as reference,
+                patch(
+                    "oncotracer_cli.engine._validated_fasta_reader",
+                    side_effect=lambda *args: contextlib.nullcontext(),
+                ),
+                patch(
+                    "oncotracer_cli.engine.run_methylation", return_value=status
+                ) as methylation,
+                patch("oncotracer_cli.engine._run_ont_cna_branch") as cna,
+                patch("oncotracer_cli.engine.run_native_classifier") as classifier,
+            ):
+                result = run_native(path, root=ROOT)
+            cna.assert_not_called()
+            classifier.assert_not_called()
+            self.assertFalse(reference.call_args.kwargs["need_bwa"])
+            self.assertFalse(reference.call_args.kwargs["need_minimap2"])
+            self.assertEqual(methylation.call_args.kwargs["threads"], 3)
+            summary = json.loads(
+                (result / "06_workflow_summary/workflow_summary.json").read_text()
+            )
+            self.assertEqual(summary["workflow_status"], "complete")
+            self.assertEqual(summary["cna_status"], "not_requested")
+
+    def test_modbam_source_requires_no_basecall_models_and_never_basecalls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Fixture(Path(directory))
+            bam = fixture.root / "input.bam"
+            bam.write_bytes(b"bam")
+            config = fixture.config()
+            for key in (
+                "methylation_pod5_dir",
+                "methylation_dorado_model",
+                "methylation_dorado_modbase_model",
+            ):
+                config.pop(key)
+            config["methylation_modbam"] = str(bam)
+            config["methylation_gpu"] = True
+            request = resolve_methylation_request(config, mode="ont")
+            self.assertIsNone(request.dorado_model)
+            self.assertEqual(request.dorado_device, "cpu")
+            fasta = fixture._asset("genome.fa", ">chr1\nACGT\n")
+            fai = fixture._asset("genome.fa.fai", "chr1\t4\t6\t4\t5\n")
+            runner = FakeRunner("")
+            output = fixture.root / "result"
+            status = run_methylation(
+                ROOT,
+                request,
+                [OntSample("sample1", "barcode01", fixture.fastq)],
+                {"fasta": fasta, "fai": fai},
+                output,
+                runner,
+                StageLedger(output / "state.json"),
+                threads=2,
+                force=False,
+            )
+            self.assertEqual(status["overall_status"], "no_cpg_modifications")
+            self.assertFalse(
+                any("basecaller" in command for _, command in runner.calls)
+            )
+            self.assertEqual(
+                runner.environments["methylation-modbam-align"]["CUDA_VISIBLE_DEVICES"],
+                "",
+            )
+            split = next(
+                command
+                for stage, command in runner.calls
+                if stage == "methylation-split-sample1"
+            )
+            self.assertEqual(split[split.index("-F") + 1], "2304")
+            pileup = next(
+                command
+                for stage, command in runner.calls
+                if stage == "methylation-pileup-sample1"
+            )
+            self.assertEqual(pileup[pileup.index("--sampling-frac") + 1], "1.0")
+
+    def test_both_source_types_fail_instead_of_silently_choosing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Fixture(Path(directory))
+            bam = fixture._asset("input.bam", "bam")
+            with self.assertRaisesRegex(OncoTracerError, "choose one"):
+                resolve_methylation_request(
+                    fixture.config(), mode="ont", modbam_override=bam
+                )
+
+    def test_marlin_zero_probe_coverage_is_a_no_call_and_resumes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Fixture(Path(directory), "marlin")
+            request = resolve_methylation_request(fixture.config(), mode="ont")
+            fasta = fixture._asset("genome.fa", ">chr1\nACGT\n")
+            fai = fixture._asset("genome.fa.fai", "chr1\t4\t6\t4\t5\n")
+            output = fixture.root / "result"
+            pileup = "chr2\t100\t101\tm\t10\t.\t100\t101\t0,0,0\t10\t80\t8\t2\t0\t0\t0\t0\t0\n"
+            stale = (
+                output / "07_methylation/marlin/sample1/sample1.marlin_predictions.tsv"
+            )
+            stale.parent.mkdir(parents=True)
+            stale.write_text("previous prediction\n")
+            for repeat in range(2):
+                runner = FakeRunner(pileup)
+                status = run_methylation(
+                    ROOT,
+                    request,
+                    [OntSample("sample1", "barcode01", fixture.fastq)],
+                    {"fasta": fasta, "fai": fai},
+                    output,
+                    runner,
+                    StageLedger(output / "state.json"),
+                    threads=2,
+                    force=False,
+                )
+                self.assertEqual(status["overall_status"], "no_classifier_probes")
+                self.assertEqual(status["samples"][0]["covered_classifier_probes"], 0)
+                self.assertIsNone(status["samples"][0]["classification"])
+                self.assertFalse(stale.exists())
+                self.assertFalse(
+                    any("marlin-predict" in stage for stage, _ in runner.calls)
+                )
+                if repeat:
+                    self.assertFalse(
+                        any("methylation-pileup" in stage for stage, _ in runner.calls)
+                    )
+            summary = _merge_methylation_summary(
+                output, status, cna_error=None, cna_requested=False
+            )
+            self.assertEqual(summary["cna_status"], "not_requested")
+            self.assertEqual(summary["workflow_status"], "failed")
+
+    def test_probe_coverage_counts_unique_ids_with_valid_coverage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            probes = root / "probes.bed"
+            probes.write_text(
+                "chr1\t100\t101\tp1\nchr1\t101\t102\tp1\nchr1\t200\t201\tp2\n"
+            )
+            bed = root / "calls.bed"
+            bed.write_text(
+                "chr1\t100\t101\tm\t1\t.\t100\t101\t0,0,0\t1\t0\t0\nchr1\t200\t201\tm\t0\t.\t200\t201\t0,0,0\t0\t0\t0\n"
+            )
+            self.assertEqual(_marlin_probe_coverage(bed, probes), 1)
+
+    @unittest.skipUnless(
+        all(shutil.which(tool) for tool in ("samtools", "dorado", "modkit")),
+        "optional real CPU tools are not installed",
+    )
+    def test_real_cpu_bam_to_methylome_with_synthetic_reads(self):
+        # No patient reads or trained classifiers: exercise the actual installed
+        # samtools/Dorado-aligner/Modkit interface, including primary-only tags.
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Fixture(Path(directory), "marlin")
+            rng = random.Random(23)
+            genome = "".join(rng.choices("ACGT", k=4000))
+            fasta = fixture._asset("genome.fa", ">chr1\n" + genome + "\n")
+            subprocess.run(
+                ["samtools", "faidx", str(fasta)], check=True, capture_output=True
+            )
+            sam = fixture.root / "reads.sam"
+            reads = []
+            records = ["@HD\tVN:1.6\tSO:unknown\n"]
+            for index in range(4):
+                seq = genome[500 + 100 * index : 1500 + 100 * index]
+                name = f"read-{index}"
+                reads.append(f"@{name}\n{seq}\n+\n{'I' * len(seq)}\n")
+                count = seq.count("C")
+                skips = ",".join(["0"] * count)
+                probabilities = ",".join(["240"] * count + ["5"] * count)
+                records.append(
+                    f"{name}\t4\t*\t0\t0\t*\t*\t0\t0\t{seq}\t{'I' * len(seq)}\tMM:Z:C+m,{skips};C+h,{skips};\tML:B:C,{probabilities}\n"
+                )
+            sam.write_text("".join(records))
+            (fixture.fastq / "reads.fastq").write_text("".join(reads))
+            bam = fixture.root / "reads.bam"
+            subprocess.run(
+                ["samtools", "view", "-b", "-o", str(bam), str(sam)],
+                check=True,
+                capture_output=True,
+            )
+            config = fixture.config()
+            config.pop("methylation_pod5_dir")
+            config["methylation_modbam"] = str(bam)
+            for name in ("dorado", "modkit", "samtools"):
+                config[f"methylation_{name}_executable"] = shutil.which(name)
+            request = resolve_methylation_request(config, mode="ont")
+            output = fixture.root / "result"
+            runner = CommandRunner(output / "trace.tsv", echo=False)
+            status = run_methylation(
+                ROOT,
+                request,
+                [OntSample("sample1", "barcode01", fixture.fastq)],
+                {"fasta": fasta, "fai": Path(str(fasta) + ".fai")},
+                output,
+                runner,
+                StageLedger(output / "state.json"),
+                threads=2,
+                force=False,
+            )
+            self.assertEqual(status["overall_status"], "no_classifier_probes", status)
+            self.assertGreater(status["samples"][0]["modified_cpg_calls"], 0)
+            self.assertEqual(status["samples"][0]["modbam_records"], 4)
+            trace = (output / "trace.tsv").read_text()
+            self.assertNotIn("basecaller", trace)
+            self.assertNotIn("marlin-predict", trace)
+
     def test_cli_exposes_ont_methylation_flags_and_rejects_two_classifiers(
         self,
     ) -> None:

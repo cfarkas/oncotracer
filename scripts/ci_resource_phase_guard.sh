@@ -52,7 +52,10 @@ else
 fi
 
 if (( swap_required == 1 )); then
-  if (( active_swap_size_bytes < planned_swap_gib * BYTES_PER_GIB )); then
+  # Linux x86-64 reserves one 4-KiB page for the swap header. swapon reports
+  # usable bytes, not the allocated file size; do not mistake that page for
+  # missing job swap. All physical/addressable/disk floors remain unchanged.
+  if (( active_swap_size_bytes < planned_swap_gib * BYTES_PER_GIB - 4096 )); then
     printf 'ERROR: parity phase %s lacks the exact planned %s-GiB job swap.\n' \
       "$phase" "$planned_swap_gib" >&2
     exit 1

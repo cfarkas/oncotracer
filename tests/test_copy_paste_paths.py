@@ -234,7 +234,7 @@ def check_checkout_is_only_for_source_development() -> None:
     installation = read("docs/installation.md")
     marker = "### Poetry"
     require(marker in installation, "installation guide is missing the Poetry source route")
-    release_section, poetry_section = installation.split(marker, 1)
+    release_section, poetry_section = installation.split("## 1. Install the stable copied executable", 1)[1].split(marker, 1)
     require("git clone" not in release_section, "global release installation must not require a clone")
     require(
         "does not require a Git clone after installation" in release_section,
@@ -250,8 +250,10 @@ def check_checkout_is_only_for_source_development() -> None:
         "Poetry source-development route",
     )
 
+    readme = read("README.md")
+    non_source_readme = readme.split("## Install current source", 1)[0] + readme.split("## Set up your analysis", 1)[1]
+    require("git clone" not in non_source_readme, "README clone belongs only in the labeled source-install section")
     for relative_path in (
-        "README.md",
         "docs/index.md",
         "docs/quick_start.md",
         "docs/public_cohort.md",
@@ -336,7 +338,11 @@ def check_resumed_nested_trace_combiner() -> None:
 
 
 def main() -> None:
-    check_release_install("README.md")
+    # The landing page installs current source for setup/check; the stable
+    # executable and its full checksum verification remain in installation.md.
+    readme = read("README.md")
+    require("not in the v2.0.0 release executable" in readme, "new commands need a release availability note")
+    require("oncotracer setup --project" in readme, "landing page must teach project setup")
     check_release_install("docs/installation.md")
     check_native_quickstarts()
     check_every_pwd_quickstart_block_enters_analysis_directory()
