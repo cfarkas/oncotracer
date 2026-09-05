@@ -158,7 +158,9 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 if CSV.search(text):
                     self.write_sheet(text, base, base / "oncotracer-quickstart2/input/samplesheet.csv")
                 configs = self.steps(text, base, samples)
-                self.assertEqual(len({config["lpwgs_root"] for config in configs}), 1)
+                self.assertTrue(all(config["hg38_auto_download"] for config in configs))
+                for config in configs:
+                    self.assertEqual(Path(config["lpwgs_root"]), Path(config["outdir"]).parent / "reference")
 
     def test_reference_root_is_optional_reusable_and_read_only_during_setup(self):
         with tempfile.TemporaryDirectory() as temporary:

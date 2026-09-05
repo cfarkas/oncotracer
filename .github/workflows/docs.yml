@@ -12,6 +12,7 @@ on:
       - "tests/test_native_docs.py"
       - "tests/test_docs_style.py"
       - "tests/test_documented_workflows.py"
+      - "tests/test_hg38_setup.py"
   pull_request:
     paths:
       - "README.md"
@@ -21,6 +22,7 @@ on:
       - "tests/test_native_docs.py"
       - "tests/test_docs_style.py"
       - "tests/test_documented_workflows.py"
+      - "tests/test_hg38_setup.py"
   workflow_dispatch:
 
 permissions:
@@ -54,6 +56,7 @@ jobs:
           python3 tests/test_docs_style.py
           python3 -m unittest tests.test_native_docs -q
           python3 -m unittest tests.test_documented_workflows -q
+          python3 -m unittest tests.test_hg38_setup -q
 
       - name: Validate the complete native v2 site
         run: mkdocs build --strict --site-dir site

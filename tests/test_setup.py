@@ -272,8 +272,7 @@ class SetupTests(unittest.TestCase):
                     "--non-interactive",
                     "--project",
                     str(project),
-                    "--reference-root",
-                    str(base / "shared reference"),
+                    "--hg38_build",
                     "--mode",
                     "illumina",
                     "--sample-name",
@@ -304,9 +303,9 @@ class SetupTests(unittest.TestCase):
             self.assertEqual(json.loads(check.stdout)["plan"]["samples"], ["sample1"])
             self.assertEqual(
                 load_flat_yaml(project / "config/run.yml")["lpwgs_root"],
-                str(base / "shared reference"),
+                str(project / "reference"),
             )
-            self.assertFalse((base / "shared reference").exists())
+            self.assertTrue(load_flat_yaml(project / "config/run.yml")["hg38_auto_download"])
             self.assertFalse((project / "results").exists())
             self.assertFalse((project / "reference").exists())
 

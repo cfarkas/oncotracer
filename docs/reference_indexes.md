@@ -6,6 +6,30 @@ Start with `oncotracer system --path /absolute/path/project` to see planning lim
 
 Install the [OncoTracer command](installation.md) before using these commands.
 
+## Automatic download or an existing build
+
+All [setup examples](setup.md) and both QuickStarts accept the optional
+`--hg38_build` flag:
+
+| Setup option | What happens when you run |
+| --- | --- |
+| `--hg38_build /data/shared-reference` | Reuse that prepared OncoTracer reference |
+| `--hg38_build` with no path | Download prebuilt indexes into `PROJECT/reference` |
+| Flag omitted | Same automatic download |
+
+The path can be the reference parent or its `references/samurai_hg38` folder;
+not a FASTA, `.mmi` file, or shell script. BWA indexes are required for Illumina,
+minimap2 for ONT. A build containing both can be shared by both platforms.
+
+Setup saves `lpwgs_root` and `hg38_auto_download` in YAML. Setup, check and dry-run
+do not download anything. Normal run downloads only the needed platform's bundle,
+checks the pinned manifest and every file, and then starts analysis. Existing
+references are validated and reused, never overwritten by automatic download.
+A failed download stops the run; it does not fall back to building indexes.
+
+The manual commands below are useful for offline transfers or preparing a shared
+bundle containing both index types before any analysis.
+
 ## Download the ready-made indexes
 
 The [hg38 reference release](https://github.com/cfarkas/oncotracer/releases/tag/hg38-reference-v1)
@@ -34,7 +58,7 @@ Replace `/absolute/path/shared-reference` with your chosen folder. Remove
 | `--dry-run` | Show required space and destination without transferring genome files |
 
 Allow 1 GiB of free disk headroom beyond the listed size. When setting up a
-project, pass `--reference-root /absolute/path/shared-reference`. This is the
+project, pass `--hg38_build /absolute/path/shared-reference`. This is the
 same path supplied to `reference install --lpwgs-root`, not the FASTA or index
 file. For a project already configured, set that parent in its YAML:
 
@@ -49,8 +73,7 @@ parent for a different bundle. Interrupted imports can be restarted, but partial
 downloads are not resumed.
 
 If this validated reference directory already exists, skip the download and use
-its path. If you skip prebuilt indexes entirely, `oncotracer run` prepares missing
-reference files automatically; no separate genome-build script is required.
+its path with `setup --hg38_build`. No separate genome-build script is required.
 
 ## RAM and compatibility
 
