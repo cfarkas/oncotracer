@@ -44,7 +44,7 @@ illumina_binsize_kb: 100
 
 Do not place shell variables such as `$PWD` inside the YAML; expand them when creating the file.
 
-With current source, quote paths containing spaces, `#`, or apostrophes, for example `outdir: "/work/study #1/results"`. Run `oncotracer check --config /work/study/config/run.yml` after editing.
+Quote paths containing spaces, `#`, or apostrophes, for example `outdir: "/work/study #1/results"`. Run `oncotracer check --config /work/study/config/run.yml` after editing.
 
 ## Minimal Illumina YAML
 

@@ -1,7 +1,5 @@
 # PRJNA754199 archive provenance
 
-> **Legacy v1.1 command record.** The archive facts and checksums remain useful, but the Nextflow commands below describe only the immutable v1.1 release. New analyses should use the native v2 executable.
-
 The manifest was frozen from the ENA Portal API on **2026-07-15** by joining the read-run report with the sample-alias report.
 
 Read-run report:
@@ -22,8 +20,7 @@ Primary records:
 - [ENA PRJNA754199 browser record](https://www.ebi.ac.uk/ena/browser/view/PRJNA754199)
 - [Associated PLOS ONE article](https://doi.org/10.1371/journal.pone.0262272)
 
-Inventory invariants checked by the `nextflow run ... --make_prjna754199`
-preparation route:
+The versioned manifest records these archive totals:
 
 | Field | Pinned value |
 | --- | ---: |
@@ -49,7 +46,7 @@ to generate `illumina.samplesheet.csv` and leaves `fastq_2` empty for every libr
 
 For a shareable result, retain `samples.csv`, the generated
 `auto_params_manifest.tsv`, unedited `illumina.auto.yml` and
-`illumina.samplesheet.csv`, Nextflow report/trace, SAMURAI `pipeline_info`, reference identity, container
+`illumina.samplesheet.csv`, `.oncotracer-native/trace.tsv`, the native run manifest, reference identity, container
 digest, OncoTracer commit, and source-file checksums. Static gallery exports should point
 back to those files and identify the exact source table or PDF used to generate each
 image.

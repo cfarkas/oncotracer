@@ -26,10 +26,14 @@ Use Linux with at least:
 
 - 150 GiB of free working space;
 - 16 CPU cores when available;
-- 80 GiB of addressable memory for the first BWA index;
+- available RAM appropriate for your settings; check [requirements](installation.md#requirements);
 - a stable connection for the approximately 5.75 GiB download.
 
 The complete analysis can take several hours. The native ledger allows safe reuse of valid completed stages.
+
+[Prepared genome indexes](reference_indexes.md) are optional. Set `lpwgs_root`
+in the run YAML to an existing OncoTracer reference directory to reuse it;
+otherwise the normal run prepares missing reference files.
 
 ## Step 1. Install and verify one backend
 

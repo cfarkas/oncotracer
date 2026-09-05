@@ -37,7 +37,8 @@ class NativeDocumentationTests(unittest.TestCase):
                 text,
             )
             self.assertNotIn("improve/beginner-setup-methylation", text)
-            self.assertIn("not in the v2.0.0 release executable", text)
+            self.assertIn("pip install -e ./oncotracer-src", text)
+            self.assertNotIn("not in the v2.0.0 release executable", text)
 
     def test_pages_validates_prs_and_deploys_only_main_artifacts(self) -> None:
         text = (ROOT / ".github/workflows/docs.yml").read_text(encoding="utf-8")
@@ -74,7 +75,9 @@ class NativeDocumentationTests(unittest.TestCase):
         budgets = {
             "README.md": 800,
             "docs/setup.md": 950,
+            "docs/installation.md": 650,
             "docs/quick_start.md": 850,
+            "docs/public_cohort.md": 850,
             "docs/configuration/methylation.md": 1100,
         }
         for relative, words in budgets.items():
@@ -94,11 +97,9 @@ class NativeDocumentationTests(unittest.TestCase):
     def test_readme_is_a_landing_page(self) -> None:
         text = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLess(len(text.splitlines()), 100)
-        self.assertIn(
-            "docs/installation.md#1-install-the-stable-copied-executable", text
-        )
+        self.assertIn("docs/installation.md", text)
         self.assertIn("oncotracer setup --project", text)
-        self.assertIn("not in the v2.0.0 release executable", text)
+        self.assertNotIn("not in the v2.0.0 release executable", text)
         self.assertIn("complete documentation", text.lower())
 
     def test_all_markdown_fences_are_balanced(self) -> None:
@@ -135,15 +136,17 @@ class NativeDocumentationTests(unittest.TestCase):
         for page in (
             "native_architecture.md",
             "parity_release.md",
-            "migration_v1_to_v2.md",
+            "installation_details.md",
         ):
             self.assertIn(page, text)
+        self.assertNotIn("legacy_v1.md", text)
+        self.assertNotIn("migration_v1_to_v2.md", text)
 
     def test_standalone_payload_cache_contract_is_documented(self) -> None:
         architecture = (ROOT / "docs/native_architecture.md").read_text(
             encoding="utf-8"
         )
-        installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
+        installation = (ROOT / "docs/installation_details.md").read_text(encoding="utf-8")
         troubleshooting = (ROOT / "docs/troubleshooting.md").read_text(encoding="utf-8")
 
         cache_layout = "$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload"
@@ -167,7 +170,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("success, error, or interruption", troubleshooting)
 
     def test_installer_ownership_and_atomic_replacement_are_documented(self) -> None:
-        installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
+        installation = (ROOT / "docs/installation_details.md").read_text(encoding="utf-8")
         architecture = (ROOT / "docs/native_architecture.md").read_text(
             encoding="utf-8"
         )

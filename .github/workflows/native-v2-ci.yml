@@ -67,6 +67,7 @@ jobs:
             tests/test_native_methylation.py \
             tests/test_beginner_runtime.py \
             tests/test_setup.py \
+            tests/test_documented_workflows.py \
             tests/test_install_safety.py \
             tests/test_compare_native_parity.py \
             tests/test_native_docs.py \

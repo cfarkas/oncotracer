@@ -1,83 +1,115 @@
 <a id="quick-start"></a>
 
-# QuickStart 1: try public data
+# QuickStart 1: Illumina and ONT
 
-This complete native analysis uses one Illumina library and one ONT library. It downloads approximately 225 MB of reads and produces copy-number results for each. It is not a methylation example: the supplied FASTQs do not contain methylation calls.
+Run a complete native analysis using one public Illumina library and one ONT
+library. The approximately 225 MB download is small; reference files, tools and
+results need additional space. This is copy-number analysis, not methylation:
+FASTQ files do not contain methylation calls.
 
-## Before you start
+[Install OncoTracer](installation.md) first. These examples use the same
+`setup`, `check` and `run` commands as your own samples.
 
-[Install OncoTracer](installation.md) and choose one backend. This page uses Conda. The first uncached Illumina run also prepares the human reference and BWA index: allow tens of minutes and at least 80 GiB of addressable RAM. The small read download is not the total storage requirement; the reference, tools, BAMs, and results need additional space.
+## 1. Download the reads
 
-Replace `/path/to/my/analyses_dir/` below with an existing directory for this example. `$PWD` means that directory. All example downloads and results go under `oncotracer-quickstart1`.
-
-## Commands to copy
-
-```bash
-cd /path/to/my/analyses_dir/
-
-oncotracer install --conda
-oncotracer doctor --backend conda
-
-oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1" --download-only
-
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/configs/illumina.quickstart.yml"
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/configs/ont.quickstart.yml"
-```
-
-Run the commands in order. If you already installed and checked the Conda backend, begin at `quickstart`.
-
-| Command or flag | Meaning | What to expect |
-| --- | --- | --- |
-| `install --conda` | Install the analysis tools once | Conda environments are prepared |
-| `doctor --backend conda` | Check those tools | Resolve reported failures before analysis |
-| `quickstart 1` | Select this public example | Downloads are checked against known checksums |
-| `--test-root` | Folder for the whole example | `public/`, `configs/`, and later `runs/` |
-| `--download-only` | Prepare reads and settings without analysis | Two YAML files in `configs/` |
-| `run --config` | Analyze the data described by that YAML | Results for one sequencing platform |
-| `--backend conda` | Use the installed Conda tools | Same setting for both runs |
-
-You do not need to create or edit a sample table for this example. The Illumina library is `ERR12341627`; the ONT library is `DRR165691`, stored under `fastq_pass/barcode01/`.
-
-## Inspect the saved settings
-
-Open `configs/illumina.quickstart.yml` and `configs/ont.quickstart.yml` in a text editor before running. Check the input paths and `outdir`, which is where results will go.
-
-If you installed current source, you can also run:
+Replace `/path/to/my/analyses_dir/` with an existing directory you can write to.
+`$PWD` means that directory. Keep using the same directory in each block.
 
 ```bash
 cd /path/to/my/analyses_dir/
-oncotracer check --config "$PWD/oncotracer-quickstart1/configs/illumina.quickstart.yml"
-oncotracer check --config "$PWD/oncotracer-quickstart1/configs/ont.quickstart.yml"
+mkdir -p oncotracer-quickstart1/input/illumina \
+  oncotracer-quickstart1/input/fastq_pass/barcode01
+
+curl --fail --location --continue-at - \
+  --output oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/ERR123/027/ERR12341627/ERR12341627_1.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/ERR123/027/ERR12341627/ERR12341627_2.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-quickstart1/input/fastq_pass/barcode01/DRR165691_1.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/DRR165/DRR165691/DRR165691_1.fastq.gz
+
+md5sum -c <<'MD5'
+4c96d551152694b3893ea98b7781a3ae  oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz
+1b20d9eb98f755244f6383ea1354bd40  oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz
+55a3984cb0334aa4cb0a38255cb71c06  oncotracer-quickstart1/input/fastq_pass/barcode01/DRR165691_1.fastq.gz
+MD5
 ```
 
-The v2.0.0 executable uses `oncotracer run --dry-run --backend conda --config PATH` instead; it does not have `check`.
+`--output` names the downloaded file; `--continue-at -` resumes an interrupted
+download. Continue only when all three checksum lines say `OK`.
 
-## Read and verify the results
+The ONT public library is placed in `barcode01` as a sample folder; it is not
+a new demultiplexing step.
 
-Each successful `run` prints `OncoTracer native analysis completed:` and its results path. Start with these files in both `runs/illumina/` and `runs/ont/`:
+## 2. Set up both projects
 
-| File | What it tells you |
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --non-interactive \
+  --project "$PWD/oncotracer-quickstart1/illumina" \
+  --reference-root "$PWD/oncotracer-quickstart1/reference" \
+  --mode illumina --analysis cna --sample-name ERR12341627 \
+  --fastq-1 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz" \
+  --fastq-2 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz" \
+  --threads 4
+
+oncotracer setup --non-interactive \
+  --project "$PWD/oncotracer-quickstart1/ont" \
+  --reference-root "$PWD/oncotracer-quickstart1/reference" \
+  --mode ont --analysis cna \
+  --reads-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
+  --barcodes barcode01 --sample-names DRR165691 \
+  --threads 4
+```
+
+`--project` separates the configurations and results. Both projects use the same
+`--reference-root` so they can reuse genome files. `--threads 4` requests four
+CPU workers. `--non-interactive` requires the inputs as flags instead of prompts.
+
+## Optional: reuse prepared genome indexes
+
+If you already have an OncoTracer reference directory, use its absolute path
+for `--reference-root` in both setup commands. Otherwise you can
+[download prebuilt hg38 indexes](reference_indexes.md) using `--mode both` and
+`--lpwgs-root` set to the reference directory above.
+
+Skip this step to let the normal run prepare missing reference files. Do not
+run a separate genome-build script. Prebuilt indexes save construction time,
+but alignment still needs RAM; check [requirements](installation.md#requirements).
+
+## 3. Check and run
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer check --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
+oncotracer check --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
+
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
+```
+
+Resolve any check errors before running. `--config` selects saved settings;
+`--backend conda` selects the installed analysis tools. Docker and Apptainer
+use `--backend docker` and `--backend singularity`, after
+[installing that backend](containers.md).
+
+## 4. Read the results
+
+Each successful run prints `OncoTracer native analysis completed:`. Look under
+`oncotracer-quickstart1/illumina/results/` and `oncotracer-quickstart1/ont/results/`:
+
+| File | Purpose |
 | --- | --- |
-| `06_workflow_summary/workflow_summary.txt` | Whether the requested analysis completed |
-| `03_cna_codification/cna_events.tsv` | Detected copy-number changes |
-| `04_cna_custom_plots/cna_per_sample_pages.pdf` | Plots for visual review |
-| `.oncotracer-native/trace.tsv` | Commands run, if you need to troubleshoot |
+| `06_workflow_summary/workflow_summary.txt` | Completion status |
+| `03_cna_codification/cna_events.tsv` | Copy-number changes |
+| `04_cna_custom_plots/cna_per_sample_pages.pdf` | Plots |
+| `.oncotracer-native/trace.tsv` | Recorded commands |
 
-To run the example's output checks, repeat `quickstart` **without** `--download-only`:
+To resume, repeat the same `run` command after fixing the reported error. Do not
+repeat setup or add `--force` for a normal resume.
 
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer quickstart 1 --backend conda --test-root "$PWD/oncotracer-quickstart1"
-```
-
-It reuses valid completed stages and checks both output trees. This command, unlike the preparation-only command, ends with `QuickStart 1 completed:` after verification.
-
-## Resume or choose another backend
-
-Repeat a failed `run` command after fixing its reported error; completed matching stages are reused. Keep the same configuration and leave `--force` off for a normal resume.
-
-For Docker, replace `--backend conda` with `--backend docker`; for Apptainer, use `--backend singularity`. Install the chosen backend first as described in [execution environments](containers.md). You only need one backend.
-
-Next, [set up your own data](setup.md) or try [QuickStart 2](public_cohort.md).
+Next: [your own samples](setup.md) or [QuickStart 2](public_cohort.md).

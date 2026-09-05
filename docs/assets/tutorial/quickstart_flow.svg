@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="780" viewBox="0 0 1400 780" role="img" aria-labelledby="title desc">
   <title id="title">Native OncoTracer QuickStart from an analyses directory to checked results</title>
-  <desc id="desc">Six-step beginner flow. Enter an analyses directory, set the QuickStart output root, download and validate public reads while creating two YAML run plans, inspect those YAML files, run the Illumina and Oxford Nanopore analyses with the native OncoTracer CLI, and confirm the results.</desc>
+  <desc id="desc">Six-step beginner flow. Choose an analysis directory, download and checksum public reads, use ordinary setup and check commands, run the Illumina and Oxford Nanopore configurations, and read the results. Reusing prepared genome indexes is optional.</desc>
   <defs>
     <linearGradient id="header" x1="0" x2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#134e4a"/></linearGradient>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#0f172a" flood-opacity=".13"/></filter>
@@ -25,28 +25,28 @@
   <text class="card-title" x="126" y="232">Choose an analyses folder</text>
   <rect x="78" y="258" width="324" height="68" rx="9" fill="#111827"/>
   <text class="code-sm" x="92" y="283">cd /path/to/my/analyses_dir/</text>
-  <text class="code-sm" x="92" y="308">TEST_ROOT="$PWD/oncotracer-quickstart1"</text>
+  <text class="code-sm" x="92" y="308">Use this directory in every step.</text>
   <text class="small" x="78" y="352">Downloads, YAML files, and results stay together.</text>
 
   <path d="M438 283 H478" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
   <g filter="url(#shadow)"><rect x="492" y="188" width="372" height="190" rx="16" fill="#fff"/></g>
   <circle cx="529" cy="226" r="22" fill="#0f766e"/><text class="num" x="523" y="233">2</text>
-  <text class="card-title" x="564" y="232">Download reads + YAMLs</text>
+  <text class="card-title" x="564" y="232">Download + check reads</text>
   <rect x="516" y="252" width="324" height="68" rx="9" fill="#111827"/>
-  <text class="code-sm" x="531" y="278">oncotracer quickstart 1 \</text>
-  <text class="code-sm" x="531" y="304">  --test-root "$TEST_ROOT" --download-only</text>
-  <text class="body" x="516" y="344">Checks bytes, MD5, and gzip integrity.</text>
-  <text class="small" x="516" y="366">Writes two run plans; no CNA analysis starts.</text>
+  <text class="code-sm" x="531" y="278">curl — URLs and output paths in guide</text>
+  <text class="code-sm" x="531" y="304">md5sum -c — all files must say OK</text>
+  <text class="body" x="516" y="344">One Illumina pair and one ONT library.</text>
+  <text class="small" x="516" y="366">Download only; no analysis starts yet.</text>
 
   <path d="M876 283 H916" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
   <g filter="url(#shadow)"><rect x="930" y="188" width="416" height="190" rx="16" fill="#fffbeb" stroke="#f59e0b" stroke-width="3"/></g>
   <circle cx="967" cy="226" r="22" fill="#d97706"/><text class="num" x="961" y="233">3</text>
-  <text class="card-title" x="1002" y="232">Understand the YAML</text>
+  <text class="card-title" x="1002" y="232">Set up + check</text>
   <rect x="954" y="250" width="368" height="86" rx="9" fill="#fff" stroke="#fbbf24"/>
-  <text class="file" x="972" y="276">$TEST_ROOT/configs/</text>
-  <text class="file" x="990" y="301">illumina.quickstart.yml</text>
-  <text class="file" x="990" y="326">ont.quickstart.yml</text>
-  <text class="small" x="954" y="360">Each plan saves checked paths, settings, and results.</text>
+  <text class="file" x="972" y="276">oncotracer setup --project PATH ...</text>
+  <text class="file" x="972" y="301">oncotracer check --config FILE</text>
+  <text class="file" x="972" y="326">Each project has config/run.yml.</text>
+  <text class="small" x="954" y="360">Optional: reuse indexes with --reference-root.</text>
 
   <path d="M1138 390 V420" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
   <text class="lane" x="54" y="441">RUN AND REVIEW — ONCOTRACER READS THE SAVED YAML</text>
@@ -58,7 +58,7 @@
   <text class="body" x="78" y="554">The native CLI reads the Illumina YAML.</text>
   <rect x="78" y="570" width="324" height="58" rx="9" fill="#ecfdf5" stroke="#6ee7b7"/>
   <text class="file" x="94" y="594">oncotracer run --config</text>
-  <text class="file" x="94" y="616">.../illumina.quickstart.yml</text>
+  <text class="file" x="94" y="616">.../illumina/config/run.yml</text>
 
   <path d="M438 564 H478" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
   <g filter="url(#shadow)"><rect x="492" y="478" width="372" height="174" rx="16" fill="#fff"/></g>
@@ -67,7 +67,7 @@
   <text class="body" x="516" y="552">After Illumina finishes, run the ONT</text>
   <text class="body" x="516" y="575">YAML through the same native CLI.</text>
   <rect x="516" y="588" width="324" height="42" rx="8" fill="#f5f3ff" stroke="#c4b5fd"/>
-  <text class="file" x="533" y="614">.../ont.quickstart.yml • ichorCNA</text>
+  <text class="file" x="533" y="614">.../ont/config/run.yml</text>
 
   <path d="M876 564 H916" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
   <g filter="url(#shadow)"><rect x="930" y="478" width="416" height="174" rx="16" fill="#fff"/></g>

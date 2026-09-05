@@ -99,57 +99,20 @@ class NativeEngineTests(unittest.TestCase):
         self.assertNotIn("normal_panel_manifest", source)
         self.assertNotIn("pon_median", source)
 
-    def test_legacy_ont_launcher_cannot_construct_a_sample_panel(self) -> None:
-        launcher = ROOT / "bin/scripts/run_ont_samurai_barcodes.sh"
-        source = launcher.read_text(encoding="utf-8")
-        for forbidden in (
-            "QDNASEQ_BUILD_LOCAL_PON",
-            "write_qdnaseq_local_pon_rscript",
-            "run_qdnaseq_local_pon",
-            "NF_CMD+=( --build_pon",
-            "normal_panel_manifest.tsv",
-            "median PBMC/normal log2 profile",
-        ):
-            self.assertNotIn(forbidden, source)
-        self.assertIn("SAMPLE_DERIVED_PANEL_USED=false", source)
-        self.assertNotIn(
-            "ont_build_pon", (ROOT / "nextflow.config").read_text(encoding="utf-8")
-        )
-        self.assertNotIn(
-            "ont_build_pon", (ROOT / "main.nf").read_text(encoding="utf-8")
-        )
-        result = subprocess.run(
-            ["bash", str(launcher), "--build-pon"],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("NORMAL samples are analyzed independently", result.stderr)
-
-        normal_result = subprocess.run(
-            [
-                "bash",
-                str(launcher),
-                "--folder",
-                "/not-used",
-                "--barcodes",
-                "barcode01",
-                "--outdir",
-                "/not-used",
-                "--status",
-                "normal",
-            ],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        self.assertEqual(normal_result.returncode, 2)
-        self.assertIn(
-            "frozen Nextflow comparator cannot CNA-call NORMAL rows independently",
-            normal_result.stderr,
-        )
-        self.assertNotIn("nextflow is required", normal_result.stderr)
+    def test_illumina_duplicate_ids_and_mixed_layouts_fail_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fastq = root / "reads.fastq"
+            fastq.write_text("@read\nACGT\n+\nIIII\n", encoding="utf-8")
+            sheet = root / "samples.csv"
+            for rows, expected in (
+                ([f"A,{fastq},,tumor", f"A,{fastq},,normal"], "duplicate sample ID"),
+                ([f"A,{fastq},,tumor", f"B,{fastq},{fastq},tumor"], "cannot mix single-end and paired-end"),
+            ):
+                with self.subTest(expected=expected):
+                    sheet.write_text("sample,fastq_1,fastq_2,status\n" + "\n".join(rows) + "\n", encoding="utf-8")
+                    with self.assertRaisesRegex(OncoTracerError, expected):
+                        parse_illumina_samplesheet(sheet)
 
     def test_ont_barcode_resolution(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

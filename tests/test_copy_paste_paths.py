@@ -59,98 +59,46 @@ def require_order(block: str, fragments: tuple[str, ...], label: str) -> None:
     require(positions == sorted(positions), f"{label} commands are out of order")
 
 
-def check_release_install(relative_path: str) -> None:
+def check_source_install(relative_path: str) -> None:
     block = find_block(
         relative_path,
-        "gh release download v2.0.0",
-        "--dir oncotracer-v2.0.0",
-        "sha256sum -c SHA256SUMS",
-        "chmod",
-        "oncotracer --version",
-        "oncotracer provenance --json",
+        "git clone --branch main",
+        "python3 -m venv oncotracer-env",
+        "pip install -e ./oncotracer-src",
+        "source oncotracer-env/bin/activate",
     )
     require_order(
         block,
         (
-            "gh release download v2.0.0",
-            "--dir oncotracer-v2.0.0",
-            "cd oncotracer-v2.0.0",
-            "sha256sum -c SHA256SUMS",
-            "chmod",
+            "git clone --branch main",
+            "python3 -m venv oncotracer-env",
+            "pip install -e ./oncotracer-src",
+            "source oncotracer-env/bin/activate",
         ),
-        f"{relative_path} release installation",
+        f"{relative_path} source installation",
     )
-    require(
-        "sudo install -m 0755 oncotracer /usr/local/bin/oncotracer" in block,
-        f"{relative_path} must install the verified copied executable",
-    )
-    require("git clone" not in block, f"{relative_path} release install must not clone")
-    require("nextflow" not in block.casefold(), f"{relative_path} release install invoked Nextflow")
+    require("sudo" not in block, f"{relative_path} launcher install must not need administrator access")
+    require("nextflow" not in block.casefold(), f"{relative_path} install invoked Nextflow")
 
 
 def check_native_quickstarts() -> None:
-    # The published examples download public data, then analyze it with the same
-    # `oncotracer run` command a reader uses on their own FASTQs.
-    quickstart1 = find_block(
-        "docs/quick_start.md",
-        "oncotracer install --conda",
-        "oncotracer quickstart 1",
-        "--download-only",
-        "oncotracer run --backend conda",
-        "configs/illumina.quickstart.yml",
-        "configs/ont.quickstart.yml",
-    )
-    require_order(
-        quickstart1,
-        (
-            ANALYSES_CD,
-            "oncotracer install --conda",
-            "oncotracer quickstart 1",
-            "oncotracer run --backend conda",
-        ),
-        "QuickStart 1",
-    )
-
-    quickstart2 = find_block(
-        "docs/public_cohort.md",
-        "oncotracer install --conda",
-        "oncotracer quickstart 2",
-        "--download-only",
-        "oncotracer run --backend conda",
-        "configs/hcc1143_lpwgs/illumina.auto.yml",
-    )
-    require_order(
-        quickstart2,
-        (
-            ANALYSES_CD,
-            "oncotracer install --conda",
-            "oncotracer quickstart 2",
-            "oncotracer run --backend conda",
-        ),
-        "QuickStart 2",
-    )
-
-    readme = find_block(
-        "README.md",
-        "oncotracer quickstart 1",
-        "--download-only",
-        "oncotracer run --backend conda",
-    )
-    require_order(
-        readme,
-        (ANALYSES_CD, "oncotracer quickstart 1", "oncotracer run --backend conda"),
-        "README public QuickStarts",
-    )
-
-    for label, block in (
-        ("QuickStart 1", quickstart1),
-        ("QuickStart 2", quickstart2),
-        ("README public QuickStarts", readme),
-    ):
-        require(first_command(block) == ANALYSES_CD, f"{label} must enter the analyses directory first")
-        require("git clone" not in block, f"{label} must run from the installed executable")
-        require("cd oncotracer" not in block, f"{label} must not depend on a checkout")
-        require("nextflow" not in block.casefold(), f"{label} must not invoke Nextflow")
+    projects = {
+        "docs/quick_start.md": ("oncotracer-quickstart1/illumina", "oncotracer-quickstart1/ont"),
+        "docs/public_cohort.md": ("oncotracer-quickstart2/analysis",),
+    }
+    for relative, paths in projects.items():
+        text = read(relative)
+        require_order(text, ("curl --fail", "md5sum -c", "oncotracer setup", "oncotracer check", "oncotracer run"), relative)
+        require("--reference-root" in text and "optional" in text.lower(), f"{relative} must explain optional reference reuse")
+        for path in paths:
+            setup = find_block(relative, "oncotracer setup --non-interactive", f'--project "$PWD/{path}"')
+            run = find_block(relative, "oncotracer check --config", "oncotracer run --backend conda", f'--config "$PWD/{path}/config/run.yml"')
+            for block in (setup, run):
+                require(first_command(block) == ANALYSES_CD, f"{relative} must enter the analysis directory first")
+        for forbidden in ("git clone", "cd oncotracer", "nextflow run", "oncotracer quickstart", "--download-only", "--test-root"):
+            require(forbidden not in text, f"{relative} must use ordinary commands: found {forbidden}")
+    for page in projects:
+        require(page in read("README.md"), f"README must link to {page}")
 
 
 def check_every_pwd_quickstart_block_enters_analysis_directory() -> None:
@@ -198,6 +146,8 @@ def check_tutorial_figures_are_native_and_beginner_safe() -> None:
         folded = text.casefold()
         require("nextflow" not in folded, f"obsolete Nextflow wording remains in {relative_path}")
         require("main.nf" not in folded, f"obsolete main.nf wording remains in {relative_path}")
+        require(not re.search(r"oncotracer\s+quickstart\s+[12]\b", folded), f"tutorial figure must use standard commands: {relative_path}")
+        require("--download-only" not in folded, f"tutorial figure must not teach a special preparation launcher: {relative_path}")
         require(
             ANALYSES_CD in text,
             f"beginner tutorial figure does not show the analyses-directory first step: {relative_path}",
@@ -230,16 +180,11 @@ def check_automatic_setup_paths() -> None:
     require("cd " not in block, "Automatic Setup must preserve the caller's working directory")
 
 
-def check_checkout_is_only_for_source_development() -> None:
-    installation = read("docs/installation.md")
+def check_checkout_is_only_for_installation() -> None:
+    installation = read("docs/installation_details.md")
     marker = "### Poetry"
     require(marker in installation, "installation guide is missing the Poetry source route")
-    release_section, poetry_section = installation.split("## 1. Install the stable copied executable", 1)[1].split(marker, 1)
-    require("git clone" not in release_section, "global release installation must not require a clone")
-    require(
-        "does not require a Git clone after installation" in release_section,
-        "global executable checkout independence is not documented",
-    )
+    poetry_section = installation.split(marker, 1)[1]
     require_order(
         poetry_section,
         (
@@ -251,7 +196,7 @@ def check_checkout_is_only_for_source_development() -> None:
     )
 
     readme = read("README.md")
-    non_source_readme = readme.split("## Install current source", 1)[0] + readme.split("## Set up your analysis", 1)[1]
+    non_source_readme = readme.split("## Install", 1)[0] + readme.split("## Set up your analysis", 1)[1]
     require("git clone" not in non_source_readme, "README clone belongs only in the labeled source-install section")
     for relative_path in (
         "docs/index.md",
@@ -338,17 +283,16 @@ def check_resumed_nested_trace_combiner() -> None:
 
 
 def main() -> None:
-    # The landing page installs current source for setup/check; the stable
-    # executable and its full checksum verification remain in installation.md.
     readme = read("README.md")
-    require("not in the v2.0.0 release executable" in readme, "new commands need a release availability note")
+    require("not in the v2.0.0 release executable" not in readme, "first-use docs must not teach migration history")
     require("oncotracer setup --project" in readme, "landing page must teach project setup")
-    check_release_install("docs/installation.md")
+    check_source_install("README.md")
+    check_source_install("docs/installation.md")
     check_native_quickstarts()
     check_every_pwd_quickstart_block_enters_analysis_directory()
     check_tutorial_figures_are_native_and_beginner_safe()
     check_automatic_setup_paths()
-    check_checkout_is_only_for_source_development()
+    check_checkout_is_only_for_installation()
     check_native_qdnaseq_uses_called_object_for_seg_exports()
     check_resumed_nested_trace_combiner()
     print(
