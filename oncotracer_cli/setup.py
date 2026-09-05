@@ -241,9 +241,18 @@ def _command_setup(args: argparse.Namespace) -> int:
             raise OncoTracerError(
                 f"setup will not overwrite {path}; choose a new --project or edit the existing YAML"
             )
+    reference_root = (
+        Path(args.reference_root).expanduser().resolve()
+        if args.reference_root
+        else project / "reference"
+    )
+    if reference_root.exists() and not reference_root.is_dir():
+        raise OncoTracerError(
+            f"--reference-root must be a directory, not a FASTA or index file: {reference_root}"
+        )
     values: dict[str, object] = {
         "mode": mode,
-        "lpwgs_root": str(project / "reference"),
+        "lpwgs_root": str(reference_root),
         "outdir": str(project / "results"),
         "threads": args.threads,
         "force": False,
@@ -616,6 +625,10 @@ def command_check(args: argparse.Namespace) -> int:
 def add_setup_commands(subparsers) -> None:
     parser = subparsers.add_parser(
         "setup", help="Create a readable configuration with prompts or explicit flags"
+    )
+    parser.add_argument(
+        "--reference-root",
+        help="optional shared OncoTracer reference directory (default: PROJECT/reference); not a FASTA or index file",
     )
     parser.add_argument(
         "--project", help="project folder to create (config/, reference/, results/)"

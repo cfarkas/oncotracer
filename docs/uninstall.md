@@ -1,7 +1,7 @@
 # Uninstall
 
-The updated source includes `oncotracer uninstall`. Existing v2.0.0 executables
-do not have this command. **No command below removes project data or results.**
+Use `oncotracer uninstall` to remove selected tools.
+**No command below removes project data or results.**
 
 ## Remove the analysis tools
 

@@ -24,9 +24,8 @@ HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PAYLOAD_ROOTS = ("bin", "examples", "params", "environments", "provenance")
 NATIVE_PAYLOAD_EXCLUDED_PATHS = frozenset(
     {
-        # These files are retained in the source tree solely for historical
-        # v1.1/standalone compatibility. Native v2 neither invokes nor ships
-        # launchers that install or execute Nextflow.
+        # Keep retired paths denied even if a future change reintroduces one.
+        # Reference READMEs remain source-only; the executable ships runtime assets.
         "bin/cna_classifier_nf/README.md",
         "bin/scripts/install_oncotracer.sh",
         "examples/hcc1143_lpwgs/README.md",

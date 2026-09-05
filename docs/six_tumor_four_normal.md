@@ -13,8 +13,7 @@ their signal from the `ONCO` samples.
     checksum-validated public-data [QuickStart 1](quick_start.md),
     [QuickStart 2](public_cohort.md), or stable-release parity gates.
 
-The historical launcher is linked only from [Legacy v1.1](legacy_v1.md). Every
-command below uses native v2 and does not invoke Nextflow.
+Every command below uses OncoTracer's native engine and does not invoke Nextflow.
 
 ## Expected cohort behavior
 

@@ -2,11 +2,11 @@
 
 ## Start with the command and configuration
 
-For current source, run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing paths and settings without starting analysis. `oncotracer doctor --backend conda` checks the installed analysis tools.
+Run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing paths and settings without starting analysis. `oncotracer doctor --backend conda` checks the installed analysis tools.
 
 | Message or symptom | What to do |
 | --- | --- |
-| `setup` or `check` is not recognized | You may have the v2.0.0 executable. Use [current-source installation](installation.md#current-source-for-the-new-setup-workflow), or its older `auto` and `run --dry-run` commands |
+| `setup` or `check` is not recognized | Activate the environment created during [installation](installation.md); use `command -v oncotracer` to check which command your terminal is using |
 | A path does not exist | Use the actual absolute path; `/data/...` and `/work/...` in examples must be replaced |
 | Setup refuses to overwrite a YAML | Edit that existing file, or choose a new `--project` |
 | Both POD5 and BAM inputs are configured | Keep only the input type you want to use |
@@ -104,27 +104,15 @@ OncoTracer now rejects a second writer while the first process holds the exact `
 
 ## 5. Public QuickStart download problems
 
-Download and validate without analysis. Replace the example analyses directory with a directory where you have write permission:
+Repeat the failed `curl` command from [QuickStart 1](quick_start.md) or
+[QuickStart 2](public_cohort.md). `--continue-at -` resumes an interrupted
+download. Use the same analysis directory and output filename.
 
-```bash
-cd /path/to/my/analyses_dir/
-
-oncotracer quickstart 1 \
-  --test-root "$PWD/oncotracer-quickstart1" \
-  --download-only
-```
-
-Repeat the command after a transient interruption. Completed files are accepted only when expected byte count and MD5 match. A partial temporary download is not treated as valid.
-
-For HCC1143:
-
-```bash
-cd /path/to/my/analyses_dir/
-
-oncotracer quickstart 2 \
-  --test-root "$PWD/oncotracer-quickstart2" \
-  --download-only
-```
+Repeat the guide's `md5sum -c` block and continue only when every file says `OK`.
+If a completed download fails its checksum, preserve that file under a different
+name and download a fresh copy. Do not analyze a partial or mismatched file.
+Downloading reads does not create a configuration: follow the separate `setup`,
+`check`, and `run` steps afterwards.
 
 ## 6. Conda solver or prefix problems
 

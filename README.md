@@ -18,9 +18,7 @@ OncoTracer is for research use, not a standalone diagnostic system.
 | Classify ONT methylation | [Methylation guide](docs/configuration/methylation.md) |
 | Understand a result or an error | [Outputs](docs/outputs.md) · [Troubleshooting](docs/troubleshooting.md) |
 
-The new `setup`, `check`, `system`, `reference`, and `uninstall` commands, plus `--modbam` and `--methylation-only`, are available in current source on `main`. **They are not in the v2.0.0 release executable.** The installation below uses current source. For the released executable, see [release installation](docs/installation.md#1-install-the-stable-copied-executable).
-
-## Install current source
+## Install
 
 You need Linux, Python 3.10–3.13, Git, and Conda. Run these commands in a directory where you keep software:
 
@@ -57,17 +55,6 @@ Results go to `my-study/results/`. Begin with `06_workflow_summary/workflow_summ
 
 ## Try the public example
 
-Replace the directory below with an existing folder where you want the example data and results:
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1" --download-only
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/configs/illumina.quickstart.yml"
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/configs/ont.quickstart.yml"
-```
-
-`--test-root` is the example folder. `--download-only` prepares reads and configurations; the two `run` commands analyze them. This is a copy-number example; its FASTQs do not provide methylation calls. [QuickStart 1 explains every step and how to verify the outputs](docs/quick_start.md).
+[QuickStart 1](docs/quick_start.md) provides small public Illumina and ONT downloads, then uses the same `setup`, `check`, and `run` commands shown above. [QuickStart 2](docs/public_cohort.md) shows a three-library Illumina analysis. Genome-index reuse is optional; neither analysis needs a special example launcher.
 
 The [complete documentation](https://cfarkas.github.io/oncotracer/) includes [batch setup](docs/auto_params.md), [all settings](docs/configuration/parameter_reference.md), and [release validation](docs/parity_release.md). The optional `run_cna_classifier: true` setting adds interpretation of copy-number changes; it is separate from methylation classification. Runs record their commands and output checksums. Released builds also include `release-provenance.json`.

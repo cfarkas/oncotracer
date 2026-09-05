@@ -2,7 +2,7 @@
 
 Poetry provides a managed Python launcher for OncoTracer's native v2 engine. It does not replace the scientific software runtime: installation also creates the same five isolated Conda environments used by the global executable.
 
-Poetry is intended for source development. Beginners who only want to run analyses should normally install the verified global executable and choose Conda, Docker, or Singularity/Apptainer.
+Poetry is intended for source development. For analyses, follow [installation](installation.md) and choose Conda, Docker, or Singularity/Apptainer.
 
 ## Install Poetry and the launcher
 
@@ -44,28 +44,31 @@ ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
 
 ## Run QuickStart 1 through Poetry
 
-Keep the source checkout separate from the analysis output. The output path below is explicit so it does not depend on whichever source directory contains `pyproject.toml`.
+Download the reads, run `setup`, and check the configurations as shown in
+[QuickStart 1](quick_start.md). Keep the source checkout separate from the
+analysis output. Use the same configurations with the installed Poetry launcher:
 
 ```bash
 cd /path/to/my/oncotracer_source/
 
 ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
-"$ONCOTRACER_DEV" quickstart 1 --test-root /path/to/my/analyses_dir/oncotracer-quickstart1-poetry --download-only
 "$ONCOTRACER_DEV" run --backend poetry \
-  --config /path/to/my/analyses_dir/oncotracer-quickstart1-poetry/configs/illumina.quickstart.yml
+  --config /path/to/my/analyses_dir/oncotracer-quickstart1/illumina/config/run.yml
 "$ONCOTRACER_DEV" run --backend poetry \
-  --config /path/to/my/analyses_dir/oncotracer-quickstart1-poetry/configs/ont.quickstart.yml
+  --config /path/to/my/analyses_dir/oncotracer-quickstart1/ont/config/run.yml
 ```
 
 ## Run QuickStart 2 through Poetry
 
+Follow the download, samplesheet, setup and check steps in
+[QuickStart 2](public_cohort.md), then run:
+
 ```bash
 cd /path/to/my/oncotracer_source/
 
 ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
-"$ONCOTRACER_DEV" quickstart 2 --test-root /path/to/my/analyses_dir/oncotracer-quickstart2-poetry --download-only
 "$ONCOTRACER_DEV" run --backend poetry \
-  --config /path/to/my/analyses_dir/oncotracer-quickstart2-poetry/configs/hcc1143_lpwgs/illumina.auto.yml
+  --config /path/to/my/analyses_dir/oncotracer-quickstart2/analysis/config/run.yml
 ```
 
 For a different managed runtime, install it explicitly with `oncotracer install --docker`, `--singularity`, or `--conda`, then select the matching `--backend`. Every v2 route executes the native stage graph and records `nextflow_used=false`.

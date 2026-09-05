@@ -109,7 +109,7 @@ cat "$OUT/07_methylation/methylation_provenance.json"
 find "$OUT/07_methylation" -maxdepth 3 -type f | sort | sed -n '1,120p'
 ```
 
-Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, `no_classifier_probes` (MARLIN, current source), or `failed`. A zero-call sample is not sent to the classifier. For MARLIN, `covered_classifier_probes` counts the supplied probes with data; zero means no prediction was made. `methylation_provenance.json` records input inventories, tools, models, and device choice. See the [resource reference](configuration/methylation_reference.md) for exact provenance fields.
+Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, `no_classifier_probes` (MARLIN), or `failed`. A zero-call sample is not sent to the classifier. For MARLIN, `covered_classifier_probes` counts the supplied probes with data; zero means no prediction was made. `methylation_provenance.json` records input inventories, tools, models, and device choice. See the [resource reference](configuration/methylation_reference.md) for exact provenance fields.
 
 With `methylation_only: true`, `cna_status` is `not_requested`; absence of CNA outputs is expected.
 

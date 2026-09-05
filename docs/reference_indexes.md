@@ -4,7 +4,7 @@ A prebuilt index avoids the one-time genome-index construction step. It does
 **not** remove RAM needed for alignment, sorting, CNA analysis or optional models.
 Start with `oncotracer system --path /absolute/path/project` to see planning limits.
 
-These commands require the [updated source](installation.md#current-source-for-the-new-setup-workflow), not the existing v2.0.0 executable.
+Install the [OncoTracer command](installation.md) before using these commands.
 
 ## Download the ready-made indexes
 
@@ -33,8 +33,10 @@ Replace `/absolute/path/shared-reference` with your chosen folder. Remove
 | `--mode both` | Genome and both index sets: 14.8 GiB |
 | `--dry-run` | Show required space and destination without transferring genome files |
 
-Allow 1 GiB of free disk headroom beyond the listed size. Set the same parent in
-every project YAML that should reuse this reference:
+Allow 1 GiB of free disk headroom beyond the listed size. When setting up a
+project, pass `--reference-root /absolute/path/shared-reference`. This is the
+same path supplied to `reference install --lpwgs-root`, not the FASTA or index
+file. For a project already configured, set that parent in its YAML:
 
 ```yaml
 lpwgs_root: /absolute/path/shared-reference
@@ -45,6 +47,10 @@ Existing reference directories are never overwritten or silently adopted. If you
 need both platforms, select `--mode both` at the first install; otherwise use a new
 parent for a different bundle. Interrupted imports can be restarted, but partial
 downloads are not resumed.
+
+If this validated reference directory already exists, skip the download and use
+its path. If you skip prebuilt indexes entirely, `oncotracer run` prepares missing
+reference files automatically; no separate genome-build script is required.
 
 ## RAM and compatibility
 

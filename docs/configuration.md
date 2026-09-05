@@ -4,7 +4,7 @@ A configuration is a YAML text file containing your input paths, sample names, a
 
 ## Start with setup
 
-With the [current-source installation](installation.md#current-source-for-the-new-setup-workflow), run:
+After [installation](installation.md), run:
 
 ```bash
 oncotracer setup --project /absolute/path/to/my-study
@@ -12,7 +12,7 @@ oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
 
-Replace the project path with yours. Setup asks for inputs, saves a commented YAML, and prints the exact next commands. [The setup guide](setup.md) explains each flag and shows how to supply answers directly.
+Replace the project path with yours. Setup asks for inputs, saves a commented YAML, and prints the exact next commands. [The setup guide](setup.md) explains each flag and shows single-sample and multisample examples.
 
 ## Which settings should I change?
 
@@ -32,7 +32,7 @@ Keep the generated caller and bin-size settings for your first run. Leave `force
 
 ## Other configuration routes
 
-- For many FASTQ files and a sample table, use [batch setup](auto_params.md). This also works with the v2.0.0 executable.
+- For many FASTQ files and a sample table, use [batch setup](auto_params.md).
 - For methylation tools, model files, and CPU options, use the [methylation guide](configuration/methylation.md).
 - To edit YAML yourself, see [YAML basics](configuration/yaml_basics.md), [Illumina settings](configuration/illumina.md), or [ONT settings](configuration/ont.md).
 - For an individual advanced field, use the [parameter reference](configuration/parameter_reference.md).

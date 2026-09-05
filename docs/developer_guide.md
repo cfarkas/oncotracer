@@ -64,21 +64,16 @@ The zipapp must contain native scripts, environment definitions, classifier asse
 
 ## Test the public command surface
 
-Preparation-only checks are useful before full scientific runs:
+Test the exact documented setup/check/run examples with synthetic reads, without
+downloading genomes or starting scientific tools:
 
 ```bash
-BINARY="$PWD/dist/oncotracer"
-
-"$BINARY" quickstart 1 \
-  --test-root "$PWD/test/developer-quickstart1" \
-  --download-only
-
-"$BINARY" quickstart 2 \
-  --test-root "$PWD/test/developer-quickstart2" \
-  --download-only
+python3 -m unittest tests.test_documented_workflows tests.test_setup -v
 ```
 
-Then run the complete examples through the intended backend on a suitable validation host.
+Then follow [QuickStart 1](quick_start.md) and [QuickStart 2](public_cohort.md)
+through the intended backend on a suitable validation host. Automated release
+validation retains its pinned datasets and comparison gates separately.
 
 ## Documentation
 
@@ -99,12 +94,12 @@ publish or replace a software release.
 
 Documentation regression checks require:
 
-- release installation independent of a source checkout;
+- one tested installation route for the commands shown in the guides;
 - detailed QuickStart 1 and 2 one-command and step-by-step routes;
 - all Bash blocks to pass `bash -n`;
 - no normal user page to invoke the historical executor;
 - old configuration, input, pathology, refinement, output, and tutorial subjects to remain available through the native CLI;
-- legacy instructions to remain confined to the explicit migration/legacy pages.
+- no retired workflow launchers or historical command tutorials in the current tree.
 
 ## Scientific changes
 

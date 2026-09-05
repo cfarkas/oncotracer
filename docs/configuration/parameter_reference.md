@@ -1,6 +1,6 @@
 # Native CLI and YAML parameter reference
 
-Start with [guided setup](../setup.md), or [batch setup](../auto_params.md) for many libraries. This page lists the commands and YAML fields. `setup`, `check`, `--modbam`, `--cpu`, and `--methylation-only` require current source; they are not in the v2.0.0 release executable.
+Start with [guided setup](../setup.md), or [batch setup](../auto_params.md) for many libraries. This page lists the commands and YAML fields.
 
 ## Command structure
 
@@ -9,7 +9,9 @@ oncotracer install ...
 oncotracer doctor ...
 oncotracer setup --project PATH ...
 oncotracer check --config FILE
-oncotracer quickstart 1|2 --download-only ...
+oncotracer system --path PATH
+oncotracer reference install ...
+oncotracer uninstall ...
 oncotracer auto ...
 oncotracer run ...
 oncotracer provenance --json
@@ -58,31 +60,29 @@ oncotracer doctor --backend poetry
 
 The command returns JSON and exits nonzero when required source identity, prefixes, packages, or semantic executable probes fail.
 
-## `oncotracer quickstart`
+## `oncotracer setup` and `oncotracer check`
 
-With `--download-only`, this command downloads and checks the public FASTQs and writes their YAML. Analyze each configuration with `oncotracer run`, as for your own data. Without `--download-only`, `quickstart` also runs the analyses and verifies the example outputs.
-
-```bash
-cd /path/to/my/analyses_dir/
-
-oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1" --download-only
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/configs/illumina.quickstart.yml"
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/configs/ont.quickstart.yml"
-
-oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2" --download-only
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart2/configs/hcc1143_lpwgs/illumina.auto.yml"
-```
+`setup` saves the same YAML used by ordinary runs. It asks for missing inputs
+unless `--non-interactive` is supplied. It does not start analysis.
 
 | Option | Meaning |
 | --- | --- |
-| `1` | Public one-sample Illumina plus one-sample ONT example |
-| `2` | Public three-library HCC1143 Illumina example |
-| `--test-root PATH` | Required isolated input/config/result root |
-| `--download-only` | Prepare inputs and YAML without starting analysis |
-| `--dry-run` | Print planned operations without writing files |
+| `--project PATH` | New project containing `config/run.yml` and future results |
+| `--mode illumina` or `--mode ont` | Sequencing platform |
+| `--analysis cna`, `methylation` or `both` | Requested analysis; methylation requires ONT |
+| `--fastq-1 FILE`, `--fastq-2 FILE`, `--sample-name NAME` | One Illumina library; omit R2 for single-end |
+| `--samplesheet FILE` | Multiple Illumina libraries in a sample/R1/R2/status CSV |
+| `--reads-folder PATH` | ONT `fastq_pass` directory |
+| `--barcodes LIST`, `--sample-names LIST` | Matching comma-separated barcode folders and sample names |
+| `--reference-root PATH` | Optional shared reference directory; defaults to `PROJECT/reference` |
+| `--threads NUMBER` | CPU workers to request |
+| `--non-interactive` | Require inputs as flags rather than prompts |
+
+`oncotracer check --config FILE` reports missing paths/settings and the planned
+samples without running analysis. See [setup examples](../setup.md),
+[QuickStart 1](../quick_start.md), and [QuickStart 2](../public_cohort.md) for
+complete commands. [Reference installation](../reference_indexes.md) is optional
+when compatible indexes are already present.
 
 ## `oncotracer auto`
 
@@ -131,9 +131,9 @@ oncotracer run \
 | `--sturgeon` | Select the supported CNS-tumor research classifier; mutually exclusive with `--marlin` |
 | `--marlin` | Select the supported leukemia research classifier; mutually exclusive with `--sturgeon` |
 | `--pod5-dir PATH` | Raw POD5 input for methylation basecalling; choose this or `--modbam` |
-| `--modbam PATH` | Current source: reuse calls from an existing modified-base BAM or directory of BAMs; CPU alignment |
-| `--methylation-only` | Current source: request methylation and skip copy-number analysis |
-| `--cpu` | Current source: keep methylation on CPU, overriding GPU YAML settings |
+| `--modbam PATH` | reuse calls from an existing modified-base BAM or directory of BAMs; CPU alignment |
+| `--methylation-only` | request methylation and skip copy-number analysis |
+| `--cpu` | keep methylation on CPU, overriding GPU YAML settings |
 | `--gpu` | Use `cuda:all` for Dorado and expose the GPU to MARLIN; requires `--methylation` |
 
 Repeating the same command reuses valid content-matched stages automatically.
@@ -184,16 +184,16 @@ local sample-derived reference.
 
 ## Optional ONT methylation YAML fields
 
-CLI values override methylation, classifier, input, and GPU YAML values. Choose one explicit methylation input: POD5 or (on current source) modified-base BAM. Conflicting input types in flags and YAML are rejected.
+CLI values override methylation, classifier, input, and GPU YAML values. Choose one explicit methylation input: POD5 or modified-base BAM. Conflicting input types in flags and YAML are rejected.
 
 | Field | Typical/default | Meaning |
 | --- | --- | --- |
 | `methylation` | `false` | Enable optional ONT methylation when not using `--methylation` |
 | `methylation_classifier` | required when enabled | Exactly `sturgeon` or `marlin` |
 | `methylation_pod5_dir` | one input required | Explicit directory containing non-empty `.pod5` files |
-| `methylation_modbam` | one input required | Current source: existing modified-base BAM file or directory; replaces POD5 input |
-| `methylation_only` | `false` | Current source: skip CNA; enabled by `setup --analysis methylation` |
-| `threads` | up to 16 if not set | Current source: CPU worker threads; `--threads` overrides this value |
+| `methylation_modbam` | one input required | existing modified-base BAM file or directory; replaces POD5 input |
+| `methylation_only` | `false` | skip CNA; enabled by `setup --analysis methylation` |
+| `threads` | up to 16 if not set | CPU worker threads; `--threads` overrides this value |
 | `methylation_gpu` | `false` | Dorado `cuda:all`; MARLIN GPU visibility; Modkit/Sturgeon remain CPU |
 | `methylation_reference_build` | `hg38` | Only supported methylation reference build in v2.0.0 |
 | `methylation_dorado_executable` | required local executable | Dorado binary; no download or installation |
