@@ -36,12 +36,17 @@ Setup refuses to overwrite an existing configuration. To change an existing proj
 | `--sample-names` | Names in the same order as the barcodes | `sampleA,sampleB` |
 | `--fastq-1`, `--fastq-2` | Existing Illumina read files | `/data/sample_R1.fastq.gz` |
 | `--samplesheet` | CSV linking each Illumina library to its FASTQs | `/data/illumina/samplesheet.csv` |
-| `--reference-root` | Optional shared OncoTracer reference directory | `/data/oncotracer-reference` |
+| `--hg38_build [PATH]` | Existing OncoTracer hg38 reference; no path means automatic download at run time | `--hg38_build /data/oncotracer-reference` |
 | `--config` | YAML saved by setup | `/work/my-study/config/run.yml` |
 | `--backend` | How the installed analysis tools are provided | `conda` |
 | `--threads` | CPU worker threads to request | `8` |
 
 Use absolute paths, beginning with `/`, to make commands work from any directory. Put paths in quotes if they contain spaces. In the examples, a backslash `\` at the end of a line continues the same command on the next line. `$PWD` means your current directory.
+
+`--hg38_build` is optional for every example. Supply a reference parent or its
+`references/samurai_hg38` folder to reuse it. With no path, or no flag, `run`
+downloads verified prebuilt indexes into `PROJECT/reference`. Setup and check
+never download genomes.
 
 ## ONT: one barcode
 

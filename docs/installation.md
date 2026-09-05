@@ -72,8 +72,9 @@ Setup asks for the inputs and saves a configuration. Check validates it; run
 starts analysis. The [setup guide](setup.md) shows the paths and flags for single
 and multiple samples. To try public data, follow [QuickStart 1](quick_start.md).
 
-Reference preparation is automatic when needed. If indexes are already
-available, follow [reuse or download genome indexes](reference_indexes.md).
+Without a supplied hg38 path, run downloads prebuilt indexes automatically.
+Use `setup --hg38_build /path/to/reference` to reuse an existing build;
+see [genome indexes](reference_indexes.md) for accepted paths and download sizes.
 
 ## In a new terminal
 

@@ -23,6 +23,8 @@ from .install_safety import _guard_dedicated, _rename_noreplace
 from .runtime import CommandRunner, OncoTracerError, sha256_file
 
 SCHEMA = "oncotracer-hg38-reference-bundle-v1"
+DEFAULT_MANIFEST_URL = "https://github.com/cfarkas/oncotracer/releases/download/hg38-reference-v1/hg38-reference.json"
+DEFAULT_MANIFEST_SHA256 = "1c704b1522fe37c13bf4272858792d03e827bc476fdb6712fa7f760f3c944632"
 BLOCK_BYTES = 1024 * 1024
 MANIFEST_LIMIT = 2 * 1024 * 1024
 STATE = ".oncotracer/reference-index-provenance/"
@@ -432,6 +434,41 @@ def install_bundle(
         )
         _rename_noreplace(stage, target, "validated reference import")
     return result
+
+
+def reference_is_present(lpwgs_root: Path) -> bool:
+    """Presence only: the engine still validates hashes and tool compatibility.
+
+    Never replace or repair an existing reference while attempting an automatic
+    import. Incomplete or mismatched references must fail the normal validation.
+    """
+    return any(
+        os.path.lexists(path)
+        for path in (
+            lpwgs_root / "references/samurai_hg38",
+            lpwgs_root / ".oncotracer/reference-cache/samurai-hg38",
+        )
+    )
+
+
+def ensure_prebuilt_reference(lpwgs_root: Path, *, mode: str) -> None:
+    if reference_is_present(lpwgs_root):
+        return
+    print(
+        f"Downloading verified prebuilt hg38 indexes for {mode} into {lpwgs_root}. "
+        "No genome index will be constructed locally.",
+        file=sys.stderr,
+        flush=True,
+    )
+    try:
+        install_bundle(
+            DEFAULT_MANIFEST_URL,
+            lpwgs_root,
+            mode=mode,
+            expected_sha256=DEFAULT_MANIFEST_SHA256,
+        )
+    except (OSError, ValueError) as error:
+        raise OncoTracerError(f"automatic hg38 download failed: {error}") from error
 
 
 def command_reference(args) -> int:
