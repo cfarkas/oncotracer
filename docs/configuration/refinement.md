@@ -70,37 +70,33 @@ Use `04_final_results/final_segments.tsv` as the refined segment table and stage
 
 ## Reproducible public-data methods comparison
 
-Prepare QuickStart 1 without analysis:
-
-```bash
-TEST_ROOT="$PWD/oncotracer-refinement-comparison"
-
-oncotracer quickstart 1 \
-  --test-root "$TEST_ROOT" \
-  --download-only
-```
+Download the reads and create both configurations using the ordinary `setup`
+commands in [QuickStart 1](../quick_start.md). Run its `check` commands before
+continuing. Use the same analysis directory below.
 
 Run the default Illumina analysis:
 
 ```bash
-TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+cd /path/to/my/analyses_dir/
+TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 oncotracer run \
   --backend conda \
-  --config "$TEST_ROOT/configs/illumina.quickstart.yml"
+  --config "$TEST_ROOT/illumina/config/run.yml"
 ```
 
 Create a separate conservative configuration. The script changes `outdir` and appends non-default refinement values while leaving the original YAML unchanged:
 
 ```bash
-TEST_ROOT="$PWD/oncotracer-refinement-comparison"
-DEFAULT_CONFIG="$TEST_ROOT/configs/illumina.quickstart.yml"
-CONSERVATIVE_CONFIG="$TEST_ROOT/configs/illumina.conservative.yml"
+cd /path/to/my/analyses_dir/
+TEST_ROOT="$PWD/oncotracer-quickstart1"
+DEFAULT_CONFIG="$TEST_ROOT/illumina/config/run.yml"
+CONSERVATIVE_CONFIG="$TEST_ROOT/illumina/config/conservative.yml"
 
 python3 - \
   "$DEFAULT_CONFIG" \
   "$CONSERVATIVE_CONFIG" \
-  "$TEST_ROOT/runs/illumina_conservative" <<'PY'
+  "$TEST_ROOT/illumina-conservative/results" <<'PY'
 from pathlib import Path
 import sys
 
@@ -135,30 +131,33 @@ sed -n '1,220p' "$CONSERVATIVE_CONFIG"
 Validate the native command graph before computation:
 
 ```bash
-TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+cd /path/to/my/analyses_dir/
+TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 oncotracer run \
   --backend conda \
-  --config "$TEST_ROOT/configs/illumina.conservative.yml" \
+  --config "$TEST_ROOT/illumina/config/conservative.yml" \
   --dry-run
 ```
 
 Run the comparison:
 
 ```bash
-TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+cd /path/to/my/analyses_dir/
+TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 oncotracer run \
   --backend conda \
-  --config "$TEST_ROOT/configs/illumina.conservative.yml"
+  --config "$TEST_ROOT/illumina/config/conservative.yml"
 ```
 
 Compare the final tables:
 
 ```bash
-TEST_ROOT="$PWD/oncotracer-refinement-comparison"
-DEFAULT="$TEST_ROOT/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
-EXPERIMENT="$TEST_ROOT/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
+cd /path/to/my/analyses_dir/
+TEST_ROOT="$PWD/oncotracer-quickstart1"
+DEFAULT="$TEST_ROOT/illumina/results/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
+EXPERIMENT="$TEST_ROOT/illumina-conservative/results/02_bam_refinement/illumina_qdnaseq_100kb/04_final_results/final_segments.tsv"
 
 ls -lh "$DEFAULT" "$EXPERIMENT"
 diff -u "$DEFAULT" "$EXPERIMENT" || true
@@ -167,12 +166,13 @@ diff -u "$DEFAULT" "$EXPERIMENT" || true
 Also compare:
 
 ```bash
-TEST_ROOT="$PWD/oncotracer-refinement-comparison"
+cd /path/to/my/analyses_dir/
+TEST_ROOT="$PWD/oncotracer-quickstart1"
 
 sed -n '1,20p' \
-  "$TEST_ROOT/runs/illumina/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv"
+  "$TEST_ROOT/illumina/results/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv"
 sed -n '1,20p' \
-  "$TEST_ROOT/runs/illumina_conservative/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv"
+  "$TEST_ROOT/illumina-conservative/results/02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv"
 ```
 
 ## Reporting a comparison

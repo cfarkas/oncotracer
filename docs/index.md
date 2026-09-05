@@ -22,8 +22,6 @@ oncotracer run --config /absolute/path/to/my-study/config/run.yml --backend cond
 
 Replace the project path with your own. `setup` asks for inputs and saves settings, `check` checks those settings, and `run` analyzes the reads. Each command has help: for example, `oncotracer setup --help`.
 
-**Version note:** `setup`, `check`, BAM reuse, and methylation-only analysis require the [current-source installation](installation.md#current-source-for-the-new-setup-workflow). The v2.0.0 executable does not include these additions.
-
 ## What to expect
 
 The first run takes longer because it prepares the human reference genome and analysis tools. Use `oncotracer system --path /path/to/project` for hardware guidance; see [requirements](installation.md#requirements) and [prebuilt indexes](reference_indexes.md). Your input files stay in their original folders; results go to the `outdir` saved in your configuration. [Uninstall](uninstall.md) removes selected tools without deleting projects.

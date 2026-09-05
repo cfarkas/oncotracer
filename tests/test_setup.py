@@ -272,6 +272,8 @@ class SetupTests(unittest.TestCase):
                     "--non-interactive",
                     "--project",
                     str(project),
+                    "--reference-root",
+                    str(base / "shared reference"),
                     "--mode",
                     "illumina",
                     "--sample-name",
@@ -300,6 +302,11 @@ class SetupTests(unittest.TestCase):
             )
             self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
             self.assertEqual(json.loads(check.stdout)["plan"]["samples"], ["sample1"])
+            self.assertEqual(
+                load_flat_yaml(project / "config/run.yml")["lpwgs_root"],
+                str(base / "shared reference"),
+            )
+            self.assertFalse((base / "shared reference").exists())
             self.assertFalse((project / "results").exists())
             self.assertFalse((project / "reference").exists())
 

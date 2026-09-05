@@ -56,12 +56,11 @@ nav:
       - Models and Pathology: models_pathology.md
       - LLM-Assisted Reports: llm_reports.md
       - Results Gallery: gallery.md
-  - Assurance and Migration:
+  - Validation:
       - Native architecture: native_architecture.md
       - Parity and release gate: parity_release.md
-      - Migration from v1.1: migration_v1_to_v2.md
-      - Legacy v1.1: legacy_v1.md
   - Help and About:
+      - Advanced Installation: installation_details.md
       - Uninstall: uninstall.md
       - Troubleshooting: troubleshooting.md
       - Citation and Research Use: citation_research_use.md

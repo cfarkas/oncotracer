@@ -163,20 +163,20 @@ Stable release records contain the exact source commit, deterministic source-tre
 
 ## Backend-independent QuickStarts
 
-Start from the directory where you want the tutorials to create their input, configuration, and result folders:
+Download the reads and create the configurations using the ordinary `setup`
+commands in [QuickStart 1](quick_start.md) or [QuickStart 2](public_cohort.md).
+After `check` succeeds, select your installed backend with `--backend`:
 
 ```bash
 cd /path/to/my/analyses_dir/
 
-oncotracer quickstart 1 --test-root "$PWD/oncotracer-quickstart1-docker" --download-only
 oncotracer run --backend docker \
-  --config "$PWD/oncotracer-quickstart1-docker/configs/illumina.quickstart.yml"
+  --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
 oncotracer run --backend docker \
-  --config "$PWD/oncotracer-quickstart1-docker/configs/ont.quickstart.yml"
+  --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
 
-oncotracer quickstart 2 --test-root "$PWD/oncotracer-quickstart2-singularity" --download-only
 oncotracer run --backend singularity \
-  --config "$PWD/oncotracer-quickstart2-singularity/configs/hcc1143_lpwgs/illumina.auto.yml"
+  --config "$PWD/oncotracer-quickstart2/analysis/config/run.yml"
 ```
 
 Preparation and YAML content are backend-independent. The same generated config can be moved between supported backends when all absolute paths remain available.

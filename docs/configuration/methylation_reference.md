@@ -1,6 +1,6 @@
 # Methylation resource and processing reference
 
-For the short workflow and an explanation of flags and paths, start with the [methylation guide](methylation.md). This page retains the manual POD5 configuration supported by v2.0.0 and describes the additions on current source.
+For the short workflow and an explanation of flags and paths, start with the [methylation guide](methylation.md). This reference covers local resources and manual BAM or POD5 configuration.
 
 ## Obtain the optional resources
 
@@ -16,7 +16,7 @@ Install these separately, following their own instructions and licenses:
 
 MARLIN's files are `marlin_v1.model.hdf5`, `marlin_v1.features.RData`, `marlin_v1.class_annotations.xlsx`, and `marlin_v1.probes_hg38.bed.gz` in `MARLIN_realtime/files/`. Obtain the model through the upstream download link. Decompress the hg38 probe file to `.bed` before supplying it to OncoTracer; do not use the hg19 or t2t probe file with the hg38 alignment route.
 
-MARLIN needs compatible R/Keras and Python/TensorFlow packages. `marlin_rscript` and `marlin_python` must point to that environment, not an unrelated system installation. With current source, `oncotracer setup` collects these paths and records hashes; `--resources` can reuse them for another project. A locally computed hash records the file you chose; it does not authenticate the file's upstream origin.
+MARLIN needs compatible R/Keras and Python/TensorFlow packages. `marlin_rscript` and `marlin_python` must point to that environment, not an unrelated system installation. `oncotracer setup` collects these paths and records hashes; `--resources` can reuse them for another project. A locally computed hash records the file you chose; it does not authenticate the file's upstream origin.
 
 OncoTracer can run an optional methylation branch for Oxford Nanopore Technologies (ONT) analyses. Choose Sturgeon for a CNS-tumor research classifier or MARLIN for a leukemia research classifier. OncoTracer does not infer the disease type: the user must select exactly one classifier explicitly.
 
@@ -50,7 +50,7 @@ The v2.0.0 POD5 route requires an explicit non-empty POD5 directory:
 --pod5-dir /absolute/path/to/pod5_pass
 ```
 
-Current source also accepts `--modbam PATH` or `methylation_modbam: PATH` instead. PATH may be one completed BAM or a directory of batches. These BAMs must contain MM/ML modification tags. OncoTracer selects matching primary reads, then aligns them to its hg38 reference on CPU, preserving the existing base/modification calls. No POD5 or Dorado basecalling-model directories are required for this route. Do not combine both input types in the same configuration.
+OncoTracer also accepts `--modbam PATH` or `methylation_modbam: PATH` instead. PATH may be one completed BAM or a directory of batches. These BAMs must contain MM/ML modification tags. OncoTracer selects matching primary reads, then aligns them to its hg38 reference on CPU, preserving the existing base/modification calls. No POD5 or Dorado basecalling-model directories are required for this route. Do not combine both input types in the same configuration.
 
 OncoTracer never searches the server for POD5 data. It rejects symlinks anywhere in the explicit POD5 tree, rejects empty POD5 files, and requires at least one regular non-empty `.pod5` file. The POD5 data must correspond to the read IDs in the selected `ont_folder` barcode FASTQs; those FASTQs define the sample-to-read mapping.
 
@@ -147,9 +147,9 @@ The adapted MARLIN preprocessing code retains its upstream MIT terms; the comple
 
 `--gpu` selects `cuda:all` for Dorado modified-base basecalling. It also makes the GPU visible to the external MARLIN R/Keras process; whether MARLIN uses it depends on that user-supplied environment. Modkit and Sturgeon do not gain GPU acceleration from this flag and remain CPU-threaded.
 
-Without a GPU request in the flags or YAML, Dorado is forced to `cpu`, MARLIN receives no visible GPU, and all methylation tools run without GPU access. Current source adds `--cpu` to override `methylation_gpu: true` in an existing YAML. The selected device and executable hashes are written to methylation provenance.
+Without a GPU request in the flags or YAML, Dorado is forced to `cpu`, MARLIN receives no visible GPU, and all methylation tools run without GPU access. Use `--cpu` to override `methylation_gpu: true` in an existing YAML. The selected device and executable hashes are written to methylation provenance.
 
-Current source accepts `--methylation-only` or `methylation_only: true` to skip the CNA branch. `setup --analysis methylation` saves this setting automatically. The summary then reports `cna_status: not_requested`.
+Use `--methylation-only` or `methylation_only: true` to skip the CNA branch. `setup --analysis methylation` saves this setting automatically. The summary then reports `cna_status: not_requested`.
 
 ## Validate before running
 
@@ -200,6 +200,6 @@ Use `--force` only to deliberately invalidate these outputs. For a different POD
 └── methylation_provenance.json
 ```
 
-`methylation_status.json` reports each sample as `complete`, `no_cpg_modifications`, `no_classifier_probes` (MARLIN, current source), or `failed`. `methylation_provenance.json` records the explicit POD5 or BAM inventory digest, device choice, supported classifier interface commit, external-runtime disclosure, executable SHA-256 values, resource SHA-256 values, and final status. The interface commit is not an assertion about the installed external package's source. Review these files before interpreting any prediction.
+`methylation_status.json` reports each sample as `complete`, `no_cpg_modifications`, `no_classifier_probes` (MARLIN), or `failed`. `methylation_provenance.json` records the explicit POD5 or BAM inventory digest, device choice, supported classifier interface commit, external-runtime disclosure, executable SHA-256 values, resource SHA-256 values, and final status. The interface commit is not an assertion about the installed external package's source. Review these files before interpreting any prediction.
 
-Current source excludes secondary and supplementary alignments before Modkit conversion: these may lack MM tags and must not be double-counted. Pileup uses explicit sampling settings. MARLIN probe overlap is checked before prediction; zero overlap produces `no_classifier_probes` with `covered_classifier_probes: 0`.
+OncoTracer excludes secondary and supplementary alignments before Modkit conversion: these may lack MM tags and must not be double-counted. Pileup uses explicit sampling settings. MARLIN probe overlap is checked before prediction; zero overlap produces `no_classifier_probes` with `covered_classifier_probes: 0`.
