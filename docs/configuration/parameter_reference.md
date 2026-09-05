@@ -235,7 +235,21 @@ The classifier is not invoked for a sample with zero usable modified-CpG calls. 
 | `gistic_min_samples` | `2` | Minimum cohort size for requested recurrence analysis |
 | `knowledge_web` | `false` recommended | Optional network enrichment |
 | `knowledge_literature_llm` | `false` recommended | Optional model-assisted literature synthesis |
+| `knowledge_literature_llm_models` | model IDs or absolute model paths | Comma-separated generation fallbacks; Hub IDs accept `@commit` |
+| `knowledge_literature_llm_local_files_only` | `false` | Set `true` to forbid generation-model downloads |
+| `knowledge_llm_threads` | `4` | CPU threads for report generation and reference ranking |
+| `knowledge_literature_llm_max_features` | `24` | Maximum features to synthesize |
+| `knowledge_literature_llm_max_input_chars` | `2800` | Prompt character cap; model token limits also apply |
+| `knowledge_literature_llm_max_new_tokens` | `96` | Generation token cap; `192` allows more room for structured citations |
+| `knowledge_literature_reference_llm_selection` | `true` | Optional per-feature ranking when synthesis is enabled |
+| `knowledge_deep_enable_llm_ranker` | `true` | Separate sample-wide LLM paper selection |
+| `knowledge_deep_llm_ranker_models` | model IDs or absolute model paths | Models for sample-wide ranking |
+| `knowledge_deep_llm_ranker_local_files_only` | `false` | Set `true` to forbid ranker-model downloads |
+| `knowledge_deep_llm_ranker_max_candidates_per_sample` | `18` | Maximum papers submitted to the sample-wide ranker |
 | `knowledge_deep_literature` | `false` recommended | Optional expanded literature workflow |
+
+See [LLM-assisted reports](../llm_reports.md) for a short working configuration and
+the difference between local generation and public literature retrieval.
 
 Nested YAML is deliberately rejected. Keep this section flat.
 

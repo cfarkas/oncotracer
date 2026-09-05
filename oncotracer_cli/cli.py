@@ -19,6 +19,9 @@ from typing import Callable, Mapping, Sequence
 
 from . import __version__
 from .setup import add_setup_commands
+from .system_check import add_system_command
+from .uninstall import add_uninstall_command
+from .reference_bundle import add_reference_command
 from .engine import Toolchain, run_native
 from .install_safety import (
     install_conda_managed,
@@ -1402,6 +1405,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command")
     add_setup_commands(subparsers)
+    add_system_command(subparsers)
+    add_uninstall_command(subparsers)
+    add_reference_command(subparsers)
 
     install = subparsers.add_parser("install", help="Prepare one execution backend")
     group = install.add_mutually_exclusive_group(required=True)
@@ -1479,6 +1485,9 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "provenance",
             "setup",
             "check",
+            "system",
+            "uninstall",
+            "reference",
         }
         or values[0] in {"-h", "--help", "--version"}
     ):
@@ -1530,7 +1539,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.print_help()
             return 2
         with isolated_payload_cache(
-            bool(getattr(args, "dry_run", False)) or args.command == "check"
+            bool(getattr(args, "dry_run", False)) or args.command in {"check", "system"}
         ):
             return int(args.func(args))
     except OncoTracerError as error:

@@ -14,10 +14,11 @@ OncoTracer is for research use, not a standalone diagnostic system.
 | --- | --- |
 | Try public data first | [QuickStart 1](docs/quick_start.md) |
 | Analyze your own FASTQs | [Set up a project](docs/setup.md) |
+| Check RAM or reuse genome indexes | [System requirements](docs/installation.md#requirements) · [Prebuilt indexes](docs/reference_indexes.md) |
 | Classify ONT methylation | [Methylation guide](docs/configuration/methylation.md) |
 | Understand a result or an error | [Outputs](docs/outputs.md) · [Troubleshooting](docs/troubleshooting.md) |
 
-The new `setup`, `check`, `--modbam`, and `--methylation-only` options are on the development branch. **They are not in the v2.0.0 release executable.** The installation below uses current source. For the released executable, see [release installation](docs/installation.md#1-install-the-stable-copied-executable).
+The new `setup`, `check`, `system`, `reference`, and `uninstall` commands, plus `--modbam` and `--methylation-only`, are on the development branch. **They are not in the v2.0.0 release executable.** The installation below uses current source. For the released executable, see [release installation](docs/installation.md#1-install-the-stable-copied-executable).
 
 ## Install current source
 
@@ -28,11 +29,14 @@ git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
 python3 -m venv oncotracer-env
 oncotracer-env/bin/python -m pip install -e ./oncotracer-src
 source oncotracer-env/bin/activate
+oncotracer system --path /absolute/path/to/my-study
 oncotracer install --conda
 oncotracer doctor --backend conda
 ```
 
 The first four commands install and activate OncoTracer. Keep both folders: the source folder is part of this installation. `install --conda` installs the analysis tools; `doctor` checks them. Keep the environment activated when using `oncotracer`; see [installation](docs/installation.md) for details and other backends.
+
+`system` explains hardware capacity before installing tools. [Uninstall instructions](docs/uninstall.md) cover preview, recovery, and permanent removal without deleting project data.
 
 ## Set up your analysis
 
