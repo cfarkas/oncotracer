@@ -25,7 +25,7 @@ The new `setup`, `check`, `system`, `reference`, and `uninstall` commands, plus 
 You need Linux, Python 3.10–3.13, Git, and Conda. Run these commands in a directory where you keep software:
 
 ```bash
-git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
+git clone --branch improve/beginner-setup-methylation https://github.com/cfarkas/oncotracer.git oncotracer-src
 python3 -m venv oncotracer-env
 oncotracer-env/bin/python -m pip install -e ./oncotracer-src
 source oncotracer-env/bin/activate

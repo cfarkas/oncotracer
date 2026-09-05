@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,7 +11,12 @@ from unittest.mock import patch
 
 from oncotracer_cli import reference_bundle as bundle
 from oncotracer_cli.cli import _legacy_to_modern, build_parser
-from oncotracer_cli.runtime import OncoTracerError, sha256_file
+from oncotracer_cli.runtime import (
+    CommandRunner,
+    OncoTracerError,
+    StageLedger,
+    sha256_file,
+)
 
 
 class ReferenceBundleTests(unittest.TestCase):
@@ -168,6 +174,124 @@ class ReferenceBundleTests(unittest.TestCase):
         args = build_parser().parse_args(values)
         self.assertEqual(args.mode, "ont")
         self.assertTrue(args.dry_run)
+
+
+@unittest.skipUnless(
+    os.environ.get("ONCOTRACER_TEST_REFERENCE_ROOT")
+    and os.environ.get("ONCOTRACER_TEST_REFERENCE_CORE"),
+    "opt-in real hg38 bundle and matching BWA/minimap2 installation required",
+)
+class RealReferenceBundleTests(unittest.TestCase):
+    """Read an installed public bundle; never download or build indexes here."""
+
+    def test_engine_reuses_both_indexes_and_maps_synthetic_reads(self):
+        parent = Path(os.environ["ONCOTRACER_TEST_REFERENCE_ROOT"]).resolve(strict=True)
+        root = parent / "references/samurai_hg38"
+        self.assertTrue(
+            root.is_dir(), "install the bundle before opting into this test"
+        )
+        core = Path(os.environ["ONCOTRACER_TEST_REFERENCE_CORE"]).resolve(strict=True)
+
+        class ReadOnlyRunner(CommandRunner):
+            def run(self, stage, command, **kwargs):
+                if "build" in stage or "index" in [str(value) for value in command]:
+                    raise AssertionError("the imported reference must never be rebuilt")
+                return super().run(stage, command, **kwargs)
+
+        with tempfile.TemporaryDirectory(
+            prefix="oncotracer-real-reference-test-"
+        ) as temporary:
+            work = Path(temporary)
+            runner = ReadOnlyRunner(work / "trace.tsv", echo=False)
+            toolchain = bundle.engine.Toolchain(core_prefix=core)
+            reference = bundle.engine.prepare_reference(
+                parent,
+                runner,
+                StageLedger(work / "stages.json"),
+                toolchain,
+                need_bwa=True,
+                need_minimap2=True,
+                threads=2,
+            )
+            self.assertFalse(reference["reference_owned"])
+            fai = {}
+            for line in (root / "genome.fa.fai").read_text().splitlines():
+                fields = line.split("\t")
+                fai[fields[0]] = [int(value) for value in fields[1:5]]
+
+            # Perfect synthetic reads from three public-genome loci, not samples.
+            loci = [("chr1", 1_000_001), ("chr2", 2_000_001), ("chr3", 3_000_001)]
+            sequences = []
+            with (root / "genome.fa").open("rb") as fasta:
+                for chrom, position in loci:
+                    _length, offset, bases, width = fai[chrom]
+                    start = position - 1
+                    fasta.seek(offset + (start // bases) * width + start % bases)
+                    sequence = b""
+                    while len(sequence) < 1000:
+                        sequence += fasta.readline().strip()
+                    sequence = sequence[:1000].decode().upper()
+                    self.assertLessEqual(set(sequence), set("ACGT"))
+                    sequences.append(sequence)
+
+            for kind, length, reader, arguments in (
+                (
+                    "bwa",
+                    150,
+                    bundle.engine._validated_bwa_reader,
+                    [
+                        toolchain.executable("core", "bwa"),
+                        "mem",
+                        "-t",
+                        "2",
+                        reference["bwa_prefix"],
+                    ],
+                ),
+                (
+                    "minimap2",
+                    1000,
+                    bundle.engine._validated_minimap_reader,
+                    [
+                        toolchain.executable("core", "minimap2"),
+                        "-ax",
+                        "map-ont",
+                        "-t",
+                        "2",
+                        reference["minimap2_index"],
+                    ],
+                ),
+            ):
+                with self.subTest(index=kind):
+                    reads = work / f"synthetic-{kind}.fastq"
+                    reads.write_text(
+                        "".join(
+                            f"@synthetic-{i}\n{sequence[:length]}\n+\n{'I' * length}\n"
+                            for i, sequence in enumerate(sequences)
+                        )
+                    )
+                    sam = work / f"{kind}.sam"
+                    with reader(reference, runner, toolchain):
+                        with (
+                            sam.open("wb") as stdout,
+                            (work / f"{kind}.stderr").open("wb") as stderr,
+                        ):
+                            runner.run(
+                                f"synthetic-{kind}-alignment",
+                                [*arguments, reads],
+                                stdout=stdout,
+                                stderr=stderr,
+                            )
+                    primary = [
+                        line.split("\t")
+                        for line in sam.read_text().splitlines()
+                        if not line.startswith("@")
+                        and not (int(line.split("\t")[1]) & 0x900)
+                    ]
+                    self.assertEqual(len(primary), len(loci))
+                    for record, (chrom, position) in zip(primary, loci):
+                        self.assertFalse(int(record[1]) & 4, record[:6])
+                        self.assertEqual((record[2], int(record[3])), (chrom, position))
+                        self.assertGreater(int(record[4]), 0)
 
 
 if __name__ == "__main__":
