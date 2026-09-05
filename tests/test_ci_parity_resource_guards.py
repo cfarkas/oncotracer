@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import subprocess
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +14,20 @@ GIB_BYTES = 1024**3
 
 
 class ParityResourceGuardTests(unittest.TestCase):
+    def test_swap_inspection_uses_supported_read_only_options(self) -> None:
+        driver = (ROOT / "scripts/ci_native_parity.sh").read_text(encoding="utf-8")
+        commands = [
+            ["swapon", "--show=NAME,SIZE,USED", "--bytes", "--noheadings", "--raw"],
+            ["swapon", "--show=NAME,SIZE,USED,PRIO", "--bytes"],
+        ]
+        for command in commands:
+            self.assertIn(" ".join(command), driver)
+        if not shutil.which("swapon"):
+            self.skipTest("read-only swapon query unavailable on this platform")
+        for command in commands:
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def run_guard(
         self,
         *,
