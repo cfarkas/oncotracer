@@ -19,7 +19,7 @@ NATIVE_COMMAND_FILES = {
     # The README shows QuickStart 1 and the reusable analysis command;
     # QuickStart 2 has its own page, checked below.
     "README.md": ("oncotracer quickstart 1", "oncotracer run --backend conda"),
-    "docs/index.md": ("oncotracer install --conda", "oncotracer run --config"),
+    "docs/index.md": ("oncotracer setup --project", "oncotracer run --config"),
     "docs/quick_start.md": ("oncotracer quickstart 1",),
     "docs/public_cohort.md": ("oncotracer quickstart 2",),
     "docs/auto_params.md": ("oncotracer auto", "oncotracer run --backend conda"),

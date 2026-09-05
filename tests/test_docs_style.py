@@ -40,15 +40,13 @@ ACTIVE_NATIVE_FILES = (
 
 REQUIRED_TEXT = {
     "README.md": (
-        "native, auditable LP-WGS copy-number analysis",
-        "normal execution path does not invoke Nextflow",
-        "gh release download v2.0.0",
-        "sha256sum -c SHA256SUMS",
-        "oncotracer provenance --json",
+        "copy-number changes",
+        "not in the v2.0.0 release executable",
+        "git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src",
+        "pip install -e ./oncotracer-src",
+        "oncotracer setup --project",
+        "oncotracer check --config",
         "oncotracer install --conda",
-        "oncotracer install --docker",
-        "oncotracer install --singularity",
-        "oncotracer install --poetry",
         "oncotracer quickstart 1",
         "--download-only",
         "oncotracer run --backend conda",
@@ -56,11 +54,12 @@ REQUIRED_TEXT = {
         "release-provenance.json",
     ),
     "docs/index.md": (
-        "Nextflow is not installed or invoked by the v2 analysis path",
-        "frozen v1.1 Nextflow release",
-        ".oncotracer-native/trace.tsv",
-        "release-provenance.json",
-        "deterministic source-tree SHA-256",
+        "oncotracer setup --project",
+        "oncotracer check --config",
+        "oncotracer run --config",
+        "v2.0.0 executable does not include",
+        "native_architecture.md",
+        "parity_release.md",
     ),
     "docs/installation.md": (
         "It does not require a Git clone after installation",
@@ -270,7 +269,7 @@ def check_native_runtime_boundary() -> None:
             if phrase.casefold() in text.casefold():
                 fail(f"obsolete v1 runtime instruction in {relative_path}: {phrase}")
 
-    installation_release = read("docs/installation.md").split("### Poetry", 1)[0]
+    installation_release = read("docs/installation.md").split("## 1. Install the stable copied executable", 1)[1].split("### Poetry", 1)[0]
     if "git clone" in installation_release:
         fail("global v2 release installation must not require a source checkout")
 

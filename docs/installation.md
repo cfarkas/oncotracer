@@ -1,5 +1,25 @@
 # Installation
 
+## Current source for the new setup workflow
+
+The new `setup`, `check`, `--modbam`, `--cpu`, and `--methylation-only` options are not in the v2.0.0 release executable. To use them, install current source in a separate Python environment. You need Linux, Python 3.10–3.13, Git, and Conda:
+
+```bash
+git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
+python3 -m venv oncotracer-env
+oncotracer-env/bin/python -m pip install -e ./oncotracer-src
+source oncotracer-env/bin/activate
+oncotracer install --conda
+oncotracer doctor --backend conda
+oncotracer setup --help
+```
+
+Keep both folders. `oncotracer-src` holds the source; `oncotracer-env` holds the command. The `-e` flag links them, preserving the Git version information required by the tool installer. A plain non-editable `pip install` does not retain that information and cannot install the analysis tools. Leave the source unchanged and keep projects elsewhere.
+
+In a new terminal, activate the command with `source /absolute/path/to/oncotracer-env/bin/activate`. If you already have a stable-version tool installation, choose a new tool directory with `oncotracer install --conda --prefix /absolute/path/to/oncotracer-dev-tools`.
+
+Continue with [your own data](setup.md), [methylation](configuration/methylation.md), or [QuickStart 1](quick_start.md). The remaining sections describe the released executable, other backends, and installation details.
+
 OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.13 is required by the portable zipapp. The selected backend supplies BWA, samtools, Picard, R, qDNAseq, HMMcopy, ichorCNA, the optional classifier, and GISTIC2.
 
 ## Requirements
@@ -11,6 +31,8 @@ Before installation, provide:
 - enough storage for FASTQs, hg38, BAMs, environments, temporary files, and results;
 - at least 80 GiB of addressable memory for the first uncached Illumina BWA index;
 - one backend: Conda, Docker, or Singularity/Apptainer.
+
+For a first run, Conda is the recommended backend. [Miniforge installation instructions](https://github.com/conda-forge/miniforge#install) cover installing Conda itself. `oncotracer install --conda` installs OncoTracer's analysis tools after Conda is available.
 
 The first analysis can take substantially longer because the reference, indexes, packages, and container layers are prepared. If `lpwgs_root/references/samurai_hg38` already exists, OncoTracer treats it as an external, read-only shared reference: every pinned file, index manifest, physical reader lock, and tool identity must validate, and OncoTracer will stop instead of repairing it in place. A plain existing FASTA/index directory is not auto-adopted. When that path is absent, FASTA/index, ichorCNA, and qDNAseq assets go to OncoTracer-owned, content-addressed caches below `lpwgs_root/.oncotracer/reference-cache/`. Later analyses reuse those validated assets even when they use a fresh result directory. Conda channel URLs are retained as informational provenance, but portability validity is based on stable package metadata and the exact indexing-executable SHA-256.
 

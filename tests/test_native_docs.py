@@ -27,6 +27,21 @@ ACTIVE = [
 
 
 class NativeDocumentationTests(unittest.TestCase):
+    def test_beginner_guides_stay_short_and_use_public_commands(self) -> None:
+        budgets = {
+            "README.md": 800,
+            "docs/setup.md": 950,
+            "docs/quick_start.md": 850,
+            "docs/configuration/methylation.md": 1100,
+        }
+        for relative, words in budgets.items():
+            with self.subTest(page=relative):
+                text = (ROOT / relative).read_text(encoding="utf-8")
+                self.assertLess(len(text.split()), words)
+                self.assertNotRegex(text, r"run_QS\d+\.sh")
+                self.assertIn("--config", text)
+                self.assertIn("--backend", text)
+
     def test_primary_docs_use_global_binary(self) -> None:
         for path in ACTIVE:
             text = path.read_text(encoding="utf-8")
@@ -36,18 +51,26 @@ class NativeDocumentationTests(unittest.TestCase):
     def test_readme_is_a_landing_page(self) -> None:
         text = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLess(len(text.splitlines()), 100)
-        self.assertIn("sudo install -m 0755 oncotracer", text)
+        self.assertIn(
+            "docs/installation.md#1-install-the-stable-copied-executable", text
+        )
+        self.assertIn("oncotracer setup --project", text)
+        self.assertIn("not in the v2.0.0 release executable", text)
         self.assertIn("complete documentation", text.lower())
 
     def test_all_markdown_fences_are_balanced(self) -> None:
         for path in [ROOT / "README.md", *ROOT.glob("docs/*.md")]:
             text = path.read_text(encoding="utf-8")
-            self.assertEqual(text.count("```" ) % 2, 0, path)
+            self.assertEqual(text.count("```") % 2, 0, path)
 
     def test_optional_classifier_is_documented_as_native(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8").lower()
-        configuration = (ROOT / "docs/configuration_v2.md").read_text(encoding="utf-8").lower()
-        architecture = (ROOT / "docs/native_architecture.md").read_text(encoding="utf-8").lower()
+        configuration = (
+            (ROOT / "docs/configuration_v2.md").read_text(encoding="utf-8").lower()
+        )
+        architecture = (
+            (ROOT / "docs/native_architecture.md").read_text(encoding="utf-8").lower()
+        )
         self.assertIn("run_cna_classifier: true", readme)
         self.assertIn("run_cna_classifier: true", configuration)
         self.assertIn("optional cna classifier", architecture)
@@ -66,7 +89,11 @@ class NativeDocumentationTests(unittest.TestCase):
 
     def test_mkdocs_contains_assurance_pages(self) -> None:
         text = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
-        for page in ("native_architecture.md", "parity_release.md", "migration_v1_to_v2.md"):
+        for page in (
+            "native_architecture.md",
+            "parity_release.md",
+            "migration_v1_to_v2.md",
+        ):
             self.assertIn(page, text)
 
     def test_standalone_payload_cache_contract_is_documented(self) -> None:
@@ -74,13 +101,9 @@ class NativeDocumentationTests(unittest.TestCase):
             encoding="utf-8"
         )
         installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
-        troubleshooting = (ROOT / "docs/troubleshooting.md").read_text(
-            encoding="utf-8"
-        )
+        troubleshooting = (ROOT / "docs/troubleshooting.md").read_text(encoding="utf-8")
 
-        cache_layout = (
-            "$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload"
-        )
+        cache_layout = "$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload"
         self.assertIn(cache_layout, architecture)
         self.assertIn(cache_layout, installation)
         for required in (
@@ -95,7 +118,9 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("process-scoped temporary payload", architecture)
         self.assertIn("does not populate the persistent cache", installation)
         self.assertIn("unset ONCOTRACER_PAYLOAD_CACHE", troubleshooting)
-        self.assertIn("preserves them rather than recursively deleting", troubleshooting)
+        self.assertIn(
+            "preserves them rather than recursively deleting", troubleshooting
+        )
         self.assertIn("success, error, or interruption", troubleshooting)
 
     def test_installer_ownership_and_atomic_replacement_are_documented(self) -> None:
@@ -132,6 +157,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("does not alter Poetry's global environment", poetry)
         self.assertIn("poetry-runtime/bin/oncotracer", poetry)
         self.assertNotIn("poetry run oncotracer", poetry)
+
     def test_native_ci_uses_exact_semantic_tool_probes(self) -> None:
         workflow = (ROOT / ".github/workflows/native-v2-ci.yml").read_text(
             encoding="utf-8"
@@ -172,13 +198,18 @@ class NativeDocumentationTests(unittest.TestCase):
         driver = ROOT / "scripts/validate_v2_release.sh"
         text = driver.read_text(encoding="utf-8")
         self.assertTrue(text.startswith("#!/usr/bin/env bash\n"))
-        for option in ("--validation-root", "--threads", "--resume", "--shared-reference"):
+        for option in (
+            "--validation-root",
+            "--threads",
+            "--resume",
+            "--shared-reference",
+        ):
             self.assertIn(option, text)
         self.assertIn('[[ -n "$VALIDATION_ROOT_ARG" ]] || die', text)
         self.assertIn('[[ "$VALIDATION_ROOT" != "/" ]] || die', text)
         self.assertIn('case "$VALIDATION_ROOT/" in', text)
         self.assertIn('"$REPOSITORY_ROOT/"*)', text)
-        self.assertIn('.oncotracer-v2-release-validation-root', text)
+        self.assertIn(".oncotracer-v2-release-validation-root", text)
 
         self.assertNotIn("rm -rf", text)
         self.assertNotIn("nvidia-smi", text.lower())
@@ -187,12 +218,8 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertNotIn("nextflow -version", text)
         self.assertNotIn("nextflow run", text)
         self.assertEqual(text.count('"$NEXTFLOW" -log'), 3)
-        self.assertEqual(
-            text.count('[[ "$(command -v nextflow)" == "$NEXTFLOW" ]]'), 2
-        )
-        self.assertEqual(
-            text.count('PATH="$TOOL_BIN:$PATH" command -v nextflow'), 2
-        )
+        self.assertEqual(text.count('[[ "$(command -v nextflow)" == "$NEXTFLOW" ]]'), 2)
+        self.assertEqual(text.count('PATH="$TOOL_BIN:$PATH" command -v nextflow'), 2)
         self.assertIn(
             'readonly NEXTFLOW_VERSION="26.04.6"',
             text,
@@ -228,8 +255,8 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("oncotracer_nested_audit_policy_sha256", text)
         self.assertNotIn("env.ONCOTRACER_NESTED_AUDIT_POLICY_SHA256", text)
         self.assertIn("cache = false", text)
-        self.assertIn('$REPORT_DIR/frozen-v1.1-quickstart1-$SESSION_ID', text)
-        self.assertIn('$REPORT_DIR/frozen-v1.1-quickstart2-$SESSION_ID', text)
+        self.assertIn("$REPORT_DIR/frozen-v1.1-quickstart1-$SESSION_ID", text)
+        self.assertIn("$REPORT_DIR/frozen-v1.1-quickstart2-$SESSION_ID", text)
         self.assertNotRegex(text, r"(?m)^\s+-resume\s*$")
         self.assertNotIn("selected = max(traces", text)
         self.assertIn('"container"', text)
@@ -249,9 +276,7 @@ class NativeDocumentationTests(unittest.TestCase):
             self.assertIn(digest, text)
         self.assertGreaterEqual(text.count("-c tar.umask=0002 archive"), 4)
         self.assertGreaterEqual(
-            text.count(
-                'key=lambda candidate: candidate.relative_to(root).as_posix()'
-            ),
+            text.count("key=lambda candidate: candidate.relative_to(root).as_posix()"),
             2,
         )
         self.assertIn(
@@ -263,7 +288,7 @@ class NativeDocumentationTests(unittest.TestCase):
             text,
         )
         for environment in ("core", "qdnaseq", "ichorcna", "classifier", "gistic"):
-            self.assertIn(f'ENV_ROOT/{environment}', text)
+            self.assertIn(f"ENV_ROOT/{environment}", text)
         for threshold in ("0.80", "0.90", "0.95", "0.98", "0.08"):
             self.assertIn(threshold, text)
 
@@ -276,9 +301,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("executor.queueSize = 4", hosted_driver)
         self.assertIn("seal_nested_config", hosted_driver)
         self.assertIn("oncotracer_nested_audit_policy_sha256", hosted_driver)
-        self.assertNotIn(
-            "env.ONCOTRACER_NESTED_AUDIT_POLICY_SHA256", hosted_driver
-        )
+        self.assertNotIn("env.ONCOTRACER_NESTED_AUDIT_POLICY_SHA256", hosted_driver)
         self.assertIn("cache = false", hosted_driver)
         self.assertNotIn("-resume 2>&1", hosted_driver)
         self.assertIn(
@@ -288,12 +311,21 @@ class NativeDocumentationTests(unittest.TestCase):
 
         self.assertIn('cd "$TMP_DIR"', text)
         self.assertIn('env -u PYTHONHOME -u PYTHONPATH "$BINARY" "$@"', text)
-        self.assertIn("'^Usage: gp_gistic2_from_seg -b base_dir -seg segmentation_file$'", text)
+        self.assertIn(
+            "'^Usage: gp_gistic2_from_seg -b base_dir -seg segmentation_file$'", text
+        )
         self.assertIn("'^Usage: .*/readCounter \\[options\\] <BAM file>$'", text)
         self.assertGreaterEqual(text.count('[[ "$rc" -ne 1 ]]'), 2)
         self.assertIn('[[ "$rc" -ne 255 ]]', text)
         self.assertIn('[[ "${#mcr_roots[@]}" -ne 1 ]]', text)
-        self.assertNotIn("|| true", text[text.index("probe_picard() {"):text.index("action_install_environments() {")])
+        self.assertNotIn(
+            "|| true",
+            text[
+                text.index("probe_picard() {") : text.index(
+                    "action_install_environments() {"
+                )
+            ],
+        )
         for evidence in (
             'cp -a "$LOG_DIR/."',
             'cp -a "$REPORT_DIR/."',
@@ -367,7 +399,9 @@ fi
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            self.assertEqual(
+                completed.returncode, 0, completed.stdout + completed.stderr
+            )
 
 
 if __name__ == "__main__":

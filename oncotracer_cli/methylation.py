@@ -43,24 +43,27 @@ class MethylationRequest:
     """Fully resolved, immutable inputs for one optional methylation branch."""
 
     classifier: str
-    pod5_dir: Path
+    pod5_dir: Path | None
     pod5_files: tuple[Path, ...]
     gpu: bool
     dorado: Path
     modkit: Path
     samtools: Path
-    dorado_model: Path
-    dorado_modbase_model: Path
+    dorado_model: Path | None
+    dorado_modbase_model: Path | None
     classifier_executable: Path | None
     classifier_paths: Mapping[str, Path]
     executable_sha256: Mapping[str, str]
     asset_sha256: Mapping[str, str]
     pod5_inventory_sha256: str
     classifier_interface_contract_commit: str
+    modbam_input: Path | None = None
+    modbam_files: tuple[Path, ...] = ()
+    modbam_inventory_sha256: str = ""
 
     @property
     def dorado_device(self) -> str:
-        return "cuda:all" if self.gpu else "cpu"
+        return "cuda:all" if self.gpu and self.modbam_input is None else "cpu"
 
 
 def _strict_bool(value: object, *, key: str, default: bool = False) -> bool:
@@ -96,7 +99,7 @@ def _configured_executable(
     value = str(config.get(key) or default).strip()
     candidate: str | None
     if os.sep in value:
-        path = Path(value).expanduser().resolve()
+        path = Path(value).expanduser().absolute()
         candidate = str(path) if path.is_file() and os.access(path, os.X_OK) else None
     else:
         candidate = shutil.which(value)
@@ -104,7 +107,7 @@ def _configured_executable(
         raise OncoTracerError(
             f"{label} executable is unavailable; set {key} to an existing executable"
         )
-    return Path(candidate).expanduser().resolve()
+    return Path(candidate).expanduser().absolute()
 
 
 def _directory_files(directory: Path) -> tuple[Path, ...]:
@@ -218,6 +221,31 @@ def _pod5_inventory_sha256(root: Path, files: Sequence[Path]) -> str:
     return digest.hexdigest()
 
 
+def _modbam_files(path: Path) -> tuple[Path, ...]:
+    """Accept one closed BAM or an explicitly selected directory of BAM batches."""
+    if path.is_symlink():
+        raise OncoTracerError(
+            f"use a physical modified-base BAM path, not a symlink: {path}"
+        )
+    path = path.expanduser().resolve()
+    if path.is_dir():
+        candidates = sorted(path.rglob("*"))
+        if any(p.is_symlink() for p in candidates):
+            raise OncoTracerError(
+                "symlinks are not accepted in the explicit modified-base BAM directory"
+            )
+        files = tuple(
+            p for p in candidates if p.is_file() and p.suffix.lower() == ".bam"
+        )
+    else:
+        files = (path,) if path.is_file() and path.suffix.lower() == ".bam" else ()
+    if not files or any(p.stat().st_size == 0 for p in files):
+        raise OncoTracerError(
+            "--modbam must contain non-empty .bam files; use completed MinKNOW BAM batches with MM/ML tags"
+        )
+    return files
+
+
 def resolve_methylation_request(
     config: Mapping[str, object],
     *,
@@ -226,6 +254,7 @@ def resolve_methylation_request(
     classifier_override: str | None = None,
     pod5_override: Path | None = None,
     gpu_override: bool | None = None,
+    modbam_override: Path | None = None,
 ) -> MethylationRequest | None:
     """Resolve CLI/YAML methylation settings without creating any files."""
     configured_enabled = _strict_bool(
@@ -236,6 +265,8 @@ def resolve_methylation_request(
         raise OncoTracerError("--sturgeon/--marlin requires --methylation")
     if pod5_override is not None and not enabled:
         raise OncoTracerError("--pod5-dir requires --methylation")
+    if modbam_override is not None and not enabled:
+        raise OncoTracerError("--modbam requires --methylation or --methylation-only")
     if gpu_override and not enabled:
         raise OncoTracerError("--gpu requires --methylation")
     if not enabled:
@@ -256,12 +287,28 @@ def resolve_methylation_request(
         if config.get("methylation_pod5_dir")
         else None
     )
-    if pod5_value is None:
+    modbam_value = modbam_override or (
+        Path(str(config["methylation_modbam"]))
+        if config.get("methylation_modbam")
+        else None
+    )
+    if pod5_value is not None and modbam_value is not None:
         raise OncoTracerError(
-            "methylation requires an explicit --pod5-dir (or methylation_pod5_dir)"
+            "choose one methylation input: --pod5-dir OR --modbam; remove the other input from the YAML"
         )
-    pod5_dir = require_directory(pod5_value, "methylation POD5 directory")
-    pod5_files = _pod5_files(pod5_dir)
+    if pod5_value is None and modbam_value is None:
+        raise OncoTracerError(
+            "methylation requires an explicit --pod5-dir (or methylation_pod5_dir), "
+            "or --modbam (methylation_modbam) to reuse existing modified-base calls"
+        )
+    pod5_dir = (
+        require_directory(pod5_value, "methylation POD5 directory")
+        if pod5_value
+        else None
+    )
+    pod5_files = _pod5_files(pod5_dir) if pod5_dir else ()
+    modbam_files = _modbam_files(modbam_value) if modbam_value else ()
+    modbam_input = modbam_value.expanduser().resolve() if modbam_value else None
 
     build = str(config.get("methylation_reference_build") or "hg38").strip().lower()
     if build != "hg38":
@@ -282,28 +329,40 @@ def resolve_methylation_request(
     samtools = _configured_executable(
         config, "methylation_samtools_executable", "samtools", "samtools"
     )
-    dorado_model = _configured_directory(
-        config, "methylation_dorado_model", "Dorado basecalling model"
+    dorado_model = (
+        _configured_directory(
+            config, "methylation_dorado_model", "Dorado basecalling model"
+        )
+        if pod5_dir
+        else None
     )
-    dorado_modbase_model = _configured_directory(
-        config,
-        "methylation_dorado_modbase_model",
-        "Dorado 5mCG/5hmCG modified-base model",
+    dorado_modbase_model = (
+        _configured_directory(
+            config,
+            "methylation_dorado_modbase_model",
+            "Dorado 5mCG/5hmCG modified-base model",
+        )
+        if pod5_dir
+        else None
     )
-    asset_sha256: dict[str, str] = {
-        "dorado_model_tree": _validate_optional_tree_hash(
-            config,
-            "methylation_dorado_model_sha256",
-            dorado_model,
-            "Dorado basecalling model",
-        ),
-        "dorado_modbase_model_tree": _validate_optional_tree_hash(
-            config,
-            "methylation_dorado_modbase_model_sha256",
-            dorado_modbase_model,
-            "Dorado modified-base model",
-        ),
-    }
+    asset_sha256: dict[str, str] = {}
+    if dorado_model is not None and dorado_modbase_model is not None:
+        asset_sha256.update(
+            {
+                "dorado_model_tree": _validate_optional_tree_hash(
+                    config,
+                    "methylation_dorado_model_sha256",
+                    dorado_model,
+                    "Dorado basecalling model",
+                ),
+                "dorado_modbase_model_tree": _validate_optional_tree_hash(
+                    config,
+                    "methylation_dorado_modbase_model_sha256",
+                    dorado_modbase_model,
+                    "Dorado modified-base model",
+                ),
+            }
+        )
     classifier_paths: dict[str, Path] = {}
     classifier_executable: Path | None
     supported_commit = SUPPORTED_CLASSIFIER_INTERFACE_COMMITS[classifier]
@@ -316,9 +375,7 @@ def resolve_methylation_request(
             "contract rather than authenticating the external installation"
         )
     configured_commit = (
-        str(config.get(interface_commit_key) or supported_commit)
-        .strip()
-        .lower()
+        str(config.get(interface_commit_key) or supported_commit).strip().lower()
     )
     if not COMMIT_PATTERN.fullmatch(configured_commit):
         raise OncoTracerError(
@@ -405,8 +462,20 @@ def resolve_methylation_request(
         classifier_paths=classifier_paths,
         executable_sha256=executable_sha256,
         asset_sha256=asset_sha256,
-        pod5_inventory_sha256=_pod5_inventory_sha256(pod5_dir, pod5_files),
+        pod5_inventory_sha256=(
+            _pod5_inventory_sha256(pod5_dir, pod5_files) if pod5_dir else ""
+        ),
         classifier_interface_contract_commit=configured_commit,
+        modbam_input=modbam_input,
+        modbam_files=modbam_files,
+        modbam_inventory_sha256=(
+            _pod5_inventory_sha256(
+                modbam_input if modbam_input.is_dir() else modbam_input.parent,
+                modbam_files,
+            )
+            if modbam_input
+            else ""
+        ),
     )
 
 
@@ -414,7 +483,11 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
     return {
         "enabled": True,
         "classifier": request.classifier,
-        "pod5_dir": str(request.pod5_dir),
+        "input_kind": "modbam" if request.modbam_input else "pod5",
+        "pod5_dir": str(request.pod5_dir) if request.pod5_dir else None,
+        "modbam_input": str(request.modbam_input) if request.modbam_input else None,
+        "modbam_file_count": len(request.modbam_files),
+        "modbam_inventory_sha256": request.modbam_inventory_sha256,
         "pod5_file_count": len(request.pod5_files),
         "pod5_inventory_sha256": request.pod5_inventory_sha256,
         "gpu_requested": request.gpu,
@@ -431,8 +504,12 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
         "classifier_runtime_source_authenticated": False,
         "classifier_runtime_external": True,
         "stages": [
-            "pod5-read-id-selection",
-            "dorado-modified-base-basecalling",
+            "fastq-read-id-selection",
+            (
+                "modbam-cpu-alignment"
+                if request.modbam_input
+                else "dorado-modified-base-basecalling"
+            ),
             "modkit-cpg-pileup",
             f"{request.classifier}-classification-if-cpg-detected",
         ],
@@ -481,17 +558,24 @@ def _status_payload(
         for record in records
         if record["status"] == "no_cpg_modifications"
     ]
+    no_probes = [
+        str(record["sample"])
+        for record in records
+        if record["status"] == "no_classifier_probes"
+    ]
     pending = [
         str(record["sample"]) for record in records if record["status"] == "pending"
     ]
     if pending:
         overall = "in_progress"
-    elif completed and (failed or no_cpg):
+    elif completed and (failed or no_cpg or no_probes):
         overall = "partial_failure"
     elif failed:
         overall = "failed"
     elif no_cpg:
         overall = "no_cpg_modifications"
+    elif no_probes:
+        overall = "no_classifier_probes"
     else:
         overall = "complete"
     return {
@@ -504,6 +588,7 @@ def _status_payload(
         "completed_samples": completed,
         "failed_samples": failed,
         "no_cpg_samples": no_cpg,
+        "no_classifier_probe_samples": no_probes,
         "pending_samples": pending,
         "samples": list(records),
         "updated_at": utc_now(),
@@ -534,7 +619,11 @@ def _provenance_payload(
         ),
         "classifier_runtime_external": True,
         "classifier_runtime_source_authenticated": False,
-        "pod5_dir": str(request.pod5_dir),
+        "input_kind": "modbam" if request.modbam_input else "pod5",
+        "pod5_dir": str(request.pod5_dir) if request.pod5_dir else None,
+        "modbam_input": str(request.modbam_input) if request.modbam_input else None,
+        "modbam_file_count": len(request.modbam_files),
+        "modbam_inventory_sha256": request.modbam_inventory_sha256,
         "pod5_file_count": len(request.pod5_files),
         "pod5_inventory_sha256": request.pod5_inventory_sha256,
         "gpu_requested": request.gpu,
@@ -719,7 +808,7 @@ def _load_reusable_sample_record(path: Path, outdir: Path, sample: str):
     if not isinstance(payload, dict) or payload.get("sample") != sample:
         return None
     status = payload.get("status")
-    if status not in {"complete", "no_cpg_modifications"}:
+    if status not in {"complete", "no_cpg_modifications", "no_classifier_probes"}:
         return None
     bedmethyl = _safe_result_path(outdir, payload.get("bedmethyl"))
     if bedmethyl is None or not bedmethyl.is_file():
@@ -755,12 +844,126 @@ def _bedmethyl_counts(path: Path) -> tuple[int, int, int]:
                 raise OncoTracerError(
                     f"Modkit bedMethyl has non-integer counts at line {line_number}"
                 ) from error
+            if coverage < 0 or modified < 0 or modified > coverage:
+                raise OncoTracerError(
+                    f"Modkit bedMethyl has invalid coverage at line {line_number}"
+                )
             rows += 1
             if coverage > 0:
                 covered_rows += 1
             if modified > 0:
                 modified_calls += modified
     return rows, covered_rows, modified_calls
+
+
+def _marlin_probe_coverage(bedmethyl: Path, probes: Path) -> int:
+    """Count covered probe IDs using the same coordinate join as MARLIN preparation."""
+    covered: set[tuple[str, int]] = set()
+    with bedmethyl.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip() or line.startswith(("#", "track", "browser")):
+                continue
+            fields = line.split("\t")
+            if int(fields[9]) > 0:
+                covered.add((fields[0], int(fields[1])))
+    matched: set[str] = set()
+    opener = gzip.open if probes.suffix.lower() == ".gz" else open
+    with opener(probes, "rt", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, 1):
+            if not line.strip() or line.startswith(("#", "track", "browser")):
+                continue
+            fields = line.rstrip().split("\t")
+            if len(fields) < 4:
+                raise OncoTracerError(
+                    f"MARLIN probe BED needs four columns at line {line_number}"
+                )
+            if (fields[0], int(fields[1])) in covered:
+                matched.add(fields[3])
+    return len(matched)
+
+
+def _select_modbam_input(
+    request: MethylationRequest,
+    union_ids: Path,
+    output: Path,
+    runner: CommandRunner,
+    threads: int,
+) -> Path:
+    """Select tagged primary records, then let Dorado align them on CPU to our hg38."""
+    merged = output / ".input_batches.bam"
+    selected = output / ".selected_input.bam"
+    for path in (merged, selected):
+        path.unlink(missing_ok=True)
+    for index, path in enumerate(request.modbam_files):
+        runner.run(
+            f"methylation-input-quickcheck-{index}",
+            [request.samtools, "quickcheck", "-u", path],
+        )
+    runner.run(
+        "methylation-input-merge",
+        [
+            request.samtools,
+            "merge",
+            "-@",
+            str(threads),
+            "-u",
+            "-o",
+            merged,
+            *request.modbam_files,
+        ],
+    )
+    runner.run(
+        "methylation-input-select",
+        [
+            request.samtools,
+            "view",
+            "-@",
+            str(threads),
+            "-N",
+            union_ids,
+            # MM is a string; ML is an array, unsupported by samtools expressions.
+            # The separate tag-presence filter works for ML without interpreting it.
+            "-F",
+            "2304",
+            "-e",
+            "exists([MM])",
+            "-d",
+            "ML",
+            "-b",
+            "-o",
+            selected,
+            merged,
+        ],
+    )
+    count_file = output / "input_tagged_read_count.txt"
+    with count_file.open("w", encoding="utf-8") as handle:
+        runner.run(
+            "methylation-input-count",
+            [request.samtools, "view", "-c", selected],
+            stdout=handle,
+        )
+    if int(count_file.read_text().strip()) == 0:
+        raise OncoTracerError(
+            "No FASTQ-selected reads with MM/ML modification tags in --modbam. "
+            "Use matching completed MinKNOW BAMs made with modified-base calling, "
+            "or use --pod5-dir to call modifications from raw signal. FASTQ alone cannot supply methylation."
+        )
+    # Multiple basecalling exports can contain the same primary read. Do not
+    # inflate methylation coverage by accepting duplicate batches.
+    try:
+        runner.pipeline(
+            "methylation-input-unique-reads",
+            [request.samtools, "view", selected],
+            ["awk", "{ if (seen[$1]++) exit 1 }"],
+        )
+    except OncoTracerError as error:
+        raise OncoTracerError(
+            "Could not verify one primary BAM record per read: duplicate read IDs "
+            "or a read-validation tool failed. Use one copy of each completed batch, "
+            "not overlapping basecalling exports; see the execution trace."
+        ) from error
+    merged.unlink(missing_ok=True)
+    return selected
 
 
 def _run_sturgeon(
@@ -950,6 +1153,7 @@ def run_methylation(
             "cpg_rows": None,
             "covered_cpg_rows": None,
             "modified_cpg_calls": None,
+            "covered_classifier_probes": None,
             "bedmethyl": None,
             "classification": None,
         }
@@ -1007,28 +1211,56 @@ def run_methylation(
         fasta,
         request.dorado,
         request.samtools,
-        *_directory_files(request.dorado_model),
-        *_directory_files(request.dorado_modbase_model),
+        *(_directory_files(request.dorado_model) if request.dorado_model else ()),
+        *(
+            _directory_files(request.dorado_modbase_model)
+            if request.dorado_modbase_model
+            else ()
+        ),
     ]
+    basecall_stage = "methylation-dorado-basecall"
+    if request.modbam_input:
+        basecall_stage = "methylation-modbam-align"
+        dorado_command = [
+            request.dorado,
+            "aligner",
+            fasta,
+            modbam_out / ".selected_input.bam",
+            "--threads",
+            str(max(1, threads)),
+            "--mm2-opts",
+            "-x map-ont",
+        ]
+        basecall_inputs = [
+            *request.modbam_files,
+            union_ids,
+            fasta,
+            request.dorado,
+            request.samtools,
+        ]
     signature = ledger.signature(
-        "methylation-dorado-basecall",
-        [str(value) for value in dorado_command],
+        basecall_stage,
+        ["primary-mm-ml-input-v1", *[str(value) for value in dorado_command]],
         basecall_inputs,
     )
-    if force or not ledger.reusable(
-        "methylation-dorado-basecall", signature, [all_bam, all_bai]
-    ):
+    if force or not ledger.reusable(basecall_stage, signature, [all_bam, all_bai]):
         for owned in (all_bam, all_bai, unsorted):
             owned.unlink(missing_ok=True)
-        dorado_log = logs_out / "dorado_basecaller.stderr.log"
+        if request.modbam_input:
+            _select_modbam_input(
+                request, union_ids, modbam_out, runner, max(1, threads)
+            )
+        dorado_log = logs_out / "dorado.stderr.log"
         with (
             unsorted.open("wb") as output,
             dorado_log.open("w", encoding="utf-8") as error_log,
         ):
             runner.run(
-                "methylation-dorado-basecall",
+                basecall_stage,
                 dorado_command,
-                env=_accelerator_environment(request.gpu),
+                env=_accelerator_environment(
+                    request.gpu if request.pod5_dir else False
+                ),
                 stdout=output,  # type: ignore[arg-type]
                 stderr=error_log,
             )
@@ -1052,9 +1284,11 @@ def run_methylation(
         runner.run(
             "methylation-dorado-quickcheck", [request.samtools, "quickcheck", all_bam]
         )
-        current_pod5_files = _pod5_files(request.pod5_dir)
-        current_pod5_inventory = _pod5_inventory_sha256(
-            request.pod5_dir, current_pod5_files
+        current_pod5_files = _pod5_files(request.pod5_dir) if request.pod5_dir else ()
+        current_pod5_inventory = (
+            _pod5_inventory_sha256(request.pod5_dir, current_pod5_files)
+            if request.pod5_dir
+            else ""
         )
         if (
             current_pod5_files != request.pod5_files
@@ -1063,8 +1297,22 @@ def run_methylation(
             raise OncoTracerError(
                 "the explicit POD5 inventory changed during modified-base basecalling"
             )
+        if request.modbam_input:
+            source = request.modbam_input
+            current_files = _modbam_files(source)
+            if (
+                current_files != request.modbam_files
+                or _pod5_inventory_sha256(
+                    source if source.is_dir() else source.parent, current_files
+                )
+                != request.modbam_inventory_sha256
+            ):
+                raise OncoTracerError(
+                    "The modified-base BAM inputs changed during analysis. Use a snapshot of completed batches."
+                )
+            (modbam_out / ".selected_input.bam").unlink(missing_ok=True)
         unsorted.unlink(missing_ok=True)
-        ledger.complete("methylation-dorado-basecall", signature, [all_bam, all_bai])
+        ledger.complete(basecall_stage, signature, [all_bam, all_bai])
 
     for index, sample in enumerate(samples):
         name = str(getattr(sample, "sample"))
@@ -1098,7 +1346,7 @@ def run_methylation(
         sample_signature = ledger.signature(
             sample_stage,
             [
-                "native-ont-methylation-v1",
+                "native-ont-methylation-v2-primary-probe-qc",
                 request.classifier,
                 request.classifier_interface_contract_commit,
                 f"threads={max(1, threads)}",
@@ -1113,6 +1361,22 @@ def run_methylation(
                 _write_status(status_path, request, records)
                 continue
         try:
+            # A recomputation that ends in a no-call must not leave an older
+            # prediction at the usual result path.
+            sample_classifier_out = classifier_out / name
+            previous_predictions = (
+                [
+                    sample_classifier_out / f"{name}.marlin_predictions.tsv",
+                    sample_classifier_out / f"{name}.marlin_input.bed",
+                ]
+                if request.classifier == "marlin"
+                else [
+                    sample_classifier_out
+                    / "predictions"
+                    / f"{name}.sturgeon_{request.classifier_paths['model'].stem}{suffix}"
+                    for suffix in (".csv", ".pdf")
+                ]
+            )
             for owned in (
                 raw_bam,
                 combined_bam,
@@ -1120,6 +1384,7 @@ def run_methylation(
                 bedmethyl,
                 record_count,
                 record_path,
+                *previous_predictions,
             ):
                 owned.unlink(missing_ok=True)
             split_command = [
@@ -1129,6 +1394,8 @@ def run_methylation(
                 str(max(1, threads)),
                 "-N",
                 read_id_paths[name],
+                "-F",
+                "2304",
                 "-b",
                 "-o",
                 raw_bam,
@@ -1155,7 +1422,7 @@ def run_methylation(
             record["modbam_records"] = modbam_records
             if modbam_records == 0:
                 raise OncoTracerError(
-                    f"sample {name} has no FASTQ-selected reads in the explicit POD5 data"
+                    f"sample {name} has no FASTQ-selected reads in the methylation input; check the FASTQ and POD5/BAM sample mapping"
                 )
             runner.run(
                 f"methylation-adjust-{name}",
@@ -1198,6 +1465,8 @@ def run_methylation(
                     str(max(1, threads)),
                     "--sampling-threads",
                     str(max(1, min(threads, 4))),
+                    "--sampling-frac",
+                    "1.0",
                     "--seed",
                     "1",
                     "--log-filepath",
@@ -1231,6 +1500,22 @@ def run_methylation(
                 ledger.complete(sample_stage, sample_signature, [record_path])
                 _write_status(status_path, request, records)
                 continue
+            if request.classifier == "marlin":
+                record["covered_classifier_probes"] = _marlin_probe_coverage(
+                    bedmethyl, request.classifier_paths["probes"]
+                )
+                if record["covered_classifier_probes"] == 0:
+                    record.update(
+                        {
+                            "status": "no_classifier_probes",
+                            "stage": "classifier_probe_coverage",
+                            "error": "CpG calls were found, but none cover the supplied MARLIN probes. No leukemia prediction was made. Check human alignment, hg38 probe coordinates and usable read yield.",
+                        }
+                    )
+                    atomic_write_json(record_path, record)
+                    ledger.complete(sample_stage, sample_signature, [record_path])
+                    _write_status(status_path, request, records)
+                    continue
             if request.classifier == "sturgeon":
                 prediction = _run_sturgeon(
                     request,

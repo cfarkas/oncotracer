@@ -3289,6 +3289,7 @@ def _merge_methylation_summary(
     status: Mapping[str, object],
     *,
     cna_error: BaseException | None,
+    cna_requested: bool = True,
 ) -> dict[str, object]:
     """Publish independent methylation/CNA outcomes even if either branch fails."""
     summary_dir = outdir / "06_workflow_summary"
@@ -3313,10 +3314,12 @@ def _merge_methylation_summary(
 
     prior_cna_status = str(summary.get("workflow_status") or "complete")
     cna_status = "failed" if cna_error is not None else prior_cna_status
+    if not cna_requested:
+        cna_status = "not_requested"
     methylation_status = str(status.get("overall_status") or "failed")
     cna_success = cna_status in {"complete", "partial_failure"}
     methylation_success = bool(status.get("completed_samples"))
-    if cna_status == "complete" and methylation_status == "complete":
+    if cna_status in {"complete", "not_requested"} and methylation_status == "complete":
         workflow_status = "complete"
     elif cna_success or methylation_success:
         workflow_status = "partial_failure"
@@ -3335,6 +3338,9 @@ def _merge_methylation_summary(
             "methylation_completed_samples": status.get("completed_samples", []),
             "methylation_failed_samples": status.get("failed_samples", []),
             "methylation_no_cpg_samples": status.get("no_cpg_samples", []),
+            "methylation_no_classifier_probe_samples": status.get(
+                "no_classifier_probe_samples", []
+            ),
         }
     )
     if cna_error is not None:
@@ -3437,6 +3443,15 @@ def _validate_native_dry_run(
             }
         )
     pathology = config.get("pathology_csv")
+    if _as_bool(config.get("methylation_only"), False):
+        plan["caller"] = None
+        plan["run_cna_classifier"] = False
+        plan["stages"] = [
+            "reference-validation",
+            *methylation_plan(methylation_request)["stages"],
+            "workflow-summary",
+        ]
+    plan["methylation_only"] = _as_bool(config.get("methylation_only"), False)
     if pathology:
         require_file(Path(str(pathology)), "Pathology CSV")
         plan["pathology_csv"] = str(Path(str(pathology)).expanduser().resolve())
@@ -3527,6 +3542,8 @@ def run_native(
     methylation_classifier: str | None = None,
     methylation_pod5_dir: Path | None = None,
     methylation_gpu: bool | None = None,
+    methylation_modbam: Path | None = None,
+    methylation_only: bool | None = None,
 ) -> Path:
     """Run one owned native analysis or print its side-effect-free plan."""
     return _run_native_impl(
@@ -3539,6 +3556,8 @@ def run_native(
         methylation_classifier=methylation_classifier,
         methylation_pod5_dir=methylation_pod5_dir,
         methylation_gpu=methylation_gpu,
+        methylation_modbam=methylation_modbam,
+        methylation_only=methylation_only,
         _output_lease=None,
         _verified_config=None,
         _config_sha256=None,
@@ -3557,6 +3576,8 @@ def _run_native_impl(
     methylation_classifier: str | None,
     methylation_pod5_dir: Path | None,
     methylation_gpu: bool | None,
+    methylation_modbam: Path | None,
+    methylation_only: bool | None,
     _output_lease: OutputRunLease | None,
     _verified_config: Mapping[str, object] | None,
     _config_sha256: str | None,
@@ -3582,6 +3603,15 @@ def _run_native_impl(
             )
         config = dict(_verified_config)
     _reject_local_sample_panel(config)
+    if methylation_only is not None:
+        config["methylation_only"] = methylation_only
+    only_methylation = _as_bool(config.get("methylation_only"), False)
+    if only_methylation:
+        methylation = True
+        if _as_bool(config.get("run_cna_classifier"), False):
+            raise OncoTracerError(
+                "methylation_only cannot also request run_cna_classifier; set it to false or run both branches"
+            )
     mode = str(config.get("mode") or "").strip().lower()
     if mode not in {"illumina", "ont"}:
         raise OncoTracerError("config mode must be illumina or ont")
@@ -3593,12 +3623,19 @@ def _run_native_impl(
         classifier_override=methylation_classifier,
         pod5_override=methylation_pod5_dir,
         gpu_override=methylation_gpu,
+        modbam_override=methylation_modbam,
     )
     outdir_value = config.get("outdir")
     if not outdir_value:
         raise OncoTracerError("config requires outdir")
     outdir = Path(os.path.abspath(os.fspath(Path(str(outdir_value)).expanduser())))
-    cpu = threads or max(1, min(os.cpu_count() or 1, 16))
+    cpu = (
+        threads
+        if threads is not None
+        else _as_int(config.get("threads"), max(1, min(os.cpu_count() or 1, 16)))
+    )
+    if cpu < 1:
+        raise OncoTracerError("threads must be a positive integer")
     force_run = _as_bool(config.get("force"), False) if force is None else force
     execution_root = _execution_root or runtime_root(explicit_root)
     if _output_lease is None and not dry_run:
@@ -3618,6 +3655,8 @@ def _run_native_impl(
                 methylation_classifier=methylation_classifier,
                 methylation_pod5_dir=methylation_pod5_dir,
                 methylation_gpu=methylation_gpu,
+                methylation_modbam=methylation_modbam,
+                methylation_only=methylation_only,
                 _output_lease=output_lease,
                 _verified_config=config,
                 _config_sha256=config_digest,
@@ -3736,7 +3775,7 @@ def _run_native_impl(
             ledger,
             toolchain,
             need_bwa=False,
-            need_minimap2=True,
+            need_minimap2=not only_methylation,
             threads=cpu,
         )
         assert ont_caller is not None
@@ -3759,27 +3798,32 @@ def _run_native_impl(
                     outdir, methylation_request, error
                 )
         try:
-            _run_ont_cna_branch(
-                root,
-                config,
-                samples,
-                samurai_out,
-                reference,
-                outdir,
-                lpwgs_root,
-                runner,
-                ledger,
-                toolchain,
-                caller=ont_caller,
-                threads=cpu,
-                force=force_run,
-            )
+            if not only_methylation:
+                _run_ont_cna_branch(
+                    root,
+                    config,
+                    samples,
+                    samurai_out,
+                    reference,
+                    outdir,
+                    lpwgs_root,
+                    runner,
+                    ledger,
+                    toolchain,
+                    caller=ont_caller,
+                    threads=cpu,
+                    force=force_run,
+                )
         except (OSError, OncoTracerError, ValueError) as error:
             if methylation_request is None:
                 raise
             cna_error = error
 
-    if _as_bool(config.get("run_cna_classifier"), False) and cna_error is None:
+    if (
+        not only_methylation
+        and _as_bool(config.get("run_cna_classifier"), False)
+        and cna_error is None
+    ):
         try:
             run_native_classifier(
                 root,
@@ -3802,6 +3846,7 @@ def _run_native_impl(
             outdir,
             methylation_status,
             cna_error=cna_error,
+            cna_requested=not only_methylation,
         )
 
     trace_text = trace.read_text(encoding="utf-8", errors="replace")
