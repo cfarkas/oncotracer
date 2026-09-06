@@ -70,7 +70,7 @@ RESOURCE_FLAGS = {
 COMMENTS = {
     "mode": "Sequencing platform: illumina or ont.",
     "lpwgs_root": "Reference cache. Downloads and reusable hg38 files go here.",
-    "hg38_auto_download": "true downloads prebuilt hg38 indexes when run starts; setup/check never download them.",
+    "hg38_auto_download": "true downloads prebuilt hg38 indexes at run time; false reuses existing references or builds missing indexes locally.",
     "outdir": "Analysis results. Use a new directory for a different analysis.",
     "threads": "CPU worker threads requested; some tools also use helper threads.",
     "illumina_samplesheet": "CSV linking sample names to existing FASTQ files.",
@@ -168,7 +168,7 @@ def _render_config(values: dict[str, object]) -> str:
 
 def _existing_hg38_parent(path: Path, mode: str) -> Path:
     """Accept an OncoTracer reference parent or its actual hg38 build folder."""
-    from .reference_bundle import INDEX_FILES, MANIFESTS
+    from .reference_bundle import INDEX_FILES, MANIFESTS, reference_paths
 
     path = require_directory(
         path,
@@ -177,15 +177,12 @@ def _existing_hg38_parent(path: Path, mode: str) -> Path:
     if path.name == "samurai_hg38" and path.parent.name == "references":
         path = path.parents[1]
     elif (
-        path.name == "samurai-hg38"
-        and path.parent.name == "reference-cache"
+        path.parent.name == "reference-cache"
         and path.parent.parent.name == ".oncotracer"
+        and path == reference_paths(path.parents[2])[1]
     ):
         path = path.parents[2]
-    candidates = (
-        path / "references/samurai_hg38",
-        path / ".oncotracer/reference-cache/samurai-hg38",
-    )
+    candidates = reference_paths(path)
     reference = next(
         (candidate for candidate in candidates if os.path.lexists(candidate)),
         candidates[0],
@@ -299,7 +296,7 @@ def _command_setup(args: argparse.Namespace) -> int:
     values: dict[str, object] = {
         "mode": mode,
         "lpwgs_root": str(reference_root),
-        "hg38_auto_download": not bool(supplied_reference),
+        "hg38_auto_download": not (bool(supplied_reference) or args.build_reference),
         "outdir": str(project / "results"),
         "threads": args.threads,
         "force": False,
@@ -542,6 +539,12 @@ def _command_setup(args: argparse.Namespace) -> int:
     print("Setup has not run an analysis or installed optional resources.")
     if values["hg38_auto_download"]:
         print("The run command will download prebuilt hg38 indexes automatically if needed.")
+    elif args.build_reference:
+        print(
+            "Local hg38 indexing selected: run downloads genome source files as needed "
+            "and builds missing indexes on CPU. This needs more RAM, temporary disk "
+            "space and time than importing prebuilt indexes."
+        )
     return 0
 
 
@@ -687,7 +690,15 @@ def add_setup_commands(subparsers) -> None:
         metavar="PATH",
         help=(
             "reuse an existing OncoTracer hg38 reference parent; without PATH "
-            "(or when omitted), run downloads prebuilt indexes into PROJECT/reference"
+            "select the default prebuilt download into PROJECT/reference at run time"
+        ),
+    )
+    reference_options.add_argument(
+        "--build_reference",
+        action="store_true",
+        help=(
+            "build missing hg38 indexes locally on CPU when run starts, under "
+            "PROJECT/reference; needs more RAM, disk and time than prebuilt import"
         ),
     )
     reference_options.add_argument(

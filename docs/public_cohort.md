@@ -95,6 +95,11 @@ works. Without a path, or with the flag omitted, run downloads about 8.0 GiB of
 prebuilt hg38 indexes into `analysis/reference/` automatically. Setup and check
 do not download them. See [reference details](reference_indexes.md).
 
+To build your own indexes, replace `--hg38_build` with `--build_reference` in
+the setup command. Run then downloads hg38 source files as needed and builds
+missing BWA indexes on CPU. This needs more RAM, temporary disk and time;
+do not combine the two flags.
+
 ## 4. Check and run
 
 ```bash

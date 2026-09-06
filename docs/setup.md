@@ -37,16 +37,17 @@ Setup refuses to overwrite an existing configuration. To change an existing proj
 | `--fastq-1`, `--fastq-2` | Existing Illumina read files | `/data/sample_R1.fastq.gz` |
 | `--samplesheet` | CSV linking each Illumina library to its FASTQs | `/data/illumina/samplesheet.csv` |
 | `--hg38_build [PATH]` | Existing OncoTracer hg38 reference; no path means automatic download at run time | `--hg38_build /data/oncotracer-reference` |
+| `--build_reference` | Build missing hg38 indexes locally when run starts | `--build_reference` |
 | `--config` | YAML saved by setup | `/work/my-study/config/run.yml` |
 | `--backend` | How the installed analysis tools are provided | `conda` |
 | `--threads` | CPU worker threads to request | `8` |
 
 Use absolute paths, beginning with `/`, to make commands work from any directory. Put paths in quotes if they contain spaces. In the examples, a backslash `\` at the end of a line continues the same command on the next line. `$PWD` means your current directory.
 
-`--hg38_build` is optional for every example. Supply a reference parent or its
-`references/samurai_hg38` folder to reuse it. With no path, or no flag, `run`
-downloads verified prebuilt indexes into `PROJECT/reference`. Setup and check
-never download genomes.
+Choose one reference option: `--hg38_build PATH` reuses a prepared reference;
+`--build_reference` builds missing indexes locally, using more RAM and time.
+By default, `run` downloads prebuilt indexes into `PROJECT/reference`.
+Setup and check never download or build genomes. See [reference paths](reference_indexes.md).
 
 ## ONT: one barcode
 

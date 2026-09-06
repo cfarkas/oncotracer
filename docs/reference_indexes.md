@@ -1,4 +1,4 @@
-# Prebuilt hg38 indexes
+# hg38 reference indexes
 
 A prebuilt index avoids the one-time genome-index construction step. It does
 **not** remove RAM needed for alignment, sorting, CNA analysis or optional models.
@@ -6,29 +6,44 @@ Start with `oncotracer system --path /absolute/path/project` to see planning lim
 
 Install the [OncoTracer command](installation.md) before using these commands.
 
-## Automatic download or an existing build
+## Choose how to prepare hg38
 
-All [setup examples](setup.md) and both QuickStarts accept the optional
-`--hg38_build` flag:
+All [setup examples](setup.md) and both QuickStarts accept these options:
 
 | Setup option | What happens when you run |
 | --- | --- |
 | `--hg38_build /data/shared-reference` | Reuse that prepared OncoTracer reference |
 | `--hg38_build` with no path | Download prebuilt indexes into `PROJECT/reference` |
-| Flag omitted | Same automatic download |
+| Neither reference option supplied | Same automatic download |
+| `--build_reference` | Build missing indexes locally on CPU under `PROJECT/reference` |
 
-The path can be the reference parent or its `references/samurai_hg38` folder;
+Choose only one option. For `--hg38_build`, supply the reference parent or the
+actual build folder (including OncoTracer's own local cache);
 not a FASTA, `.mmi` file, or shell script. BWA indexes are required for Illumina,
 minimap2 for ONT. A build containing both can be shared by both platforms.
 
 Setup saves `lpwgs_root` and `hg38_auto_download` in YAML. Setup, check and dry-run
-do not download anything. Normal run downloads only the needed platform's bundle,
+do not download or build anything. By default, normal run downloads only the needed platform's bundle,
 checks the pinned manifest and every file, and then starts analysis. Existing
 references are validated and reused, never overwritten by automatic download.
 A failed download stops the run; it does not fall back to building indexes.
 
 The manual commands below are useful for offline transfers or preparing a shared
 bundle containing both index types before any analysis.
+
+## Build your own indexes
+
+Replace `--hg38_build` with `--build_reference` in any setup command. Then use
+the same `check` and `run` commands as usual. Run downloads OncoTracer's pinned
+hg38 source files if needed and constructs the indexes required by your analysis:
+BWA for Illumina, minimap2 for ONT CNA. It uses CPU only. Methylation-only runs
+prepare the genome without the CNA mapping index.
+
+Local construction needs more RAM, temporary disk and time than importing
+prebuilt indexes. For limited-RAM computers, keep the default download option.
+Completed local indexes are validated and reused on later runs; this flag does
+not force a rebuild or overwrite a shared reference. To reuse them in another
+project, supply `--hg38_build /absolute/path/first-project/reference`.
 
 ## Download the ready-made indexes
 
