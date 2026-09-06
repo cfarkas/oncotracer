@@ -31,4 +31,7 @@ The first run takes longer because it prepares the human reference genome and an
 
 Start reading results at `06_workflow_summary/workflow_summary.txt`. A completed computation does not by itself establish a reliable tumor classification. The [methylation guide](configuration/methylation.md#read-the-result) explains insufficient-data results.
 
-For larger examples, use [QuickStart 2](public_cohort.md) or the [full tutorial](full_tutorial.md). Technical details about recorded commands, checksums, and release tests are in [architecture](native_architecture.md) and [release validation](parity_release.md).
+For a short workflow overview, read [How OncoTracer works](native_architecture.md).
+For larger examples, use [QuickStart 2](public_cohort.md) or the [full tutorial](full_tutorial.md).
+Developer references cover [implementation details](architecture_details.md) and
+[release validation](parity_release.md).

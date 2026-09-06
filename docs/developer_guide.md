@@ -2,6 +2,9 @@
 
 This page covers the native v2 source tree, copied executable, documentation, and release checks. Work from a dedicated source checkout and branch; do not develop directly in a released asset directory.
 
+For packaging, installation ownership, and recovery contracts, see
+[implementation details](architecture_details.md).
+
 ## Source checks
 
 ```bash

@@ -98,6 +98,47 @@ class NativeDocumentationTests(unittest.TestCase):
             self.assertIn("oncotracer", text.lower(), path)
             self.assertNotIn("nextflow run", text.lower(), path)
 
+    def test_architecture_overview_keeps_implementation_details_separate(self) -> None:
+        text = (ROOT / "docs/native_architecture.md").read_text(encoding="utf-8")
+        self.assertLess(len(text.split()), 400)
+        for required in (
+            "# How OncoTracer works",
+            "## What happens to your data?",
+            "## What is optional?",
+            "## Can I restart a run?",
+            "## How do I check what ran?",
+            "architecture_details.md",
+            "installation.md",
+            "outputs.md",
+        ):
+            self.assertIn(required, text)
+        for technical_detail in (
+            "authenticated rollback journal",
+            "canonical prefix",
+            "SHA-256",
+            "zipapp",
+            "SIGKILL",
+        ):
+            self.assertNotIn(technical_detail, text)
+
+        # Keep existing bookmarks usable while headings become reader-friendly.
+        for anchor in (
+            "native-architecture",
+            "stage-graph",
+            "single-file-executable",
+            "installer-ownership-boundary",
+            "native-invariant",
+        ):
+            self.assertIn(f'<a id="{anchor}"></a>', text)
+
+        nav = yaml.safe_load((ROOT / "mkdocs.yml").read_text(encoding="utf-8"))["nav"]
+        getting_started = next(
+            item["Getting Started"] for item in nav if "Getting Started" in item
+        )
+        self.assertIn({"How OncoTracer Works": "native_architecture.md"}, getting_started)
+        advanced = (ROOT / "docs/architecture_details.md").read_text(encoding="utf-8")
+        self.assertIn("native_architecture.md", advanced)
+
     def test_readme_is_a_landing_page(self) -> None:
         text = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLess(len(text.splitlines()), 100)
@@ -139,6 +180,7 @@ class NativeDocumentationTests(unittest.TestCase):
         text = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
         for page in (
             "native_architecture.md",
+            "architecture_details.md",
             "parity_release.md",
             "installation_details.md",
         ):
@@ -147,7 +189,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertNotIn("migration_v1_to_v2.md", text)
 
     def test_standalone_payload_cache_contract_is_documented(self) -> None:
-        architecture = (ROOT / "docs/native_architecture.md").read_text(
+        architecture = (ROOT / "docs/architecture_details.md").read_text(
             encoding="utf-8"
         )
         installation = (ROOT / "docs/installation_details.md").read_text(encoding="utf-8")
@@ -175,7 +217,7 @@ class NativeDocumentationTests(unittest.TestCase):
 
     def test_installer_ownership_and_atomic_replacement_are_documented(self) -> None:
         installation = (ROOT / "docs/installation_details.md").read_text(encoding="utf-8")
-        architecture = (ROOT / "docs/native_architecture.md").read_text(
+        architecture = (ROOT / "docs/architecture_details.md").read_text(
             encoding="utf-8"
         )
         parameters = (ROOT / "docs/configuration/parameter_reference.md").read_text(
