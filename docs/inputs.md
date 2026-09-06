@@ -1,6 +1,9 @@
 # Input files and folder layouts
 
-OncoTracer accepts Illumina single-end or paired-end FASTQs, ONT FASTQs grouped by barcode, and an optional matched pathology table. Automatic Setup is recommended because it validates names and creates the exact flat YAML required by the native engine.
+Use [setup](setup.md) for explicit FASTQ paths or [batch setup](auto_params.md)
+for files with matching sample names. This page explains the input formats.
+The CSV blocks create real files: paste through the closing `CSV` line.
+`cat >` replaces the named file if it already exists. [Terminal basics](command_basics.md).
 
 ## Recommended project tree
 
@@ -28,20 +31,19 @@ project/
 │   └── pathology.csv
 ├── config/
 ├── results/
-└── reference_cache/
+└── reference/           reusable genome files; created at run time
 ```
 
 Keep inputs, configuration, reference/cache, and results below a small number of absolute project roots. OncoTracer derives Docker and Singularity mounts from the YAML paths.
 
 ## Reference storage safety
 
-OncoTracer recognizes an existing `references/samurai_hg38` directory as an external shared reference. It reads that directory but never downloads, rebuilds, repairs, or removes files there. The FASTA, FAI, sequence dictionary, BWA index, minimap2 index, immutable manifests, physical reader locks, and indexing-tool identities must all match what native v2 pins. A plain pre-existing FASTA/index directory without OncoTracer's `.oncotracer/locks/` and `.oncotracer/reference-index-provenance/` records is intentionally rejected: OncoTracer does not adopt or add metadata to an external reference. An incomplete, changed, or internally symlinked shared reference fails before analysis.
-
-If `references/samurai_hg38` does not exist, OncoTracer creates a marker-owned, content-addressed cache under `.oncotracer/reference-cache/`. Only that owned cache may be populated or transactionally rebuilt. The pinned ichorCNA hg38/500 kb assets follow the same rule: an existing `references/samurai_ichorcna_hg38_500kb` is read-only; otherwise verified assets are downloaded to the owned cache. The full five-file ichorCNA bundle is held under a shared reader lease and re-hashed before and after caller execution; owned-cache repair takes the corresponding exclusive lease.
-
-qDNAseq hg38 annotations also use a marker-owned cache below `.oncotracer/reference-cache/`. OncoTracer verifies an immutable upstream commit and source SHA-256, builds a complete three-file bundle in a private staging directory, and publishes one content-addressed generation atomically while holding a physical lock. It revalidates that generation before and after qDNAseq uses it. An existing `.oncotracer/qdnaseq-bin-data` directory is never adopted, repaired, overwritten, or deleted.
-
-Do not copy an ownership marker into an unrelated or shared directory to make OncoTracer overwrite it.
+Use `--hg38_build PATH` with a prepared OncoTracer reference, not an arbitrary
+FASTA or index file. Shared references are checked and read without modification;
+an incompatible reference stops the run. Without a path, setup/auto select
+automatic prebuilt download at run time. `--build_reference` opts into local
+construction. See [genome indexes](reference_indexes.md) for storage, RAM and
+compatibility details. Do not edit reference metadata to bypass a failed check.
 
 ## Illumina input
 
@@ -99,12 +101,13 @@ Use one layout per analysis. Do not mix paired-end and single-end rows in the sa
 Use a manual samplesheet for unusual filenames:
 
 ```bash
+mkdir -p "$PWD/project/config"
 cat > "$PWD/project/config/illumina.samplesheet.csv" <<CSV
 sample,fastq_1,fastq_2,status
-Patient_A,$PWD/project/input/illumina_fastq/Patient_A_R1.fastq.gz,$PWD/project/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor
-Patient_B,$PWD/project/input/illumina_fastq/Patient_B_R1.fastq.gz,$PWD/project/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor
-Control_A,$PWD/project/input/illumina_fastq/Control_A_R1.fastq.gz,$PWD/project/input/illumina_fastq/Control_A_R2.fastq.gz,normal
-Control_B,$PWD/project/input/illumina_fastq/Control_B_R1.fastq.gz,$PWD/project/input/illumina_fastq/Control_B_R2.fastq.gz,normal
+Patient_A,"$PWD/project/input/illumina_fastq/Patient_A_R1.fastq.gz","$PWD/project/input/illumina_fastq/Patient_A_R2.fastq.gz",tumor
+Patient_B,"$PWD/project/input/illumina_fastq/Patient_B_R1.fastq.gz","$PWD/project/input/illumina_fastq/Patient_B_R2.fastq.gz",tumor
+Control_A,"$PWD/project/input/illumina_fastq/Control_A_R1.fastq.gz","$PWD/project/input/illumina_fastq/Control_A_R2.fastq.gz",normal
+Control_B,"$PWD/project/input/illumina_fastq/Control_B_R1.fastq.gz","$PWD/project/input/illumina_fastq/Control_B_R2.fastq.gz",normal
 CSV
 ```
 
@@ -115,16 +118,14 @@ CSV
 | `fastq_2` | Absolute R2 path, or empty for every row in a single-end run |
 | `status` | `tumor` or `normal` |
 
-A manually written YAML then points to the samplesheet:
+Use this file with ordinary setup; no manual YAML is needed:
 
-```yaml
-mode: illumina
-lpwgs_root: /absolute/path/project
-outdir: /absolute/path/project/results/illumina
-illumina_samplesheet: /absolute/path/project/config/illumina.samplesheet.csv
-illumina_analysis_type: solid_biopsy
-illumina_caller: qdnaseq
-illumina_binsize_kb: 100
+```bash
+oncotracer setup --non-interactive \
+  --mode illumina --analysis cna \
+  --project "$PWD/project/manual-analysis" \
+  --samplesheet "$PWD/project/config/illumina.samplesheet.csv"
+oncotracer check --config "$PWD/project/manual-analysis/config/run.yml"
 ```
 
 ## Illumina normal rows
@@ -152,6 +153,7 @@ FASTQs may end in `.fastq`, `.fq`, `.fastq.gz`, or `.fq.gz` and should be placed
 Create a mapping table:
 
 ```bash
+mkdir -p "$PWD/project/input"
 cat > "$PWD/project/input/ont_samples.csv" <<'CSV'
 barcode,sample_name,status
 barcode01,Patient_A,TUMOR
@@ -180,10 +182,13 @@ The two lists must have identical lengths and order.
 
 A matched pathology table needs a sequencing sample identifier, case identifier, and diagnosis text:
 
-```csv
+```bash
+mkdir -p "$PWD/project/input"
+cat > "$PWD/project/input/pathology.csv" <<'CSV'
 illumina_sample_id,case_code,final_diagnosis
 Patient_A,Case_001,Diffuse large B-cell lymphoma
 Patient_B,Case_002,Reactive lymphoid tissue
+CSV
 ```
 
 Flat YAML:
@@ -206,6 +211,7 @@ gzip -t "$PWD/project/input/illumina_fastq/Patient_A_R1.fastq.gz"
 gzip -t "$PWD/project/input/illumina_fastq/Patient_A_R2.fastq.gz"
 sed -n '1,20p' "$PWD/project/config/illumina/illumina.samplesheet.csv"
 sed -n '1,160p' "$PWD/project/config/illumina/illumina.auto.yml"
+oncotracer check --config "$PWD/project/config/illumina/illumina.auto.yml"
 ```
 
 Confirm that:

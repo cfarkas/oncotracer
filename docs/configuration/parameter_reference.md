@@ -110,11 +110,20 @@ oncotracer auto \
 | `--sample-table FILE` | yes | Illumina `sample_name,status` or ONT `barcode,sample_name,status` CSV |
 | `--config-dir PATH` | no | Generated YAML/manifest/samplesheet destination |
 | `--outdir PATH` | no | Result directory written into the YAML |
+| `--threads N` | no | CPU worker threads saved in YAML; default 8 |
+| `--hg38_build [PATH]` | no | Reuse a prepared reference; no path means automatic download at run time |
+| `--build_reference` | no | Build missing indexes on CPU at run time; cannot combine with `--hg38_build` |
 | `--run-cna-classifier` | no | Write `run_cna_classifier: true` |
-| `--dry-run` | no | Print generator command without writing analysis files |
-| `--root PATH` | no | Explicit payload/source root |
+| `--cna-classifier-sample-set NAME` | no | Study context, e.g. `sarcoma`; requires classifier flag |
+| `--no-pathology-models` | no | Disable biomedical models in reports; requires classifier flag |
+| `--dry-run` | no | Print the generator command; no files, gzip checks or analysis |
 
-Automatic Setup creates files and stops before alignment.
+Create the sample table using the [complete batch examples](../auto_params.md).
+Existing generated files are never overwritten. Defaults are
+`READS/oncotracer_config` and `READS/oncotracer_results`; pass both folder flags
+to keep settings and results separate from the reads. Automatic reference
+downloads go to `CONFIG_DIR/reference` only when `run` starts. `auto` does not
+create the results directory. Web/LLM report enrichment is off by default.
 
 ## `oncotracer run`
 

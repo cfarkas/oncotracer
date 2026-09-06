@@ -1,8 +1,11 @@
 # Running the native workflow
 
-A normal v2 analysis starts from one flat YAML:
+A run reads the settings saved by [setup](setup.md) or [batch setup](auto_params.md).
+Use your actual YAML path below; guided setup calls it `config/run.yml`, while
+batch setup uses `config/illumina.auto.yml` or `config/ont.auto.yml`.
 
 ```bash
+oncotracer check --config /absolute/path/project/config/illumina.auto.yml
 oncotracer run \
   --backend conda \
   --threads 16 \
@@ -12,7 +15,9 @@ oncotracer run \
 The standard CNA YAML can be executed through Conda, Docker, Singularity/Apptainer, or Poetry. All backends use the same native stage graph.
 The caller stage is direct qDNAseq or direct HMMcopy/ichorCNA, followed by the same downstream refinement and reporting steps.
 
-The optional ONT POD5 methylation branch uses explicit user-installed/licensed resources and therefore supports host, Conda, or Poetry in v2.0.0, not the stable Docker or Singularity/Apptainer image.
+Optional ONT methylation uses separately installed tools and licensed models.
+Use host, Conda or Poetry for that branch; the published Docker and Singularity
+images do not include it.
 
 ## Native stage graph
 
@@ -33,8 +38,8 @@ FASTQ validation
 For ONT:
 
 ```text
-optional explicit POD5 + barcode read IDs
-  -> Dorado 5mCG/5hmCG -> Modkit CpG pileup -> Sturgeon or MARLIN
+optional modified-base BAMs (reuse calls) or POD5 (basecall signal)
+  -> select barcode read IDs -> align -> Modkit -> Sturgeon or MARLIN
   -> methylation status (independent of CNA)
 
 barcode FASTQ discovery and merge
@@ -127,7 +132,8 @@ oncotracer run \
   --dry-run
 ```
 
-The dry-run validates paths and prints native argument arrays without launching the scientific tools.
+The dry-run validates paths and shows planned analysis commands without starting
+them. It does not download references or test biological data quality.
 
 ## Resume behavior
 

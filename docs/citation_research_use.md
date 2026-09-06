@@ -61,7 +61,7 @@ Also preserve:
 - input file checksums and source accessions;
 - hg38 reference identity/checksum;
 - caller, analysis type, bin size, and refinement parameters;
-- workflow summary and stage-01 `pipeline_info`;
+- workflow summary, native run manifest and `.oncotracer-native/trace.tsv`;
 - hardware/executor/runtime information;
 - any manual exclusions or reruns;
 - primary stage-02/03 tables and QC reports.

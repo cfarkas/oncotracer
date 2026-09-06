@@ -20,7 +20,7 @@ The five groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`.
 | --- | --- | --- |
 | BWA-MEM | Single-end or paired-end alignment to hg38 | `01_samurai_illumina/alignment/*.bam` |
 | SAMtools | FASTA/BAM indexing and BAM validation | BAM/BAI and reference indexes |
-| Picard | Duplicate marking and whole-genome metrics | stage-01 BAMs and metrics |
+| Picard | Duplicate marking and duplicate metrics | stage-01 BAMs and metrics |
 | qDNAseq | Independent per-sample read-depth correction, segmentation, and calls | `01_samurai_illumina/qdnaseq/` |
 | Native boundary-refinement Python | Local BAM-depth boundary evaluation | `02_bam_refinement/` |
 | Native CNA codification/plotting | Event tables, cytogenomic notation, cohort and sample plots | stages 03 and 04 |
@@ -44,7 +44,7 @@ The standard ONT configuration uses hg38, ichorCNA, and 500 kb coarse bins.
 
 | Program or library | Purpose | Representative output |
 | --- | --- | --- |
-| Dorado | Explicit-POD5 hg38 basecalling with an explicit 5mCG/5hmCG model | `07_methylation/modbam/` |
+| Dorado | Reuse modified-base BAM calls and align, or basecall POD5 with a matching modification model | `07_methylation/modbam/` |
 | Modkit | CPU-threaded CpG conversion and deterministic bedMethyl pileup | `07_methylation/bedmethyl/` |
 | Sturgeon | User-installed/licensed CNS-tumor research classification | `07_methylation/sturgeon/` |
 | MARLIN adapter | Checksum-pinned leukemia research model preparation/prediction | `07_methylation/marlin/` |

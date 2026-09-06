@@ -2,6 +2,11 @@
 
 All backends use the same native stage graph, flat YAML, result directory layout, and audit records. The backend changes how the scientific programs are supplied; it does not select a different analysis pipeline.
 
+Use the YAML you already created with [setup](setup.md) or [batch setup](auto_params.md).
+Choose **one** backend below. The examples assume batch setup's
+`project/config/illumina.auto.yml`; substitute `my-study/config/run.yml` if you
+used guided setup. Install once, run `check`, then use the matching run command.
+
 | Backend | Install command | Primary use |
 | --- | --- | --- |
 | Conda | `oncotracer install --conda` | Native workstation/server execution |

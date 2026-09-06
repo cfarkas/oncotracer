@@ -9,6 +9,10 @@ Run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing path
 | `setup` or `check` is not recognized | Activate the environment created during [installation](installation.md); use `command -v oncotracer` to check which command your terminal is using |
 | A path does not exist | Use the actual absolute path; `/data/...` and `/work/...` in examples must be replaced |
 | Setup refuses to overwrite a YAML | Edit that existing file, or choose a new `--project` |
+| `auto` will not overwrite a file | To resume, repeat `run`; for a different analysis choose a new `--config-dir` and `--outdir` |
+| `expected CSV header` | Use the exact header for your command; a four-column Illumina table belongs to `setup --samplesheet`, not `auto --sample-table` |
+| Terminal shows `>` and waits | Paste the closing `CSV` line on its own, or cancel with Ctrl+C; see [command basics](command_basics.md) |
+| More than one R1/R2 match | Give each library one unambiguous pair; keep different samples separate |
 | Both POD5 and BAM inputs are configured | Keep only the input type you want to use |
 | CPU methylation basecalling is very slow | Reuse completed modified-base BAMs with `--modbam` if available; raw signal can take days on CPU |
 | No FASTQ-selected reads with MM/ML tags | Match the FASTQs to BAMs made with modified-base calling, or use raw POD5 |
@@ -49,7 +53,9 @@ oncotracer run \
   --dry-run
 ```
 
-The YAML must be flat. Check absolute paths, mode-specific required fields, and a dedicated `outdir`.
+The YAML must have one `key: value` per line. Replace existing values rather
+than adding duplicate keys. Check absolute paths, the sequencing mode, and a
+results directory reserved for this analysis.
 
 ## 3. Find the failing native command
 

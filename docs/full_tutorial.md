@@ -1,370 +1,245 @@
-# Full tutorial: complete public PRJNA754199 archive
+# Full tutorial: 12 public Illumina libraries
 
-This tutorial processes the 12 Illumina plasma cfDNA libraries in the versioned `examples/prjna754199/manifest.tsv`. It downloads and validates the FASTQs, creates the exact sample table, generates the native YAML automatically, runs OncoTracer, verifies the main outputs, and reviews the research results.
+Download the complete **12-run PRJNA754199 archive**, create a sample table, and
+run a copy-number analysis with research reports. No custom script or Python
+programming is needed. For a smaller first test, use [QuickStart 1](quick_start.md).
 
-[![Roadmap for the complete PRJNA754199 tutorial.](assets/tutorial/full_tutorial_flow.svg)](assets/tutorial/full_tutorial_flow.svg)
+## Before you start
 
-The original article describes more specimens than the versioned public-run manifest. This tutorial intentionally analyzes the 12 archived runs represented by that manifest and records the manifest with the results.
+Follow [installation](installation.md). This tutorial uses Conda; other
+[backends](containers.md) use the same configuration. Allow about **150 GiB of
+free working space** and several hours. FASTQs total 5.75 GiB; the first run also
+downloads approximately 8.0 GiB of prebuilt hg38 indexes. Fewer reads do not
+remove the RAM requirement for the reference; check [requirements](installation.md#requirements).
 
-## Dataset represented by the versioned manifest
-
-| Property | Value |
-| --- | ---: |
-| Public runs | 12 |
-| Layout | single-end |
-| Instrument/read length | Illumina HiSeq 2500, 36 bp |
-| Deposited reads | 266,097,582 |
-| Deposited bases | 9,579,512,952 |
-| Compressed download | about 5.75 GiB |
-| Reference/caller | hg38, qDNAseq, 100 kb |
-
-`DDLPS_*` and `WDLPS_*` are submitter-provided archive aliases. They are retained for provenance and are not independently verified diagnoses. This is a native hg38/qDNAseq reanalysis rather than an exact reproduction of the publication's original GRCh37 Plasma-Seq workflow.
-
-## Estimated resources
-
-Use Linux with at least:
-
-- 150 GiB of free working space;
-- 16 CPU cores when available;
-- available RAM appropriate for your settings; check [requirements](installation.md#requirements);
-- a stable connection for the approximately 5.75 GiB download.
-
-The complete analysis can take several hours. The native ledger allows safe reuse of valid completed stages.
-
-[Prepared genome indexes](reference_indexes.md) are optional. Set `lpwgs_root`
-in the run YAML to an existing OncoTracer reference directory to reuse it;
-otherwise the normal run prepares missing reference files.
-
-## Step 1. Install and verify one backend
-
-Conda:
+Replace `/path/to/my/analyses_dir/` with your analysis folder in **every block**.
+Use a new `oncotracer-prjna754199` folder for this tutorial. Paste each block in
+order and resolve any error before continuing. [Command help](command_basics.md).
 
 ```bash
-oncotracer install --conda
+cd /path/to/my/analyses_dir/
+oncotracer system --path "$PWD/oncotracer-prjna754199"
 oncotracer doctor --backend conda
 ```
 
-Docker:
+The data are single-end Illumina HiSeq 2500 reads, 36 bases each: 266,097,582
+reads and 9,579,512,952 bases in total. `DDLPS_*` and `WDLPS_*` are archive sample
+aliases, **not independently verified diagnoses or 12 independent patients**.
+The original study included more specimens than this public archive. This is
+an hg38/qDNAseq reanalysis, not a reproduction of its GRCh37 Plasma-Seq workflow.
+[Dataset provenance](https://github.com/cfarkas/oncotracer/blob/main/examples/prjna754199/PROVENANCE.md).
+
+## 1. Download the FASTQs
+
+Each `curl` downloads one library and names it after its archive alias so batch
+setup can match it. `--fail` reports server errors, `--location` follows download
+redirects, `--continue-at -` resumes an interrupted download, and `--output`
+sets the saved filename. The manifest records the original accession, size and checksum.
 
 ```bash
-oncotracer install --docker
-oncotracer doctor --backend docker
-```
-
-Singularity or Apptainer:
-
-```bash
-oncotracer install --singularity
-oncotracer doctor --backend singularity
-```
-
-Poetry source-development route:
-
-```bash
-cd /path/to/my/oncotracer_source/
-./oncotracer install --poetry \
-  --prefix /path/to/my/oncotracer-v2-dev-envs
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer doctor \
-  --backend poetry
-
 cd /path/to/my/analyses_dir/
+mkdir -p oncotracer-prjna754199/input/fastq
+
+curl --fail --location \
+  --output oncotracer-prjna754199/manifest.tsv \
+  https://raw.githubusercontent.com/cfarkas/oncotracer/v2.0.0/examples/prjna754199/manifest.tsv
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/DDLPS_1a.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/036/SRR15871436/SRR15871436.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/DDLPS_1b.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/035/SRR15871435/SRR15871435.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/DDLPS_1c.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/032/SRR15871432/SRR15871432.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/DDLPS_2.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/031/SRR15871431/SRR15871431.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/DDLPS_3a.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/030/SRR15871430/SRR15871430.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/DDLPS_3b.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/029/SRR15871429/SRR15871429.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/WDLPS_1a.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/028/SRR15871428/SRR15871428.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/WDLPS_1b.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/027/SRR15871427/SRR15871427.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/WDLPS_1c.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/026/SRR15871426/SRR15871426.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/WDLPS_1d.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/025/SRR15871425/SRR15871425.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/WDLPS_2.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/034/SRR15871434/SRR15871434.fastq.gz
+curl --fail --location --continue-at - \
+  --output oncotracer-prjna754199/input/fastq/WDLPS_3.fastq.gz \
+  https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR158/033/SRR15871433/SRR15871433.fastq.gz
 ```
 
-Choose one route for the real run.
+## 2. Check the downloads
 
-## Step 2. Download the versioned manifest and all 12 FASTQs
-
-The following block uses only Python's standard library. It renames each archive FASTQ to the manifest sample alias so Automatic Setup can match the sample table directly. Existing files are reused only when both expected byte count and MD5 match.
+The checksums below identify the exact archived files. Continue only when
+**all 12 lines say `OK`**. If a download was interrupted, repeat its `curl`
+command first. A completed file that fails its checksum must be downloaded
+again to a new filename and checked; do not analyze it.
 
 ```bash
-TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"
-MANIFEST="$TUTORIAL_ROOT/manifest.tsv"
-READS_DIR="$TUTORIAL_ROOT/input/fastq"
-
-mkdir -p "$READS_DIR" \
-  "$TUTORIAL_ROOT/config" \
-  "$TUTORIAL_ROOT/results"
-
-python3 - \
-  "https://raw.githubusercontent.com/cfarkas/oncotracer/v2.0.0/examples/prjna754199/manifest.tsv" \
-  "$MANIFEST" \
-  "$READS_DIR" <<'PY'
-from __future__ import annotations
-
-import csv
-import hashlib
-import pathlib
-import sys
-import urllib.request
-
-manifest_url = sys.argv[1]
-manifest_path = pathlib.Path(sys.argv[2])
-reads_dir = pathlib.Path(sys.argv[3])
-reads_dir.mkdir(parents=True, exist_ok=True)
-
-with urllib.request.urlopen(manifest_url) as response:
-    manifest_bytes = response.read()
-manifest_path.write_bytes(manifest_bytes)
-
-def md5(path: pathlib.Path) -> str:
-    digest = hashlib.md5()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-with manifest_path.open(newline="", encoding="utf-8") as handle:
-    rows = list(csv.DictReader(handle, delimiter="\t"))
-
-if len(rows) != 12:
-    raise SystemExit(f"Expected 12 manifest rows, observed {len(rows)}")
-
-for row in rows:
-    destination = reads_dir / f"{row['sample_alias']}.fastq.gz"
-    expected_bytes = int(row["fastq_bytes"])
-    expected_md5 = row["fastq_md5"]
-
-    valid = (
-        destination.is_file()
-        and destination.stat().st_size == expected_bytes
-        and md5(destination) == expected_md5
-    )
-    if not valid:
-        temporary = destination.with_suffix(destination.suffix + ".part")
-        temporary.unlink(missing_ok=True)
-        print(f"Downloading {row['run_accession']} -> {destination.name}", flush=True)
-        urllib.request.urlretrieve(row["https_url"], temporary)
-        if temporary.stat().st_size != expected_bytes:
-            raise SystemExit(f"Byte-count mismatch: {destination.name}")
-        if md5(temporary) != expected_md5:
-            raise SystemExit(f"MD5 mismatch: {destination.name}")
-        temporary.replace(destination)
-    print(f"VALID {destination.name}", flush=True)
-
-samples = reads_dir / "samples.csv"
-with samples.open("w", newline="", encoding="utf-8") as handle:
-    writer = csv.writer(handle)
-    writer.writerow(["sample_name", "status"])
-    for row in rows:
-        writer.writerow([row["sample_alias"], "TUMOR"])
-
-print(f"Wrote {samples}")
-PY
-
-gzip -t "$READS_DIR"/*.fastq.gz
-cat "$READS_DIR/samples.csv"
+cd /path/to/my/analyses_dir/
+md5sum -c <<'MD5'
+31e5afa5d0433a693c4bb64de7f84e8e  oncotracer-prjna754199/input/fastq/DDLPS_1a.fastq.gz
+fd8884a91fb38f8997081efb46c773c5  oncotracer-prjna754199/input/fastq/DDLPS_1b.fastq.gz
+851f7a9e680102cc7a93c535f3192e84  oncotracer-prjna754199/input/fastq/DDLPS_1c.fastq.gz
+5f827e9c26e835ffcfe9e64c1dc29b61  oncotracer-prjna754199/input/fastq/DDLPS_2.fastq.gz
+130081581524cb80090640c981a823e6  oncotracer-prjna754199/input/fastq/DDLPS_3a.fastq.gz
+291c9ba517db6ec0e8d55c6212390b16  oncotracer-prjna754199/input/fastq/DDLPS_3b.fastq.gz
+eddefeae830963ffa86f7cd59638659d  oncotracer-prjna754199/input/fastq/WDLPS_1a.fastq.gz
+528812a6cf90cc65cb0c57c6085019b9  oncotracer-prjna754199/input/fastq/WDLPS_1b.fastq.gz
+b366d25c230d36e613b04948deca575a  oncotracer-prjna754199/input/fastq/WDLPS_1c.fastq.gz
+0f714f53bb8c6c811df58daeff214c0e  oncotracer-prjna754199/input/fastq/WDLPS_1d.fastq.gz
+e7b9d772620bd08602881247fcec4a3f  oncotracer-prjna754199/input/fastq/WDLPS_2.fastq.gz
+07243c418d787c2b90064e29a20fd1c6  oncotracer-prjna754199/input/fastq/WDLPS_3.fastq.gz
+MD5
 ```
 
-Preserve `manifest.tsv` with the study record.
+## 3. Create the samplesheet
 
-## Step 3. Generate the single-end YAML automatically
+Paste the entire block through the final `CSV` line. This creates the two-column
+sample table; no text editor is needed. `cat >` replaces this file if it exists.
+One row represents one library. `TUMOR` is a workflow label, not a claim about
+the amount or presence of tumor DNA in that specimen.
 
 ```bash
-TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"
+cd /path/to/my/analyses_dir/
+cat > "$PWD/oncotracer-prjna754199/input/fastq/samples.csv" <<'CSV'
+sample_name,status
+DDLPS_1a,TUMOR
+DDLPS_1b,TUMOR
+DDLPS_1c,TUMOR
+DDLPS_2,TUMOR
+DDLPS_3a,TUMOR
+DDLPS_3b,TUMOR
+WDLPS_1a,TUMOR
+WDLPS_1b,TUMOR
+WDLPS_1c,TUMOR
+WDLPS_1d,TUMOR
+WDLPS_2,TUMOR
+WDLPS_3,TUMOR
+CSV
+```
 
+## 4. Save the settings
+
+```bash
+cd /path/to/my/analyses_dir/
 oncotracer auto \
   --mode illumina \
-  --reads-folder "$TUTORIAL_ROOT/input/fastq" \
-  --sample-table "$TUTORIAL_ROOT/input/fastq/samples.csv" \
-  --config-dir "$TUTORIAL_ROOT/config" \
-  --outdir "$TUTORIAL_ROOT/results" \
-  --run-cna-classifier
+  --reads-folder "$PWD/oncotracer-prjna754199/input/fastq" \
+  --sample-table "$PWD/oncotracer-prjna754199/input/fastq/samples.csv" \
+  --config-dir "$PWD/oncotracer-prjna754199/config" \
+  --outdir "$PWD/oncotracer-prjna754199/results" \
+  --hg38_build \
+  --threads 4 \
+  --run-cna-classifier \
+  --cna-classifier-sample-set sarcoma \
+  --no-pathology-models
 ```
 
-Add deterministic sarcoma-context settings:
+`--reads-folder` selects the downloaded files; `--sample-table` selects their
+labels. `--config-dir` stores settings and the generated four-column samplesheet;
+`--outdir` stores results. `--threads 4` requests four CPU workers; increase it
+only if your system has spare resources.
+
+The final three flags add copy-number reports using the study's sarcoma context,
+without biomedical-model downloads. Web/LLM enrichment is off. The optional
+GISTIC2 cohort analysis is enabled by the report defaults; a GISTIC2 failure is
+reported but is not fatal. These settings do not infer a sarcoma diagnosis.
+
+The hg38 path is optional. Replace `--hg38_build` with
+`--hg38_build /path/to/prepared/reference` to reuse indexes, or with
+`--build_reference` to build your own on CPU. Do not combine the options.
+Automatic download is the default; `auto` itself downloads no reference files.
+[Reference choices](reference_indexes.md).
+
+Expect `Selected samples: 12 (12 TUMOR, 0 NORMAL)`. The generated
+`config/illumina.samplesheet.csv` must have an empty `fastq_2` column for every
+row because these are single-end libraries.
+
+## 5. Check, then run
 
 ```bash
-CONFIG="$PWD/oncotracer-prjna754199/config/illumina.auto.yml"
-
-cat >> "$CONFIG" <<'YAML'
-cna_classifier_sample_set: sarcoma
-pathology_use_biomed_models: false
-run_gistic: true
-gistic_required: false
-knowledge_web: false
-knowledge_literature_llm: false
-knowledge_deep_literature: false
-YAML
-
-sed -n '1,220p' "$CONFIG"
+cd /path/to/my/analyses_dir/
+oncotracer check --config "$PWD/oncotracer-prjna754199/config/illumina.auto.yml"
 ```
 
-Automatic Setup creates:
-
-```text
-oncotracer-prjna754199/config/
-├── auto_params_manifest.tsv
-├── illumina.auto.yml
-└── illumina.samplesheet.csv
-```
-
-Inspect the exact 12-row samplesheet:
+Confirm all 12 names and resolve errors before starting:
 
 ```bash
-TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"
-
-sed -n '1,20p' "$TUTORIAL_ROOT/config/illumina.samplesheet.csv"
-cat "$TUTORIAL_ROOT/config/auto_params_manifest.tsv"
+cd /path/to/my/analyses_dir/
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-prjna754199/config/illumina.auto.yml"
 ```
 
-## Step 4. Dry-run the native stage graph
+Keep the terminal open. Success ends with `OncoTracer native analysis completed:`.
+To resume an interrupted analysis, repeat this **same run command**. Do not
+repeat `auto` or add `--force` for an ordinary resume.
+
+## 6. Review the results
 
 ```bash
-TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"
-
-oncotracer run \
-  --backend conda \
-  --config "$TUTORIAL_ROOT/config/illumina.auto.yml" \
-  --dry-run
+cd /path/to/my/analyses_dir/
+cat "$PWD/oncotracer-prjna754199/results/06_workflow_summary/workflow_summary.txt"
+cat "$PWD/oncotracer-prjna754199/results/01_samurai_illumina/qdnaseq/qdnaseq_sample_status.json"
 ```
 
-The dry-run prints native argument arrays and validates the configuration without starting alignment or CNA calling.
+The summary should identify `mode=illumina`, `engine=native` and
+`nextflow_used=false`. The sample-status file should list all 12 under
+`completed_samples`, with none under `failed_samples`. If samples failed, do
+not treat the cohort as complete. See [troubleshooting](troubleshooting.md).
 
-## Step 5. Run the complete analysis
-
-Choose exactly one backend.
-
-### Conda
-
-```bash
-TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"
-
-oncotracer run \
-  --backend conda \
-  --threads 16 \
-  --config "$TUTORIAL_ROOT/config/illumina.auto.yml"
-```
-
-### Docker
-
-```bash
-TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"
-
-oncotracer run \
-  --backend docker \
-  --threads 16 \
-  --config "$TUTORIAL_ROOT/config/illumina.auto.yml"
-```
-
-### Singularity or Apptainer
-
-```bash
-TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"
-
-oncotracer run \
-  --backend singularity \
-  --threads 16 \
-  --config "$TUTORIAL_ROOT/config/illumina.auto.yml"
-```
-
-### Poetry launcher
-
-```bash
-TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"
-ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
-
-"$ONCOTRACER_DEV" run \
-  --backend poetry \
-  --threads 16 \
-  --config "$TUTORIAL_ROOT/config/illumina.auto.yml"
-```
-
-Keep the terminal open until the command returns. Repeat the same command to resume content-matched completed stages.
-
-## Step 6. Verify the completed result tree
-
-```bash
-OUTDIR="$PWD/oncotracer-prjna754199/results"
-
-python3 - "$OUTDIR" <<'PY'
-from __future__ import annotations
-
-import pathlib
-import sys
-
-outdir = pathlib.Path(sys.argv[1])
-required = [
-    outdir / "06_workflow_summary" / "workflow_summary.txt",
-    outdir / "06_workflow_summary" / "workflow_summary.json",
-    outdir / "06_workflow_summary" / "native_run_manifest.json",
-    outdir / "03_cna_codification" / "cna_events.tsv",
-    outdir / "03_cna_codification" / "cna_cytogenomic_notation.tsv",
-    outdir / "04_cna_custom_plots" / "cna_per_sample_pages.pdf",
-    outdir / ".oncotracer-native" / "trace.tsv",
-    outdir / ".oncotracer-native" / "state.json",
-]
-missing = [path for path in required if not path.is_file() or path.stat().st_size == 0]
-if missing:
-    raise SystemExit("Missing or empty outputs:\n" + "\n".join(map(str, missing)))
-
-summary = (outdir / "06_workflow_summary" / "workflow_summary.txt").read_text(
-    encoding="utf-8"
-)
-for required_text in ("mode=illumina", "engine=native", "nextflow_used=false"):
-    if required_text not in summary:
-        raise SystemExit(f"Summary is missing {required_text!r}")
-
-print("SUCCESS: complete PRJNA754199 native tutorial outputs are present.")
-PY
-```
-
-Start review from:
-
-| Output | Location below `results/` |
+| Open below `results/` | What it tells you |
 | --- | --- |
-| Workflow summary | `06_workflow_summary/workflow_summary.txt` |
-| qDNAseq profiles | `01_samurai_illumina/qdnaseq/plots/` |
-| Refinement summary | `02_bam_refinement/illumina_qdnaseq_100kb/01_tables/sample_refinement_summary.csv` |
-| Final CNA events | `03_cna_codification/cna_events.tsv` |
-| Cohort/per-sample plots | `04_cna_custom_plots/` |
-| Classifier HTML | `05_cna_classifier/03_report/cna_classifier_report.html` |
-| Per-sample research PDFs | `05_cna_classifier/03_report/clinician_reports/` |
+| `01_samurai_illumina/qdnaseq/plots/` | Copy-number profile for each library |
+| `03_cna_codification/cna_events.tsv` | Final gains and losses to inspect |
+| `04_cna_custom_plots/cna_per_sample_pages.pdf` | Per-sample plots in one PDF |
+| `05_cna_classifier/03_report/cna_classifier_report.html` | Research interpretation; open in a browser |
+| `05_cna_classifier/03_report/clinician_reports/` | Per-sample research reports |
 
-## Step 7. Interpret without overclaiming
+A completed run is not a diagnosis. Examine read quality, coverage and the
+underlying copy-number tables before interpreting a report. No pathology table
+is supplied here. [How to read outputs](outputs.md).
 
-Black qDNAseq points represent normalized bin-level signal; fitted horizontal lines represent coarse CNA segments. Boundary refinement evaluates whether local BAM depth supports moving each coarse boundary.
-
-The classifier may flag recurrent regions or overlaps with genes such as `MDM2` and `CDK4`. These are research findings, not confirmed diagnoses or treatment recommendations. Review coverage, segment size, focality, longitudinal consistency, pathology, and the original CNA tables. Confirm important findings with a validated orthogonal assay.
-
-No pathology table is supplied in this public archive example, so reports are CNA-only research summaries.
-
-## Step 8. Preserve provenance
-
-Keep:
-
-- `manifest.tsv` and `input/fastq/samples.csv`;
-- `config/illumina.samplesheet.csv`, `illumina.auto.yml`, and `auto_params_manifest.tsv`;
-- `.oncotracer-native/trace.tsv` and `state.json`;
-- `06_workflow_summary/native_run_manifest.json`;
-- the release `SHA256SUMS` and `release-provenance.json`;
-- all result tables, plots, and reports used in interpretation.
+Keep the input manifest, samples.csv, the complete `config/` directory, results,
+and `oncotracer provenance --json` output. Results include the command trace at
+`.oncotracer-native/trace.tsv` and the run record at
+`06_workflow_summary/native_run_manifest.json`.
 
 ## Representative gallery
 
-### qDNAseq fitted profile
+These are previously generated research examples, not guaranteed results for
+every run. Black points show normalized signal; horizontal lines show fitted
+copy-number segments.
 
-[Open the source qDNAseq segment PDF](assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.pdf).
+[Source qDNAseq PDF](assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.pdf).
 
-![qDNAseq profile for the public DDLPS_1b archive alias](assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.png)
+![Copy-number profile for the public DDLPS_1b archive alias](assets/full_tutorial/prjna754199_samurai_ddlps1b_segment_plot.png)
 
-### Boundary-refinement statistics
-
-[Open the source refinement summary](assets/full_tutorial/prjna754199_refinement_summary.csv).
+[Source boundary-refinement table](assets/full_tutorial/prjna754199_refinement_summary.csv).
 
 ![Counts of refined, retained, and poor-resolution boundaries](assets/full_tutorial/prjna754199_refinement_summary.png)
 
-### CNA-only interpretation
-
-[Open the source research-use classifier report](assets/full_tutorial/prjna754199_cna_interpretation.pdf).
+[Source research report](assets/full_tutorial/prjna754199_cna_interpretation.pdf).
 
 ![CNA-only research interpretation for DDLPS_1b](assets/full_tutorial/prjna754199_cna_interpretation.png)
 
-## Primary sources
+## Primary sources and limits
 
-- [NCBI BioProject PRJNA754199](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA754199)
-- [ENA PRJNA754199 archive record](https://www.ebi.ac.uk/ena/browser/view/PRJNA754199)
-- [Przybyl et al., PLOS ONE (2022)](https://doi.org/10.1371/journal.pone.0262272)
-
-## Research use
-
-OncoTracer is not a standalone diagnostic system or medical device. This tutorial must not be used by itself to diagnose disease, choose treatment, establish prognosis, or report a clinical result.
+The [NCBI BioProject](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA754199),
+[ENA archive](https://www.ebi.ac.uk/ena/browser/view/PRJNA754199), and
+[Przybyl et al. (2022)](https://doi.org/10.1371/journal.pone.0262272) describe
+the source data. OncoTracer is not a standalone diagnostic system or medical
+device. Do not use this tutorial alone to diagnose disease or choose treatment.

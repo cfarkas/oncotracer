@@ -9,10 +9,10 @@
   <text class="term prompt" x="82" y="256">student@workstation:~/analyses$</text><text class="term" x="390" y="256">TUTORIAL_ROOT="$PWD/oncotracer-prjna754199"</text>
   <text class="term prompt" x="82" y="288">student@workstation:~/analyses$</text><text class="term" x="390" y="288">oncotracer auto \</text>
   <text class="term" x="110" y="320">--mode illumina --reads-folder "$TUTORIAL_ROOT/input/fastq" ...</text>
-  <text class="term success" x="82" y="363">Automatic Setup completed; generated configuration files:</text>
+  <text class="term success" x="82" y="363">Selected samples: 12 (12 TUMOR, 0 NORMAL)</text>
   <text class="term success" x="82" y="399">auto_params_manifest.tsv</text><text class="term success" x="82" y="433">illumina.auto.yml</text><text class="term success" x="82" y="467">illumina.samplesheet.csv</text>
   <text x="82" y="494" font-family="system-ui,sans-serif" font-size="14" fill="#94a3b8">All generated paths are absolute and begin below your selected analyses directory.</text>
-  <rect x="82" y="504" width="734" height="37" rx="9" fill="#3f2f0b" stroke="#fbbf24"/><text x="102" y="528" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#fde68a">No reads have been analyzed. Run the YAML in the next tutorial step.</text>
+  <rect x="82" y="504" width="734" height="37" rx="9" fill="#3f2f0b" stroke="#fbbf24"/><text x="102" y="528" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#fde68a">No analysis has started. Check the YAML, then run.</text>
   <path d="M856 412 H918" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/><path d="M856 450 H918" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
   <g filter="url(#shadow)"><rect x="930" y="145" width="416" height="410" rx="15" fill="#fff"/></g><text class="label" x="958" y="188">WHAT THE FILES MEAN</text>
   <rect x="958" y="216" width="360" height="116" rx="12" fill="#fffbeb" stroke="#fbbf24"/><text x="980" y="248" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="16" font-weight="700" fill="#92400e">illumina.auto.yml</text><text class="body" x="980" y="280">Stores checked paths, caller,</text><text class="body" x="980" y="305">settings, and final results folder.</text>

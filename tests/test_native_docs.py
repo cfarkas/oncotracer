@@ -79,6 +79,10 @@ class NativeDocumentationTests(unittest.TestCase):
             "docs/quick_start.md": 850,
             "docs/public_cohort.md": 850,
             "docs/configuration/methylation.md": 1100,
+            "docs/auto_params.md": 900,
+            "docs/full_tutorial.md": 1200,
+            "docs/six_tumor_four_normal.md": 650,
+            "docs/configuration/pathology.md": 750,
         }
         for relative, words in budgets.items():
             with self.subTest(page=relative):
