@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import csv
+import io
 import json
 import os
 import re
@@ -21,7 +22,11 @@ from . import __version__
 from .setup import add_setup_commands
 from .system_check import add_system_command
 from .uninstall import add_uninstall_command
-from .reference_bundle import add_reference_command
+from .reference_bundle import (
+    add_reference_command,
+    ensure_prebuilt_reference,
+    reference_is_present,
+)
 from .engine import Toolchain, run_native
 from .install_safety import (
     install_conda_managed,
@@ -42,6 +47,7 @@ from .runtime import (
     require_command,
     require_file,
     runtime_root,
+    sha256_file,
     utc_now,
 )
 
@@ -511,6 +517,54 @@ def _methylation_requested(config_path: Path, args: argparse.Namespace) -> bool:
     return str(value or "").strip().lower() in {"true", "yes", "on", "1"}
 
 
+def _prepare_configured_hg38(config_path: Path, args: argparse.Namespace) -> None:
+    """Supply the configured reference before either a host or container run.
+
+    The saved YAML is unchanged, so all backends use the same normal reference
+    lookup and resume identity. Dry-runs never fetch even the remote manifest.
+    """
+    digest = sha256_file(config_path)
+    config = load_flat_yaml(config_path)
+    automatic = config.get("hg38_auto_download", False)
+    if not isinstance(automatic, bool):
+        raise OncoTracerError("hg38_auto_download must be true or false")
+    if not automatic or args.dry_run:
+        return
+    value = config.get("lpwgs_root")
+    if not value:
+        raise OncoTracerError(
+            "automatic hg38 download requires lpwgs_root in the configuration"
+        )
+    parent = Path(str(value)).expanduser().resolve()
+    if reference_is_present(parent):
+        return
+    backend = _backend_from(args)
+    if backend == "docker":
+        require_command("docker")
+    elif backend in {"singularity", "apptainer"}:
+        install = _load_install_config()
+        if not (install.get("singularity_command") or _singularity_command()):
+            raise OncoTracerError("Apptainer or Singularity is required")
+        sif = args.sif or install.get("sif")
+        if not sif:
+            raise OncoTracerError(
+                "no SIF is configured; run 'oncotracer install --singularity'"
+            )
+        require_file(Path(str(sif)).expanduser().resolve(), "OncoTracer SIF")
+    # Validate inputs, options and output ownership before a large transfer.
+    preview = argparse.Namespace(**vars(args))
+    preview.dry_run = True
+    with contextlib.redirect_stdout(io.StringIO()):
+        _run_host(config_path, preview)
+    if sha256_file(config_path) != digest:
+        raise OncoTracerError("configuration changed before hg38 download")
+    ensure_prebuilt_reference(parent, mode=str(config["mode"]))
+    if sha256_file(config_path) != digest:
+        raise OncoTracerError(
+            "configuration changed during hg38 download; check it before running again"
+        )
+
+
 def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
     config_path = require_file(config_path, "OncoTracer YAML config")
     backend = _backend_from(args)
@@ -539,12 +593,15 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
                     f"'oncotracer install --{backend}' "
                     f"(missing: {', '.join(missing)})"
                 )
+        _prepare_configured_hg38(config_path, args)
         return _run_host(config_path, args)
     if backend == "docker":
+        _prepare_configured_hg38(config_path, args)
         outdir = _run_host(config_path, args) if args.dry_run else None
         _run_docker(config_path, args)
         return outdir
     if backend in {"singularity", "apptainer"}:
+        _prepare_configured_hg38(config_path, args)
         outdir = _run_host(config_path, args) if args.dry_run else None
         _run_singularity(config_path, args)
         return outdir

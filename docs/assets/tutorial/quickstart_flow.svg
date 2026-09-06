@@ -46,7 +46,7 @@
   <text class="file" x="972" y="276">oncotracer setup --project PATH ...</text>
   <text class="file" x="972" y="301">oncotracer check --config FILE</text>
   <text class="file" x="972" y="326">Each project has config/run.yml.</text>
-  <text class="small" x="954" y="360">Optional: reuse indexes with --reference-root.</text>
+  <text class="small" x="954" y="360">Optional: reuse indexes with --hg38_build.</text>
 
   <path d="M1138 390 V420" stroke="#0f766e" stroke-width="4" marker-end="url(#arrow)"/>
   <text class="lane" x="54" y="441">RUN AND REVIEW — ONCOTRACER READS THE SAVED YAML</text>

@@ -49,7 +49,7 @@ a new demultiplexing step.
 cd /path/to/my/analyses_dir/
 oncotracer setup --non-interactive \
   --project "$PWD/oncotracer-quickstart1/illumina" \
-  --reference-root "$PWD/oncotracer-quickstart1/reference" \
+  --hg38_build \
   --mode illumina --analysis cna --sample-name ERR12341627 \
   --fastq-1 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz" \
   --fastq-2 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz" \
@@ -57,27 +57,30 @@ oncotracer setup --non-interactive \
 
 oncotracer setup --non-interactive \
   --project "$PWD/oncotracer-quickstart1/ont" \
-  --reference-root "$PWD/oncotracer-quickstart1/reference" \
+  --hg38_build \
   --mode ont --analysis cna \
   --reads-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
   --barcodes barcode01 --sample-names DRR165691 \
   --threads 4
 ```
 
-`--project` separates the configurations and results. Both projects use the same
-`--reference-root` so they can reuse genome files. `--threads 4` requests four
-CPU workers. `--non-interactive` requires the inputs as flags instead of prompts.
+`--project` separates the configurations and results. `--hg38_build` without a
+path saves an automatic-download setting; setup itself downloads nothing.
+`--threads 4` requests four CPU workers. `--non-interactive` requires inputs as
+flags instead of prompts.
 
 ## Optional: reuse prepared genome indexes
 
-If you already have an OncoTracer reference directory, use its absolute path
-for `--reference-root` in both setup commands. Otherwise you can
-[download prebuilt hg38 indexes](reference_indexes.md) using `--mode both` and
-`--lpwgs-root` set to the reference directory above.
+If you have a prepared OncoTracer hg38 reference, replace the bare flag in the
+setup command with `--hg38_build /absolute/path/shared-reference`. You can supply
+the reference parent or its `references/samurai_hg38` folder. Reusing one build
+for both platforms requires both BWA and minimap2 indexes.
 
-Skip this step to let the normal run prepare missing reference files. Do not
-run a separate genome-build script. Prebuilt indexes save construction time,
-but alignment still needs RAM; check [requirements](installation.md#requirements).
+Without a path, or if you omit the flag entirely, run downloads prebuilt indexes
+automatically: about 8.0 GiB for Illumina and 9.7 GiB for ONT, under each project's
+`reference/` folder. Completed downloads are reused. No separate genome-build
+script is needed. See [reference details](reference_indexes.md) and
+[RAM requirements](installation.md#requirements).
 
 ## 3. Check and run
 

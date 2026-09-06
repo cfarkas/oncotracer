@@ -70,6 +70,7 @@ RESOURCE_FLAGS = {
 COMMENTS = {
     "mode": "Sequencing platform: illumina or ont.",
     "lpwgs_root": "Reference cache. Downloads and reusable hg38 files go here.",
+    "hg38_auto_download": "true downloads prebuilt hg38 indexes when run starts; setup/check never download them.",
     "outdir": "Analysis results. Use a new directory for a different analysis.",
     "threads": "CPU worker threads requested; some tools also use helper threads.",
     "illumina_samplesheet": "CSV linking sample names to existing FASTQ files.",
@@ -165,6 +166,48 @@ def _render_config(values: dict[str, object]) -> str:
     return "".join(blocks)
 
 
+def _existing_hg38_parent(path: Path, mode: str) -> Path:
+    """Accept an OncoTracer reference parent or its actual hg38 build folder."""
+    from .reference_bundle import INDEX_FILES, MANIFESTS
+
+    path = require_directory(
+        path,
+        "hg38 build (--hg38_build); omit PATH to download automatically when run starts",
+    )
+    if path.name == "samurai_hg38" and path.parent.name == "references":
+        path = path.parents[1]
+    elif (
+        path.name == "samurai-hg38"
+        and path.parent.name == "reference-cache"
+        and path.parent.parent.name == ".oncotracer"
+    ):
+        path = path.parents[2]
+    candidates = (
+        path / "references/samurai_hg38",
+        path / ".oncotracer/reference-cache/samurai-hg38",
+    )
+    reference = next(
+        (candidate for candidate in candidates if os.path.lexists(candidate)),
+        candidates[0],
+    )
+    kind = "bwa" if mode == "illumina" else "minimap2"
+    required = (
+        "genome.fa", "genome.fa.fai", "genome.dict",
+        *INDEX_FILES[kind], MANIFESTS[kind],
+    )
+    missing = [
+        name for name in required
+        if not (reference / name).is_file() or not (reference / name).stat().st_size
+    ]
+    if missing:
+        raise OncoTracerError(
+            f"--hg38_build does not contain a prepared {mode} hg38 build: {reference}; "
+            f"missing {', '.join(missing)}. Supply a compatible OncoTracer reference, "
+            "or omit PATH to download one."
+        )
+    return path
+
+
 def command_setup(args: argparse.Namespace) -> int:
     try:
         return _command_setup(args)
@@ -241,18 +284,22 @@ def _command_setup(args: argparse.Namespace) -> int:
             raise OncoTracerError(
                 f"setup will not overwrite {path}; choose a new --project or edit the existing YAML"
             )
+    supplied_reference = args.hg38_build or args.reference_root
     reference_root = (
-        Path(args.reference_root).expanduser().resolve()
-        if args.reference_root
+        Path(supplied_reference).expanduser().resolve()
+        if supplied_reference
         else project / "reference"
     )
     if reference_root.exists() and not reference_root.is_dir():
         raise OncoTracerError(
-            f"--reference-root must be a directory, not a FASTA or index file: {reference_root}"
+            f"--hg38_build must be a directory, not a FASTA or index file: {reference_root}"
         )
+    if args.hg38_build:
+        reference_root = _existing_hg38_parent(reference_root, mode)
     values: dict[str, object] = {
         "mode": mode,
         "lpwgs_root": str(reference_root),
+        "hg38_auto_download": not bool(supplied_reference),
         "outdir": str(project / "results"),
         "threads": args.threads,
         "force": False,
@@ -493,6 +540,8 @@ def _command_setup(args: argparse.Namespace) -> int:
         )
     )
     print("Setup has not run an analysis or installed optional resources.")
+    if values["hg38_auto_download"]:
+        print("The run command will download prebuilt hg38 indexes automatically if needed.")
     return 0
 
 
@@ -509,6 +558,10 @@ def command_check(args: argparse.Namespace) -> int:
             errors.append("mode: choose illumina or ont")
         if not config.get("outdir"):
             errors.append("outdir: specify where results should be saved")
+        if "hg38_auto_download" in config and not isinstance(
+            config["hg38_auto_download"], bool
+        ):
+            errors.append("hg38_auto_download: choose true or false")
         enabled = (
             config.get("methylation") is True or config.get("methylation_only") is True
         )
@@ -626,9 +679,22 @@ def add_setup_commands(subparsers) -> None:
     parser = subparsers.add_parser(
         "setup", help="Create a readable configuration with prompts or explicit flags"
     )
-    parser.add_argument(
+    reference_options = parser.add_mutually_exclusive_group()
+    reference_options.add_argument(
+        "--hg38_build",
+        nargs="?",
+        const="",
+        metavar="PATH",
+        help=(
+            "reuse an existing OncoTracer hg38 reference parent; without PATH "
+            "(or when omitted), run downloads prebuilt indexes into PROJECT/reference"
+        ),
+    )
+    reference_options.add_argument(
         "--reference-root",
-        help="optional shared OncoTracer reference directory (default: PROJECT/reference); not a FASTA or index file",
+        dest="reference_root",
+        metavar="PATH",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--project", help="project folder to create (config/, reference/, results/)"

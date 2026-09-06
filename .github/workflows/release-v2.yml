@@ -54,6 +54,39 @@ jobs:
             echo 'ready=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # Ordinary main updates do not create another copy of an immutable
+          # published version. Manual publication still reaches the strict
+          # namespace checks below; API failures must never look like absence.
+          if [[ "$GITHUB_EVENT_NAME" == workflow_run ]]; then
+            PUBLISHED_STATUS=0
+            gh api -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+              > "$RUNNER_TEMP/published-release.json" \
+              2> "$RUNNER_TEMP/published-release.error" || PUBLISHED_STATUS=$?
+            if [[ "$PUBLISHED_STATUS" -eq 0 ]]; then
+              PUBLISHED_SHA="$(gh api \
+                "/repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq '.sha')"
+              [[ "$PUBLISHED_SHA" =~ ^[0-9a-f]{40}$ ]]
+              jq -e --arg tag "$RELEASE_TAG" --arg sha "$PUBLISHED_SHA" '
+                .tag_name == $tag and .draft == false and
+                .prerelease == false and .target_commitish == $sha
+              ' "$RUNNER_TEMP/published-release.json" >/dev/null
+              if [[ "$PUBLISHED_SHA" != "$MAIN_SHA" ]]; then
+                MESSAGE="$RELEASE_TAG is already published at $PUBLISHED_SHA; no new release is scheduled for this main update."
+                echo "$MESSAGE"
+                echo "$MESSAGE" >> "$GITHUB_STEP_SUMMARY"
+                echo 'ready=false' >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            elif grep -Eq '\(HTTP 404\)[[:space:]]*$' \
+              "$RUNNER_TEMP/published-release.error"; then
+              echo "$RELEASE_TAG has not been published; checking release gates"
+            else
+              cat "$RUNNER_TEMP/published-release.error" >&2
+              echo "unable to establish whether $RELEASE_TAG is published" >&2
+              exit "$PUBLISHED_STATUS"
+            fi
+          fi
           RUNS="$(gh api -H 'Accept: application/vnd.github+json' \
             "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&event=push&status=completed&per_page=100")"
           resolve_run() {

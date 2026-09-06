@@ -89,7 +89,7 @@ def check_native_quickstarts() -> None:
     for relative, paths in projects.items():
         text = read(relative)
         require_order(text, ("curl --fail", "md5sum -c", "oncotracer setup", "oncotracer check", "oncotracer run"), relative)
-        require("--reference-root" in text and "optional" in text.lower(), f"{relative} must explain optional reference reuse")
+        require("--hg38_build" in text and "optional" in text.lower(), f"{relative} must explain optional reference reuse")
         for path in paths:
             setup = find_block(relative, "oncotracer setup --non-interactive", f'--project "$PWD/{path}"')
             run = find_block(relative, "oncotracer check --config", "oncotracer run --backend conda", f'--config "$PWD/{path}/config/run.yml"')
