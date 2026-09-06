@@ -32,6 +32,7 @@ ACTIVE_NATIVE_FILES = (
     "docs/outputs.md",
     "docs/gallery.md",
     "docs/native_architecture.md",
+    "docs/architecture_details.md",
     "docs/parity_release.md",
     "docs/citation_research_use.md",
     "docs/troubleshooting.md",
@@ -190,6 +191,15 @@ REQUIRED_TEXT = {
         "login shell's",
     ),
     "docs/native_architecture.md": (
+        "# How OncoTracer works",
+        "What happens to your data?",
+        "optional CNA classifier",
+        "FASTQ files alone are not enough",
+        "oncotracer provenance --json",
+        "architecture_details.md",
+        "running.md#resume-behavior",
+    ),
+    "docs/architecture_details.md": (
         "BWA and Picard for Illumina",
         "qDNAseq in its pinned R 4.1 environment",
         "HMMcopy and ichorCNA 0.5.1",
@@ -357,7 +367,8 @@ def check_navigation() -> None:
         "QuickStart 1 — Illumina + ONT: quick_start.md",
         "QuickStart 2 — HCC1143: public_cohort.md",
         "Mock cohort — six tumors + four independent normals: six_tumor_four_normal.md",
-        "Native architecture: native_architecture.md",
+        "How OncoTracer Works: native_architecture.md",
+        "Implementation Details: architecture_details.md",
         "Parity and release gate: parity_release.md",
         "Advanced Installation: installation_details.md",
     ):

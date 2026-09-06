@@ -25,6 +25,7 @@ theme:
 nav:
   - Home: index.md
   - Getting Started:
+      - How OncoTracer Works: native_architecture.md
       - Install Requirements: installation.md
       - Copy Commands and Create Tables: command_basics.md
       - QuickStart 1 — Illumina + ONT: quick_start.md
@@ -58,7 +59,7 @@ nav:
       - LLM-Assisted Reports: llm_reports.md
       - Results Gallery: gallery.md
   - Validation:
-      - Native architecture: native_architecture.md
+      - Implementation Details: architecture_details.md
       - Parity and release gate: parity_release.md
   - Help and About:
       - Advanced Installation: installation_details.md
