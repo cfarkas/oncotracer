@@ -26,11 +26,12 @@ nav:
   - Home: index.md
   - Getting Started:
       - Install Requirements: installation.md
+      - Copy Commands and Create Tables: command_basics.md
       - QuickStart 1 — Illumina + ONT: quick_start.md
       - Set Up Your Own Data: setup.md
       - ONT Methylation: configuration/methylation.md
       - Genome Indexes: reference_indexes.md
-      - Automatic Setup for Your FASTQs: auto_params.md
+      - Batch Setup — Many FASTQs: auto_params.md
       - QuickStart 2 — HCC1143: public_cohort.md
       - Input Files and Folder Layouts: inputs.md
       - Manual YAML Editing: configuration/yaml_basics.md

@@ -79,7 +79,8 @@ test_tumor_only_generates_independent_samples() {
   if grep -Eqi 'pon|panel.of.normals' "$case_dir/config/illumina.auto.yml"; then
     fail "automatic YAML must not contain a local panel setting"
   fi
-  assert_contains "$case_dir/run.log" "oncotracer run --config $case_dir/config/illumina.auto.yml"
+  assert_contains "$case_dir/run.log" "oncotracer check --config $case_dir/config/illumina.auto.yml"
+  assert_contains "$case_dir/run.log" "oncotracer run --backend conda --config $case_dir/config/illumina.auto.yml"
   if grep -qi 'nextflow run' "$case_dir/run.log"; then
     fail "Automatic Setup printed an obsolete Nextflow launch command"
   fi

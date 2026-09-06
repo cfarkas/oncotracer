@@ -2,6 +2,11 @@
 
 [Guided setup](../setup.md) creates a commented YAML for you. Edit that file when you need to change settings; the examples below are for writing one by hand.
 
+Change an existing key's value instead of adding the same key again. The blocks
+below are alternatives, not sections to concatenate into one file. Create the
+[Illumina samplesheet](illumina.md#manual-samplesheet) or
+[ONT barcode inputs](ont.md#arrange-barcode-fastqs) before using the matching YAML.
+
 ## Flat YAML only
 
 OncoTracer v2 deliberately accepts a flat top-level mapping:
@@ -50,11 +55,12 @@ Quote paths containing spaces, `#`, or apostrophes, for example `outdir: "/work/
 
 ```bash
 PROJECT_DIR="$PWD/project"
-mkdir -p "$PROJECT_DIR/config" "$PROJECT_DIR/results"
+mkdir -p "$PROJECT_DIR/config"
 
 cat > "$PROJECT_DIR/config/illumina.manual.yml" <<YAML
 mode: illumina
-lpwgs_root: $PROJECT_DIR
+lpwgs_root: $PROJECT_DIR/reference
+hg38_auto_download: true
 outdir: $PROJECT_DIR/results/illumina
 illumina_samplesheet: $PROJECT_DIR/config/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
@@ -64,6 +70,7 @@ run_cna_classifier: false
 force: false
 YAML
 
+oncotracer check --config "$PROJECT_DIR/config/illumina.manual.yml"
 oncotracer run --backend conda \
   --config "$PROJECT_DIR/config/illumina.manual.yml"
 ```
@@ -72,11 +79,12 @@ oncotracer run --backend conda \
 
 ```bash
 PROJECT_DIR="$PWD/project"
-mkdir -p "$PROJECT_DIR/config" "$PROJECT_DIR/results"
+mkdir -p "$PROJECT_DIR/config"
 
 cat > "$PROJECT_DIR/config/ont.manual.yml" <<YAML
 mode: ont
-lpwgs_root: $PROJECT_DIR
+lpwgs_root: $PROJECT_DIR/reference
+hg38_auto_download: true
 outdir: $PROJECT_DIR/results/ont
 ont_folder: $PROJECT_DIR/input/fastq_pass
 ont_barcodes: barcode01,barcode02
@@ -89,6 +97,7 @@ run_cna_classifier: false
 force: false
 YAML
 
+oncotracer check --config "$PROJECT_DIR/config/ont.manual.yml"
 oncotracer run --backend conda \
   --config "$PROJECT_DIR/config/ont.manual.yml"
 ```
@@ -130,7 +139,7 @@ oncotracer run --backend conda \
   --dry-run
 ```
 
-`--dry-run` prints the native argument arrays without launching the scientific tools.
+`--dry-run` shows the planned analysis commands without starting them.
 
 ## Precedence
 

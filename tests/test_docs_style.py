@@ -260,9 +260,9 @@ def read(relative_path: str) -> str:
 
 def check_required_native_content() -> None:
     for relative_path, snippets in REQUIRED_TEXT.items():
-        text = read(relative_path)
+        text = " ".join(read(relative_path).split())
         for snippet in snippets:
-            if snippet not in text:
+            if " ".join(snippet.split()) not in text:
                 fail(f"missing native v2 requirement in {relative_path}: {snippet}")
 
 

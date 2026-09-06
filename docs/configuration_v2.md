@@ -1,6 +1,8 @@
 # Canonical native YAML configuration
 
-OncoTracer v2 reads a flat top-level YAML mapping. [Automatic Setup](auto_params.md) is recommended because it validates the input layout and writes absolute paths. Manual files remain useful for unusual filenames, custom references, pathology, classifier settings, or controlled refinement comparisons.
+This is a settings reference, not a start-to-finish tutorial. Use [setup](setup.md)
+or [batch setup](auto_params.md) to create your first configuration. The examples
+below are alternatives: edit existing keys rather than appending duplicate keys.
 
 Nested YAML is deliberately rejected by the standalone parser.
 
@@ -18,12 +20,16 @@ run_cna_classifier: false
 force: false
 ```
 
-The samplesheet has four columns:
+Create the four-column samplesheet. Replace `/data/study` and the filenames with
+yours before pasting; `cat >` replaces the named file if it exists.
 
-```csv
+```bash
+mkdir -p "/data/study/config"
+cat > "/data/study/config/illumina.samplesheet.csv" <<'CSV'
 sample,fastq_1,fastq_2,status
-Tumor_A,/data/study/input/Tumor_A_R1.fastq.gz,/data/study/input/Tumor_A_R2.fastq.gz,tumor
-Tumor_B,/data/study/input/Tumor_B_R1.fastq.gz,/data/study/input/Tumor_B_R2.fastq.gz,tumor
+Tumor_A,"/data/study/input/Tumor_A_R1.fastq.gz","/data/study/input/Tumor_A_R2.fastq.gz",tumor
+Tumor_B,"/data/study/input/Tumor_B_R1.fastq.gz","/data/study/input/Tumor_B_R2.fastq.gz",tumor
+CSV
 ```
 
 For single-end data, keep the header and leave `fastq_2` empty for every row. Do not mix single-end and paired-end libraries in one analysis.
@@ -60,7 +66,7 @@ oncotracer run \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
-Repeat the same command to reuse valid completed stages. Add `--dry-run` to inspect the native argument arrays, or `--force` only for a deliberate refresh.
+Repeat the same command to reuse valid completed stages. Add `--dry-run` to preview the analysis commands, or `--force` only for a deliberate refresh.
 
 ## Normal samples
 
