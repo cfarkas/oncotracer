@@ -82,6 +82,11 @@ automatically: about 8.0 GiB for Illumina and 9.7 GiB for ONT, under each projec
 script is needed. See [reference details](reference_indexes.md) and
 [RAM requirements](installation.md#requirements).
 
+To build your own indexes, replace `--hg38_build` with `--build_reference` in
+either setup command. The normal run downloads hg38 source files as needed and
+builds missing indexes on CPU. Local indexing needs more RAM, temporary disk and
+time. Do not combine the two flags.
+
 ## 3. Check and run
 
 ```bash

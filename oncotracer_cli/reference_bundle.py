@@ -436,18 +436,24 @@ def install_bundle(
     return result
 
 
+def reference_paths(lpwgs_root: Path) -> tuple[Path, Path]:
+    """Read-only lookup matching the engine's external and owned cache paths."""
+    identity = engine._reference_identity("samurai-hg38")
+    return (
+        lpwgs_root / "references/samurai_hg38",
+        lpwgs_root / ".oncotracer/reference-cache" / f"samurai-hg38-{identity[:16]}",
+    )
+
+
 def reference_is_present(lpwgs_root: Path) -> bool:
     """Presence only: the engine still validates hashes and tool compatibility.
 
-    Never replace or repair an existing reference while attempting an automatic
-    import. Incomplete or mismatched references must fail the normal validation.
+    Never replace or repair an existing reference during an automatic import.
+    Leave validation and any owned-cache preparation to the normal engine.
     """
     return any(
         os.path.lexists(path)
-        for path in (
-            lpwgs_root / "references/samurai_hg38",
-            lpwgs_root / ".oncotracer/reference-cache/samurai-hg38",
-        )
+        for path in reference_paths(lpwgs_root)
     )
 
 

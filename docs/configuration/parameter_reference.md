@@ -74,14 +74,17 @@ unless `--non-interactive` is supplied. It does not start analysis.
 | `--samplesheet FILE` | Multiple Illumina libraries in a sample/R1/R2/status CSV |
 | `--reads-folder PATH` | ONT `fastq_pass` directory |
 | `--barcodes LIST`, `--sample-names LIST` | Matching comma-separated barcode folders and sample names |
-| `--hg38_build [PATH]` | Reuse prepared hg38; no path or omitted flag downloads prebuilt indexes into `PROJECT/reference` when run starts |
+| `--hg38_build [PATH]` | Reuse prepared hg38; no path selects the default prebuilt download into `PROJECT/reference` when run starts |
+| `--build_reference` | Build missing hg38 indexes locally on CPU when run starts; cannot be combined with `--hg38_build` |
 | `--threads NUMBER` | CPU workers to request |
 | `--non-interactive` | Require inputs as flags rather than prompts |
 
-The flag saves `lpwgs_root` and `hg38_auto_download` in YAML. `hg38_auto_download`
-is a Boolean: `true` downloads a missing prebuilt reference at run time; `false`
-uses the configured reference directly. Setup, check and dry-run never download
-genomes. A supplied build is validated before use.
+These options save `lpwgs_root` and `hg38_auto_download` in YAML. The default is
+`true`: download a missing prebuilt reference at run time. `--build_reference`
+sets it to `false`: reuse existing references or build missing indexes locally.
+Supplying an existing `--hg38_build PATH` also sets it to `false`.
+Setup, check and dry-run never download or build genomes. Supplied references
+are validated before use; shared references are not overwritten.
 
 `oncotracer check --config FILE` reports missing paths/settings and the planned
 samples without running analysis. See [setup examples](../setup.md),
