@@ -52,8 +52,9 @@ oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.ym
 `--config` selects your saved settings. `--backend conda` selects the installed analysis tools. `check` explains configuration problems without starting an analysis; `run` starts it. You can also [supply setup answers as flags](docs/setup.md).
 
 Add `--hg38_build /path/to/reference` to setup to reuse prepared hg38 indexes.
-Without a path (or with the flag omitted), run downloads prebuilt indexes
-automatically. Setup and check do not download genomes.
+By default, run downloads prebuilt indexes automatically. To build your own,
+use `--build_reference` instead; local indexing needs more RAM, disk and time.
+Setup and check do not download or build genomes.
 
 Results go to `my-study/results/`. Begin with `06_workflow_summary/workflow_summary.txt`; methylation results also have `07_methylation/methylation_status.json`.
 
