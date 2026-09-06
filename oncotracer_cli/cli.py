@@ -95,10 +95,12 @@ def _save_install_config(value: dict[str, object]) -> None:
 
 
 def _run(
-    command: Sequence[str | Path], *, cwd: Path | None = None, dry_run: bool = False
+    command: Sequence[str | Path], *, cwd: Path | None = None, dry_run: bool = False,
+    log_command: bool = True,
 ) -> None:
     argv = [str(item) for item in command]
-    print(f"OncoTracer command: {shlex.join(argv)}", file=sys.stderr, flush=True)
+    if log_command:
+        print(f"OncoTracer command: {shlex.join(argv)}", file=sys.stderr, flush=True)
     if dry_run:
         return
     completed = subprocess.run(
@@ -623,27 +625,14 @@ def command_run(args: argparse.Namespace) -> int:
 
 
 def command_auto(args: argparse.Namespace) -> int:
+    from .batch_setup import prepare_auto_command
+
     root = runtime_root(args.root)
     script = require_file(
         root / "bin" / "scripts" / "generate_auto_params.sh", "Automatic Setup script"
     )
-    command: list[str | Path] = [
-        "bash",
-        script,
-        "--mode",
-        args.mode,
-        "--reads-folder",
-        Path(args.reads_folder).expanduser().resolve(),
-        "--sample-table",
-        Path(args.sample_table).expanduser().resolve(),
-    ]
-    if args.config_dir:
-        command.extend(["--config-dir", Path(args.config_dir).expanduser().resolve()])
-    if args.outdir:
-        command.extend(["--outdir", Path(args.outdir).expanduser().resolve()])
-    if args.run_cna_classifier:
-        command.extend(["--run-cna-classifier", "true"])
-    _run(command, cwd=root, dry_run=args.dry_run)
+    command = ["bash", script, *prepare_auto_command(args)]
+    _run(command, cwd=root, dry_run=args.dry_run, log_command=args.dry_run)
     return 0
 
 
@@ -1490,15 +1479,10 @@ def build_parser() -> argparse.ArgumentParser:
     _add_common_run_options(internal)
     internal.set_defaults(func=command_run)
 
-    auto = subparsers.add_parser("auto", help="Create YAML and samplesheet from FASTQs")
-    auto.add_argument("--mode", choices=("illumina", "ont"), required=True)
-    auto.add_argument("--reads-folder", required=True)
-    auto.add_argument("--sample-table", required=True)
-    auto.add_argument("--config-dir")
-    auto.add_argument("--outdir")
-    auto.add_argument("--run-cna-classifier", action="store_true")
-    auto.add_argument("--dry-run", action="store_true")
-    auto.add_argument("--root")
+    from .batch_setup import add_auto_arguments
+
+    auto = subparsers.add_parser("auto", help="Create a batch configuration without starting analysis")
+    add_auto_arguments(auto)
     auto.set_defaults(func=command_auto)
 
     quickstart = subparsers.add_parser(

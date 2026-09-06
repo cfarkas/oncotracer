@@ -81,12 +81,15 @@ Omit `--fastq-2` for single-end reads.
 
 ## Illumina: multiple libraries
 
-This example analyzes **two libraries from four FASTQs**. Save the following as `/data/illumina/samplesheet.csv` in a text editor, replacing the names and paths with yours:
+This example analyzes **two libraries from four FASTQs**. Replace `/data/illumina` and the sample names with yours, then paste the whole block to create the CSV. `cat >` overwrites that named file; use a new filename if it already exists.
 
-```csv
+```bash
+mkdir -p "/data/illumina"
+cat > "/data/illumina/samplesheet.csv" <<'CSV'
 sample,fastq_1,fastq_2,status
-sampleA,/data/illumina/sampleA_R1.fastq.gz,/data/illumina/sampleA_R2.fastq.gz,tumor
-sampleB,/data/illumina/sampleB_R1.fastq.gz,/data/illumina/sampleB_R2.fastq.gz,tumor
+sampleA,"/data/illumina/sampleA_R1.fastq.gz","/data/illumina/sampleA_R2.fastq.gz",tumor
+sampleB,"/data/illumina/sampleB_R1.fastq.gz","/data/illumina/sampleB_R2.fastq.gz",tumor
+CSV
 ```
 
 Each row names one sample and its matching R1/R2 pair. Each file field takes one existing path, not a wildcard or a list. For single-end libraries, leave `fastq_2` empty in every row.
@@ -101,7 +104,7 @@ oncotracer check --config /work/illumina-study/config/run.yml
 oncotracer run --backend conda --config /work/illumina-study/config/run.yml
 ```
 
-`--samplesheet` selects the CSV; `--project` selects the new project. Both samples get separate results under `/work/illumina-study/results/`. Add another CSV row for each additional library. [Batch setup](auto_params.md) can generate the CSV from filenames.
+Both samples get separate results under `/work/illumina-study/results/`. Add one row per additional library. [Batch setup](auto_params.md) can generate the CSV from filenames.
 
 ## ONT: multiple barcodes and FASTQ batches
 

@@ -8,7 +8,8 @@ Install the [OncoTracer command](installation.md) before using these commands.
 
 ## Choose how to prepare hg38
 
-All [setup examples](setup.md) and both QuickStarts accept these options:
+All [setup examples](setup.md), [batch setup](auto_params.md), and public tutorials
+accept these options:
 
 | Setup option | What happens when you run |
 | --- | --- |
@@ -21,6 +22,9 @@ Choose only one option. For `--hg38_build`, supply the reference parent or the
 actual build folder (including OncoTracer's own local cache);
 not a FASTA, `.mmi` file, or shell script. BWA indexes are required for Illumina,
 minimap2 for ONT. A build containing both can be shared by both platforms.
+
+The table shows `setup` destinations. With `auto`, the default reference folder
+is `CONFIG_DIR/reference/` instead. The saved `lpwgs_root` shows the exact path.
 
 Setup saves `lpwgs_root` and `hg38_auto_download` in YAML. Setup, check and dry-run
 do not download or build anything. By default, normal run downloads only the needed platform's bundle,

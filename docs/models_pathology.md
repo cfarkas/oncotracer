@@ -31,6 +31,10 @@ The full context list is in [Native YAML configuration](configuration_v2.md).
 
 ## Deterministic initial mode
 
+Edit these values in your existing YAML; do not add a second copy of a key.
+Create the [pathology CSV](configuration/pathology.md#2-create-the-de-identified-pathology-table)
+first, or leave `pathology_csv: null` for CNA-only reports.
+
 ```yaml
 run_cna_classifier: true
 cna_classifier_sample_set: broad_cancer

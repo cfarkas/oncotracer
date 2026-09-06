@@ -6,7 +6,9 @@ the methylation classifier. Those results remain separate.
 
 ## Enable it in your existing YAML
 
-Add these settings to the project YAML created by `oncotracer setup`:
+Edit the project YAML created by `oncotracer setup` or `auto`. Replace existing
+values for the keys below; add only keys that are absent. Do not append a second
+copy of a key. Keep one `key: value` per line.
 
 ```yaml
 run_cna_classifier: true
@@ -38,11 +40,13 @@ small model may fail the required response format and use the catalog fallback.
 Use the same public command and paths as the rest of your analysis:
 
 ```bash
-oncotracer run --config /absolute/path/project/oncotracer.yaml --backend conda --dry-run
-oncotracer run --config /absolute/path/project/oncotracer.yaml --backend conda
+oncotracer check --config /absolute/path/project/config/run.yml
+oncotracer run --config /absolute/path/project/config/run.yml --backend conda --dry-run
+oncotracer run --config /absolute/path/project/config/run.yml --backend conda
 ```
 
 This requires the classifier environment installed by `oncotracer install --conda`.
+Use your actual YAML path; batch setup names it `illumina.auto.yml` or `ont.auto.yml`.
 The dry run shows the plan; it does not load or evaluate the model.
 
 ## Check what actually happened

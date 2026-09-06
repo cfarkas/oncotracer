@@ -68,6 +68,7 @@ jobs:
             tests/test_beginner_runtime.py \
             tests/test_setup.py \
             tests/test_documented_workflows.py \
+            tests/test_batch_setup.py \
             tests/test_hg38_setup.py \
             tests/test_install_safety.py \
             tests/test_compare_native_parity.py \

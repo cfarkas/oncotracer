@@ -1,6 +1,9 @@
 # ONT configuration
 
-Use this route for Oxford Nanopore Technologies FASTQs organized in barcode directories. Native v2 discovers and merges the selected reads, aligns with minimap2, runs the explicitly selected CNA caller, refines CNA boundaries from BAM depth, and creates tables, plots, and summaries. The default liquid-biopsy route uses HMMcopy/ichorCNA; an explicit solid-biopsy route can use qDNAseq.
+Use this page for ONT caller settings and independent normal samples. For a
+first run, follow the [multi-barcode example](../auto_params.md#ont-multiple-barcodes-and-fastq-batches).
+Each selected barcode becomes one analysis sample; its FASTQ batches are
+combined without mixing different samples.
 
 The liquid-biopsy caller uses the version-selected upstream HD_ULP ichorCNA reference object as a static scientific asset. That caller resource is not created from the cohort, and no submitted `NORMAL` sample is pooled into it.
 
@@ -34,7 +37,9 @@ barcode02,Control_A,NORMAL
 CSV
 ```
 
-`barcode` must match a directory name exactly.
+`barcode` must match a directory name exactly. Paste the entire block through
+`CSV`; `cat >` replaces that named file if it exists. Use completed FASTQs,
+not files still being written by sequencing.
 
 ### Generate the YAML
 
@@ -49,7 +54,10 @@ oncotracer auto \
   --outdir "$PROJECT_DIR/results/ont"
 ```
 
-Automatic Setup validates selected barcode directories and compressed FASTQs. It writes `ont.auto.yml` and `auto_params_manifest.tsv`; it does not start alignment or CNA analysis.
+Automatic Setup validates selected barcode directories and compressed FASTQs.
+It writes `ont.auto.yml` and `auto_params_manifest.tsv`; it does not start analysis.
+Add `--hg38_build PATH` to reuse prepared indexes or `--build_reference` to build
+locally. Otherwise run downloads prebuilt indexes. [Genome indexes](../reference_indexes.md).
 
 ### Inspect and run
 
@@ -57,7 +65,7 @@ Automatic Setup validates selected barcode directories and compressed FASTQs. It
 PROJECT_DIR="$PWD/project"
 
 sed -n '1,200p' "$PROJECT_DIR/config/ont/ont.auto.yml"
-cat "$PROJECT_DIR/config/ont/auto_params_manifest.tsv"
+oncotracer check --config "$PROJECT_DIR/config/ont/ont.auto.yml"
 
 oncotracer run \
   --backend conda \
@@ -103,11 +111,14 @@ mode: ont
 lpwgs_root: $PROJECT_DIR
 outdir: $PROJECT_DIR/results/manual_ont
 ont_folder: $PROJECT_DIR/input/fastq_pass
-ont_barcodes: barcode01,barcode02
-ont_sample_names: Patient_A,Patient_B
-ont_analysis_type: liquid_biopsy
-ont_caller: ichorcna
-ont_binsize_kb: 500
+ont_barcodes: barcode01
+ont_sample_names: Patient_A
+ont_normal_folder: $PROJECT_DIR/input/fastq_pass
+ont_normal_barcodes: barcode02
+ont_normal_sample_names: Control_A
+ont_analysis_type: solid_biopsy
+ont_caller: qdnaseq
+ont_binsize_kb: 100
 ont_min_age_minutes: 0
 run_cna_classifier: false
 force: false

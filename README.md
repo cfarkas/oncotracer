@@ -14,6 +14,7 @@ OncoTracer is for research use, not a standalone diagnostic system.
 | --- | --- |
 | Try public data first | [QuickStart 1](docs/quick_start.md) |
 | Analyze your own FASTQs | [Set up a project](docs/setup.md) |
+| Prepare many libraries or ONT barcodes | [Batch examples](docs/auto_params.md) · [Create CSV tables](docs/command_basics.md) |
 | Check RAM or reuse genome indexes | [System requirements](docs/installation.md#requirements) · [Prebuilt indexes](docs/reference_indexes.md) |
 | Classify ONT methylation | [Methylation guide](docs/configuration/methylation.md) |
 | Understand a result or an error | [Outputs](docs/outputs.md) · [Troubleshooting](docs/troubleshooting.md) |

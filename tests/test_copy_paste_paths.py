@@ -160,11 +160,7 @@ def check_tutorial_figures_are_native_and_beginner_safe() -> None:
 
 
 def check_automatic_setup_paths() -> None:
-    block = find_block(
-        "docs/auto_params.md",
-        "oncotracer auto",
-        "oncotracer run --backend conda",
-    )
+    block = read("docs/auto_params.md").split("## Illumina: multiple libraries", 1)[1].split("\n## ", 1)[0]
     for path in (
         '"$PWD/project/input/fastq"',
         '"$PWD/project/input/samples.csv"',
@@ -175,7 +171,7 @@ def check_automatic_setup_paths() -> None:
         require(path in block, f"Automatic Setup is missing copy/paste path {path}")
     require_order(
         block,
-        ("oncotracer auto", "oncotracer run --backend conda"),
+        ("cat >", "oncotracer auto", "oncotracer check", "oncotracer run --backend conda"),
         "Automatic Setup",
     )
     require("cd " not in block, "Automatic Setup must preserve the caller's working directory")

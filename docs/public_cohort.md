@@ -59,15 +59,18 @@ the corresponding `curl` command.
 
 ## 2. Create the samplesheet
 
-Open a text editor and save the following as
-`oncotracer-quickstart2/input/samplesheet.csv`. Replace `/absolute/path` with the
-absolute directory you used above. Keep the header and all three rows:
+Paste this entire block, including the final `CSV` line. It creates
+`input/samplesheet.csv` with the absolute paths from step 1. `$PWD` means your
+current directory. `cat >` replaces that file if it already exists.
 
-```csv
+```bash
+cd /path/to/my/analyses_dir/
+cat > "$PWD/oncotracer-quickstart2/input/samplesheet.csv" <<CSV
 sample,fastq_1,fastq_2,status
-HCC1143_DMSO,/absolute/path/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz,/absolute/path/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz,tumor
-HCC1143_BEZ235,/absolute/path/oncotracer-quickstart2/input/HCC1143_BEZ235_R1.fastq.gz,/absolute/path/oncotracer-quickstart2/input/HCC1143_BEZ235_R2.fastq.gz,tumor
-HCC1143_TRAMETINIB,/absolute/path/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fastq.gz,/absolute/path/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R2.fastq.gz,tumor
+HCC1143_DMSO,"$PWD/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz",tumor
+HCC1143_BEZ235,"$PWD/oncotracer-quickstart2/input/HCC1143_BEZ235_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_BEZ235_R2.fastq.gz",tumor
+HCC1143_TRAMETINIB,"$PWD/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R2.fastq.gz",tumor
+CSV
 ```
 
 Each row links one sample to its matching R1 and R2. It does not combine the
