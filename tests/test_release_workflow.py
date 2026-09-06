@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import textwrap
 import unittest
 
 
@@ -19,6 +20,110 @@ REGISTRY_PUT = ROOT / "scripts" / "release_registry_put_if_absent.sh"
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_automatic_updates_skip_published_versions_without_weakening_guards(self) -> None:
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        step = workflow.split("        run: |\n", 1)[1].split("\n      - name:", 1)[0]
+        gate = textwrap.dedent(step)
+        main_sha, old_sha = "a" * 40, "b" * 40
+        release = {
+            "tag_name": "v2.0.0", "draft": False, "prerelease": False,
+            "target_commitish": old_sha,
+        }
+        runs = {"workflow_runs": [
+            {"name": name, "head_sha": main_sha, "head_branch": "main",
+             "event": "push", "status": "completed", "conclusion": "success",
+             "id": index, "run_number": index, "run_attempt": 1}
+            for index, name in enumerate((
+                "Native v2 CI", "Native v2 QuickStart 1 parity",
+                "Native v2 QuickStart 2 parity",
+            ), 1)
+        ]}
+        fake_gh = r'''#!/usr/bin/env bash
+set -Eeuo pipefail
+case "$*" in
+  'api /repos/cfarkas/oncotracer/commits/main --jq .sha')
+    printf '%s\n' "$FAKE_MAIN" ;;
+  'api /repos/cfarkas/oncotracer/commits/v2.0.0 --jq .sha')
+    test "${FAKE_TAG_ERROR:-0}" = 0
+    printf '%s\n' "$FAKE_TAG" ;;
+  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/releases/tags/v2.0.0')
+    test "${FAKE_FORBID_RELEASE:-0}" = 0
+    if [[ "$FAKE_STATUS" != 200 ]]; then
+      printf 'gh: request failed (HTTP %s)\n' "$FAKE_STATUS" >&2
+      exit 1
+    fi
+    printf '%s\n' "$FAKE_RELEASE" ;;
+  'api -H Accept: application/vnd.github+json /repos/cfarkas/oncotracer/actions/runs?branch=main&event=push&status=completed&per_page=100')
+    test "${FAKE_FORBID_GATES:-0}" = 0
+    printf '%s\n' "$FAKE_RUNS" ;;
+  *) exit 98 ;;
+esac
+'''
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            executable = root / "gh"
+            executable.write_text(fake_gh, encoding="utf-8")
+            executable.chmod(0o755)
+            output = root / "output"
+            summary = root / "summary"
+            environment = {
+                **os.environ, "PATH": f"{root}:{os.environ['PATH']}",
+                "RUNNER_TEMP": str(root), "GITHUB_OUTPUT": str(output),
+                "GITHUB_STEP_SUMMARY": str(summary),
+                "GITHUB_REPOSITORY": "cfarkas/oncotracer", "RELEASE_TAG": "v2.0.0",
+                "GITHUB_EVENT_NAME": "workflow_run", "EVENT_SHA": main_sha,
+                "FAKE_MAIN": main_sha, "FAKE_TAG": old_sha, "FAKE_STATUS": "200",
+                "FAKE_RELEASE": json.dumps(release), "FAKE_RUNS": json.dumps(runs),
+            }
+
+            def run(**overrides):
+                output.write_text("", encoding="utf-8")
+                summary.write_text("", encoding="utf-8")
+                return subprocess.run(
+                    ["bash", "-c", gate], env={**environment, **overrides},
+                    capture_output=True, text=True, check=False,
+                )
+
+            skipped = run(FAKE_FORBID_GATES="1")
+            self.assertEqual(skipped.returncode, 0, skipped.stderr)
+            self.assertEqual(output.read_text(), "ready=false\n")
+            self.assertIn("already published", summary.read_text())
+            for overrides in (
+                {"FAKE_STATUS": "404"},
+                {"FAKE_TAG": main_sha, "FAKE_RELEASE": json.dumps({**release, "target_commitish": main_sha})},
+                {"GITHUB_EVENT_NAME": "workflow_dispatch", "FAKE_FORBID_RELEASE": "1"},
+            ):
+                with self.subTest(overrides=overrides):
+                    result = run(**overrides)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("ready=true\n", output.read_text())
+            for overrides in (
+                {"FAKE_STATUS": "403"}, {"FAKE_STATUS": "500"},
+                {"FAKE_TAG_ERROR": "1"}, {"FAKE_RELEASE": "not JSON"},
+                {"FAKE_TAG": "not a commit"},
+                {"FAKE_RELEASE": json.dumps({**release, "draft": True})},
+                {"FAKE_RELEASE": json.dumps({**release, "target_commitish": main_sha})},
+            ):
+                with self.subTest(overrides=overrides):
+                    result = run(**overrides)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertNotIn("ready=", output.read_text())
+
+            # A manual attempt to reuse the tag still fails at the original
+            # immutable-source check, before any publication command.
+            namespace = workflow.split(
+                '          if git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG"', 1
+            )[1].split("          RELEASE_EXISTS=false", 1)[0]
+            guard = 'if git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG"' + namespace
+            fake_git = 'git() { if [[ "$1" == rev-list ]]; then printf "%s\\n" "$FAKE_TAG"; fi; }\n'
+            result = subprocess.run(
+                ["bash", "-c", fake_git + guard],
+                env={**environment, "MAIN_SHA": main_sha},
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("already points at another commit", result.stderr)
+
     def test_parity_artifacts_and_release_provenance_bind_run_attempts(self) -> None:
         q1 = Q1_WORKFLOW.read_text(encoding="utf-8")
         q2 = Q2_WORKFLOW.read_text(encoding="utf-8")

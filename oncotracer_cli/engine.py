@@ -3367,6 +3367,7 @@ def _validate_native_dry_run(
         "config": str(config_path),
         "mode": mode,
         "lpwgs_root": str(lpwgs_root),
+        "hg38_auto_download": _as_bool(config.get("hg38_auto_download"), False),
         "outdir": str(outdir),
         "threads": threads,
         "force": force_run,

@@ -79,7 +79,7 @@ three libraries into one sample.
 cd /path/to/my/analyses_dir/
 oncotracer setup --non-interactive \
   --project "$PWD/oncotracer-quickstart2/analysis" \
-  --reference-root "$PWD/oncotracer-quickstart2/reference" \
+  --hg38_build \
   --mode illumina --analysis cna \
   --samplesheet "$PWD/oncotracer-quickstart2/input/samplesheet.csv" \
   --threads 4
@@ -88,11 +88,12 @@ oncotracer setup --non-interactive \
 `--project` sets the configuration/result location; `--samplesheet` selects the
 CSV; `--threads` requests CPU workers.
 
-If a genome is already prepared, set `--reference-root` to that OncoTracer
-reference directory instead. For example, reuse QuickStart 1's reference path.
-Alternatively, [download prebuilt indexes](reference_indexes.md) with
-`--mode illumina` and `--lpwgs-root` set to the chosen reference directory.
-This is optional: the normal run prepares missing reference files automatically.
+The hg38 path is optional. To reuse QuickStart 1's Illumina build, replace the
+bare flag with `--hg38_build /absolute/path/oncotracer-quickstart1/illumina/reference`.
+Another compatible reference parent or its `references/samurai_hg38` folder also
+works. Without a path, or with the flag omitted, run downloads about 8.0 GiB of
+prebuilt hg38 indexes into `analysis/reference/` automatically. Setup and check
+do not download them. See [reference details](reference_indexes.md).
 
 ## 4. Check and run
 
