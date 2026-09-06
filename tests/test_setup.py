@@ -253,6 +253,11 @@ class SetupTests(unittest.TestCase):
         os.environ.get("ONCOTRACER_TEST_EXECUTABLE"), "installed launcher not selected"
     )
     def test_installed_setup_and_check_from_outside_checkout(self):
+        for flag, automatic in (("--hg38_build", True), ("--build_reference", False)):
+            with self.subTest(flag=flag):
+                self._assert_installed_setup_reference_choice(flag, automatic)
+
+    def _assert_installed_setup_reference_choice(self, flag, automatic):
         executable = str(Path(os.environ["ONCOTRACER_TEST_EXECUTABLE"]).resolve())
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -272,7 +277,7 @@ class SetupTests(unittest.TestCase):
                     "--non-interactive",
                     "--project",
                     str(project),
-                    "--hg38_build",
+                    flag,
                     "--mode",
                     "illumina",
                     "--sample-name",
@@ -305,7 +310,10 @@ class SetupTests(unittest.TestCase):
                 load_flat_yaml(project / "config/run.yml")["lpwgs_root"],
                 str(project / "reference"),
             )
-            self.assertTrue(load_flat_yaml(project / "config/run.yml")["hg38_auto_download"])
+            self.assertEqual(
+                load_flat_yaml(project / "config/run.yml")["hg38_auto_download"],
+                automatic,
+            )
             self.assertFalse((project / "results").exists())
             self.assertFalse((project / "reference").exists())
 

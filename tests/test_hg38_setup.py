@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from oncotracer_cli import cli, reference_bundle as bundle
 from oncotracer_cli.runtime import OncoTracerError, load_flat_yaml, render_flat_yaml, sha256_file
-from tests import test_reference_bundle
+from tests import test_reference_bundle, test_reference_storage_safety
 
 
 class Hg38SetupTests(unittest.TestCase):
@@ -34,7 +34,7 @@ class Hg38SetupTests(unittest.TestCase):
         return project / "config/run.yml", code, output
 
     def fake_build(self, root, *, owned=False, omit=()):
-        target = root / (".oncotracer/reference-cache/samurai-hg38" if owned else "references/samurai_hg38")
+        target = bundle.reference_paths(root)[int(owned)]
         for name in bundle._files():
             if name in omit:
                 continue
@@ -75,6 +75,123 @@ class Hg38SetupTests(unittest.TestCase):
                         self.assertEqual(config["lpwgs_root"], str(parent))
                         self.assertFalse(config["hg38_auto_download"])
                         self.assertEqual(before, {p.relative_to(parent): p.read_bytes() for p in parent.rglob("*") if p.is_file()})
+
+    def test_local_build_is_deferred_until_run(self):
+        for mode in ("illumina", "ont"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as temporary:
+                base = Path(temporary)
+                with (
+                    patch.object(bundle, "urlopen", side_effect=AssertionError("no prebuilt download")),
+                    patch.object(bundle.engine, "prepare_reference", side_effect=AssertionError("no index building")),
+                ):
+                    path, code, output = self.setup(base, mode=mode, flags=("--build_reference",))
+                    self.assertEqual(code, 0, output)
+                    self.assertIn("Local hg38 indexing selected", output)
+                    self.assertIn("more RAM", output)
+                    config = load_flat_yaml(path)
+                    self.assertFalse(config["hg38_auto_download"])
+                    self.assertEqual(config["lpwgs_root"], str(base / "project/reference"))
+                    code, output = self.command("check", "--config", str(path), "--json")
+                    self.assertEqual(code, 0, output)
+                    self.assertFalse(json.loads(output)["plan"]["hg38_auto_download"])
+                    for backend in ("host", "conda", "poetry", "docker", "singularity"):
+                        code, output = self.command(
+                            "run", "--backend", backend, "--config", str(path), "--dry-run",
+                        )
+                        self.assertEqual(code, 0, output)
+                self.assertFalse((base / "project/reference").exists())
+                self.assertFalse((base / "project/results").exists())
+
+    def test_local_build_reaches_each_backend_without_importing_a_bundle(self):
+        for backend in ("host", "conda", "poetry", "docker", "singularity"):
+            for mode in ("illumina", "ont"):
+                with self.subTest(backend=backend, mode=mode), tempfile.TemporaryDirectory() as temporary:
+                    base = Path(temporary)
+                    path, code, output = self.setup(base, mode=mode, flags=("--build_reference",))
+                    self.assertEqual(code, 0, output)
+                    original = path.read_bytes()
+                    args = cli.build_parser().parse_args([
+                        "run", "--backend", backend, "--config", str(path),
+                    ])
+                    installation = {
+                        name + "_prefix": str(base / name)
+                        for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
+                    }
+                    runner = "_run_docker" if backend == "docker" else (
+                        "_run_singularity" if backend == "singularity" else "_run_host"
+                    )
+                    with (
+                        patch.object(cli, "_load_install_config", return_value=installation),
+                        patch.object(bundle, "install_bundle", side_effect=AssertionError("must not import")) as transfer,
+                        patch.object(cli, runner) as run,
+                    ):
+                        cli.execute_run(path, args)
+                    transfer.assert_not_called()
+                    run.assert_called_once_with(path, args)
+                    self.assertEqual(path.read_bytes(), original)
+                    self.assertFalse((base / "project/reference").exists())
+
+    def test_local_build_uses_real_reference_preparation_and_reuses_indexes(self):
+        class ReferencePrepared(Exception):
+            """Stop after reference preparation, before any scientific analysis."""
+
+        engine = bundle.engine
+        for mode in ("illumina", "ont"):
+            with self.subTest(mode=mode):
+                fixture = test_reference_storage_safety.ReferenceStorageSafetyTests()
+                fixture.setUp()
+                self.addCleanup(fixture.tearDown)
+                path, code, output = self.setup(fixture.root, mode=mode, flags=("--build_reference",))
+                self.assertEqual(code, 0, output)
+                args = cli.build_parser().parse_args([
+                    "run", "--backend", "host", "--config", str(path),
+                ])
+                runner = test_reference_storage_safety.FixtureRunner()
+                with (
+                    patch.object(cli, "_load_install_config", return_value={}),
+                    patch.object(bundle, "urlopen", side_effect=AssertionError("must not import prebuilt indexes")),
+                    patch.object(engine, "HG38_ASSETS", fixture.hg38),
+                    patch.object(engine, "download", side_effect=fixture.fake_download) as download,
+                    patch.object(engine.Toolchain, "from_environment", return_value=fixture.toolchain),
+                    patch.object(engine, "CommandRunner", return_value=runner),
+                    patch.object(engine, "align_illumina", side_effect=ReferencePrepared),
+                    patch.object(engine, "_run_ont_cna_branch", side_effect=ReferencePrepared),
+                ):
+                    with self.assertRaises(ReferencePrepared):
+                        cli.execute_run(path, args)
+                    built = "reference-bwa-build" if mode == "illumina" else "reference-minimap2-build"
+                    other = "reference-minimap2-build" if mode == "illumina" else "reference-bwa-build"
+                    self.assertEqual(runner.stages.count(built), 1)
+                    self.assertNotIn(other, runner.stages)
+                    self.assertEqual(download.call_count, 3)
+                    parent = fixture.root / "project/reference"
+                    reference = bundle.reference_paths(parent)[1]
+                    self.assertTrue((reference / "genome.fa").is_file())
+                    before = fixture.snapshot(reference)
+                    with self.assertRaises(ReferencePrepared):
+                        cli.execute_run(path, args)
+                    self.assertEqual(runner.stages.count(built), 1)
+                    self.assertEqual(download.call_count, 3)
+                    self.assertEqual(fixture.snapshot(reference), before)
+                    # A native build must also be found by the automatic
+                    # downloader and by setup's explicit reuse path.
+                    with patch.object(bundle, "install_bundle", side_effect=AssertionError("reference already exists")):
+                        bundle.ensure_prebuilt_reference(parent, mode=mode)
+                    for index, supplied in enumerate((parent, reference)):
+                        reuse, code, output = self.setup(
+                            fixture.root / f"reuse{index}", mode=mode,
+                            flags=("--hg38_build", str(supplied)),
+                        )
+                        self.assertEqual(code, 0, output)
+                        config = load_flat_yaml(reuse)
+                        self.assertEqual(config["lpwgs_root"], str(parent))
+                        self.assertFalse(config["hg38_auto_download"])
+                    self.assertEqual(fixture.snapshot(reference), before)
+
+    def test_local_build_cannot_be_combined_with_other_reference_choices(self):
+        for other in (("--hg38_build",), ("--hg38_build", "/reference"), ("--reference-root", "/reference")):
+            with self.subTest(other=other), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                cli.build_parser().parse_args(["setup", "--build_reference", *other])
 
     def test_wrong_or_incomplete_path_fails_before_writing_config(self):
         for kind in ("missing", "empty", "fasta", "wrong-platform"):

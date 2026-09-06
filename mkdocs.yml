@@ -29,7 +29,7 @@ nav:
       - QuickStart 1 — Illumina + ONT: quick_start.md
       - Set Up Your Own Data: setup.md
       - ONT Methylation: configuration/methylation.md
-      - Prebuilt Genome Indexes: reference_indexes.md
+      - Genome Indexes: reference_indexes.md
       - Automatic Setup for Your FASTQs: auto_params.md
       - QuickStart 2 — HCC1143: public_cohort.md
       - Input Files and Folder Layouts: inputs.md
