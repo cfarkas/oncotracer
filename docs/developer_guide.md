@@ -68,7 +68,7 @@ Test the exact documented setup/check/run examples with synthetic reads, without
 downloading genomes or starting scientific tools:
 
 ```bash
-python3 -m unittest tests.test_documented_workflows tests.test_setup -v
+python3 -m unittest tests.test_documented_workflows tests.test_batch_setup tests.test_setup -v
 ```
 
 Then follow [QuickStart 1](quick_start.md) and [QuickStart 2](public_cohort.md)
@@ -95,11 +95,28 @@ publish or replace a software release.
 Documentation regression checks require:
 
 - one tested installation route for the commands shown in the guides;
-- detailed QuickStart 1 and 2 one-command and step-by-step routes;
+- ordinary `setup`/`auto`, `check`, and `run` commands in tutorials;
+- every user-authored CSV/TSV table created by a complete `cat` block, with its filename and parent folder clear;
+- explicit per-library FASTQ pairs and per-sample ONT barcodes, never guessed identities;
+- no duplicate YAML keys or instructions to append keys that already exist;
+- a short primary route, expected success output, and a clear next step;
 - all Bash blocks to pass `bash -n`;
 - no normal user page to invoke the historical executor;
 - old configuration, input, pathology, refinement, output, and tutorial subjects to remain available through the native CLI;
 - no retired workflow launchers or historical command tutorials in the current tree.
+
+`tests.test_documented_workflows` executes the CSV-creation blocks and validates
+the ordinary commands using synthetic reads. It checks public download URLs and
+checksums against the pinned manifests; it does not download the cohort or prove
+scientific parity. Keep advanced implementation details on reference pages, not
+in the first steps of a tutorial. Maintain the word limits in `tests.test_native_docs`.
+
+Useful documentation patterns reviewed for this project include
+[nf-core's input-column explanations](https://nf-co.re/rnaseq/latest/docs/usage#samplesheet-input),
+[EPI2ME's requirements, demo and input examples](https://github.com/epi2me-labs/wf-human-variation#compute-requirements),
+and [Snakemake's separation of setup, basics and advanced topics](https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html).
+These are writing references, not evidence that OncoTracer supports their input
+semantics, resource requirements or scientific features.
 
 ## Scientific changes
 

@@ -1,6 +1,8 @@
 # Illumina configuration
 
-Use this route for single-end or paired-end Illumina FASTQs. Native v2 validates the inputs, aligns with BWA, performs samtools/Picard processing, runs qDNAseq independently for every selected sample, refines CNA boundaries from BAM depth, and creates CNA tables, plots, and summaries.
+Use this page for Illumina settings. For a first run, follow [batch setup](../auto_params.md)
+or [explicit FASTQ paths](../setup.md#illumina-multiple-libraries). Each library
+gets its own copy-number analysis and outputs.
 
 ## Recommended: Automatic Setup
 
@@ -37,7 +39,9 @@ Control_B,NORMAL
 CSV
 ```
 
-`sample_name` must match the FASTQ filename prefix exactly.
+`sample_name` must match the name before `_R1`/`_R2` exactly. The example needs
+all eight files above. Paste the whole `cat` block through `CSV`; it replaces
+the named CSV if it exists.
 
 ### Generate the YAML and samplesheet
 
@@ -61,7 +65,8 @@ project/config/illumina/
 └── illumina.samplesheet.csv
 ```
 
-It does not start the analysis.
+It does not start the analysis. Both `auto` and `setup` accept optional
+`--hg38_build PATH` or `--build_reference`; see [genome indexes](../reference_indexes.md).
 
 ### Inspect and run
 
@@ -70,7 +75,7 @@ PROJECT_DIR="$PWD/project"
 
 sed -n '1,180p' "$PROJECT_DIR/config/illumina/illumina.auto.yml"
 sed -n '1,30p' "$PROJECT_DIR/config/illumina/illumina.samplesheet.csv"
-cat "$PROJECT_DIR/config/illumina/auto_params_manifest.tsv"
+oncotracer check --config "$PROJECT_DIR/config/illumina/illumina.auto.yml"
 
 oncotracer run \
   --backend conda \
@@ -101,10 +106,10 @@ mkdir -p "$PROJECT_DIR/config"
 
 cat > "$PROJECT_DIR/config/illumina.samplesheet.csv" <<CSV
 sample,fastq_1,fastq_2,status
-Patient_A,$PROJECT_DIR/input/illumina_fastq/Patient_A_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz,tumor
-Patient_B,$PROJECT_DIR/input/illumina_fastq/Patient_B_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Patient_B_R2.fastq.gz,tumor
-Control_A,$PROJECT_DIR/input/illumina_fastq/Control_A_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Control_A_R2.fastq.gz,normal
-Control_B,$PROJECT_DIR/input/illumina_fastq/Control_B_R1.fastq.gz,$PROJECT_DIR/input/illumina_fastq/Control_B_R2.fastq.gz,normal
+Patient_A,"$PROJECT_DIR/input/illumina_fastq/Patient_A_R1.fastq.gz","$PROJECT_DIR/input/illumina_fastq/Patient_A_R2.fastq.gz",tumor
+Patient_B,"$PROJECT_DIR/input/illumina_fastq/Patient_B_R1.fastq.gz","$PROJECT_DIR/input/illumina_fastq/Patient_B_R2.fastq.gz",tumor
+Control_A,"$PROJECT_DIR/input/illumina_fastq/Control_A_R1.fastq.gz","$PROJECT_DIR/input/illumina_fastq/Control_A_R2.fastq.gz",normal
+Control_B,"$PROJECT_DIR/input/illumina_fastq/Control_B_R1.fastq.gz","$PROJECT_DIR/input/illumina_fastq/Control_B_R2.fastq.gz",normal
 CSV
 ```
 

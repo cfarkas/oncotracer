@@ -13,6 +13,9 @@ on:
       - "tests/test_docs_style.py"
       - "tests/test_documented_workflows.py"
       - "tests/test_hg38_setup.py"
+      - "tests/test_batch_setup.py"
+      - "oncotracer_cli/batch_setup.py"
+      - "bin/scripts/generate_auto_params.sh"
   pull_request:
     paths:
       - "README.md"
@@ -23,6 +26,9 @@ on:
       - "tests/test_docs_style.py"
       - "tests/test_documented_workflows.py"
       - "tests/test_hg38_setup.py"
+      - "tests/test_batch_setup.py"
+      - "oncotracer_cli/batch_setup.py"
+      - "bin/scripts/generate_auto_params.sh"
   workflow_dispatch:
 
 permissions:
@@ -56,6 +62,7 @@ jobs:
           python3 tests/test_docs_style.py
           python3 -m unittest tests.test_native_docs -q
           python3 -m unittest tests.test_documented_workflows -q
+          python3 -m unittest tests.test_batch_setup -q
           python3 -m unittest tests.test_hg38_setup -q
 
       - name: Validate the complete native v2 site
