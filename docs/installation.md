@@ -71,7 +71,9 @@ The guided route saves settings, checks inputs, and starts analysis:
 oncotracer setup --project /absolute/path/to/my-study --run
 ```
 
-Repeat it to resume an existing project. To review the configuration first, use:
+Repeat it to resume an existing project. Matching alignment and CNA calling
+results are reused; refinement and reports are regenerated. To review the
+configuration first, use:
 
 ```bash
 oncotracer setup --project /absolute/path/to/my-study
