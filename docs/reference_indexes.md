@@ -26,11 +26,19 @@ minimap2 for ONT. A build containing both can be shared by both platforms.
 The table shows `setup` destinations. With `auto`, the default reference folder
 is `CONFIG_DIR/reference/` instead. The saved `lpwgs_root` shows the exact path.
 
-Setup saves `lpwgs_root` and `hg38_auto_download` in YAML. Setup, check and dry-run
+Setup saves `lpwgs_root` and `hg38_auto_download` in YAML. Setup without `--run`, check and dry-run
 do not download or build anything. By default, normal run downloads only the needed platform's bundle,
 checks the pinned manifest and every file, and then starts analysis. Existing
 references are validated and reused, never overwritten by automatic download.
+Transient network failures retry up to five times. Verified chunks survive a failed
+run; repeat the same command to reuse them. The interrupted chunk restarts from its
+beginning. Download progress includes percentage, speed and estimated time remaining.
 A failed download stops the run; it does not fall back to building indexes.
+
+New setup projects share a `.oncotracer-reference-downloads` cache beside their
+project folders. Override it with `setup --reference-cache PATH`. Existing YAML
+can set `reference_download_cache: /absolute/path/hg38-downloads`; otherwise its
+reference parent holds the cache. Both platforms reuse the shared genome chunks.
 
 The manual commands below are useful for offline transfers or preparing a shared
 bundle containing both index types before any analysis.
@@ -57,8 +65,6 @@ Choose a new reference parent and preview the installation:
 
 ```bash
 oncotracer reference install \
-  --manifest https://github.com/cfarkas/oncotracer/releases/download/hg38-reference-v1/hg38-reference.json \
-  --sha256 1c704b1522fe37c13bf4272858792d03e827bc476fdb6712fa7f760f3c944632 \
   --lpwgs-root /absolute/path/shared-reference \
   --mode ont --dry-run
 ```
@@ -69,14 +75,17 @@ Replace `/absolute/path/shared-reference` with your chosen folder. Remove
 | Flag | Meaning |
 | --- | --- |
 | `--manifest` | Small JSON inventory URL, not the FASTA or reads |
-| `--sha256` | Trusted checksum that verifies the inventory |
+| `--sha256` | Required for a custom remote inventory; the default bundle is already pinned |
+| `--cache` | Shared verified chunk cache for manual imports |
 | `--lpwgs-root` | Parent where reusable references will live |
 | `--mode ont` | Genome and minimap2 index: 9.7 GiB |
 | `--mode illumina` | Genome and BWA indexes: 8.0 GiB |
 | `--mode both` | Genome and both index sets: 14.8 GiB |
 | `--dry-run` | Show required space and destination without transferring genome files |
 
-Allow 1 GiB of free disk headroom beyond the listed size. When setting up a
+Allow up to twice the listed size for the installed reference and retained download
+chunks, plus 1 GiB headroom. Local bundle imports need only the installed size plus
+headroom at the destination. When setting up a
 project, pass `--hg38_build /absolute/path/shared-reference`. This is the
 same path supplied to `reference install --lpwgs-root`, not the FASTA or index
 file. For a project already configured, set that parent in its YAML:
@@ -88,11 +97,15 @@ lpwgs_root: /absolute/path/shared-reference
 The installed files are under `shared-reference/references/samurai_hg38/`.
 Existing reference directories are never overwritten or silently adopted. If you
 need both platforms, select `--mode both` at the first install; otherwise use a new
-parent for a different bundle. Interrupted imports can be restarted, but partial
-downloads are not resumed.
+parent for a different bundle. Retained chunks are verified again before reuse.
+TLS certificate checks and all manifest, chunk and complete-file checks stay enabled.
 
 If this validated reference directory already exists, skip the download and use
 its path with `setup --hg38_build`. No separate genome-build script is required.
+
+The default [manifest](https://github.com/cfarkas/oncotracer/releases/download/hg38-reference-v1/hg38-reference.json)
+has SHA-256 `1c704b1522fe37c13bf4272858792d03e827bc476fdb6712fa7f760f3c944632`.
+Custom HTTPS manifests require their publisher’s trusted `--sha256`.
 
 ## RAM and compatibility
 

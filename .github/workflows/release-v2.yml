@@ -400,7 +400,7 @@ jobs:
             .source_commit == $commit and .source_sha256 == $source and
             .source_tree_dirty == false
           ' "$RUNNER_TEMP/container-provenance.json"
-          docker run --rm oncotracer:v2.0.0-release-candidate doctor --backend host \
+          docker run --rm oncotracer:v2.0.0-release-candidate doctor --backend host --json \
             > "$RUNNER_TEMP/container-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/container-doctor.json"
           docker run --rm --entrypoint bash oncotracer:v2.0.0-release-candidate \
@@ -455,7 +455,7 @@ jobs:
             ' "$RUNNER_TEMP/anonymous-container-provenance.json"
           cmp "$RUNNER_TEMP/container-provenance.json" \
             "$RUNNER_TEMP/anonymous-container-provenance.json"
-          docker run --rm "$CANDIDATE_IMAGE" doctor --backend host \
+          docker run --rm "$CANDIDATE_IMAGE" doctor --backend host --json \
             > "$RUNNER_TEMP/anonymous-container-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/anonymous-container-doctor.json"
           docker run --rm --entrypoint bash "$CANDIDATE_IMAGE" \
@@ -525,7 +525,7 @@ jobs:
             ' "$RUNNER_TEMP/published-container-provenance.json"
           cmp "$RUNNER_TEMP/container-provenance.json" \
             "$RUNNER_TEMP/published-container-provenance.json"
-          docker run --rm "$PUBLISHED_IMAGE" doctor --backend host \
+          docker run --rm "$PUBLISHED_IMAGE" doctor --backend host --json \
             > "$RUNNER_TEMP/published-container-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/published-container-doctor.json"
           docker run --rm --entrypoint bash "$PUBLISHED_IMAGE" \

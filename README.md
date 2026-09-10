@@ -35,15 +35,15 @@ oncotracer doctor --backend conda
 
 The first four commands install and activate OncoTracer. Keep both folders: the source folder is part of this installation. `install --conda` installs the analysis tools; `doctor` checks them. Keep the environment activated when using `oncotracer`; see [installation](docs/installation.md) for details and other backends.
 
-`system` explains hardware capacity before installing tools. [Uninstall instructions](docs/uninstall.md) cover preview, recovery, and permanent removal without deleting project data.
+`install` shows live progress and saves full diagnostics to a log. Use `--verbose` for package output or `doctor --json` for automation. `system` explains hardware capacity before installing tools. [Uninstall instructions](docs/uninstall.md) cover preview, recovery, and permanent removal without deleting project data.
 
 ## Set up your analysis
 
 ```bash
-oncotracer setup --project /absolute/path/to/my-study
+oncotracer setup --project /absolute/path/to/my-study --run
 ```
 
-Replace `/absolute/path/to/my-study` with the project folder you want to create. Setup asks which analysis and reads to use, then saves a commented configuration at `my-study/config/run.yml`. It prints the next commands:
+Replace `/absolute/path/to/my-study` with your project folder. Setup asks for your analysis and reads, saves `my-study/config/run.yml`, validates it, prepares missing backend tools, and starts the analysis. Repeat this command to resume. To save settings for review first, omit `--run`; you can then use:
 
 ```bash
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
@@ -55,7 +55,7 @@ oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.ym
 Add `--hg38_build /path/to/reference` to setup to reuse prepared hg38 indexes.
 By default, run downloads prebuilt indexes automatically. To build your own,
 use `--build_reference` instead; local indexing needs more RAM, disk and time.
-Setup and check do not download or build genomes.
+Setup without `--run` and check do not download or build genomes. Interrupted downloads retry automatically and reuse verified chunks.
 
 Results go to `my-study/results/`. Begin with `06_workflow_summary/workflow_summary.txt`; methylation results also have `07_methylation/methylation_status.json`.
 

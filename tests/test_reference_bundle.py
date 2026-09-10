@@ -176,6 +176,133 @@ class ReferenceBundleTests(unittest.TestCase):
         self.assertTrue(args.dry_run)
 
 
+
+class DownloadRecoveryTests(unittest.TestCase):
+    def fixture(self, root):
+        path, value, base = ReferenceBundleTests().fixture(root)
+        value["base_url"] = "https://example.org/chunks"
+        path.write_text(json.dumps(value))
+        return value, base
+
+    def test_ssl_failure_keeps_verified_chunks_and_rerun_reuses_them(self):
+        import io
+        import ssl
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            value, base = self.fixture(root)
+            cache, project = root / "cache", root / "project"
+            parts = [p for r in value["files"] if r["group"] in {"base", "bwa"} for p in r["chunks"]]
+            fail = parts[1]["name"]
+            requests = []
+            def open_remote(url, **kwargs):
+                name = str(url).rsplit("/", 1)[-1]
+                requests.append(name)
+                if name == fail:
+                    raise ssl.SSLError("[SYS] unknown error")
+                return io.BytesIO((root / name).read_bytes())
+            with (patch.dict(bundle.engine.HG38_ASSETS, base, clear=True),
+                  patch.object(bundle, "_read_manifest", return_value=(value, None)),
+                  patch.object(bundle, "_verify_imported_indexes"),
+                  patch.object(bundle.time, "sleep"),
+                  patch.object(bundle, "urlopen", side_effect=open_remote)):
+                with self.assertRaisesRegex(OncoTracerError, "Repeat the same command"):
+                    bundle.install_bundle("remote", project, mode="illumina", download_cache=cache)
+                self.assertEqual(requests.count(fail), bundle.DOWNLOAD_ATTEMPTS)
+                self.assertTrue((cache / (parts[0]["sha256"] + ".part")).is_file())
+                self.assertFalse((project / "references/samurai_hg38").exists())
+                fail = None
+                bundle.install_bundle("remote", project, mode="illumina", download_cache=cache)
+            self.assertEqual(requests.count(parts[0]["name"]), 1)
+            self.assertEqual((project / "references/samurai_hg38/genome.fa").read_bytes(), b"genome.fa")
+
+    def test_truncated_transfer_retries_and_certificate_errors_do_not(self):
+        import io
+        import ssl
+        from urllib.error import URLError, HTTPError
+        with tempfile.TemporaryDirectory() as directory:
+            cache = bundle._prepare_download_cache(Path(directory) / "cache")
+            part = {"name": "hg38-00-0000.part", "bytes": 5,
+                    "sha256": hashlib.sha256(b"hello").hexdigest()}
+            with (patch.object(bundle.time, "sleep"),
+                  patch.object(bundle, "urlopen", side_effect=[io.BytesIO(b"he"), io.BytesIO(b"hello")]) as request):
+                result = bundle._download_chunk(cache, part, "https://example.org/chunk")
+            self.assertEqual(request.call_count, 2)
+            self.assertEqual(result.read_bytes(), b"hello")
+            for error in (ssl.SSLCertVerificationError("bad certificate"),
+                          URLError(ssl.SSLCertVerificationError("bad certificate")),
+                          HTTPError("https://example.org", 404, "missing", {}, None)):
+                with (patch.object(bundle, "urlopen", side_effect=error) as request,
+                      patch.object(bundle.time, "sleep") as sleep):
+                    part["sha256"] = "0" * 64
+                    with self.assertRaises(OncoTracerError):
+                        bundle._download_chunk(cache, part, "https://example.org/chunk")
+                    self.assertEqual(request.call_count, 1)
+                    sleep.assert_not_called()
+
+    def test_manifest_retries_and_verifies_pinned_hash(self):
+        import io
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            value, base = self.fixture(root)
+            raw = json.dumps(value).encode()
+            with (patch.dict(bundle.engine.HG38_ASSETS, base, clear=True),
+                  patch.object(bundle.time, "sleep"),
+                  patch.object(bundle, "urlopen", side_effect=[TimeoutError("slow"), io.BytesIO(raw)]) as request):
+                result, local = bundle._read_manifest("https://example.org/manifest", hashlib.sha256(raw).hexdigest())
+            self.assertEqual(request.call_count, 2)
+            self.assertEqual(result, value)
+            self.assertIsNone(local)
+
+    def test_shared_cache_reuses_base_genome_between_platforms(self):
+        import io
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            value, base = self.fixture(root)
+            requests = []
+            def open_remote(url, **kwargs):
+                name = str(url).rsplit("/", 1)[-1]
+                requests.append(name)
+                return io.BytesIO((root / name).read_bytes())
+            with (patch.dict(bundle.engine.HG38_ASSETS, base, clear=True),
+                  patch.object(bundle, "_read_manifest", return_value=(value, None)),
+                  patch.object(bundle, "_verify_imported_indexes"),
+                  patch.object(bundle, "urlopen", side_effect=open_remote)):
+                for mode in ("illumina", "ont"):
+                    bundle.install_bundle("remote", root / mode, mode=mode, download_cache=root / "cache")
+            self.assertEqual(len(requests), len(set(requests)))
+            self.assertEqual(len(requests), sum(len(r["chunks"]) for r in value["files"]))
+
+    def test_cache_rejects_foreign_directory_symlinks_hardlinks_and_corruption(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            foreign = root / "foreign"
+            foreign.mkdir()
+            (foreign / "keep").write_text("user data")
+            with self.assertRaises(OncoTracerError):
+                bundle._prepare_download_cache(foreign)
+            cache = bundle._prepare_download_cache(root / "cache")
+            part = {"name": "hg38-00-0000.part", "bytes": 5,
+                    "sha256": hashlib.sha256(b"hello").hexdigest()}
+            cached = cache / (part["sha256"] + ".part")
+            keep = root / "keep"
+            keep.write_bytes(b"hello")
+            with patch.object(bundle, "urlopen", side_effect=AssertionError("must not connect")):
+                cached.symlink_to(keep)
+                with self.assertRaises(OSError):
+                    bundle._download_chunk(cache, part, "https://example.org")
+                cache = bundle._prepare_download_cache(root / "hardlink-cache")
+                cached = cache / (part["sha256"] + ".part")
+                os.link(keep, cached)
+                with self.assertRaises(OncoTracerError):
+                    bundle._download_chunk(cache, part, "https://example.org")
+                cache = bundle._prepare_download_cache(root / "damaged-cache")
+                cached = cache / (part["sha256"] + ".part")
+                cached.write_bytes(b"wrong")
+                with self.assertRaisesRegex(OncoTracerError, "checksum mismatch"):
+                    bundle._download_chunk(cache, part, "https://example.org")
+            self.assertEqual(keep.read_bytes(), b"hello")
+            self.assertEqual((foreign / "keep").read_text(), "user data")
+
 @unittest.skipUnless(
     os.environ.get("ONCOTRACER_TEST_REFERENCE_ROOT")
     and os.environ.get("ONCOTRACER_TEST_REFERENCE_CORE"),

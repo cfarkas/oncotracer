@@ -1,6 +1,7 @@
 # Uninstall
 
-Use `oncotracer uninstall` to remove selected tools.
+Use `oncotracer uninstall` to preview your saved backend, or select tools explicitly.
+Integrity checks show progress and can take several minutes for large environments.
 **No command below removes project data or results.**
 
 ## Remove the analysis tools
@@ -23,6 +24,9 @@ oncotracer uninstall --conda --yes
 # Or permanently remove the verified tools and reclaim their disk space.
 oncotracer uninstall --conda --yes --purge
 ```
+
+The short summary lists the exact paths and any recovery folder. Use `--json` for
+a machine-readable plan or result.
 
 Without `--yes`, uninstall only previews. `--dry-run` always wins over `--yes`.
 The default recovery folder is printed; it still occupies disk space. Do not run

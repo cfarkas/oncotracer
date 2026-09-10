@@ -290,7 +290,7 @@ class NativeCliTests(unittest.TestCase):
             "source_metadata_origin": "checkout",
             "source_tree_dirty": True,
         }
-        args = build_parser().parse_args(["doctor", "--backend", "host"])
+        args = build_parser().parse_args(["doctor", "--json", "--backend", "host"])
         output = io.StringIO()
         core = {"success": True, "probes": {}}
         with (
@@ -317,7 +317,7 @@ class NativeCliTests(unittest.TestCase):
             "source_metadata_origin": "embedded",
             "source_tree_dirty": False,
         }
-        args = build_parser().parse_args(["doctor", "--backend", "conda"])
+        args = build_parser().parse_args(["doctor", "--json", "--backend", "conda"])
         output = io.StringIO()
         with (
             patch("oncotracer_cli.cli._load_install_config", return_value={}),
@@ -356,7 +356,7 @@ class NativeCliTests(unittest.TestCase):
                 "source_metadata_origin": "embedded",
                 "source_tree_dirty": False,
             }
-            args = build_parser().parse_args(["doctor", "--backend", "conda"])
+            args = build_parser().parse_args(["doctor", "--json", "--backend", "conda"])
             output = io.StringIO()
             with (
                 patch("oncotracer_cli.cli._load_install_config", return_value={}),
@@ -398,7 +398,7 @@ class NativeCliTests(unittest.TestCase):
                 "source_tree_dirty": False,
             }
             environments = {name: {"success": True, "probes": {}} for name in prefixes}
-            args = build_parser().parse_args(["doctor", "--backend", "poetry"])
+            args = build_parser().parse_args(["doctor", "--json", "--backend", "poetry"])
             output = io.StringIO()
             active = {"value": False}
             lock = MagicMock()
@@ -451,7 +451,7 @@ class NativeCliTests(unittest.TestCase):
             "source_metadata_origin": "embedded",
             "source_tree_dirty": False,
         }
-        args = build_parser().parse_args(["doctor", "--backend", "host"])
+        args = build_parser().parse_args(["doctor", "--json", "--backend", "host"])
         output = io.StringIO()
         with (
             patch("oncotracer_cli.cli._load_install_config", return_value={}),
@@ -487,7 +487,7 @@ class NativeCliTests(unittest.TestCase):
                 "source_metadata_origin": "embedded",
                 "source_tree_dirty": False,
             }
-            args = build_parser().parse_args(["doctor", "--backend", "singularity"])
+            args = build_parser().parse_args(["doctor", "--json", "--backend", "singularity"])
             output = io.StringIO()
             marker = {"sif_sha256": "c" * 64}
             with (
@@ -598,7 +598,7 @@ class NativeCliTests(unittest.TestCase):
                 "source_tree_dirty": False,
             }
             environments = {name: {"success": True, "probes": {}} for name in prefixes}
-            args = build_parser().parse_args(["doctor", "--backend", "host"])
+            args = build_parser().parse_args(["doctor", "--json", "--backend", "host"])
             output = io.StringIO()
             with (
                 patch.dict(os.environ, variables, clear=False),

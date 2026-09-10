@@ -214,10 +214,69 @@ def command_setup(args: argparse.Namespace) -> int:
         ) from error
 
 
+def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
+    from . import cli
+
+    if args.threads is not None and args.threads < 1:
+        raise OncoTracerError("--threads must be positive")
+    parser = cli.build_parser()
+    check = parser.parse_args(["check", "--config", str(config_path)])
+    check_output = io.StringIO()
+    with contextlib.redirect_stdout(check_output):
+        check_code = command_check(check)
+    if check_code:
+        print(check_output.getvalue(), end="")
+        raise OncoTracerError("setup saved the configuration, but validation failed; correct it before running")
+    print("Configuration OK. Preparing to run…", flush=True)
+    # Installation is explicit through --run; reuse configured tools when present.
+    install = cli._load_install_config()
+    backend = args.backend
+    if backend in {"conda", "poetry"}:
+        required = [install.get(name + "_prefix") for name in
+                    ("core", "qdnaseq", "ichorcna", "classifier", "gistic")]
+        ready = all(value and Path(str(value)).is_dir() for value in required)
+        if backend == "poetry":
+            ready = ready and bool(install.get("poetry_prefix")) and Path(str(install["poetry_prefix"])).is_dir()
+    elif backend == "singularity":
+        ready = bool(install.get("sif")) and Path(str(install["sif"])).is_file()
+    else:
+        ready = backend == "host" or install.get("backend") == backend
+    if not ready:
+        print(f"Preparing the {backend} tools required for this run…", flush=True)
+        cli.command_install(parser.parse_args(["install", "--" + backend]))
+    run = parser.parse_args(["run", "--config", str(config_path), "--backend", backend])
+    if args.threads is not None:
+        run.threads = args.threads
+    return cli.command_run(run)
+
+
 def _command_setup(args: argparse.Namespace) -> int:
+    from .cli import _load_install_config
+
+    args.backend = args.backend or str(_load_install_config().get("backend") or "conda")
     interactive = not args.non_interactive
+    if getattr(args, "run", False) and args.project:
+        existing = Path(args.project).expanduser().resolve() / "config/run.yml"
+        if existing.is_file():
+            selection = ("mode", "analysis", "hg38_build", "reference_root", "build_reference",
+                         "reference_cache", "reads_folder", "barcodes", "sample_names",
+                         "samplesheet", "sample_name", "fastq_1", "fastq_2", "status",
+                         "classifier", "modbam", "pod5_dir", "resources", "gpu",
+                         "accept_sturgeon_license", *EXECUTABLES, *RESOURCE_FLAGS,
+                         *RESOURCE_FILES["marlin"], *RESOURCE_FILES["sturgeon"])
+            if args.gpu is not None or any(getattr(args, name, None) is not None and getattr(args, name) is not False
+                   for name in selection):
+                raise OncoTracerError(f"project already configured: {existing}; resume with setup --project "
+                                     f"{shlex.quote(str(existing.parents[1]))} --run, or edit its YAML")
+            print(f"Using saved configuration: {existing}")
+            return _run_setup(existing, args)
+    if args.threads is None:
+        args.threads = 8
+    inferred_mode = "illumina" if args.fastq_1 or args.samplesheet else (
+        "ont" if args.reads_folder or args.modbam or args.pod5_dir else None
+    )
     mode = _ask(
-        args.mode,
+        args.mode or inferred_mode,
         "Sequencing platform (--mode)",
         choices=("illumina", "ont"),
         interactive=interactive,
@@ -297,6 +356,10 @@ def _command_setup(args: argparse.Namespace) -> int:
         "mode": mode,
         "lpwgs_root": str(reference_root),
         "hg38_auto_download": not (bool(supplied_reference) or args.build_reference),
+        "reference_download_cache": str(
+            Path(args.reference_cache).expanduser().absolute() if args.reference_cache
+            else project.parent / ".oncotracer-reference-downloads"
+        ),
         "outdir": str(project / "results"),
         "threads": args.threads,
         "force": False,
@@ -522,8 +585,9 @@ def _command_setup(args: argparse.Namespace) -> int:
     print(
         f"\nConfiguration saved: {config_path}\nInputs stay in their existing folders. Results will be written to: {values['outdir']}"
     )
-    print("Review the commented YAML, check it, then start the analysis:")
-    print(shlex.join(["oncotracer", "check", "--config", str(config_path)]))
+    if getattr(args, "run", False):
+        return _run_setup(config_path, args)
+    print("Start the analysis (validation runs automatically):")
     print(
         shlex.join(
             [
@@ -721,11 +785,17 @@ def add_setup_commands(subparsers) -> None:
     parser.add_argument(
         "--backend",
         choices=("host", "conda", "docker", "singularity", "poetry"),
-        default="conda",
-        help="backend used in the printed run command (default: conda)",
+        help="execution backend (default: saved installation, otherwise conda)",
     )
     parser.add_argument(
-        "--threads", type=int, default=8, help="CPU worker threads (default: 8)"
+        "--run", action="store_true",
+        help="validate, prepare missing backend tools, and run; also resumes an existing project"
+    )
+    parser.add_argument(
+        "--reference-cache", help="shared verified download cache (default: a sibling of the project)"
+    )
+    parser.add_argument(
+        "--threads", type=int, help="CPU worker threads for a new project (default: 8)"
     )
     parser.add_argument(
         "--non-interactive",
@@ -782,7 +852,7 @@ def add_setup_commands(subparsers) -> None:
     device.add_argument(
         "--cpu", dest="gpu", action="store_false", help="CPU only (default)"
     )
-    parser.set_defaults(gpu=False)
+    parser.set_defaults(gpu=None)
     meth.add_argument(
         "--accept-sturgeon-license",
         action="store_true",

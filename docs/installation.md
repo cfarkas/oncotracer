@@ -17,7 +17,7 @@ For a small low-pass genome run with 2–4 threads, plan for:
 | ONT copy-number analysis | 24 GiB |
 | Methylation classifiers or report LLMs | Depends on the model; checked separately |
 
-These are planning estimates, not guaranteed minimums. Leave at least 40 GiB
+These are planning estimates, not guaranteed minimums. Leave at least 60 GiB
 free for tools, reference files and a small run, plus space for your FASTQs,
 BAMs and temporary files. Large datasets need more. Prebuilt indexes avoid
 index construction; they still need RAM during alignment.
@@ -50,7 +50,10 @@ oncotracer doctor --backend conda
 
 `system` reports CPU, available RAM, free disk and limits before any download.
 `install --conda` creates separate environments for the analysis tools.
-`doctor` checks those tools. Resolve reported errors before starting an analysis.
+`doctor` checks those tools and prints a short OK/FAIL summary. The installer shows
+progress and elapsed time, with colors in supported terminals. Full package output
+goes to the printed log path; add `--verbose` to show package output in the terminal.
+Use `install --json` or `doctor --json` for automation, and `NO_COLOR=1` to disable colors.
 
 Conda is the recommended starting backend. Docker, Apptainer and development
 options are described in [execution backends](containers.md) and
@@ -62,14 +65,22 @@ tools does not install those models.
 
 ## 3. Start a project
 
+The guided route saves settings, checks inputs, and starts analysis:
+
+```bash
+oncotracer setup --project /absolute/path/to/my-study --run
+```
+
+Repeat it to resume an existing project. To review the configuration first, use:
+
 ```bash
 oncotracer setup --project /absolute/path/to/my-study
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
 
-Setup asks for the inputs and saves a configuration. Check validates it; run
-starts analysis. The [setup guide](setup.md) shows the paths and flags for single
+Setup without `--run` saves a configuration. `check` is an optional preview;
+`run` also validates inputs before analysis. The [setup guide](setup.md) shows the paths and flags for single
 and multiple samples. To try public data, follow [QuickStart 1](quick_start.md).
 
 By default, run downloads prebuilt hg38 indexes.
