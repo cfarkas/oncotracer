@@ -6,6 +6,7 @@ import contextlib
 import csv
 import fcntl
 import gzip
+import io
 import json
 import math
 import os
@@ -2096,18 +2097,22 @@ def _write_bam_sheet(
     bams: Mapping[str, Path],
     path: Path,
 ) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["sample", "bam", "status"])
-        writer.writeheader()
-        for sample in samples:
-            writer.writerow(
-                {
-                    "sample": sample.sample,
-                    "bam": str(bams[sample.sample]),
-                    "status": sample.status,
-                }
-            )
+    content = io.StringIO(newline="")
+    writer = csv.DictWriter(content, fieldnames=["sample", "bam", "status"])
+    writer.writeheader()
+    for sample in samples:
+        writer.writerow(
+            {
+                "sample": sample.sample,
+                "bam": str(bams[sample.sample]),
+                "status": sample.status,
+            }
+        )
+    text = content.getvalue()
+    # Stage signatures include mtimes; unchanged generated inputs must keep theirs.
+    if path.is_file() and not path.is_symlink() and path.read_bytes() == text.encode("utf-8"):
+        return
+    atomic_write_text(path, text)
 
 
 def align_illumina(
