@@ -1540,7 +1540,7 @@ action_install_environments() {
   local install_stderr doctor_stderr
   install_stderr="$(mktemp "$LOG_DIR/native-install.${SESSION_ID}.XXXXXX.stderr.log")"
   doctor_stderr="$(mktemp "$LOG_DIR/native-doctor.${SESSION_ID}.XXXXXX.stderr.log")"
-  run_copied_binary install --conda --prefix "$ENV_ROOT" \
+  run_copied_binary install --conda --prefix "$ENV_ROOT" --json \
     > "$CONTEXT_DIR/native-install.json" \
     2> "$install_stderr"
   local name

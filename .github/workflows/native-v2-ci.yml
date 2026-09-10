@@ -67,6 +67,7 @@ jobs:
             tests/test_native_methylation.py \
             tests/test_beginner_runtime.py \
             tests/test_setup.py \
+            tests/test_first_run_experience.py \
             tests/test_documented_workflows.py \
             tests/test_batch_setup.py \
             tests/test_hg38_setup.py \
@@ -82,6 +83,7 @@ jobs:
             tests/test_native_provenance.py \
             tests/test_ichorcna_plot_compat.py \
             tests/test_qdnaseq_helper.py \
+            tests/test_qdnaseq_resume.py \
             tests/test_qdnaseq_cache_safety.py \
             tests/test_reference_storage_safety.py \
             tests/test_product_hygiene.py \
@@ -406,7 +408,7 @@ jobs:
             '.source_commit == $commit and .source_sha256 == $sha256 and
              .source_tree_dirty == false' \
             "$RUNNER_TEMP/docker-provenance.json"
-          docker run --rm oncotracer:v2-ci doctor --backend host \
+          docker run --rm oncotracer:v2-ci doctor --backend host --json \
             | tee "$RUNNER_TEMP/docker-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/docker-doctor.json"
           docker run --rm --entrypoint bash oncotracer:v2-ci -c '
