@@ -399,6 +399,39 @@ else:
             )
         self.assertEqual(_snapshot(transaction), before)
 
+    def test_public_uninstall_reinstall_cycle_preserves_user_files(self) -> None:
+        from oncotracer_cli.cli import main
+        base = self.scratch / "lifecycle-envs"
+        self._conda_install(base)
+        sentinel = base / "user-results.txt"
+        sentinel.write_text("keep my results")
+        with mock.patch("oncotracer_cli.cli._load_install_config", return_value={
+            "backend": "conda", "core_prefix": str(base / "core")
+        }):
+            for purge in (False, True):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    self.assertEqual(main(["uninstall", "--yes", "--json",
+                                           *(["--purge"] if purge else [])]), 0)
+                result = json.loads(output.getvalue())
+                self.assertEqual(sentinel.read_text(), "keep my results")
+                self.assertFalse((base / "core").exists())
+                if not purge:
+                    self.assertTrue((Path(result["recovery_directory"]) / "core/bin/python").is_file())
+                # Use a fresh dedicated location because unrelated user files remain.
+                base = self.scratch / ("reinstalled-" + str(purge))
+                self._conda_install(base)
+                sentinel = base / "user-results.txt"
+                sentinel.write_text("keep my results")
+                # The saved installation will point to this new prefix on next iteration.
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(main(["uninstall", "--conda", "--prefix", str(base), "--dry-run"]), 0)
+                self.assertEqual(install_safety._classify_base(base)[0], "owned")
+                if not purge:
+                    # Update the mocked saved settings used by the next invocation.
+                    from oncotracer_cli import cli
+                    cli._load_install_config.return_value["core_prefix"] = str(base / "core")
+
     def test_conda_fresh_reuse_force_and_unrelated_sibling(self) -> None:
         base = self.scratch / "managed-envs"
         result = self._conda_install(base)

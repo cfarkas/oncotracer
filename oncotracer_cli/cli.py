@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 from . import __version__
+from .reporting import detail, is_active, operation, status
 from .setup import add_setup_commands
 from .system_check import add_system_command
 from .uninstall import add_uninstall_command
@@ -100,12 +101,19 @@ def _run(
 ) -> None:
     argv = [str(item) for item in command]
     if log_command:
-        print(f"OncoTracer command: {shlex.join(argv)}", file=sys.stderr, flush=True)
+        detail(f"OncoTracer command: {shlex.join(argv)}", file=sys.stderr, flush=True, echo=dry_run)
     if dry_run:
         return
+    status(f"Running {Path(argv[0]).name}")
     completed = subprocess.run(
-        argv, cwd=cwd, stdout=sys.stderr, stderr=sys.stderr, check=False
+        argv, cwd=cwd, check=False,
+        **({"capture_output": True, "text": True} if is_active()
+           else {"stdout": sys.stderr, "stderr": sys.stderr})
     )
+    if completed.stdout:
+        detail(completed.stdout, end="")
+    if completed.stderr:
+        detail(completed.stderr, end="")
     if completed.returncode:
         raise OncoTracerError(
             f"command failed with exit code {completed.returncode}: {shlex.join(argv)}"
@@ -260,15 +268,30 @@ def command_install(args: argparse.Namespace) -> int:
             f"install --{backend} does not accept backend-irrelevant option(s): "
             f"{', '.join(irrelevant)}"
         )
-    if backend == "conda":
-        result = _install_conda(runtime_root(args.root), args)
-    elif backend == "docker":
-        result = _install_docker(args)
-    elif backend == "singularity":
-        result = _install_singularity(args)
+    with operation(
+        f"{'Previewing' if args.dry_run else 'Preparing'} {backend} tools",
+        verbose=getattr(args, "verbose", False),
+        log_dir=None if args.dry_run else _data_home() / "logs",
+        log_file=getattr(args, "log_file", None) if not args.dry_run else None,
+    ):
+        if backend == "conda":
+            result = _install_conda(runtime_root(args.root), args)
+        elif backend == "docker":
+            result = _install_docker(args)
+        elif backend == "singularity":
+            result = _install_singularity(args)
+        else:
+            result = _install_poetry(runtime_root(args.root), args)
+    if getattr(args, "json", False):
+        print(json.dumps(result, indent=2, sort_keys=True))
+    elif args.dry_run:
+        print("Installation preview complete. No tools were installed.")
     else:
-        result = _install_poetry(runtime_root(args.root), args)
-    print(json.dumps(result, indent=2, sort_keys=True))
+        print(f"OncoTracer {__version__}: {backend} tools are ready.")
+        for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic"):
+            if result.get(name + "_prefix"):
+                print(f"  OK  {name}")
+        print("Next: oncotracer setup --project /path/to/my-study --run")
     return 0
 
 
@@ -560,7 +583,11 @@ def _prepare_configured_hg38(config_path: Path, args: argparse.Namespace) -> Non
         _run_host(config_path, preview)
     if sha256_file(config_path) != digest:
         raise OncoTracerError("configuration changed before hg38 download")
-    ensure_prebuilt_reference(parent, mode=str(config["mode"]))
+    cache = config.get("reference_download_cache")
+    ensure_prebuilt_reference(
+        parent, mode=str(config["mode"]),
+        **({"download_cache": Path(str(cache)).expanduser().absolute()} if cache else {}),
+    )
     if sha256_file(config_path) != digest:
         raise OncoTracerError(
             "configuration changed during hg38 download; check it before running again"
@@ -1168,6 +1195,13 @@ def _probe_native_prefixes(
 
 
 def command_doctor(args: argparse.Namespace) -> int:
+    with operation("Checking installed tools", verbose=getattr(args, "verbose", False)) as progress:
+        result = _command_doctor(args)
+        progress.failed = bool(result)
+        return result
+
+
+def _command_doctor(args: argparse.Namespace) -> int:
     backend = _backend_from(args)
     checks: dict[str, object] = {
         "schema": "oncotracer-doctor-v1",
@@ -1354,7 +1388,25 @@ def command_doctor(args: argparse.Namespace) -> int:
             success = False
     success = bool(success) and source_success
     checks["success"] = success
-    print(json.dumps(checks, indent=2, sort_keys=True))
+    if getattr(args, "json", False):
+        print(json.dumps(checks, indent=2, sort_keys=True))
+    else:
+        print(f"OncoTracer {__version__} — {backend} health check")
+        for name in ("source", "managed_install", "managed_sif", "docker"):
+            if name in checks:
+                item = checks[name]
+                print(f"  {'OK' if item.get('success') else 'FAIL'}  {name.replace('_', ' ')}")
+                if item.get("error"):
+                    print(f"        {item['error']}")
+        for name, item in checks.get("environments", {}).items():
+            print(f"  {'OK' if item['success'] else 'FAIL'}  {name}")
+            if item.get("error"):
+                print(f"        {item['error']}")
+            for tool, probe in item.get("probes", {}).items():
+                if not probe.get("success"):
+                    message = probe.get("error") or probe.get("output_excerpt") or "command unavailable"
+                    print(f"        {tool}: {message}")
+        print("Ready to run." if success else "Some checks failed. Run doctor --json for full diagnostics.")
     return 0 if success else 1
 
 
@@ -1467,6 +1519,9 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("--force", action="store_true")
     install.add_argument("--dry-run", action="store_true")
     install.add_argument("--root")
+    install.add_argument("--verbose", action="store_true", help="show package-manager output and exact commands")
+    install.add_argument("--json", action="store_true", help="machine-readable installation summary")
+    install.add_argument("--log-file", help="write detailed diagnostics to this new file")
     install.set_defaults(func=command_install)
 
     run = subparsers.add_parser("run", help="Run a native analysis from YAML")
@@ -1499,6 +1554,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
     )
     doctor.add_argument("--image")
+    doctor.add_argument("--json", action="store_true", help="complete machine-readable health report")
+    doctor.add_argument("--verbose", action="store_true", help="show detailed tool checks")
     doctor.set_defaults(func=command_doctor)
 
     provenance = subparsers.add_parser(
@@ -1585,6 +1642,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return int(args.func(args))
     except OncoTracerError as error:
         print(f"ERROR: {error}", file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"ERROR: could not access a required file, directory or command: {error}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:
         print("ERROR: interrupted", file=sys.stderr)

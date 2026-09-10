@@ -8,13 +8,18 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import http.client
 import json
 import os
 import re
 import shutil
+import ssl
+import stat
 import sys
 import tempfile
+import time
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
@@ -37,6 +42,121 @@ INDEX_FILES = {
     "minimap2": ["genome.fa.map-ont.mmi"],
 }
 HEX = re.compile(r"[0-9a-f]{64}")
+DOWNLOAD_ATTEMPTS = 5
+DOWNLOAD_TIMEOUT = 60
+CACHE_MARKER = ".oncotracer-reference-downloads.json"
+CACHE_IDENTITY = {"schema": "oncotracer-reference-download-cache-v1"}
+
+
+def _transient_transfer_error(error: BaseException) -> bool:
+    if isinstance(error, HTTPError):
+        return error.code in {408, 425, 429, 500, 502, 503, 504}
+    if isinstance(error, URLError):
+        return _transient_transfer_error(error.reason)
+    if isinstance(error, ssl.SSLCertVerificationError):
+        return False
+    return isinstance(error, (TimeoutError, ConnectionError, ssl.SSLError,
+                              http.client.IncompleteRead)) or (
+        isinstance(error, OSError) and error.errno in {None, -3, 101, 104, 110, 111, 113}
+    )
+
+
+def _retry_transfer(action, label: str):
+    for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+        try:
+            return action()
+        except (OSError, http.client.HTTPException) as error:
+            if isinstance(error, HTTPError):
+                error.close()
+            if not _transient_transfer_error(error) or attempt == DOWNLOAD_ATTEMPTS:
+                raise OncoTracerError(
+                    f"could not download {label}: {error}. Repeat the same command to "
+                    "resume; verified chunks are kept. TLS certificate verification remains enabled."
+                ) from error
+            delay = min(2 ** (attempt - 1), 16)
+            print(f"Download interrupted ({label}): {error}. Retrying {attempt + 1}/"
+                  f"{DOWNLOAD_ATTEMPTS} in {delay}s…", file=sys.stderr, flush=True)
+            time.sleep(delay)
+
+
+@contextlib.contextmanager
+def _cached_file(path: Path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    with os.fdopen(descriptor, "rb") as handle:
+        metadata = os.fstat(handle.fileno())
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise OncoTracerError(f"download cache entry must be a regular, non-hardlinked file: {path}")
+        yield handle
+
+
+def _prepare_download_cache(path: Path) -> Path:
+    path = _guard_dedicated(path, "reference download cache")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path = _guard_dedicated(path, "reference download cache")
+    try:
+        path.mkdir(mode=0o700)
+    except FileExistsError:
+        pass
+    engine._require_physical_directory(path, "reference download cache")
+    with engine._physical_directory_lock(path, "reference download cache"):
+        marker = path / CACHE_MARKER
+        if not list(path.iterdir()):
+            with marker.open("x", encoding="utf-8") as handle:
+                json.dump(CACHE_IDENTITY, handle)
+        if not engine._marker_matches(marker, CACHE_IDENTITY):
+            raise OncoTracerError(f"not an OncoTracer reference download cache: {path}")
+    return path
+
+
+def _download_chunk(cache: Path, part: dict, url: str) -> Path:
+    """Publish only complete, verified chunks; interrupted chunks restart safely."""
+    path = cache / (part["sha256"] + ".part")
+    # Serialize concurrent downloads sharing this physical cache directory.
+    with engine._physical_directory_lock(cache, "reference download cache"):
+        if os.path.lexists(path):
+            with _cached_file(path) as handle:
+                digest = hashlib.sha256()
+                while block := handle.read(BLOCK_BYTES):
+                    digest.update(block)
+                size = os.fstat(handle.fileno()).st_size
+            if size == part["bytes"] and digest.hexdigest() == part["sha256"]:
+                print(f"Reusing verified {part['name']}", file=sys.stderr, flush=True)
+                return path
+            raise OncoTracerError(f"download cache checksum mismatch: {path}; remove this damaged chunk and retry")
+
+        def transfer():
+            print(f"Downloading {part['name']} ({part['bytes'] / 1024**2:.0f} MiB)",
+                  file=sys.stderr, flush=True)
+            with tempfile.TemporaryDirectory(prefix=".partial-", dir=cache) as temporary:
+                ready = Path(temporary) / "chunk"
+                count, digest, last_report = 0, hashlib.sha256(), time.monotonic()
+                started = last_report
+                with ready.open("xb") as output, urlopen(url, timeout=DOWNLOAD_TIMEOUT) as incoming:
+                    while block := incoming.read(BLOCK_BYTES):
+                        count += len(block)
+                        if count > part["bytes"]:
+                            raise OncoTracerError(f"reference chunk exceeds its declared size: {part['name']}")
+                        digest.update(block)
+                        output.write(block)
+                        now = time.monotonic()
+                        if now - last_report >= 15:
+                            speed = count / max(now - started, 0.001)
+                            eta = (part['bytes'] - count) / speed
+                            print(f"  {part['name']}: {100 * count / part['bytes']:.0f}% | "
+                                  f"{speed / 1024**2:.1f} MiB/s | ETA {eta:.0f}s",
+                                  file=sys.stderr, flush=True)
+                            last_report = now
+                    if count < part["bytes"]:
+                        raise http.client.IncompleteRead(b"", part["bytes"] - count)
+                    if digest.hexdigest() != part["sha256"]:
+                        raise OncoTracerError(f"reference chunk size/hash mismatch: {part['name']}")
+                    output.flush()
+                    os.fsync(output.fileno())
+                _rename_noreplace(ready, path, "verified download chunk")
+            engine._fsync_directory(cache, "reference download cache")
+        _retry_transfer(transfer, part["name"])
+        return path
+
 
 
 def _files() -> dict[str, str]:
@@ -274,10 +394,14 @@ def _read_manifest(
         )
     if expected_sha256 and not HEX.fullmatch(expected_sha256):
         raise OncoTracerError("--sha256 must be 64 lowercase hexadecimal characters")
-    with (
-        urlopen(source, timeout=30) if remote else Path(source).expanduser().open("rb")
-    ) as handle:
-        raw = handle.read(MANIFEST_LIMIT + 1)
+    def read_remote():
+        with urlopen(source, timeout=DOWNLOAD_TIMEOUT) as handle:
+            return handle.read(MANIFEST_LIMIT + 1)
+    if remote:
+        raw = _retry_transfer(read_remote, "reference manifest")
+    else:
+        with Path(source).expanduser().open("rb") as handle:
+            raw = handle.read(MANIFEST_LIMIT + 1)
     if len(raw) > MANIFEST_LIMIT:
         raise OncoTracerError("reference manifest is too large")
     if expected_sha256 and hashlib.sha256(raw).hexdigest() != expected_sha256:
@@ -343,6 +467,7 @@ def install_bundle(
     mode: str,
     expected_sha256: str | None = None,
     dry_run: bool = False,
+    download_cache: Path | None = None,
 ) -> dict:
     value, local = _read_manifest(source, expected_sha256)
     wanted = {
@@ -377,9 +502,22 @@ def install_bundle(
         return result
     target.parent.mkdir(parents=True, exist_ok=True)
     target = _guard_dedicated(target, "reference destination")
-    if shutil.disk_usage(target.parent).free < size + 1024**3:
+    cache = None
+    extra = 0
+    if local is None:
+        cache = _prepare_download_cache(download_cache or (target.parent / ".oncotracer-downloads"))
+        extra = sum(part["bytes"] for record in records for part in record["chunks"]
+                    if not os.path.lexists(cache / (part["sha256"] + ".part")))
+        result["download_cache"] = str(cache)
+        print(f"Verified downloads will be kept in: {cache}", file=sys.stderr, flush=True)
+        if cache.stat().st_dev != target.parent.stat().st_dev:
+            if shutil.disk_usage(cache).free < extra + 1024**3:
+                raise OncoTracerError(f"download cache needs {extra / 1024**3:.1f} GiB plus 1 GiB free: {cache}")
+            extra = 0
+    if shutil.disk_usage(target.parent).free < size + extra + 1024**3:
         raise OncoTracerError(
-            f"reference import needs {size / 1024**3:.1f} GiB plus 1 GiB free headroom at {target.parent}"
+            f"reference import and download cache need {(size + extra) / 1024**3:.1f} GiB "
+            f"plus 1 GiB free headroom at {target.parent}"
         )
     with tempfile.TemporaryDirectory(
         prefix=".oncotracer-hg38-import-", dir=target.parent
@@ -395,11 +533,9 @@ def install_bundle(
                     location = (
                         local / part["name"]
                         if local
-                        else value["base_url"] + "/" + part["name"]
+                        else _download_chunk(cache, part, value["base_url"] + "/" + part["name"])
                     )
-                    with (
-                        location.open("rb") if local else urlopen(location, timeout=30)
-                    ) as incoming:
+                    with (location.open("rb") if local else _cached_file(location)) as incoming:
                         count, digest = 0, hashlib.sha256()
                         while block := incoming.read(BLOCK_BYTES):
                             count += len(block)
@@ -457,7 +593,7 @@ def reference_is_present(lpwgs_root: Path) -> bool:
     )
 
 
-def ensure_prebuilt_reference(lpwgs_root: Path, *, mode: str) -> None:
+def ensure_prebuilt_reference(lpwgs_root: Path, *, mode: str, download_cache: Path | None = None) -> None:
     if reference_is_present(lpwgs_root):
         return
     print(
@@ -472,6 +608,7 @@ def ensure_prebuilt_reference(lpwgs_root: Path, *, mode: str) -> None:
             lpwgs_root,
             mode=mode,
             expected_sha256=DEFAULT_MANIFEST_SHA256,
+            download_cache=download_cache,
         )
     except (OSError, ValueError) as error:
         raise OncoTracerError(f"automatic hg38 download failed: {error}") from error
@@ -499,8 +636,11 @@ def command_reference(args) -> int:
                         args.manifest,
                         Path(args.lpwgs_root),
                         mode=args.mode,
-                        expected_sha256=args.sha256,
+                        expected_sha256=args.sha256 or (
+                            DEFAULT_MANIFEST_SHA256 if args.manifest == DEFAULT_MANIFEST_URL else None
+                        ),
                         dry_run=args.dry_run,
+                        download_cache=Path(args.cache) if args.cache else None,
                     ),
                     indent=2,
                 )
@@ -524,11 +664,14 @@ def add_reference_command(subparsers) -> None:
     )
     install.add_argument(
         "--manifest",
-        required=True,
-        help="local hg38-reference.json or HTTPS publisher URL",
+        default=DEFAULT_MANIFEST_URL,
+        help="local hg38-reference.json or HTTPS publisher URL (default: pinned public hg38 bundle)",
     )
     install.add_argument(
-        "--sha256", help="manifest checksum, required for remote downloads"
+        "--sha256", help="manifest checksum, required for custom remote downloads"
+    )
+    install.add_argument(
+        "--cache", help="shared folder for verified download chunks; retained for retry and reuse"
     )
     install.add_argument(
         "--lpwgs-root",

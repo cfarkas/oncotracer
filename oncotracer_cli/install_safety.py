@@ -28,6 +28,7 @@ from pathlib import Path
 from . import __version__
 from .provenance import ProvenanceError, get_provenance
 from .runtime import OncoTracerError, sha256_file
+from .reporting import detail, status
 
 
 CONDA_BASE_SCHEMA = "oncotracer-conda-install-root-v1"
@@ -281,13 +282,13 @@ def _atomic_write_bytes(
         if descriptor is not None:
             os.close(descriptor)
         if created_identity is not None and _exists_at(parent_fd, temporary_name):
-            print(
+            detail(
                 "OncoTracer retained interrupted metadata at " f"{temporary}",
                 file=sys.stderr,
                 flush=True,
             )
         if prior_retained is not None:
-            print(
+            detail(
                 f"OncoTracer retained prior metadata at {prior_retained}",
                 file=sys.stderr,
                 flush=True,
@@ -553,9 +554,17 @@ def _run_checked(
     argv = [str(value) for value in command]
     import shlex
 
-    print(f"OncoTracer command: {shlex.join(argv)}", file=sys.stderr, flush=True)
+    detail(f"OncoTracer command: {shlex.join(argv)}", file=sys.stderr, flush=True, echo=dry_run)
     if dry_run:
         return None
+    executable = Path(argv[0])
+    if argv[1:3] == ["env", "create"] and "--prefix" in argv:
+        label = f"Installing {Path(argv[argv.index('--prefix') + 1]).name} environment"
+    elif executable.parent.name == "bin":
+        label = f"Checking {executable.parent.parent.name} tools"
+    else:
+        label = f"Running {executable.name}"
+    status(label)
     completed = subprocess.run(
         argv,
         cwd=cwd,
@@ -565,9 +574,9 @@ def _run_checked(
         check=False,
     )
     if completed.stdout:
-        print(completed.stdout, end="", file=sys.stderr)
+        detail(completed.stdout, end="", file=sys.stderr)
     if completed.stderr:
-        print(completed.stderr, end="", file=sys.stderr)
+        detail(completed.stderr, end="", file=sys.stderr)
     if completed.returncode not in accepted_returncodes:
         raise OncoTracerError(
             f"command failed with exit code {completed.returncode}: {shlex.join(argv)}"
@@ -689,6 +698,7 @@ def _write_child_inventory(destination: Path) -> str:
 
 
 def _verify_child_inventory(storage: Path, marker: Mapping[str, object]) -> None:
+    status(f"Checking {storage.name} file integrity")
     inventory_path = storage / CHILD_INVENTORY
     inventory = _safe_read_json(
         inventory_path,
@@ -1959,7 +1969,7 @@ def _discard_claimed_target(
         _rename_noreplace(
             target, preserved, "interrupted installer target preservation"
         )
-        print(
+        detail(
             f"OncoTracer preserved interrupted installer target at {preserved}",
             file=sys.stderr,
             flush=True,
@@ -2554,7 +2564,7 @@ def _retain_committed_transaction(
             root_name = retained.name
         _require_cleanup_root_identity(parent_fd, root_name, retained_fd, inventory)
         _validate_retained_state_at(retained_fd, inventory, str(retained))
-        print(
+        detail(
             f"OncoTracer retained authenticated rollback material at {retained}",
             file=sys.stderr,
             flush=True,
@@ -2649,7 +2659,7 @@ def _preserve_staging_transaction(
         if transaction_fd is not None:
             os.close(transaction_fd)
         os.close(parent_fd)
-    print(
+    detail(
         f"OncoTracer preserved installer {reason} at {preserved}",
         file=sys.stderr,
         flush=True,
@@ -2745,7 +2755,7 @@ def _retain_transaction_journal(
             raise OncoTracerError(
                 f"installer retained journal bytes changed: {retained}"
             )
-        print(
+        detail(
             f"OncoTracer retained authenticated installer journal at {retained}",
             file=sys.stderr,
             flush=True,
@@ -2843,7 +2853,7 @@ def _retain_verified_json_file(
                 f"{label} changed during retention and will be preserved: "
                 f"{destination}"
             )
-        print(
+        detail(
             f"OncoTracer retained authenticated {label} at {destination}",
             file=sys.stderr,
             flush=True,
@@ -3427,7 +3437,8 @@ def install_conda_managed(
         previous: dict[str, dict[str, object] | None] = {}
         expected: dict[str, dict[str, object]] = {}
         changed: list[str] = []
-        for name in names:
+        for index, name in enumerate(names):
+            status(f"Checking {name}", completed=index, total=len(names))
             prior = (
                 _child_marker_value(base, observed_base_marker, name)
                 if state == "owned" and observed_base_marker is not None
@@ -3539,7 +3550,8 @@ def install_conda_managed(
                 expected_base_marker,
                 retention_parent=history,
             )
-            for name in changed:
+            for index, name in enumerate(changed):
+                status(f"Installing {name}", completed=index, total=len(changed))
                 target = base / name
                 backup = backups / name
                 if previous[name] is not None:
@@ -3797,7 +3809,7 @@ def _verify_sif_runtime(
     expected_source: Mapping[str, object],
 ) -> None:
     doctor = _run_checked(
-        [executable, "exec", sif, "oncotracer", "doctor", "--backend", "host"]
+        [executable, "exec", sif, "oncotracer", "doctor", "--backend", "host", "--json"]
     )
     provenance = _run_checked(
         [executable, "exec", sif, "oncotracer", "provenance", "--json"]

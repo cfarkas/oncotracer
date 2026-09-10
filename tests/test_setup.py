@@ -49,7 +49,7 @@ class SetupTests(unittest.TestCase):
             )
             self.assertEqual(code, 0, output)
             config = project / "config/run.yml"
-            self.assertIn("oncotracer check --config", output)
+            self.assertIn("validation runs automatically", output)
             self.assertIn("oncotracer run --backend conda --config", output)
             self.assertFalse((project / "results").exists())
             code, output = self.cli("check", "--config", str(config), "--json")

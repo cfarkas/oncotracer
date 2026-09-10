@@ -1601,7 +1601,7 @@ action_install_environments() {
   test -x "$ENV_ROOT/gistic/bin/gistic2"
   probe_gistic
 
-  run_copied_binary doctor --backend conda \
+  run_copied_binary doctor --backend conda --json \
     > "$CONTEXT_DIR/native-doctor.json" \
     2> "$doctor_stderr"
   verify_doctor_record "$CONTEXT_DIR/native-doctor.json"
@@ -1659,7 +1659,7 @@ PY
   verify_qdnaseq_cache
   verify_doctor_record "$CONTEXT_DIR/native-doctor.json"
   current_doctor="$(mktemp "$TMP_DIR/native-doctor-current.XXXXXX.json")"
-  run_copied_binary doctor --backend conda > "$current_doctor"
+  run_copied_binary doctor --backend conda --json > "$current_doctor"
   verify_doctor_record "$current_doctor"
 }
 

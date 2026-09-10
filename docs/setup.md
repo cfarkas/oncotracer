@@ -9,10 +9,12 @@ computers can [reuse prebuilt genome indexes](reference_indexes.md).
 ## Let setup ask for the paths
 
 ```bash
-oncotracer setup --project /absolute/path/to/my-study
+oncotracer setup --project /absolute/path/to/my-study --run
 ```
 
-Replace the path with a project directory you want to create. Setup asks for your sequencing platform, analysis, and input files. For methylation it also asks for the classifier and locally installed model files, and calculates their checksums for you. It does not install those optional tools or start analysis.
+Setup asks for your platform, analysis and reads, then validates and runs them.
+Missing backend tools are installed automatically. Methylation still needs your
+locally installed tools and models. Omit `--run` to save settings for review first.
 
 The folder will contain:
 
@@ -24,7 +26,8 @@ my-study/
   results/              created when analysis starts
 ```
 
-Setup refuses to overwrite an existing configuration. To change an existing project, edit its YAML; to start a different analysis, choose a new project directory.
+Repeat `setup --project /absolute/path/to/my-study --run` to resume saved settings.
+To change them, edit the YAML. Setup never overwrites an existing configuration.
 
 ## Understand the paths and flags
 
@@ -41,13 +44,16 @@ Setup refuses to overwrite an existing configuration. To change an existing proj
 | `--config` | YAML saved by setup | `/work/my-study/config/run.yml` |
 | `--backend` | How the installed analysis tools are provided | `conda` |
 | `--threads` | CPU worker threads to request | `8` |
+| `--run` | Validate, prepare missing backend tools and start/resume | |
+| `--reference-cache` | Shared folder for verified download chunks | `/data/hg38-downloads` |
 
-Use absolute paths, beginning with `/`, to make commands work from any directory. Put paths in quotes if they contain spaces. In the examples, a backslash `\` at the end of a line continues the same command on the next line. `$PWD` means your current directory.
+Use absolute paths. Quote paths containing spaces. In the examples, a backslash `\` at the end of a line continues the same command on the next line. `$PWD` means your current directory.
 
 Choose one reference option: `--hg38_build PATH` reuses a prepared reference;
 `--build_reference` builds missing indexes locally, using more RAM and time.
 By default, `run` downloads prebuilt indexes into `PROJECT/reference`.
-Setup and check never download or build genomes. See [reference paths](reference_indexes.md).
+Setup without `--run` and check never download or build genomes. Sibling projects
+share a verified download cache by default. See [reference paths](reference_indexes.md).
 
 ## ONT: one barcode
 

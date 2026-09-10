@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import shutil
 import stat
 import tempfile
@@ -12,6 +13,7 @@ from pathlib import Path
 
 from . import install_safety as safety
 from .runtime import OncoTracerError, sha256_file
+from .reporting import operation, status
 
 
 def _launcher(path: Path) -> dict:
@@ -116,7 +118,8 @@ def uninstall_target(
             )
             moved = []
             try:
-                for original in paths:
+                for index, original in enumerate(paths):
+                    status(f"Removing {original.name}", completed=index, total=len(paths))
                     safety._rename_noreplace(
                         original, recovery / original.name, "uninstall recovery move"
                     )
@@ -159,9 +162,22 @@ def uninstall_target(
 
 
 def command_uninstall(args) -> int:
+    with operation("Checking tools selected for removal", verbose=getattr(args, "verbose", False)):
+        return _command_uninstall(args)
+
+
+def _command_uninstall(args) -> int:
     from .cli import _load_install_config
 
     install = _load_install_config()
+    if not any((args.conda, args.singularity, args.launcher)):
+        backend = install.get("backend")
+        if backend in {"conda", "poetry"}:
+            args.conda = True
+        elif backend == "singularity":
+            args.singularity = True
+        else:
+            raise OncoTracerError("select the tools to remove: --conda, --singularity, or --launcher PATH")
     if args.conda:
         if args.sif:
             raise OncoTracerError("--sif applies only to --singularity")
@@ -195,7 +211,14 @@ def command_uninstall(args) -> int:
         raise OncoTracerError(
             f"could not uninstall the selected target: {error}"
         ) from error
-    print(json.dumps(result, indent=2))
+    if getattr(args, "json", False):
+        print(json.dumps(result, indent=2))
+        return 0
+    print(f"{'Uninstall preview' if result['dry_run'] else 'Uninstall complete'}: {kind}")
+    for path in result["paths"]:
+        print(f"  {path}")
+    if result.get("recovery_directory"):
+        print(f"Recovery folder: {result['recovery_directory']}")
     if result["dry_run"]:
         print(
             "Preview only. Add --yes to uninstall. Add --purge only to delete the tools permanently; otherwise they remain recoverable and still use disk space."
@@ -217,7 +240,7 @@ def add_uninstall_command(subparsers) -> None:
         "uninstall",
         help="Preview or remove explicitly selected OncoTracer tools; preserve project data",
     )
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--conda",
         action="store_true",
@@ -254,4 +277,6 @@ def add_uninstall_command(subparsers) -> None:
         action="store_true",
         help="with --yes, permanently delete verified tools instead of retaining a recovery folder",
     )
+    parser.add_argument("--json", action="store_true", help="machine-readable removal plan or result")
+    parser.add_argument("--verbose", action="store_true", help="show detailed checks")
     parser.set_defaults(func=command_uninstall)
