@@ -417,6 +417,98 @@ class KnowledgeIntegrationTests(unittest.TestCase):
                 self.assertNotIn("high-confidence CNA", rendered)
 
 
+class CatalogDraftTests(unittest.TestCase):
+    def build(self, **options):
+        return knowledge.build_feature_kb(
+            pd.DataFrame(),
+            pd.DataFrame([{"feature_id": "8q24_MYC_gain_amp"}]),
+            False, None, 3, "lymphoma", False, "",
+            cancer_type="lymphoma", literature_llm_models="local-model",
+            literature_llm_local_files_only=True, **options,
+        )
+
+    def valid_generation(self, model, **kwargs):
+        evidence = kwargs["evidence"]
+        self.assertEqual(evidence[0]["id"], "C1")
+        self.assertEqual(evidence[0]["source"], "bundled_cna_catalog")
+        self.assertEqual(evidence[0]["pmid"], "")
+        self.assertEqual(evidence[0]["doi"], "")
+        self.assertNotIn("abstract", evidence[0])
+        self.assertEqual(evidence[0]["catalog_text"], knowledge.BUILTIN_FEATURE_KB["8q24_MYC_gain_amp"]["biological_interpretation"])
+        self.assertTrue(kwargs["local_files_only"])
+        self.assertIn("not a retrieved paper", kwargs["instructions"])
+        return response("MYC copy gain affects transcriptional regulatory pathways in cancer biology.", ["C1"]), evidence, {"source_ids": "C1", "prompt_sha256": "recorded"}
+
+    def test_explicit_catalog_route_generates_offline_without_fake_literature(self):
+        with patch.object(knowledge.REPORT_LLM, "generate", side_effect=self.valid_generation) as generate:
+            kb, refs, trials, metrics = self.build(enable_catalog_llm=True, enable_literature_llm=True)
+        generate.assert_called_once()
+        row = kb.iloc[0]
+        self.assertEqual(row["literature_synthesis_source"], "huggingface_catalog_llm")
+        self.assertEqual(row["catalog_llm_model_used"], "local-model")
+        self.assertEqual(row["catalog_llm_status"], "completed_draft_needs_review")
+        self.assertIn("Bundled CNA catalog: ", row["literature_synthesis"])
+        self.assertIn("AI draft from bundled catalog", row["literature_synthesis"])
+        self.assertNotIn("AI-generated literature draft", row["literature_synthesis"])
+        self.assertNotIn("PMID", row["literature_synthesis"])
+        self.assertEqual(metrics["literature_llm_attempted_features"], 0)
+        self.assertEqual(metrics["literature_llm_completed_features"], 0)
+        self.assertEqual(metrics["catalog_llm_attempted_features"], 1)
+        self.assertEqual(metrics["catalog_llm_completed_features"], 1)
+        self.assertEqual(trials.model_layer.tolist(), ["catalog_synthesis"])
+        self.assertEqual(trials.source_ids.tolist(), ["C1"])
+        self.assertFalse(any(refs.get("source", pd.Series(dtype=str)) == "EuropePMC"))
+
+    def test_disabled_catalog_route_does_not_use_seed_metadata_for_generation(self):
+        with patch.object(knowledge.REPORT_LLM, "generate") as generate:
+            kb, refs, trials, metrics = self.build(enable_literature_llm=True)
+        generate.assert_not_called()
+        self.assertFalse(metrics["catalog_llm_enabled"])
+        self.assertEqual(metrics["catalog_llm_attempted_features"], 0)
+        self.assertEqual(kb.iloc[0]["literature_synthesis_source"], "built_in_catalog")
+
+    def test_invalid_catalog_generation_remains_failed_with_deterministic_fallback(self):
+        def invalid(model, **kwargs):
+            return response(sources=["S1"]), kwargs["evidence"], {"response_text": "uncited output"}
+        with patch.object(knowledge.REPORT_LLM, "generate", side_effect=invalid):
+            kb, refs, trials, metrics = self.build(enable_catalog_llm=True)
+        self.assertEqual(kb.iloc[0]["literature_synthesis_source"], "built_in_catalog")
+        self.assertEqual(kb.iloc[0]["catalog_llm_status"], "no_llm_model_completed")
+        self.assertEqual(metrics["catalog_llm_completed_features"], 0)
+        self.assertEqual(metrics["catalog_llm_failed_trials"], 1)
+        self.assertEqual(metrics["literature_llm_failed_trials"], 0)
+        self.assertIn("unknown_citation", trials.iloc[0]["message"])
+        self.assertEqual(trials.iloc[0]["response_text"], "uncited output")
+
+    def test_no_detected_feature_does_not_trigger_catalog_wide_generation(self):
+        with patch.object(knowledge.REPORT_LLM, "generate") as generate:
+            kb, refs, trials, metrics = knowledge.build_feature_kb(
+                pd.DataFrame(), pd.DataFrame(), False, None, 3, "lymphoma", False, "",
+                cancer_type="lymphoma", enable_catalog_llm=True, literature_llm_models="local-model",
+            )
+        generate.assert_not_called()
+        self.assertEqual(metrics["catalog_llm_attempted_features"], 0)
+        self.assertTrue((kb.catalog_llm_status == "not_attempted_no_detected_feature").all())
+
+    def test_catalog_feature_limit_prevents_model_work(self):
+        with patch.object(knowledge.REPORT_LLM, "generate") as generate:
+            kb, refs, trials, metrics = self.build(enable_catalog_llm=True, literature_llm_max_features=0)
+        generate.assert_not_called()
+        self.assertEqual(kb.iloc[0]["catalog_llm_status"], "not_attempted_max_features_0")
+
+    def test_catalog_html_pdf_labels_and_model_trace(self):
+        info = pd.Series({"literature_synthesis_source": "huggingface_catalog_llm", "catalog_llm_model_used": "local-model", "catalog_llm_status": "completed_draft_needs_review", "literature_llm_status": "not_enabled"})
+        self.assertEqual(pdf.synthesis_model_trace(info), "local-model / completed_draft_needs_review")
+        self.assertIn("bundled catalog and retrieved abstracts", pdf.literature_label("huggingface_catalog_llm;huggingface_llm"))
+        data = {"ks_row": pd.Series({"knowledge_literature_synthesis": "A catalog draft <unsafe>.", "knowledge_literature_sources": "huggingface_catalog_llm"}), "sample_knowledge": pd.DataFrame()}
+        row = pd.Series({"sample": "synthetic"})
+        rendered = pdf.html_interpretation(row, data)
+        self.assertIn("AI draft from bundled catalog", rendered)
+        self.assertNotIn("<unsafe>", rendered)
+        paragraphs = pdf.interpretation_paragraphs(row, data["ks_row"], pd.DataFrame())
+        self.assertTrue(any("AI draft from bundled catalog" in item.getPlainText() for item in paragraphs if hasattr(item, "getPlainText")))
+
+
 @unittest.skipUnless(
     os.environ.get("ONCOTRACER_TEST_TINY_LLM") == "1",
     "opt-in tiny CPU models; no downloads",

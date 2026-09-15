@@ -74,7 +74,9 @@ def find_all_lesions(gistic_dir: Path) -> Path | None:
 
 def split_line(line: str) -> list[str]:
     if "\t" in line:
-        return [x.strip() for x in line.rstrip("\n").split("\t")]
+        # The upstream writer terminates each row with a tab; it is not an
+        # additional unnamed sample. Interior empty cells are still preserved.
+        return [x.strip() for x in line.rstrip("\r\n\t").split("\t")]
     return [x.strip() for x in re.split(r"\s{2,}", line.rstrip("\n"))]
 
 

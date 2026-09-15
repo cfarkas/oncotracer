@@ -56,6 +56,23 @@ knowledge_deep_enable_llm_ranker: false
 
 This mode is easiest to reproduce and review. Enable network/model assistance only after the deterministic route succeeds and governance permits it.
 
+## Optional offline catalog drafts
+
+With model weights already cached locally, these settings draft report text from
+the built-in CNA catalog without retrieving papers:
+
+```yaml
+knowledge_catalog_llm: true
+knowledge_web: false
+knowledge_literature_llm: false
+knowledge_literature_llm_local_files_only: true
+pathology_use_biomed_models: false
+```
+
+Catalog drafts are labeled separately from literature-supported interpretations
+and require review. They do not compare CNA results with pathology; that separate
+model step requires a matched pathology table.
+
 ## Optional pathology matching models
 
 ```yaml
@@ -78,6 +95,15 @@ The classifier can summarize:
 - altered-genome burden and aneuploidy;
 - recurrent cytobands and cataloged driver regions;
 - cohort recurrence when GISTIC2 is enabled and scientifically appropriate.
+
+GISTIC uses modeled markers: a regular grid at `gistic_window_bp` spacing plus
+all start/end coordinates from the full and altered-event SEG files. This keeps
+refined boundaries and narrow events represented. `Num_Probes` in those GISTIC
+files counts the modeled markers within each inclusive interval; it is not the
+observed read-bin count. Original CNA tables and `samurai_events.seg` retain their
+original counts. This follows GISTIC 2.0.23's support for [pseudo-markers when
+observed markers are unavailable](https://broadinstitute.github.io/gistic2/).
+The preparation metrics record this approximation.
 
 LP-WGS read-depth CNA analysis does not reliably determine:
 
@@ -129,3 +155,10 @@ Review sample identity, coverage, segmentation, event tables, morphology, immuno
 - Manually verify literature references and generated summaries.
 
 Classifier scores and pathology compatibility are research outputs, not diagnostic confirmation or a medical-device result.
+
+The optional report language model defaults to the pinned
+[Qwen3-4B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507)
+revision `cdbee75f17c01a7cc42f958dc650907174af0554`. It runs on CPU;
+allow at least **24 GiB available RAM** and about **8 GB** for downloaded weights.
+The model produces reviewable drafts; source-format checks do not establish
+biological correctness. The local catalog option makes no publication searches.

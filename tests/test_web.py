@@ -305,8 +305,10 @@ class WebTests(unittest.TestCase):
                 self.assertTrue(config["run_cna_classifier"])
                 self.assertEqual(config["knowledge_web"], detail == "literature")
                 self.assertEqual(config["knowledge_literature_llm"], detail == "literature")
-                self.assertEqual(config["pathology_use_biomed_models"], detail != "catalog")
+                self.assertFalse(config["pathology_use_biomed_models"])
+                self.assertEqual(config["knowledge_catalog_llm"], detail == "models")
                 self.assertEqual(config["run_gistic"], detail == "literature")
+                self.assertEqual(config["gistic_required"], detail == "literature")
         with self.assertRaisesRegex(OncoTracerError, "report_detail"):
             self.prepare(reports=True, report_detail="invented")
         with self.assertRaisesRegex(OncoTracerError, "true or false"):

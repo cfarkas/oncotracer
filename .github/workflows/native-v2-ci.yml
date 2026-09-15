@@ -80,7 +80,7 @@ jobs:
             tests/test_compare_native_parity.py \
             tests/test_native_docs.py \
             tests/test_poetry_cli.py \
-            tests/test_native_classifier.py \
+            tests/test_native_classifier.py tests/test_gistic_inputs.py \
             tests/test_report_llm.py \
             tests/test_system_check.py \
             tests/test_uninstall.py \

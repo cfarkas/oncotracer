@@ -42,6 +42,45 @@ from oncotracer_cli.runtime import (
 
 
 class NativeEngineTests(unittest.TestCase):
+    def test_required_classifier_failure_preserves_browsable_partial_outputs(self) -> None:
+        from tests.test_output_safety import make_illumina_config, make_runtime_root
+
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            runtime = make_runtime_root(base)
+            output = base / "results"
+            config = make_illumina_config(base, output, "S1")
+            config.write_text(config.read_text() + "run_cna_classifier: true\n")
+            def publish(*args, **kwargs):
+                summary = output / "06_workflow_summary"
+                summary.mkdir(parents=True)
+                (summary / "workflow_summary.json").write_text('{"workflow_status":"complete","completed_samples":["S1"],"failed_samples":[]}')
+                (summary / "workflow_summary.txt").write_text("workflow_status=complete\n")
+            with (
+                patch.object(engine, "prepare_reference", return_value={}),
+                patch.object(engine, "align_illumina", return_value={"S1": base / "S1.bam"}),
+                patch.object(engine, "run_qdnaseq", return_value=(base / "qdna", base / "bams")),
+                patch.object(engine, "run_refinement_and_outputs", side_effect=publish),
+                patch.object(engine, "run_native_classifier", side_effect=OncoTracerError("GISTIC2 did not complete: missing result")),
+                self.assertRaisesRegex(OncoTracerError, "classifier=failed"),
+            ):
+                engine.run_native(config, root=runtime)
+            summary = json.loads((output / "06_workflow_summary/workflow_summary.json").read_text())
+            self.assertEqual(summary["workflow_status"], "partial_failure")
+            self.assertEqual(summary["cna_status"], "complete")
+            self.assertFalse(summary["cna_classifier_completed"])
+            self.assertIn("GISTIC2", summary["cna_classifier_error"])
+            self.assertTrue((output / "index.html").is_file())
+            manifest = json.loads((output / "06_workflow_summary/native_run_manifest.json").read_text())
+            self.assertEqual(manifest["workflow_status"], "partial_failure")
+            # A successful methylation branch must not mask the failed classifier.
+            merged = engine._merge_methylation_summary(output,
+                {"overall_status": "complete", "classifier": "marlin", "completed_samples": ["S1"]},
+                cna_error=None)
+            self.assertEqual(merged["workflow_status"], "partial_failure")
+            self.assertEqual(merged["cna_status"], "complete")
+            self.assertEqual(merged["methylation_status"], "complete")
+
     def test_illumina_samplesheet_validation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
