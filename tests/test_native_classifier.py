@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import importlib.util
 import json
+import subprocess
 from html.parser import HTMLParser
 from urllib.parse import unquote, urlsplit
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from oncotracer_cli.classifier import _run_gistic, run_native_classifier, sample_set_key
+from oncotracer_cli.classifier import _run_gistic, _update_summary, run_native_classifier, sample_set_key
 from oncotracer_cli.engine import Toolchain
-from oncotracer_cli.runtime import CommandRunner, StageLedger
+from oncotracer_cli.runtime import CommandRunner, OncoTracerError, StageLedger
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,11 +50,11 @@ class NativeClassifierTests(unittest.TestCase):
             prepared = workspace / "prepared"
             prepared.mkdir()
             (prepared / "gistic_full.seg").write_text(
-                "ID\tchrom\tloc.start\tloc.end\tnum.mark\tseg.mean\n",
+                "ID\tchrom\tloc.start\tloc.end\tnum.mark\tseg.mean\nS1\t1\t1\t100\t2\t0\nS2\t1\t1\t100\t2\t0\n",
                 encoding="utf-8",
             )
             (prepared / "gistic_events.seg").write_text(
-                "ID\tchrom\tloc.start\tloc.end\tnum.mark\tseg.mean\n",
+                "ID\tchrom\tloc.start\tloc.end\tnum.mark\tseg.mean\nS1\t1\t1\t100\t2\t0\nS2\t1\t1\t100\t2\t0\n",
                 encoding="utf-8",
             )
             (prepared / "gistic_markers.tsv").write_text(
@@ -80,6 +83,9 @@ class NativeClassifierTests(unittest.TestCase):
             executable.write_text(
                 "#!/bin/sh\n"
                 f'test "$LD_LIBRARY_PATH" = {expected!r} || exit 88\n'
+                'if [ "$1" != "-h" ]; then\n'
+                '  printf "Unique Name\\tDescriptor\\tWide Peak Limits\\tPeak Limits\\tRegion Limits\\tq values\\tResidual q values\\tBroad or Focal\\tAmplitude Threshold\\tS1\\tS2\\n" > "$2/all_lesions.conf_90.txt"\n'
+                'fi\n'
                 "exit 0\n",
                 encoding="utf-8",
             )
@@ -120,6 +126,111 @@ class NativeClassifierTests(unittest.TestCase):
             for containment, used_env in routed.values():
                 self.assertFalse(used_env)
                 self.assertIn("gistic.conf", str(containment["FONTCONFIG_FILE"]))
+
+    def test_gistic_zero_exit_requires_final_report_and_resume_tracks_it(self) -> None:
+        for mode in ("missing", "malformed", "wrong_samples", "header_only"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                base = Path(directory)
+                prepared = base / "prepared"
+                prepared.mkdir()
+                for name in ("gistic_full.seg", "gistic_events.seg"):
+                    (prepared / name).write_text("ID\tchrom\tloc.start\tloc.end\tnum.mark\tseg.mean\nS1\t1\t1\t100\t2\t0\nS2\t1\t1\t100\t2\t0\n")
+                (prepared / "gistic_markers.tsv").write_text("m1\t1\t1\nm2\t1\t100\n")
+                (prepared / "prepare_metrics.json").write_text('{"samples_total":2}')
+                refgene = base / "refgene.mat"
+                refgene.write_text("fixture")
+                prefix = base / "gistic"
+                (prefix / "bin").mkdir(parents=True)
+                (prefix / "bin/gistic2").write_text("fixture")
+                (prefix / "bin/gistic2").chmod(0o755)
+                for component in ("runtime/glnxa64", "bin/glnxa64", "sys/os/glnxa64"):
+                    (prefix / "share/mcr-8.3-0/v83" / component).mkdir(parents=True)
+                runner = CommandRunner(base / "trace.tsv", echo=False)
+                ledger = StageLedger(base / "state.json")
+                output = base / "output"
+                lesions = output / "gistic2_out/all_lesions.conf_90.txt"
+                config = {"run_gistic": True, "gistic_required": True, "gistic_refgene": str(refgene)}
+                toolchain = Toolchain(gistic_prefix=prefix, runtime_cache=base / "cache")
+                calls = []
+                def run(stage, argv, **kwargs):
+                    calls.append(stage)
+                    if stage == "classifier-gistic" and mode != "missing":
+                        if mode == "malformed":
+                            lesions.write_text("GISTIC error\n")
+                        else:
+                            samples = "S1\tS2" if mode == "header_only" else "S1\tOTHER"
+                            lesions.write_text("Unique Name\tDescriptor\tWide Peak Limits\tPeak Limits\tRegion Limits\tq values\tResidual q values\tBroad or Focal\tAmplitude Threshold\t" + samples + "\t\n")
+                    return subprocess.CompletedProcess(argv, 0)
+                def invoke(force=False):
+                    return _run_gistic(ROOT, config, base / "lpwgs", prepared, output,
+                                       runner, ledger, toolchain, force=force)
+                with patch.object(runner, "run", side_effect=run):
+                    if mode != "header_only":
+                        with self.assertRaisesRegex(OncoTracerError, "GISTIC2 did not complete"):
+                            invoke()
+                        self.assertIn("failed\t", (output / "gistic2_status.tsv").read_text())
+                        self.assertFalse((output / "gistic2_out/.oncotracer-complete").exists())
+                        self.assertNotIn("classifier-gistic", ledger.data["stages"])
+                        continue
+                    invoke()
+                    self.assertEqual(calls.count("classifier-gistic"), 1)
+                    invoke()
+                    self.assertEqual(calls.count("classifier-gistic"), 1)
+                    tracked = ledger.data["stages"]["classifier-gistic"]["outputs"]
+                    self.assertIn(str(lesions.resolve()), {item["path"] for item in tracked})
+                    lesions.rename(lesions.with_suffix(".held"))
+                    invoke()
+                    self.assertEqual(calls.count("classifier-gistic"), 2)
+                    # A subsequent zero-exit run must not reuse an untouched prior report.
+                    with patch.object(runner, "run", return_value=subprocess.CompletedProcess([], 0)):
+                        with self.assertRaisesRegex(OncoTracerError, "result_not_refreshed"):
+                            invoke(force=True)
+                    failure = output / "gistic2_out/GISTIC_FAILED.txt"
+                    previous_failure = failure.read_text()
+                    invoke(force=True)
+                    self.assertFalse(failure.exists())
+                    self.assertEqual((output / "gistic2_out/GISTIC_PREVIOUS_FAILURE.txt").read_text(), previous_failure)
+
+    def test_gistic_upstream_trailing_tabs_do_not_create_an_empty_sample(self) -> None:
+        script = ROOT / "bin/cna_classifier_nf/bin/04_parse_gistic_results.py"
+        spec = importlib.util.spec_from_file_location("gistic_parser_fixture", script)
+        parser = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(parser)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "all_lesions.conf_90.txt"
+            path.write_text(
+                "Unique Name\tDescriptor\tWide Peak Limits\tPeak Limits\tRegion Limits\tq values\tResidual q values\tBroad or Focal\tAmplitude Threshold\tS1\tS2\t\n"
+                "+1\tAmplification\tchr1:1-100\tchr1:1-100\tchr1:1-100\t0.01\t0.01\tfocal\t0.1\t2\t0\t\n"
+            )
+            matrix, long, summary = parser.parse_all_lesions(path)
+            self.assertEqual(list(matrix.index), ["S1", "S2"])
+            self.assertEqual(matrix.shape, (2, 1))
+            self.assertEqual(list(long["sample"]), ["S1"])
+            self.assertEqual(int(summary.iloc[0]["n_samples"]), 1)
+
+    def test_optional_failed_gistic_is_visible_in_workflow_status(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            summary = base / "06_workflow_summary"
+            summary.mkdir()
+            (summary / "workflow_summary.json").write_text('{"workflow_status":"complete","completed_samples":["S1","S2"]}')
+            classifier = base / "05_cna_classifier"
+            (classifier / "04_gistic2").mkdir(parents=True)
+            (classifier / "04_gistic2/gistic2_status.tsv").write_text("status\treason\nfailed\tmissing_result\n")
+            _update_summary(base, classifier, gistic_requested=True)
+            result = json.loads((summary / "workflow_summary.json").read_text())
+            self.assertEqual(result["workflow_status"], "partial_failure")
+            self.assertEqual(result["cna_status"], "complete")
+            self.assertEqual(result["gistic_status"], "failed")
+            self.assertFalse(result["cna_classifier_completed"])
+            # Legacy optional single-sample cohorts may skip recurrence analysis.
+            (summary / "workflow_summary.json").write_text('{"workflow_status":"complete"}')
+            (classifier / "04_gistic2/gistic2_status.tsv").write_text("status\treason\nskipped\tnot_enough_samples\n")
+            _update_summary(base, classifier, gistic_requested=True)
+            result = json.loads((summary / "workflow_summary.json").read_text())
+            self.assertEqual(result["workflow_status"], "complete")
+            self.assertEqual(result["gistic_status"], "skipped")
+            self.assertTrue(result["cna_classifier_completed"])
 
     def test_complete_offline_classifier_graph_without_nextflow(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

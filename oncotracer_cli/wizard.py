@@ -196,9 +196,13 @@ def command_wizard(original_args) -> int:
                 cna_classifier_samples=",".join(row["sample"] for row in entries),
                 knowledge_web=False, knowledge_literature_llm=False,
                 knowledge_deep_literature=False, knowledge_deep_enable_llm_ranker=False,
-                pathology_use_biomed_models=_ask(None, "Download/use optional biomedical report models?", default="no", choices=("yes", "no")) == "yes",
+                pathology_use_biomed_models=False,
+                knowledge_catalog_llm=_ask(None, "Use local language models for CNA catalog interpretations?", default="no", choices=("yes", "no")) == "yes",
                 run_gistic=_ask(None, "Add GISTIC recurrence analysis?", default="no", choices=("yes", "no")) == "yes",
             )
+            values["gistic_required"] = values["run_gistic"]
+            if values["run_gistic"] and len(entries) < 2:
+                raise OncoTracerError("GISTIC needs at least two selected samples. Disable it for a single-sample project.")
     if args.analysis != "cna" and args.gpu is None:
         args.gpu = _ask(None, "Methylation compute device", default="cpu", choices=("cpu", "gpu")) == "gpu"
     backend = args.backend or str(cli._load_install_config().get("backend") or "conda")
@@ -237,7 +241,7 @@ def command_wizard(original_args) -> int:
         print(f"CNA method: {config.get(args.mode + '_caller')}; bin size: {config.get(args.mode + '_binsize_kb')} kb")
         print("CNA interpretation reports: " + ("enabled" if config.get("run_cna_classifier") else "disabled"))
         if config.get("run_cna_classifier"):
-            print(f"Report context: {config['cna_classifier_sample_set']}; biomedical models: {config['pathology_use_biomed_models']}; GISTIC: {config['run_gistic']}")
+            print(f"Report context: {config['cna_classifier_sample_set']}; local catalog models: {config['knowledge_catalog_llm']}; GISTIC: {config['run_gistic']}")
     if args.analysis != "cna":
         print(f"Methylation classifier: {config['methylation_classifier']}; GPU allowed: {config['methylation_gpu']}")
     reference = "download prebuilt indexes when needed" if config["hg38_auto_download"] else ("build missing indexes locally" if args.build_reference else "reuse prepared reference")

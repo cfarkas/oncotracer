@@ -25,8 +25,10 @@ the OncoTracer computer. Keep that terminal open.
    detected CPUs, RAM and GPUs, then choose threads. CNA uses CPU. Illumina uses qDNAseq; ONT offers ichorCNA (500 kb) or
    solid-biopsy qDNAseq with selectable bins. ONT controls require qDNAseq and at
    least one study sample. Optional CNA reports offer local catalog text, local
-   biomedical models, or literature plus local models. Literature retrieves public
+   language-model drafts from that catalog, or literature plus local models.
+   Catalog drafts use no publication searches and identify their catalog source. Literature retrieves public
    papers using feature/context terms. GISTIC cohort analysis is a separate choice.
+   Selecting GISTIC requires at least two samples and a successful GISTIC result.
 4. **For methylation, choose the classifier deliberately.** MARLIN targets leukemia
    research; Sturgeon targets CNS-tumor research. Supply modified-base BAMs or raw
    POD5, plus the [required tool/model resources](configuration/methylation.md).
@@ -66,9 +68,8 @@ oncotracer setup --project /work/ont-study --mode ont \
 Review numbered samples, then answer the name, `cancer`/`control`/`other`, analysis,
 threads, caller, reports, backend and reference questions. Enter accepts a displayed
 default. The final choice is `run` or `save` (default). Paths entered at prompts
-need no quotes; quote shell paths containing spaces. For individual file prompts,
-replace `--input-folder PATH` with `--manual`; this also allows intentional
-R1-only single-end Illumina input. A project cannot mix paired-end and single-end
+need no quotes; quote shell paths containing spaces. For individual file prompts or single-end Illumina,
+use `--manual` instead of `--input-folder PATH`. A project cannot mix paired-end and single-end
 Illumina libraries.
 
 ## 2. Check and run your platform
@@ -161,12 +162,11 @@ oncotracer setup --non-interactive \
   --barcodes barcode01,barcode02 --sample-names sampleA,sampleB --threads 4
 ```
 
-Check and run using the scripted project's `config/run.yml`.
+Check and run the saved `config/run.yml`.
 
 ## Illumina: multiple libraries
 
-Replace paths and names. Each row is one library. `cat >`
-overwrites the named CSV; choose a new filename if it already exists.
+Each row is one library. Replace the paths; `cat >` overwrites its CSV.
 
 ```bash
 mkdir -p "/data/illumina"
@@ -177,8 +177,7 @@ sampleB,"/data/illumina/sampleB_R1.fastq.gz","/data/illumina/sampleB_R2.fastq.gz
 CSV
 ```
 
-Each file field is one existing path; leave `fastq_2` empty for single-end libraries.
-The flags below supply every answer:
+Use existing paths; leave `fastq_2` empty for single-end libraries:
 
 ```bash
 oncotracer setup --project /work/illumina-batch --mode illumina --analysis cna \

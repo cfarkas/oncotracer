@@ -43,12 +43,26 @@ class SystemCheckTests(unittest.TestCase):
 
     def test_unknown_models_never_report_guaranteed_success(self):
         report = resource_report(
-            {"methylation_only": True, "run_cna_classifier": True},
+            {"methylation_only": True, "run_cna_classifier": True,
+             "knowledge_literature_llm_models": "custom/model",
+             "knowledge_deep_llm_ranker_models": "custom/model"},
             hardware=self.hardware(1000),
         )
         for row in report["capabilities"]:
             if row["task"] in {"Local report LLM", "ONT methylation models"}:
                 self.assertEqual(row["status"], "not_assessed")
+
+    def test_catalog_drafts_report_default_model_memory_without_web(self):
+        config = {"run_cna_classifier": True, "knowledge_catalog_llm": True,
+                  "knowledge_literature_llm": False, "knowledge_deep_enable_llm_ranker": False,
+                  "knowledge_web": False}
+        for ram, status in ((16, "limited_memory"), (32, "likely_feasible")):
+            with self.subTest(ram=ram):
+                report = resource_report(config, hardware=self.hardware(ram))
+                task = next(row for row in report["capabilities"] if row["task"] == "Local report LLM")
+                self.assertTrue(task["selected"])
+                self.assertEqual(task["planning_ram_gib"], 24)
+                self.assertEqual(task["status"], status)
 
     def test_cgroup_v2_memory_and_cpu_ancestors_limit_host_capacity(self):
         with tempfile.TemporaryDirectory() as directory:

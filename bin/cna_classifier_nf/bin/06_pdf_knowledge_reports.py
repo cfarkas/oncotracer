@@ -655,6 +655,10 @@ def metric_card_table(row: pd.Series) -> Table:
 
 def literature_label(sources: Any) -> str:
     sources = safe_str(sources)
+    if "huggingface_catalog_llm" in sources and "huggingface_llm" in sources:
+        return "AI drafts from bundled catalog and retrieved abstracts — source review required"
+    if "huggingface_catalog_llm" in sources:
+        return "AI draft from bundled catalog — source review required"
     if "huggingface_llm" in sources:
         return "Literature interpretation including AI draft — source review required"
     if "deterministic_pubmed_text_fallback" in sources:
@@ -662,6 +666,13 @@ def literature_label(sources: Any) -> str:
     if "built_in_catalog" in sources:
         return "Built-in catalog interpretation — no retrieved abstract synthesis"
     return "Literature interpretation — check source and generation status"
+
+
+def synthesis_model_trace(row: Any) -> str:
+    catalog_status = safe_str(row.get("catalog_llm_status", ""))
+    use_catalog = catalog_status not in {"", "not_enabled", "not_attempted_literature_draft_available"}
+    prefix = "catalog" if use_catalog else "literature"
+    return safe_str(row.get(prefix + "_llm_model_used", "")) + " / " + safe_str(row.get(prefix + "_llm_status", ""))
 
 
 def interpretation_paragraphs(row: pd.Series, ksummary: pd.Series | None, sk: pd.DataFrame) -> list[Any]:
@@ -683,7 +694,7 @@ def interpretation_paragraphs(row: pd.Series, ksummary: pd.Series | None, sk: pd
         if lit_syn:
             story.append(para(literature_label(ksummary.get("knowledge_literature_sources", "")) + ": " + lit_syn))
         if lit_stat:
-            story.append(para("Literature model trace: " + lit_stat, "small"))
+            story.append(para("Model generation trace: " + lit_stat, "small"))
     if flags:
         story.append(para("Canonical CNA flags detected: " + ", ".join(flags) + "."))
     else:
@@ -735,7 +746,7 @@ def knowledge_feature_blocks(sk: pd.DataFrame) -> list[Any]:
             ], col_widths=[3.4*cm, USABLE_WIDTH-3.4*cm])],
             [raw_para("<b>Biological interpretation.</b> " + esc(r.get("biological_interpretation", "")), "body")],
             [raw_para("<b>" + esc(literature_label(r.get("literature_synthesis_source", ""))) + ".</b> " + esc(r.get("literature_synthesis", "")), "body")],
-            [raw_para("<b>Literature synthesis source.</b> " + esc(r.get("literature_synthesis_source", "")) + "; model/status: " + esc(r.get("literature_llm_model_used", "")) + " / " + esc(r.get("literature_llm_status", "")), "small")],
+            [raw_para("<b>Draft source.</b> " + esc(r.get("literature_synthesis_source", "")) + "; model/status: " + esc(synthesis_model_trace(r)), "small")],
             [raw_para("<b>Classification relevance.</b> " + esc(r.get("classification_hint", "")), "body")],
             [raw_para("<b>Caveat.</b> " + esc(r.get("caveat", "")), "small")],
         ]
@@ -890,7 +901,7 @@ def sample_report_data(
     event_cols = [c for c in ["state", "chrom", "start", "end", "size_mb", "cytoband", "n_bins", "mean_log2", "median_log2", "estimated_total_copy_number", "copy_code", "cna_shorthand", "source", "input_source_file"] if c in ev_pdf.columns]
     driver_hit_cols = [c for c in ["feature_id", "feature_label", "genes", "event_state", "event_chrom", "event_start", "event_end", "event_cytoband", "mean_log2", "overlap_fraction_region"] if c in driver_hits.columns]
     gistic_cols = list(gistic_calls.columns) if not gistic_calls.empty else []
-    ref_cols = [c for c in ["feature_id", "selected_influential", "influence_rank", "influence_score", "feature_reference_rank", "pmid", "year", "title", "journal", "cited_by_count", "url", "selected_by", "llm_model_used", "llm_status", "abstract_excerpt"] if c in refs.columns]
+    ref_cols = [c for c in ["feature_id", "source", "selected_influential", "influence_rank", "influence_score", "feature_reference_rank", "pmid", "year", "title", "journal", "cited_by_count", "url", "selected_by", "llm_model_used", "llm_status", "abstract_excerpt"] if c in refs.columns]
     sample_lit_cols = [c for c in ["paper_rank", "feature_display", "genes", "influence_score", "pmid", "year", "title", "journal", "cited_by_count", "selection_method", "llm_ranker_model", "abstract_excerpt"] if c in sample_lit.columns]
 
     return {
@@ -1005,19 +1016,20 @@ def build_sample_pdf(
         pathology_score_method_text(),
         probable_cna_score_method_text(),
         evidence_tier_method_text(),
+        "Local catalog drafting: when explicitly enabled, a local model receives biological text from the bundled CNA catalog as source C1. The output is labeled AI draft from bundled catalog, without presenting that text as a retrieved abstract or fabricating publication identifiers. Its source structure is checked, but biological accuracy requires human review.",
         "PubMed / Hugging Face literature synthesis and influence ranking: when --knowledge_web true, the pipeline queries Europe-PMC/PubMed-style metadata for CNA features detected in the sample using the --sample_set context. The deep literature layer retrieves larger candidate sets for gene/region/CNA combinations, ranks papers using citation count, direct CNA/gene/context text overlap, abstract availability, recency, and review/classification signals, and optionally uses local Hugging Face text-generation/summarization models to synthesize the literature and score candidate-paper relevance. If models fail or are unavailable, deterministic ranking and extractive PubMed-text synthesis are used and the model status is recorded.",
     ]
     for m in methods:
         story.append(raw_para("<b>-</b> " + esc(m), "body_indent"))
 
-    add_section(story, "7 - SELECTED INFLUENTIAL REFERENCES AND WEB-KNOWLEDGE TRACE", min_space=5.0*cm)
-    story.append(raw_para("<b>Literature-selection method:</b> for each detected driver CNA, the pipeline queries PubMed/Europe-PMC metadata and abstracts, ranks candidate papers by citation count, CNA/gene/context text overlap, abstract availability, recency, and optional local Hugging Face model scores. The selected papers below are intended to prioritize manual review, not to provide clinical-grade evidence grading.", "body"))
+    add_section(story, "7 - REFERENCES AND SOURCE TRACE", min_space=5.0*cm)
+    story.append(raw_para("<b>Literature-selection method:</b> when online literature is enabled, the pipeline queries PubMed/Europe-PMC metadata and abstracts for detected driver CNAs and ranks candidate papers by citation count, CNA/gene/context text overlap, abstract availability, recency, and optional local Hugging Face model scores. The selected papers below are intended to prioritize manual review, not to provide clinical-grade evidence grading. Bundled catalog PMID seeds are reference pointers, not retrieved abstracts or evidence for catalog drafts.", "body"))
     story.append(Spacer(1, 5))
     if not data.get("sample_literature", pd.DataFrame()).empty:
         story.append(Paragraph("Selected influential papers for this sample", STYLES["h2"]))
         story.append(dataframe_table(data["sample_literature"], columns=data["sample_lit_cols"], style="tiny", max_char=115))
         story.append(Spacer(1, 6))
-    story.append(Paragraph("Full feature-level web-knowledge trace", STYLES["h2"]))
+    story.append(Paragraph("Feature-level reference metadata and source trace", STYLES["h2"]))
     story.append(dataframe_table(data["references"], columns=data["ref_cols"], style="tiny", max_char=120))
     story.append(Spacer(1, 5))
     story.append(warning_box("generated automatically by the CNA classifier PDF/HTML extension. Web-derived literature titles/abstracts and Hugging Face outputs are assistive traces and should be reviewed manually before use in manuscripts or clinical documents."))
@@ -1092,7 +1104,7 @@ def html_knowledge_cards(sk: pd.DataFrame) -> str:
           {html_table(meta, css_class='table kv-table')}
           <p><strong>Biological interpretation.</strong> {html.escape(safe_str(r.get('biological_interpretation', '')))}</p>
           <p><strong>{html.escape(literature_label(r.get('literature_synthesis_source', '')))}.</strong> {html.escape(safe_str(r.get('literature_synthesis', '')))}</p>
-          <p class='muted'><strong>Literature synthesis source.</strong> {html.escape(safe_str(r.get('literature_synthesis_source', '')))}; model/status: {html.escape(safe_str(r.get('literature_llm_model_used', '')))} / {html.escape(safe_str(r.get('literature_llm_status', '')))}</p>
+          <p class='muted'><strong>Draft source.</strong> {html.escape(safe_str(r.get('literature_synthesis_source', '')))}; model/status: {html.escape(synthesis_model_trace(r))}</p>
           <p><strong>Classification relevance.</strong> {html.escape(safe_str(r.get('classification_hint', '')))}</p>
           <p class='muted'><strong>Caveat.</strong> {html.escape(safe_str(r.get('caveat', '')))}</p>
         </div>""")
@@ -1165,13 +1177,14 @@ def build_sample_html(out_html: Path, sample: str, row: pd.Series, data: dict[st
               <li>Input CNA calls were produced from SAMURAI/QDNAseq-style low-pass whole-genome sequencing codification. The report summarizes high-confidence segmented gains, losses, deep losses, and amplifications after the configured pipeline thresholds.</li>
               <li><strong>What low-pass WGS can do:</strong> {html.escape(low_pass_wgs_capabilities_text())}</li>
               <li><strong>What low-pass WGS cannot do alone:</strong> {html.escape(low_pass_wgs_limitations_text())}</li>
+              <li>Local catalog drafting is optional and labeled <strong>AI draft from bundled catalog</strong>. It uses biological catalog text as source C1, not a retrieved abstract; source-structure checks do not establish biological accuracy or clinical validity.</li>
               <li>Driver-region annotations are based on overlap between CNA events and the context-specific CNA region catalog selected by --sample_set, or a user-provided catalog when --region_catalog is supplied. The knowledge-enriched pattern is a research interpretation layer and intentionally does not override formal pathology or integrated molecular classification.</li>
               <li>GISTIC2, when available and run on enough samples, contributes cohort-level recurrent CNA evidence in the cohort report; empty per-sample GISTIC sections are intentionally omitted from individual reports.</li>
               <li>{html.escape(pathology_score_method_text())}</li>
               <li>{html.escape(probable_cna_score_method_text())}</li>
               <li>{html.escape(evidence_tier_method_text())}</li>
             </ul>"""),
-        html_section("7 - SELECTED INFLUENTIAL REFERENCES AND WEB-KNOWLEDGE TRACE", "<p><strong>Literature-selection method:</strong> for each detected driver CNA, the pipeline queries PubMed/Europe-PMC metadata and abstracts, ranks candidate papers by citation count, CNA/gene/context text overlap, abstract availability, recency, and optional local Hugging Face model scores. The selected papers prioritize manual review; they are not clinical-grade evidence grading.</p>" + ("<h3>Selected influential papers for this sample</h3>" + html_table(data["sample_literature"], columns=data["sample_lit_cols"]) if not data.get("sample_literature", pd.DataFrame()).empty else "") + "<h3>Full feature-level web-knowledge trace</h3>" + html_table(data["references"], columns=data["ref_cols"]) + "<div class='warning'><strong>Report status:</strong> generated automatically by the CNA classifier PDF/HTML extension. Web-derived literature titles/abstracts and Hugging Face outputs are assistive traces and should be reviewed manually before use in manuscripts or clinical documents.</div>"),
+        html_section("7 - REFERENCES AND SOURCE TRACE", "<p><strong>Literature-selection method:</strong> when online literature is enabled, the pipeline queries PubMed/Europe-PMC metadata and abstracts for detected driver CNAs and ranks candidate papers by citation count, CNA/gene/context text overlap, abstract availability, recency, and optional local Hugging Face model scores. The selected papers prioritize manual review; they are not clinical-grade evidence grading. Bundled catalog PMID seeds are reference pointers, not retrieved abstracts or evidence for catalog drafts.</p>" + ("<h3>Selected influential papers for this sample</h3>" + html_table(data["sample_literature"], columns=data["sample_lit_cols"]) if not data.get("sample_literature", pd.DataFrame()).empty else "") + "<h3>Feature-level reference metadata and source trace</h3>" + html_table(data["references"], columns=data["ref_cols"]) + "<div class='warning'><strong>Report status:</strong> generated automatically by the CNA classifier PDF/HTML extension. Web-derived literature titles/abstracts and Hugging Face outputs are assistive traces and should be reviewed manually before use in manuscripts or clinical documents.</div>"),
     ])
     title = f"OncoTracer AI CNA Knowledge Report - {sample}"
     burden = safe_str(row.get("cna_burden_class", "unknown"))

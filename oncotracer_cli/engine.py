@@ -3374,7 +3374,7 @@ def _merge_methylation_summary(
             "completed_at": utc_now(),
         }
 
-    prior_cna_status = str(summary.get("workflow_status") or "complete")
+    prior_cna_status = str(summary.get("cna_status") or summary.get("workflow_status") or "complete")
     cna_status = "failed" if cna_error is not None else prior_cna_status
     if not cna_requested:
         cna_status = "not_requested"
@@ -3387,6 +3387,8 @@ def _merge_methylation_summary(
         workflow_status = "partial_failure"
     else:
         workflow_status = "failed"
+    if summary.get("cna_classifier_status") in {"failed", "partial_failure"}:
+        workflow_status = "partial_failure" if cna_success or methylation_success else "failed"
 
     summary.update(
         {
@@ -3899,9 +3901,18 @@ def _run_native_impl(
                 force=force_run,
             )
         except (OSError, OncoTracerError, ValueError) as error:
-            if methylation_request is None:
-                raise
-            cna_error = error
+            # Preserve finished CNA outputs and a browsable failure manifest when
+            # an explicitly requested interpretation branch cannot complete.
+            summary_path = outdir / "06_workflow_summary/workflow_summary.json"
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            summary.setdefault("cna_status", summary.get("workflow_status", "complete"))
+            summary.update(
+                workflow_status="partial_failure",
+                cna_classifier_completed=False,
+                cna_classifier_status="failed",
+                cna_classifier_error=_sanitize_sample_error(error),
+            )
+            atomic_write_workflow_summary(summary_path.parent, summary)
 
     if methylation_request is not None:
         assert methylation_status is not None
@@ -3930,6 +3941,7 @@ def _run_native_impl(
             "native analysis completed with one or more incomplete branches "
             f"(CNA={summary.get('cna_status', summary.get('workflow_status'))}, "
             f"methylation={summary.get('methylation_status', 'not_requested')}, "
+            f"classifier={summary.get('cna_classifier_status', 'not_requested')}, "
             f"failed_samples={failed or 'none'}); successful outputs and the "
             f"failure manifest were preserved under {outdir}"
         )

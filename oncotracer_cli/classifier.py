@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import shutil
@@ -59,7 +60,8 @@ DEFAULTS: dict[str, object] = {
     "knowledge_hf_ner": False,
     "knowledge_hf_model": "d4data/biomedical-ner-all",
     "knowledge_literature_llm": True,
-    "knowledge_literature_llm_models": "google/flan-t5-small,google/flan-t5-base,Falconsai/medical_summarization",
+    "knowledge_catalog_llm": False,
+    "knowledge_literature_llm_models": "Qwen/Qwen3-4B-Instruct-2507@cdbee75f17c01a7cc42f958dc650907174af0554,google/flan-t5-small,google/flan-t5-base,Falconsai/medical_summarization",
     "knowledge_literature_llm_local_files_only": False,
     "knowledge_literature_llm_max_features": 24,
     "knowledge_literature_llm_max_input_chars": 2800,
@@ -69,7 +71,7 @@ DEFAULTS: dict[str, object] = {
     "knowledge_deep_max_papers_per_feature": 50,
     "knowledge_deep_top_papers_per_sample": 12,
     "knowledge_deep_enable_llm_ranker": True,
-    "knowledge_deep_llm_ranker_models": "google/flan-t5-small,google/flan-t5-base,Falconsai/medical_summarization",
+    "knowledge_deep_llm_ranker_models": "Qwen/Qwen3-4B-Instruct-2507@cdbee75f17c01a7cc42f958dc650907174af0554,google/flan-t5-small,google/flan-t5-base,Falconsai/medical_summarization",
     "knowledge_deep_llm_ranker_local_files_only": False,
     "knowledge_deep_llm_ranker_max_candidates_per_sample": 18,
     "knowledge_literature_reference_llm_selection": True,
@@ -214,6 +216,43 @@ def _write_gistic_skip(directory: Path, reason: str, segmentation: str) -> tuple
     return output, status, command
 
 
+def _gistic_result_problem(path: Path, samples: set[str]) -> str | None:
+    """A zero exit code does not prove that GISTIC produced its final report."""
+    if not path.is_file() or path.stat().st_size == 0:
+        return f"missing_or_empty_result:{path.name}"
+    try:
+        with path.open(encoding="utf-8") as handle:
+            for row in csv.reader(handle, delimiter="\t"):
+                if not row or row[0].strip().lower().replace("_", " ") != "unique name":
+                    continue
+                # GISTIC 2.0.23 writes a trailing tab after every header field.
+                while row and not row[-1].strip():
+                    row.pop()
+                if len(row) < 10 or "amplitude" not in row[8].lower():
+                    return f"invalid_result_header:{path.name}"
+                reported = [sample.strip() for sample in row[9:]]
+                if len(set(reported)) != len(reported) or set(reported) != samples:
+                    return f"result_sample_mismatch:{path.name}"
+                # Header-only reports are legitimate when no significant lesions exist.
+                return None
+    except (OSError, UnicodeError, csv.Error):
+        return f"unreadable_result:{path.name}"
+    return f"invalid_result_header:{path.name}"
+
+
+def _read_gistic_status(path: Path) -> tuple[str, str]:
+    if not path.is_file():
+        return "failed", "missing_status_file"
+    try:
+        with path.open(encoding="utf-8") as handle:
+            records = list(csv.DictReader(handle, delimiter="\t"))
+        if records:
+            return records[-1].get("status", "failed"), records[-1].get("reason", "unknown")
+    except (OSError, UnicodeError, csv.Error):
+        pass
+    return "failed", "invalid_status_file"
+
+
 def _run_gistic(
     root: Path,
     config: Mapping[str, object],
@@ -262,9 +301,10 @@ def _run_gistic(
     minimum_samples = int(_value(config, "gistic_min_samples") or 2)
     if sample_count < minimum_samples:
         reason = f"not_enough_samples_for_gistic_n={sample_count}_min={minimum_samples}"
+        skipped = _write_gistic_skip(output, reason, segmentation)
         if required:
             raise OncoTracerError(reason)
-        return _write_gistic_skip(output, reason, segmentation)
+        return skipped
 
     if toolchain.gistic_prefix is not None:
         executable_available = (toolchain.gistic_prefix / "bin" / "gistic2").is_file()
@@ -272,9 +312,10 @@ def _run_gistic(
         executable_available = shutil.which("gistic2") is not None
     if not executable_available:
         reason = "gistic2 executable not found"
+        skipped = _write_gistic_skip(output, reason, segmentation)
         if required:
             raise OncoTracerError(reason)
-        return _write_gistic_skip(output, reason, segmentation)
+        return skipped
     gistic_environment = toolchain.environment("gistic")
 
     ref_value = str(config.get("gistic_refgene") or "auto")
@@ -296,9 +337,10 @@ def _run_gistic(
             )
             if result.returncode != 0 or not refgene.is_file() or refgene.stat().st_size == 0:
                 reason = "missing hg38 GISTIC refgene"
+                skipped = _write_gistic_skip(output, reason, segmentation)
                 if required:
                     raise OncoTracerError(reason)
-                return _write_gistic_skip(output, reason, segmentation)
+                return skipped
 
     status = output / "gistic2_status.tsv"
     command_file = output / "gistic2_command.txt"
@@ -352,7 +394,16 @@ def _run_gistic(
 
     signature = ledger.signature("classifier-gistic", wrapped, list(prepared_files.values()) + [refgene])
     sentinel = gistic_out / ".oncotracer-complete"
-    if force or not ledger.reusable("classifier-gistic", signature, [status, sentinel]):
+    confidence = int(float(_value(config, "gistic_conf")) * 100 + 0.5)
+    lesions = gistic_out / f"all_lesions.conf_{confidence}.txt"
+    with seg.open(encoding="utf-8") as handle:
+        samples = {row[0] for row in list(csv.reader(handle, delimiter="\t"))[1:] if row}
+    expected_outputs = [status, sentinel, lesions]
+    if force or _gistic_result_problem(lesions, samples) or not ledger.reusable("classifier-gistic", signature, expected_outputs):
+        previous = lesions.stat() if lesions.is_file() else None
+        previous_identity = (previous.st_ino, previous.st_size, previous.st_mtime_ns, previous.st_ctime_ns) if previous else None
+        if sentinel.exists():
+            sentinel.replace(gistic_out / ".oncotracer-previous-complete")
         result = runner.run(
             "classifier-gistic",
             wrapped,
@@ -360,33 +411,50 @@ def _run_gistic(
             containment=gistic_environment,
             check=False,
         )
-        if result.returncode == 0:
+        problem = f"exit_code_{result.returncode}" if result.returncode else _gistic_result_problem(lesions, samples)
+        if problem is None and previous_identity is not None:
+            current = lesions.stat()
+            if previous_identity == (current.st_ino, current.st_size, current.st_mtime_ns, current.st_ctime_ns):
+                problem = f"result_not_refreshed:{lesions.name}"
+        if problem is None:
             atomic_write_text(
                 status,
                 "status\treason\tsegmentation\tcommand\texecutable\trefgene\n"
                 f"completed\tNA\t{segmentation}\tgistic2_command.txt\tgistic2\t{refgene}\n",
             )
             atomic_write_text(sentinel, "completed\n")
-            ledger.complete("classifier-gistic", signature, [status, sentinel])
+            failed_marker = gistic_out / "GISTIC_FAILED.txt"
+            if failed_marker.exists():
+                failed_marker.replace(gistic_out / "GISTIC_PREVIOUS_FAILURE.txt")
+            ledger.complete("classifier-gistic", signature, expected_outputs)
         else:
             atomic_write_text(
                 status,
                 "status\treason\tsegmentation\tcommand\texecutable\trefgene\n"
-                f"failed\texit_code_{result.returncode}\t{segmentation}\tgistic2_command.txt\tgistic2\t{refgene}\n",
+                f"failed\t{problem}\t{segmentation}\tgistic2_command.txt\tgistic2\t{refgene}\n",
             )
-            atomic_write_text(gistic_out / "GISTIC_FAILED.txt", f"exit_code={result.returncode}\n")
+            atomic_write_text(gistic_out / "GISTIC_FAILED.txt", f"returncode={result.returncode}\nreason={problem}\n")
             if required:
-                raise OncoTracerError(f"GISTIC2 failed with exit code {result.returncode}")
+                raise OncoTracerError(f"GISTIC2 did not complete: {problem}; see {status}")
     return gistic_out, require_file(status, "GISTIC status"), require_file(command_file, "GISTIC command")
 
 
-def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_reports: Path | None = None) -> None:
+def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_reports: Path | None = None, gistic_requested: bool = False, reports_completed: bool = True) -> None:
     summary_dir = require_directory(analysis_outdir / "06_workflow_summary", "workflow summary")
     json_path = require_file(summary_dir / "workflow_summary.json", "workflow summary JSON")
     value = json.loads(json_path.read_text(encoding="utf-8"))
     value["cna_classifier"] = str(classifier_out)
-    value["cna_classifier_completed"] = True
-    value["cna_classifier_report"] = str(classifier_out / "03_report/cna_classifier_report.html")
+    gistic_status, gistic_reason = _read_gistic_status(classifier_out / "04_gistic2/gistic2_status.tsv")
+    incomplete = not reports_completed or (gistic_requested and gistic_status == "failed")
+    value["gistic_requested"] = gistic_requested
+    value["gistic_status"] = gistic_status
+    value["gistic_reason"] = gistic_reason
+    value["cna_classifier_completed"] = not incomplete
+    value["cna_classifier_status"] = "partial_failure" if incomplete else "complete"
+    if incomplete:
+        value.setdefault("cna_status", value.get("workflow_status", "complete"))
+        value["workflow_status"] = "partial_failure"
+    value["cna_classifier_report"] = str(classifier_out / "03_report/cna_classifier_report.html") if reports_completed else None
     value["cna_knowledge_evidence"] = str(classifier_out / "06_knowledge")
     for key in ("cna_knowledge_reports", "cna_knowledge_report_index"):
         value.pop(key, None)
@@ -471,9 +539,14 @@ def run_native_classifier(
         containment=classifier_environment,
     )
 
-    gistic_dir, gistic_status, gistic_command = _run_gistic(
-        root, config, lpwgs_root, prepared, gistic, runner, ledger, toolchain, force=force
-    )
+    try:
+        gistic_dir, gistic_status, gistic_command = _run_gistic(
+            root, config, lpwgs_root, prepared, gistic, runner, ledger, toolchain, force=force
+        )
+    except (OSError, OncoTracerError, ValueError):
+        _update_summary(analysis_outdir, classifier_out,
+                        gistic_requested=_bool(config, "run_gistic"), reports_completed=False)
+        raise
     parse_command = toolchain.wrap(
         "classifier",
         [
@@ -553,6 +626,7 @@ def run_native_classifier(
             "--enable-hf-ner", str(_bool(config, "knowledge_hf_ner")).lower(),
             "--hf-model", _string(config, "knowledge_hf_model"),
             "--enable-literature-llm", str(_bool(config, "knowledge_literature_llm")).lower(),
+            "--enable-catalog-llm", str(_bool(config, "knowledge_catalog_llm")).lower(),
             "--literature-llm-models", _string(config, "knowledge_literature_llm_models"),
             "--literature-llm-local-files-only", str(_bool(config, "knowledge_literature_llm_local_files_only")).lower(),
             "--literature-llm-max-features", _string(config, "knowledge_literature_llm_max_features"),
@@ -751,5 +825,6 @@ def run_native_classifier(
     }
     atomic_write_json(classifier_out / "native_classifier_summary.json", summary)
     _update_summary(analysis_outdir, classifier_out,
-                    knowledge_reports=knowledge_reports if _bool(config, "run_pdf_reports") else None)
+                    knowledge_reports=knowledge_reports if _bool(config, "run_pdf_reports") else None,
+                    gistic_requested=_bool(config, "run_gistic"))
     return classifier_out

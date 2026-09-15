@@ -299,12 +299,21 @@ def resource_report(
     llm = reports and (
         config.get("knowledge_literature_llm", True) is True
         or config.get("knowledge_deep_enable_llm_ranker", True) is True
+        or config.get("knowledge_catalog_llm", False) is True
     )
+    default_report_model = "Qwen/Qwen3-4B-Instruct-2507"
+    report_models = []
+    if config.get("knowledge_literature_llm", True) is True or config.get("knowledge_catalog_llm", False) is True:
+        report_models.append(str(config.get("knowledge_literature_llm_models") or default_report_model))
+    if config.get("knowledge_deep_enable_llm_ranker", True) is True:
+        report_models.append(str(config.get("knowledge_deep_llm_ranker_models") or default_report_model))
+    default_models = report_models and all(spec.split(",")[0].split("@")[0] == default_report_model for spec in report_models)
     capability(
         "Local report LLM",
-        None,
+        24 if llm and default_models else None,
         llm,
-        "CPU only. Check the selected model's weight size and runtime memory; turn off both knowledge_literature_llm and knowledge_deep_enable_llm_ranker to avoid report LLMs.",
+        "CPU only. The default Qwen model needs a 24 GiB available-RAM allowance; custom models vary. "
+        "Disable knowledge_catalog_llm, knowledge_literature_llm and knowledge_deep_enable_llm_ranker to avoid report LLMs.",
     )
     disks = [
         _disk(Path(str(config.get(key) or path or Path.cwd())))

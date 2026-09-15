@@ -16,6 +16,7 @@ Optional input:
 from __future__ import annotations
 
 import argparse
+from bisect import bisect_left, bisect_right
 import io
 import json
 import math
@@ -302,23 +303,63 @@ def load_chrom_sizes(path: str | Path, include_sex: bool = False) -> dict[str, i
     return {str(r.chrom): int(r.size) for r in raw.itertuples(index=False)}
 
 
-def make_gistic_marker_file(chrom_sizes: dict[str, int], window_bp: int, out_path: str = "gistic_markers.tsv") -> int:
-    """Create a pseudo-marker file for GISTIC2 at approximately the SAMURAI/QDNAseq bin size."""
+def make_gistic_marker_file(
+    chrom_sizes: dict[str, int],
+    window_bp: int,
+    out_path: str = "gistic_markers.tsv",
+    *,
+    segment_paths: Iterable[str | Path] = (),
+) -> int:
+    """Keep the uniform pseudo-marker grid and every emitted SEG endpoint.
+
+    GISTIC requires exact marker matches for both segment boundaries. Refined
+    CNA endpoints and neutral-gap boundaries need not lie on the bin centers;
+    add those positions without moving segments or changing their log2 values.
+    """
     window_bp = max(int(window_bp), 1)
+    boundaries: dict[str, set[int]] = {chrom: set() for chrom in chrom_sizes}
+    for path in segment_paths:
+        segments = pd.read_csv(path, sep="\t", dtype=str)
+        for chrom, start, end in segments[["Chromosome", "Start", "End"]].itertuples(index=False, name=None):
+            start, end = int(start), int(end)
+            if chrom not in chrom_sizes or not 1 <= start <= end <= int(chrom_sizes[chrom]):
+                raise ValueError(f"GISTIC segment outside chromosome bounds in {path}: {chrom}:{start}-{end}")
+            boundaries[chrom].update((start, end))
     n = 0
     with open(out_path, "w") as out:
         out.write("Marker Name\tChromosome\tMarker Position\n")
         for chrom in sorted(chrom_sizes, key=lambda c: chrom_sort_key(c)[0]):
             size = int(chrom_sizes[chrom])
-            pos = max(1, window_bp // 2)
-            while pos <= size:
+            positions = set(range(max(1, window_bp // 2), size + 1, window_bp))
+            if size % window_bp != 0:
+                positions.add(size)
+            positions.update(boundaries[chrom])
+            for pos in sorted(positions):
                 n += 1
                 out.write(f"m_chr{chrom}_{pos}\t{chrom}\t{pos}\n")
-                pos += window_bp
-            if size % window_bp != 0:
-                n += 1
-                out.write(f"m_chr{chrom}_{size}\t{chrom}\t{size}\n")
     return n
+
+
+def update_gistic_probe_counts(segment_paths: Iterable[str | Path], marker_path: str | Path) -> None:
+    """Count the modeled markers enclosed by each GISTIC-only SEG interval."""
+    markers = pd.read_csv(marker_path, sep="\t", dtype={"Chromosome": str})
+    positions = {
+        chrom: sorted(group["Marker Position"].astype(int).tolist())
+        for chrom, group in markers.groupby("Chromosome")
+    }
+    for path in segment_paths:
+        segments = pd.read_csv(path, sep="\t", dtype=str)
+        counts = []
+        for chrom, start, end in segments[["Chromosome", "Start", "End"]].itertuples(index=False, name=None):
+            start, end = int(start), int(end)
+            markers_on_chrom = positions.get(chrom, [])
+            first = bisect_left(markers_on_chrom, start)
+            after = bisect_right(markers_on_chrom, end)
+            if first == after or markers_on_chrom[first] != start or markers_on_chrom[after - 1] != end:
+                raise ValueError(f"GISTIC segment endpoints are missing from markers in {path}: {chrom}:{start}-{end}")
+            counts.append(after - first)
+        segments["Num_Probes"] = counts
+        segments.to_csv(path, sep="\t", index=False)
 
 
 def make_full_genome_gistic_seg(
@@ -480,7 +521,7 @@ def main() -> None:
     ap.add_argument("--cna-notation", required=True)
     ap.add_argument("--region-catalog", required=True)
     ap.add_argument("--chrom-sizes", required=True, help="Two-column chrom/size file used to create full-genome neutral-gap GISTIC SEG.")
-    ap.add_argument("--gistic-window-bp", type=int, default=100000, help="Pseudo-marker spacing and neutral segment probe approximation for GISTIC.")
+    ap.add_argument("--gistic-window-bp", type=int, default=100000, help="Regular GISTIC pseudo-marker spacing; segment endpoints are added and modeled marker counts are recomputed.")
     ap.add_argument("--min-bins", type=int, default=3)
     ap.add_argument("--min-size-mb", type=float, default=0.5)
     ap.add_argument("--min-abs-log2", type=float, default=0.25)
@@ -600,7 +641,6 @@ def main() -> None:
     seg.to_csv("samurai_events.seg", sep="\t", index=False)
     seg.to_csv("gistic_events.seg", sep="\t", index=False)
     chrom_sizes = load_chrom_sizes(args.chrom_sizes, include_sex=args.include_sex)
-    marker_count = make_gistic_marker_file(chrom_sizes, args.gistic_window_bp, out_path="gistic_markers.tsv")
     gistic_full_metrics = make_full_genome_gistic_seg(
         df=df,
         all_samples=all_samples,
@@ -608,6 +648,11 @@ def main() -> None:
         window_bp=args.gistic_window_bp,
         out_path="gistic_full.seg",
     )
+    marker_count = make_gistic_marker_file(
+        chrom_sizes, args.gistic_window_bp, out_path="gistic_markers.tsv",
+        segment_paths=("gistic_events.seg", "gistic_full.seg"),
+    )
+    update_gistic_probe_counts(("gistic_events.seg", "gistic_full.seg"), "gistic_markers.tsv")
 
     # Sample-level summary.
     rows = []
@@ -763,6 +808,8 @@ def main() -> None:
         "include_sex": bool(args.include_sex),
         "gistic_window_bp": int(args.gistic_window_bp),
         "gistic_marker_count": int(marker_count),
+        "gistic_marker_model": "uniform_pseudo_markers_plus_all_seg_endpoints",
+        "gistic_probe_count_basis": "modeled_markers_in_inclusive_segment_not_observed_read_bins",
         "input_event_tables": events_raw.attrs.get("input_event_tables", [str(args.cna_events)]),
         "notation_tables_used": notation_tables_used,
         **gistic_full_metrics,

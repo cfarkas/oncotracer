@@ -219,7 +219,8 @@ class WebState:
                               cna_classifier_samples=",".join(row["sample"] for row in entries),
                               knowledge_web=online, knowledge_literature_llm=online,
                               knowledge_deep_literature=online, knowledge_deep_enable_llm_ranker=online,
-                              pathology_use_biomed_models=detail != "catalog", run_gistic=gistic,
+                              pathology_use_biomed_models=False, knowledge_catalog_llm=detail == "models",
+                              run_gistic=gistic, gistic_required=gistic,
                               knowledge_llm_threads=min(threads, 4))
             reference = _choice(data, "reference", ("download", "reuse", "build"), "download")
             if reference == "reuse":

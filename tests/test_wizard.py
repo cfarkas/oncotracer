@@ -257,8 +257,48 @@ class WizardTests(unittest.TestCase):
             self.assertTrue(config["run_cna_classifier"])
             self.assertEqual(config["cna_classifier_samples"], "current")
             self.assertEqual(config["cna_classifier_sample_set"], "lymphoma")
-            for key in ("knowledge_web", "knowledge_literature_llm", "knowledge_deep_enable_llm_ranker", "pathology_use_biomed_models", "run_gistic"):
+            for key in ("knowledge_web", "knowledge_literature_llm", "knowledge_deep_enable_llm_ranker", "pathology_use_biomed_models", "knowledge_catalog_llm", "run_gistic"):
                 self.assertFalse(config[key], key)
+
+    def test_local_catalog_models_do_not_enable_web_or_pathology_comparison(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fastq(root / "reads/current.fastq.gz")
+            code, output, _, run = self.invoke(
+                "setup", "--project", str(root / "project"), "--mode", "illumina",
+                "--input-folder", str(root / "reads"),
+                answers={"Type for current": "cancer", "Add CNA interpretation": "yes",
+                         "Use local language models": "yes"},
+            )
+            self.assertEqual(code, 0, output)
+            config = load_flat_yaml(root / "project/config/run.yml")
+            self.assertTrue(config["knowledge_catalog_llm"])
+            for key in ("knowledge_web", "knowledge_literature_llm", "pathology_use_biomed_models"):
+                self.assertFalse(config[key], key)
+            run.assert_not_called()
+
+    def test_explicit_gistic_is_required_and_needs_a_cohort(self):
+        for count in (1, 2):
+            with self.subTest(samples=count), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                for name in ("one", "two")[:count]:
+                    self.fastq(root / f"reads/{name}.fastq.gz")
+                code, output, _, run = self.invoke(
+                    "setup", "--project", str(root / "project"), "--mode", "illumina",
+                    "--input-folder", str(root / "reads"),
+                    answers={"Type for one": "cancer", "Type for two": "cancer",
+                             "Add CNA interpretation": "yes", "Add GISTIC": "yes"},
+                )
+                if count == 1:
+                    self.assertEqual(code, 2, output)
+                    self.assertIn("at least two", output)
+                    self.assertFalse((root / "project/config/run.yml").exists())
+                else:
+                    self.assertEqual(code, 0, output)
+                    config = load_flat_yaml(root / "project/config/run.yml")
+                    self.assertTrue(config["run_gistic"])
+                    self.assertTrue(config["gistic_required"])
+                run.assert_not_called()
 
     def test_existing_config_and_conflicting_flags_do_not_prompt_or_change_files(self):
         with tempfile.TemporaryDirectory() as directory:
