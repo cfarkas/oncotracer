@@ -400,7 +400,39 @@ def _resolve_fastq_pass(folder: Path) -> Path:
     return candidates[0].resolve()
 
 
+def _single_ont_sample_folder(folder: Path) -> Path:
+    """Validate an explicitly selected, nonbarcoded library without regrouping it."""
+    root = require_directory(folder, "ONT single-sample FASTQ folder")
+    for path in root.rglob("*"):
+        if path.is_dir() and (
+            re.fullmatch(r"barcode\d+", path.name, flags=re.I)
+            or path.name in {"unclassified", "fastq_pass"}
+        ):
+            raise OncoTracerError(
+                f"ONT single-sample folder now contains a barcode or nested run folder: {path}; "
+                "select a single nonbarcoded library or configure its barcodes separately"
+            )
+    return root
+
+
 def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
+    single = config.get("ont_single_sample", False)
+    if not isinstance(single, bool):
+        raise OncoTracerError("ont_single_sample must be true or false")
+    if single:
+        if str(config.get("ont_barcodes") or "").strip() != ".":
+            raise OncoTracerError("ont_single_sample requires ont_barcodes: . for the selected folder")
+        name = str(config.get("ont_sample_names") or "").strip()
+        if not name or "," in name or ";" in name:
+            raise OncoTracerError("ont_single_sample requires exactly one explicit ont_sample_names value")
+        if any(config.get(key) not in (None, "") for key in
+               ("ont_normal_folder", "ont_normal_barcodes", "ont_normal_sample_names")):
+            raise OncoTracerError("ont_single_sample cannot combine independent control/barcode groups")
+        if not config.get("ont_folder"):
+            raise OncoTracerError("ont_single_sample requires ont_folder")
+        root = _single_ont_sample_folder(Path(str(config["ont_folder"])))
+        return [OntSample(_safe_sample(name), ".", root, status="tumor")]
+
     def parse_group(
         folder_value: object,
         barcodes_value: object,
@@ -434,6 +466,10 @@ def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
             )
         group: list[OntSample] = []
         for barcode, name in zip(barcodes, names, strict=True):
+            if barcode in {".", ".."} or "/" in barcode or "\\" in barcode:
+                raise OncoTracerError(
+                    "ONT barcode must be one folder name; a nonbarcoded library requires ont_single_sample: true"
+                )
             candidate = root / barcode
             if not candidate.is_dir() and barcode.isdigit():
                 candidate = root / f"barcode{int(barcode):02d}"

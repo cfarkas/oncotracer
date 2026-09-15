@@ -74,7 +74,8 @@ COMMENTS = {
     "outdir": "Analysis results. Use a new directory for a different analysis.",
     "threads": "CPU worker threads requested; some tools also use helper threads.",
     "illumina_samplesheet": "CSV linking sample names to existing FASTQ files.",
-    "ont_folder": "Existing FASTQ parent directory; each selected barcode is a subfolder.",
+    "ont_folder": "Existing FASTQ parent directory; with ont_single_sample, this is one nonbarcoded library.",
+    "ont_single_sample": "true treats ont_folder itself as one nonbarcoded library; ont_barcodes must be a single dot.",
     "ont_barcodes": "Comma-separated barcode folders. Only these samples are analyzed.",
     "ont_sample_names": "Names in the same order as ont_barcodes. Tumor samples are analyzed independently.",
     "methylation": "Request methylation analysis in addition to the default copy-number workflow.",
@@ -106,7 +107,8 @@ def _ask(
             answer = input(f"{label}{suffix}: ").strip()
         except EOFError as error:
             raise OncoTracerError(
-                "setup input ended; use --non-interactive with explicit flags in scripts"
+                f"setup input ended at {label}; use a terminal for interactive setup, "
+                "or --non-interactive with explicit flags in scripts"
             ) from error
         answer = answer or default
         if not answer and not required:
@@ -429,15 +431,15 @@ def _command_setup(args: argparse.Namespace) -> int:
             values["illumina_samplesheet"] = str(sheet)
         values.update(illumina_caller="qdnaseq", illumina_binsize_kb=100)
     else:
-        folder = _resolve_fastq_pass(
-            Path(
-                _ask(
-                    args.reads_folder,
-                    "FASTQ parent folder (--reads-folder)",
-                    interactive=interactive,
-                )
-            )
+        selected_folder = Path(
+            _ask(args.reads_folder, "FASTQ parent folder (--reads-folder)", interactive=interactive)
         )
+        if getattr(args, "_wizard_values", {}).get("ont_single_sample"):
+            from .engine import _single_ont_sample_folder
+
+            folder = _single_ont_sample_folder(selected_folder)
+        else:
+            folder = _resolve_fastq_pass(selected_folder)
         available = [
             p.name
             for p in sorted(folder.iterdir())

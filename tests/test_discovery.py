@@ -138,6 +138,66 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(found.root, first.parent.parent)
         self.assertEqual([sample.barcode for sample in found.samples], ["barcode01"])
 
+    def test_nonbarcoded_ligation_batches_form_one_explicit_sample_without_input_writes(self):
+        for batch in range(69):
+            self.fastq(f"ligation library/{'later/' if batch > 30 else ''}batch{batch:03}.fastq")
+        folder = self.reads / "ligation library"
+        before = {path: path.read_bytes() for path in folder.rglob("*") if path.is_file()}
+        found = discover_fastqs(folder, "ont")
+        self.assertTrue(found.single_sample)
+        self.assertEqual(found.root, folder)
+        self.assertEqual(len(found.samples), 1)
+        sample, = found.samples
+        self.assertEqual((sample.sample, sample.barcode, sample.fastq_dir), ("ligation_library", ".", folder))
+        self.assertEqual(set(sample.files), set(before))
+        config = {"ont_folder": str(found.root), "ont_single_sample": True,
+                  "ont_barcodes": ".", "ont_sample_names": "library_A"}
+        parsed, = parse_ont_samples(config)
+        self.assertEqual((parsed.sample, parsed.fastq_dir, parsed.status), ("library_A", folder, "tumor"))
+        self.assertEqual(before, {path: path.read_bytes() for path in folder.rglob("*") if path.is_file()})
+
+    def test_nonbarcoded_run_selects_pass_folder_without_failed_reads(self):
+        passed = self.fastq("run/fastq_pass/batch.fastq")
+        self.fastq("run/fastq_fail/failed.fastq")
+        found = discover_fastqs(self.reads / "run", "ont")
+        self.assertTrue(found.single_sample)
+        self.assertEqual(found.root, passed.parent)
+        self.assertEqual(found.samples[0].files, (passed,))
+
+    def test_nested_barcode_folders_cannot_be_combined_as_one_ligation_library(self):
+        self.fastq("run1/barcode01/batch.fastq")
+        self.fastq("run2/barcode02/batch.fastq")
+        with self.assertRaisesRegex(OncoTracerError, "outside a barcode"):
+            discover_fastqs(self.reads, "ont")
+
+    def test_single_sample_runtime_rejects_changed_layout_and_conflicting_groups(self):
+        self.fastq("library/batch.fastq")
+        folder = self.reads / "library"
+        config = {"ont_folder": str(folder), "ont_single_sample": True,
+                  "ont_barcodes": ".", "ont_sample_names": "library_A"}
+        self.assertEqual(len(parse_ont_samples(config)), 1)
+        for key, value, message in (
+            ("ont_barcodes", "barcode01", "ont_barcodes: ."),
+            ("ont_sample_names", "A,B", "exactly one"),
+            ("ont_single_sample", "true", "true or false"),
+            ("ont_normal_folder", str(folder), "control/barcode groups"),
+        ):
+            with self.subTest(key=key), self.assertRaisesRegex(OncoTracerError, message):
+                parse_ont_samples({**config, key: value})
+        for name in ("barcode01", "unclassified", "other_run/fastq_pass"):
+            changed = folder / name
+            changed.mkdir(parents=True)
+            with self.subTest(folder=name), self.assertRaisesRegex(OncoTracerError, "now contains a barcode or nested run"):
+                parse_ont_samples(config)
+            changed.rmdir()
+        self.assertEqual(len(parse_ont_samples(config)), 1)
+
+    def test_dot_barcode_requires_explicit_single_sample_marker(self):
+        self.fastq("fastq_pass/batch.fastq")
+        with self.assertRaisesRegex(OncoTracerError, "requires ont_single_sample"):
+            parse_ont_samples({"ont_folder": str(self.reads / "fastq_pass"),
+                               "ont_barcodes": ".", "ont_sample_names": "library_A"})
+
     def test_multiple_ont_runs_require_narrower_folder(self):
         for run in ("run1", "run2"):
             self.fastq(f"{run}/fastq_pass/barcode01/batch.fastq")

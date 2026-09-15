@@ -7,7 +7,7 @@ import json
 import shlex
 from pathlib import Path
 
-from .discovery import detect_fastq_mode, discover_fastqs
+from .discovery import discover_fastqs
 from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
 from .runtime import OncoTracerError, load_flat_yaml
 from .system_check import GIB, inspect_hardware, resource_report
@@ -95,20 +95,24 @@ def command_wizard(original_args) -> int:
     run_requested = args.run
     args.run = False
     print("OncoTracer setup: select FASTQs, assign sample types, choose settings, then save or run.")
-    project = Path(_ask(args.project, "Project directory (--project)")).expanduser().resolve()
-    for name in ("run.yml", "samplesheet.csv", "sample_metadata.csv"):
-        path = project / "config" / name
-        if path.exists() or path.is_symlink():
-            raise OncoTracerError(f"setup will not overwrite {path}; choose a new --project or edit the existing YAML")
+    def new_project(path):
+        for name in ("run.yml", "samplesheet.csv", "sample_metadata.csv"):
+            target = path / "config" / name
+            if target.exists() or target.is_symlink():
+                raise OncoTracerError(f"setup will not overwrite {target}; choose a new --project or edit the existing YAML")
+        return path
+
+    project = new_project(Path(args.project).expanduser().resolve()) if args.project else None
+    args.mode = _ask(args.mode, "Sequencing platform (--mode)", choices=("ont", "illumina"))
+    if project is None:
+        project = new_project(Path(_ask(None, "Project directory (--project)")).expanduser().resolve())
     args.project = str(project)
     folder = Path(_ask(args.input_folder or args.reads_folder, "FASTQ folder (--input-folder)")).expanduser()
-    args.mode = _ask(args.mode, "Sequencing platform (--mode)",
-                     default=None if args.mode else detect_fastq_mode(folder), choices=("illumina", "ont"))
     discovered = discover_fastqs(folder, args.mode)
     file_count = sum(len(sample.files) for sample in discovered.samples)
     print(f"\nDetected {file_count} FASTQ files in {len(discovered.samples)} samples under {discovered.root}:")
     for number, sample in enumerate(discovered.samples, 1):
-        layout = "barcode batches" if args.mode == "ont" else ("paired-end" if sample.fastq_2 else "single-end")
+        layout = ("nonbarcoded library batches" if discovered.single_sample else "barcode batches") if args.mode == "ont" else ("paired-end" if sample.fastq_2 else "single-end")
         print(f"  {number}. {sample.sample}: {len(sample.files)} FASTQs, {layout}")
         for path in sample.files[:2]:
             print(f"       {path.relative_to(discovered.root)}")
@@ -131,7 +135,7 @@ def command_wizard(original_args) -> int:
     print("\nAssign sample types explicitly. Controls are analyzed independently; they are not pooled or subtracted.")
     entries, used = [], set()
     for sample in selected:
-        print(f"\nSelected: {sample.sample} ({len(sample.files)} FASTQs)")
+        print(f"\nSelected: {sample.sample} ({len(sample.files)} FASTQs)", flush=True)
         name = _sample_name(sample.sample, used)
         used.add(name)
         kind = _ask(None, f"Type for {name}", choices=("cancer", "control", "other"))
@@ -152,7 +156,7 @@ def command_wizard(original_args) -> int:
     report = resource_report({"mode": args.mode}, path=project, hardware=hardware)
     _show_hardware(hardware, report["suggested_threads"])
     args.threads = _integer(args.threads, "CPU threads (--threads)", report["suggested_threads"], hardware["cpu_workers_available"])
-    values = {}
+    values = {"ont_single_sample": True} if discovered.single_sample else {}
     if args.mode == "illumina":
         args.reads_folder = None
         args._wizard_rows = [[row["sample"], str(row["source"].fastq_1),

@@ -1,0 +1,303 @@
+"""Exercise local HTTP authorization and real config mapping without analysis."""
+import contextlib
+import csv
+import gzip
+import http.client
+import io
+import json
+import os
+import subprocess
+import tempfile
+import threading
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from oncotracer_cli.cli import build_parser, _legacy_to_modern
+from oncotracer_cli.engine import parse_illumina_samplesheet, parse_ont_samples
+from oncotracer_cli.runtime import OncoTracerError, load_flat_yaml
+from oncotracer_cli.web import WebServer, WebState
+
+HARDWARE = {"cpu_workers_available": 8, "ram_total_bytes": 64 * 1024**3,
+            "ram_available_bytes": 48 * 1024**3, "gpus": [],
+            "os": "Linux", "architecture": "x86_64", "python_supported": True}
+
+
+class WebTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.state = WebState(self.root)
+        self.state.hardware = HARDWARE
+        self.addCleanup(patch.stopall)
+        patch("oncotracer_cli.cli._load_install_config", return_value={}).start()
+
+    def fastq(self, relative):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with gzip.open(path, "wt") as handle:
+            handle.write("@read\nACGT\n+\nIIII\n")
+        return path
+
+    def prepare(self, mode="illumina", folder="reads", **options):
+        scan = self.state.scan({"mode": mode, "folder": str(self.root / folder)})
+        data = {"scan_id": scan["scan_id"], "project": str(self.root / "project"), "threads": 2,
+                "samples": [{"id": sample["id"], "name": sample["name"], "type": "cancer"}
+                            for sample in scan["samples"]]}
+        data.update(options)
+        with contextlib.redirect_stdout(io.StringIO()):
+            return self.state.prepare(data)
+
+    def test_real_illumina_check_and_metadata_preserve_inputs_without_running(self):
+        paths = [self.fastq(f"reads/{name}_R{mate}.fastq.gz")
+                 for name in ("case", "control", "other") for mate in (1, 2)]
+        before = {path: path.read_bytes() for path in paths}
+        with patch("oncotracer_cli.web.subprocess.Popen", wraps=subprocess.Popen) as popen:
+            prepared = self.prepare(samples=[{"id": 0, "name": "patient", "type": "cancer"},
+                                            {"id": 1, "name": "healthy", "type": "normal"},
+                                            {"id": 2, "name": "custom", "type": "custom",
+                                             "label": "benign", "role": "tumor"}])
+        self.assertTrue(prepared["valid"], prepared["check"])
+        # Only a check process, never setup --run or an installation.
+        self.assertEqual(popen.call_count, 1)
+        self.assertIn("check", popen.call_args.args[0])
+        self.assertNotIn("--run", popen.call_args.args[0])
+        config = load_flat_yaml(Path(prepared["config_path"]))
+        rows = parse_illumina_samplesheet(Path(config["illumina_samplesheet"]))
+        self.assertEqual([(r.sample, r.status) for r in rows],
+                         [("patient", "tumor"), ("healthy", "normal"), ("custom", "tumor")])
+        with Path(config["sample_metadata"]).open() as handle:
+            metadata = list(csv.DictReader(handle))
+        self.assertEqual([r["sample_type"] for r in metadata], ["cancer", "normal", "benign"])
+        self.assertEqual(before, {path: path.read_bytes() for path in paths})
+        self.assertFalse((self.root / "project/results").exists())
+        self.assertFalse((self.root / "project/reference").exists())
+
+    def test_ont_batches_with_control_use_correct_workflow(self):
+        for barcode in ("barcode01", "barcode02", "unclassified"):
+            for number in range(3):
+                self.fastq(f"reads/fastq_pass/{barcode}/batch{number}.fastq.gz")
+        prepared = self.prepare(mode="ont", samples=[
+            {"id": 0, "name": "patient", "type": "cancer"},
+            {"id": 1, "name": "control", "type": "normal"}], caller="qdnaseq")
+        self.assertTrue(prepared["valid"], prepared["check"])
+        config = load_flat_yaml(Path(prepared["config_path"]))
+        self.assertEqual(config["ont_analysis_type"], "solid_biopsy")
+        self.assertEqual(config["ont_binsize_kb"], 100)
+        self.assertEqual([(r.sample, r.status) for r in parse_ont_samples(config)],
+                         [("patient", "tumor"), ("control", "normal")])
+
+    def test_nonbarcoded_ont_many_files_are_one_sample(self):
+        for number in range(69):
+            self.fastq(f"ligation/batch{number}.fastq.gz")
+        prepared = self.prepare(mode="ont", folder="ligation")
+        self.assertTrue(prepared["valid"], prepared["check"])
+        config = load_flat_yaml(Path(prepared["config_path"]))
+        self.assertTrue(config["ont_single_sample"])
+        samples = parse_ont_samples(config)
+        self.assertEqual(len(samples), 1)
+        self.assertEqual(samples[0].fastq_dir, self.root / "ligation")
+        with Path(config["sample_metadata"]).open() as handle:
+            metadata = list(csv.DictReader(handle))
+        self.assertEqual(len(json.loads(metadata[0]["fastq_files"])), 69)
+
+    def test_duplicate_names_or_missing_custom_role_fail_before_writes(self):
+        self.fastq("reads/one.fastq.gz")
+        self.fastq("reads/two.fastq.gz")
+        for samples, message in [
+            ([{"id": i, "name": "same", "type": "cancer"} for i in (0, 1)], "unique"),
+            ([{"id": 0, "name": "one", "type": "custom", "label": "other"}], "role"),
+            ([{"id": 0, "name": "one", "type": "custom", "label": "other", "role": "guess"}], "choose"),
+        ]:
+            with self.subTest(message=message), self.assertRaisesRegex(OncoTracerError, message):
+                self.prepare(samples=samples)
+            self.assertFalse((self.root / "project").exists())
+
+    def test_mixed_layout_and_ont_all_normal_rejected(self):
+        self.fastq("reads/one_R1.fastq.gz")
+        self.fastq("reads/one_R2.fastq.gz")
+        self.fastq("reads/two.fastq.gz")
+        with self.assertRaisesRegex(OncoTracerError, "paired-end or single-end"):
+            self.prepare()
+        self.fastq("ont/barcode01/batch.fastq.gz")
+        with self.assertRaisesRegex(OncoTracerError, "study sample"):
+            self.prepare(mode="ont", folder="ont", samples=[{"id": 0, "name": "control", "type": "normal"}])
+        self.assertFalse((self.root / "project").exists())
+
+    def test_changed_discovery_requires_another_review(self):
+        self.fastq("reads/barcode01/batch1.fastq.gz")
+        scan = self.state.scan({"mode": "ont", "folder": str(self.root / "reads")})
+        self.fastq("reads/barcode01/batch2.fastq.gz")
+        with self.assertRaisesRegex(OncoTracerError, "changed since discovery"):
+            self.state.prepare({"scan_id": scan["scan_id"], "project": str(self.root / "project"),
+                                "threads": 2, "samples": [{"id": 0, "name": "patient", "type": "cancer"}]})
+
+    def test_invalid_threads_existing_project_and_input_overlap_are_safe(self):
+        self.fastq("reads/library.fastq.gz")
+        for count in (0, 9, 1.5, True):
+            with self.subTest(count=count), self.assertRaisesRegex(OncoTracerError, "threads"):
+                self.prepare(threads=count)
+        with self.assertRaisesRegex(OncoTracerError, "outside"):
+            self.prepare(project=str(self.root / "reads/project"))
+        self.prepare()
+        before = (self.root / "project/config/run.yml").read_bytes()
+        with self.assertRaisesRegex(OncoTracerError, "will not overwrite"):
+            self.prepare()
+        self.assertEqual(before, (self.root / "project/config/run.yml").read_bytes())
+
+    def test_run_explicit_argv_idempotency_status_and_logs(self):
+        self.fastq("reads/library.fastq.gz")
+        prepared = self.prepare(project=str(self.root / "project with spaces ; $literal"))
+        with patch("oncotracer_cli.web.subprocess.Popen") as popen, patch("oncotracer_cli.web.threading.Thread"):
+            popen.return_value.pid = 123
+            job = self.state.run({"project_id": prepared["id"]})
+            self.assertEqual(job["status"], "running")
+            self.assertEqual(self.state.run({"project_id": prepared["id"]}), job)
+            popen.assert_called_once()
+            command = popen.call_args.args[0]
+            self.assertIn(str(self.root / "project with spaces ; $literal"), command)
+            self.assertIn("--non-interactive", command)
+            self.assertIn("--run", command)
+            self.assertEqual(popen.call_args.kwargs["stdin"], subprocess.DEVNULL)
+            self.assertNotIn("shell", popen.call_args.kwargs)
+            self.assertTrue(popen.call_args.kwargs["start_new_session"])
+            popen.return_value.wait.return_value = 0
+            self.state._wait(self.state.job)
+            self.assertEqual(self.state.status()["status"], "complete")
+            self.assertEqual(self.state.status()["exit_code"], 0)
+            # A retry after completion must not start the same analysis twice.
+            self.state.run({"project_id": prepared["id"]})
+            popen.assert_called_once()
+
+    def test_changed_config_cannot_run_from_old_review(self):
+        self.fastq("reads/library.fastq.gz")
+        prepared = self.prepare()
+        Path(prepared["config_path"]).write_text("mode: ont\n")
+        with patch("oncotracer_cli.web.subprocess.Popen") as popen:
+            with self.assertRaisesRegex(OncoTracerError, "changed after review"):
+                self.state.run({"project_id": prepared["id"]})
+            popen.assert_not_called()
+
+    def test_only_generated_files_are_fingerprinted(self):
+        self.fastq("reads/library.fastq.gz")
+        existing = self.root / "project/config/unrelated/subdirectory"
+        existing.mkdir(parents=True)
+        prepared = self.prepare()
+        self.assertTrue(prepared["valid"], prepared["check"])
+        self.assertTrue(existing.is_dir())
+        internal = self.state.projects[prepared["id"]]
+        self.assertEqual({Path(path).name for path in internal["fingerprint"]},
+                         {"run.yml", "samplesheet.csv", "sample_metadata.csv"})
+        for key in ("fingerprint", "discovered", "selected_sources", "input_snapshot"):
+            self.assertNotIn(key, prepared)
+
+    def test_fastqs_added_or_modified_after_save_cannot_run(self):
+        for change in ("added", "modified", "removed"):
+            with self.subTest(change=change):
+                folder = f"reads-{change}/barcode01"
+                path = self.fastq(folder + "/batch1.fastq.gz")
+                prepared = self.prepare(mode="ont", folder=f"reads-{change}",
+                                        project=str(self.root / f"project-{change}"))
+                if change == "added":
+                    self.fastq(folder + "/batch2.fastq.gz")
+                elif change == "modified":
+                    # The same path and size must still be rejected on changed mtime.
+                    stat = path.stat()
+                    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1000000))
+                else:
+                    path.unlink()
+                with patch("oncotracer_cli.web.subprocess.Popen") as popen:
+                    with self.assertRaisesRegex(OncoTracerError, "FASTQ inputs changed after review"):
+                        self.state.run({"project_id": prepared["id"]})
+                    popen.assert_not_called()
+                self.assertFalse((self.root / f"project-{change}/logs").exists())
+
+    def test_failed_launch_preserves_error_log_and_can_retry(self):
+        self.fastq("reads/library.fastq.gz")
+        prepared = self.prepare()
+        with patch("oncotracer_cli.web.subprocess.Popen", side_effect=OSError("Cannot start process")):
+            with self.assertRaisesRegex(OSError, "Cannot start process"):
+                self.state.run({"project_id": prepared["id"]})
+        first = self.root / "project/logs/web-analysis.log"
+        self.assertIn("Cannot start process", first.read_text())
+        self.assertIsNone(self.state.job)
+        with patch("oncotracer_cli.web.subprocess.Popen") as popen, patch("oncotracer_cli.web.threading.Thread"):
+            popen.return_value.pid = 123
+            job = self.state.run({"project_id": prepared["id"]})
+        self.assertEqual(job["status"], "running")
+        self.assertEqual(Path(job["log_path"]).name, "web-analysis-2.log")
+        self.assertIn("Cannot start process", first.read_text())
+
+    def test_methylation_classifier_must_be_explicit(self):
+        self.fastq("reads/barcode01/batch.fastq.gz")
+        with self.assertRaisesRegex(OncoTracerError, "classifier"):
+            self.prepare(mode="ont", analysis="methylation", classifier="")
+        self.assertFalse((self.root / "project").exists())
+
+    def test_methylation_requires_resources_and_does_not_silently_run_cna(self):
+        self.fastq("reads/barcode01/batch.fastq.gz")
+        with self.assertRaisesRegex(OncoTracerError, "resources"):
+            self.prepare(mode="ont", analysis="both", classifier="marlin", methylation_source="modbam",
+                         methylation_path=str(self.root / "calls.bam"))
+        self.assertFalse((self.root / "project").exists())
+
+    def start_server(self):
+        server = WebServer(0, self.state)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        return server
+
+    def request(self, server, method, path, data=None, **headers):
+        connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+        defaults = {"X-OncoTracer-Token": self.state.token, "Origin": server.origin}
+        if data is not None:
+            defaults["Content-Type"] = "application/json"
+        defaults.update(headers)
+        connection.request(method, path, json.dumps(data) if data is not None else None, headers=defaults)
+        response = connection.getresponse()
+        code, content, reply_headers = response.status, response.read(), dict(response.getheaders())
+        connection.close()
+        return code, content, reply_headers
+
+    def test_http_auth_origin_host_and_page_security(self):
+        server = self.start_server()
+        self.assertEqual(server.server_address[0], "127.0.0.1")
+        code, content, headers = self.request(server, "GET", "/")
+        self.assertEqual(code, 200)
+        self.assertIn(b"Choose your sequencing platform", content)
+        self.assertNotIn(self.state.token.encode(), content)
+        self.assertIn("frame-ancestors 'none'", headers["Content-Security-Policy"])
+        for path, changes in [("/api/system", {"X-OncoTracer-Token": ""}),
+                              ("/api/system", {"Origin": "https://example.com"}),
+                              ("/api/system", {"Origin": "null"}),
+                              ("/api/system", {"Host": "example.com"})]:
+            with self.subTest(changes=changes):
+                self.assertEqual(self.request(server, "GET", path, **changes)[0], 403)
+        self.assertEqual(self.request(server, "POST", "/api/run", {"project_id": "guess"}, Origin="")[0], 403)
+        self.assertEqual(self.request(server, "POST", "/api/run", {"project_id": "guess"})[0], 400)
+        self.assertEqual(self.request(server, "GET", "/api/system")[0], 200)
+
+    def test_browse_escaped_names_and_permission_errors(self):
+        folder = self.root / '<img src=x onerror=alert(1)>'
+        folder.mkdir()
+        server = self.start_server()
+        code, content, _headers = self.request(server, "GET", "/api/browse")
+        self.assertEqual(code, 200)
+        self.assertEqual(json.loads(content)["directories"][0]["name"], folder.name)
+        with patch.object(self.state, "browse", side_effect=PermissionError(13, "Permission denied", "restricted folder")):
+            code, content, _headers = self.request(server, "GET", "/api/browse")
+        self.assertEqual(code, 400)
+        self.assertIn("Choose a folder your account can access", json.loads(content)["error"])
+
+    def test_public_command_registration(self):
+        args = build_parser().parse_args(["web"])
+        self.assertEqual(args.port, 8888)
+        self.assertEqual(args.func.__name__, "command_web")
+        self.assertEqual(_legacy_to_modern(["web", "--port", "8889"]), ["web", "--port", "8889"])
+
+
+if __name__ == "__main__":
+    unittest.main()

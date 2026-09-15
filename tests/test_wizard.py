@@ -5,6 +5,8 @@ import csv
 import gzip
 import io
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -72,7 +74,7 @@ class WizardTests(unittest.TestCase):
             before = {p: p.read_bytes() for p in reads.iterdir()}
             code, output, prompts, run = self.invoke(
                 "setup", "--project", str(project), "--input-folder", str(reads),
-                answers={"Type for case": "cancer", "Type for control": "control",
+                answers={"Sequencing platform": "illumina", "Type for case": "cancer", "Type for control": "control",
                          "Type for other": "other", "Other sample type": "benign",
                          "Analysis group for other": "study", "CPU threads": "2"},
             )
@@ -105,7 +107,7 @@ class WizardTests(unittest.TestCase):
                     self.fastq(reads / barcode / f"batch{batch}.fastq.gz")
             code, output, prompts, run = self.invoke(
                 "setup", "--project", str(project), "--input-folder", str(reads.parent),
-                answers={"Sample name": ["patient", "healthy"], "Type for patient": "cancer",
+                answers={"Sequencing platform": "ont", "Sample name": ["patient", "healthy"], "Type for patient": "cancer",
                          "Type for healthy": "control"},
             )
             self.assertEqual(code, 0, output)
@@ -119,6 +121,76 @@ class WizardTests(unittest.TestCase):
             self.assertIn("Detected 6 FASTQ files in 3 samples", output)
             self.assertIn("ONT controls require", output)
             self.assertFalse(any("Type for unclassified" in prompt for prompt in prompts))
+
+    def test_platform_is_asked_before_the_fastq_folder(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fastq(root / "reads/library.fastq.gz")
+            code, output, prompts, _ = self.invoke(
+                "setup", "--project", str(root / "project"),
+                answers={"Sequencing platform": "ont", "FASTQ folder": str(root / "reads"),
+                         "Type for reads": "cancer"},
+            )
+            self.assertEqual(code, 0, output)
+            self.assertTrue(prompts[0].startswith("Sequencing platform"))
+            self.assertTrue(prompts[1].startswith("FASTQ folder"))
+
+    def test_real_input_stream_with_69_barcode_fastqs_reaches_name_and_saves(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reads = root / "fastq_pass/barcode01"
+            for batch in range(69):
+                self.fastq(reads / f"batch{batch:03}.fastq.gz")
+            for project_name, answers, expected_code in (
+                ("complete", "all\n\ncancer\ncna\nichorcna\nno\nsave\n", 0),
+                ("input-ended", "all\n", 2),
+            ):
+                project = root / project_name
+                result = subprocess.run(
+                    [sys.executable, "-B", "-m", "oncotracer_cli.cli", "setup", "--project", str(project),
+                     "--mode", "ont", "--input-folder", str(reads.parent), "--threads", "1",
+                     "--backend", "conda", "--hg38_build"],
+                    cwd=Path(__file__).resolve().parents[1], input=answers, text=True,
+                    capture_output=True, timeout=30,
+                )
+                self.assertEqual(result.returncode, expected_code, result.stdout + result.stderr)
+                self.assertIn("Selected: barcode01 (69 FASTQs)\nSample name [barcode01]: ", result.stdout)
+                if expected_code == 0:
+                    config = load_flat_yaml(project / "config/run.yml")
+                    with Path(config["sample_metadata"]).open() as handle:
+                        metadata, = csv.DictReader(handle)
+                    self.assertEqual(len(json.loads(metadata["fastq_files"])), 69)
+                    sample, = parse_ont_samples(config)
+                    self.assertEqual((sample.sample, sample.fastq_dir), ("barcode01", reads))
+                    self.assertFalse((project / "results").exists())
+                else:
+                    self.assertIn("setup input ended at Sample name", result.stderr)
+                    self.assertFalse(project.exists())
+
+    def test_ligation_folder_saves_one_sample_and_preserves_custom_type(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reads = root / "ligation library"
+            paths = [self.fastq(reads / f"batch{batch}.fastq.gz") for batch in range(3)]
+            code, output, _, run = self.invoke(
+                "setup", "--mode", "ont", "--project", str(root / "project"),
+                "--input-folder", str(reads),
+                answers={"Sample name": "sample_A", "Type for sample_A": "other",
+                         "Other sample type": "research", "Analysis group": "study"},
+            )
+            self.assertEqual(code, 0, output)
+            config = load_flat_yaml(root / "project/config/run.yml")
+            self.assertTrue(config["ont_single_sample"])
+            self.assertEqual(config["ont_barcodes"], ".")
+            sample, = parse_ont_samples(config)
+            self.assertEqual((sample.sample, sample.fastq_dir), ("sample_A", reads))
+            with Path(config["sample_metadata"]).open() as handle:
+                metadata, = csv.DictReader(handle)
+            self.assertEqual(metadata["sample_type"], "research")
+            self.assertEqual(metadata["analysis_role"], "tumor")
+            self.assertEqual(json.loads(metadata["fastq_files"]), [str(path) for path in paths])
+            self.assertFalse((root / "project/results").exists())
+            run.assert_not_called()
 
     def test_run_choice_or_run_flag_uses_saved_config_only_after_review(self):
         for flag in (False, True):
@@ -163,7 +235,7 @@ class WizardTests(unittest.TestCase):
             self.fastq(root / "reads/fastq_pass/barcode01/batch.fastq.gz")
             code, output, _, run = self.invoke(
                 "setup", "--project", str(root / "project"), "--input-folder", str(root / "reads"),
-                answers={"Type for barcode01": "control"},
+                answers={"Sequencing platform": "ont", "Type for barcode01": "control"},
             )
             self.assertEqual(code, 2, output)
             self.assertIn("at least one study sample", output)
