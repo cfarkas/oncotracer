@@ -744,7 +744,13 @@ def command_check(args: argparse.Namespace) -> int:
 
 def add_setup_commands(subparsers) -> None:
     parser = subparsers.add_parser(
-        "setup", help="Create a readable configuration with prompts or explicit flags"
+        "setup",
+        help="Create a readable configuration (interactive by default)",
+        description=(
+            "Create a configuration by answering prompts. Supplied flags fill in "
+            "answers; --non-interactive skips prompts and uses defaults where available. "
+            "Add --run to validate, prepare tools, and start the analysis."
+        ),
     )
     reference_options = parser.add_mutually_exclusive_group()
     reference_options.add_argument(
@@ -800,7 +806,7 @@ def add_setup_commands(subparsers) -> None:
     parser.add_argument(
         "--non-interactive",
         action="store_true",
-        help="require flags for missing answers; never prompt",
+        help="never prompt; use defaults and require flags for missing required answers",
     )
     ont = parser.add_argument_group("ONT samples")
     ont.add_argument(
@@ -822,7 +828,10 @@ def add_setup_commands(subparsers) -> None:
     )
     illumina.add_argument("--sample-name", help="name for one Illumina library")
     illumina.add_argument("--fastq-1", help="read 1 FASTQ file")
-    illumina.add_argument("--fastq-2", help="read 2 FASTQ file; omit for single-end")
+    illumina.add_argument(
+        "--fastq-2",
+        help="read 2 FASTQ file; for single-end, press Enter at the prompt or omit with --non-interactive",
+    )
     illumina.add_argument(
         "--status",
         choices=("tumor", "normal"),

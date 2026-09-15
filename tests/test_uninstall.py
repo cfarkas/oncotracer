@@ -4,8 +4,11 @@ import contextlib
 import io
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -162,6 +165,150 @@ class UninstallTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("Preview only", output.getvalue())
             self.assertTrue((base / "core").exists())
+
+    def launcher_fixture(self, root):
+        launcher = root / "oncotracer"
+        source = Path(__file__).resolve().parents[1]
+        with zipfile.ZipFile(launcher, "w") as archive:
+            archive.writestr(
+                "__main__.py",
+                "from oncotracer_cli.cli import main\nraise SystemExit(main())\n",
+            )
+            for path in (source / "oncotracer_cli").rglob("*.py"):
+                archive.write(path, str(path.relative_to(source)))
+            archive.writestr("payload/provenance/native-v2-sources.json", "{}")
+        return launcher
+
+    def test_flag_alias_preserves_backend_and_preview_confirmation(self):
+        for arguments in (
+            ["--uninstall", "--conda"],
+            ["--conda", "--uninstall"],
+        ):
+            with (
+                self.subTest(arguments=arguments),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                base = self.fixture(root)
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    code = main(
+                        [*arguments, "--prefix", str(base), "--purge", "--json"]
+                    )
+                self.assertEqual(code, 0)
+                self.assertTrue(json.loads(output.getvalue())["dry_run"])
+                self.assertTrue((base / "core").is_dir())
+
+    def test_explicit_targets_work_with_corrupted_saved_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.fixture(root)
+            launcher = self.launcher_fixture(root)
+            image = root / "oncotracer.sif"
+            image.write_bytes(b"synthetic image")
+            safety._sif_sidecar(image).write_text(
+                json.dumps(safety._sif_marker(
+                    image, "a" * 32, "image@sha256:test", sha256_file(image), SOURCE
+                ))
+            )
+            settings = root / "settings/oncotracer/config.json"
+            settings.parent.mkdir(parents=True)
+            settings.write_text("{damaged settings")
+            for target in (
+                ["--conda", "--prefix", str(base)],
+                ["--singularity", "--sif", str(image)],
+                ["--launcher", str(launcher)],
+            ):
+                output = io.StringIO()
+                with (
+                    self.subTest(target=target),
+                    contextlib.redirect_stdout(output),
+                    patch.dict(os.environ, {"XDG_CONFIG_HOME": str(root / "settings")}),
+                ):
+                    code = main(["uninstall", *target, "--dry-run", "--json"])
+                    self.assertEqual(code, 0)
+                    self.assertTrue(json.loads(output.getvalue())["dry_run"])
+            self.assertEqual(settings.read_text(), "{damaged settings")
+
+    def test_saved_target_still_reports_corrupted_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            settings = root / "oncotracer/config.json"
+            settings.parent.mkdir()
+            settings.write_text("{damaged settings")
+            errors = io.StringIO()
+            with (
+                contextlib.redirect_stderr(errors),
+                patch.dict(os.environ, {"XDG_CONFIG_HOME": str(root)}),
+            ):
+                self.assertEqual(main(["uninstall", "--conda"]), 2)
+            self.assertIn("invalid installation config", errors.getvalue())
+
+    @unittest.skipUnless(Path("/proc").is_dir(), "requires Linux process-use checks")
+    def test_subprocess_removal_keeps_process_checks_and_confirmation(self):
+        source = Path(__file__).resolve().parents[1] / "oncotracer"
+        for purge in (False, True):
+            with self.subTest(purge=purge), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                base = self.fixture(root)
+                keep = base / "results.tsv"
+                keep.write_text("user result")
+                settings = root / "settings/oncotracer/config.json"
+                settings.parent.mkdir(parents=True)
+                saved = json.dumps(
+                    {"backend": "conda", "core_prefix": str(base / "core")}
+                )
+                settings.write_text(saved)
+                arguments = [
+                    sys.executable, str(source), "--uninstall", "--yes", "--json",
+                    *(["--purge"] if purge else []),
+                ]
+                environment = {**os.environ, "XDG_CONFIG_HOME": str(root / "settings")}
+                preview = subprocess.run(
+                    [*arguments, "--dry-run"], cwd=root, env=environment,
+                    capture_output=True, text=True, timeout=30,
+                )
+                self.assertEqual(preview.returncode, 0, preview.stderr)
+                self.assertTrue(json.loads(preview.stdout)["dry_run"])
+                self.assertTrue((base / "core").is_dir())
+                removed = subprocess.run(
+                    arguments, cwd=root, env=environment,
+                    capture_output=True, text=True, timeout=30,
+                )
+                self.assertEqual(removed.returncode, 0, removed.stderr)
+                result = json.loads(removed.stdout)
+                self.assertFalse(result["dry_run"])
+                self.assertFalse((base / "core").exists())
+                self.assertEqual(keep.read_text(), "user result")
+                self.assertEqual(settings.read_text(), saved)
+                if purge:
+                    self.assertIsNone(result["recovery_directory"])
+                    self.assertFalse(list(root.glob("*.oncotracer-uninstalled-*")))
+                else:
+                    recovery = Path(result["recovery_directory"])
+                    self.assertEqual(
+                        (recovery / "core/installed-file").read_text(), "synthetic tool"
+                    )
+
+    @unittest.skipUnless(Path("/proc").is_dir(), "requires Linux process-use checks")
+    def test_standalone_launcher_can_remove_itself(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            launcher = self.launcher_fixture(root)
+            keep = root / "run.yml"
+            keep.write_text("project configuration")
+            result = subprocess.run(
+                [
+                    sys.executable, str(launcher), "--uninstall", "--launcher",
+                    str(launcher), "--yes", "--purge", "--json",
+                ],
+                cwd=root, env={**os.environ, "XDG_CONFIG_HOME": str(root / "settings")},
+                capture_output=True, text=True, timeout=30,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(json.loads(result.stdout)["recoverable"])
+            self.assertFalse(launcher.exists())
+            self.assertEqual(keep.read_text(), "project configuration")
 
 
 if __name__ == "__main__":

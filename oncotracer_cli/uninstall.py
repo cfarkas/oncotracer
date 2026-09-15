@@ -169,7 +169,14 @@ def command_uninstall(args) -> int:
 def _command_uninstall(args) -> int:
     from .cli import _load_install_config
 
-    install = _load_install_config()
+    # Fully specified removal targets do not depend on saved settings, which
+    # may be missing or damaged precisely when a user needs to uninstall.
+    explicit_target = (
+        (args.conda and args.prefix)
+        or (args.singularity and args.sif)
+        or args.launcher
+    )
+    install = {} if explicit_target else _load_install_config()
     if not any((args.conda, args.singularity, args.launcher)):
         backend = install.get("backend")
         if backend in {"conda", "poetry"}:

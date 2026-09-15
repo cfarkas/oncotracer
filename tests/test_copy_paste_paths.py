@@ -92,7 +92,7 @@ def check_native_quickstarts() -> None:
         require("--hg38_build" in text and "optional" in text.lower(), f"{relative} must explain optional reference reuse")
         require("--build_reference" in text and "replace" in text.lower(), f"{relative} must explain the alternative local-build flag")
         for path in paths:
-            setup = find_block(relative, "oncotracer setup --non-interactive", f'--project "$PWD/{path}"')
+            setup = find_block(relative, "oncotracer setup", f'--project "$PWD/{path}"')
             run = find_block(relative, "oncotracer check --config", "oncotracer run --backend conda", f'--config "$PWD/{path}/config/run.yml"')
             for block in (setup, run):
                 require(first_command(block) == ANALYSES_CD, f"{relative} must enter the analysis directory first")

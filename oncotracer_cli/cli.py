@@ -1590,6 +1590,9 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
         or values[0] in {"-h", "--help", "--version"}
     ):
         return values
+    if "--uninstall" in values:
+        values.remove("--uninstall")
+        return ["uninstall", *values]
     backend = None
     for flag, name in (
         ("--docker", "docker"),
