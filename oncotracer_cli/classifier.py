@@ -380,12 +380,19 @@ def _run_gistic(
     return gistic_out, require_file(status, "GISTIC status"), require_file(command_file, "GISTIC command")
 
 
-def _update_summary(analysis_outdir: Path, classifier_out: Path) -> None:
+def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_reports: Path | None = None) -> None:
     summary_dir = require_directory(analysis_outdir / "06_workflow_summary", "workflow summary")
     json_path = require_file(summary_dir / "workflow_summary.json", "workflow summary JSON")
     value = json.loads(json_path.read_text(encoding="utf-8"))
     value["cna_classifier"] = str(classifier_out)
     value["cna_classifier_completed"] = True
+    value["cna_classifier_report"] = str(classifier_out / "03_report/cna_classifier_report.html")
+    value["cna_knowledge_evidence"] = str(classifier_out / "06_knowledge")
+    for key in ("cna_knowledge_reports", "cna_knowledge_report_index"):
+        value.pop(key, None)
+    if knowledge_reports is not None:
+        value["cna_knowledge_reports"] = str(knowledge_reports)
+        value["cna_knowledge_report_index"] = str(knowledge_reports / "index.html")
     value["completed_at"] = utc_now()
     atomic_write_workflow_summary(summary_dir, value)
 
@@ -409,6 +416,7 @@ def run_native_classifier(
     prepared = classifier_out / "01_prepared"
     classification = classifier_out / "02_classification"
     report = classifier_out / "03_report"
+    knowledge_reports = analysis_outdir / "04_cna_custom_plots" / "llm_reports"
     gistic = classifier_out / "04_gistic2"
     parsed = classifier_out / "05_gistic2_parsed"
     knowledge = classifier_out / "06_knowledge"
@@ -644,6 +652,7 @@ def run_native_classifier(
             "--heatmap-matrix", classification / "heatmap_matrix.tsv",
             "--pca-coordinates", classification / "pca_coordinates.tsv",
             "--plot-top-features", _string(config, "plot_top_features"),
+            "--knowledge-reports-href", "../../04_cna_custom_plots/llm_reports/index.html",
             "--pathology-concordance", pathology_out / "pathology_concordance.tsv",
             "--pathology-records", pathology_out / "pathology_records_matched.tsv",
         ],
@@ -686,7 +695,11 @@ def run_native_classifier(
                 "--figures", report / "figures",
                 "--pathology-concordance", pathology_out / "pathology_concordance.tsv",
                 "--pathology-records", pathology_out / "pathology_records_matched.tsv",
-                "--outdir", report / "pdf_reports",
+                "--outdir", knowledge_reports,
+                "--cohort-report-href", "../../05_cna_classifier/03_report/cna_classifier_report.html",
+                "--clinician-reports-href", ("../../05_cna_classifier/03_report/clinician_reports/index.html"
+                                              if _bool(config, "run_clinician_reports") else ""),
+                "--knowledge-evidence-href", "../../05_cna_classifier/06_knowledge/",
                 "--max-events", _string(config, "pdf_max_events"),
                 "--include-full-events", str(_bool(config, "pdf_include_full_events")).lower(),
             ],
@@ -694,7 +707,8 @@ def run_native_classifier(
         _stage(
             "classifier-pdf-reports", pdf_command,
             classify_outputs + knowledge_outputs + pathology_outputs,
-            [report / "pdf_reports" / "pdf_report_index.tsv"],
+            [knowledge_reports / name for name in ("index.html", "pdf_report_index.tsv", "pdf_html_report_index.tsv",
+                                                    "all_sample_CNA_knowledge_reports.pdf")],
             cwd=report, runner=runner, ledger=ledger, force=force,
             containment=classifier_environment,
         )
@@ -730,9 +744,12 @@ def run_native_classifier(
         "nextflow_used": False,
         "sample_set": context,
         "classifier_outdir": str(classifier_out),
+        "knowledge_report_index": str(knowledge_reports / "index.html") if _bool(config, "run_pdf_reports") else None,
+        "knowledge_evidence": str(knowledge),
         "gistic_status": gistic_status.read_text(encoding="utf-8", errors="replace").splitlines()[-1].split("\t", 1)[0],
         "completed_at": utc_now(),
     }
     atomic_write_json(classifier_out / "native_classifier_summary.json", summary)
-    _update_summary(analysis_outdir, classifier_out)
+    _update_summary(analysis_outdir, classifier_out,
+                    knowledge_reports=knowledge_reports if _bool(config, "run_pdf_reports") else None)
     return classifier_out

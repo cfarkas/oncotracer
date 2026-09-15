@@ -3261,6 +3261,12 @@ def run_refinement_and_outputs(
 
 def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> None:
     files: list[dict[str, object]] = []
+    report_dir = outdir / "04_cna_custom_plots" / "llm_reports"
+    sample_reports = sorted(
+        path.relative_to(outdir).as_posix()
+        for pattern in ("*_CNA_knowledge_report.html", "*_CNA_knowledge_report.pdf")
+        for path in report_dir.glob(pattern)
+    )
     for relative in [
         ".oncotracer-native/output-owner.json",
         "06_workflow_summary/workflow_summary.txt",
@@ -3269,6 +3275,14 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "03_cna_codification/cna_cytogenomic_notation.tsv",
         "04_cna_custom_plots/cna_per_sample_pages.pdf",
         "04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf",
+        "04_cna_custom_plots/llm_reports/index.html",
+        "04_cna_custom_plots/llm_reports/pdf_report_index.tsv",
+        "04_cna_custom_plots/llm_reports/pdf_html_report_index.tsv",
+        "04_cna_custom_plots/llm_reports/all_sample_CNA_knowledge_reports.pdf",
+        *sample_reports,
+        "05_cna_classifier/06_knowledge/knowledge_metrics.json",
+        "05_cna_classifier/06_knowledge/knowledge_llm_trials.tsv",
+        "05_cna_classifier/06_knowledge/knowledge_literature_ranker_trials.tsv",
         "05_cna_classifier/native_classifier_summary.json",
         "05_cna_classifier/02_classification/cna_patient_classification.tsv",
         "05_cna_classifier/03_report/cna_classifier_report.html",

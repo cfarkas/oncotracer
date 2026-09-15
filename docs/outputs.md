@@ -21,8 +21,8 @@ If `cat` says the file does not exist, either the run has not finished or `OUT` 
 | `01_samurai_illumina/` or `01_samurai_ont/` | What did alignment and the initial CNA caller produce? | Upstream caller/QC output; important provenance, but refinement follows |
 | `02_bam_refinement/` | Where are the final refined segment boundaries and bins? | Authoritative refined segmentation |
 | `03_cna_codification/` | Which CNA events and cytogenomic descriptions does OncoTracer report? | Authoritative machine-readable OncoTracer CNA results |
-| `04_cna_custom_plots/` | How do those tables look visually? | Derived presentation; use tables for exact values |
-| `05_cna_classifier/` | What optional CNA-pattern/pathology research interpretation was produced? | Optional and non-diagnostic |
+| `04_cna_custom_plots/` | Where are plots and final knowledge/LLM HTML/PDF reports? | Derived presentation and optional research interpretation; use stage 03 for exact calls |
+| `05_cna_classifier/` | Where are classifier results, clinician summaries and supporting evidence? | Optional research interpretation and its audit trail |
 | `06_workflow_summary/` | Where are the important folders? | Index/pointer file, not a scientific result |
 | `07_methylation/` | What optional ONT modified-base/classifier result and provenance were produced? | Independent optional research result; review its status before predictions |
 
@@ -101,22 +101,6 @@ Use `06_workflow_summary/workflow_summary.json` for the selected, completed and
 failed sample lists. Use `.oncotracer-native/trace.tsv` and stage logs to investigate
 a failure. Do not assume an absent sample is normal or successfully analyzed.
 
-## Stage 07: optional ONT methylation
-
-This directory exists when methylation was requested, using POD5 or existing modified-base BAMs:
-
-```bash
-cat "$OUT/07_methylation/methylation_status.json"
-cat "$OUT/07_methylation/methylation_provenance.json"
-find "$OUT/07_methylation" -maxdepth 3 -type f | sort | sed -n '1,120p'
-```
-
-Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, `no_classifier_probes` (MARLIN), or `failed`. A zero-call sample is not sent to the classifier. For MARLIN, `covered_classifier_probes` counts the supplied probes with data; zero means no prediction was made. `methylation_provenance.json` records input inventories, tools, models, and device choice. See the [resource reference](configuration/methylation_reference.md) for exact provenance fields.
-
-With `methylation_only: true`, `cna_status` is `not_requested`; absence of CNA outputs is expected.
-
-Methylation and CNA are independent branches: stage 07 remains valid when CNA fails, and stages 01–06 may remain valid when methylation is incomplete. In either partial case, the final command exits nonzero and `workflow_summary.json` records `cna_status`, `methylation_status`, and the relevant sample lists. Do not present a missing classifier output as a negative classification.
-
 ## Stage 02: refined segmentation
 
 The dataset subdirectory is normally `illumina_qdnaseq_100kb`, `ONT_ichorcna_500kb`, or an explicit ONT qDNAseq name such as `ONT_qdnaseq_100kb`, depending on the YAML. List it rather than guessing:
@@ -153,7 +137,7 @@ wc -l "$OUT/03_cna_codification/cna_events.tsv" "$OUT/03_cna_codification/cna_cy
 
 A table containing only a header can be a valid CNA-flat result; confirm the sample in the notation/QC outputs rather than assuming the workflow failed.
 
-## Stage 04: plots
+## Stage 04: plots and knowledge/LLM reports
 
 ```bash
 find "$OUT/04_cna_custom_plots" -maxdepth 2 -type f | sort
@@ -163,7 +147,20 @@ xdg-open "$OUT/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf"   # 
 
 On a headless server, copy PDFs to your workstation. Common outputs include genome overview, event burden/counts, recurrent cytobands, gene-panel frequency, per-sample pages, and log2-ratio profiles. PNG/SVG files are convenient for slides; the TSV tables remain the source for exact values.
 
-## Stage 05: optional classifier and pathology
+When the optional classifier and `run_pdf_reports` are enabled, open
+`04_cna_custom_plots/llm_reports/index.html` for final knowledge reports:
+
+| File under `llm_reports/` | Contents |
+| --- | --- |
+| `<sample>_CNA_knowledge_report.html` and `.pdf` | Matched reports for each included sample |
+| `all_sample_CNA_knowledge_reports.pdf` | All included sample reports in one PDF |
+| `index.html` | Browser index and links to classifier reports and evidence |
+| `pdf_html_report_index.tsv`, `pdf_report_index.tsv` | Matching sample sets and HTML/PDF filenames |
+
+These reports may contain generated literature drafts or labeled catalog
+fallbacks. See [LLM-assisted reports](llm_reports.md) to check which was used.
+
+## Stage 05: classifier reports and supporting evidence
 
 This directory exists only when `run_cna_classifier: true`.
 
@@ -173,7 +170,36 @@ sed -n '1,8p' "$OUT/05_cna_classifier/06_knowledge/sample_knowledge_summary.tsv"
 sed -n '1,8p' "$OUT/05_cna_classifier/07_pathology/pathology_concordance.tsv"
 ```
 
+The cohort report stays at `03_report/cna_classifier_report.html`, and clinician
+summaries stay in `03_report/clinician_reports/`, both beneath `05_cna_classifier/`.
+`06_knowledge/` retains evidence tables, references, metrics and LLM trial logs;
+finished knowledge HTML/PDF reports are in stage 04.
+
 Read [Models and pathology](models_pathology.md) before interpreting these files. They are research interpretations derived from stage 03, not replacements for the underlying event table or for diagnostic review.
+
+## Stage 06: workflow summary
+
+Start with `06_workflow_summary/workflow_summary.txt` for output locations and
+`workflow_summary.json` for completion status and selected, completed and failed
+sample lists. Enabled knowledge reports are linked as `cna_knowledge_reports`
+and `cna_knowledge_report_index`; the classifier report and evidence have separate
+`cna_classifier_report` and `cna_knowledge_evidence` entries.
+
+## Stage 07: optional ONT methylation
+
+This directory exists when methylation was requested, using POD5 or existing modified-base BAMs:
+
+```bash
+cat "$OUT/07_methylation/methylation_status.json"
+cat "$OUT/07_methylation/methylation_provenance.json"
+find "$OUT/07_methylation" -maxdepth 3 -type f | sort | sed -n '1,120p'
+```
+
+Start with `methylation_status.json`. Each sample is `complete`, `no_cpg_modifications`, `no_classifier_probes` (MARLIN), or `failed`. A zero-call sample is not sent to the classifier. For MARLIN, `covered_classifier_probes` counts the supplied probes with data; zero means no prediction was made. `methylation_provenance.json` records input inventories, tools, models, and device choice. See the [resource reference](configuration/methylation_reference.md) for exact provenance fields.
+
+With `methylation_only: true`, `cna_status` is `not_requested`; absence of CNA outputs is expected.
+
+Methylation and CNA are independent branches: stage 07 remains valid when CNA fails, and stages 01–06 may remain valid when methylation is incomplete. In either partial case, the final command exits nonzero and `workflow_summary.json` records `cna_status`, `methylation_status`, and the relevant sample lists. Do not present a missing classifier output as a negative classification.
 
 ## Confirm a run before sharing it
 
