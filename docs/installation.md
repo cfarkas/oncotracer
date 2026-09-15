@@ -73,7 +73,7 @@ oncotracer setup --project /absolute/path/to/my-study --run
 
 Repeat it to resume an existing project. Matching alignment and CNA calling
 results are reused; refinement and reports are regenerated. To review the
-configuration first, use:
+configuration first, choose **save** in the wizard, then check and run:
 
 ```bash
 oncotracer setup --project /absolute/path/to/my-study
@@ -81,8 +81,9 @@ oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
 
-Setup without `--run` saves a configuration. `check` is an optional preview;
-`run` also validates inputs before analysis. The [setup guide](setup.md) shows the paths and flags for single
+The wizard scans FASTQs, lets you select samples and settings, and offers
+**run** or **save**. `--run` skips that final choice. `check` is an optional
+preview; `run` also validates inputs before analysis. The [setup guide](setup.md) shows the paths and flags for single
 and multiple samples. To try public data, follow [QuickStart 1](quick_start.md).
 
 By default, run downloads prebuilt hg38 indexes.

@@ -62,13 +62,17 @@ The command returns JSON and exits nonzero when required source identity, prefix
 
 ## `oncotracer setup` and `oncotracer check`
 
-`setup` saves the same YAML used by ordinary runs. It asks for missing inputs
-unless `--non-interactive` is supplied. It does not start analysis.
+`setup` opens a terminal wizard for folder discovery, sample selection/types,
+analysis options and hardware settings, then saves the same YAML used by ordinary
+runs. Its final **save** choice finishes without analysis; **run** starts it.
+`--non-interactive` skips questions and uses supplied flags/defaults.
 
 | Option | Meaning |
 | --- | --- |
 | `--project PATH` | New project containing `config/run.yml` and future results |
 | `--mode illumina` or `--mode ont` | Sequencing platform |
+| `--input-folder PATH` | Prefill the wizard's FASTQ folder; detects Illumina pairs or ONT barcode samples |
+| `--manual` | Use individual file/barcode prompts instead of folder discovery |
 | `--analysis cna`, `methylation` or `both` | Requested analysis; methylation requires ONT |
 | `--fastq-1 FILE`, `--fastq-2 FILE`, `--sample-name NAME` | One Illumina library; omit R2 for single-end |
 | `--samplesheet FILE` | Multiple Illumina libraries in a sample/R1/R2/status CSV |
@@ -77,14 +81,21 @@ unless `--non-interactive` is supplied. It does not start analysis.
 | `--hg38_build [PATH]` | Reuse prepared hg38; no path selects the default prebuilt download into `PROJECT/reference` when run starts |
 | `--build_reference` | Build missing hg38 indexes locally on CPU when run starts; cannot be combined with `--hg38_build` |
 | `--threads NUMBER` | CPU workers to request |
-| `--non-interactive` | Require inputs as flags rather than prompts |
+| `--non-interactive` | Skip questions; missing required inputs are errors, defaults still apply |
+| `--run` | Validate, prepare tools and run after setup; skip the wizard's final choice |
 
 These options save `lpwgs_root` and `hg38_auto_download` in YAML. The default is
 `true`: download a missing prebuilt reference at run time. `--build_reference`
 sets it to `false`: reuse existing references or build missing indexes locally.
 Supplying an existing `--hg38_build PATH` also sets it to `false`.
-Setup, check and dry-run never download or build genomes. Supplied references
-are validated before use; shared references are not overwritten.
+Choosing **save**, or using manual/scripted setup without `--run`, starts no
+genome downloads or builds. Check and dry-run also leave genomes untouched.
+Supplied references are validated before use; shared references are not overwritten.
+
+The wizard saves `config/sample_metadata.csv` and its `sample_metadata` YAML path.
+This records each sample's type label, explicit tumor/normal analysis role and
+selected FASTQ files. `other` labels require an explicit study/control mapping.
+Controls are analyzed independently; ONT controls require solid-biopsy qDNAseq.
 
 `oncotracer check --config FILE` reports missing paths/settings and the planned
 samples without running analysis. See [setup examples](../setup.md),

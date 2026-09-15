@@ -1,79 +1,73 @@
 # Set up your own data
 
-[Install OncoTracer](installation.md), then choose **Illumina or ONT** below.
-`setup` is interactive by default: it asks for missing answers and saves
-`config/run.yml`, a text file of `key: value` settings. No `--interactive` flag is needed.
-
-Replace example paths with your own absolute paths. At prompts, type paths without
-quotes; in shell commands, quote paths containing spaces. Press Enter to accept a
-default in brackets. Flags prefill answers and skip their prompts.
+[Install OncoTracer](installation.md), then start the terminal wizard below.
+`setup` is interactive by default; no `--interactive` flag is needed.
+Replace example paths with your own. At prompts, type paths without quotes;
+in shell commands, quote paths containing spaces. Enter accepts a displayed default.
 
 ## 1. Configure interactively (recommended)
 
-Check your computer before a large download:
-
-```bash
-oncotracer system --path /work/my-study
-```
+Choose your platform and a new project folder:
 
 ### Illumina
 
-Choose a new project folder:
-
 ```bash
-oncotracer setup --project /work/illumina-study --mode illumina --threads 4
+oncotracer setup --project /work/illumina-study --mode illumina \
+  --input-folder /data/illumina
 ```
 
-Example conversation for one paired-end library:
-
-```text
-Analysis (--analysis; cna=copy-number) (cna/methylation/both) [cna]: cna
-Sample name (--sample-name): sampleA
-Read 1 FASTQ (--fastq-1): /data/illumina/sampleA_R1.fastq.gz
-Read 2 FASTQ (--fastq-2; Enter for single-end): /data/illumina/sampleA_R2.fastq.gz
-```
-
-For single-end reads, press Enter at the Read 2 prompt. Illumina supports `cna`
-(copy-number analysis). For multiple libraries, use the samplesheet example below.
-
-Saved settings: `/work/illumina-study/config/run.yml`.
-Setup also creates `config/samplesheet.csv` linking this sample to its FASTQs.
+The folder can contain multiple libraries, for example `sampleA_R1.fastq.gz` and
+`sampleA_R2.fastq.gz`. Setup detects names and pairs for review. Consolidate multiple sequencing lanes
+per library first; use `--manual` for intentional R1-only single-end inputs.
 
 ### ONT
 
 ```bash
-oncotracer setup --project /work/ont-study --mode ont --threads 4
+oncotracer setup --project /work/ont-study --mode ont \
+  --input-folder /data/run/fastq_pass
 ```
 
-Example answers for two samples:
+Use the parent containing `barcode01`, `barcode02`, etc. Completed FASTQ batches
+within each selected barcode form one sample.
 
-```text
-Analysis (--analysis; cna=copy-number) (cna/methylation/both) [cna]: cna
-FASTQ parent folder (--reads-folder): /data/run/fastq_pass
-FASTQ folder: /data/run/fastq_pass
-Available folders: barcode01, barcode02, unclassified
-Barcode folders to include, comma separated (--barcodes): barcode01,barcode02
-Sample names in the same order (--sample-names) [barcode01,barcode02]: sampleA,sampleB
-```
+### Follow the questions
 
-Use the parent containing barcode folders. `barcode01` becomes `sampleA` and
-`barcode02` becomes `sampleB`; Enter at the names prompt keeps barcode names.
-All completed FASTQ batches within each selected barcode are combined per sample.
-The example excludes `unclassified`. For one barcode, enter one barcode and one name.
+Omit `--input-folder` to enter the folder interactively; omit `--mode` to review
+the detected platform. Supplied flags prefill their answers.
 
-Saved settings: `/work/ont-study/config/run.yml`.
-For methylation or `both`, follow the [methylation guide](configuration/methylation.md);
-FASTQ alone cannot supply methylation calls.
+1. **Review detected inputs.** Setup lists samples and FASTQ counts. Select the
+   numbered samples to include. `unclassified` is excluded by default. Check
+   Illumina pairs; a run cannot mix paired-end and single-end libraries.
+2. **Name and describe samples.** Confirm each name and choose `cancer`, `control`
+   or `other`. For `other`, supply a label and explicitly choose its study/control
+   analysis role. Labels describe your samples; they are never inferred diagnoses.
+   Controls are analyzed independently, without pooling or subtraction. Study/control
+   map to tumor/normal in analysis tables; custom labels are retained.
+3. **Choose analysis and reports.** `cna` means copy-number analysis. ONT also offers
+   methylation or both; these require [additional inputs and tools](configuration/methylation.md).
+   FASTQ alone cannot supply methylation calls. Optional CNA interpretation reports
+   are a separate choice.
+4. **Review resources.** Setup detects usable CPUs, available RAM and NVIDIA GPU model/memory,
+   then asks for worker threads. Accept its suggestion or enter a number such as
+   `4`. CNA uses CPU; GPU selection applies to supported methylation steps.
+5. **Choose CNA settings.** Illumina uses qDNAseq. ONT offers ichorCNA or
+   solid-biopsy qDNAseq. ONT controls require qDNAseq and at least one study sample;
+   review this caller choice before continuing. Bin size is selectable for qDNAseq;
+   ichorCNA uses 500 kb.
+6. **Choose backend and reference.** Select `conda` for the installation above.
+   Choose `download` for automatic prebuilt hg38 indexes, `reuse` for an existing
+   reference, or `build` for local indexing.
+7. **Review and finish.** Setup saves and checks the configuration, then offers
+   `run` or `save` (default). Choose `run` to prepare tools and begin immediately,
+   or `save` to use the commands below. Saving starts no analysis or genome download.
 
-The examples request four CPU workers. Threads, backend and reference choice use
-flags/defaults; setup does not prompt for them. Without `--threads`, the default is
-8. Omit `--mode` to also choose the platform interactively.
+Settings go to `PROJECT/config/run.yml`, with sample metadata alongside them.
+Illumina also gets `config/samplesheet.csv`. For individual input-path prompts,
+replace `--input-folder PATH` with `--manual`.
 
 ## 2. Check and run your platform
 
-Setup saves settings without starting analysis or downloading genomes.
-`check` validates paths and displays samples, resources and planned steps.
-Resolve its errors before running.
+If you chose `save`, use the matching block. Resolve check errors before running.
 
 ### Illumina
 
@@ -89,59 +83,51 @@ oncotracer check --config /work/ont-study/config/run.yml
 oncotracer run --backend conda --config /work/ont-study/config/run.yml
 ```
 
-`--config` selects your saved settings; `--backend conda` selects installed tools.
-For [container installations](containers.md), use `--backend docker` or
-`--backend singularity`.
+`--config` selects saved settings; `--backend conda` selects installed tools.
+For [containers](containers.md), use `--backend docker` or `--backend singularity`.
 
-Results go under your project's `results/`. A successful run prints
-`OncoTracer native analysis completed:`. Open
-`results/06_workflow_summary/workflow_summary.txt` first. Repeat the same `run`
-command to resume; leave `--force` off.
+A successful run prints `OncoTracer native analysis completed:`. Open
+`results/06_workflow_summary/workflow_summary.txt` in your project first.
+Repeat `run` to resume; leave `--force` off.
 
-To change settings, edit `config/run.yml` and run `check` again. Setup never
-overwrites an existing configuration. For a new project, adding `--run` to setup
-validates, prepares missing backend tools and starts immediately; repeating
-`setup --project PATH --run` resumes its saved settings.
+To change settings, edit `config/run.yml` and check again. Setup never overwrites
+an existing configuration. `--run` starts after setup without the final menu;
+`setup --project PATH --run` resumes saved settings.
 
 ## Optional: reuse prepared genome indexes
 
-No prepared reference is needed for the examples above: `run` downloads prebuilt
-hg38 indexes into `PROJECT/reference/` automatically (about 8.0 GiB for Illumina,
-9.7 GiB for ONT). Completed downloads are reused.
+With the default download choice, run downloads prebuilt indexes into
+`PROJECT/reference/`: about 8.0 GiB for Illumina or 9.7 GiB for ONT.
+Completed downloads are reused.
 
-Suppose a prepared OncoTracer reference is in `/data/shared-reference`, with
-files under `/data/shared-reference/references/samurai_hg38/`. For a **new** project,
-use the matching command, then answer the same prompts as above:
+Suppose your prepared reference lives at `/data/shared-reference`, with files
+under `references/samurai_hg38/`. Choose `reuse` in the wizard and enter that path,
+or prefill it using either complete example for a **new** project:
 
 ### Illumina with an existing reference
 
 ```bash
-oncotracer setup --project /work/illumina-reuse --mode illumina --threads 4 \
-  --hg38_build /data/shared-reference
+oncotracer setup --project /work/illumina-reuse --mode illumina \
+  --input-folder /data/illumina --hg38_build /data/shared-reference
 ```
 
 ### ONT with an existing reference
 
 ```bash
-oncotracer setup --project /work/ont-reuse --mode ont --threads 4 \
-  --hg38_build /data/shared-reference
+oncotracer setup --project /work/ont-reuse --mode ont \
+  --input-folder /data/run/fastq_pass --hg38_build /data/shared-reference
 ```
 
-Use that new project's `config/run.yml` for check/run. The path must contain
-OncoTracer's prepared genome, indexes and manifests; a FASTA alone is insufficient.
-You may also supply its `references/samurai_hg38` folder. Illumina needs BWA indexes;
-ONT needs minimap2. Sharing between platforms requires both.
+Finish the wizard, then run directly or check/run that project's `config/run.yml`.
+The reference must contain the prepared genome, indexes and manifests.
+Its `references/samurai_hg38` folder is also accepted. Illumina needs BWA indexes;
+ONT needs minimap2; sharing between platforms requires both.
 
-| Setup option | What run does |
-| --- | --- |
-| No reference flag | Downloads prebuilt indexes automatically |
-| `--hg38_build` without a path | Same automatic download |
-| `--hg38_build /data/shared-reference` | Reuses that prepared reference |
-| `--build_reference` | Builds missing indexes locally on CPU; needs more RAM, disk and time |
-
-To build locally, replace `--hg38_build /data/shared-reference` with
-`--build_reference`. Choose one option. See [reference details](reference_indexes.md)
-for preparing a shared reference or changing an existing project's reference path.
+`--hg38_build` **without a path** selects automatic download. Scripted setup also
+uses automatic download when neither reference flag is supplied. To build locally,
+replace `--hg38_build /data/shared-reference` with `--build_reference`.
+Choose one option; local indexing needs more RAM, disk and time.
+See [reference details](reference_indexes.md).
 
 ## Optional: scripted setup without prompts
 

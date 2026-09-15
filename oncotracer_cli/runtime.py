@@ -9,6 +9,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -742,35 +743,67 @@ def download(
     if valid(destination):
         return destination
     temporary = destination.with_name(f".{destination.name}.part")
+    pinned = expected_bytes is not None or expected_md5 is not None or expected_sha256 is not None
     for attempt in range(1, retries + 1):
         try:
+            # A previous process may have finished writing but not published the
+            # verified file. Never resume past its end or publish an unpinned
+            # partial without contacting the source.
+            if pinned and valid(temporary):
+                os.replace(temporary, destination)
+                return destination
+            if (temporary.exists() and expected_bytes is not None
+                    and temporary.stat().st_size >= expected_bytes):
+                temporary.unlink()
+            offset = temporary.stat().st_size if temporary.exists() else 0
             request = urllib.request.Request(
                 url, headers={"User-Agent": f"OncoTracer/{__version__}"}
             )
-            mode = "ab" if temporary.exists() and temporary.stat().st_size > 0 else "wb"
-            offset = temporary.stat().st_size if mode == "ab" else 0
             if offset:
                 request.add_header("Range", f"bytes={offset}-")
-            with (
-                urllib.request.urlopen(request, timeout=120) as source,
-                temporary.open(mode) as sink,
-            ):
-                if offset and getattr(source, "status", None) == 200:
-                    sink.close()
-                    temporary.unlink(missing_ok=True)
-                    return download(
-                        url,
-                        destination,
-                        expected_bytes=expected_bytes,
-                        expected_md5=expected_md5,
-                        expected_sha256=expected_sha256,
-                        retries=retries,
-                    )
-                shutil.copyfileobj(source, sink, length=8 * 1024 * 1024)
+            with urllib.request.urlopen(request, timeout=120) as source:
+                status = getattr(source, "status", None)
+                if status == 206:
+                    content_range = source.headers.get("Content-Range", "")
+                    match = re.fullmatch(r"bytes (\d+)-(\d+)/(\d+|\*)", content_range)
+                    if (not match or int(match[1]) != offset
+                            or int(match[2]) < int(match[1])
+                            or (match[3] != "*" and int(match[2]) >= int(match[3]))):
+                        temporary.unlink(missing_ok=True)
+                        raise OSError(f"invalid Content-Range for byte offset {offset}: {content_range!r}")
+                    if expected_bytes is not None and match[3] != "*" and int(match[3]) != expected_bytes:
+                        temporary.unlink(missing_ok=True)
+                        raise OSError(f"server reports {match[3]} bytes; expected {expected_bytes}")
+                    mode = "ab" if offset else "wb"
+                else:
+                    # A server can ignore Range and send the whole file. Use
+                    # that response from byte zero without recursive retries.
+                    mode = "wb"
+                    content_length = source.headers.get("Content-Length")
+                    if (expected_bytes is not None and content_length is not None
+                            and content_length.isdigit() and int(content_length) != expected_bytes):
+                        temporary.unlink(missing_ok=True)
+                        raise OSError(f"server reports {content_length} bytes; expected {expected_bytes}")
+                with temporary.open(mode) as sink:
+                    shutil.copyfileobj(source, sink, length=8 * 1024 * 1024)
             if valid(temporary):
                 os.replace(temporary, destination)
                 return destination
+            received = temporary.stat().st_size
+            # Keep a genuinely short prefix for a range retry. A completed file
+            # with the wrong digest must be fetched again, never extended.
+            if expected_bytes is None or received >= expected_bytes:
+                temporary.unlink(missing_ok=True)
+            detail = f"received {received} bytes"
+            if expected_bytes is not None:
+                detail += f"; expected {expected_bytes}"
+            raise OSError(f"download validation failed ({detail}; pinned digests must match)")
         except (OSError, urllib.error.URLError) as error:
+            if isinstance(error, urllib.error.HTTPError) and error.code == 416:
+                # The origin may have replaced/truncated the resource, or the
+                # partial prefix may be stale. Restart within the same budget.
+                temporary.unlink(missing_ok=True)
+                error.close()
             if attempt == retries:
                 raise OncoTracerError(
                     f"download failed after {retries} attempts: {url}: {error}"

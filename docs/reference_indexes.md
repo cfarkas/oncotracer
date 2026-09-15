@@ -15,7 +15,7 @@ accept these options:
 | --- | --- |
 | `--hg38_build /data/shared-reference` | Reuse that prepared OncoTracer reference |
 | `--hg38_build` with no path | Download prebuilt indexes into `PROJECT/reference` |
-| Neither reference option supplied | Same automatic download |
+| Neither reference option supplied | Wizard asks; default and scripted behavior are automatic download |
 | `--build_reference` | Build missing indexes locally on CPU under `PROJECT/reference` |
 
 Choose only one option. For `--hg38_build`, supply the reference parent or the
@@ -26,8 +26,11 @@ minimap2 for ONT. A build containing both can be shared by both platforms.
 The table shows `setup` destinations. With `auto`, the default reference folder
 is `CONFIG_DIR/reference/` instead. The saved `lpwgs_root` shows the exact path.
 
-Setup saves `lpwgs_root` and `hg38_auto_download` in YAML. Setup without `--run`, check and dry-run
-do not download or build anything. By default, normal run downloads only the needed platform's bundle,
+Setup saves `lpwgs_root` and `hg38_auto_download` in YAML. Choose **save** at the
+wizard's final question to finish without downloads or analysis. Manual/scripted
+setup without `--run`, check and dry-run also download and build nothing.
+Choosing **run** or passing `--run` starts analysis. With the default reference
+choice, run downloads only the needed platform's bundle,
 checks the pinned manifest and every file, and then starts analysis. Existing
 references are validated and reused, never overwritten by automatic download.
 Transient network failures retry up to five times. Verified chunks survive a failed

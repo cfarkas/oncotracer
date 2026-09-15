@@ -43,19 +43,21 @@ The first four commands install and activate OncoTracer. Keep both folders: the 
 oncotracer setup --project /absolute/path/to/my-study
 ```
 
-Replace `/absolute/path/to/my-study` with a new project folder. Setup is interactive by default: it asks for your platform, analysis and reads, then saves `my-study/config/run.yml`. Press Enter to accept a displayed default. Follow the [Illumina or ONT walkthrough](docs/setup.md) for example answers, then check and run:
+Replace `/absolute/path/to/my-study` with a new project folder. The interactive terminal wizard scans your FASTQ folder, detects samples and Illumina pairs, and lets you select and name samples with cancer/control/other labels. It displays CPU, RAM and GPU information, then asks for analysis features, threads, backend and reference choice. Press Enter to accept a displayed default. Follow the [Illumina or ONT walkthrough](docs/setup.md).
+
+Setup saves `my-study/config/run.yml` and sample metadata, then offers **run** or **save**. Choose **run** to begin immediately, or **save** to review and run separately:
 
 ```bash
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
 
-`--config` selects your saved settings. `--backend conda` selects the installed analysis tools. Repeat `run` to resume. Add `--run` to setup to validate, prepare missing backend tools and start immediately. For scripts, `setup --non-interactive` skips prompts, uses supplied flags and defaults, and reports missing required inputs.
+`--config` selects your saved settings. `--backend conda` selects the installed analysis tools. Repeat `run` to resume. Add `--run` to setup to validate, prepare missing backend tools and start without the final menu. For scripts, `setup --non-interactive` skips prompts, uses supplied flags and defaults, and reports missing required inputs.
 
-Add `--hg38_build /path/to/reference` to setup to reuse prepared hg38 indexes.
-By default, run downloads prebuilt indexes automatically. To build your own,
-use `--build_reference` instead; local indexing needs more RAM, disk and time.
-Setup without `--run` and check do not download or build genomes. Interrupted downloads retry automatically and reuse verified chunks.
+Choose `reuse` in the wizard or add `--hg38_build /path/to/reference` for prepared hg38 indexes.
+The default reference choice downloads prebuilt indexes when run starts. Choose
+`build` or use `--build_reference` for local indexing; it needs more RAM, disk and time.
+Choosing **save** and running `check` do not download or build genomes. Interrupted downloads retry automatically and reuse verified chunks.
 
 Results go to `my-study/results/`. Begin with `06_workflow_summary/workflow_summary.txt`; methylation results also have `07_methylation/methylation_status.json`.
 
