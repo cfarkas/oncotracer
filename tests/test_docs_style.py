@@ -93,7 +93,7 @@ REQUIRED_TEXT = {
     "docs/quick_start.md": (
         "complete native analysis",
         "approximately 225 MB",
-        "oncotracer setup --non-interactive",
+        "oncotracer setup --project",
         "oncotracer check --config",
         "oncotracer run --backend conda",
         "--hg38_build",

@@ -43,66 +43,119 @@ download. Continue only when all three checksum lines say `OK`.
 The ONT public library is placed in `barcode01` as a sample folder; it is not
 a new demultiplexing step.
 
-## 2. Set up both projects
+## 2. Set up interactively (recommended)
+
+Choose Illumina or ONT, or follow both sections using their separate project folders.
+Setup asks for missing answers and saves `config/run.yml`. It does not start analysis
+or download genomes. `--threads 4` requests four CPU workers.
+
+### Illumina
 
 ```bash
 cd /path/to/my/analyses_dir/
-oncotracer setup --non-interactive \
-  --project "$PWD/oncotracer-quickstart1/illumina" \
-  --hg38_build \
-  --mode illumina --analysis cna --sample-name ERR12341627 \
-  --fastq-1 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz" \
-  --fastq-2 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz" \
-  --threads 4
-
-oncotracer setup --non-interactive \
-  --project "$PWD/oncotracer-quickstart1/ont" \
-  --hg38_build \
-  --mode ont --analysis cna \
-  --reads-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
-  --barcodes barcode01 --sample-names DRR165691 \
-  --threads 4
+oncotracer setup --project "$PWD/oncotracer-quickstart1/illumina" \
+  --mode illumina --threads 4
 ```
 
-`--project` separates the configurations and results. `--hg38_build` without a
-path saves an automatic-download setting; setup itself downloads nothing.
-`--threads 4` requests four CPU workers. `--non-interactive` requires inputs as
-flags instead of prompts.
+Example answers (replace `/path/to/my/analyses_dir/` with your actual directory):
+
+```text
+Analysis (--analysis; cna=copy-number) (cna/methylation/both) [cna]: cna
+Sample name (--sample-name): ERR12341627
+Read 1 FASTQ (--fastq-1): /path/to/my/analyses_dir/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz
+Read 2 FASTQ (--fastq-2; Enter for single-end): /path/to/my/analyses_dir/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz
+```
+
+### ONT
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
+  --mode ont --threads 4
+```
+
+Example answers:
+
+```text
+Analysis (--analysis; cna=copy-number) (cna/methylation/both) [cna]: cna
+FASTQ parent folder (--reads-folder): /path/to/my/analyses_dir/oncotracer-quickstart1/input/fastq_pass
+FASTQ folder: /path/to/my/analyses_dir/oncotracer-quickstart1/input/fastq_pass
+Available folders: barcode01
+Barcode folders to include, comma separated (--barcodes): barcode01
+Sample names in the same order (--sample-names) [barcode01]: DRR165691
+```
+
+At prompts, enter actual paths without quotes; `$PWD` is expanded in shell commands,
+not in your typed answers. Enter accepts the displayed default.
+
+For scripts, [supply answers as flags with `--non-interactive`](setup.md#optional-scripted-setup-without-prompts).
+That flag skips questions, accepts defaults and errors on missing required inputs.
+Leave it off for interactive setup. To change saved settings, edit `config/run.yml`;
+setup never overwrites it.
 
 ## Optional: reuse prepared genome indexes
 
-If you have a prepared OncoTracer hg38 reference, replace the bare flag in the
-setup command with `--hg38_build /absolute/path/shared-reference`. You can supply
-the reference parent or its `references/samurai_hg38` folder. Reusing one build
-for both platforms requires both BWA and minimap2 indexes.
+By default, run downloads prebuilt indexes automatically: about 8.0 GiB for Illumina
+and 9.7 GiB for ONT, under each project's `reference/` folder. Completed downloads
+are reused. **No reference flag is needed** for the steps above.
 
-Without a path, or if you omit the flag entirely, run downloads prebuilt indexes
-automatically: about 8.0 GiB for Illumina and 9.7 GiB for ONT, under each project's
-`reference/` folder. Completed downloads are reused. No separate genome-build
-script is needed. See [reference details](reference_indexes.md) and
+If a prepared reference already exists at `/data/shared-reference`, use one of these
+commands **instead of the corresponding step 2 command**, before creating its config:
+
+### Illumina with an existing reference
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --project "$PWD/oncotracer-quickstart1/illumina" \
+  --mode illumina --threads 4 --hg38_build /data/shared-reference
+```
+
+### ONT with an existing reference
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
+  --mode ont --threads 4 --hg38_build /data/shared-reference
+```
+
+Answer the same prompts from step 2, then continue with step 3. Replace
+`/data/shared-reference` with your existing reference parent; its
+`references/samurai_hg38` folder also works. It must contain the prepared genome,
+indexes and manifests. Illumina needs BWA indexes; ONT needs minimap2. One reference
+shared between platforms needs both.
+
+`--hg38_build` **without a path** means automatic download, just like omitting it.
+To build locally, replace `--hg38_build /data/shared-reference` in either example
+with `--build_reference`. Run then downloads source files as needed and builds
+indexes on CPU. Choose one option. Local indexing needs more RAM, temporary disk
+and time. See [reference details](reference_indexes.md) and
 [RAM requirements](installation.md#requirements).
 
-To build your own indexes, replace `--hg38_build` with `--build_reference` in
-either setup command. The normal run downloads hg38 source files as needed and
-builds missing indexes on CPU. Local indexing needs more RAM, temporary disk and
-time. Do not combine the two flags.
-
 ## 3. Check and run
+
+Use the block matching the project you configured. Resolve any check errors before
+running. `--config` selects saved settings; `--backend conda` selects installed
+analysis tools.
+
+### Illumina
 
 ```bash
 cd /path/to/my/analyses_dir/
 oncotracer check --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
-oncotracer check --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
-
 oncotracer run --backend conda \
   --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
+```
+
+### ONT
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer check --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
 oncotracer run --backend conda \
   --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
 ```
 
-Resolve any check errors before running. `--config` selects saved settings;
-`--backend conda` selects the installed analysis tools. Docker and Apptainer
-use `--backend docker` and `--backend singularity`, after
+Docker and Apptainer use `--backend docker` and `--backend singularity`, after
 [installing that backend](containers.md).
 
 ## 4. Read the results

@@ -18,6 +18,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from oncotracer_cli.cli import QS1_FILES, main
 from oncotracer_cli.engine import _fastq_files, merge_fastqs, parse_illumina_samplesheet, parse_ont_samples
@@ -39,7 +40,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
             return code, output.read()
 
     def remap(self, text, base):
-        for old, new in (("$PWD", base), ("/absolute/path", base), ("/data", base / "data"), ("/work", base / "work")):
+        for old, new in (("$PWD", base), ("/path/to/my/analyses_dir", base), ("/absolute/path", base), ("/data", base / "data"), ("/work", base / "work")):
             text = text.replace(old, str(new))
         return text
 
@@ -85,6 +86,22 @@ class DocumentedWorkflowTests(unittest.TestCase):
 
     def steps(self, text, base, expected):
         configured, checked, planned = [], [], []
+        # Consume the actual guide's transcript: prompt spelling and order must
+        # match the CLI, and answer paths use the same temporary input fixtures.
+        answers = iter(
+            line.split(": ", 1)
+            for block in re.findall(r"```text\n(.*?)```", text, re.DOTALL)
+            for line in block.splitlines()
+            if "(--" in line and ": " in line
+        )
+
+        def answer_prompt(prompt):
+            documented = next(answers, None)
+            self.assertIsNotNone(documented, f"No documented answer for {prompt!r}")
+            label, answer = documented
+            self.assertEqual(prompt, label + ": ")
+            return self.remap(answer, base)
+
         for command in self.commands(text):
             args = [self.remap(arg, base) for arg in command[1:]]
             action = args[0]
@@ -103,13 +120,15 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 # installing tools, downloading a reference, or running aligners.
                 self.assertEqual(args[args.index("--backend") + 1], "conda")
                 args.append("--dry-run")
-            code, output = self.cli(*args)
+            with patch("builtins.input", side_effect=answer_prompt):
+                code, output = self.cli(*args)
             self.assertEqual(code, 0, f"{shlex.join(command)}\n{output}")
             if action == "check":
                 checked.append(Path(args[args.index("--config") + 1]))
                 self.assertEqual(json.loads(output)["plan"]["samples"], expected[len(checked) - 1])
             elif action == "run":
                 planned.append(Path(args[args.index("--config") + 1]))
+        self.assertIsNone(next(answers, None), "Unused answer in documented setup transcript")
         self.assertEqual(len(configured), len(expected))
         self.assertEqual(configured, checked)
         self.assertEqual(configured, planned)
@@ -133,7 +152,10 @@ class DocumentedWorkflowTests(unittest.TestCase):
             self.assertEqual(config["threads"], 4)
 
     def test_multibarcode_ont_commands_include_batches_but_not_other_samples(self):
-        text = (ROOT / "docs/setup.md").read_text().split("## ONT: multiple barcodes and FASTQ batches\n", 1)[1].split("\n## ", 1)[0]
+        page = (ROOT / "docs/setup.md").read_text()
+        setup = page.split("## 1. Configure interactively (recommended)\n", 1)[1].split("\n## ", 1)[0]
+        run = page.split("## 2. Check and run your platform\n", 1)[1].split("\n## ", 1)[0]
+        text = setup.split("### ONT\n", 1)[1] + run.split("### ONT\n", 1)[1]
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary) / "analysis with spaces"
             folder = base / "data/run/fastq_pass"
@@ -188,6 +210,13 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 self.create_tables(text, base)
                 # Hardware/backend commands are useful prerequisites, not analysis steps.
                 workflow_text = text if relative != "docs/full_tutorial.md" else text.split("## 4. Save the settings", 1)[1]
+                if relative == "docs/quick_start.md":
+                    # Existing-reference commands replace step 2; the default
+                    # walkthrough creates each project exactly once.
+                    workflow_text = re.sub(
+                        r"^## Optional: reuse prepared genome indexes\n.*?(?=^## )",
+                        "", workflow_text, flags=re.MULTILINE | re.DOTALL,
+                    )
                 configs = self.steps(workflow_text, base, samples)
                 self.assertTrue(all(config["hg38_auto_download"] for config in configs))
                 for config in configs:

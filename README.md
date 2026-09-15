@@ -40,17 +40,17 @@ The first four commands install and activate OncoTracer. Keep both folders: the 
 ## Set up your analysis
 
 ```bash
-oncotracer setup --project /absolute/path/to/my-study --run
+oncotracer setup --project /absolute/path/to/my-study
 ```
 
-Replace `/absolute/path/to/my-study` with your project folder. Setup asks for your analysis and reads, saves `my-study/config/run.yml`, validates it, prepares missing backend tools, and starts the analysis. Repeat this command to resume. To save settings for review first, omit `--run`; you can then use:
+Replace `/absolute/path/to/my-study` with a new project folder. Setup is interactive by default: it asks for your platform, analysis and reads, then saves `my-study/config/run.yml`. Press Enter to accept a displayed default. Follow the [Illumina or ONT walkthrough](docs/setup.md) for example answers, then check and run:
 
 ```bash
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
 
-`--config` selects your saved settings. `--backend conda` selects the installed analysis tools. `check` explains configuration problems without starting an analysis; `run` starts it. You can also [supply setup answers as flags](docs/setup.md).
+`--config` selects your saved settings. `--backend conda` selects the installed analysis tools. Repeat `run` to resume. Add `--run` to setup to validate, prepare missing backend tools and start immediately. For scripts, `setup --non-interactive` skips prompts, uses supplied flags and defaults, and reports missing required inputs.
 
 Add `--hg38_build /path/to/reference` to setup to reuse prepared hg38 indexes.
 By default, run downloads prebuilt indexes automatically. To build your own,
