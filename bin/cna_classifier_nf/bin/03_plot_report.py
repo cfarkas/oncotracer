@@ -24,6 +24,9 @@ from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
 
+CATALOG_PATTERN_LABEL = "Cross-context catalog pattern (not a diagnosis)"
+CATALOG_BACKGROUND_LABEL = "Catalog background; may describe other tumor types"
+
 STATE_COLORS = {
     "loss": "#67A9CF",
     "deep_loss": "#2166AC",
@@ -591,7 +594,7 @@ def row_to_key_value_table(row: pd.Series, preferred: list[str] | None = None) -
     records = []
     for key in preferred:
         if key in row.index:
-            records.append({"field": key, "value": fmt_value(row.get(key))})
+            records.append({"field": CATALOG_PATTERN_LABEL if key == "rule_based_cna_class" else key, "value": fmt_value(row.get(key))})
     return pd.DataFrame(records).to_html(index=False, escape=True, border=0, classes="table kv-table")
 
 
@@ -773,12 +776,13 @@ def build_sample_interpretation(row: pd.Series, events: pd.DataFrame, driver_hit
 
     bullets = []
     if n_events == 0 or burden.startswith("CNA-flat"):
-        bullets.append(f"<li><strong>{sample}</strong> has no high-confidence CNA under the current SAMURAI/low-pass WGS thresholds and is classified as <strong>{rule}</strong>.</li>")
+        bullets.append(f"<li><strong>{sample}</strong> has no high-confidence CNA under the current SAMURAI/low-pass WGS thresholds.</li>")
     else:
-        bullets.append(f"<li><strong>{sample}</strong> is classified as <strong>{rule}</strong> with burden class <strong>{burden}</strong>.</li>")
+        bullets.append(f"<li><strong>{sample}</strong> has burden class <strong>{burden}</strong>.</li>")
         bullets.append(f"<li>The sample has <strong>{n_events}</strong> CNA events, approximately <strong>{altered} Mb</strong> altered, affecting <strong>{n_chr}</strong> chromosomes and <strong>{n_arms}</strong> chromosome arms.</li>")
         bullets.append(f"<li>Copy-number direction is <strong>{direction}</strong>; event breadth is <strong>{breadth}</strong>.</li>")
 
+    bullets.append(f"<li><strong>{html.escape(CATALOG_PATTERN_LABEL)}:</strong> {rule}.</li>")
     if flags:
         bullets.append("<li>Canonical/driver CNA flags: <strong>" + html.escape(", ".join(flags)) + "</strong>.</li>")
     else:
@@ -795,7 +799,7 @@ def build_sample_interpretation(row: pd.Series, events: pd.DataFrame, driver_hit
     flag_rows = []
     for flag in flags:
         flag_rows.append({"driver_flag": flag, "interpretation": driver_flag_interpretation(flag)})
-    flag_html = "" if not flag_rows else "<h3>Driver-region interpretation</h3>" + compact_table(pd.DataFrame(flag_rows))
+    flag_html = "" if not flag_rows else "<h3>" + html.escape(CATALOG_BACKGROUND_LABEL) + "</h3>" + compact_table(pd.DataFrame(flag_rows))
 
     return "<ul>" + "\n".join(bullets) + "</ul>" + flag_html + "<p class='small muted'><strong>Caution:</strong> this is a CNA-only interpretation from low-pass WGS/SAMURAI calls. It is not a formal tumor/LymphGen subtype and should be integrated with histology, immunophenotype, SNVs/indels, SV/translocations, and clinical data.</p>"
 
@@ -984,7 +988,7 @@ ul {{ line-height: 1.6; }}
     index_html = f"""
 <!DOCTYPE html><html><head><meta charset='utf-8'><title>CNA sample reports</title>
 <style>body{{font-family:Arial,Helvetica,sans-serif;margin:32px;color:#1f2933}}table{{border-collapse:collapse;font-size:12px}}th,td{{border:1px solid #d1d5db;padding:5px 7px;text-align:left;vertical-align:top}}th{{background:#f3f4f6}}a{{color:#1f77b4;text-decoration:none}}a:hover{{text-decoration:underline}}</style>
-</head><body><h1>CNA sample reports</h1><p><a href='../cna_classifier_report.html'>← Cohort report</a></p><table><thead><tr><th>sample</th><th>pathology_agreement</th><th>probable_CNA_classification</th><th>probable_CNA_score</th><th>rule_based_cna_class</th><th>cna_burden_class</th><th>n_cna_events</th><th>driver_region_flags</th></tr></thead><tbody>{rows_html}</tbody></table></body></html>
+</head><body><h1>CNA sample reports</h1><p><a href='../cna_classifier_report.html'>← Cohort report</a></p><table><thead><tr><th>sample</th><th>pathology_agreement</th><th>probable_CNA_classification</th><th>probable_CNA_score</th><th>{html.escape(CATALOG_PATTERN_LABEL)}</th><th>cna_burden_class</th><th>n_cna_events</th><th>driver_region_flags</th></tr></thead><tbody>{rows_html}</tbody></table></body></html>
 """
     (outdir / "index.html").write_text(index_html)
 
@@ -1045,8 +1049,8 @@ ul {{ line-height: 1.65; }}
 <div class="note"><strong>PubMed / LLM fallback:</strong> when --knowledge_web true, feature-level literature is retrieved from Europe-PMC/PubMed-style metadata using the --sample_set context. When --knowledge_literature_llm true, retrieved titles/abstracts are processed by local Hugging Face summarization/text-generation models; if no model completes, the pipeline falls back to deterministic PubMed-text extraction and reports the model/status in the biomarker cards.</div>
 {single_note}
 {pathology_summary}
-<h2>Rule-based class counts</h2><div class="table-wrap">{class_summary}</div>
-<h2>Patient classification table preview</h2><div class="table-wrap">{html_table_preview(classification, n=30)}</div>
+<h2>Cross-context catalog pattern counts (not diagnoses)</h2><div class="table-wrap">{class_summary}</div>
+<h2>Technical classification table preview</h2><p class="muted">The rule_based_cna_class field records a cross-context catalog pattern, not a diagnosis; the context-aware assessment is shown above when available.</p><div class="table-wrap">{html_table_preview(classification, n=30)}</div>
 <h2>Top recurrent CNA events from SAMURAI codification</h2><div class="table-wrap">{html_table_preview(recurrent, n=20)}</div>
 <h2>GISTIC2 status</h2><div class="table-wrap">{html_table_preview(gistic_status, n=10)}</div>
 <h2>Top GISTIC2 lesions</h2><div class="table-wrap">{html_table_preview(gistic_summary, n=25)}</div>

@@ -112,6 +112,27 @@ class ResultsTests(unittest.TestCase):
         write_results_index(self.root)
         self.assertEqual(before,{p:p.read_bytes() for p in before})
 
+    def test_empty_disabled_gistic_placeholders_stay_on_disk_but_are_not_listed(self):
+        placeholders = [
+            self.put("05_cna_classifier/04_gistic/gistic2_command.txt", ""),
+            self.put("05_cna_classifier/03_report/report_tables/gistic2_command.txt", ""),
+            self.put("05_cna_classifier/04_gistic/gistic2_versions.txt", ""),
+        ]
+        status = self.put("05_cna_classifier/04_gistic/gistic2_status.tsv",
+                          "status\treason\nskipped\t--run_gistic false\n")
+        write_results_index(self.root)
+        catalog = json.loads((self.root / "06_workflow_summary/results_catalog.json").read_text())
+        stage = next(row for row in catalog["stages"] if row["stage"] == "05_cna_classifier")
+        listed = stage["primary_files"] + stage["supporting_files"]
+        self.assertIn(str(status.relative_to(self.root)), listed)
+        for path in placeholders:
+            self.assertTrue(path.is_file())
+            self.assertEqual(path.stat().st_size, 0)
+            self.assertNotIn(str(path.relative_to(self.root)), listed)
+            self.assertNotIn(path.name, (self.root / "05_cna_classifier/index.html").read_text())
+        self.assertIn("gistic2_status.tsv", (self.root / "05_cna_classifier/index.html").read_text())
+        self.assert_links()
+
     def test_methylation_only_and_partial_status_are_explicit(self):
         self.put("06_workflow_summary/workflow_summary.json",json.dumps({"workflow_status":"partial_failure",
             "cna_status":"not_requested","methylation_status":"partial_failure",

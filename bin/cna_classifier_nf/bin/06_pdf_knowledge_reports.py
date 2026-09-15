@@ -46,6 +46,10 @@ except Exception:  # pragma: no cover
     PdfReader = None
     PdfWriter = None
 
+CATALOG_PATTERN_LABEL = "Cross-context catalog pattern (not a diagnosis)"
+CATALOG_BACKGROUND_LABEL = "Catalog background; may describe other tumor types"
+CATALOG_RELEVANCE_LABEL = "Catalog relevance; may describe other tumor types"
+
 PAGE_WIDTH, PAGE_HEIGHT = A4
 LEFT_MARGIN = 1.05 * cm
 RIGHT_MARGIN = 1.05 * cm
@@ -473,7 +477,7 @@ def pathology_agreement_pdf_blocks(pathology_row: pd.Series | None) -> list[Any]
         ("Pathology category", "; ".join([x for x in [safe_str(pathology_row.get("pathology_diagnosis_category_1", "")), safe_str(pathology_row.get("pathology_diagnosis_category_2", ""))] if x])),
         ("Inferred pathology lineage/subtype", f"{safe_str(pathology_row.get('pathology_lineage',''))} / {safe_str(pathology_row.get('pathology_subtype_inferred',''))}"),
         ("CNA knowledge pattern", pathology_row.get("cna_knowledge_pattern", "")),
-        ("CNA rule-based class", pathology_row.get("cna_rule_based_class", "")),
+        (CATALOG_PATTERN_LABEL, pathology_row.get("cna_rule_based_class", "")),
         ("Why this call was made", pathology_row.get("agreement_summary", "")),
         ("Numeric score breakdown", pathology_row.get("agreement_score_breakdown", "")),
         ("Token-only score", pathology_row.get("agreement_score_token_only", "")),
@@ -605,24 +609,19 @@ def burden_color(row: pd.Series) -> colors.Color:
 
 
 def title_banner(row: pd.Series) -> Table:
-    sample = safe_str(row.get("sample"))
     burden = safe_str(row.get("cna_burden_class", "unknown"))
-    rule = safe_str(row.get("rule_based_cna_class", "unknown"))
     bcolor = burden_color(row)
     text_color = colors.white if burden == "CNA-ultracomplex" else INK
     data = [[
         Paragraph("<b>CNA burden</b>", STYLES["small"]),
         Paragraph(esc(burden.replace("_", " ")), STYLES["small"]),
-        Paragraph("<b>Rule-based class</b>", STYLES["small"]),
-        Paragraph(esc(rule), STYLES["small"]),
     ]]
-    tbl = Table(data, colWidths=[2.55*cm, 5.15*cm, 3.0*cm, USABLE_WIDTH-10.7*cm], hAlign="LEFT")
+    tbl = Table(data, colWidths=[2.55*cm, USABLE_WIDTH-2.55*cm], hAlign="LEFT")
     tbl.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.25, LINE),
         ("BACKGROUND", (1, 0), (1, 0), bcolor),
         ("TEXTCOLOR", (1, 0), (1, 0), text_color),
         ("BACKGROUND", (0, 0), (0, 0), PALE),
-        ("BACKGROUND", (2, 0), (2, 0), PALE),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
@@ -668,6 +667,13 @@ def literature_label(sources: Any) -> str:
     return "Literature interpretation — check source and generation status"
 
 
+def catalog_background_note(sources: Any) -> str:
+    sources = safe_str(sources)
+    if any(kind in sources for kind in ("catalog", "deterministic_pubmed_text_fallback")):
+        return CATALOG_BACKGROUND_LABEL + ". This background is not the context-aware sample assessment."
+    return ""
+
+
 def synthesis_model_trace(row: Any) -> str:
     catalog_status = safe_str(row.get("catalog_llm_status", ""))
     use_catalog = catalog_status not in {"", "not_enabled", "not_attempted_literature_draft_available"}
@@ -692,6 +698,9 @@ def interpretation_paragraphs(row: pd.Series, ksummary: pd.Series | None, sk: pd
         lit_syn = safe_str(ksummary.get("knowledge_literature_synthesis", ""))
         lit_stat = safe_str(ksummary.get("knowledge_literature_llm_status", ""))
         if lit_syn:
+            background_note = catalog_background_note(ksummary.get("knowledge_literature_sources", ""))
+            if background_note:
+                story.append(para(background_note, "small"))
             story.append(para(literature_label(ksummary.get("knowledge_literature_sources", "")) + ": " + lit_syn))
         if lit_stat:
             story.append(para("Model generation trace: " + lit_stat, "small"))
@@ -744,10 +753,10 @@ def knowledge_feature_blocks(sk: pd.DataFrame) -> list[Any]:
                 ("Evidence tier", r.get("tier", "")),
                 ("Top PMIDs", r.get("top_pmids", "")),
             ], col_widths=[3.4*cm, USABLE_WIDTH-3.4*cm])],
-            [raw_para("<b>Biological interpretation.</b> " + esc(r.get("biological_interpretation", "")), "body")],
+            [raw_para("<b>" + esc(CATALOG_BACKGROUND_LABEL) + ".</b> " + esc(r.get("biological_interpretation", "")), "body")],
             [raw_para("<b>" + esc(literature_label(r.get("literature_synthesis_source", ""))) + ".</b> " + esc(r.get("literature_synthesis", "")), "body")],
             [raw_para("<b>Draft source.</b> " + esc(r.get("literature_synthesis_source", "")) + "; model/status: " + esc(synthesis_model_trace(r)), "small")],
-            [raw_para("<b>Classification relevance.</b> " + esc(r.get("classification_hint", "")), "body")],
+            [raw_para("<b>" + esc(CATALOG_RELEVANCE_LABEL) + ".</b> " + esc(r.get("classification_hint", "")), "body")],
             [raw_para("<b>Caveat.</b> " + esc(r.get("caveat", "")), "small")],
         ]
         tbl = Table(rows, colWidths=[USABLE_WIDTH], hAlign="LEFT")
@@ -883,9 +892,9 @@ def sample_report_data(
         ("Probable CNA-based classification", pathology_row.get("probable_cna_classification", "") if not pathology_row.empty else ""),
         ("Probable CNA score", pathology_row.get("probable_cna_score", "") if not pathology_row.empty else ""),
         ("Probable CNA score breakdown", pathology_row.get("probable_cna_score_breakdown", "") if not pathology_row.empty else ""),
-        ("Rule-based CNA class", row.get("rule_based_cna_class", "")),
         ("Knowledge-refined CNA pattern", ks_row.get("knowledge_refined_class", "") if not ks_row.empty else ""),
         ("Knowledge rationale", ks_row.get("knowledge_refined_class_rationale", "") if not ks_row.empty else ""),
+        (CATALOG_PATTERN_LABEL, row.get("rule_based_cna_class", "")),
         ("CNA burden class", row.get("cna_burden_class", "")),
         ("Gain/loss direction class", row.get("gain_loss_direction_class", "")),
         ("Focal/broad class", row.get("focal_broad_class", "")),
@@ -1069,6 +1078,9 @@ def html_interpretation(row: pd.Series, data: dict[str, Any]) -> str:
         lit_syn = safe_str(data["ks_row"].get("knowledge_literature_synthesis", ""))
         lit_stat = safe_str(data["ks_row"].get("knowledge_literature_llm_status", ""))
         if lit_syn:
+            background_note = catalog_background_note(data["ks_row"].get("knowledge_literature_sources", ""))
+            if background_note:
+                bits.append(f"<p class='muted'>{html.escape(background_note)}</p>")
             bits.append(f"<p><strong>{html.escape(literature_label(data['ks_row'].get('knowledge_literature_sources', '')))}.</strong> {html.escape(lit_syn)}</p>")
         if lit_stat:
             bits.append(f"<p class='muted'><strong>Literature model trace.</strong> {html.escape(lit_stat)}</p>")
@@ -1102,10 +1114,10 @@ def html_knowledge_cards(sk: pd.DataFrame) -> str:
         <div class='biomarker-card'>
           <h3>{html.escape(title)}</h3>
           {html_table(meta, css_class='table kv-table')}
-          <p><strong>Biological interpretation.</strong> {html.escape(safe_str(r.get('biological_interpretation', '')))}</p>
+          <p><strong>{html.escape(CATALOG_BACKGROUND_LABEL)}.</strong> {html.escape(safe_str(r.get('biological_interpretation', '')))}</p>
           <p><strong>{html.escape(literature_label(r.get('literature_synthesis_source', '')))}.</strong> {html.escape(safe_str(r.get('literature_synthesis', '')))}</p>
           <p class='muted'><strong>Draft source.</strong> {html.escape(safe_str(r.get('literature_synthesis_source', '')))}; model/status: {html.escape(synthesis_model_trace(r))}</p>
-          <p><strong>Classification relevance.</strong> {html.escape(safe_str(r.get('classification_hint', '')))}</p>
+          <p><strong>{html.escape(CATALOG_RELEVANCE_LABEL)}.</strong> {html.escape(safe_str(r.get('classification_hint', '')))}</p>
           <p class='muted'><strong>Caveat.</strong> {html.escape(safe_str(r.get('caveat', '')))}</p>
         </div>""")
     return "".join(cards)
@@ -1124,7 +1136,7 @@ def html_pathology_agreement(data: dict[str, Any]) -> str:
         ("Pathology category", "; ".join([x for x in [safe_str(pr.get("pathology_diagnosis_category_1", "")), safe_str(pr.get("pathology_diagnosis_category_2", ""))] if x])),
         ("Inferred pathology lineage/subtype", f"{safe_str(pr.get('pathology_lineage',''))} / {safe_str(pr.get('pathology_subtype_inferred',''))}"),
         ("CNA knowledge pattern", pr.get("cna_knowledge_pattern", "")),
-        ("CNA rule-based class", pr.get("cna_rule_based_class", "")),
+        (CATALOG_PATTERN_LABEL, pr.get("cna_rule_based_class", "")),
         ("Why this call was made", pr.get("agreement_summary", "")),
         ("Numeric score breakdown", pr.get("agreement_score_breakdown", "")),
         ("Token-only score", pr.get("agreement_score_token_only", "")),
@@ -1209,7 +1221,7 @@ h1 {{ font-size:30px; letter-spacing:-.03em; margin:0 0 8px; }}
 h2 {{ background:var(--navy); color:white; font-size:17px; padding:10px 14px; border-radius:8px; margin:30px 0 14px; }}
 h3 {{ font-size:15px; margin:18px 0 8px; }}
 .subtitle {{ color:var(--muted); margin:4px 0; }}
-.badge-row {{ display:grid; grid-template-columns:170px 1fr 170px 1fr; border:1px solid var(--line); margin-top:14px; }}
+.badge-row {{ display:grid; grid-template-columns:170px 1fr; border:1px solid var(--line); margin-top:14px; }}
 .badge-row > div {{ padding:10px 12px; border-right:1px solid var(--line); }}
 .badge-label {{ font-weight:700; background:#f5f7fb; }}
 .badge-value {{ background:{burden_color_hex}; }}
@@ -1239,7 +1251,7 @@ ul {{ line-height:1.65; }}
   <h1>OncoTracer AI CNA Knowledge Report</h1>
   <p class="subtitle">Sample: <strong>{html.escape(sample)}</strong> | Assay context: low-pass WGS / SAMURAI CNA codification</p>
   <p class="subtitle">The HTML and PDF report are generated from the same section data and contain the same report tables.</p>
-  <div class="badge-row"><div class="badge-label">CNA burden</div><div class="badge-value">{html.escape(burden.replace('_',' '))}</div><div class="badge-label">Rule-based class</div><div>{html.escape(safe_str(row.get('rule_based_cna_class','')))}</div></div>
+  <div class="badge-row"><div class="badge-label">CNA burden</div><div class="badge-value">{html.escape(burden.replace('_',' '))}</div></div>
 </div>
 {body}
 </main></body></html>"""
@@ -1302,7 +1314,7 @@ def write_index(
         ])
     text = f"""<!DOCTYPE html><html><head><meta charset='utf-8'><title>CNA PDF/HTML reports</title>
 <style>body{{font-family:Arial,Helvetica,sans-serif;margin:32px;color:#172033;background:#f5f7fb}}.panel{{background:white;border:1px solid #d7dde6;border-radius:14px;padding:20px}}table{{border-collapse:collapse;font-size:12px;background:white}}th,td{{border:1px solid #d7dde6;padding:6px 8px;text-align:left;vertical-align:top}}th{{background:#eef2f7}}a{{color:#2f6f9f;text-decoration:none}}a:hover{{text-decoration:underline}}.muted{{color:#5f6b7a}}</style>
-</head><body><div class='panel'><h1>CNA knowledge HTML/PDF reports</h1><p class='muted'>Each sample has a matched HTML and PDF report generated from the same source sections and tables.</p><p>{' | '.join(related)}</p><table><thead><tr><th>sample</th><th>HTML</th><th>PDF</th><th>pathology agreement</th><th>reported pathology diagnosis</th><th>probable CNA classification</th><th>probable CNA score</th><th>knowledge-refined CNA pattern</th><th>rule-based class</th><th>n CNA events</th><th>driver flags</th></tr></thead><tbody>{''.join(tr)}</tbody></table></div></body></html>"""
+</head><body><div class='panel'><h1>CNA knowledge HTML/PDF reports</h1><p class='muted'>Each sample has a matched HTML and PDF report generated from the same source sections and tables.</p><p>{' | '.join(related)}</p><table><thead><tr><th>sample</th><th>HTML</th><th>PDF</th><th>pathology agreement</th><th>reported pathology diagnosis</th><th>probable CNA classification</th><th>probable CNA score</th><th>knowledge-refined CNA pattern</th><th>{html.escape(CATALOG_PATTERN_LABEL)}</th><th>n CNA events</th><th>driver flags</th></tr></thead><tbody>{''.join(tr)}</tbody></table></div></body></html>"""
     (outdir / "index.html").write_text(text)
 
 

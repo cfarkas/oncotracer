@@ -509,6 +509,104 @@ class CatalogDraftTests(unittest.TestCase):
         self.assertTrue(any("AI draft from bundled catalog" in item.getPlainText() for item in paragraphs if hasattr(item, "getPlainText")))
 
 
+class ReportPresentationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.clinician = load_script("report_clinician_tests", "08_clinician_driver_reports.py")
+        cls.cohort = load_script("report_cohort_tests", "03_plot_report.py")
+
+    def fixture(self, context=True):
+        row = pd.Series({"sample": "synthetic", "rule_based_cna_class": "MYCN_neuroblastoma_pattern",
+                         "cna_burden_class": "CNA-high_complex", "n_cna_events": 3, "altered_mb": 5.4})
+        background = "Bundled lymphoma biology <source> & context."
+        hint = "Lymphoma catalog association; review context."
+        sk = pd.DataFrame([{"sample": "synthetic", "feature_id": "1q_gain", "display": "Broad 1q gain",
+                            "genes": "MCL1", "biological_interpretation": background, "classification_hint": hint,
+                            "literature_synthesis": "Unchanged source draft.", "literature_synthesis_source": "huggingface_llm"}])
+        ks = pd.DataFrame([{"sample": "synthetic", "knowledge_refined_class": "Breast context CNA pattern",
+                            "knowledge_literature_synthesis": "Unchanged mixed source summary.",
+                            "knowledge_literature_sources": "huggingface_llm;deterministic_pubmed_text_fallback"}]) if context else pd.DataFrame()
+        pr = pd.DataFrame([{"sample": "synthetic", "probable_cna_classification": "Breast context CNA pattern",
+                            "probable_cna_score": 80, "agreement_call": "PATHOLOGY_NOT_PROVIDED"}]) if context else pd.DataFrame()
+        empty = pd.DataFrame()
+        data = pdf.sample_report_data("synthetic", row, empty, empty, empty, empty, empty, empty,
+                                      sk, ks, empty, empty, empty, pr, 0, True)
+        return row, sk, ks, pr, data, background, hint
+
+    @staticmethod
+    def pdf_text(path):
+        from pypdf import PdfReader
+        return " ".join(" ".join(page.extract_text() for page in PdfReader(path).pages).split())
+
+    def test_knowledge_html_pdf_prioritize_context_and_preserve_catalog_values(self):
+        import html
+        row, sk, ks, pr, data, background, hint = self.fixture()
+        originals = [obj.copy(deep=True) for obj in (row, sk, ks, pr)]
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            pdf.build_sample_pdf(out / "report.pdf", "synthetic", row, data)
+            pdf.build_sample_html(out / "report.html", "synthetic", row, data, "report.pdf")
+            rendered = (out / "report.html").read_text()
+            text = self.pdf_text(out / "report.pdf")
+            for document in (rendered, text):
+                self.assertLess(document.index("Breast context CNA pattern"), document.index("MYCN_neuroblastoma_pattern"))
+                self.assertIn("Cross-context catalog pattern (not a diagnosis)", document)
+                self.assertIn("Catalog background; may describe other tumor types", document)
+                self.assertIn("Catalog relevance; may describe other tumor types", document)
+                self.assertIn("This background is not the context-aware sample assessment.", document)
+                self.assertIn("Unchanged source draft.", document)
+                self.assertIn("Unchanged mixed source summary.", document)
+                self.assertIn(hint, document)
+            self.assertIn(html.escape(background), rendered)
+            self.assertNotIn("<source>", rendered)
+            self.assertIn(background, text)
+            self.assertNotIn("MYCN_neuroblastoma_pattern", rendered.split("</div>", 1)[0])
+        pd.testing.assert_series_equal(row, originals[0])
+        for current, original in zip((sk, ks, pr), originals[1:]):
+            pd.testing.assert_frame_equal(current, original)
+
+    def test_clinician_missing_context_does_not_promote_catalog_pattern(self):
+        for context in (True, False):
+            with self.subTest(context=context), tempfile.TemporaryDirectory() as directory:
+                row, sk, ks, pr, data, background, hint = self.fixture(context)
+                empty = pd.DataFrame()
+                ks_row = ks.iloc[0] if not ks.empty else pd.Series(dtype=object)
+                pr_row = pr.iloc[0] if not pr.empty else pd.Series(dtype=object)
+                out = Path(directory)
+                self.clinician.build_pdf(out / "report.pdf", "synthetic", row, pd.Series(dtype=object), pr_row, ks_row, sk, empty)
+                self.clinician.build_html(out / "report.html", "synthetic", row, pd.Series(dtype=object), pr_row, ks_row, sk, empty, "report.pdf")
+                for document in ((out / "report.html").read_text(), self.pdf_text(out / "report.pdf")):
+                    primary = "Breast context CNA pattern" if context else "Context-aware interpretation unavailable."
+                    self.assertLess(document.index(primary), document.index("MYCN_neuroblastoma_pattern"))
+                    self.assertIn("Cross-context catalog pattern (not a diagnosis)", document)
+                    self.assertIn("Catalog background; may describe other tumor types", document)
+                    self.assertIn(hint, document)
+                    if not context:
+                        self.assertIn("No context-aware CNA assessment was supplied", document)
+                interpretation = dict(self.clinician.make_interpretation_pairs(pr_row, row, ks_row, sk))
+                self.assertNotIn("MYCN_neuroblastoma_pattern", interpretation["Context-aware CNA interpretation"])
+
+    def test_cohort_catalog_labels_and_no_cna_branch(self):
+        row, sk, ks, pr, data, background, hint = self.fixture()
+        empty = pd.DataFrame()
+        for count in (0, 3):
+            row["n_cna_events"] = count
+            rendered = self.cohort.build_sample_interpretation(row, empty, empty, empty)
+            self.assertIn("MYCN_neuroblastoma_pattern", rendered)
+            self.assertIn("Cross-context catalog pattern (not a diagnosis)", rendered)
+            self.assertNotIn("is classified as", rendered)
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            self.cohort.make_sample_reports(pd.DataFrame([row]), empty, empty, empty, empty, empty, empty, pr)
+            self.cohort.make_report([], pd.DataFrame([row]), empty, empty, empty, pr)
+            index = Path("sample_reports/index.html").read_text()
+            sample = Path("sample_reports/synthetic_CNA_report.html").read_text()
+            report = Path("cna_classifier_report.html").read_text()
+            self.assertIn("Cross-context catalog pattern (not a diagnosis)", index)
+            self.assertIn("Cross-context catalog pattern counts (not diagnoses)", report)
+            self.assertIn("Technical classification table preview", report)
+            self.assertLess(sample.index("Breast context CNA pattern"), sample.index("MYCN_neuroblastoma_pattern"))
+
+
 @unittest.skipUnless(
     os.environ.get("ONCOTRACER_TEST_TINY_LLM") == "1",
     "opt-in tiny CPU models; no downloads",
