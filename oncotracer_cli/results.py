@@ -160,7 +160,7 @@ def write_results_index(outdir: Path) -> Path:
         page = directory / "index.html"
         diagnostic_page = directory / "diagnostics.html"
         files = [path for path in sorted(directory.rglob("*"))
-                 if path.is_file() and not path.is_symlink()
+                 if path.is_file() and not path.is_symlink() and path.stat().st_size > 0
                  and path not in {page, diagnostic_page, catalog_path} and ".oncotracer-native" not in path.parts]
         files = [path for path in files if not any(parent.is_symlink() for parent in path.parents if parent != outdir)]
         files = [path for path in files if not (path.name == "index.html" and
