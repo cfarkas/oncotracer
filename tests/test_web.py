@@ -206,7 +206,7 @@ class WebTests(unittest.TestCase):
                     stat = path.stat()
                     os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1000000))
                 else:
-                    path.unlink()
+                    path.rename(path.with_name(path.name + ".held"))
                 with patch("oncotracer_cli.web.subprocess.Popen") as popen:
                     with self.assertRaisesRegex(OncoTracerError, "FASTQ inputs changed after review"):
                         self.state.run({"project_id": prepared["id"]})
@@ -291,6 +291,104 @@ class WebTests(unittest.TestCase):
             code, content, _headers = self.request(server, "GET", "/api/browse")
         self.assertEqual(code, 400)
         self.assertIn("Choose a folder your account can access", json.loads(content)["error"])
+
+    def test_report_detail_controls_local_and_online_stages_explicitly(self):
+        self.fastq("reads/one_R1.fastq.gz")
+        self.fastq("reads/one_R2.fastq.gz")
+        self.fastq("reads/two_R1.fastq.gz")
+        self.fastq("reads/two_R2.fastq.gz")
+        for detail in ("catalog", "models", "literature"):
+            with self.subTest(detail=detail):
+                result = self.prepare(project=str(self.root / detail), reports=True,
+                                      report_detail=detail, gistic=detail == "literature")
+                config = load_flat_yaml(Path(result["config_path"]))
+                self.assertTrue(config["run_cna_classifier"])
+                self.assertEqual(config["knowledge_web"], detail == "literature")
+                self.assertEqual(config["knowledge_literature_llm"], detail == "literature")
+                self.assertEqual(config["pathology_use_biomed_models"], detail != "catalog")
+                self.assertEqual(config["run_gistic"], detail == "literature")
+        with self.assertRaisesRegex(OncoTracerError, "report_detail"):
+            self.prepare(reports=True, report_detail="invented")
+        with self.assertRaisesRegex(OncoTracerError, "true or false"):
+            self.prepare(reports=True, gistic="false")
+        with self.assertRaisesRegex(OncoTracerError, "at least two"):
+            self.prepare(reports=True, gistic=True, samples=[{"id": 0, "name": "one", "type": "cancer"}])
+
+    def test_finished_run_exposes_only_its_results_index(self):
+        self.fastq("reads/library.fastq.gz")
+        prepared = self.prepare()
+        outdir = self.root / "project/results"
+        outdir.mkdir()
+        (outdir / "index.html").write_text("<h1>Finished results</h1>")
+        with patch("oncotracer_cli.web.subprocess.Popen") as popen, patch("oncotracer_cli.web.threading.Thread"):
+            popen.return_value.pid = 123
+            popen.return_value.wait.return_value = 0
+            self.state.run({"project_id": prepared["id"]})
+            self.assertNotIn("results_url", self.state.status())
+            self.state._wait(self.state.job)
+        job = self.state.status()
+        self.assertEqual(job["status"], "complete")
+        self.assertTrue(job["results_url"].startswith("/results/"))
+        server = self.start_server()
+        code, content, headers = self.request(server, "GET", job["results_url"], **{"X-OncoTracer-Token": ""})
+        self.assertEqual(code, 200)
+        self.assertIn(b"Finished results", content)
+        self.assertIn("default-src 'none'", headers["Content-Security-Policy"])
+        self.assertEqual(headers["Referrer-Policy"], "no-referrer")
+        self.assertEqual(self.state.status()["results_url"], job["results_url"])
+
+    def test_results_capability_rejects_traversal_hidden_files_and_external_symlinks(self):
+        outdir = self.root / "results"
+        outdir.mkdir()
+        (outdir / "index.html").write_text("results")
+        (outdir / ".private").write_text("hidden")
+        (outdir / "nested").mkdir()
+        (outdir / "nested/index.html").write_text("nested results")
+        (outdir / "no_index").mkdir()
+        outside = self.root / "outside.txt"
+        outside.write_text("private")
+        (outdir / "external.txt").symlink_to(outside)
+        (outdir / "external_dir").symlink_to(self.root, target_is_directory=True)
+        self.state.result_roots["fixture-key"] = outdir
+        server = self.start_server()
+        for path in ("../outside.txt", "%2e%2e/outside.txt", ".private", "external.txt",
+                     "external_dir/outside.txt", "index.html%00", "/index.html", "missing.txt"):
+            with self.subTest(path=path):
+                self.assertEqual(self.request(server, "GET", "/results/fixture-key/" + path)[0], 404)
+        self.assertEqual(self.request(server, "GET", "/results/wrong-key/index.html")[0], 404)
+        self.assertEqual(self.request(server, "GET", "/results/fixture-key/")[0], 200)
+        self.assertEqual(self.request(server, "GET", "/results/fixture-key/nested/")[1], b"nested results")
+        self.assertEqual(self.request(server, "GET", "/results/fixture-key/no_index/")[0], 404)
+        for headers in ({"Host": "example.com"}, {"Origin": "https://example.com"}):
+            self.assertEqual(self.request(server, "GET", "/results/fixture-key/index.html", **headers)[0], 403)
+
+    def test_results_pdf_ranges_head_and_downloads(self):
+        outdir = self.root / "results"
+        outdir.mkdir()
+        payload = b"%PDF-1.4\nreport content\n%%EOF"
+        (outdir / "report.pdf").write_bytes(payload)
+        (outdir / "table.tsv").write_text("sample\tvalue\na\t1\n")
+        self.state.result_roots["fixture-key"] = outdir
+        server = self.start_server()
+        path = "/results/fixture-key/report.pdf"
+        code, content, headers = self.request(server, "GET", path, Range="bytes=0-7")
+        self.assertEqual((code, content), (206, payload[:8]))
+        self.assertEqual(headers["Content-Range"], f"bytes 0-7/{len(payload)}")
+        self.assertEqual(headers["Content-Type"], "application/pdf")
+        code, content, _ = self.request(server, "GET", path, Range="bytes=-5")
+        self.assertEqual((code, content), (206, payload[-5:]))
+        code, content, headers = self.request(server, "HEAD", path)
+        self.assertEqual((code, content), (200, b""))
+        self.assertEqual(int(headers["Content-Length"]), len(payload))
+        for value in ("bytes=999-", "bytes=5-2", "bytes=-0", "bytes=0-1,3-5", "invalid"):
+            with self.subTest(value=value):
+                code, content, headers = self.request(server, "GET", path, Range=value)
+                self.assertEqual((code, content), (416, b""))
+                self.assertEqual(headers["Content-Range"], f"bytes */{len(payload)}")
+        code, content, headers = self.request(server, "GET", "/results/fixture-key/table.tsv")
+        self.assertEqual(code, 200)
+        self.assertTrue(headers["Content-Disposition"].startswith("attachment;"))
+        self.assertIn(b"sample", content)
 
     def test_public_command_registration(self):
         args = build_parser().parse_args(["web"])

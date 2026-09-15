@@ -29,11 +29,11 @@ REGISTRY=ghcr.io
 REPOSITORY=cfarkas/oncotracer
 REFERENCE_PREFIX="$REGISTRY/$REPOSITORY:"
 
-[[ "$SOURCE_REFERENCE" =~ ^ghcr[.]io/cfarkas/oncotracer:v2[.]0[.]0-candidate-[1-9][0-9]*-[1-9][0-9]*$ ]]
+[[ "$SOURCE_REFERENCE" =~ ^ghcr[.]io/cfarkas/oncotracer:v2[.]1[.]0-candidate-[1-9][0-9]*-[1-9][0-9]*$ ]]
 [[ "$EXPECTED_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
 [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]]
 for target_reference in "${TARGET_REFERENCES[@]}"; do
-  [[ "$target_reference" =~ ^ghcr[.]io/cfarkas/oncotracer:(2[.]0[.]0|v2[.]0[.]0)$ ]]
+  [[ "$target_reference" =~ ^ghcr[.]io/cfarkas/oncotracer:(2[.]1[.]0|v2[.]1[.]0)$ ]]
   [[ "$SOURCE_REFERENCE" != "$target_reference" ]]
 done
 if [[ "${#TARGET_REFERENCES[@]}" -eq 2 ]]; then

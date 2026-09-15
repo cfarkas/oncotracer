@@ -301,6 +301,8 @@ class NativeEngineTests(unittest.TestCase):
             self.assertIsNotNone(runner.command)
             command = runner.command or []
             self.assertIn("--native-current-environment", command)
+            self.assertEqual(command[command.index("--outdir") + 1],
+                             str(temporary / "out/02_bam_refinement/diagnostics"))
             python_index = command.index("--python-executable")
             samtools_index = command.index("--samtools-executable")
             self.assertEqual(command[python_index + 1], str(python))
@@ -806,9 +808,11 @@ class NativeEngineTests(unittest.TestCase):
             self.assertNotIn("/media/", status["samples"][0]["error"])
             self.assertFalse(stale.exists())
             self.assertTrue(
-                (ichor_out / "SNC-E" / "SNC-E.correctedDepth.txt").is_file()
+                (ichor_out / "diagnostics" / "SNC-E" / "SNC-E.correctedDepth.txt").is_file()
             )
+            self.assertFalse((ichor_out / "SNC-E").exists())
             self.assertTrue((ichor_out / "SNC-F.correctedDepth.txt").is_file())
+            self.assertTrue((ichor_out / "diagnostics/wigfiles_samples/SNC-F.wig").is_file())
             aggregate = (ichor_out / "all_segments_ichorcna_gistic.seg").read_text(
                 encoding="utf-8"
             )

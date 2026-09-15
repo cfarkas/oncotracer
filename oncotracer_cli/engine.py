@@ -2762,7 +2762,7 @@ def _run_ichorcna_with_assets(
     force: bool,
 ) -> Path:
     ichor_out = samurai_outdir / "results" / "ichorcna"
-    wig_dir = ichor_out / "wigfiles_samples"
+    wig_dir = ichor_out / "diagnostics" / "wigfiles_samples"
     ichor_out.mkdir(parents=True, exist_ok=True)
     wig_dir.mkdir(parents=True, exist_ok=True)
     script = require_file(
@@ -2827,7 +2827,7 @@ def _run_ichorcna_with_assets(
                 ledger.complete(f"ichor-readcounter-{sample.sample}", signature, [wig])
 
             failed_stage = "ichorcna"
-            sample_out = ichor_out / sample.sample
+            sample_out = ichor_out / "diagnostics" / sample.sample
             sample_out.mkdir(parents=True, exist_ok=True)
             command = toolchain.rscript(
                 "ichorcna",
@@ -3006,6 +3006,7 @@ def run_refinement_and_outputs(
     )
     refine_out = outdir / "02_bam_refinement"
     refine_out.mkdir(parents=True, exist_ok=True)
+    refine_work = refine_out / "diagnostics"
     if mode == "illumina":
         binsize = _as_int(config.get("illumina_binsize_kb"), 100)
         dataset = f"illumina_qdnaseq_{binsize}kb"
@@ -3063,7 +3064,7 @@ def run_refinement_and_outputs(
         "--lpwgs-root",
         lpwgs_root,
         "--outdir",
-        refine_out,
+        refine_work,
         "--codification-script",
         codify,
         "--cytoband",
@@ -3106,7 +3107,9 @@ def run_refinement_and_outputs(
     if force:
         command.append("--force")
     runner.run("bam-refinement", command, cwd=root)
-    final_root = refine_out / dataset / "04_final_results"
+    from .results import organize_plot_exports, publish_refinement
+    publish_refinement(refine_out, dataset)
+    final_root = refine_work / dataset / "04_final_results"
     require_file(final_root / "final_segments.tsv", "refined final segments")
     bins_input = require_directory(
         final_root / "cna_cytogenomic_input" / "qdnaseq_bins",
@@ -3173,6 +3176,7 @@ def run_refinement_and_outputs(
         plots_out / "cna_log2_ratio_profiles_all_samples.pdf", "cohort CNA profile PDF"
     )
 
+    organize_plot_exports(plots_out)
     summary_dir = outdir / "06_workflow_summary"
     summary_dir.mkdir(parents=True, exist_ok=True)
     summary = {
@@ -3185,6 +3189,9 @@ def run_refinement_and_outputs(
         "workflow_status": "complete",
         "outdir": str(outdir),
         "bam_refinement": str(refine_out / dataset),
+        "bam_refinement_diagnostics": str(refine_work / dataset),
+        "final_segments": str(refine_out / dataset / "04_final_results/final_segments.tsv"),
+        "refined_bins": str(refine_out / dataset / "01_tables/refined_bins.tsv.gz"),
         "cna_codification": str(codify_out),
         "cna_events": str(events),
         "cna_custom_plots": str(plots_out),
@@ -3912,6 +3919,8 @@ def _run_native_impl(
         )
     _output_lease.validate()
     write_run_manifest(outdir, config_path, trace)
+    from .results import write_results_index
+    write_results_index(outdir)
     _output_lease.validate()
     summary_path = outdir / "06_workflow_summary" / "workflow_summary.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))

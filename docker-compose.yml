@@ -1,6 +1,6 @@
 services:
   oncotracer:
-    image: ghcr.io/cfarkas/oncotracer:2.0.0
+    image: ghcr.io/cfarkas/oncotracer:2.1.0
     volumes:
       # Set ONCOTRACER_PROJECT_DIR to the host project directory. Inside this
       # direct-container example, YAML paths must point below /project.

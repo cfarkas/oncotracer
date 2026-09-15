@@ -30,8 +30,8 @@ the CLI and the complete versioned payload (`bin`, examples, parameter templates
 environment definitions, and stable source-input provenance). The build embeds
 the exact Git commit and deterministic `git archive` SHA-256. At first use,
 payload files are staged and published atomically under
-`$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload`.
-The complete executable SHA-256 gives two different v2.0.0 binaries separate
+`$XDG_CACHE_HOME/oncotracer/2.1.0/<executable-sha256>/payload`.
+The complete executable SHA-256 gives two different v2.1.0 binaries separate
 cache roots and locks.
 
 On every reuse, OncoTracer independently derives the expected payload inventory

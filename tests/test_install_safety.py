@@ -31,7 +31,7 @@ ORIGINAL_ACTIVE_PROCESSES = install_safety._active_processes
 
 
 SOURCE = {
-    "oncotracer_version": "2.0.0",
+    "oncotracer_version": "2.1.0",
     "source_commit": "a" * 40,
     "source_sha256": "b" * 64,
 }
@@ -163,7 +163,7 @@ if not args or args[0] != "build":
     raise SystemExit(93)
 out = pathlib.Path(args[args.index("--output") + 1])
 out.mkdir(parents=True, exist_ok=True)
-wheel = out / "oncotracer-2.0.0-py3-none-any.whl"
+wheel = out / "oncotracer-2.1.0-py3-none-any.whl"
 record = {
     "oncotracer_version": os.environ["FAKE_SOURCE_VERSION"],
     "source_commit": os.environ["FAKE_SOURCE_COMMIT"],
@@ -171,22 +171,22 @@ record = {
     "source_tree_dirty": False,
 }
 files = {
-    "oncotracer_cli/__init__.py": b'__version__ = "2.0.0"\n',
+    "oncotracer_cli/__init__.py": b'__version__ = "2.1.0"\n',
     "oncotracer_cli/cli.py": (
         "import json,sys\n"
         f"record={record!r}\n"
         "def main():\n"
         " a=sys.argv[1:]\n"
-        " if a==['--version']: print('OncoTracer 2.0.0'); return 0\n"
+        " if a==['--version']: print('OncoTracer 2.1.0'); return 0\n"
         " if a==['provenance','--json']: print(json.dumps(record)); return 0\n"
         " return 2\n"
     ).encode(),
     "bin/scripts/native_qdnaseq.R": b"cat('native')\n",
     "environments/native-core.yml": b"name: core\n",
     "provenance/native-v2-sources.json": b"{}\n",
-    "oncotracer-2.0.0.dist-info/METADATA": b"Metadata-Version: 2.1\nName: oncotracer\nVersion: 2.0.0\n",
-    "oncotracer-2.0.0.dist-info/WHEEL": b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
-    "oncotracer-2.0.0.dist-info/entry_points.txt": b"[console_scripts]\noncotracer = oncotracer_cli.cli:main\n",
+    "oncotracer-2.1.0.dist-info/METADATA": b"Metadata-Version: 2.1\nName: oncotracer\nVersion: 2.1.0\n",
+    "oncotracer-2.1.0.dist-info/WHEEL": b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+    "oncotracer-2.1.0.dist-info/entry_points.txt": b"[console_scripts]\noncotracer = oncotracer_cli.cli:main\n",
 }
 rows=[]
 with zipfile.ZipFile(wheel, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -194,7 +194,7 @@ with zipfile.ZipFile(wheel, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(name,data)
         digest=hashlib.sha256(data).digest()
         rows.append((name,"sha256="+base64.urlsafe_b64encode(digest).rstrip(b"=").decode(),str(len(data))))
-    record_name="oncotracer-2.0.0.dist-info/RECORD"
+    record_name="oncotracer-2.1.0.dist-info/RECORD"
     rows.append((record_name,"",""))
     output=io.StringIO(newline="")
     csv.writer(output).writerows(rows)
@@ -294,7 +294,7 @@ else:
         return install_safety.install_sif_managed(
             destination,
             executable=str(self.apptainer),
-            image="ghcr.io/cfarkas/oncotracer:2.0.0",
+            image="ghcr.io/cfarkas/oncotracer:2.1.0",
             force=force,
             dry_run=dry_run,
         )
@@ -1998,7 +1998,7 @@ import pathlib, shutil, sys
 from unittest import mock
 from oncotracer_cli import cli, install_safety
 source = {
-    "oncotracer_version": "2.0.0",
+    "oncotracer_version": "2.1.0",
     "source_commit": "a" * 40,
     "source_sha256": "b" * 64,
 }
@@ -2675,7 +2675,7 @@ class PoetryAuthenticatedSnapshotTests(unittest.TestCase):
             root = Path(directory) / "repository"
             root.mkdir()
             files = {
-                "pyproject.toml": b"[tool.poetry]\nname='oncotracer'\nversion='2.0.0'\n",
+                "pyproject.toml": b"[tool.poetry]\nname='oncotracer'\nversion='2.1.0'\n",
                 "poetry.lock": b"lock-version = '2.1'\n",
                 "README.md": b"readme\n",
                 "oncotracer_cli/cli.py": b"ORIGINAL = True\n",

@@ -12,13 +12,13 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
-from oncotracer_cli import install_safety as safety
+from oncotracer_cli import __version__, install_safety as safety
 from oncotracer_cli.cli import main
 from oncotracer_cli.runtime import OncoTracerError, sha256_file
 from oncotracer_cli.uninstall import uninstall_target
 
 SOURCE = {
-    "oncotracer_version": "2.0.0",
+    "oncotracer_version": __version__,
     "source_commit": "a" * 40,
     "source_sha256": "b" * 64,
 }

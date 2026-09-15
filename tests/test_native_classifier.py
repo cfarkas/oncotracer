@@ -260,10 +260,12 @@ class NativeClassifierTests(unittest.TestCase):
             for missing in ("index.html", "all_sample_CNA_knowledge_reports.pdf"):
                 with self.subTest(missing=missing):
                     path = knowledge_reports / missing
-                    contents = path.read_bytes()
-                    path.unlink()
-                    self.assertFalse(ledger.reusable("classifier-pdf-reports", record["signature"], report_outputs))
-                    path.write_bytes(contents)
+                    held = path.with_name(path.name + ".held")
+                    path.rename(held)
+                    try:
+                        self.assertFalse(ledger.reusable("classifier-pdf-reports", record["signature"], report_outputs))
+                    finally:
+                        held.rename(path)
             classifier_calls = [
                 (stage, containment)
                 for stage, containment, _used_env in runner.containment_calls

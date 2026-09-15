@@ -51,7 +51,7 @@ oncotracer install --conda \
 Stable native image:
 
 ```text
-ghcr.io/cfarkas/oncotracer:2.0.0
+ghcr.io/cfarkas/oncotracer:2.1.0
 ```
 
 Install and run:
@@ -74,7 +74,7 @@ Override an image only for a controlled test:
 ```bash
 oncotracer run \
   --backend docker \
-  --image ghcr.io/cfarkas/oncotracer:2.0.0 \
+  --image ghcr.io/cfarkas/oncotracer:2.1.0 \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
@@ -111,7 +111,7 @@ Choose an explicit SIF location:
 
 ```bash
 oncotracer install --singularity \
-  --sif "/large/storage/containers/oncotracer-2.0.0.sif"
+  --sif "/large/storage/containers/oncotracer-2.1.0.sif"
 ```
 
 Or override it for one run:
@@ -119,7 +119,7 @@ Or override it for one run:
 ```bash
 oncotracer run \
   --backend singularity \
-  --sif "/large/storage/containers/oncotracer-2.0.0.sif" \
+  --sif "/large/storage/containers/oncotracer-2.1.0.sif" \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 

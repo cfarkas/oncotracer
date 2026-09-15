@@ -44,7 +44,7 @@ No classifier is launched for a sample with zero usable modified-CpG calls. Its 
 
 ## What you must provide
 
-The v2.0.0 POD5 route requires an explicit non-empty POD5 directory:
+The v2.1.0 POD5 route requires an explicit non-empty POD5 directory:
 
 ```text
 --pod5-dir /absolute/path/to/pod5_pass
@@ -67,7 +67,7 @@ OncoTracer does not download, install, discover, or update these optional resour
 
 ## Backend restriction
 
-Use `host`, `conda`, or `poetry` with explicit local executable/resource paths. The v2.0.0 Docker and Singularity/Apptainer image deliberately does not redistribute Dorado, Sturgeon, their models, or user-licensed classifier resources, so the CLI rejects optional methylation with those container backends.
+Use `host`, `conda`, or `poetry` with explicit local executable/resource paths. The v2.1.0 Docker and Singularity/Apptainer image deliberately does not redistribute Dorado, Sturgeon, their models, or user-licensed classifier resources, so the CLI rejects optional methylation with those container backends.
 
 ## CNS example: Sturgeon
 

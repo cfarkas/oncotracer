@@ -16,8 +16,8 @@ if [[ "$#" -ne 4 || "$1" != buildx || "$2" != imagetools || "$3" != inspect ]]; 
   exit 99
 fi
 case "$4" in
-  registry.example/oncotracer:2.0.0) prefix=FIRST ;;
-  registry.example/oncotracer:v2.0.0) prefix=SECOND ;;
+  registry.example/oncotracer:2.1.0) prefix=FIRST ;;
+  registry.example/oncotracer:v2.1.0) prefix=SECOND ;;
   *) prefix=SINGLE ;;
 esac
 status_name="${prefix}_STATUS"
@@ -30,8 +30,8 @@ chmod 0755 "$TEMP_ROOT/bin/docker"
 DIGEST_A="sha256:$(printf 'a%.0s' {1..64})"
 DIGEST_B="sha256:$(printf 'b%.0s' {1..64})"
 SINGLE_REF="registry.example/oncotracer:test"
-FIRST_REF="registry.example/oncotracer:2.0.0"
-SECOND_REF="registry.example/oncotracer:v2.0.0"
+FIRST_REF="registry.example/oncotracer:2.1.0"
+SECOND_REF="registry.example/oncotracer:v2.1.0"
 
 run_digest() {
   local expected_status="$1" status=0

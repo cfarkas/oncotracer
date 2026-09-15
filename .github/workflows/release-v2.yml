@@ -16,11 +16,11 @@ permissions:
   packages: write
 
 concurrency:
-  group: release-native-v2.0.0
+  group: release-native-v2.1.0
   cancel-in-progress: false
 
 env:
-  RELEASE_TAG: v2.0.0
+  RELEASE_TAG: v2.1.0
   IMAGE_NAME: ghcr.io/cfarkas/oncotracer
   V1_1_COMMIT: 032c1268fa7fdcadc48087055066d7a9fc59bd89
   V1_DOCKER_IMAGE: carlosfarkas/oncotracer@sha256:4856aed020e1102f891b91de54d6acf365d6b8a57e2283a4f7b670b0bd5b07ed
@@ -205,7 +205,7 @@ jobs:
             2> "$RUNNER_TEMP/existing-release.error" || RELEASE_STATUS=$?
           if [[ "$RELEASE_STATUS" -eq 0 ]]; then
             jq -e --arg sha "$MAIN_SHA" '
-              .tag_name == "v2.0.0" and .draft == false and
+              .tag_name == "v2.1.0" and .draft == false and
               .prerelease == false and .target_commitish == $sha
             ' "$RUNNER_TEMP/existing-release.json"
             RELEASE_EXISTS=true
@@ -243,7 +243,7 @@ jobs:
             --source-sha256 "$SOURCE_SHA256"
           chmod 0755 release/oncotracer
           BINARY_SHA256="$(sha256sum release/oncotracer | awk '{print $1}')"
-          release/oncotracer --version | grep -F 'OncoTracer 2.0.0'
+          release/oncotracer --version | grep -F 'OncoTracer 2.1.0'
           release/oncotracer provenance --json > "$RUNNER_TEMP/binary-provenance.json"
           jq -e --arg commit "$MAIN_SHA" --arg source "$SOURCE_SHA256" --arg binary "$BINARY_SHA256" '
             .source_commit == $commit and .source_sha256 == $source and
@@ -304,8 +304,8 @@ jobs:
           tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
             --mode='u+rwX,go+rX,go-w' --format=gnu \
             -C "$PARITY_DIR" -cf - quickstart1 quickstart2 \
-            | gzip -n -9 > release/oncotracer-v2.0.0-parity-audit.tar.gz
-          PARITY_SHA256="$(sha256sum release/oncotracer-v2.0.0-parity-audit.tar.gz | awk '{print $1}')"
+            | gzip -n -9 > release/oncotracer-v2.1.0-parity-audit.tar.gz
+          PARITY_SHA256="$(sha256sum release/oncotracer-v2.1.0-parity-audit.tar.gz | awk '{print $1}')"
           {
             IFS=$'\t' read -r q1_artifact_id q1_artifact_name q1_artifact_digest <<< "$Q1_RECORD"
             IFS=$'\t' read -r q2_artifact_id q2_artifact_name q2_artifact_digest <<< "$Q2_RECORD"
@@ -372,14 +372,14 @@ jobs:
           context: ${{ runner.temp }}/oncotracer-v2-release-context
           load: true
           push: false
-          tags: oncotracer:v2.0.0-release-candidate
+          tags: oncotracer:v2.1.0-release-candidate
           build-args: |
             SOURCE_COMMIT=${{ steps.gate.outputs.main_sha }}
             SOURCE_SHA256=${{ steps.source.outputs.source_sha256 }}
           labels: |
             org.opencontainers.image.revision=${{ steps.gate.outputs.main_sha }}
             org.opencontainers.image.source.sha256=${{ steps.source.outputs.source_sha256 }}
-            org.opencontainers.image.version=2.0.0
+            org.opencontainers.image.version=2.1.0
 
       - name: Authenticate candidate and classify stable container state
         if: steps.gate.outputs.ready == 'true'
@@ -391,8 +391,8 @@ jobs:
           RELEASE_BINARY_SHA256: ${{ steps.binary.outputs.sha256 }}
         run: |
           set -Eeuo pipefail
-          docker run --rm oncotracer:v2.0.0-release-candidate --version | grep -F 'OncoTracer 2.0.0'
-          docker run --rm oncotracer:v2.0.0-release-candidate provenance --json \
+          docker run --rm oncotracer:v2.1.0-release-candidate --version | grep -F 'OncoTracer 2.1.0'
+          docker run --rm oncotracer:v2.1.0-release-candidate provenance --json \
             > "$RUNNER_TEMP/container-provenance.json"
           CONTAINER_BINARY_SHA256="$(jq -r '.binary_sha256' "$RUNNER_TEMP/container-provenance.json")"
           test "$CONTAINER_BINARY_SHA256" = "$RELEASE_BINARY_SHA256"
@@ -400,16 +400,16 @@ jobs:
             .source_commit == $commit and .source_sha256 == $source and
             .source_tree_dirty == false
           ' "$RUNNER_TEMP/container-provenance.json"
-          docker run --rm oncotracer:v2.0.0-release-candidate doctor --backend host --json \
+          docker run --rm oncotracer:v2.1.0-release-candidate doctor --backend host --json \
             > "$RUNNER_TEMP/container-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/container-doctor.json"
-          docker run --rm --entrypoint bash oncotracer:v2.0.0-release-candidate \
+          docker run --rm --entrypoint bash oncotracer:v2.1.0-release-candidate \
             -c '! command -v nextflow'
 
           CURRENT_MAIN="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           test "$CURRENT_MAIN" = "$MAIN_SHA"
-          CANDIDATE_TAG="$IMAGE_NAME:v2.0.0-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          docker tag oncotracer:v2.0.0-release-candidate "$CANDIDATE_TAG"
+          CANDIDATE_TAG="$IMAGE_NAME:v2.1.0-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker tag oncotracer:v2.1.0-release-candidate "$CANDIDATE_TAG"
           docker push "$CANDIDATE_TAG"
           CANDIDATE_DIGEST="$(scripts/release_registry_digest.sh "$CANDIDATE_TAG")"
           [[ "$CANDIDATE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
@@ -424,10 +424,10 @@ jobs:
           # On the first run this intentionally stops after the candidate push;
           # an administrator can make the package Public and retry the workflow.
           test "$CANDIDATE_TAG" = \
-            "ghcr.io/cfarkas/oncotracer:v2.0.0-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          docker image rm "ghcr.io/cfarkas/oncotracer:v2.0.0-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            "ghcr.io/cfarkas/oncotracer:v2.1.0-candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker image rm "ghcr.io/cfarkas/oncotracer:v2.1.0-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           if docker image inspect \
-            "ghcr.io/cfarkas/oncotracer:v2.0.0-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            "ghcr.io/cfarkas/oncotracer:v2.1.0-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             >/dev/null 2>&1; then
             echo "run-owned candidate tag is still available locally" >&2
             exit 1
@@ -440,7 +440,7 @@ jobs:
             DOCKER_CONFIG="$ANONYMOUS_DOCKER_CONFIG" \
             docker pull "$CANDIDATE_IMAGE"
           test ! -e "$ANONYMOUS_DOCKER_CONFIG/config.json"
-          docker run --rm "$CANDIDATE_IMAGE" --version | grep -F 'OncoTracer 2.0.0'
+          docker run --rm "$CANDIDATE_IMAGE" --version | grep -F 'OncoTracer 2.1.0'
           ANONYMOUS_BINARY_SHA256="$(docker run --rm --entrypoint sha256sum \
             "$CANDIDATE_IMAGE" /usr/local/bin/oncotracer | awk 'NR == 1 {print $1}')"
           test "$ANONYMOUS_BINARY_SHA256" = "$RELEASE_BINARY_SHA256"
@@ -468,7 +468,7 @@ jobs:
             --username "$GITHUB_ACTOR" --password-stdin
 
           REGISTRY_STATE="$(scripts/release_registry_pair.sh \
-            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+            "$IMAGE_NAME:2.1.0" "$IMAGE_NAME:v2.1.0")"
           IFS=$'\t' read -r STABLE_STATE STABLE_FIELD2 STABLE_FIELD3 \
             STABLE_FIELD4 STABLE_EXTRA <<< "$REGISTRY_STATE"
           test -z "$STABLE_EXTRA"
@@ -491,10 +491,10 @@ jobs:
               IMAGE_DIGEST="$STABLE_FIELD4"
               [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
               if [[ ! (
-                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:2.0.0" &&
-                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" ||
-                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" &&
-                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:2.0.0"
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:2.1.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v2.1.0" ||
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v2.1.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:2.1.0"
               ) ]]; then
                 echo "invalid partial stable registry state: $REGISTRY_STATE" >&2
                 exit 1
@@ -509,7 +509,7 @@ jobs:
 
           PUBLISHED_IMAGE="$IMAGE_NAME@$IMAGE_DIGEST"
           docker pull "$PUBLISHED_IMAGE"
-          docker run --rm "$PUBLISHED_IMAGE" --version | grep -F 'OncoTracer 2.0.0'
+          docker run --rm "$PUBLISHED_IMAGE" --version | grep -F 'OncoTracer 2.1.0'
           PUBLISHED_BINARY_SHA256="$(docker run --rm --entrypoint sha256sum \
             "$PUBLISHED_IMAGE" /usr/local/bin/oncotracer | awk 'NR == 1 {print $1}')"
           [[ "$PUBLISHED_BINARY_SHA256" =~ ^[0-9a-f]{64}$ ]]
@@ -544,7 +544,7 @@ jobs:
             "$IMAGE_DIGEST"
 
           AUTHENTICATED_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
-            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+            "$IMAGE_NAME:2.1.0" "$IMAGE_NAME:v2.1.0")"
           test "$AUTHENTICATED_REGISTRY_STATE" = "$REGISTRY_STATE" || {
             echo "stable registry state changed during authentication" >&2
             exit 1
@@ -605,8 +605,8 @@ jobs:
             --arg q2_artifact_digest "$Q2_ARTIFACT_DIGEST" '
             {
               schema: "oncotracer-v2-release-provenance-v3",
-              version: "2.0.0",
-              release_tag: "v2.0.0",
+              version: "2.1.0",
+              release_tag: "v2.1.0",
               source_commit: $commit,
               source_sha256: $source_sha256,
               source_tree_dirty: false,
@@ -645,9 +645,16 @@ jobs:
             }
           ' > release/release-provenance.json
           cat > "$RUNNER_TEMP/RELEASE_NOTES.md" <<EOF
-          # OncoTracer v2.0.0
+          # OncoTracer v2.1.0
 
-          Native, copied-executable OncoTracer release with no Nextflow dependency in the v2 runtime.
+          Local browser setup and results dashboards, clearer matched HTML/PDF knowledge reports,
+          and safer setup/uninstall recovery. The copied executable runs the native workflow
+          without a Nextflow dependency.
+
+          - Choose ONT or Illumina, review detected FASTQs, label samples, and save or run from the local browser.
+          - Open organized result dashboards with final CNA tables, plots, reports, and retained diagnostics.
+          - Knowledge HTML/PDF reports and their shared sample indexes are under \`04_cna_custom_plots/llm_reports/\`.
+          - Existing v2.0.0 releases and versioned tool installations are preserved.
 
           Validated on exact commit: \`$MAIN_SHA\`
 
@@ -659,7 +666,7 @@ jobs:
           EOF
           (
             cd release
-            sha256sum oncotracer oncotracer-v2.0.0-parity-audit.tar.gz \
+            sha256sum oncotracer oncotracer-v2.1.0-parity-audit.tar.gz \
               release-provenance.json > SHA256SUMS
             sha256sum --strict -c SHA256SUMS
           )
@@ -706,10 +713,10 @@ jobs:
               ;;
             partial)
               if [[ ! (
-                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:2.0.0" &&
-                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" ||
-                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v2.0.0" &&
-                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:2.0.0"
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:2.1.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:v2.1.0" ||
+                "$PRESENT_STABLE_TAG" == "$IMAGE_NAME:v2.1.0" &&
+                "$MISSING_STABLE_TAG" == "$IMAGE_NAME:2.1.0"
               ) ]]; then
                 echo "invalid captured partial stable registry state" >&2
                 exit 1
@@ -727,7 +734,7 @@ jobs:
           # permanent mutation. Any source advance or stable-tag change fails
           # closed instead of publishing from a stale classification.
           PREPUBLISH_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
-            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+            "$IMAGE_NAME:2.1.0" "$IMAGE_NAME:v2.1.0")"
           test "$PREPUBLISH_REGISTRY_STATE" = "$EXPECTED_REGISTRY_STATE" || {
             echo "stable registry state changed after prepublication acceptance" >&2
             exit 1
@@ -738,7 +745,7 @@ jobs:
             missing)
               bash scripts/release_registry_put_if_absent.sh \
                 "$CANDIDATE_TAG" "$IMAGE_DIGEST" "$MAIN_SHA" \
-                "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0"
+                "$IMAGE_NAME:2.1.0" "$IMAGE_NAME:v2.1.0"
               ;;
             partial)
               bash scripts/release_registry_put_if_absent.sh \
@@ -750,7 +757,7 @@ jobs:
           esac
 
           FINAL_REGISTRY_STATE="$(scripts/release_registry_pair.sh \
-            "$IMAGE_NAME:2.0.0" "$IMAGE_NAME:v2.0.0")"
+            "$IMAGE_NAME:2.1.0" "$IMAGE_NAME:v2.1.0")"
           printf -v EXPECTED_FINAL_REGISTRY_STATE 'existing\t%s' "$IMAGE_DIGEST"
           test "$FINAL_REGISTRY_STATE" = "$EXPECTED_FINAL_REGISTRY_STATE"
 
@@ -771,7 +778,7 @@ jobs:
           test "$(stat -c '%a' -- "$ACCEPTED_RELEASE")" = 500
           assets=(
             "$ACCEPTED_RELEASE/oncotracer"
-            "$ACCEPTED_RELEASE/oncotracer-v2.0.0-parity-audit.tar.gz"
+            "$ACCEPTED_RELEASE/oncotracer-v2.1.0-parity-audit.tar.gz"
             "$ACCEPTED_RELEASE/release-provenance.json"
             "$ACCEPTED_RELEASE/SHA256SUMS"
           )
@@ -781,13 +788,13 @@ jobs:
             test "$(stat -c '%h' -- "$asset")" -eq 1
             test "$(stat -c '%a' -- "$asset")" = 400
           done
-          expected_assets='["SHA256SUMS","oncotracer","oncotracer-v2.0.0-parity-audit.tar.gz","release-provenance.json"]'
+          expected_assets='["SHA256SUMS","oncotracer","oncotracer-v2.1.0-parity-audit.tar.gz","release-provenance.json"]'
           if [[ "$RELEASE_EXISTS" == true ]]; then
             gh api -H 'Accept: application/vnd.github+json' \
               "/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
               > "$RUNNER_TEMP/existing-release-before-upload.json"
             jq -e --arg sha "$MAIN_SHA" --argjson expected "$expected_assets" '
-              .tag_name == "v2.0.0" and .draft == false and
+              .tag_name == "v2.1.0" and .draft == false and
               .prerelease == false and .target_commitish == $sha and
               ([.assets[].name] | length) == ([.assets[].name] | unique | length) and
               (([.assets[].name] - $expected) | length) == 0
@@ -822,11 +829,11 @@ jobs:
                 --repo "$GITHUB_REPOSITORY"
             fi
             gh release edit "$RELEASE_TAG" --target "$MAIN_SHA" \
-              --title 'OncoTracer v2.0.0' --notes-file "$RUNNER_TEMP/RELEASE_NOTES.md" \
+              --title 'OncoTracer v2.1.0' --notes-file "$RUNNER_TEMP/RELEASE_NOTES.md" \
               --latest --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$RELEASE_TAG" "${assets[@]}" \
-              --target "$MAIN_SHA" --title 'OncoTracer v2.0.0' \
+              --target "$MAIN_SHA" --title 'OncoTracer v2.1.0' \
               --notes-file "$RUNNER_TEMP/RELEASE_NOTES.md" --latest \
               --repo "$GITHUB_REPOSITORY"
           fi
@@ -835,10 +842,10 @@ jobs:
             --json tagName,isDraft,isPrerelease,targetCommitish,assets \
             > "$RUNNER_TEMP/published-release.json"
           jq -e --arg sha "$MAIN_SHA" '
-            .tagName == "v2.0.0" and .isDraft == false and
+            .tagName == "v2.1.0" and .isDraft == false and
             .isPrerelease == false and .targetCommitish == $sha and
             ([.assets[].name] | sort) ==
-              (["SHA256SUMS","oncotracer","oncotracer-v2.0.0-parity-audit.tar.gz","release-provenance.json"] | sort)
+              (["SHA256SUMS","oncotracer","oncotracer-v2.1.0-parity-audit.tar.gz","release-provenance.json"] | sort)
           ' "$RUNNER_TEMP/published-release.json"
           for asset in "${assets[@]}"; do
             name="${asset##*/}"

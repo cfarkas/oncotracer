@@ -6,8 +6,8 @@ authors:
     given-names: "Carlos"
 repository-code: "https://github.com/cfarkas/oncotracer"
 url: "https://github.com/cfarkas/oncotracer"
-date-released: "2026-08-04"
-version: "2.0.0"
+date-released: "2026-09-15"
+version: "2.1.0"
 abstract: "OncoTracer is a native, auditable application for reproducible LP-WGS copy-number alteration analysis from ONT and Illumina data."
 keywords:
   - "LP-WGS"
