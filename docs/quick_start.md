@@ -45,57 +45,56 @@ a new demultiplexing step.
 
 ## 2. Set up interactively (recommended)
 
-Choose Illumina or ONT, or follow both sections using their separate project folders.
-Setup asks for missing answers and saves `config/run.yml`. It does not start analysis
-or download genomes. `--threads 4` requests four CPU workers.
+Choose Illumina or ONT, or follow both using separate project folders.
+The terminal wizard scans the supplied folder and asks you to review samples,
+analysis settings, hardware, backend and reference choice.
 
 ### Illumina
 
 ```bash
 cd /path/to/my/analyses_dir/
 oncotracer setup --project "$PWD/oncotracer-quickstart1/illumina" \
-  --mode illumina --threads 4
+  --mode illumina --input-folder "$PWD/oncotracer-quickstart1/input/illumina"
 ```
 
-Example answers (replace `/path/to/my/analyses_dir/` with your actual directory):
-
-```text
-Analysis (--analysis; cna=copy-number) (cna/methylation/both) [cna]: cna
-Sample name (--sample-name): ERR12341627
-Read 1 FASTQ (--fastq-1): /path/to/my/analyses_dir/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz
-Read 2 FASTQ (--fastq-2; Enter for single-end): /path/to/my/analyses_dir/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz
-```
+1. Include the detected paired-end library; keep its name `ERR12341627`.
+2. Choose sample type `cancer` and copy-number analysis (`cna`).
+3. Review CPU/RAM/GPU information and choose threads, for example `4`, then keep
+   100 kb bins for qDNAseq.
+4. Leave optional CNA interpretation reports off, choose backend `conda` and
+   reference `download`, then choose **save** to continue to step 3.
 
 ### ONT
 
 ```bash
 cd /path/to/my/analyses_dir/
 oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
-  --mode ont --threads 4
+  --mode ont --input-folder "$PWD/oncotracer-quickstart1/input/fastq_pass"
 ```
 
-Example answers:
+1. Include `barcode01` and name it `DRR165691`.
+2. Choose sample type `cancer` and analysis `cna`.
+3. Review hardware and choose threads, for example `4`, then caller `ichorcna`
+   (500 kb bins).
+4. Leave optional CNA interpretation reports off, choose `conda`, reference
+   `download`, then **save**.
 
-```text
-Analysis (--analysis; cna=copy-number) (cna/methylation/both) [cna]: cna
-FASTQ parent folder (--reads-folder): /path/to/my/analyses_dir/oncotracer-quickstart1/input/fastq_pass
-FASTQ folder: /path/to/my/analyses_dir/oncotracer-quickstart1/input/fastq_pass
-Available folders: barcode01
-Barcode folders to include, comma separated (--barcodes): barcode01
-Sample names in the same order (--sample-names) [barcode01]: DRR165691
-```
+The sample type above is example metadata, not a diagnosis. Enter accepts a
+shown default. At path prompts, use actual paths without quotes; `$PWD` expands
+in shell commands, not typed answers.
 
-At prompts, enter actual paths without quotes; `$PWD` is expanded in shell commands,
-not in your typed answers. Enter accepts the displayed default.
+Setup saves `config/run.yml` and sample metadata. **Save** starts no analysis or
+genome download; **run** starts directly from the wizard instead of step 3.
+Setup never overwrites a configuration; edit the YAML to change saved settings.
 
-For scripts, [supply answers as flags with `--non-interactive`](setup.md#optional-scripted-setup-without-prompts).
-That flag skips questions, accepts defaults and errors on missing required inputs.
-Leave it off for interactive setup. To change saved settings, edit `config/run.yml`;
-setup never overwrites it.
+For scripts, [supply answers with `--non-interactive`](setup.md#optional-scripted-setup-without-prompts).
+It skips questions, uses flags/defaults and errors on missing required inputs.
+Omit it for the interactive wizard. [Your own samples](setup.md) shows control
+roles, methylation options and manual input paths.
 
 ## Optional: reuse prepared genome indexes
 
-By default, run downloads prebuilt indexes automatically: about 8.0 GiB for Illumina
+With the default download choice, run downloads prebuilt indexes automatically: about 8.0 GiB for Illumina
 and 9.7 GiB for ONT, under each project's `reference/` folder. Completed downloads
 are reused. **No reference flag is needed** for the steps above.
 
@@ -107,7 +106,8 @@ commands **instead of the corresponding step 2 command**, before creating its co
 ```bash
 cd /path/to/my/analyses_dir/
 oncotracer setup --project "$PWD/oncotracer-quickstart1/illumina" \
-  --mode illumina --threads 4 --hg38_build /data/shared-reference
+  --mode illumina --input-folder "$PWD/oncotracer-quickstart1/input/illumina" \
+  --hg38_build /data/shared-reference
 ```
 
 ### ONT with an existing reference
@@ -115,7 +115,8 @@ oncotracer setup --project "$PWD/oncotracer-quickstart1/illumina" \
 ```bash
 cd /path/to/my/analyses_dir/
 oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
-  --mode ont --threads 4 --hg38_build /data/shared-reference
+  --mode ont --input-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
+  --hg38_build /data/shared-reference
 ```
 
 Answer the same prompts from step 2, then continue with step 3. Replace
@@ -124,7 +125,9 @@ Answer the same prompts from step 2, then continue with step 3. Replace
 indexes and manifests. Illumina needs BWA indexes; ONT needs minimap2. One reference
 shared between platforms needs both.
 
-`--hg38_build` **without a path** means automatic download, just like omitting it.
+`--hg38_build` **without a path** selects automatic download. In the wizard,
+choosing `reuse` and entering the prepared reference path has the same effect
+as supplying that path in these commands.
 To build locally, replace `--hg38_build /data/shared-reference` in either example
 with `--build_reference`. Run then downloads source files as needed and builds
 indexes on CPU. Choose one option. Local indexing needs more RAM, temporary disk

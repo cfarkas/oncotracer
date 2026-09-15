@@ -86,21 +86,32 @@ class DocumentedWorkflowTests(unittest.TestCase):
 
     def steps(self, text, base, expected):
         configured, checked, planned = [], [], []
-        # Consume the actual guide's transcript: prompt spelling and order must
-        # match the CLI, and answer paths use the same temporary input fixtures.
-        answers = iter(
-            line.split(": ", 1)
-            for block in re.findall(r"```text\n(.*?)```", text, re.DOTALL)
-            for line in block.splitlines()
-            if "(--" in line and ": " in line
-        )
+        # Follow the guide's choices through the real terminal wizard. Deeper
+        # prompt validation and alternate routes live in test_wizard.py.
+        names = iter(())
 
         def answer_prompt(prompt):
-            documented = next(answers, None)
-            self.assertIsNotNone(documented, f"No documented answer for {prompt!r}")
-            label, answer = documented
-            self.assertEqual(prompt, label + ": ")
-            return self.remap(answer, base)
+            if prompt.startswith("Sample name ["):
+                name = next(names, None)
+                self.assertIsNotNone(name, "Wizard discovered more samples than documented")
+                return name
+            if prompt.startswith("Type for "):
+                return "cancer"
+            answers = {
+                "Samples to include (numbers, ranges, or all)": "",
+                "Analysis (--analysis; cna=copy-number)": "cna",
+                "CPU threads (--threads)": "",
+                "ONT CNA method": "ichorcna",
+                "CNA bin size (kb)": "100",
+                "Add CNA interpretation reports?": "no",
+                "Analysis tools (--backend)": "conda",
+                "hg38 reference": "download",
+                "Final action": "save",
+            }
+            for label, answer in answers.items():
+                if prompt.startswith(label + " [") or prompt.startswith(label + " ("):
+                    return answer
+            self.fail(f"Unexpected wizard question: {prompt!r}")
 
         for command in self.commands(text):
             args = [self.remap(arg, base) for arg in command[1:]]
@@ -109,6 +120,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
             if action == "setup":
                 project = Path(args[args.index("--project") + 1])
                 configured.append(project / "config/run.yml")
+                names = iter(expected[len(configured) - 1])
             elif action == "auto":
                 config_dir = Path(args[args.index("--config-dir") + 1])
                 mode = args[args.index("--mode") + 1]
@@ -123,12 +135,13 @@ class DocumentedWorkflowTests(unittest.TestCase):
             with patch("builtins.input", side_effect=answer_prompt):
                 code, output = self.cli(*args)
             self.assertEqual(code, 0, f"{shlex.join(command)}\n{output}")
+            if action == "setup" and "--input-folder" in args:
+                self.assertIsNone(next(names, None), "Wizard omitted a documented sample")
             if action == "check":
                 checked.append(Path(args[args.index("--config") + 1]))
                 self.assertEqual(json.loads(output)["plan"]["samples"], expected[len(checked) - 1])
             elif action == "run":
                 planned.append(Path(args[args.index("--config") + 1]))
-        self.assertIsNone(next(answers, None), "Unused answer in documented setup transcript")
         self.assertEqual(len(configured), len(expected))
         self.assertEqual(configured, checked)
         self.assertEqual(configured, planned)

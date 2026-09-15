@@ -179,7 +179,7 @@ class SetupTests(unittest.TestCase):
                 ]
             )
             with patch("builtins.input", side_effect=lambda prompt: next(answers)):
-                code, output = self.cli("setup")
+                code, output = self.cli("setup", "--manual")
             self.assertEqual(code, 0, output)
             self.assertTrue((fixture.root / "study/config/run.yml").is_file())
 

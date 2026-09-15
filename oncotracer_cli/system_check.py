@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import math
 import os
 import platform
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -52,8 +55,97 @@ def _cgroup_paths(proc: Path, cgroup: Path, controller: str) -> list[Path]:
     return list(dict.fromkeys(roots))
 
 
+
+def _inspect_gpus() -> dict:
+    """Read the NVIDIA driver inventory without initializing a GPU workload."""
+    executable = shutil.which("nvidia-smi")
+    result = {
+        "gpus": [],
+        "gpu_detection_status": "unavailable",
+        "gpu_note": "NVIDIA GPU inventory unavailable: nvidia-smi was not found. Other GPU vendors are not inspected.",
+    }
+    if executable is None:
+        return result
+    command = [
+        executable,
+        "--query-gpu=index,name,memory.total,memory.free",
+        "--format=csv,noheader,nounits",
+    ]
+    try:
+        completed = subprocess.run(
+            command, capture_output=True, text=True, timeout=3, check=False
+        )
+    except subprocess.TimeoutExpired:
+        result.update(
+            gpu_detection_status="failed",
+            gpu_note="NVIDIA GPU inventory timed out after 3 seconds.",
+        )
+        return result
+    except (OSError, UnicodeError):
+        result.update(
+            gpu_detection_status="failed",
+            gpu_note="NVIDIA GPU inventory could not be read.",
+        )
+        return result
+    if completed.returncode:
+        result.update(
+            gpu_detection_status="failed",
+            gpu_note=f"NVIDIA GPU inventory failed (exit code {completed.returncode}); check the NVIDIA driver separately.",
+        )
+        return result
+
+    def memory_bytes(value):
+        try:
+            amount = int(value.strip())
+            return amount * 1024**2 if amount >= 0 else None
+        except ValueError:
+            return None
+
+    devices = []
+    try:
+        for row in csv.reader(io.StringIO(completed.stdout)):
+            if not row:
+                continue
+            if len(row) != 4 or not row[0].strip().isdigit() or not row[1].strip():
+                raise ValueError("unrecognized GPU inventory row")
+            devices.append({
+                "index": int(row[0].strip()),
+                "name": row[1].strip(),
+                "memory_total_bytes": memory_bytes(row[2]),
+                "memory_free_bytes": memory_bytes(row[3]),
+            })
+    except (ValueError, csv.Error):
+        result.update(
+            gpu_detection_status="failed",
+            gpu_note="NVIDIA GPU inventory returned an unrecognized format.",
+        )
+        return result
+    result["gpus"] = devices
+    if devices:
+        result.update(
+            gpu_detection_status="detected",
+            gpu_note="NVIDIA driver inventory only; CUDA access and model compatibility are not tested. GPU processing core counts are not reported.",
+        )
+        visibility = [
+            f"{name}={os.environ[name][:256]!r}"
+            for name in ("CUDA_VISIBLE_DEVICES", "NVIDIA_VISIBLE_DEVICES")
+            if name in os.environ
+        ]
+        if visibility:
+            result["gpu_note"] += (
+                " Visibility settings: " + ", ".join(visibility)
+                + "; listed GPUs may not all be accessible to this process."
+            )
+    else:
+        result["gpu_note"] = "No NVIDIA GPUs were reported by the driver. Other GPU vendors are not inspected."
+    return result
+
+
 def inspect_hardware(
-    *, proc: Path = Path("/proc"), cgroup: Path = Path("/sys/fs/cgroup")
+    *,
+    proc: Path = Path("/proc"),
+    cgroup: Path = Path("/sys/fs/cgroup"),
+    include_gpus: bool = False,
 ) -> dict:
     memory = {}
     try:
@@ -84,7 +176,7 @@ def inspect_hardware(
                     available = min(available, limit)
     try:
         cpus = len(os.sched_getaffinity(0))
-    except AttributeError:
+    except (AttributeError, OSError):
         cpus = os.cpu_count() or 1
     for root in _cgroup_paths(proc, cgroup, "cpu"):
         try:
@@ -109,6 +201,11 @@ def inspect_hardware(
         "cgroup_memory_limits_bytes": sorted(set(limits)),
         "swap_total_bytes": memory.get("SwapTotal"),
         "swap_note": "Host swap is informational; it is not counted as available RAM or guaranteed container memory.",
+        **(_inspect_gpus() if include_gpus else {
+            "gpus": [],
+            "gpu_detection_status": "not_checked",
+            "gpu_note": "GPU inventory was not requested; use oncotracer system or interactive setup to inspect GPUs.",
+        }),
     }
 
 
@@ -235,7 +332,7 @@ def resource_report(
             )
     if methylation and not config.get("methylation_modbam"):
         warnings.append(
-            "Raw POD5 basecalling can be very slow on CPU. This check does not test CUDA, GPU availability, or model compatibility."
+            "Raw POD5 basecalling can be very slow on CPU. The GPU inventory does not test CUDA access or model compatibility."
         )
     return {
         "schema": "oncotracer-system-v1",
@@ -249,7 +346,14 @@ def resource_report(
         "disk": disks,
         "capabilities": capabilities,
         "warnings": warnings,
-        "limits": "Read-only planning estimates, not measured peak requirements or a guarantee. Tool installation, sample size, coverage, model suitability, permissions and container runtime limits need separate checks. No analysis, downloads, GPU calls or system changes were made.",
+        "limits": (
+            "Read-only planning estimates, not measured peak requirements or a guarantee. "
+            "Tool installation, sample size, coverage, model suitability, permissions "
+            "and container runtime limits need separate checks. "
+            + ("No analysis, downloads, GPU calls or system changes were made."
+               if hardware.get("gpu_detection_status", "not_checked") == "not_checked"
+               else "No analysis, downloads, GPU workloads or system changes were made.")
+        ),
     }
 
 
@@ -264,6 +368,19 @@ def print_resource_report(report: dict) -> None:
     print(
         f"System: {hardware['os']} {hardware['architecture']}; {hardware['cpu_workers_available']} CPU workers; {ram}"
     )
+    devices = hardware.get("gpus", [])
+    if devices:
+        print(f"NVIDIA GPUs reported by driver: {len(devices)}")
+    for gpu in devices:
+        total = gpu.get("memory_total_bytes")
+        free = gpu.get("memory_free_bytes")
+        memory = (
+            f"{total / GIB:.1f} GiB VRAM total" if total is not None else "VRAM unknown"
+        )
+        if free is not None:
+            memory += f", {free / GIB:.1f} GiB free"
+        print(f"  GPU {gpu['index']}: {gpu['name']}; {memory}")
+    print(hardware.get("gpu_note", "GPU inventory was not provided."))
     found = ", ".join(
         name for name, executable in report["backends_found"].items() if executable
     )
@@ -297,7 +414,9 @@ def command_system(args: argparse.Namespace) -> int:
         if args.config
         else {}
     )
-    report = resource_report(config, path=Path(args.path))
+    report = resource_report(
+        config, path=Path(args.path), hardware=inspect_hardware(include_gpus=True)
+    )
     if args.json:
         print(json.dumps(report, indent=2))
     else:

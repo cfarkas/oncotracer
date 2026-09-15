@@ -207,6 +207,18 @@ def _existing_hg38_parent(path: Path, mode: str) -> Path:
 
 def command_setup(args: argparse.Namespace) -> int:
     try:
+        explicit_samples = any((args.samplesheet, args.fastq_1, args.fastq_2, args.sample_name,
+                                args.barcodes, args.sample_names, args.status))
+        resuming = (args.run and args.project and
+                    (Path(args.project).expanduser() / "config/run.yml").is_file())
+        if args.input_folder and args.reads_folder:
+            raise OncoTracerError("choose --input-folder or --reads-folder, not both")
+        if args.input_folder and (args.non_interactive or args.manual or explicit_samples):
+            raise OncoTracerError("--input-folder uses the interactive folder wizard; omit --non-interactive, --manual and explicit sample flags")
+        if not args.non_interactive and not args.manual and not explicit_samples and not resuming:
+            from .wizard import command_wizard
+
+            return command_wizard(args)
         return _command_setup(args)
     except OSError as error:
         raise OncoTracerError(
@@ -259,7 +271,7 @@ def _command_setup(args: argparse.Namespace) -> int:
         existing = Path(args.project).expanduser().resolve() / "config/run.yml"
         if existing.is_file():
             selection = ("mode", "analysis", "hg38_build", "reference_root", "build_reference",
-                         "reference_cache", "reads_folder", "barcodes", "sample_names",
+                         "reference_cache", "input_folder", "reads_folder", "barcodes", "sample_names",
                          "samplesheet", "sample_name", "fastq_1", "fastq_2", "status",
                          "classifier", "modbam", "pod5_dir", "resources", "gpu",
                          "accept_sturgeon_license", *EXECUTABLES, *RESOURCE_FLAGS,
@@ -335,7 +347,11 @@ def _command_setup(args: argparse.Namespace) -> int:
     )
     config_path = project / "config" / "run.yml"
     sheet = project / "config" / "samplesheet.csv"
-    for path in (config_path, sheet):
+    metadata_path = project / "config" / "sample_metadata.csv"
+    protected = [config_path, sheet]
+    if getattr(args, "_wizard_metadata", None):
+        protected.append(metadata_path)
+    for path in protected:
         if path.exists() or path.is_symlink():
             raise OncoTracerError(
                 f"setup will not overwrite {path}; choose a new --project or edit the existing YAML"
@@ -370,7 +386,10 @@ def _command_setup(args: argparse.Namespace) -> int:
         raise OncoTracerError("--threads must be positive")
     sample_rows = None
     if mode == "illumina":
-        if args.samplesheet:
+        if getattr(args, "_wizard_rows", None):
+            sample_rows = args._wizard_rows
+            values["illumina_samplesheet"] = str(sheet)
+        elif args.samplesheet:
             supplied = require_file(Path(args.samplesheet), "Illumina samplesheet")
             parse_illumina_samplesheet(supplied)
             values["illumina_samplesheet"] = str(supplied)
@@ -445,8 +464,10 @@ def _command_setup(args: argparse.Namespace) -> int:
             ont_caller="ichorcna",
             ont_binsize_kb=500,
         )
+        values.update(getattr(args, "_wizard_values", {}))
         samples = parse_ont_samples(values)
         _check_ont_fastqs(samples)
+    values.update(getattr(args, "_wizard_values", {}))
     if analysis != "cna":
         classifier = _ask(
             args.classifier,
@@ -580,11 +601,19 @@ def _command_setup(args: argparse.Namespace) -> int:
             writer = csv.writer(handle)
             writer.writerow(["sample", "fastq_1", "fastq_2", "status"])
             writer.writerows(sample_rows)
+    if getattr(args, "_wizard_metadata", None):
+        with metadata_path.open("x", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=["sample", "sample_type", "analysis_role", "fastq_files"])
+            writer.writeheader()
+            writer.writerows(args._wizard_metadata)
+        values["sample_metadata"] = str(metadata_path)
     with config_path.open("x", encoding="utf-8") as handle:
         handle.write(_render_config(values))
     print(
         f"\nConfiguration saved: {config_path}\nInputs stay in their existing folders. Results will be written to: {values['outdir']}"
     )
+    if getattr(args, "_wizard_metadata", None):
+        return 0
     if getattr(args, "run", False):
         return _run_setup(config_path, args)
     print("Start the analysis (validation runs automatically):")
@@ -747,9 +776,9 @@ def add_setup_commands(subparsers) -> None:
         "setup",
         help="Create a readable configuration (interactive by default)",
         description=(
-            "Create a configuration by answering prompts. Supplied flags fill in "
-            "answers; --non-interactive skips prompts and uses defaults where available. "
-            "Add --run to validate, prepare tools, and start the analysis."
+            "Scan a FASTQ folder, select samples and types, choose analysis settings, "
+            "then save or run. Supplied flags fill in answers. Use --manual for "
+            "per-file prompts or --non-interactive with explicit sample flags for scripts."
         ),
     )
     reference_options = parser.add_mutually_exclusive_group()
@@ -781,6 +810,14 @@ def add_setup_commands(subparsers) -> None:
         "--project", help="project folder to create (config/, reference/, results/)"
     )
     parser.add_argument(
+        "--input-folder", metavar="PATH",
+        help="FASTQ folder to scan in the interactive wizard (either platform)",
+    )
+    parser.add_argument(
+        "--manual", action="store_true",
+        help="use per-file/barcode prompts instead of the folder wizard",
+    )
+    parser.add_argument(
         "--mode", choices=("illumina", "ont"), help="sequencing platform"
     )
     parser.add_argument(
@@ -801,7 +838,7 @@ def add_setup_commands(subparsers) -> None:
         "--reference-cache", help="shared verified download cache (default: a sibling of the project)"
     )
     parser.add_argument(
-        "--threads", type=int, help="CPU worker threads for a new project (default: 8)"
+        "--threads", type=int, help="CPU worker threads (wizard suggests from hardware; manual/scripted default: 8)"
     )
     parser.add_argument(
         "--non-interactive",

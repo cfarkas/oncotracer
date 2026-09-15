@@ -3,13 +3,18 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from oncotracer_cli.cli import main
-from oncotracer_cli.system_check import GIB, inspect_hardware, resource_report
+from oncotracer_cli.system_check import (
+    GIB, _inspect_gpus, inspect_hardware, print_resource_report, resource_report,
+)
 
 
 class SystemCheckTests(unittest.TestCase):
@@ -95,6 +100,125 @@ class SystemCheckTests(unittest.TestCase):
                 json.loads(output.getvalue())["schema"], "oncotracer-system-v1"
             )
             self.assertFalse(target.exists())
+
+
+class GPUInventoryTests(unittest.TestCase):
+    def test_gpu_inventory_is_opt_in_for_hardware_and_resource_checks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            detected = {"gpus": [{"index": 0, "name": "NVIDIA example"}],
+                        "gpu_detection_status": "detected", "gpu_note": "Inventory"}
+            with patch("oncotracer_cli.system_check._inspect_gpus", return_value=detected) as probe:
+                hardware = inspect_hardware(proc=root / "proc", cgroup=root / "cgroup")
+                self.assertEqual(hardware["gpu_detection_status"], "not_checked")
+                self.assertEqual(hardware["gpus"], [])
+                report = resource_report(path=root)
+                self.assertIn("No analysis, downloads, GPU calls", report["limits"])
+                probe.assert_not_called()
+                hardware = inspect_hardware(
+                    proc=root / "proc", cgroup=root / "cgroup", include_gpus=True
+                )
+                probe.assert_called_once_with()
+                self.assertEqual(hardware["gpus"], detected["gpus"])
+                report = resource_report(path=root, hardware=hardware)
+                self.assertIn("No analysis, downloads, GPU workloads", report["limits"])
+
+    def test_gpu_models_and_vram_use_only_bounded_inventory_query(self):
+        completed = SimpleNamespace(
+            returncode=0,
+            stdout="0, NVIDIA RTX A5000, 24564, 22000\n1, NVIDIA GPU, [N/A], [N/A]\n",
+        )
+        with (
+            patch("oncotracer_cli.system_check.shutil.which", return_value="/tools/nvidia-smi"),
+            patch("oncotracer_cli.system_check.subprocess.run", return_value=completed) as run,
+            patch.dict(os.environ, {}, clear=True),
+        ):
+            inventory = _inspect_gpus()
+        run.assert_called_once_with(
+            ["/tools/nvidia-smi", "--query-gpu=index,name,memory.total,memory.free",
+             "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=3, check=False,
+        )
+        self.assertEqual(inventory["gpu_detection_status"], "detected")
+        self.assertEqual(len(inventory["gpus"]), 2)
+        self.assertEqual(inventory["gpus"][0]["name"], "NVIDIA RTX A5000")
+        self.assertEqual(inventory["gpus"][0]["memory_total_bytes"], 24564 * 1024**2)
+        self.assertEqual(inventory["gpus"][0]["memory_free_bytes"], 22000 * 1024**2)
+        self.assertIsNone(inventory["gpus"][1]["memory_total_bytes"])
+        self.assertIn("core counts are not reported", inventory["gpu_note"])
+        self.assertNotIn("cuda_cores", inventory["gpus"][0])
+
+    def test_missing_inventory_tool_never_launches_a_command(self):
+        with (
+            patch("oncotracer_cli.system_check.shutil.which", return_value=None),
+            patch("oncotracer_cli.system_check.subprocess.run") as run,
+        ):
+            inventory = _inspect_gpus()
+        run.assert_not_called()
+        self.assertEqual(inventory["gpu_detection_status"], "unavailable")
+        self.assertEqual(inventory["gpus"], [])
+        self.assertIn("Other GPU vendors", inventory["gpu_note"])
+
+    def test_timeout_and_driver_failure_allow_hardware_reporting(self):
+        for failure in (subprocess.TimeoutExpired("nvidia-smi", 3), OSError("unavailable")):
+            with (
+                self.subTest(failure=failure),
+                patch("oncotracer_cli.system_check.shutil.which", return_value="nvidia-smi"),
+                patch("oncotracer_cli.system_check.subprocess.run", side_effect=failure),
+            ):
+                inventory = _inspect_gpus()
+            self.assertEqual(inventory["gpu_detection_status"], "failed")
+            self.assertEqual(inventory["gpus"], [])
+        for completed in (
+            SimpleNamespace(returncode=9, stdout=""),
+            SimpleNamespace(returncode=0, stdout="unexpected output"),
+        ):
+            with (
+                self.subTest(completed=completed),
+                patch("oncotracer_cli.system_check.shutil.which", return_value="nvidia-smi"),
+                patch("oncotracer_cli.system_check.subprocess.run", return_value=completed),
+            ):
+                inventory = _inspect_gpus()
+            self.assertEqual(inventory["gpu_detection_status"], "failed")
+            self.assertEqual(inventory["gpus"], [])
+
+    def test_visibility_restrictions_do_not_claim_cuda_availability(self):
+        with (
+            patch("oncotracer_cli.system_check.shutil.which", return_value="nvidia-smi"),
+            patch("oncotracer_cli.system_check.subprocess.run", return_value=SimpleNamespace(
+                returncode=0, stdout="0, NVIDIA GPU, 24000, 23000\n",
+            )),
+            patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": ""}, clear=True),
+        ):
+            inventory = _inspect_gpus()
+        self.assertIn("CUDA_VISIBLE_DEVICES=''", inventory["gpu_note"])
+        self.assertIn("may not all be accessible", inventory["gpu_note"])
+        self.assertIn("CUDA access and model compatibility are not tested", inventory["gpu_note"])
+
+    def test_public_summary_includes_gpu_model_and_vram(self):
+        hardware = SystemCheckTests().hardware(64)
+        hardware.update(
+            gpus=[{"index": 0, "name": "NVIDIA example", "memory_total_bytes": 24 * GIB,
+                   "memory_free_bytes": 20 * GIB}],
+            gpu_detection_status="detected", gpu_note="Driver inventory only.",
+        )
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            print_resource_report(resource_report(hardware=hardware))
+        self.assertIn("NVIDIA example; 24.0 GiB VRAM total, 20.0 GiB free", output.getvalue())
+        self.assertIn("Driver inventory only", output.getvalue())
+
+    def test_cpu_affinity_error_falls_back_without_failing_hardware_detection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with (
+                patch("os.sched_getaffinity", side_effect=OSError("unavailable")),
+                patch("os.cpu_count", return_value=8),
+                patch("oncotracer_cli.system_check._inspect_gpus", return_value={"gpus": []}),
+            ):
+                hardware = inspect_hardware(proc=root / "proc", cgroup=root / "cgroup")
+            self.assertEqual(hardware["cpu_workers_available"], 8)
+            self.assertEqual(hardware["gpus"], [])
 
 
 if __name__ == "__main__":
