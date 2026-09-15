@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from html.parser import HTMLParser
+from urllib.parse import unquote, urlsplit
 import sys
 import tempfile
 import unittest
@@ -182,11 +184,15 @@ class NativeClassifierTests(unittest.TestCase):
                 force=True,
             )
             self.assertEqual(result, analysis / "05_cna_classifier")
+            knowledge_reports = analysis / "04_cna_custom_plots/llm_reports"
             required = [
                 result / "01_prepared/clean_events.tsv",
                 result / "02_classification/cna_patient_classification.tsv",
                 result / "03_report/cna_classifier_report.html",
-                result / "03_report/pdf_reports/pdf_report_index.tsv",
+                knowledge_reports / "index.html",
+                knowledge_reports / "pdf_report_index.tsv",
+                knowledge_reports / "pdf_html_report_index.tsv",
+                knowledge_reports / "all_sample_CNA_knowledge_reports.pdf",
                 result / "03_report/clinician_reports/clinician_report_index.tsv",
                 result / "06_knowledge/sample_knowledge_summary.tsv",
                 result / "07_pathology/pathology_concordance.tsv",
@@ -194,12 +200,38 @@ class NativeClassifierTests(unittest.TestCase):
             ]
             for path in required:
                 self.assertTrue(path.is_file() and path.stat().st_size > 0, path)
+            self.assertFalse((result / "03_report/pdf_reports").exists())
+            self.assertTrue(list(knowledge_reports.glob("*_CNA_knowledge_report.html")))
+            self.assertTrue(list(knowledge_reports.glob("*_CNA_knowledge_report.pdf")))
+
+            class Links(HTMLParser):
+                def __init__(self):
+                    super().__init__()
+                    self.hrefs = []
+
+                def handle_starttag(self, tag, attrs):
+                    if tag == "a":
+                        self.hrefs.extend(value for key, value in attrs if key == "href")
+
+            pages = [*knowledge_reports.glob("*.html"), result / "03_report/cna_classifier_report.html"]
+            for page in pages:
+                parser = Links()
+                parser.feed(page.read_text())
+                for href in parser.hrefs:
+                    url = urlsplit(href)
+                    if not url.scheme and url.path:
+                        with self.subTest(page=page.name, href=href):
+                            self.assertTrue((page.parent / unquote(url.path)).exists())
+            index = (knowledge_reports / "index.html").read_text()
+            self.assertIn("../../05_cna_classifier/03_report/cna_classifier_report.html", index)
+            self.assertIn("../../05_cna_classifier/06_knowledge/knowledge_llm_trials.tsv", index)
             classifier_summary = json.loads(
                 (result / "native_classifier_summary.json").read_text(encoding="utf-8")
             )
             self.assertEqual(classifier_summary["engine"], "native")
             self.assertFalse(classifier_summary["nextflow_used"])
             self.assertEqual(classifier_summary["gistic_status"], "skipped")
+            self.assertEqual(classifier_summary["knowledge_report_index"], str(knowledge_reports / "index.html"))
             trace = (native / "trace.tsv").read_text(encoding="utf-8").lower()
             self.assertNotIn("nextflow", trace)
             self.assertIn(str(Path(sys.prefix) / "bin" / "python").lower(), trace)
@@ -213,6 +245,25 @@ class NativeClassifierTests(unittest.TestCase):
             )
             self.assertIs(workflow_summary_json["nextflow_used"], False)
             self.assertIs(workflow_summary_json["cna_classifier_completed"], True)
+            self.assertEqual(workflow_summary_json["cna_knowledge_report_index"], str(knowledge_reports / "index.html"))
+            self.assertEqual(workflow_summary_json["cna_knowledge_reports"], str(knowledge_reports))
+            self.assertEqual(workflow_summary_json["cna_knowledge_evidence"], str(result / "06_knowledge"))
+            self.assertIn("cna_knowledge_report_index=", workflow_summary)
+            # Resume tracks the new report paths through the shared analysis ledger.
+            record = ledger.data["stages"]["classifier-pdf-reports"]
+            report_outputs = [knowledge_reports / name for name in
+                              ("index.html", "pdf_report_index.tsv", "pdf_html_report_index.tsv",
+                               "all_sample_CNA_knowledge_reports.pdf")]
+            self.assertEqual({row["path"] for row in record["outputs"]},
+                             {str(path.resolve()) for path in report_outputs})
+            self.assertTrue(ledger.reusable("classifier-pdf-reports", record["signature"], report_outputs))
+            for missing in ("index.html", "all_sample_CNA_knowledge_reports.pdf"):
+                with self.subTest(missing=missing):
+                    path = knowledge_reports / missing
+                    contents = path.read_bytes()
+                    path.unlink()
+                    self.assertFalse(ledger.reusable("classifier-pdf-reports", record["signature"], report_outputs))
+                    path.write_bytes(contents)
             classifier_calls = [
                 (stage, containment)
                 for stage, containment, _used_env in runner.containment_calls

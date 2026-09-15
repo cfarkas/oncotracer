@@ -12,6 +12,7 @@ copy of a key. Keep one `key: value` per line.
 
 ```yaml
 run_cna_classifier: true
+run_pdf_reports: true               # Matched HTML/PDF knowledge reports
 knowledge_web: true                 # Retrieve public paper titles and abstracts
 knowledge_literature_llm: true
 knowledge_literature_llm_models: /absolute/path/to/report-model
@@ -49,9 +50,35 @@ This requires the classifier environment installed by `oncotracer install --cond
 Use your actual YAML path; batch setup names it `illumina.auto.yml` or `ont.auto.yml`.
 The dry run shows the plan; it does not load or evaluate the model.
 
+## Open the finished reports
+
+In native runs, final knowledge/LLM reports are published with the plots in
+`04_cna_custom_plots/llm_reports/` below your YAML's `outdir`:
+
+| File | Contents |
+| --- | --- |
+| `index.html` | Sample list with links to matching HTML and PDF reports |
+| `<sample>_CNA_knowledge_report.html` | Per-sample report for browser review |
+| `<sample>_CNA_knowledge_report.pdf` | PDF for the same sample and source sections |
+| `all_sample_CNA_knowledge_reports.pdf` | Combined PDF for the reported sample set |
+| `pdf_html_report_index.tsv` | Sample-to-HTML/PDF mapping and report metadata |
+| `pdf_report_index.tsv` | Compatibility index with the same report rows |
+
+```bash
+OUT="/absolute/path/project/results" # replace with the outdir from your YAML
+xdg-open "$OUT/04_cna_custom_plots/llm_reports/index.html"
+```
+
+The HTML/PDF indexes describe the same sample set. The folder can also contain
+catalog-based reports when model generation is off or falls back; its presence
+alone does not establish that an LLM generated text. `run_pdf_reports: false`
+suppresses these matched knowledge reports. The cohort classifier report and
+clinician summaries remain in `05_cna_classifier/03_report/`.
+
 ## Check what actually happened
 
-Look in `05_cna_classifier/06_knowledge/` under the analysis output:
+Evidence and model audit files remain in `05_cna_classifier/06_knowledge/` under
+the analysis output; the report index links back to this evidence:
 
 | File | What to check |
 | --- | --- |
@@ -81,7 +108,8 @@ knowledge_deep_llm_ranker_local_files_only: true
 knowledge_deep_llm_ranker_max_candidates_per_sample: 18
 ```
 
-Its attempts are recorded in `knowledge_literature_ranker_trials.tsv`.
+Its attempts are recorded in
+`05_cna_classifier/06_knowledge/knowledge_literature_ranker_trials.tsv`.
 
 ## Network and privacy
 

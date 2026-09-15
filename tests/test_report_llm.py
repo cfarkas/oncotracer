@@ -51,6 +51,28 @@ def response(text=CLAIM, sources=None):
     )
 
 
+class ReportLinkTests(unittest.TestCase):
+    def test_standalone_defaults_and_relocated_index_links(self):
+        rows = [{"sample": "synthetic", "html": "synthetic.html", "pdf": "synthetic.pdf"}]
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            pdf.write_index(output, rows)
+            default = (output / "index.html").read_text()
+            self.assertIn("href='../cna_classifier_report.html'", default)
+            self.assertIn("href='../clinician_reports/index.html'", default)
+            pdf.write_index(output, rows,
+                            cohort_report_href="../../05_cna_classifier/03_report/cna_classifier_report.html",
+                            clinician_reports_href="",
+                            knowledge_evidence_href="../../05_cna_classifier/06_knowledge/")
+            moved = (output / "index.html").read_text()
+            self.assertIn("href='../../05_cna_classifier/03_report/cna_classifier_report.html'", moved)
+            self.assertIn("href='../../05_cna_classifier/06_knowledge/knowledge_metrics.json'", moved)
+            self.assertNotIn("Clinician driver summaries", moved)
+            self.assertIn("href='synthetic.html'", moved)
+            self.assertTrue((output / "pdf_report_index.tsv").is_file())
+            self.assertTrue((output / "pdf_html_report_index.tsv").is_file())
+
+
 class CitationTests(unittest.TestCase):
     def test_valid_claim_gets_known_pmid_and_review_caveat(self):
         result = runtime.validate_synthesis(response(), EVIDENCE)

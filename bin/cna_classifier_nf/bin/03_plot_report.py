@@ -988,7 +988,7 @@ ul {{ line-height: 1.6; }}
 """
     (outdir / "index.html").write_text(index_html)
 
-def make_report(figures: list[str], classification: pd.DataFrame, recurrent: pd.DataFrame, gistic_status: pd.DataFrame, gistic_summary: pd.DataFrame, pathology_concordance: pd.DataFrame | None = None) -> None:
+def make_report(figures: list[str], classification: pd.DataFrame, recurrent: pd.DataFrame, gistic_status: pd.DataFrame, gistic_summary: pd.DataFrame, pathology_concordance: pd.DataFrame | None = None, *, knowledge_reports_href: str = "pdf_reports/index.html") -> None:
     fig_html = "\n".join(figure_card(fig) for fig in figures)
     if classification.empty:
         class_summary = "<p>No classification table produced.</p>"
@@ -1050,7 +1050,7 @@ ul {{ line-height: 1.65; }}
 <h2>Top recurrent CNA events from SAMURAI codification</h2><div class="table-wrap">{html_table_preview(recurrent, n=20)}</div>
 <h2>GISTIC2 status</h2><div class="table-wrap">{html_table_preview(gistic_status, n=10)}</div>
 <h2>Top GISTIC2 lesions</h2><div class="table-wrap">{html_table_preview(gistic_summary, n=25)}</div>
-<h2>Single-sample reports</h2><p>Open <a href="sample_reports/index.html">sample_reports/index.html</a> for one HTML report per sample with per-sample interpretation, context-specific driver-region calls, probable CNA classification, pathology agreement when provided, and the full CNA event table. If PDF/HTML knowledge reports were enabled, open <a href="pdf_reports/index.html">pdf_reports/index.html</a> for matched report-style HTML and PDF files generated from the same source tables. If clinician reports were enabled, open <a href="clinician_reports/index.html">clinician_reports/index.html</a> for concise driver/probable-classification summaries.</p>
+<h2>Single-sample reports</h2><p>Open <a href="sample_reports/index.html">sample_reports/index.html</a> for one HTML report per sample with per-sample interpretation, context-specific driver-region calls, probable CNA classification, pathology agreement when provided, and the full CNA event table. If PDF/HTML knowledge reports were enabled, open <a href="{html.escape(knowledge_reports_href)}">knowledge HTML/PDF reports</a> for matched report-style HTML and PDF files generated from the same source tables. If clinician reports were enabled, open <a href="clinician_reports/index.html">clinician_reports/index.html</a> for concise driver/probable-classification summaries.</p>
 <h2>Figures</h2><div class="fig-grid">{fig_html}</div>
 <h2>Key output tables</h2>
 <ul>
@@ -1065,7 +1065,7 @@ ul {{ line-height: 1.65; }}
   <li><code>report_tables/gistic_lesions_matrix.tsv</code></li>
   <li><code>report_tables/gistic_full.seg</code></li>
   <li><code>sample_reports/index.html</code></li>
-  <li><code>pdf_reports/index.html</code> when PDF/HTML knowledge reports are enabled</li>
+  <li><code>{html.escape(knowledge_reports_href)}</code> when PDF/HTML knowledge reports are enabled</li>
   <li><code>clinician_reports/index.html</code> when clinician driver summaries are enabled</li>
 </ul>
 </main>
@@ -1096,6 +1096,8 @@ def main() -> None:
     ap.add_argument("--heatmap-matrix", required=True)
     ap.add_argument("--pca-coordinates", required=True)
     ap.add_argument("--plot-top-features", type=int, default=60)
+    ap.add_argument("--knowledge-reports-href", default="pdf_reports/index.html",
+                    help="relative link to the final knowledge HTML/PDF report index")
     ap.add_argument("--pathology-concordance", default="", help="Optional pathology_concordance.tsv for report preview and sample report sections.")
     ap.add_argument("--pathology-records", default="", help="Optional matched pathology record table; copied by Nextflow.")
     args = ap.parse_args()
@@ -1135,7 +1137,7 @@ def main() -> None:
         Path(args.pca_coordinates),
     ] + ([Path(args.pathology_concordance)] if args.pathology_concordance else []) + ([Path(args.pathology_records)] if args.pathology_records else []), tdir)
     make_sample_reports(classification, summary, clean_events, driver_hits, driver_matrix, gistic_matrix, gistic_long, pathology_concordance)
-    make_report(figures, classification, recurrent, gistic_status, gistic_summary, pathology_concordance)
+    make_report(figures, classification, recurrent, gistic_status, gistic_summary, pathology_concordance, knowledge_reports_href=args.knowledge_reports_href)
 
 
 if __name__ == "__main__":

@@ -1148,7 +1148,7 @@ def html_pathology_agreement(data: dict[str, Any]) -> str:
     """
 
 
-def build_sample_html(out_html: Path, sample: str, row: pd.Series, data: dict[str, Any], pdf_name: str) -> None:
+def build_sample_html(out_html: Path, sample: str, row: pd.Series, data: dict[str, Any], pdf_name: str, *, cohort_report_href: str = "../cna_classifier_report.html") -> None:
     state_counts_html = html_table(data["state_counts"])
     event_note = ""
     if data["max_events"] > 0 and data["n_events_total"] > data["n_events_shown"]:
@@ -1221,7 +1221,7 @@ ul {{ line-height:1.65; }}
 </style>
 </head>
 <body><main>
-<p><a href="index.html">Report index</a> | <a href="{html.escape(pdf_name)}">Matched PDF</a> | <a href="../cna_classifier_report.html">Cohort report</a></p>
+<p><a href="index.html">Report index</a> | <a href="{html.escape(pdf_name)}">Matched PDF</a> | <a href="{html.escape(cohort_report_href)}">Cohort report</a></p>
 <div class="header">
   <h1>OncoTracer AI CNA Knowledge Report</h1>
   <p class="subtitle">Sample: <strong>{html.escape(sample)}</strong> | Assay context: low-pass WGS / SAMURAI CNA codification</p>
@@ -1249,7 +1249,12 @@ def combine_pdfs(pdf_paths: list[Path], out_pdf: Path) -> None:
             writer.write(fh)
 
 
-def write_index(outdir: Path, rows: list[dict[str, Any]]) -> None:
+def write_index(
+    outdir: Path, rows: list[dict[str, Any]], *,
+    cohort_report_href: str = "../cna_classifier_report.html",
+    clinician_reports_href: str = "../clinician_reports/index.html",
+    knowledge_evidence_href: str = "../../06_knowledge/",
+) -> None:
     summary = pd.DataFrame(rows)
     summary.to_csv(outdir / "pdf_html_report_index.tsv", sep="\t", index=False)
     summary.to_csv(outdir / "pdf_report_index.tsv", sep="\t", index=False)
@@ -1271,9 +1276,20 @@ def write_index(outdir: Path, rows: list[dict[str, Any]]) -> None:
             "</tr>"
         )
     combined = "all_sample_CNA_knowledge_reports.pdf"
+    related = [f"<a href='{html.escape(cohort_report_href)}'>Cohort HTML report</a>",
+               f"<a href='{combined}'>Combined PDF</a>"]
+    if clinician_reports_href:
+        related.append(f"<a href='{html.escape(clinician_reports_href)}'>Clinician driver summaries</a>")
+    if knowledge_evidence_href:
+        evidence = knowledge_evidence_href.rstrip("/") + "/"
+        related.extend([
+            f"<a href='{html.escape(evidence)}'>Evidence tables</a>",
+            f"<a href='{html.escape(evidence + 'knowledge_metrics.json')}'>Generation status</a>",
+            f"<a href='{html.escape(evidence + 'knowledge_llm_trials.tsv')}'>Model audit</a>",
+        ])
     text = f"""<!DOCTYPE html><html><head><meta charset='utf-8'><title>CNA PDF/HTML reports</title>
 <style>body{{font-family:Arial,Helvetica,sans-serif;margin:32px;color:#172033;background:#f5f7fb}}.panel{{background:white;border:1px solid #d7dde6;border-radius:14px;padding:20px}}table{{border-collapse:collapse;font-size:12px;background:white}}th,td{{border:1px solid #d7dde6;padding:6px 8px;text-align:left;vertical-align:top}}th{{background:#eef2f7}}a{{color:#2f6f9f;text-decoration:none}}a:hover{{text-decoration:underline}}.muted{{color:#5f6b7a}}</style>
-</head><body><div class='panel'><h1>CNA knowledge HTML/PDF reports</h1><p class='muted'>Each sample has a matched HTML and PDF report generated from the same source sections and tables.</p><p><a href='../cna_classifier_report.html'>Cohort HTML report</a> | <a href='{combined}'>Combined PDF</a> | <a href='../clinician_reports/index.html'>Clinician driver summaries</a></p><table><thead><tr><th>sample</th><th>HTML</th><th>PDF</th><th>pathology agreement</th><th>reported pathology diagnosis</th><th>probable CNA classification</th><th>probable CNA score</th><th>knowledge-refined CNA pattern</th><th>rule-based class</th><th>n CNA events</th><th>driver flags</th></tr></thead><tbody>{''.join(tr)}</tbody></table></div></body></html>"""
+</head><body><div class='panel'><h1>CNA knowledge HTML/PDF reports</h1><p class='muted'>Each sample has a matched HTML and PDF report generated from the same source sections and tables.</p><p>{' | '.join(related)}</p><table><thead><tr><th>sample</th><th>HTML</th><th>PDF</th><th>pathology agreement</th><th>reported pathology diagnosis</th><th>probable CNA classification</th><th>probable CNA score</th><th>knowledge-refined CNA pattern</th><th>rule-based class</th><th>n CNA events</th><th>driver flags</th></tr></thead><tbody>{''.join(tr)}</tbody></table></div></body></html>"""
     (outdir / "index.html").write_text(text)
 
 
@@ -1296,6 +1312,12 @@ def main() -> None:
     ap.add_argument("--pathology-concordance", required=False, default="")
     ap.add_argument("--pathology-records", required=False, default="")
     ap.add_argument("--outdir", default="pdf_reports")
+    ap.add_argument("--cohort-report-href", default="../cna_classifier_report.html",
+                    help="relative link from the knowledge reports to the cohort HTML")
+    ap.add_argument("--clinician-reports-href", default="../clinician_reports/index.html",
+                    help="relative clinician index link; empty disables the link")
+    ap.add_argument("--knowledge-evidence-href", default="../../06_knowledge/",
+                    help="relative folder link for evidence and model audit tables")
     ap.add_argument("--max-events", type=int, default=0, help="0 means include all events; otherwise cap event rows per sample in both HTML and PDF.")
     ap.add_argument("--include-full-events", default="true")
     args = ap.parse_args()
@@ -1363,7 +1385,7 @@ def main() -> None:
         out_pdf = outdir / f"{slug}_CNA_knowledge_report.pdf"
         out_html = outdir / f"{slug}_CNA_knowledge_report.html"
         build_sample_pdf(out_pdf, sample, row, data)
-        build_sample_html(out_html, sample, row, data, out_pdf.name)
+        build_sample_html(out_html, sample, row, data, out_pdf.name, cohort_report_href=args.cohort_report_href)
         pdf_paths.append(out_pdf)
         ks_row = ks.iloc[0] if not ks.empty else pd.Series(dtype=object)
         pr = data.get("pathology_row", pd.Series(dtype=object))
@@ -1383,7 +1405,9 @@ def main() -> None:
         })
 
     combine_pdfs(pdf_paths, outdir / "all_sample_CNA_knowledge_reports.pdf")
-    write_index(outdir, rows)
+    write_index(outdir, rows, cohort_report_href=args.cohort_report_href,
+                clinician_reports_href=args.clinician_reports_href,
+                knowledge_evidence_href=args.knowledge_evidence_href)
 
 
 if __name__ == "__main__":

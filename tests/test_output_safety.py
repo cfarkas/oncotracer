@@ -378,6 +378,37 @@ class OutputSafetyTests(unittest.TestCase):
                 claim_output_run(partial, config_path=config, identity=IDENTITY)
             self.assertEqual(tree_snapshot(partial), before)
 
+    def test_run_manifest_covers_relocated_knowledge_reports_and_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "run"
+            config, trace = root / "config.yml", root / "trace.tsv"
+            config.write_text("mode: illumina\n")
+            trace.write_text("timestamp\tcommand\n")
+            artifacts = [
+                "04_cna_custom_plots/llm_reports/index.html",
+                "04_cna_custom_plots/llm_reports/pdf_report_index.tsv",
+                "04_cna_custom_plots/llm_reports/pdf_html_report_index.tsv",
+                "04_cna_custom_plots/llm_reports/all_sample_CNA_knowledge_reports.pdf",
+                "04_cna_custom_plots/llm_reports/synthetic_CNA_knowledge_report.html",
+                "04_cna_custom_plots/llm_reports/synthetic_CNA_knowledge_report.pdf",
+                "05_cna_classifier/06_knowledge/knowledge_metrics.json",
+                "05_cna_classifier/06_knowledge/knowledge_llm_trials.tsv",
+                "05_cna_classifier/06_knowledge/knowledge_literature_ranker_trials.tsv",
+            ]
+            for relative in artifacts:
+                path = output / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("synthetic artifact\n")
+            write_run_manifest(output, config, trace)
+            manifest = json.loads((output / "06_workflow_summary/native_run_manifest.json").read_text())
+            files = {record["path"]: record for record in manifest["files"]}
+            self.assertEqual(set(files), set(artifacts))
+            self.assertEqual(len(files), len(manifest["files"]))
+            for relative in artifacts:
+                self.assertEqual(files[relative]["bytes"], (output / relative).stat().st_size)
+                self.assertEqual(len(files[relative]["sha256"]), 64)
+
     def test_owner_tamper_is_detected_and_owner_is_sealed_in_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
