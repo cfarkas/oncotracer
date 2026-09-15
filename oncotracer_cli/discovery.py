@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 import re
 
-from .engine import _resolve_fastq_pass
+from .engine import _resolve_fastq_pass, _single_ont_sample_folder
 from .runtime import OncoTracerError, require_directory
 
 
@@ -40,6 +40,7 @@ class FastqDiscovery:
     root: Path
     samples: tuple[DiscoveredSample, ...]
     warnings: tuple[str, ...] = ()
+    single_sample: bool = False
 
 
 def _fastq_stem(path: Path) -> str | None:
@@ -170,12 +171,30 @@ def _illumina(root: Path) -> FastqDiscovery:
 
 def _ont(folder: Path) -> FastqDiscovery:
     selected = folder.name if _barcode(folder.name) else None
-    root = _resolve_fastq_pass(folder.parent if selected else folder)
+    try:
+        root = _resolve_fastq_pass(folder.parent if selected else folder)
+    except OncoTracerError:
+        # Preserve the error for ambiguous MinKNOW runs; an explicit plain
+        # folder can instead contain all FASTQ batches of one ligation library.
+        if selected or any(path.is_dir() for path in folder.rglob("fastq_pass")):
+            raise
+        root = folder
     if selected and folder.parent != root:
         raise OncoTracerError(f"The selected barcode folder must be directly below the FASTQ parent: {folder}")
     paths = _fastqs(folder if selected else root)
     if not paths:
         raise OncoTracerError(f"No FASTQ files found in {folder}")
+    if not any(_barcode(part) for path in paths for part in path.relative_to(root).parts[:-1]):
+        _single_ont_sample_folder(root)
+        warnings: list[str] = []
+        stem = root.parent.name if root.name == "fastq_pass" else root.name
+        name = _sample_id(stem, warnings)
+        warnings.append(
+            f"All {len(paths)} FASTQs in this folder form one nonbarcoded sample; "
+            "select it only when these batches belong to one library."
+        )
+        sample = DiscoveredSample(name, paths, barcode=".", fastq_dir=root)
+        return FastqDiscovery("ont", root, (sample,), tuple(warnings), single_sample=True)
     grouped: dict[str, list[Path]] = {}
     for path in paths:
         relative = path.relative_to(root)
