@@ -6,7 +6,7 @@ OncoTracer does not yet have a formal article DOI. The repository's `CITATION.cf
 
 A current software citation is:
 
-> Farkas, Carlos. (2026). *OncoTracer: reproducible LP-WGS CNA analysis for ONT and Illumina data* (version 2.0.0) [Computer software]. https://github.com/cfarkas/oncotracer
+> Farkas, Carlos. (2026). *OncoTracer: reproducible LP-WGS CNA analysis for ONT and Illumina data* (version 2.1.0) [Computer software]. https://github.com/cfarkas/oncotracer
 
 Record the embedded source identity used in your analysis:
 

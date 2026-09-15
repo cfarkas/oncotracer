@@ -202,7 +202,7 @@ nextflow_used=false
 
 ## Output ownership and container mounts
 
-Docker runs as the invoking numeric user/group. The CLI derives mounts from the standard CNA YAML paths, including `lpwgs_root`, `outdir`, samplesheet, FASTQ roots, and pathology table. Use absolute paths and keep related data below a small number of project roots. Optional methylation is rejected for the v2.0.0 container backends.
+Docker runs as the invoking numeric user/group. The CLI derives mounts from the standard CNA YAML paths, including `lpwgs_root`, `outdir`, samplesheet, FASTQ roots, and pathology table. Use absolute paths and keep related data below a small number of project roots. Optional methylation is rejected for the v2.1.0 container backends.
 
 ## Stopping and restarting
 

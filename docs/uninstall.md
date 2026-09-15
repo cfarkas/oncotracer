@@ -84,7 +84,7 @@ For Docker, remove only the OncoTracer image you installed, after stopping its
 containers:
 
 ```bash
-docker image rm ghcr.io/cfarkas/oncotracer:2.0.0
+docker image rm ghcr.io/cfarkas/oncotracer:2.1.0
 ```
 
 Do not use a system-wide Docker prune. Conda itself, Python, Docker/Apptainer,

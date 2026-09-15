@@ -316,7 +316,7 @@ The override is an advanced integration option. It must name an absent or empty 
 The default cache layout is:
 
 ```text
-${XDG_CACHE_HOME:-$HOME/.cache}/oncotracer/2.0.0/<executable-sha256>/payload
+${XDG_CACHE_HOME:-$HOME/.cache}/oncotracer/2.1.0/<executable-sha256>/payload
 ```
 
 Every `--dry-run` uses a separate temporary payload and removes it on success, error, or interruption. A dry-run must not create persistent XDG state, outputs, environments, images, or SIF files.

@@ -37,7 +37,7 @@ ACCEPTANCE_ROOT="$ACCEPTANCE_PARENT/$ACCEPTANCE_NAME"
 expected_assets=(
   SHA256SUMS
   oncotracer
-  oncotracer-v2.0.0-parity-audit.tar.gz
+  oncotracer-v2.1.0-parity-audit.tar.gz
   release-provenance.json
 )
 shopt -s dotglob nullglob
@@ -48,7 +48,7 @@ for entry in "${release_entries[@]}"; do
   test ! -L "$entry"
   test "$(stat -c '%h' -- "$entry")" -eq 1
   case "${entry##*/}" in
-    SHA256SUMS|oncotracer|oncotracer-v2.0.0-parity-audit.tar.gz|release-provenance.json)
+    SHA256SUMS|oncotracer|oncotracer-v2.1.0-parity-audit.tar.gz|release-provenance.json)
       ;;
     *)
       echo "unexpected release entry: ${entry##*/}" >&2
@@ -94,7 +94,7 @@ chmod 0755 "$ACCEPTANCE_RELEASE/oncotracer"
 
 cd "$ACCEPTANCE_RELEASE"
 test "$(wc -l < SHA256SUMS)" -eq 3
-for asset in oncotracer oncotracer-v2.0.0-parity-audit.tar.gz release-provenance.json; do
+for asset in oncotracer oncotracer-v2.1.0-parity-audit.tar.gz release-provenance.json; do
   awk -v expected="$asset" '
     BEGIN { count = 0 }
     NF == 2 && $1 ~ /^[0-9a-f]{64}$/ && $2 == expected { count++ }
@@ -103,7 +103,7 @@ for asset in oncotracer oncotracer-v2.0.0-parity-audit.tar.gz release-provenance
 done
 sha256sum --strict -c SHA256SUMS
 test "$(sha256sum oncotracer | awk '{print $1}')" = "$BINARY_SHA256"
-PARITY_SHA256="$(sha256sum oncotracer-v2.0.0-parity-audit.tar.gz | awk '{print $1}')"
+PARITY_SHA256="$(sha256sum oncotracer-v2.1.0-parity-audit.tar.gz | awk '{print $1}')"
 [[ "$PARITY_SHA256" =~ ^[0-9a-f]{64}$ ]]
 
 BEGINNER_CONFIG="$ACCEPTANCE_ROOT/config"
@@ -131,7 +131,7 @@ beginner() {
 }
 
 beginner "$ACCEPTANCE_RELEASE/oncotracer" --version \
-  | grep -Fx 'OncoTracer 2.0.0'
+  | grep -Fx 'OncoTracer 2.1.0'
 beginner "$ACCEPTANCE_RELEASE/oncotracer" --help \
   | grep -F 'Native LP-WGS CNA analysis.'
 beginner "$ACCEPTANCE_RELEASE/oncotracer" provenance --json \
@@ -154,7 +154,7 @@ jq -e \
     def sha256_digest:
       type == "string" and test("^sha256:[0-9a-f]{64}$");
     .schema == "oncotracer-v2-release-provenance-v3" and
-    .version == "2.0.0" and .release_tag == "v2.0.0" and
+    .version == "2.1.0" and .release_tag == "v2.1.0" and
     .source_commit == $commit and .source_sha256 == $source and
     .source_tree_dirty == false and .binary_sha256 == $binary and
     .parity_audit_bundle_sha256 == $parity and
@@ -246,7 +246,7 @@ for entry in "${release_entries_after[@]}"; do
   test ! -L "$entry"
   test "$(stat -c '%h' -- "$entry")" -eq 1
   case "${entry##*/}" in
-    SHA256SUMS|oncotracer|oncotracer-v2.0.0-parity-audit.tar.gz|release-provenance.json)
+    SHA256SUMS|oncotracer|oncotracer-v2.1.0-parity-audit.tar.gz|release-provenance.json)
       ;;
     *)
       echo "acceptance command added an unexpected release entry: ${entry##*/}" >&2
@@ -312,7 +312,7 @@ jq -n \
     release_assets: {
       "SHA256SUMS": $sums,
       "oncotracer": $binary,
-      "oncotracer-v2.0.0-parity-audit.tar.gz": $parity,
+      "oncotracer-v2.1.0-parity-audit.tar.gz": $parity,
       "release-provenance.json": $provenance
     },
     checks: [

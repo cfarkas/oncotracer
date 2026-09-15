@@ -69,6 +69,8 @@ jobs:
             tests/test_setup.py \
             tests/test_discovery.py \
             tests/test_wizard.py \
+            tests/test_web.py \
+            tests/test_results.py \
             tests/test_download_resume.py \
             tests/test_first_run_experience.py \
             tests/test_documented_workflows.py \
@@ -117,7 +119,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/outside-checkout"
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
-          ./oncotracer --version | grep -F 'OncoTracer 2.0.0'
+          ./oncotracer --version | grep -F 'OncoTracer 2.1.0'
           ./oncotracer --help | grep -F 'Native LP-WGS CNA analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
@@ -147,6 +149,9 @@ jobs:
               'payload/bin/scripts/MARLIN-MIT-LICENSE.txt',
               'oncotracer_cli/classifier.py',
               'oncotracer_cli/methylation.py',
+              'oncotracer_cli/web.py',
+              'oncotracer_cli/web_ui.py',
+              'oncotracer_cli/results.py',
               'payload/bin/cna_classifier_nf/bin/01_prepare_cna_inputs.py',
               'payload/bin/cna_classifier_nf/bin/llm_runtime.py',
               'payload/bin/cna_classifier_nf/bin/08_clinician_driver_reports.py',
@@ -166,7 +171,7 @@ jobs:
           python3 -m pip install 'poetry>=2,<3'
           poetry check --lock
           poetry install --no-interaction
-          poetry run oncotracer --version | grep -F 'OncoTracer 2.0.0'
+          poetry run oncotracer --version | grep -F 'OncoTracer 2.1.0'
       - name: Build documentation strictly
         run: |
           python3 -m pip install -r docs/requirements.txt
@@ -402,7 +407,7 @@ jobs:
             --tag oncotracer:v2-ci .
       - name: Verify native image provenance, all five environments, and absent Nextflow
         run: |
-          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.0.0'
+          docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.1.0'
           docker run --rm oncotracer:v2-ci provenance --json \
             | tee "$RUNNER_TEMP/docker-provenance.json"
           jq -e \

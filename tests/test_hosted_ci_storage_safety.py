@@ -3442,7 +3442,9 @@ run_native_environment_probe ichorcna readcounter 255 \\
             "ONCOTRACER_HEAVY_RUNNER",
             "does not provision, purchase, resize, or clean",
             "Fork pull requests always",
-            "genuine infrastructure blocker",
+            "If a selected runner fails these capacity checks",
+            "release gates stop before scientific execution",
+            "retain its observed capacity evidence",
         ):
             self.assertIn(required, documentation)
 

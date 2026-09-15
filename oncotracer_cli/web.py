@@ -5,14 +5,15 @@ import argparse
 import hashlib
 import hmac
 import json
+import mimetypes
 import os
 import secrets
 import subprocess
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from pathlib import Path, PurePosixPath
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 from .discovery import discover_fastqs
 from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
@@ -69,6 +70,7 @@ class WebState:
         self.lock = threading.RLock()
         self.scans = {}
         self.projects = {}
+        self.result_roots = {}
         self.job = None
         self.hardware = None
 
@@ -206,11 +208,19 @@ class WebState:
                 raise OncoTracerError("Interpretation report selection must be true or false.")
             values["run_cna_classifier"] = reports and analysis != "methylation"
             if values["run_cna_classifier"]:
+                detail = _choice(data, "report_detail", ("catalog", "models", "literature"), "catalog")
+                gistic = data.get("gistic", False)
+                if type(gistic) is not bool:
+                    raise OncoTracerError("GISTIC selection must be true or false.")
+                if gistic and len(entries) < 2:
+                    raise OncoTracerError("GISTIC needs at least two selected samples. Disable it for a single-sample project.")
+                online = detail == "literature"
                 values.update(cna_classifier_sample_set=_text(data, "report_context", default="broad_cancer"),
                               cna_classifier_samples=",".join(row["sample"] for row in entries),
-                              knowledge_web=False, knowledge_literature_llm=False,
-                              knowledge_deep_literature=False, knowledge_deep_enable_llm_ranker=False,
-                              pathology_use_biomed_models=False, run_gistic=False)
+                              knowledge_web=online, knowledge_literature_llm=online,
+                              knowledge_deep_literature=online, knowledge_deep_enable_llm_ranker=online,
+                              pathology_use_biomed_models=detail != "catalog", run_gistic=gistic,
+                              knowledge_llm_threads=min(threads, 4))
             reference = _choice(data, "reference", ("download", "reuse", "build"), "download")
             if reference == "reuse":
                 args.hg38_build = _text(data, "reference_path")
@@ -248,7 +258,7 @@ class WebState:
                         "config": config_path.read_text(), "backend": backend, "valid": valid,
                         "check": report, "fingerprint": _fingerprint(paths),
                         "discovered": discovered, "selected_sources": selected_sources,
-                        "input_snapshot": inputs}
+                        "input_snapshot": inputs, "outdir": str(project / "results")}
             self.projects[project_id] = prepared
             return {key: value for key, value in prepared.items()
                     if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot"}}
@@ -305,6 +315,30 @@ class WebState:
         with self.lock:
             job["exit_code"] = result
             job["status"] = "complete" if result == 0 else "failed"
+            prepared = self.projects[job["project_id"]]
+            outdir = Path(prepared["outdir"]).resolve()
+            if (outdir / "index.html").is_file():
+                key = secrets.token_urlsafe(32)
+                self.result_roots[key] = outdir
+                job["results_url"] = f"/results/{key}/index.html"
+
+    def result_file(self, key, relative):
+        """Resolve a report capability without granting access outside its results."""
+        with self.lock:
+            root = self.result_roots.get(key)
+        if root is None:
+            raise FileNotFoundError("Results session expired or missing.")
+        relative = unquote(relative) or "index.html"
+        parts = PurePosixPath(relative).parts
+        if (not parts or relative.startswith("/") or "\\" in relative or "\x00" in relative
+                or any(part in {".", ".."} or part.startswith(".") for part in parts)):
+            raise FileNotFoundError("Result file not found.")
+        path = (root / relative).resolve()
+        if path.is_dir():
+            path = (path / "index.html").resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            raise FileNotFoundError("Result file not found.")
+        return path
 
     def status(self):
         with self.lock:
@@ -346,7 +380,8 @@ class WebHandler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'none'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
         self.end_headers()
-        self.wfile.write(raw)
+        if self.command != "HEAD":
+            self.wfile.write(raw)
 
     def _authorized(self):
         if self.headers.get("Host") != urlsplit(self.server.origin).netloc:
@@ -361,8 +396,92 @@ class WebHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _result(self, url, *, head=False):
+        # Browser links cannot set the API header. Their random path is scoped to
+        # one prepared project's results; it never exposes arbitrary host files.
+        if self.headers.get("Host") != urlsplit(self.server.origin).netloc:
+            self._reply(403, {"error": "Use the printed loopback address."})
+            return
+        origin = self.headers.get("Origin")
+        if origin is not None and origin != self.server.origin:
+            self._reply(403, {"error": "Open results from the local OncoTracer page."})
+            return
+        try:
+            key, separator, relative = url.path[len("/results/"):].partition("/")
+            if not separator:
+                raise FileNotFoundError("Result file not found.")
+            path = self.server.state.result_file(key, relative)
+            with path.open("rb") as handle:
+                size = os.fstat(handle.fileno()).st_size
+                start, end, partial = 0, size - 1, False
+                value = self.headers.get("Range")
+                if value:
+                    try:
+                        unit, interval = value.split("=", 1)
+                        left, right = interval.split("-", 1)
+                        if unit != "bytes" or "," in interval or not size:
+                            raise ValueError
+                        if left:
+                            start = int(left)
+                            end = min(int(right), size - 1) if right else size - 1
+                        else:
+                            suffix = int(right)
+                            if suffix <= 0:
+                                raise ValueError
+                            start = max(0, size - suffix)
+                        if start < 0 or start >= size or end < start:
+                            raise ValueError
+                        partial = True
+                    except ValueError:
+                        self.send_response(416)
+                        self.send_header("Content-Range", f"bytes */{size}")
+                        self.send_header("Content-Length", "0")
+                        self.end_headers()
+                        return
+                content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+                inline = path.suffix.lower() in {".html", ".htm", ".pdf", ".png", ".svg", ".jpg", ".jpeg", ".txt", ".json"}
+                if path.suffix.lower() in {".txt", ".json", ".html", ".htm"}:
+                    content_type += "; charset=utf-8"
+                self.send_response(206 if partial else 200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Content-Length", str(end - start + 1))
+                self.send_header("Accept-Ranges", "bytes")
+                if partial:
+                    self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+                self.send_header("Content-Disposition", ("inline" if inline else "attachment") + "; filename*=UTF-8''" + quote(path.name, safe=""))
+                self.end_headers()
+                if not head:
+                    handle.seek(start)
+                    remaining = end - start + 1
+                    while remaining > 0:
+                        chunk = handle.read(min(1024 * 1024, remaining))
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
+                        remaining -= len(chunk)
+        except (FileNotFoundError, PermissionError, ValueError):
+            self._reply(404, {"error": "Result file not found or inaccessible."})
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def do_HEAD(self):
+        url = urlsplit(self.path)
+        if url.path.startswith("/results/"):
+            self._result(url, head=True)
+        else:
+            self.send_response(404)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
     def do_GET(self):
         url = urlsplit(self.path)
+        if url.path.startswith("/results/"):
+            self._result(url)
+            return
         if url.path == "/":
             if self.headers.get("Host") != urlsplit(self.server.origin).netloc:
                 self._reply(403, {"error": "Use the printed loopback address."})

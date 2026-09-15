@@ -42,7 +42,7 @@ explains how to build a standalone command from an exact source commit.
 
 The copied executable is a deterministic Python zipapp containing the versioned OncoTracer source payload. It does not require a Git clone after installation.
 
-Normal commands that need bundled scripts verify and reuse a content-addressed cache at `$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload` (or `$HOME/.cache` when `XDG_CACHE_HOME` is unset). Each executable digest is isolated, and the exact payload inventory is checked before reuse. `--dry-run` instead uses an automatically removed temporary payload: it does not populate the persistent cache, save installation state, create results or environments, or pull an image/SIF.
+Normal commands that need bundled scripts verify and reuse a content-addressed cache at `$XDG_CACHE_HOME/oncotracer/2.1.0/<executable-sha256>/payload` (or `$HOME/.cache` when `XDG_CACHE_HOME` is unset). Each executable digest is isolated, and the exact payload inventory is checked before reuse. `--dry-run` instead uses an automatically removed temporary payload: it does not populate the persistent cache, save installation state, create results or environments, or pull an image/SIF.
 
 Keep these release files together for audit:
 
@@ -50,7 +50,7 @@ Keep these release files together for audit:
 oncotracer
 SHA256SUMS
 release-provenance.json
-oncotracer-v2.0.0-parity-audit.tar.gz
+oncotracer-v2.1.0-parity-audit.tar.gz
 ```
 
 `release-provenance.json` records the exact release commit, deterministic source archive SHA-256, executable SHA-256, stable container digest, and the successful QuickStart workflow and artifact identities. The values emitted by `oncotracer provenance --json` must agree with that record.
@@ -80,7 +80,7 @@ Separating the environments avoids incompatible R and compiled-library constrain
 
 ```bash
 oncotracer install --conda \
-  --prefix /srv/oncotracer/2.0.0/envs
+  --prefix /srv/oncotracer/2.1.0/envs
 
 oncotracer doctor --backend conda
 ```
@@ -113,7 +113,7 @@ oncotracer install --docker
 oncotracer doctor --backend docker
 ```
 
-The installer pulls `ghcr.io/cfarkas/oncotracer:2.0.0`, validates the native tools inside it, and saves the image reference. It does not install Docker, alter daemon settings, or request administrator privileges silently.
+The installer pulls `ghcr.io/cfarkas/oncotracer:2.1.0`, validates the native tools inside it, and saves the image reference. It does not install Docker, alter daemon settings, or request administrator privileges silently.
 
 Run an analysis with:
 
@@ -139,7 +139,7 @@ Choose a shared SIF path when needed:
 
 ```bash
 oncotracer install --singularity \
-  --sif /srv/oncotracer/images/oncotracer-2.0.0.sif
+  --sif /srv/oncotracer/images/oncotracer-2.1.0.sif
 
 oncotracer run --backend singularity \
   --config /absolute/path/project/config/illumina.auto.yml

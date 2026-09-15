@@ -29,7 +29,9 @@ Each artifact includes `parity_report.json`, `parity_report.md`, `event_matches.
 
 ## Release automation
 
-The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v2.0.0`. A release cannot be created from a stale or partially validated commit.
+The release workflow verifies that Native v2 CI and both named parity workflows succeeded as push runs for the same exact current `main` SHA. It then builds the copied standalone executable, builds and pushes the native container, records checksums and image identity, downloads both parity artifacts, and creates `v2.1.0`. A release cannot be created from a stale or partially validated commit. The new
+`v2.1.0` tag and versioned container aliases preserve the published `v2.0.0`
+release; an ordinary main update does not replace an existing release.
 
 ## Hosted-runner capacity limits
 
@@ -95,8 +97,10 @@ a self-hosted label is used, it must identify a dedicated ephemeral runner for
 trusted in-repository refs; never expose a persistent scientific server or a
 runner containing protected data to pull-request code.
 
-Until such a runner is configured, the exact-head hosted parity and release
-gates have a genuine infrastructure blocker. Broad Docker pruning, global Conda
+If a selected runner fails these capacity checks, the exact-head hosted parity
+and release gates stop before scientific execution. A successful hosted run must
+retain its observed capacity evidence; the standard runner contract alone does
+not guarantee that a future run will fit. Broad Docker pruning, global Conda
 or Nextflow cleanup, and deletion of preinstalled runner software are not
 accepted remedies. The current public-runner specifications are maintained in
 the [GitHub-hosted runners reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
@@ -118,7 +122,7 @@ The driver is CPU-only (`CUDA_VISIBLE_DEVICES` is empty and `NVIDIA_VISIBLE_DEVI
 
 The driver refuses an empty path, `/`, the repository checkout or any path inside it, a validation/reference path overlap, a dirty checkout, or a non-empty validation directory without its release-driver sentinel and `--resume`. Its content-derived stage signatures include the exact source, command, inputs, tool identity, and explicit Conda specifications; complete output manifests are regenerated and compared before a completed stage is reused. The five-environment probe uses exact prefix executables; in particular, GISTIC derives the one usable `share/mcr-*/v*` runtime exclusively from its exact prefix and must return the real `gp_gistic2_from_seg` usage signature with exit status zero. It downloads the official self-contained Nextflow 26.04.6 distribution and verifies SHA-256 `182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c`; that executable runs only the immutable v1.1 comparator at commit `032c1268fa7fdcadc48087055066d7a9fc59bd89`. Before any baseline starts, the nested SAMURAI v1.4.0 source must resolve to commit `6a901940288b008237703c6b181d447e7dee4fcf`. The copied v2 executable runs every native operation from outside the checkout with Python path injection disabled, and any scientific parity failure stops the script.
 
-The final `bundles/` directory contains separate QuickStart audit archives, a deterministic combined `oncotracer-v2.0.0-parity-audit.tar.gz`, and `SHA256SUMS`. The audits retain input and output manifests, exact Conda specifications, qDNAseq annotation provenance, native traces, frozen-comparator traces/reports, stage logs, source identities, and the stage-ledger snapshot. The driver creates evidence only; it does not merge, tag, or publish a release.
+The final `bundles/` directory contains separate QuickStart audit archives, a deterministic combined `oncotracer-v2.1.0-parity-audit.tar.gz`, and `SHA256SUMS`. The audits retain input and output manifests, exact Conda specifications, qDNAseq annotation provenance, native traces, frozen-comparator traces/reports, stage logs, source identities, and the stage-ledger snapshot. The driver creates evidence only; it does not merge, tag, or publish a release.
 
 ## Frozen v1.1 ichorCNA plotting compatibility
 

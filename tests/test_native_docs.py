@@ -195,7 +195,7 @@ class NativeDocumentationTests(unittest.TestCase):
         installation = (ROOT / "docs/installation_details.md").read_text(encoding="utf-8")
         troubleshooting = (ROOT / "docs/troubleshooting.md").read_text(encoding="utf-8")
 
-        cache_layout = "$XDG_CACHE_HOME/oncotracer/2.0.0/<executable-sha256>/payload"
+        cache_layout = "$XDG_CACHE_HOME/oncotracer/2.1.0/<executable-sha256>/payload"
         self.assertIn(cache_layout, architecture)
         self.assertIn(cache_layout, installation)
         for required in (

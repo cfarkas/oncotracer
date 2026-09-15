@@ -9,37 +9,36 @@ Replace example paths with your own.
 oncotracer web
 ```
 
-Open the complete local URL printed in the terminal. The page runs on the same
-computer as OncoTracer; **Browse** lists that computer's folders.
-Keep the terminal open while using the page.
+Open the local URL printed in the terminal. **Browse** lists folders on
+the OncoTracer computer. Keep that terminal open.
 
 1. **Choose ONT or Illumina first.** Then browse to your FASTQ folder and discover
-   samples. For ONT, select the parent of `barcode01`, `barcode02`, etc.; all FASTQ
-   batches within each barcode form one sample. A nonbarcoded ligation folder
-   forms one sample containing all its FASTQs. Choose one sequencing run at a time.
+   samples. ONT barcode folders each form one sample containing all FASTQ batches.
+   A nonbarcoded ligation folder forms one sample. Select one sequencing run.
    Illumina detects pairs such as `sampleA_R1.fastq.gz` and `sampleA_R2.fastq.gz`;
    consolidate multiple lanes per library first.
-2. **Select samples and assign names/types.** Review file counts and paths.
-   `unclassified` starts excluded. Choose Cancer, Normal/control, or a custom type
-   with an explicit study/control role. These are your labels, never inferred
-   diagnoses. Controls are analyzed independently, without pooling or subtraction.
-3. **Choose features and resources.** Select copy-number analysis (CNA), or ONT
-   methylation/both. Review detected CPUs, available RAM and GPUs, then choose
-   threads. CNA uses CPU. Illumina uses qDNAseq; ONT offers ichorCNA (500 kb) or
+2. **Name and label selected samples.** Review paths and counts; `unclassified`
+   starts excluded. Choose Cancer, Normal/control, or a custom label with an explicit
+   study/control role. Labels are never inferred diagnoses. Controls are analyzed
+   independently, without pooling or subtraction.
+3. **Choose analysis and resources.** Select CNA, or ONT methylation/both. Review
+   detected CPUs, RAM and GPUs, then choose threads. CNA uses CPU. Illumina uses qDNAseq; ONT offers ichorCNA (500 kb) or
    solid-biopsy qDNAseq with selectable bins. ONT controls require qDNAseq and at
-   least one study sample. CNA interpretation reports are optional.
+   least one study sample. Optional CNA reports offer local catalog text, local
+   biomedical models, or literature plus local models. Literature retrieves public
+   papers using feature/context terms. GISTIC cohort analysis is a separate choice.
 4. **For methylation, choose the classifier deliberately.** MARLIN targets leukemia
    research; Sturgeon targets CNS-tumor research. Supply modified-base BAMs or raw
    POD5, plus the [required tool/model resources](configuration/methylation.md).
    FASTQs alone cannot supply methylation calls.
-5. **Choose tools, reference and project.** Select Conda for the installation above.
-   Choose automatic reference download, reuse of a prepared reference, or local
-   indexing. Browse to a project parent and enter a new folder name, for example
-   `illumina-study` or `ont-study`. Existing configurations are protected.
+5. **Choose tools, reference and project.** Select Conda, then reference download,
+   reuse, or local indexing. Choose a project parent and new folder name, such as
+   `illumina-study`. Existing configurations are protected.
 6. **Save, review and run.** Click **Save configuration and check**. Review the
    saved YAML and resolve errors, then click **Run analysis** to prepare missing
-   tools and begin. Progress and the log appear on the page. Saving alone starts
-   no analysis or genome download; you can also run later with the commands below.
+   tools and begin. Progress and the log appear on the page. After completion,
+   click **Open results** for the summary, CNA tables, plots and report links.
+   Saving starts no analysis or genome download.
 
 Settings go to `PROJECT/config/run.yml`, with sample metadata alongside them.
 Illumina also gets `config/samplesheet.csv`. Study/control map to tumor/normal in
@@ -47,9 +46,8 @@ analysis tables; custom labels are retained.
 
 ### Terminal wizard alternative
 
-`setup` is interactive by default; no `--interactive` flag is needed. Run
-`oncotracer setup` to answer every question, starting with the platform, or prefill
-paths and platform using a matching example:
+`setup` is interactive by default. Run `oncotracer setup` to start with the
+platform question, or prefill answers:
 
 ### Illumina
 
@@ -96,7 +94,7 @@ For [containers](containers.md), use `--backend docker` or `--backend singularit
 
 A successful run prints `OncoTracer native analysis completed:`. Open
 `results/06_workflow_summary/workflow_summary.txt` in your project first.
-Repeat `run` to resume; leave `--force` off.
+Repeat `run` to resume without `--force`.
 
 To change settings, edit `config/run.yml` and check again. Setup never overwrites
 an existing configuration. `--run` starts after setup without the final menu;
@@ -104,9 +102,8 @@ an existing configuration. `--run` starts after setup without the final menu;
 
 ## Optional: reuse prepared genome indexes
 
-With the default download choice, run downloads prebuilt indexes into
-`PROJECT/reference/`: about 8.0 GiB for Illumina or 9.7 GiB for ONT.
-Completed downloads are reused.
+Run downloads prebuilt indexes into `PROJECT/reference/`: about 8.0 GiB for
+Illumina or 9.7 GiB for ONT. Completed downloads are reused.
 
 Suppose your prepared reference lives at `/data/shared-reference`, with files
 under `references/samurai_hg38/`. Choose reference reuse in the browser or terminal
@@ -127,9 +124,9 @@ oncotracer setup --project /work/ont-reuse --mode ont \
   --input-folder /data/run/fastq_pass --hg38_build /data/shared-reference
 ```
 
-Finish the wizard, then run directly or check/run that project's `config/run.yml`.
-The reference must contain the prepared genome, indexes and manifests.
-Its `references/samurai_hg38` folder is also accepted. Illumina needs BWA indexes;
+Finish setup, then run that project's `config/run.yml`. The reference needs the
+prepared genome, indexes and manifests. Its `references/samurai_hg38` folder is
+also accepted. Illumina needs BWA indexes;
 ONT needs minimap2; sharing between platforms requires both.
 
 `--hg38_build` **without a path** selects automatic download. Scripted setup also
@@ -140,8 +137,8 @@ See [reference details](reference_indexes.md).
 
 ## Optional: scripted setup without prompts
 
-`--non-interactive` disables questions, uses flags and defaults, and errors when a
-required answer is missing. It is useful in scripts. Omit it for interactive setup.
+`--non-interactive` uses flags/defaults without questions and errors on missing
+required answers. Omit it for interactive setup.
 
 ### Illumina
 
@@ -168,7 +165,7 @@ Check and run using the scripted project's `config/run.yml`.
 
 ## Illumina: multiple libraries
 
-Replace paths and names, then paste this block. Each row is one library. `cat >`
+Replace paths and names. Each row is one library. `cat >`
 overwrites the named CSV; choose a new filename if it already exists.
 
 ```bash

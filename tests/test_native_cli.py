@@ -41,7 +41,7 @@ from oncotracer_cli.runtime import (  # noqa: E402
 
 class NativeCliTests(unittest.TestCase):
     def test_version_is_v2(self) -> None:
-        self.assertEqual(__version__, "2.0.0")
+        self.assertEqual(__version__, "2.1.0")
 
     def test_parser_exposes_native_commands(self) -> None:
         parser = build_parser()

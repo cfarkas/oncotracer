@@ -5,7 +5,7 @@ ARG SOURCE_COMMIT
 ARG SOURCE_SHA256
 
 LABEL org.opencontainers.image.title="OncoTracer" \
-      org.opencontainers.image.version="2.0.0" \
+      org.opencontainers.image.version="2.1.0" \
       org.opencontainers.image.description="Native LP-WGS CNA analysis" \
       org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \

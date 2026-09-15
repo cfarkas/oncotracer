@@ -775,7 +775,7 @@ action_build_binary() {
     --source-sha256 "$SOURCE_SHA256"
   chmod 0755 "$BINARY"
   run_copied_binary --version | tee "$RELEASE_CANDIDATE_DIR/oncotracer.version.txt"
-  grep -Fx 'OncoTracer 2.0.0' "$RELEASE_CANDIDATE_DIR/oncotracer.version.txt"
+  grep -Fx 'OncoTracer 2.1.0' "$RELEASE_CANDIDATE_DIR/oncotracer.version.txt"
   run_copied_binary --help > "$RELEASE_CANDIDATE_DIR/oncotracer.help.txt"
   run_copied_binary provenance --json > "$RELEASE_CANDIDATE_DIR/oncotracer.provenance.json"
   (
@@ -801,7 +801,7 @@ record = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 binary = Path(sys.argv[4]).resolve()
 expected = {
     "schema": "oncotracer-provenance-v1",
-    "oncotracer_version": "2.0.0",
+    "oncotracer_version": "2.1.0",
     "source_commit": sys.argv[2],
     "source_sha256": sys.argv[3],
     "source_sha256_definition": "sha256(git -c tar.umask=0002 archive --format=tar COMMIT)",
@@ -1498,8 +1498,8 @@ source_commit, source_sha256 = sys.argv[2:4]
 root = Path(sys.argv[4]).resolve()
 if record.get("schema") != "oncotracer-doctor-v1":
     raise SystemExit("oncotracer doctor record has the wrong schema")
-if record.get("oncotracer_version") != "2.0.0":
-    raise SystemExit("oncotracer doctor did not run v2.0.0")
+if record.get("oncotracer_version") != "2.1.0":
+    raise SystemExit("oncotracer doctor did not run v2.1.0")
 if record.get("backend") != "conda" or record.get("nextflow_required") is not False:
     raise SystemExit("oncotracer doctor did not validate the native Conda backend")
 if record.get("success") is not True:
@@ -2725,11 +2725,11 @@ PY
   tar -tzf "$q2_bundle" | grep -Fx 'quickstart2/SHA256SUMS'
   tar -tzf "$combined_bundle" | grep -Fx 'release-validation-summary.json'
   mv -f -- \
-    "$q1_bundle" "$BUNDLE_DIR/oncotracer-v2.0.0-quickstart1-parity-audit.tar.gz"
+    "$q1_bundle" "$BUNDLE_DIR/oncotracer-v2.1.0-quickstart1-parity-audit.tar.gz"
   mv -f -- \
-    "$q2_bundle" "$BUNDLE_DIR/oncotracer-v2.0.0-quickstart2-parity-audit.tar.gz"
+    "$q2_bundle" "$BUNDLE_DIR/oncotracer-v2.1.0-quickstart2-parity-audit.tar.gz"
   mv -f -- \
-    "$combined_bundle" "$BUNDLE_DIR/oncotracer-v2.0.0-parity-audit.tar.gz"
+    "$combined_bundle" "$BUNDLE_DIR/oncotracer-v2.1.0-parity-audit.tar.gz"
   (cd "$BUNDLE_DIR" && sha256sum ./*.tar.gz > SHA256SUMS)
 }
 
@@ -2772,9 +2772,9 @@ for name, rows in expected.items():
 PY
   verify_tree_manifest "$AUDIT_ROOT" "$AUDIT_ROOT/SHA256SUMS"
   (cd "$BUNDLE_DIR" && sha256sum -c SHA256SUMS)
-  tar -tzf "$BUNDLE_DIR/oncotracer-v2.0.0-parity-audit.tar.gz" >/dev/null
+  tar -tzf "$BUNDLE_DIR/oncotracer-v2.1.0-parity-audit.tar.gz" >/dev/null
   extracted="$(mktemp -d "$TMP_DIR/bundle-verification.XXXXXX")"
-  tar -xzf "$BUNDLE_DIR/oncotracer-v2.0.0-parity-audit.tar.gz" -C "$extracted"
+  tar -xzf "$BUNDLE_DIR/oncotracer-v2.1.0-parity-audit.tar.gz" -C "$extracted"
   verify_tree_manifest "$extracted/quickstart1" "$extracted/quickstart1/SHA256SUMS"
   verify_tree_manifest "$extracted/quickstart2" "$extracted/quickstart2/SHA256SUMS"
   verify_tree_manifest "$extracted" "$extracted/SHA256SUMS"
@@ -2812,5 +2812,5 @@ printf 'OncoTracer v2 release validation passed.\n'
 printf 'Source commit:  %s\n' "$SOURCE_COMMIT"
 printf 'Source SHA-256: %s\n' "$SOURCE_SHA256"
 printf 'Binary:         %s\n' "$BINARY"
-printf 'Audit bundle:   %s\n' "$BUNDLE_DIR/oncotracer-v2.0.0-parity-audit.tar.gz"
+printf 'Audit bundle:   %s\n' "$BUNDLE_DIR/oncotracer-v2.1.0-parity-audit.tar.gz"
 printf 'Stage ledger:   %s\n' "$LEDGER"

@@ -22,6 +22,7 @@ from . import __version__
 from .reporting import detail, is_active, operation, status
 from .setup import add_setup_commands
 from .web import add_web_command
+from .results import add_results_command
 from .system_check import add_system_command
 from .uninstall import add_uninstall_command
 from .reference_bundle import (
@@ -53,7 +54,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "ghcr.io/cfarkas/oncotracer:2.0.0"
+DEFAULT_IMAGE = "ghcr.io/cfarkas/oncotracer:2.1.0"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -188,7 +189,7 @@ def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
     destination = (
         Path(args.sif)
         if args.sif
-        else (_data_home() / "images" / "oncotracer-2.0.0.sif")
+        else (_data_home() / "images" / "oncotracer-2.1.0.sif")
     )
     with installer_cli_target_arguments(destination):
         installed = install_sif_managed(
@@ -477,7 +478,7 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
             "no SIF is configured; run 'oncotracer install --singularity'"
         )
     sif_candidate = (
-        Path(str(sif_value or "/path/to/oncotracer-2.0.0.sif")).expanduser().resolve()
+        Path(str(sif_value or "/path/to/oncotracer-2.1.0.sif")).expanduser().resolve()
     )
     sif = (
         sif_candidate if args.dry_run else require_file(sif_candidate, "OncoTracer SIF")
@@ -1505,6 +1506,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
     add_setup_commands(subparsers)
     add_web_command(subparsers)
+    add_results_command(subparsers)
     add_system_command(subparsers)
     add_uninstall_command(subparsers)
     add_reference_command(subparsers)
@@ -1585,6 +1587,7 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "provenance",
             "setup",
             "web",
+            "results",
             "check",
             "system",
             "uninstall",
