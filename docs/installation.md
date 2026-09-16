@@ -65,26 +65,31 @@ tools does not install those models.
 
 ## 3. Start a project
 
-The guided route saves settings, checks inputs, and starts analysis:
+Start the local browser setup:
+
+```bash
+oncotracer setup
+```
+
+The page opens at **127.0.0.1:8888**; use the complete printed URL if needed.
+Keep the terminal open. Choose the platform, browse to FASTQs, assign detected
+samples to Normal or Cancer, and review threads and bins (**100 kb** for QDNAseq).
+Choose a project folder, click **Save configuration and check**, then **Run analysis**.
+See the [setup guide](setup.md) or try [QuickStart 1](quick_start.md).
+
+For terminal prompts, use `oncotracer setup --terminal`. To resume a saved project:
 
 ```bash
 oncotracer setup --project /absolute/path/to/my-study --run
 ```
 
-Repeat it to resume an existing project. Matching alignment and CNA calling
-results are reused; refinement and reports are regenerated. To review the
-configuration first, choose **save** in the wizard, then check and run:
+Matching alignment and CNA calling results are reused; refinement and reports
+are regenerated. To check and run separately:
 
 ```bash
-oncotracer setup --project /absolute/path/to/my-study
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
-
-The wizard scans FASTQs, lets you select samples and settings, and offers
-**run** or **save**. `--run` skips that final choice. `check` is an optional
-preview; `run` also validates inputs before analysis. The [setup guide](setup.md) shows the paths and flags for single
-and multiple samples. To try public data, follow [QuickStart 1](quick_start.md).
 
 By default, run downloads prebuilt hg38 indexes.
 Use `setup --hg38_build /path/to/reference` to reuse a build, or

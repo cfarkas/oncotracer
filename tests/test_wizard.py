@@ -73,7 +73,7 @@ class WizardTests(unittest.TestCase):
                     self.fastq(reads / f"{sample}_R{mate}.fastq.gz")
             before = {p: p.read_bytes() for p in reads.iterdir()}
             code, output, prompts, run = self.invoke(
-                "setup", "--project", str(project), "--input-folder", str(reads),
+                "setup", "--terminal", "--project", str(project), "--input-folder", str(reads),
                 answers={"Sequencing platform": "illumina", "Type for case": "cancer", "Type for control": "control",
                          "Type for other": "other", "Other sample type": "benign",
                          "Analysis group for other": "study", "CPU threads": "2"},
@@ -106,7 +106,7 @@ class WizardTests(unittest.TestCase):
                 for batch in (1, 2):
                     self.fastq(reads / barcode / f"batch{batch}.fastq.gz")
             code, output, prompts, run = self.invoke(
-                "setup", "--project", str(project), "--input-folder", str(reads.parent),
+                "setup", "--terminal", "--project", str(project), "--input-folder", str(reads.parent),
                 answers={"Sequencing platform": "ont", "Sample name": ["patient", "healthy"], "Type for patient": "cancer",
                          "Type for healthy": "control"},
             )
@@ -127,7 +127,7 @@ class WizardTests(unittest.TestCase):
             root = Path(directory)
             self.fastq(root / "reads/library.fastq.gz")
             code, output, prompts, _ = self.invoke(
-                "setup", "--project", str(root / "project"),
+                "setup", "--terminal", "--project", str(root / "project"),
                 answers={"Sequencing platform": "ont", "FASTQ folder": str(root / "reads"),
                          "Type for reads": "cancer"},
             )
@@ -147,7 +147,7 @@ class WizardTests(unittest.TestCase):
             ):
                 project = root / project_name
                 result = subprocess.run(
-                    [sys.executable, "-B", "-m", "oncotracer_cli.cli", "setup", "--project", str(project),
+                    [sys.executable, "-B", "-m", "oncotracer_cli.cli", "setup", "--terminal", "--project", str(project),
                      "--mode", "ont", "--input-folder", str(reads.parent), "--threads", "1",
                      "--backend", "conda", "--hg38_build"],
                     cwd=Path(__file__).resolve().parents[1], input=answers, text=True,
@@ -173,7 +173,7 @@ class WizardTests(unittest.TestCase):
             reads = root / "ligation library"
             paths = [self.fastq(reads / f"batch{batch}.fastq.gz") for batch in range(3)]
             code, output, _, run = self.invoke(
-                "setup", "--mode", "ont", "--project", str(root / "project"),
+                "setup", "--terminal", "--mode", "ont", "--project", str(root / "project"),
                 "--input-folder", str(reads),
                 answers={"Sample name": "sample_A", "Type for sample_A": "other",
                          "Other sample type": "research", "Analysis group": "study"},
@@ -199,7 +199,7 @@ class WizardTests(unittest.TestCase):
                 self.fastq(root / "reads/sample.fastq.gz")
                 project = root / "project"
                 code, output, prompts, run = self.invoke(
-                    "setup", "--mode", "illumina", "--project", str(project),
+                    "setup", "--terminal", "--mode", "illumina", "--project", str(project),
                     "--input-folder", str(root / "reads"), *( ["--run"] if flag else [] ),
                     answers={"Type for sample": "cancer"}, final="run",
                 )
@@ -216,7 +216,7 @@ class WizardTests(unittest.TestCase):
             for filename in ("paired_R1.fastq.gz", "paired_R2.fastq.gz", "single.fastq.gz"):
                 self.fastq(root / "reads" / filename)
             code, output, _, run = self.invoke(
-                "setup", "--mode", "illumina", "--project", str(root / "project"),
+                "setup", "--terminal", "--mode", "illumina", "--project", str(root / "project"),
                 "--input-folder", str(root / "reads"),
                 answers={"Samples to include": ["0", "all", "2"], "Type for single": "control",
                          "CPU threads": ["0", "99", "two", "3"]},
@@ -234,7 +234,7 @@ class WizardTests(unittest.TestCase):
             root = Path(directory)
             self.fastq(root / "reads/fastq_pass/barcode01/batch.fastq.gz")
             code, output, _, run = self.invoke(
-                "setup", "--project", str(root / "project"), "--input-folder", str(root / "reads"),
+                "setup", "--terminal", "--project", str(root / "project"), "--input-folder", str(root / "reads"),
                 answers={"Sequencing platform": "ont", "Type for barcode01": "control"},
             )
             self.assertEqual(code, 2, output)
@@ -247,7 +247,7 @@ class WizardTests(unittest.TestCase):
             root = Path(directory)
             self.fastq(root / "reads/current.fastq.gz")
             code, output, _, _ = self.invoke(
-                "setup", "--project", str(root / "project"), "--mode", "illumina",
+                "setup", "--terminal", "--project", str(root / "project"), "--mode", "illumina",
                 "--input-folder", str(root / "reads"),
                 answers={"Type for current": "cancer", "Add CNA interpretation": "yes",
                          "Study context": "lymphoma"},
@@ -265,7 +265,7 @@ class WizardTests(unittest.TestCase):
             root = Path(directory)
             self.fastq(root / "reads/current.fastq.gz")
             code, output, _, run = self.invoke(
-                "setup", "--project", str(root / "project"), "--mode", "illumina",
+                "setup", "--terminal", "--project", str(root / "project"), "--mode", "illumina",
                 "--input-folder", str(root / "reads"),
                 answers={"Type for current": "cancer", "Add CNA interpretation": "yes",
                          "Use local language models": "yes"},
@@ -283,16 +283,20 @@ class WizardTests(unittest.TestCase):
                 root = Path(directory)
                 for name in ("one", "two")[:count]:
                     self.fastq(root / f"reads/{name}.fastq.gz")
-                code, output, _, run = self.invoke(
-                    "setup", "--project", str(root / "project"), "--mode", "illumina",
+                code, output, prompts, run = self.invoke(
+                    "setup", "--terminal", "--project", str(root / "project"), "--mode", "illumina",
                     "--input-folder", str(root / "reads"),
                     answers={"Type for one": "cancer", "Type for two": "cancer",
                              "Add CNA interpretation": "yes", "Add GISTIC": "yes"},
                 )
                 if count == 1:
-                    self.assertEqual(code, 2, output)
+                    self.assertEqual(code, 0, output)
                     self.assertIn("at least two", output)
-                    self.assertFalse((root / "project/config/run.yml").exists())
+                    config = load_flat_yaml(root / "project/config/run.yml")
+                    self.assertFalse(config["run_gistic"])
+                    self.assertFalse(config["gistic_required"])
+                    self.assertTrue(config["run_cna_classifier"])
+                    self.assertFalse(any(p.startswith("Add GISTIC") for p in prompts))
                 else:
                     self.assertEqual(code, 0, output)
                     config = load_flat_yaml(root / "project/config/run.yml")
@@ -311,7 +315,7 @@ class WizardTests(unittest.TestCase):
                           ["--input-folder", str(root), "--fastq-2", "mate.fastq.gz"],
                           ["--input-folder", str(root), "--status", "normal"],
                           ["--input-folder", str(root), "--reads-folder", "another-folder"]):
-                code, output, prompts, run = self.invoke("setup", "--project", str(root / "project"), *extra)
+                code, output, prompts, run = self.invoke("setup", "--terminal", "--project", str(root / "project"), *extra)
                 self.assertEqual(code, 2, output)
                 self.assertEqual(prompts, [])
                 self.assertEqual(config.read_text(), "existing configuration\n")
@@ -334,7 +338,7 @@ class WizardTests(unittest.TestCase):
                     build = Hg38SetupTests().fake_build(reference)
                     before = {p: p.read_bytes() for p in build.rglob("*") if p.is_file()}
                     code, output, _, run = self.invoke(
-                        "setup", "--mode", mode, "--project", str(root / "project"),
+                        "setup", "--terminal", "--mode", mode, "--project", str(root / "project"),
                         "--input-folder", str(reads),
                         answers={f"Type for {name}": "cancer", "hg38 reference": choice,
                                  "Prepared OncoTracer reference": str(build)},
@@ -368,7 +372,7 @@ class WizardTests(unittest.TestCase):
                     patch("oncotracer_cli.cli._load_install_config", return_value={}),
                     contextlib.redirect_stdout(output), contextlib.redirect_stderr(output),
                 ):
-                    code = main(["setup", "--mode", "illumina", "--project", str(root / "project"), "--input-folder", str(root / "reads")])
+                    code = main(["setup", "--terminal", "--mode", "illumina", "--project", str(root / "project"), "--input-folder", str(root / "reads")])
                 self.assertEqual(code, 2, output.getvalue())
                 self.assertIn("setup input ended", output.getvalue())
                 self.assertFalse((root / "project").exists())

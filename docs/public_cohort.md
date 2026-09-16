@@ -57,7 +57,24 @@ Continue only when all six lines say `OK`. The versioned manifest records each
 exact size and MD5 checksum; interrupted downloads can be resumed by repeating
 the corresponding `curl` command.
 
-## 2. Create the samplesheet
+## 2. Assign the three libraries in the browser (recommended)
+
+```bash
+oncotracer setup --project "$PWD/oncotracer-quickstart2/analysis" \
+  --mode illumina --input-folder "$PWD/oncotracer-quickstart2/input"
+```
+
+Open the complete local URL printed in the terminal if the browser does not open.
+The six FASTQs are detected as three paired-end samples. Drag all three cards into
+**Cancer**; DMSO is a treatment control and belongs to this group too. Review the
+automatically detected names, choose threads and keep **100 kb (default)** bins.
+GISTIC is available because this cohort has three samples; enabling it is optional.
+Choose the reference, click **Save configuration and check**, then **Run analysis**.
+
+To use commands instead, follow the alternative below. Use only one setup method
+per project; an existing configuration will not be overwritten.
+
+## Alternative: create the samplesheet for scripted setup
 
 Paste this entire block, including the final `CSV` line. It creates
 `input/samplesheet.csv` with the absolute paths from step 1. `$PWD` means your

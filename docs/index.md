@@ -15,12 +15,21 @@ OncoTracer turns Illumina or Oxford Nanopore (ONT) sequencing data into DNA copy
 ## The usual workflow
 
 ```bash
-oncotracer setup --project /absolute/path/to/my-study
-oncotracer check --config /absolute/path/to/my-study/config/run.yml
-oncotracer run --config /absolute/path/to/my-study/config/run.yml --backend conda
+oncotracer setup --project "$PWD/my-study"
 ```
 
-Replace the project path with your own. `setup` asks for inputs and saves settings, `check` checks those settings, and `run` analyzes the reads. Each command has help: for example, `oncotracer setup --help`.
+This opens the browser at **127.0.0.1:8888**. Choose ONT or Illumina, browse to
+FASTQs, and drag detected samples into Normal or Cancer. Edit names and settings,
+choose a project folder, then **Save configuration and check** and **Run analysis**.
+Keep the terminal open; use the complete printed URL if the browser does not open.
+`setup --terminal` provides terminal prompts. See the [setup walkthrough](setup.md).
+
+If you saved without running, use:
+
+```bash
+oncotracer check --config "$PWD/my-study/config/run.yml"
+oncotracer run --config "$PWD/my-study/config/run.yml" --backend conda
+```
 
 New to terminal commands? See [copying commands and creating sample tables](command_basics.md).
 For many FASTQs or ONT barcodes, use the [batch examples](auto_params.md).
