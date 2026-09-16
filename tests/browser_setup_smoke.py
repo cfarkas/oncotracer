@@ -89,6 +89,7 @@ def main():
 if 'setup' in sys.argv and '--run' in sys.argv:
     child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(600)'])
     print('Dummy analysis ready',flush=True)
+    print('  hg38-00-0000.part: 50% | 10.0 MiB/s | ETA 60s',flush=True)
     try:
         child.wait()
     except KeyboardInterrupt:
@@ -227,6 +228,13 @@ else:
                 prepare(name);click('#run')
                 wait(lambda: js("return !document.querySelector('#stop').hidden && !document.querySelector('#stop').disabled"), 'enabled Stop button')
                 wait(lambda: js("return document.querySelector('#logs').textContent.includes('Dummy analysis ready')"), 'dummy process readiness')
+                assert js("return document.querySelector('#run-step-eta').textContent").startswith('About ')
+                assert js("return document.querySelector('#run-overall-eta').textContent") == 'Not yet known'
+                assert '50%' in js("return document.querySelector('#run-stage').textContent")
+                assert 'file only' in js("return document.querySelector('#run-eta-note').textContent")
+                if not remove:
+                    (root / 'run-eta.png').write_bytes(base64.b64decode(wd('GET', '/screenshot')))
+                    report['checks'].append('elapsed time and scoped download ETA shown; unknown overall ETA is explicit')
                 click('#stop')
                 wait(lambda: js("return document.querySelector('#cleanup').open"), 'cleanup choice after Stop')
                 assert js("return document.activeElement.id") == 'keep-project'
