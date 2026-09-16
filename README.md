@@ -65,17 +65,17 @@ its session code after `#`. Keep that terminal open while using the page.
    hg38 indexes when analysis starts. Choose **Reuse a prepared OncoTracer reference**
    to browse an existing reference, or **Build indexes locally on CPU** for local indexing.
 5. Click **Save configuration and check**, review the settings, then **Run analysis**.
-   Progress appears on the page. Click **Open results** when it finishes.
+   Follow progress or click **Stop analysis**. Stopping offers **Keep project**
+   (default) or confirmed folder removal. Click **Open results** when complete.
 
-For example, prefill a new Illumina project and discover its FASTQs on opening:
+Prefill a new Illumina project and discover its FASTQs:
 
 ```bash
 oncotracer setup --project "$PWD/my-study" --mode illumina \
   --input-folder /data/illumina
 ```
 
-Replace `/data/illumina` with your FASTQ folder. Follow the separate
-[Illumina and ONT walkthroughs](docs/setup.md) or [QuickStart 1](docs/quick_start.md).
+Replace `/data/illumina` with your FASTQ folder. Follow the separate [Illumina and ONT walkthroughs](docs/setup.md) or [QuickStart 1](docs/quick_start.md).
 For terminal prompts, use `oncotracer setup --terminal`; press Enter to accept
 shown defaults such as `[100]` for the QDNAseq bin size. Scripts can use
 `setup --non-interactive` with explicit sample flags. `setup --project PATH --run`

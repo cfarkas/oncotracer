@@ -8,8 +8,7 @@
 oncotracer setup
 ```
 
-The browser opens at **127.0.0.1:8888**. If it does not open, copy the complete
-URL printed in the terminal, including the session code after `#`. **Browse folders**
+Open **127.0.0.1:8888** using the complete terminal URL, including its `#` session code. **Browse folders**
 lists folders on the OncoTracer computer and selecting one discovers its samples.
 Keep that terminal open. `oncotracer web` opens the same interface; `--port 8889`
 selects another port, and `--no-browser` only prints the URL.
@@ -31,9 +30,10 @@ selects another port, and `--no-browser` only prints the URL.
    [required resources](configuration/methylation.md). FASTQs alone lack methylation calls.
 5. **Choose tools, reference and project.** Select Conda, reference download/reuse/build,
    and a project parent with a new folder name. Existing configurations are protected.
-6. **Save, review and run.** Click **Save configuration and check**, resolve errors,
-   then **Run analysis**. Follow progress on the page and click **Open results**
-   when complete. Saving starts no analysis or genome download.
+6. **Save, review and run.** Click **Save configuration and check**, then **Run analysis**.
+   Follow progress and open results here. **Stop analysis** cancels the run, then offers
+   **Keep project** (default) or **Remove project folder** with explicit path confirmation.
+   Inputs and shared download caches remain.
 
 Settings go to `PROJECT/config/run.yml`, with sample metadata alongside them.
 Illumina also gets `config/samplesheet.csv`. Study/control map to tumor/normal in
@@ -126,8 +126,8 @@ oncotracer setup --project /work/ont-reuse --mode ont \
 ```
 
 The browser prefills these paths. Assign samples, save and check, then run.
-The reference needs prepared indexes and manifests: BWA for Illumina, minimap2
-for ONT. Its `references/samurai_hg38` folder is also accepted.
+Indexes require BWA for Illumina or minimap2 for ONT.
+`references/samurai_hg38` is also accepted.
 
 `--hg38_build` **without a path** selects automatic download. Scripted setup also
 uses automatic download when neither reference flag is supplied. To build locally,

@@ -54,6 +54,7 @@ def free_port():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--test-stop", action="store_true", help="also test Stop and cleanup using a harmless sleeping job")
     options = parser.parse_args()
     root = options.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
@@ -80,6 +81,25 @@ def main():
         command = [sys.executable, "-m", "oncotracer_cli.cli", "setup", "--no-browser", "--port", str(free_port()),
                    "--project", str(root / "illumina-project"), "--mode", "illumina",
                    "--input-folder", str(fixture / "illumina"), "--threads", "3"]
+        if options.test_stop:
+            # Use real HTTP/configuration paths with a harmless job instead of
+            # executing an analysis. Other commands still call the actual CLI.
+            launcher = root / "dummy_analysis.py"
+            launcher.write_text("""import subprocess,sys
+if 'setup' in sys.argv and '--run' in sys.argv:
+    child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(600)'])
+    print('Dummy analysis ready',flush=True)
+    try:
+        child.wait()
+    except KeyboardInterrupt:
+        child.wait()
+        raise SystemExit(130)
+else:
+    from oncotracer_cli.cli import main
+    raise SystemExit(main())
+""")
+            wrapper = "import sys; from oncotracer_cli import web; from oncotracer_cli.cli import main; web._launcher=lambda:[sys.executable," + repr(str(launcher)) + "]; raise SystemExit(main())"
+            command = [sys.executable, "-c", wrapper, *command[3:]]
         processes.append(subprocess.Popen(command, stdout=handle, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL))
         url = wait(lambda: next((s for s in web_log.read_text().splitlines() if s.startswith("http://127.0.0.1:")), None), "setup server")
         driver = shutil.which("geckodriver") or "/snap/bin/geckodriver"
@@ -149,6 +169,15 @@ def main():
         assert js("return document.querySelectorAll('#normal-samples .sample').length") == 1
         assert not js("return document.querySelector('#gistic').disabled")
         report["checks"].append("real pointer drag-and-drop assigns Cancer and Normal; cohort enables GISTIC")
+        fill('.sample[data-id="0"] .sample-name', 'corrected_name')
+        drag('.sample[data-id="0"] .drag-handle', '#available-samples')
+        assert js("return document.querySelector('.sample[data-id=\"0\"]').parentElement.id") == 'available-samples'
+        assert js("return document.querySelector('#gistic').disabled")
+        drag('.sample[data-id="0"] .drag-handle', '#normal-samples')
+        assert js("return document.querySelector('.sample[data-id=\"0\"]').parentElement.id") == 'normal-samples'
+        assert js("return document.querySelector('.sample[data-id=\"0\"] .sample-name').value") == 'corrected_name'
+        drag('.sample[data-id="0"] .drag-handle', '#cancer-samples')
+        report["checks"].append("assigned samples drag back to Unassigned or across to Normal/Cancer without losing edited names")
         fill('.sample[data-id="0"] .sample-name', 'edited_case')
         for label in ("Normal", "NORMAL", "nORMAl", "Cancer", "CANCER", "cANCER"):
             fill('.sample[data-id="0"] .type-select', 'custom')
@@ -187,6 +216,32 @@ def main():
         report["checks"].append("folder navigator selection automatically discovers Illumina pairs")
         assert before == {str(path): path.read_bytes() for path in fixture.rglob('*.gz')}
         report["checks"].append("input FASTQs unchanged; no analysis or reference downloads started")
+        if options.test_stop:
+            assert js("return document.querySelector('h1').textContent") == 'Configure and run an analysis'
+            for remove in (False, True):
+                if remove:
+                    click('#new-analysis');click('#choose-illumina')
+                    fill('#input-folder', str(fixture / 'illumina'));sample_count(2)
+                fill('.sample[data-id="0"] .type-select', 'cancer')
+                name = 'stop-remove-project' if remove else 'stop-keep-project'
+                prepare(name);click('#run')
+                wait(lambda: js("return !document.querySelector('#stop').hidden && !document.querySelector('#stop').disabled"), 'enabled Stop button')
+                wait(lambda: js("return document.querySelector('#logs').textContent.includes('Dummy analysis ready')"), 'dummy process readiness')
+                click('#stop')
+                wait(lambda: js("return document.querySelector('#cleanup').open"), 'cleanup choice after Stop')
+                assert js("return document.activeElement.id") == 'keep-project'
+                assert (root / name).is_dir()
+                if not remove:
+                    click('#keep-project');assert (root / name / 'config/run.yml').is_file()
+                else:
+                    click('#remove-project');assert js("return document.querySelector('#confirm-remove').disabled")
+                    fill('#confirm-path',str(root));assert js("return document.querySelector('#confirm-remove').disabled")
+                    fill('#confirm-path',str(root / name));click('#confirm-remove')
+                    wait(lambda: js("return !document.querySelector('#cleanup').open"), 'confirmed removal')
+                    assert not (root / name).exists()
+                report['checks'].append('Stop button with ' + ('confirmed folder removal' if remove else 'default Keep project'))
+            assert before == {str(path): path.read_bytes() for path in fixture.rglob('*.gz')}
+            click('#new-analysis');click('#choose-illumina')
         # A stopped local server must give actionable recovery instructions.
         processes[0].terminate(); processes[0].wait(timeout=10)
         click('[data-browse="input-folder"]')

@@ -7,6 +7,9 @@ import io
 import json
 import os
 import subprocess
+import signal
+import sys
+import time
 import tempfile
 import threading
 import unittest
@@ -425,6 +428,104 @@ class WebTests(unittest.TestCase):
                         row = next(csv.DictReader(handle))
                     self.assertEqual(row["sample_type"], label.lower())
                     self.assertEqual(row["analysis_role"], "normal" if label.lower() == "normal" else "tumor")
+
+    def start_dummy_analysis(self, *, stubborn=False):
+        self.fastq("reads/library.fastq.gz")
+        prepared = self.prepare()
+        if stubborn:
+            code = "import signal,time; signal.signal(signal.SIGINT,signal.SIG_IGN); signal.signal(signal.SIGTERM,signal.SIG_IGN); print('READY',flush=True); time.sleep(60)"
+        else:
+            code = """import subprocess,sys,time
+child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'])
+print('READY '+str(child.pid),flush=True)
+try:
+    child.wait()
+except KeyboardInterrupt:
+    child.wait()
+    raise SystemExit(130)
+"""
+        with patch("oncotracer_cli.web._launcher", return_value=[sys.executable, "-u", "-c", code]):
+            self.state.run({"project_id": prepared["id"]})
+        process = self.state.job["process"]
+        def cleanup():
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.wait()
+        self.addCleanup(cleanup)
+        deadline = time.monotonic() + 5
+        while "READY" not in self.state.status()["log"] and time.monotonic() < deadline:
+            time.sleep(.02)
+        self.assertIn("READY", self.state.status()["log"])
+        return prepared
+
+    def wait_stopped(self):
+        deadline = time.monotonic() + 12
+        while self.state.status()["status"] == "stopping" and time.monotonic() < deadline:
+            time.sleep(.05)
+        self.assertEqual(self.state.status()["status"], "stopped", self.state.status())
+
+    def test_stop_real_process_group_then_remove_requires_exact_confirmation(self):
+        prepared = self.start_dummy_analysis()
+        original = (self.root / "reads/library.fastq.gz").read_bytes()
+        cache = self.root / "shared-download.part"
+        cache.write_text("keep verified cache")
+        (self.root / "project/input-link").symlink_to(self.root / "reads", target_is_directory=True)
+        server = self.start_server()
+        for endpoint in ("/api/stop", "/api/remove-project"):
+            self.assertEqual(self.request(server, "POST", endpoint, {"project_id": prepared["id"]}, **{"X-OncoTracer-Token": ""})[0], 403)
+        self.assertEqual(self.request(server, "POST", "/api/remove-project", {"project_id": prepared["id"], "confirm_remove": True, "confirm_path": prepared["project"]})[0], 400)
+        self.assertEqual(self.request(server, "POST", "/api/stop", {"project_id": prepared["id"]})[0], 200)
+        self.wait_stopped()
+        self.assertFalse(self.state._group_running(self.state.job["pid"]))
+        self.assertTrue((self.root / "project/config/run.yml").exists())
+        self.assertTrue(self.state.status()["can_remove"])
+        for changes in ({}, {"confirm_remove": True}, {"confirm_remove": True, "confirm_path": str(self.root)}):
+            self.assertEqual(self.request(server, "POST", "/api/remove-project", {"project_id": prepared["id"], **changes})[0], 400)
+        self.assertEqual(self.state.stop({"project_id": prepared["id"]})["status"], "stopped")
+        code, body, _ = self.request(server, "POST", "/api/remove-project", {"project_id": prepared["id"], "confirm_remove": True, "confirm_path": prepared["project"]})
+        self.assertEqual(code, 200, body)
+        self.assertEqual(json.loads(body)["status"], "removed")
+        self.assertFalse((self.root / "project").exists())
+        self.assertEqual((self.root / "reads/library.fastq.gz").read_bytes(), original)
+        self.assertEqual(cache.read_text(), "keep verified cache")
+
+    def test_stop_escalates_for_an_unresponsive_process(self):
+        prepared = self.start_dummy_analysis(stubborn=True)
+        self.state.stop({"project_id": prepared["id"]})
+        self.wait_stopped()
+        self.assertEqual(self.state.job["exit_code"], -signal.SIGKILL)
+        self.assertTrue((self.root / "project").is_dir())
+
+    def test_remove_rejects_preexisting_or_replaced_project_folders(self):
+        for existing in (True, False):
+            with self.subTest(existing=existing), tempfile.TemporaryDirectory() as directory:
+                previous_root, previous_state = self.root, self.state
+                self.root = Path(directory); self.state = WebState(self.root); self.state.hardware = HARDWARE
+                try:
+                    if existing:
+                        (self.root / "project").mkdir()
+                        (self.root / "project/unrelated.txt").write_text("keep")
+                    self.fastq("reads/library.fastq.gz")
+                    prepared = self.prepare()
+                    self.state.job = {"project_id": prepared["id"], "status": "stopped", "pid": 99999999}
+                    if not existing:
+                        (self.root / "project").rename(self.root / "original")
+                        (self.root / "project").symlink_to(self.root / "reads", target_is_directory=True)
+                    with self.assertRaisesRegex(OncoTracerError, "existed|redirected"):
+                        self.state.remove_project({"project_id": prepared["id"], "confirm_remove": True, "confirm_path": prepared["project"]})
+                    self.assertTrue((self.root / "reads/library.fastq.gz").is_file())
+                finally:
+                    self.root, self.state = previous_root, previous_state
+
+    def test_terminal_prints_complete_local_session_url(self):
+        from oncotracer_cli.web import command_web
+        args = build_parser().parse_args(["web", "--no-browser"])
+        with patch("oncotracer_cli.web.WebServer") as server, contextlib.redirect_stdout(io.StringIO()) as output:
+            server.return_value.origin = "http://127.0.0.1:8888"
+            command_web(args)
+        url = next(line for line in output.getvalue().splitlines() if line.startswith("http://127.0.0.1:"))
+        self.assertEqual(url, server.return_value.origin + "/#" + server.call_args.args[1].token)
+        self.assertGreater(len(url.split("#")[1]), 30)
 
     def test_public_command_registration(self):
         args = build_parser().parse_args(["web"])
