@@ -138,14 +138,18 @@ def command_wizard(original_args) -> int:
         print(f"\nSelected: {sample.sample} ({len(sample.files)} FASTQs)", flush=True)
         name = _sample_name(sample.sample, used)
         used.add(name)
-        kind = _ask(None, f"Type for {name}", choices=("cancer", "control", "other"))
+        while True:
+            kind = _ask(None, f"Type for {name} (cancer/normal/control/other)").casefold()
+            if kind in ("cancer", "normal", "control", "other"):
+                break
+            print("Choose cancer, normal, control, or other (any capitalization).")
         if kind == "other":
             sample_type = _ask(None, "Other sample type", default="other")
             print("Study uses the workflow's tumor group; control uses normal. Your sample type is kept.")
             role = _ask(None, f"Analysis group for {name}", choices=("study", "control"))
             status = "normal" if role == "control" else "tumor"
         else:
-            sample_type, status = kind, ("normal" if kind == "control" else "tumor")
+            sample_type, status = kind, ("normal" if kind in ("normal", "control") else "tumor")
         entries.append({"source": sample, "sample": name, "sample_type": sample_type, "analysis_role": status})
 
     args.analysis = _ask(args.analysis, "Analysis (--analysis; cna=copy-number)", default="cna",
@@ -198,11 +202,11 @@ def command_wizard(original_args) -> int:
                 knowledge_deep_literature=False, knowledge_deep_enable_llm_ranker=False,
                 pathology_use_biomed_models=False,
                 knowledge_catalog_llm=_ask(None, "Use local language models for CNA catalog interpretations?", default="no", choices=("yes", "no")) == "yes",
-                run_gistic=_ask(None, "Add GISTIC recurrence analysis?", default="no", choices=("yes", "no")) == "yes",
+                run_gistic=(len(entries) >= 2 and _ask(None, "Add GISTIC recurrence analysis?", default="no", choices=("yes", "no")) == "yes"),
             )
             values["gistic_required"] = values["run_gistic"]
-            if values["run_gistic"] and len(entries) < 2:
-                raise OncoTracerError("GISTIC needs at least two selected samples. Disable it for a single-sample project.")
+            if len(entries) < 2:
+                print("GISTIC is unavailable for one sample; it needs at least two selected samples. Continuing with your CNA reports.")
     if args.analysis != "cna" and args.gpu is None:
         args.gpu = _ask(None, "Methylation compute device", default="cpu", choices=("cpu", "gpu")) == "gpu"
     backend = args.backend or str(cli._load_install_config().get("backend") or "conda")

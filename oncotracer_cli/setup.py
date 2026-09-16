@@ -218,6 +218,11 @@ def command_setup(args: argparse.Namespace) -> int:
         if args.input_folder and (args.non_interactive or args.manual or explicit_samples):
             raise OncoTracerError("--input-folder uses the interactive folder wizard; omit --non-interactive, --manual and explicit sample flags")
         if not args.non_interactive and not args.manual and not explicit_samples and not resuming:
+            if not args.terminal and not args.run:
+                from .web import command_web
+
+                args.start_dir = str(Path.cwd())
+                return command_web(args)
             from .wizard import command_wizard
 
             return command_wizard(args)
@@ -776,13 +781,17 @@ def command_check(args: argparse.Namespace) -> int:
 def add_setup_commands(subparsers) -> None:
     parser = subparsers.add_parser(
         "setup",
-        help="Create a readable configuration (interactive by default)",
+        help="Open browser setup (use --terminal for terminal prompts)",
         description=(
             "Scan a FASTQ folder, select samples and types, choose analysis settings, "
-            "then save or run. Supplied flags fill in answers. Use --manual for "
+            "then save or run in your browser at 127.0.0.1. Supplied flags prefill the form. "
+            "Use --terminal for terminal prompts, --manual for "
             "per-file prompts or --non-interactive with explicit sample flags for scripts."
         ),
     )
+    parser.add_argument("--terminal", action="store_true", help="use the terminal folder wizard instead of the browser")
+    parser.add_argument("--port", type=int, default=8888, help="local browser port (default: 8888)")
+    parser.add_argument("--no-browser", action="store_true", help="print the local URL without opening a browser automatically")
     reference_options = parser.add_mutually_exclusive_group()
     reference_options.add_argument(
         "--hg38_build",

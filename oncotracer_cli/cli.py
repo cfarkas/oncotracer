@@ -293,7 +293,7 @@ def command_install(args: argparse.Namespace) -> int:
         for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic"):
             if result.get(name + "_prefix"):
                 print(f"  OK  {name}")
-        print("Next: oncotracer setup --project /path/to/my-study --run")
+        print("Next: oncotracer setup (opens the local browser)")
     return 0
 
 

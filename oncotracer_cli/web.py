@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import hmac
 import json
@@ -11,6 +12,7 @@ import secrets
 import subprocess
 import sys
 import threading
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
 from urllib.parse import parse_qs, quote, unquote, urlsplit
@@ -64,8 +66,9 @@ def _input_snapshot(samples):
 class WebState:
     """Server-owned discoveries, prepared configs and one explicitly started job."""
 
-    def __init__(self, start_dir: Path):
+    def __init__(self, start_dir: Path, setup_args=None):
         self.start_dir = start_dir.expanduser().resolve()
+        self.setup_args = setup_args
         self.token = secrets.token_urlsafe(32)
         self.lock = threading.RLock()
         self.scans = {}
@@ -77,7 +80,21 @@ class WebState:
     def system(self):
         if self.hardware is None:
             self.hardware = inspect_hardware(include_gpus=True)
-        return {"hardware": self.hardware,
+        defaults = {}
+        if self.setup_args:
+            args = self.setup_args
+            defaults = {key: getattr(args, key, None) for key in
+                        ("mode", "analysis", "threads", "backend", "classifier", "gpu", "accept_sturgeon_license")}
+            for key, value in {"input_folder": args.input_folder or args.reads_folder,
+                               "project": args.project, "resources": args.resources,
+                               "methylation_path": args.modbam or args.pod5_dir}.items():
+                if value:
+                    defaults[key] = str(Path(value).expanduser().resolve())
+            defaults["methylation_source"] = "pod5" if args.pod5_dir else "modbam"
+            reference = args.hg38_build or args.reference_root
+            defaults["reference"] = "build" if args.build_reference else "reuse" if reference else "download"
+            defaults["reference_path"] = str(Path(reference).expanduser().resolve()) if reference else ""
+        return {"hardware": self.hardware, "defaults": defaults,
                 "suggested_threads": resource_report(hardware=self.hardware, path=self.start_dir)["suggested_threads"],
                 "start_dir": str(self.start_dir), "qdnaseq_binsizes": sorted(QDNASEQ_HG38_SOURCE_SHA256)}
 
@@ -144,8 +161,16 @@ class WebState:
                 if name in names:
                     raise OncoTracerError(f"Sample names must be unique: {name}")
                 names.add(name)
-                kind = _choice(selected, "type", ("cancer", "normal", "custom"))
+                kind = _text(selected, "type").casefold()
+                if kind == "control":
+                    kind = "normal"
+                if kind not in ("cancer", "normal", "custom"):
+                    raise OncoTracerError("type: choose cancer, normal, custom.")
                 label = _text(selected, "label") if kind == "custom" else kind
+                # Standard labels always use the matching role. Other tags stay intact.
+                if label.casefold() in ("normal", "control", "cancer"):
+                    kind = "normal" if label.casefold() in ("normal", "control") else "cancer"
+                    label = kind
                 if len(label) > 160 or any(ord(char) < 32 for char in label):
                     raise OncoTracerError("Sample labels must be at most 160 characters without control characters.")
                 role = (_choice(selected, "role", ("tumor", "normal")) if kind == "custom"
@@ -174,6 +199,12 @@ class WebState:
             args = build_parser().parse_args(["setup", "--non-interactive", "--mode", discovered.mode,
                                              "--project", str(project), "--analysis", analysis,
                                              "--backend", backend, "--threads", str(threads)])
+            if self.setup_args:
+                # Keep advanced local resource and cache flags supplied to setup.
+                from .setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
+                for key in ("reference_cache", *EXECUTABLES, *RESOURCE_FLAGS,
+                            *RESOURCE_FILES["marlin"], *RESOURCE_FILES["sturgeon"]):
+                    setattr(args, key, copy.deepcopy(getattr(self.setup_args, key, None)))
             values = {}
             if discovered.mode == "illumina":
                 args._wizard_rows = [[row["sample"], str(row["source"].fastq_1),
@@ -538,11 +569,21 @@ class WebHandler(BaseHTTPRequestHandler):
 def command_web(args):
     if not 1 <= args.port <= 65535:
         raise OncoTracerError("--port must be from 1 to 65535.")
-    state = WebState(Path(args.start_dir))
-    server = WebServer(args.port, state)
-    print(f"Open OncoTracer in your browser:\n{server.origin}/#{state.token}", flush=True)
+    state = WebState(Path(args.start_dir), args if hasattr(args, "input_folder") else None)
+    try:
+        server = WebServer(args.port, state)
+    except OSError as error:
+        alternate = args.port + 1 if args.port < 65535 else 8888
+        raise OncoTracerError(f"Cannot open 127.0.0.1:{args.port}: {error}. Try --port {alternate}.") from error
+    url = f"{server.origin}/#{state.token}"
+    print(f"Open OncoTracer in your browser:\n{url}", flush=True)
     print("Folders are on this computer. Keep this terminal open; Ctrl+C closes the setup page.", flush=True)
     try:
+        if not args.no_browser:
+            try:
+                webbrowser.open(url)
+            except webbrowser.Error:
+                pass  # The printed URL works on computers without a browser.
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:
         if state.job and state.job["status"] == "running":
@@ -556,4 +597,5 @@ def add_web_command(subparsers):
     parser = subparsers.add_parser("web", help="Open the local browser setup and analysis dashboard")
     parser.add_argument("--port", type=int, default=8888, help="loopback HTTP port (default: 8888)")
     parser.add_argument("--start-dir", default=str(Path.cwd()), help="starting folder in the local file navigator")
+    parser.add_argument("--no-browser", action="store_true", help="print the local URL without opening a browser automatically")
     parser.set_defaults(func=command_web)

@@ -3,8 +3,7 @@
 # QuickStart 1: Illumina and ONT
 
 Run a complete native analysis using one public Illumina library and one ONT
-library. The approximately 225 MB download is small; reference files, tools and
-results need additional space. This is copy-number analysis, not methylation:
+library. Reads total approximately 225 MB; allow space for tools, references and results. This is copy-number analysis, not methylation:
 FASTQ files do not contain methylation calls.
 
 [Install OncoTracer](installation.md) first. These examples use the same
@@ -12,8 +11,8 @@ FASTQ files do not contain methylation calls.
 
 ## 1. Download the reads
 
-Replace `/path/to/my/analyses_dir/` with an existing directory you can write to.
-`$PWD` means that directory. Keep using the same directory in each block.
+Replace `/path/to/my/analyses_dir/` with your writable analysis directory.
+Use that directory in every block; `$PWD` is its absolute path.
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -40,14 +39,14 @@ MD5
 `--output` names the downloaded file; `--continue-at -` resumes an interrupted
 download. Continue only when all three checksum lines say `OK`.
 
-The ONT public library is placed in `barcode01` as a sample folder; it is not
-a new demultiplexing step.
+The ONT library uses `barcode01` as its sample folder.
 
 ## 2. Set up interactively (recommended)
 
 Choose Illumina or ONT, or follow both using separate project folders.
-The terminal wizard scans the supplied folder and asks you to review samples,
-analysis settings, hardware, backend and reference choice.
+Each command opens browser setup at **127.0.0.1:8888** with paths prefilled and
+samples discovered. If needed, open the complete printed URL. Keep the terminal
+open; stop it with Ctrl+C before opening the other example.
 
 ### Illumina
 
@@ -57,12 +56,12 @@ oncotracer setup --project "$PWD/oncotracer-quickstart1/illumina" \
   --mode illumina --input-folder "$PWD/oncotracer-quickstart1/input/illumina"
 ```
 
-1. Include the detected paired-end library; keep its name `ERR12341627`.
-2. Choose sample type `cancer` and copy-number analysis (`cna`).
-3. Review CPU/RAM/GPU information and choose threads, for example `4`, then keep
-   100 kb bins for qDNAseq.
-4. Leave optional CNA interpretation reports off, choose backend `conda` and
-   reference `download`, then choose **save** to continue to step 3.
+1. Drag `ERR12341627` into **Cancer**, or use its dropdown. Edit its name as needed.
+2. Keep `cna`, review CPU/RAM/GPU information, and choose threads, for example `4`.
+3. Keep **100 kb (default)** bins. Optional CNA reports and local models work for
+   one sample; **GISTIC is disabled** because it needs two.
+4. Choose Conda and reference download. Click **Save configuration and check**, then
+   **Run analysis**, or use the Illumina commands in step 3.
 
 ### ONT
 
@@ -72,25 +71,30 @@ oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
   --mode ont --input-folder "$PWD/oncotracer-quickstart1/input/fastq_pass"
 ```
 
-1. Include `barcode01` and name it `DRR165691`.
-2. Choose sample type `cancer` and analysis `cna`.
-3. Review hardware and choose threads, for example `4`, then caller `ichorcna`
-   (500 kb bins).
-4. Leave optional CNA interpretation reports off, choose `conda`, reference
-   `download`, then **save**.
+1. Drag `barcode01` into **Cancer** and edit its name to `DRR165691`.
+   All FASTQs within this barcode are one sample.
+2. Keep analysis `cna`, review hardware, and choose threads, for example `4`.
+3. Keep caller `ichorcna` (**500 kb bins**).
+4. Choose Conda and reference download, then **Save configuration and check**.
+   Click **Run analysis**, or leave it saved and use the ONT commands in step 3.
+   GISTIC is unavailable for this single sample; optional CNA reports still work.
 
-The sample type above is example metadata, not a diagnosis. Enter accepts a
-shown default. At path prompts, use actual paths without quotes; `$PWD` expands
-in shell commands, not typed answers.
+Sample types here are example metadata. Setup saves `config/run.yml` and sample
+metadata without starting analysis or downloads. Existing configurations are protected.
 
-Setup saves `config/run.yml` and sample metadata. **Save** starts no analysis or
-genome download; **run** starts directly from the wizard instead of step 3.
-Setup never overwrites a configuration; edit the YAML to change saved settings.
+### Prefer terminal prompts?
+
+Add `--terminal` to either command above. Press Enter to accept a displayed default:
+
+```text
+CNA bin size (kb) (1/5/10/15/30/50/100/500/1000) [100]:
+```
+
+Press Enter for `[100]`: **100 kb**. ONT ichorCNA
+uses 500 kb instead. Finish with `save` or `run`. Single-sample projects skip GISTIC.
 
 For scripts, [supply answers with `--non-interactive`](setup.md#optional-scripted-setup-without-prompts).
-It skips questions, uses flags/defaults and errors on missing required inputs.
-Omit it for the interactive wizard. [Your own samples](setup.md) shows control
-roles, methylation options and manual input paths.
+[Your own samples](setup.md) covers normal roles, custom tags and methylation.
 
 ## Optional: reuse prepared genome indexes
 
@@ -119,14 +123,12 @@ oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
   --hg38_build /data/shared-reference
 ```
 
-Answer the same prompts from step 2, then continue with step 3. Replace
-`/data/shared-reference` with your existing reference parent; its
-`references/samurai_hg38` folder also works. It must contain the prepared genome,
-indexes and manifests. Illumina needs BWA indexes; ONT needs minimap2. One reference
-shared between platforms needs both.
+The browser prefills the reference. Assign samples, save and run.
+Replace `/data/shared-reference` with your prepared reference parent or its
+`references/samurai_hg38` folder. Illumina needs BWA indexes; ONT needs minimap2.
 
-`--hg38_build` **without a path** selects automatic download. In the wizard,
-choosing `reuse` and entering the prepared reference path has the same effect
+`--hg38_build` **without a path** selects automatic download. In the browser,
+choosing **Reuse a prepared OncoTracer reference** and browsing to that folder has the same effect
 as supplying that path in these commands.
 To build locally, replace `--hg38_build /data/shared-reference` in either example
 with `--build_reference`. Run then downloads source files as needed and builds

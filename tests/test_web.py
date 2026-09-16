@@ -392,6 +392,40 @@ class WebTests(unittest.TestCase):
         self.assertTrue(headers["Content-Disposition"].startswith("attachment;"))
         self.assertIn(b"sample", content)
 
+    def test_setup_defaults_to_browser_and_preserves_prefilled_settings(self):
+        from oncotracer_cli.cli import main
+        with patch("oncotracer_cli.web.command_web", return_value=0) as launch:
+            code = main(["setup", "--project", str(self.root / "project"),
+                         "--mode", "illumina", "--input-folder", str(self.root / "reads"),
+                         "--threads", "3", "--hg38_build", "/prepared", "--port", "8899"])
+        self.assertEqual(code, 0)
+        args = launch.call_args.args[0]
+        self.assertEqual(args.port, 8899)
+        state = WebState(self.root, args)
+        state.hardware = HARDWARE
+        defaults = state.system()["defaults"]
+        self.assertEqual(defaults["mode"], "illumina")
+        self.assertEqual(defaults["threads"], 3)
+        self.assertEqual(defaults["project"], str(self.root / "project"))
+        self.assertEqual(defaults["input_folder"], str(self.root / "reads"))
+        self.assertEqual((defaults["reference"], defaults["reference_path"]), ("reuse", "/prepared"))
+        self.assertFalse((self.root / "project").exists())
+
+    def test_standard_sample_types_are_case_insensitive_and_keep_matching_roles(self):
+        self.fastq("reads/one.fastq.gz")
+        for i, label in enumerate(("Normal", "NORMAL", "nORMAl", "Cancer", "CANCER", "cANCER")):
+            for custom in (False, True):
+                with self.subTest(label=label, custom=custom):
+                    selection = {"id": 0, "name": "renamed", "type": "custom" if custom else label,
+                                 "label": label, "role": "tumor" if label.lower() == "normal" else "normal"}
+                    prepared = self.prepare(samples=[selection], project=str(self.root / f"p{i}-{custom}"))
+                    self.assertTrue(prepared["valid"], prepared["check"])
+                    config = load_flat_yaml(Path(prepared["config_path"]))
+                    with Path(config["sample_metadata"]).open() as handle:
+                        row = next(csv.DictReader(handle))
+                    self.assertEqual(row["sample_type"], label.lower())
+                    self.assertEqual(row["analysis_role"], "normal" if label.lower() == "normal" else "tumor")
+
     def test_public_command_registration(self):
         args = build_parser().parse_args(["web"])
         self.assertEqual(args.port, 8888)

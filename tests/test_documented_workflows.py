@@ -20,7 +20,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from oncotracer_cli.cli import QS1_FILES, main
+from oncotracer_cli.cli import QS1_FILES, main, build_parser
+from oncotracer_cli.web import WebState
 from oncotracer_cli.engine import _fastq_files, merge_fastqs, parse_illumina_samplesheet, parse_ont_samples
 from oncotracer_cli.runtime import load_flat_yaml
 
@@ -132,8 +133,21 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 # installing tools, downloading a reference, or running aligners.
                 self.assertEqual(args[args.index("--backend") + 1], "conda")
                 args.append("--dry-run")
-            with patch("builtins.input", side_effect=answer_prompt):
-                code, output = self.cli(*args)
+            if action == "setup" and "--input-folder" in args and "--terminal" not in args:
+                # Exercise the actual browser discovery/configuration path for
+                # browser-first examples; HTTP/DOM behavior has a Firefox smoke test.
+                initial = build_parser().parse_args(args)
+                state = WebState(base, initial)
+                scan = state.scan({"mode": initial.mode, "folder": initial.input_folder})
+                selections = [{"id": sample["id"], "name": next(names), "type": "cancer"}
+                              for sample in scan["samples"] if sample["barcode"] != "unclassified"]
+                with contextlib.redirect_stdout(io.StringIO()):
+                    saved = state.prepare({"scan_id": scan["scan_id"], "project": initial.project,
+                                           "threads": 2, "samples": selections})
+                code, output = (0 if saved["valid"] else 2), json.dumps(saved)
+            else:
+                with patch("builtins.input", side_effect=answer_prompt):
+                    code, output = self.cli(*args)
             self.assertEqual(code, 0, f"{shlex.join(command)}\n{output}")
             if action == "setup" and "--input-folder" in args:
                 self.assertIsNone(next(names, None), "Wizard omitted a documented sample")
@@ -230,6 +244,10 @@ class DocumentedWorkflowTests(unittest.TestCase):
                         r"^## Optional: reuse prepared genome indexes\n.*?(?=^## )",
                         "", workflow_text, flags=re.MULTILINE | re.DOTALL,
                     )
+                if relative == "docs/public_cohort.md":
+                    # These alternatives create the same project. Exercise the
+                    # scripted cohort here; browser mapping has separate coverage.
+                    workflow_text = workflow_text.split("## Alternative:", 1)[1]
                 configs = self.steps(workflow_text, base, samples)
                 self.assertTrue(all(config["hg38_auto_download"] for config in configs))
                 for config in configs:

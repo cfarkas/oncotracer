@@ -37,29 +37,60 @@ The first four commands install and activate OncoTracer. Keep both folders: the 
 
 `install` shows live progress and saves full diagnostics to a log. Use `--verbose` for package output or `doctor --json` for automation. `system` explains hardware capacity before installing tools. [Uninstall instructions](docs/uninstall.md) cover preview, recovery, and permanent removal without deleting project data.
 
-## Set up your analysis
+## Set up your analysis in the browser
 
 ```bash
-oncotracer setup --project /absolute/path/to/my-study
+oncotracer setup
 ```
 
-Replace `/absolute/path/to/my-study` with a new project folder. The interactive terminal wizard scans your FASTQ folder, detects samples and Illumina pairs, and lets you select and name samples with cancer/control/other labels. It displays CPU, RAM and GPU information, then asks for analysis features, threads, backend and reference choice. Press Enter to accept a displayed default. Follow the [Illumina or ONT walkthrough](docs/setup.md).
+This starts the local web page at **127.0.0.1:8888** and opens your browser.
+If it does not open, copy the complete URL printed in the terminal, including
+its session code after `#`. Keep that terminal open while using the page.
+`oncotracer web` also opens the browser interface.
 
-Setup saves `my-study/config/run.yml` and sample metadata, then offers **run** or **save**. Choose **run** to begin immediately, or **save** to review and run separately:
+1. **Choose Illumina or ONT.** Click **Browse folders** and select your FASTQ folder.
+   OncoTracer discovers the samples automatically: Illumina read pairs become one
+   sample; each ONT barcode becomes one sample containing all its FASTQ batches.
+   A nonbarcoded ONT ligation folder is one sample.
+2. **Assign samples.** Drag cards from **Detected · unassigned** into **Normal** or
+   **Cancer**, or use each card's dropdown. Edit the detected sample names as needed.
+   Unassigned samples are excluded. Custom tags also let you select an analysis role.
+   Normal/Cancer labels accept any capitalization; normal samples are analyzed
+   independently, without pooling or subtraction.
+3. **Choose settings.** Review detected CPUs, RAM and GPUs, then set your threads.
+   QDNAseq defaults to **100 kb** bins; ONT ichorCNA uses **500 kb**.
+   Optional CNA reports and local language models work for one sample;
+   GISTIC recurrence analysis becomes available with at least two assigned samples.
+4. **Choose a project folder**, tools and reference. The default downloads prepared
+   hg38 indexes when analysis starts. Choose **Reuse a prepared OncoTracer reference**
+   to browse an existing reference, or **Build indexes locally on CPU** for local indexing.
+5. Click **Save configuration and check**, review the settings, then **Run analysis**.
+   Progress appears on the page. Click **Open results** when it finishes.
+
+For example, prefill a new Illumina project and discover its FASTQs on opening:
 
 ```bash
-oncotracer check --config /absolute/path/to/my-study/config/run.yml
-oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
+oncotracer setup --project "$PWD/my-study" --mode illumina \
+  --input-folder /data/illumina
 ```
 
-`--config` selects your saved settings. `--backend conda` selects the installed analysis tools. Repeat `run` to resume. Add `--run` to setup to validate, prepare missing backend tools and start without the final menu. For scripts, `setup --non-interactive` skips prompts, uses supplied flags and defaults, and reports missing required inputs.
+Replace `/data/illumina` with your FASTQ folder. Follow the separate
+[Illumina and ONT walkthroughs](docs/setup.md) or [QuickStart 1](docs/quick_start.md).
+For terminal prompts, use `oncotracer setup --terminal`; press Enter to accept
+shown defaults such as `[100]` for the QDNAseq bin size. Scripts can use
+`setup --non-interactive` with explicit sample flags. `setup --project PATH --run`
+resumes an existing saved project.
 
-Choose `reuse` in the wizard or add `--hg38_build /path/to/reference` for prepared hg38 indexes.
-The default reference choice downloads prebuilt indexes when run starts. Choose
-`build` or use `--build_reference` for local indexing; it needs more RAM, disk and time.
-Choosing **save** and running `check` do not download or build genomes. Interrupted downloads retry automatically and reuse verified chunks.
+The page saves `my-study/config/run.yml` and sample metadata. To run later:
 
-Results go to `my-study/results/`. Begin with `06_workflow_summary/workflow_summary.txt`; methylation results also have `07_methylation/methylation_status.json`.
+```bash
+oncotracer check --config "$PWD/my-study/config/run.yml"
+oncotracer run --backend conda --config "$PWD/my-study/config/run.yml"
+```
+
+Saving and checking do not start analysis or genome downloads. Results go to
+`my-study/results/`; begin with `06_workflow_summary/workflow_summary.txt`.
+Methylation also produces `07_methylation/methylation_status.json`.
 
 ## Try the public example
 
