@@ -9,6 +9,9 @@ import json
 import mimetypes
 import os
 import secrets
+import shutil
+import signal
+import time
 import subprocess
 import sys
 import threading
@@ -141,7 +144,7 @@ class WebState:
 
         # Serialize creation and prevent a second request racing exclusive writes.
         with self.lock:
-            if self.job and self.job["status"] == "running":
+            if self.job and self.job["status"] in {"running", "stopping"}:
                 raise OncoTracerError("An analysis is running. Wait for it to finish before preparing another project.")
             discovered = self.scans.get(_text(data, "scan_id"))
             if discovered is None:
@@ -270,7 +273,9 @@ class WebState:
                 | {"fastq_files": json.dumps([str(p) for p in row["source"].files])} for row in entries]
             selected_sources = tuple(row["source"] for row in entries)
             inputs = _input_snapshot(selected_sources)
+            project_created = not project.exists()
             _command_setup(args)
+            project_stat = project.stat()
             config_path = project / "config/run.yml"
             command = _launcher() + ["check", "--json", "--config", str(config_path)]
             try:
@@ -290,10 +295,12 @@ class WebState:
                         "config": config_path.read_text(), "backend": backend, "valid": valid,
                         "check": report, "fingerprint": _fingerprint(paths),
                         "discovered": discovered, "selected_sources": selected_sources,
-                        "input_snapshot": inputs, "outdir": str(project / "results")}
+                        "input_snapshot": inputs, "outdir": str(project / "results"),
+                        "project_created": project_created,
+                        "project_identity": (project_stat.st_dev, project_stat.st_ino)}
             self.projects[project_id] = prepared
             return {key: value for key, value in prepared.items()
-                    if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot"}}
+                    if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot", "project_created", "project_identity"}}
 
     def run(self, data):
         with self.lock:
@@ -302,7 +309,7 @@ class WebState:
                 raise OncoTracerError("Save and validate a project before running it.")
             if self.job and self.job["project_id"] == prepared["id"]:
                 return self.status()
-            if self.job and self.job["status"] == "running":
+            if self.job and self.job["status"] in {"running", "stopping"}:
                 raise OncoTracerError("An analysis is already running in this browser session.")
             if _fingerprint([Path(path) for path in prepared["fingerprint"]]) != prepared["fingerprint"]:
                 raise OncoTracerError("Saved configuration changed after review. Check and run it with the CLI, or prepare a new project.")
@@ -346,6 +353,9 @@ class WebState:
         result = job["process"].wait()
         with self.lock:
             job["exit_code"] = result
+            if job.get("stop_requested"):
+                # The cancellation worker waits for the whole process group.
+                return
             job["status"] = "complete" if result == 0 else "failed"
             prepared = self.projects[job["project_id"]]
             outdir = Path(prepared["outdir"]).resolve()
@@ -353,6 +363,90 @@ class WebState:
                 key = secrets.token_urlsafe(32)
                 self.result_roots[key] = outdir
                 job["results_url"] = f"/results/{key}/index.html"
+
+    @staticmethod
+    def _group_running(pid):
+        try:
+            os.killpg(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+
+    def stop(self, data):
+        """Cancel only this server's active job; never accept a caller-supplied PID."""
+        with self.lock:
+            if not self.job or self.job["project_id"] != _text(data, "project_id"):
+                raise OncoTracerError("This analysis is not the current browser job.")
+            job = self.job
+            if job["status"] not in {"running", "stopping"}:
+                return self.status()
+            if job["status"] == "stopping" and not job.get("stop_error"):
+                return self.status()
+            if job["process"].poll() is not None and not job.get("stop_requested"):
+                raise OncoTracerError("The analysis has already finished. Refresh its status.")
+            # Every analysis is launched in its own session; children inherit its
+            # process group, including command pipelines and reference downloads.
+            if not job.get("stop_requested") and os.getpgid(job["pid"]) != job["pid"]:
+                raise OncoTracerError("Cannot identify the analysis process group safely.")
+            job.update(status="stopping", stop_requested=True)
+            job.pop("stop_error", None)
+            threading.Thread(target=self._stop_group, args=(job,), daemon=True).start()
+            return self.status()
+
+    def _stop_group(self, job):
+        try:
+            # Interrupt first to allow download and tool cleanup, then bound the
+            # wait if a tool ignores interrupts. Do not block the HTTP request.
+            for sig, seconds in ((signal.SIGINT, 5), (signal.SIGTERM, 3), (signal.SIGKILL, 2)):
+                try:
+                    os.killpg(job["pid"], sig)
+                except ProcessLookupError:
+                    break
+                deadline = time.monotonic() + seconds
+                while time.monotonic() < deadline and self._group_running(job["pid"]):
+                    time.sleep(.1)
+                if not self._group_running(job["pid"]):
+                    break
+            with self.lock:
+                if self._group_running(job["pid"]):
+                    job["stop_error"] = "Some analysis processes have not exited. Retry Stop; project removal is blocked."
+                else:
+                    job["exit_code"] = job["process"].poll()
+                    job["status"] = "stopped"
+        except OSError as error:
+            with self.lock:
+                job["stop_error"] = f"Could not stop the analysis: {error}"
+
+    def remove_project(self, data):
+        """Remove a newly created project only after stop and explicit confirmation."""
+        with self.lock:
+            project_id = _text(data, "project_id")
+            if not self.job or self.job["project_id"] != project_id or self.job["status"] != "stopped":
+                raise OncoTracerError("Stop this analysis completely before removing its project folder.")
+            prepared = self.projects[project_id]
+            if not prepared.get("project_created"):
+                raise OncoTracerError("This folder existed before browser setup; automatic removal is unavailable.")
+            path = Path(prepared["project"])
+            if data.get("confirm_remove") is not True or data.get("confirm_path") != str(path):
+                raise OncoTracerError("Confirm removal by entering the exact project folder path.")
+            if self._group_running(self.job["pid"]):
+                raise OncoTracerError("Analysis processes are still active; removal is blocked.")
+            if path.is_symlink() or path.resolve() != path:
+                raise OncoTracerError("The project folder was replaced or redirected; removal is blocked.")
+            current = path.stat()
+            if (current.st_dev, current.st_ino) != prepared["project_identity"]:
+                raise OncoTracerError("The project folder was replaced; removal is blocked.")
+            # Never follow directory symlinks into inputs, shared references or tools.
+            if not shutil.rmtree.avoids_symlink_attacks:
+                raise OncoTracerError("Safe folder removal is unavailable on this platform.")
+            shutil.rmtree(path)
+            self.job["status"] = "removed"
+            self.job.pop("results_url", None)
+            for key, root in list(self.result_roots.items()):
+                if root.is_relative_to(path):
+                    del self.result_roots[key]
+            prepared["valid"] = False
+            return self.status()
 
     def result_file(self, key, relative):
         """Resolve a report capability without granting access outside its results."""
@@ -377,6 +471,12 @@ class WebState:
             if not self.job:
                 return {"status": "idle", "log": ""}
             result = {key: value for key, value in self.job.items() if key != "process"}
+            prepared = self.projects[result["project_id"]]
+            result["project_path"] = prepared["project"]
+            result["can_remove"] = result["status"] == "stopped" and prepared.get("project_created", False)
+            if result["status"] == "removed":
+                result.update(log="Project folder removed by confirmation. Input files and shared download caches were kept.", log_truncated=False)
+                return result
             with Path(result["log_path"]).open("rb") as handle:
                 handle.seek(0, 2)
                 size = handle.tell()
@@ -549,7 +649,8 @@ class WebHandler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise OncoTracerError("Expected a JSON object.")
             methods = {"/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
-                       "/api/run": self.server.state.run}
+                       "/api/run": self.server.state.run, "/api/stop": self.server.state.stop,
+                       "/api/remove-project": self.server.state.remove_project}
             method = methods.get(urlsplit(self.path).path)
             if method is None:
                 self._reply(404, {"error": "Unknown endpoint."})
@@ -576,7 +677,7 @@ def command_web(args):
         alternate = args.port + 1 if args.port < 65535 else 8888
         raise OncoTracerError(f"Cannot open 127.0.0.1:{args.port}: {error}. Try --port {alternate}.") from error
     url = f"{server.origin}/#{state.token}"
-    print(f"Open OncoTracer in your browser:\n{url}", flush=True)
+    print(f"OncoTracer browser URL (copy the entire link, including #):\n{url}", flush=True)
     print("Folders are on this computer. Keep this terminal open; Ctrl+C closes the setup page.", flush=True)
     try:
         if not args.no_browser:
