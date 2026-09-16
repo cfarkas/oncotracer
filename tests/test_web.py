@@ -527,6 +527,31 @@ except KeyboardInterrupt:
         self.assertEqual(url, server.return_value.origin + "/#" + server.call_args.args[1].token)
         self.assertGreater(len(url.split("#")[1]), 30)
 
+    def test_progress_eta_counts_down_but_never_guesses_the_whole_run(self):
+        from oncotracer_cli.web_progress import progress_for_job
+        job = {"status": "running", "_started_at": 100.0}
+        log = "Downloading hg38-00-0000.part (1024 MiB)\n  hg38-00-0000.part: 40% | 10.0 MiB/s | ETA 60s\n"
+        progress = progress_for_job(job, log, now=120.0)
+        self.assertEqual(progress["elapsed_seconds"], 20)
+        self.assertEqual(progress["eta_seconds"], 60)
+        self.assertEqual(progress["percent"], 40)
+        self.assertIsNone(progress["overall_eta_seconds"])
+        self.assertIn("file only", progress["note"])
+        self.assertEqual(progress_for_job(job, log, now=130.0)["eta_seconds"], 50)
+        self.assertIsNone(progress_for_job(job, log, now=185.0)["eta_seconds"])
+        self.assertIsNone(progress_for_job(job, log + "Verified hg38-00-0000.part\n", now=186.0)["eta_seconds"])
+        progress = progress_for_job(job, log + "[illumina-align-example] bwa mem ...\n", now=187.0)
+        self.assertEqual(progress["stage"], "Aligning reads")
+        self.assertIsNone(progress["eta_seconds"])
+        job.update(status="complete", _finished_at=200.0)
+        progress = progress_for_job(job, log, now=250.0)
+        self.assertEqual(progress["elapsed_seconds"], 100)
+        self.assertEqual(progress["overall_eta_seconds"], 0)
+        job["status"] = "stopped"
+        progress = progress_for_job(job, log, now=300.0)
+        self.assertEqual(progress["elapsed_seconds"], 100)
+        self.assertIsNone(progress["eta_seconds"])
+
     def test_public_command_registration(self):
         args = build_parser().parse_args(["web"])
         self.assertEqual(args.port, 8888)

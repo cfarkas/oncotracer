@@ -31,7 +31,7 @@ selects another port, and `--no-browser` only prints the URL.
 5. **Choose tools, reference and project.** Select Conda, reference download/reuse/build,
    and a project parent with a new folder name. Existing configurations are protected.
 6. **Save, review and run.** Click **Save configuration and check**, then **Run analysis**.
-   Follow progress and open results here. **Stop analysis** cancels the run, then offers
+   View elapsed time, stage ETA and results here. Overall ETA stays unknown without sufficient progress. **Stop analysis** cancels the run, then offers
    **Keep project** (default) or **Remove project folder** with explicit path confirmation.
    Inputs and shared download caches remain.
 

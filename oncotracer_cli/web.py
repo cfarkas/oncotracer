@@ -25,6 +25,7 @@ from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
 from .runtime import OncoTracerError, load_flat_yaml
 from .system_check import inspect_hardware, resource_report
 from .web_ui import PAGE
+from .web_progress import progress_for_job
 
 
 def _launcher() -> list[str]:
@@ -345,7 +346,8 @@ class WebState:
                     handle.write(f"Analysis could not start: {error}\n".encode())
                     raise
             self.job = {"project_id": prepared["id"], "status": "running", "exit_code": None,
-                        "log_path": str(log_path), "pid": process.pid, "process": process}
+                        "log_path": str(log_path), "pid": process.pid, "process": process,
+                        "_started_at": time.monotonic()}
             threading.Thread(target=self._wait, args=(self.job,), daemon=True).start()
             return self.status()
 
@@ -356,6 +358,7 @@ class WebState:
             if job.get("stop_requested"):
                 # The cancellation worker waits for the whole process group.
                 return
+            job["_finished_at"] = time.monotonic()
             job["status"] = "complete" if result == 0 else "failed"
             prepared = self.projects[job["project_id"]]
             outdir = Path(prepared["outdir"]).resolve()
@@ -412,6 +415,7 @@ class WebState:
                     job["stop_error"] = "Some analysis processes have not exited. Retry Stop; project removal is blocked."
                 else:
                     job["exit_code"] = job["process"].poll()
+                    job["_finished_at"] = time.monotonic()
                     job["status"] = "stopped"
         except OSError as error:
             with self.lock:
@@ -470,12 +474,13 @@ class WebState:
         with self.lock:
             if not self.job:
                 return {"status": "idle", "log": ""}
-            result = {key: value for key, value in self.job.items() if key != "process"}
+            result = {key: value for key, value in self.job.items() if key != "process" and not key.startswith("_")}
             prepared = self.projects[result["project_id"]]
             result["project_path"] = prepared["project"]
             result["can_remove"] = result["status"] == "stopped" and prepared.get("project_created", False)
             if result["status"] == "removed":
                 result.update(log="Project folder removed by confirmation. Input files and shared download caches were kept.", log_truncated=False)
+                result["progress"] = progress_for_job(self.job, result["log"])
                 return result
             with Path(result["log_path"]).open("rb") as handle:
                 handle.seek(0, 2)
@@ -483,6 +488,7 @@ class WebState:
                 handle.seek(max(0, size - 262144))
                 result["log"] = handle.read().decode("utf-8", errors="replace")
                 result["log_truncated"] = size > 262144
+            result["progress"] = progress_for_job(self.job, result["log"])
             return result
 
 
