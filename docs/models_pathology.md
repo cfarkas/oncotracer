@@ -130,13 +130,13 @@ ls -lh "$OUT/03_report/cna_classifier_report.html"
 | --- | --- | --- |
 | `01_prepared/` | Event and feature tables | Derived classifier input |
 | `02_classification/` | Context scores and classes | Research interpretation |
-| `03_report/` | Cohort classifier report, figures and clinician summaries | Presentation layer |
+| `03_report/` | Cohort classifier report, figures, clinician summaries and `llm_reports/` | Presentation layer |
 | `04_gistic2/`, `05_gistic2_parsed/` | Optional recurrence analysis | Cohort-level research output |
 | `06_knowledge/` | Driver-region/literature evidence, metrics and model trials | Requires expert verification |
 | `07_pathology/` | Matching, concordance, status, model trials | Compatibility assessment |
 
 In native runs, final matched knowledge/LLM HTML and PDF reports are published
-separately at `04_cna_custom_plots/llm_reports/` below the analysis output root.
+in `05_cna_classifier/03_report/llm_reports/` below the analysis output root.
 Open its `index.html` to choose a sample, download the combined PDF, or follow
 links back to the stage-05 reports and evidence. See [LLM-assisted reports](llm_reports.md).
 

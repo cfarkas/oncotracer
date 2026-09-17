@@ -165,17 +165,18 @@ Docker and Apptainer use `--backend docker` and `--backend singularity`, after
 
 ## 4. Read the results
 
-Each successful run prints `OncoTracer native analysis completed:`. Look under
-`oncotracer-quickstart1/illumina/results/` and `oncotracer-quickstart1/ont/results/`:
+Results are under `oncotracer-quickstart1/illumina/results/` and
+`oncotracer-quickstart1/ont/results/`:
 
 | File | Purpose |
 | --- | --- |
+| `index.html` | Results dashboard and stage indexes |
+| `06_workflow_summary/final_report.html` | Combined findings |
 | `06_workflow_summary/workflow_summary.txt` | Completion status |
 | `03_cna_codification/cna_events.tsv` | Copy-number changes |
 | `04_cna_custom_plots/cna_per_sample_pages.pdf` | Plots |
 | `.oncotracer-native/trace.tsv` | Recorded commands |
 
-To resume, repeat the same `run` command after fixing the reported error. Do not
-repeat setup or add `--force` for a normal resume.
+After fixing errors, resume with the same `run` command; omit setup and `--force`.
 
 Next: [your own samples](setup.md) or [QuickStart 2](public_cohort.md).

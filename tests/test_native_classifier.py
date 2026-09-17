@@ -295,7 +295,7 @@ class NativeClassifierTests(unittest.TestCase):
                 force=True,
             )
             self.assertEqual(result, analysis / "05_cna_classifier")
-            knowledge_reports = analysis / "04_cna_custom_plots/llm_reports"
+            knowledge_reports = analysis / "05_cna_classifier/03_report/llm_reports"
             required = [
                 result / "01_prepared/clean_events.tsv",
                 result / "02_classification/cna_patient_classification.tsv",
@@ -334,8 +334,8 @@ class NativeClassifierTests(unittest.TestCase):
                         with self.subTest(page=page.name, href=href):
                             self.assertTrue((page.parent / unquote(url.path)).exists())
             index = (knowledge_reports / "index.html").read_text()
-            self.assertIn("../../05_cna_classifier/03_report/cna_classifier_report.html", index)
-            self.assertIn("../../05_cna_classifier/06_knowledge/knowledge_llm_trials.tsv", index)
+            self.assertIn("../cna_classifier_report.html", index)
+            self.assertIn("../../06_knowledge/knowledge_llm_trials.tsv", index)
             classifier_summary = json.loads(
                 (result / "native_classifier_summary.json").read_text(encoding="utf-8")
             )

@@ -386,12 +386,12 @@ class OutputSafetyTests(unittest.TestCase):
             config.write_text("mode: illumina\n")
             trace.write_text("timestamp\tcommand\n")
             artifacts = [
-                "04_cna_custom_plots/llm_reports/index.html",
-                "04_cna_custom_plots/llm_reports/pdf_report_index.tsv",
-                "04_cna_custom_plots/llm_reports/pdf_html_report_index.tsv",
-                "04_cna_custom_plots/llm_reports/all_sample_CNA_knowledge_reports.pdf",
-                "04_cna_custom_plots/llm_reports/synthetic_CNA_knowledge_report.html",
-                "04_cna_custom_plots/llm_reports/synthetic_CNA_knowledge_report.pdf",
+                "05_cna_classifier/03_report/llm_reports/index.html",
+                "05_cna_classifier/03_report/llm_reports/pdf_report_index.tsv",
+                "05_cna_classifier/03_report/llm_reports/pdf_html_report_index.tsv",
+                "05_cna_classifier/03_report/llm_reports/all_sample_CNA_knowledge_reports.pdf",
+                "05_cna_classifier/03_report/llm_reports/synthetic_CNA_knowledge_report.html",
+                "05_cna_classifier/03_report/llm_reports/synthetic_CNA_knowledge_report.pdf",
                 "05_cna_classifier/06_knowledge/knowledge_metrics.json",
                 "05_cna_classifier/06_knowledge/knowledge_llm_trials.tsv",
                 "05_cna_classifier/06_knowledge/knowledge_literature_ranker_trials.tsv",

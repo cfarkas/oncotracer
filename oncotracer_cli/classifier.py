@@ -484,7 +484,7 @@ def run_native_classifier(
     prepared = classifier_out / "01_prepared"
     classification = classifier_out / "02_classification"
     report = classifier_out / "03_report"
-    knowledge_reports = analysis_outdir / "04_cna_custom_plots" / "llm_reports"
+    knowledge_reports = report / "llm_reports"
     gistic = classifier_out / "04_gistic2"
     parsed = classifier_out / "05_gistic2_parsed"
     knowledge = classifier_out / "06_knowledge"
@@ -726,7 +726,7 @@ def run_native_classifier(
             "--heatmap-matrix", classification / "heatmap_matrix.tsv",
             "--pca-coordinates", classification / "pca_coordinates.tsv",
             "--plot-top-features", _string(config, "plot_top_features"),
-            "--knowledge-reports-href", "../../04_cna_custom_plots/llm_reports/index.html",
+            "--knowledge-reports-href", "llm_reports/index.html",
             "--pathology-concordance", pathology_out / "pathology_concordance.tsv",
             "--pathology-records", pathology_out / "pathology_records_matched.tsv",
         ],
@@ -770,10 +770,10 @@ def run_native_classifier(
                 "--pathology-concordance", pathology_out / "pathology_concordance.tsv",
                 "--pathology-records", pathology_out / "pathology_records_matched.tsv",
                 "--outdir", knowledge_reports,
-                "--cohort-report-href", "../../05_cna_classifier/03_report/cna_classifier_report.html",
-                "--clinician-reports-href", ("../../05_cna_classifier/03_report/clinician_reports/index.html"
+                "--cohort-report-href", "../cna_classifier_report.html",
+                "--clinician-reports-href", ("../clinician_reports/index.html"
                                               if _bool(config, "run_clinician_reports") else ""),
-                "--knowledge-evidence-href", "../../05_cna_classifier/06_knowledge/",
+                "--knowledge-evidence-href", "../../06_knowledge/",
                 "--max-events", _string(config, "pdf_max_events"),
                 "--include-full-events", str(_bool(config, "pdf_include_full_events")).lower(),
             ],

@@ -4,7 +4,33 @@ The report LLM writes short, source-linked **literature drafts** about detected
 CNA features. It does not assign the tumor type, change CNA calls, or interpret
 the methylation classifier. Those results remain separate.
 
-## Enable it in your existing YAML
+## Add reports to a completed run
+
+Keep the **original YAML unchanged** and use the managed Conda installation:
+
+```bash
+oncotracer reports --config /absolute/path/project/config/run.yml --backend conda
+```
+
+This adds catalog-based interpretation reports from authenticated, completed
+native CNA outputs. It does not rerun alignment, CNA calling/refinement,
+stage-04 CNA plots, or methylation. The original config, source CNA tables, and native run manifest
+remain unchanged. Report provenance is saved in
+`05_cna_classifier/report_provenance.json`.
+
+To retrieve public literature and attempt local model drafts:
+
+```bash
+oncotracer reports --config /absolute/path/project/config/run.yml --backend conda \
+  --literature --model /absolute/path/to/report-model --threads 4
+```
+
+`--literature` is optional. Models load from local files/cache by default;
+`--allow-model-download` permits downloads. Generation uses CPU with **4 threads**
+by default. Missing models or usable abstracts produce labeled fallback text,
+not a successful LLM draft. The command refreshes the dashboard and final report.
+
+## Enable reports before a new analysis
 
 Edit the project YAML created by `oncotracer setup` or `auto`. Replace existing
 values for the keys below; add only keys that are absent. Do not append a second
@@ -36,7 +62,8 @@ Alternatively, use a Hugging Face model ID, optionally pinned as
 `organization/model@commit`. With `local_files_only: true`, it must already be
 cached. Set that field to `false` only to allow model downloads. A comma-separated
 model list supplies fallbacks, in order. Model size and draft quality vary; a
-small model may fail the required response format and use the catalog fallback.
+small model may fail the required response format and use a labeled retrieved-text
+or catalog fallback.
 
 Use the same public command and paths as the rest of your analysis:
 
@@ -52,8 +79,8 @@ The dry run shows the plan; it does not load or evaluate the model.
 
 ## Open the finished reports
 
-In native runs, final knowledge/LLM reports are published with the plots in
-`04_cna_custom_plots/llm_reports/` below your YAML's `outdir`:
+In native runs, final knowledge/LLM reports are published alongside classifier reports in
+`05_cna_classifier/03_report/llm_reports/` below your YAML's `outdir`:
 
 | File | Contents |
 | --- | --- |
@@ -66,7 +93,7 @@ In native runs, final knowledge/LLM reports are published with the plots in
 
 ```bash
 OUT="/absolute/path/project/results" # replace with the outdir from your YAML
-xdg-open "$OUT/04_cna_custom_plots/llm_reports/index.html"
+xdg-open "$OUT/05_cna_classifier/03_report/llm_reports/index.html"
 ```
 
 The HTML/PDF indexes describe the same sample set. The folder can also contain
@@ -74,6 +101,9 @@ catalog-based reports when model generation is off or falls back; its presence
 alone does not establish that an LLM generated text. `run_pdf_reports: false`
 suppresses these matched knowledge reports. The cohort classifier report and
 clinician summaries remain in `05_cna_classifier/03_report/`.
+The combined `06_workflow_summary/final_report.html` and `final_report.json`
+summarize CNA findings, literature sources and available methylation predictions,
+retaining each branch's status.
 
 ## Check what actually happened
 
@@ -82,12 +112,20 @@ the analysis output; the report index links back to this evidence:
 
 | File | What to check |
 | --- | --- |
-| `knowledge_metrics.json` | Generated versus fallback feature counts, CPU settings |
+| `knowledge_metrics.json` | Generated/fallback counts, CPU settings, request attempts and retrieval errors |
 | `knowledge_llm_trials.tsv` | Model/revision, submitted evidence, raw reply, rejection reason |
-| `knowledge_base.tsv` | Final feature text and `literature_synthesis_source` |
-| `knowledge_references.tsv` | Paper metadata for checking the citations |
+| `knowledge_base.tsv` | Feature text, `literature_synthesis_source`, retrieval status and usable abstract count |
+| `knowledge_references.tsv` | Deduplicated PMID/DOI/PMCID metadata, source URLs and retrieval queries |
 
-Accepted drafts cite IDs actually present in the submitted abstracts. The code
+`literature_retrieval_status` distinguishes `not_enabled`, `retrieved`,
+`partial_failure`, `retrieval_failed`, and `no_results`. A successful search can
+return metadata without usable abstracts; check `n_usable_literature_abstracts`.
+`no_results` means the completed queries returned no records, not that no relevant
+research exists. Failed requests are not cached as empty searches. Transient
+requests receive bounded retries; valid cached evidence remains usable during
+network outages.
+
+Accepted drafts cite IDs actually present in the submitted evidence. The code
 inserts the corresponding PMIDs/DOIs and a review warning. Missing models,
 malformed replies, unknown citations, or absent abstracts leave a labeled
 deterministic fallback; an empty placeholder PMID is never treated as an abstract.

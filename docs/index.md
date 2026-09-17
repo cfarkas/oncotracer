@@ -38,7 +38,9 @@ For many FASTQs or ONT barcodes, use the [batch examples](auto_params.md).
 
 The first run takes longer because it prepares the human reference genome and analysis tools. Use `oncotracer system --path /path/to/project` for hardware guidance; see [requirements](installation.md#requirements) and [prebuilt indexes](reference_indexes.md). Your input files stay in their original folders; results go to the `outdir` saved in your configuration. [Uninstall](uninstall.md) removes selected tools without deleting projects.
 
-Start reading results at `06_workflow_summary/workflow_summary.txt`. A completed computation does not by itself establish a reliable tumor classification. The [methylation guide](configuration/methylation.md#read-the-result) explains insufficient-data results.
+Open `index.html` for the results dashboard and `06_workflow_summary/final_report.html`
+for saved CNA, literature and available methylation findings. `workflow_summary.txt`
+in the same summary directory records output locations and completion. A completed computation does not by itself establish a reliable tumor classification. The [methylation guide](configuration/methylation.md#read-the-result) explains insufficient-data results.
 
 For a short workflow overview, read [How OncoTracer works](native_architecture.md).
 For larger examples, use [QuickStart 2](public_cohort.md) or the [full tutorial](full_tutorial.md).
