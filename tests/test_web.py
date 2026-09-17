@@ -165,6 +165,7 @@ class WebTests(unittest.TestCase):
             self.assertEqual(popen.call_args.kwargs["stdin"], subprocess.DEVNULL)
             self.assertNotIn("shell", popen.call_args.kwargs)
             self.assertTrue(popen.call_args.kwargs["start_new_session"])
+            self.assertEqual(popen.call_args.kwargs["env"]["PYTHONDONTWRITEBYTECODE"], "1")
             popen.return_value.wait.return_value = 0
             self.state._wait(self.state.job)
             self.assertEqual(self.state.status()["status"], "complete")
@@ -240,10 +241,63 @@ class WebTests(unittest.TestCase):
 
     def test_methylation_requires_resources_and_does_not_silently_run_cna(self):
         self.fastq("reads/barcode01/batch.fastq.gz")
-        with self.assertRaisesRegex(OncoTracerError, "resources"):
+        with self.assertRaisesRegex(OncoTracerError, "setup needs"):
             self.prepare(mode="ont", analysis="both", classifier="marlin", methylation_source="modbam",
                          methylation_path=str(self.root / "calls.bam"))
         self.assertFalse((self.root / "project").exists())
+
+    def test_ont_run_links_only_matching_sibling_folders_and_preserves_barcode(self):
+        self.fastq("run/fastq_pass/barcode01/batch.fastq.gz")
+        (self.root / "run/pod5_pass").mkdir()
+        (self.root / "run/bam_pass").mkdir()
+        before = sorted(self.root.rglob("*"))
+        linked = self.state.ont_inputs({"folder": str(self.root / "run")})
+        self.assertEqual(linked["fastq"], str(self.root / "run/fastq_pass"))
+        self.assertEqual(linked["pod5"], str(self.root / "run/pod5_pass"))
+        linked = self.state.ont_inputs({"folder": str(self.root / "run/fastq_pass/barcode01")})
+        self.assertEqual(linked["fastq"], str(self.root / "run/fastq_pass/barcode01"))
+        self.assertEqual(linked["modbam"], str(self.root / "run/bam_pass"))
+        self.assertEqual(before, sorted(self.root.rglob("*")))
+        self.fastq("ligation/batch.fastq.gz")
+        linked = self.state.ont_inputs({"folder": str(self.root / "ligation")})
+        self.assertEqual(linked["fastq"], str(self.root / "ligation"))
+        self.assertEqual((linked["pod5"], linked["modbam"]), ("", ""))
+
+    def test_browser_selects_executable_models_and_counts_signal_files(self):
+        for name in ("model.zip", "dorado", "batch.pod5", "calls.bam"):
+            (self.root / name).write_text("fixture")
+        listing = self.state.browse(str(self.root / "dorado"), "asset")
+        self.assertEqual(listing["path"], str(self.root))
+        self.assertEqual({f["name"] for f in listing["files"]}, {"model.zip", "dorado", "batch.pod5", "calls.bam"})
+        self.assertEqual((listing["pod5_files"], listing["bam_files"]), (1, 1))
+
+    def test_methylation_form_paths_save_real_checked_config_for_both_classifiers(self):
+        from tests.test_native_methylation import Fixture
+        from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
+        for classifier in ("sturgeon", "marlin"):
+            for source in ("pod5", "modbam"):
+                with self.subTest(classifier=classifier, source=source):
+                    root = self.root / (classifier + source)
+                    root.mkdir()
+                    fixture = Fixture(root, classifier)
+                    bam = root / "calls.bam"
+                    bam.write_bytes(b"fixture-bam")
+                    allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[classifier])
+                    resource_paths = {key: value for key, value in fixture.config().items() if key in allowed}
+                    prepared = self.prepare(mode="ont", folder=str(fixture.fastq.parent),
+                                            project=str(root / "study"), analysis="methylation",
+                                            classifier=classifier, methylation_source=source,
+                                            methylation_path=str(fixture.pod5 if source == "pod5" else bam),
+                                            resource_paths=resource_paths, accept_sturgeon_license=True)
+                    self.assertTrue(prepared["valid"], prepared["check"])
+                    config = load_flat_yaml(Path(prepared["config_path"]))
+                    self.assertEqual(config["methylation_classifier"], classifier)
+                    self.assertEqual(config["methylation_modkit_executable"], str(fixture.executables["modkit"]))
+                    self.assertEqual(config["ont_barcodes"], "barcode01")
+                    self.assertTrue(config["methylation_only"])
+                    self.assertNotIn("methylation_modbam" if source == "pod5" else "methylation_pod5_dir", config)
+                    self.assertFalse((root / "study/results").exists())
+                    self.assertEqual(len(config[classifier + "_model_sha256"]), 64)
 
     def start_server(self):
         server = WebServer(0, self.state)

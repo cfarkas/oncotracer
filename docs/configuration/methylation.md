@@ -26,12 +26,25 @@ Use the Conda backend for OncoTracer. Optional methylation tools and classifier 
 
 Have the paths to the classifier model, probe BED, and executables ready. For MARLIN, also locate its feature-order `.RData` and class-annotation `.xlsx` files. A **probe** is a genomic site the classifier knows how to use. Setup records file checksums automatically, so you do not need to type hashes into YAML.
 
-## 2. Create a leukemia project using existing BAMs
+## 2. Link inputs in the browser
+
+Run `oncotracer setup` and choose **Oxford Nanopore**. **Browse run** fills matching
+`fastq_pass`, POD5 and `bam_pass` paths. You can also browse each path separately,
+including a single barcode folder or a nonbarcoded ligation FASTQ folder.
+Assign and name the samples, then choose **Methylation classification** or **CNA and methylation**.
+
+Choose the linked POD5 or modified-base BAM input, then **Sturgeon · CNS tumours** or
+**MARLIN · leukemias**. Browse to the installed tools and model files, or reuse a
+resource YAML. Modkit extracts CpG methylation for either classifier. Barcode FASTQ
+read IDs keep each sample separate when the signal folder is shared. Save, check,
+and click **Run analysis**.
+
+### Terminal example: leukemia using existing BAMs
 
 Replace the paths, barcode, and sample name below with yours:
 
 ```bash
-oncotracer setup \
+oncotracer setup --terminal \
   --project /work/leukemia-study \
   --mode ont --analysis methylation \
   --reads-folder /data/run/fastq_pass \
