@@ -116,7 +116,7 @@ class FinalReportTests(unittest.TestCase):
                 self.generate()
             self.assertFalse((self.root/'index.html').exists())
             self.assertEqual(path.read_text(),value)
-            path.unlink()
+            path.rename(path.with_name(path.name + ".held"))
 
     def test_initial_and_refined_results_share_file_roles(self):
         for name in ['01_samurai_illumina/qdnaseq/all_segments.seg',
