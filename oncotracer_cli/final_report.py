@@ -58,8 +58,9 @@ def _e(value):
     return html.escape(str(value if value is not None else "Not available"))
 
 
-def _table(headers, rows):
-    return '<div class="scroll"><table><thead><tr>' + ''.join('<th>'+_e(x)+'</th>' for x in headers) + '</tr></thead><tbody>' + ''.join('<tr>'+''.join('<td>'+_e(x)+'</td>' for x in row)+'</tr>' for row in rows) + '</tbody></table></div>'
+def _table(headers, rows, prediction=False):
+    css = ' class="prediction-table"' if prediction else ''
+    return '<div class="scroll"><table'+css+'><thead><tr>' + ''.join('<th>'+_e(x)+'</th>' for x in headers) + '</tr></thead><tbody>' + ''.join('<tr>'+''.join('<td>'+_e(x)+'</td>' for x in row)+'</tr>' for row in rows) + '</tbody></table></div>'
 
 
 def final_report(root: Path, summary: dict) -> tuple[str, dict]:
@@ -163,11 +164,11 @@ def final_report(root: Path, summary: dict) -> tuple[str, dict]:
                     body += '<p>'+link(entry['classification'],'Full classifier predictions and scores')+'</p>'
                     if rows:
                         columns = list(rows[0])[:16]
-                        body += _table(columns, [[row.get(key,'') for key in columns] for row in rows])
+                        body += _table(columns, [[row.get(key,'') for key in columns] for row in rows], prediction=True)
                         body += '<p class="muted">Raw classifier output preview: first 3 rows and 16 columns. The linked file contains all classes and scores.</p>'
                 else:
                     entry['prediction_error'] = 'Recorded prediction file is missing or unsafe.'
                     body += '<p>Recorded prediction file is unavailable; do not treat this sample as a verified classification.</p>'
         body += '<p>Methylation predictions and CNA interpretation are separate findings. No combined diagnosis is inferred.</p><p>'+link('07_methylation/methylation_status.json','Methylation status')+' · '+link('07_methylation/methylation_provenance.json','Tools, models and input provenance')+'</p></section>'
-    body += '<section class="card"><h2>Run provenance</h2><p>'+link('06_workflow_summary/workflow_summary.txt','Workflow summary')+' · '+link('06_workflow_summary/native_run_manifest.json','Original run manifest')+'</p><p class="muted">This report summarizes saved outputs. Browser Print can export it to PDF.</p></section>'
+    body += '<section class="card"><h2>Run provenance</h2><p>'+link('06_workflow_summary/workflow_summary.txt','Workflow summary')+' · '+link('06_workflow_summary/native_run_manifest.json','Original run manifest')+' · '+link('05_cna_classifier/report_provenance.json','Added-report provenance')+'</p><p class="muted">This report summarizes saved outputs. Browser Print can export it to PDF.</p></section>'
     return body, data

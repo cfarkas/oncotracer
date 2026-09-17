@@ -187,7 +187,7 @@ def command_reports(args) -> int:
                 runner = CommandRunner(generation / "trace.tsv",
                                        validators=(validate_inputs, toolchain.validate_environment))
                 ledger = StageLedger(output / ".reports" / "state.json")
-                run_native_classifier(root, effective, outdir, generation, runner, ledger, toolchain, force=False)
+                run_native_classifier(root, effective, outdir, generation, runner, ledger, toolchain, force=args.force)
                 validate_inputs()
                 metrics_path = output / "06_knowledge/knowledge_metrics.json"
                 metrics = _json(metrics_path) if metrics_path.exists() else {}
@@ -252,5 +252,6 @@ def add_reports_command(subparsers) -> None:
     parser.add_argument("--model", help="literature model ID, optional @revision; overrides models in run.yml")
     parser.add_argument("--allow-model-download", action="store_true", help="allow model downloads; default: cached models only")
     parser.add_argument("--threads", type=int, default=4, help="CPU threads for LLM inference (default: 4)")
+    parser.add_argument("--force", action="store_true", help="regenerate interpretation outputs, reusing the literature HTTP cache")
     parser.add_argument("--root", help="explicit runtime payload directory")
     parser.set_defaults(func=command_reports)

@@ -161,3 +161,7 @@ Other optional models have separate switches, including
 For repeatable runs, pin a model commit or retain an unchanged local model
 directory. The audit records a prompt hash and resolved Hub revision when
 available; a local model without a revision is marked `local_unversioned`.
+
+After installing a previously missing model or repairing retrieval, repeat `reports`
+with `--force` to regenerate interpretation outputs while reusing cached literature.
+This does not repeat alignment, CNA calling or methylation.
