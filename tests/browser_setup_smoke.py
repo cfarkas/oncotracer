@@ -201,7 +201,48 @@ else:
         metadata = prepare('ont-project')
         assert [len(json.loads(r['fastq_files'])) for r in metadata] == [69,2]
         report["checks"].append("ONT barcode batches remain grouped as 69 and 2 files; Normal selects QDNAseq")
+        # Exercise the ONT linking and resource form with real config validation.
+        from tests.test_native_methylation import Fixture
+        from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
+        for classifier, source in (("sturgeon", "pod5"), ("marlin", "modbam")):
+            resource_root = root / (classifier + "-resources")
+            resource_root.mkdir()
+            resources = Fixture(resource_root, classifier)
+            bam_dir = resource_root / "bam_pass"
+            bam_dir.mkdir()
+            (bam_dir / "calls.bam").write_bytes(b"fixture-bam")
+            click('#choose-ont')
+            assert not js("return document.querySelector('#ont-inputs').hidden || document.querySelector('#ont-signal-inputs').hidden")
+            fill('#ont-run-folder', str(resource_root));sample_count(1)
+            assert js("return document.querySelector('#input-folder').value") == str(resources.fastq.parent)
+            assert js("return document.querySelector('#ont-pod5').value") == str(resources.pod5)
+            assert js("return document.querySelector('#ont-modbam').value") == str(bam_dir)
+            fill('.sample[data-id="0"] .type-select', 'cancer')
+            fill('#analysis', 'methylation');fill('#classifier', classifier);fill('#methylation-source', source)
+            assert js("return document.querySelector('#methylation-input-note').textContent").endswith(str(resources.pod5 if source == 'pod5' else bam_dir))
+            assert js("return document.querySelector('#dorado-model-fields').hidden") == (source != 'pod5')
+            allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[classifier])
+            for key, value in resources.config().items():
+                if key in allowed:
+                    fill('#' + key, str(value))
+            if classifier == 'sturgeon':click('#license')
+            # Native file navigation must include extensionless executables.
+            click('[data-browse="methylation_modkit_executable"]')
+            wait(lambda: js("return document.querySelector('#folders').textContent.includes('File · modkit')"), 'executable file picker')
+            js("[...document.querySelectorAll('#folders button')].find(b=>b.textContent==='File · modkit').click()")
+            prepare(classifier + '-methylation-project')
+            from oncotracer_cli.runtime import load_flat_yaml
+            config = load_flat_yaml(root / (classifier + '-methylation-project/config/run.yml'))
+            assert config['methylation_classifier'] == classifier
+            assert config['methylation_modkit_executable'] == str(resources.executables['modkit'])
+            assert config['methylation_only'] is True
+            assert ('methylation_pod5_dir' in config) == (source == 'pod5')
+            assert ('methylation_modbam' in config) == (source == 'modbam')
+            js("document.querySelector('#methylation-fields').scrollIntoView()")
+            (root / (classifier + '-methylation-form.png')).write_bytes(base64.b64decode(wd('GET', '/screenshot')))
+        report['checks'].append('ONT run links fastq_pass/barcodes, POD5 and BAMs; resource file picker and checked Modkit+Sturgeon/POD5 and Modkit+MARLIN/BAM configs')
         scan_ont(fixture / 'ligation', 1)
+        assert js("return document.querySelector('#ont-pod5').value==='' && document.querySelector('#ont-modbam').value===''")
         fill('.sample[data-id="0"] .type-select', 'custom')
         fill('.sample[data-id="0"] .custom-label', 'research tag')
         fill('.sample[data-id="0"] .role', 'tumor')

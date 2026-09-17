@@ -102,11 +102,13 @@ class WebState:
                 "suggested_threads": resource_report(hardware=self.hardware, path=self.start_dir)["suggested_threads"],
                 "start_dir": str(self.start_dir), "qdnaseq_binsizes": sorted(QDNASEQ_HG38_SOURCE_SHA256)}
 
-    def browse(self, value):
+    def browse(self, value, kind="folder"):
         path = Path(value or self.start_dir).expanduser().resolve()
+        if path.is_file():
+            path = path.parent
         if not path.is_dir():
             raise OncoTracerError(f"Folder does not exist or is not accessible: {path}")
-        directories, files, fastqs, truncated = [], [], 0, False
+        directories, files, fastqs, pod5s, bams, truncated = [], [], 0, 0, 0, False
         with os.scandir(path) as entries:
             for entry in entries:
                 if entry.is_dir():
@@ -116,12 +118,36 @@ class WebState:
                         truncated = True
                 elif entry.name.lower().endswith((".fastq", ".fastq.gz", ".fq", ".fq.gz")):
                     fastqs += 1
-                elif entry.name.lower().endswith((".yaml", ".yml", ".bam")) and len(files) < 1000:
-                    files.append({"name": entry.name, "path": str(path / entry.name)})
+                elif entry.is_file():
+                    pod5s += entry.name.lower().endswith(".pod5")
+                    bams += entry.name.lower().endswith(".bam")
+                    if kind == "asset" or entry.name.lower().endswith((".yaml", ".yml", ".bam")):
+                        if len(files) < 1000:
+                            files.append({"name": entry.name, "path": str(path / entry.name)})
+                        else:
+                            truncated = True
         directories.sort(key=lambda item: item["name"].casefold())
         return {"path": str(path), "parent": str(path.parent), "directories": directories,
                 "files": sorted(files, key=lambda item: item["name"].casefold()),
-                "fastq_files": fastqs, "truncated": truncated}
+                "fastq_files": fastqs, "pod5_files": pod5s, "bam_files": bams, "truncated": truncated}
+
+    def ont_inputs(self, data):
+        """Suggest conventional sibling inputs from the explicitly selected run only."""
+        folder = Path(_text(data, "folder")).expanduser().resolve()
+        if not folder.is_dir():
+            raise OncoTracerError(f"ONT run folder is not accessible: {folder}")
+        run = folder
+        if folder.parent.name == "fastq_pass":
+            run = folder.parent.parent
+        elif folder.name in {"fastq_pass", "pod5_pass", "pod5", "bam_pass"}:
+            run = folder.parent
+        fastq = folder if folder != run and (folder.name == "fastq_pass" or folder.parent.name == "fastq_pass") else run / "fastq_pass"
+        if not fastq.is_dir():
+            fastq = folder  # Nonbarcoded ligation library, or manual FASTQ selection.
+        pod5 = next((run / name for name in ("pod5_pass", "pod5") if (run / name).is_dir()), None)
+        bam = run / "bam_pass"
+        return {"run": str(run), "fastq": str(fastq), "pod5": str(pod5) if pod5 else "",
+                "modbam": str(bam) if bam.is_dir() else ""}
 
     def scan(self, data):
         mode = _choice(data, "mode", ("illumina", "ont"))
@@ -265,7 +291,15 @@ class WebState:
                 args.classifier = _choice(data, "classifier", ("marlin", "sturgeon"))
                 source = _choice(data, "methylation_source", ("modbam", "pod5"))
                 setattr(args, "modbam" if source == "modbam" else "pod5_dir", _text(data, "methylation_path"))
-                args.resources = _text(data, "resources")
+                args.resources = _text(data, "resources") if data.get("resources") else None
+                from .setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
+                resources = data.get("resource_paths", {})
+                allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[args.classifier])
+                if not isinstance(resources, dict) or any(key not in allowed for key in resources):
+                    raise OncoTracerError("Choose valid methylation tool and model resource paths.")
+                for key in resources:
+                    if resources[key]:
+                        setattr(args, key, _text(resources, key))
                 args.gpu = _choice(data, "device", ("cpu", "gpu"), "cpu") == "gpu"
                 args.accept_sturgeon_license = data.get("accept_sturgeon_license") is True
             args._wizard_values = values
@@ -280,7 +314,8 @@ class WebState:
             config_path = project / "config/run.yml"
             command = _launcher() + ["check", "--json", "--config", str(config_path)]
             try:
-                checked = subprocess.run(command, capture_output=True, text=True, timeout=120, check=False)
+                checked = subprocess.run(command, capture_output=True, text=True, timeout=120, check=False,
+                                         env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
                 try:
                     report = json.loads(checked.stdout)
                 except ValueError:
@@ -341,7 +376,7 @@ class WebState:
                 try:
                     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=handle,
                                                stderr=subprocess.STDOUT, start_new_session=True,
-                                               env={**os.environ, "PYTHONUNBUFFERED": "1"})
+                                               env={**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONDONTWRITEBYTECODE": "1"})
                 except OSError as error:
                     handle.write(f"Analysis could not start: {error}\n".encode())
                     raise
@@ -632,7 +667,8 @@ class WebHandler(BaseHTTPRequestHandler):
             if url.path == "/api/system":
                 value = self.server.state.system()
             elif url.path == "/api/browse":
-                value = self.server.state.browse(parse_qs(url.query).get("path", [None])[0])
+                query = parse_qs(url.query)
+                value = self.server.state.browse(query.get("path", [None])[0], query.get("kind", ["folder"])[0])
             elif url.path == "/api/status":
                 value = self.server.state.status()
             else:
@@ -654,7 +690,7 @@ class WebHandler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             if not isinstance(data, dict):
                 raise OncoTracerError("Expected a JSON object.")
-            methods = {"/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
+            methods = {"/api/ont-inputs": self.server.state.ont_inputs, "/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
                        "/api/run": self.server.state.run, "/api/stop": self.server.state.stop,
                        "/api/remove-project": self.server.state.remove_project}
             method = methods.get(urlsplit(self.path).path)

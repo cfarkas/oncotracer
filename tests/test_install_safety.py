@@ -8,6 +8,7 @@ import fcntl
 import io
 import json
 import os
+import py_compile
 import re
 import shutil
 import signal
@@ -83,6 +84,50 @@ class InstallerSourceIdentityTests(unittest.TestCase):
                 self.assertRaises(OncoTracerError),
             ):
                 install_safety._source_identity()
+
+
+class ManagedInventoryDiagnosticsTests(unittest.TestCase):
+    def test_regenerated_bytecode_is_identified_without_resealing(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oncotracer-inventory-") as directory:
+            root = Path(directory)
+            source = root / "__config__.py"
+            source.write_text("PREFIX = '/installed/prefix'\n", encoding="utf-8")
+            cache = Path(py_compile.compile(str(source), dfile="/build/__config__.py"))
+            marker = {"inventory_sha256": install_safety._write_child_inventory(root)}
+            install_safety._verify_child_inventory(root, marker)
+
+            # A normal Python import can regenerate a package's stale build cache.
+            # Its bytes still changed: expose the path without trusting/resealing it.
+            py_compile.compile(str(source))
+            before = _snapshot(root)
+            with self.assertRaises(OncoTracerError) as caught:
+                install_safety._verify_child_inventory(root, marker)
+            message = str(caught.exception)
+            relative = cache.relative_to(root).as_posix()
+            self.assertIn(f"changed={[relative]!r} (1 total)", message)
+            self.assertIn("added=[] (0 total)", message)
+            self.assertIn("missing=[] (0 total)", message)
+            self.assertEqual(_snapshot(root), before)
+
+    def test_inventory_differences_are_bounded_and_report_missing_entries(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="oncotracer-inventory-") as directory:
+            root = Path(directory)
+            missing = root / "missing.txt"
+            missing.write_bytes(b"original")
+            marker = {"inventory_sha256": install_safety._write_child_inventory(root)}
+            missing.unlink()
+            for index in range(8):
+                (root / f"added-{index}.txt").write_bytes(b"foreign")
+            before = _snapshot(root)
+            with self.assertRaises(OncoTracerError) as caught:
+                install_safety._verify_child_inventory(root, marker)
+            message = str(caught.exception)
+            self.assertIn("missing=['missing.txt'] (1 total)", message)
+            self.assertIn("(8 total)", message)
+            self.assertIn("added-4.txt", message)
+            self.assertNotIn("added-5.txt", message)
+            self.assertIn("changed=[] (0 total)", message)
+            self.assertEqual(_snapshot(root), before)
 
 
 class ManagedInstallerSafetyTests(unittest.TestCase):
@@ -516,6 +561,80 @@ else:
         self.assertEqual(
             root_foreign.read_bytes(), b"preserve unrelated root-level bytes"
         )
+
+    def test_conda_runtime_reuses_unchanged_definitions_from_new_source(self) -> None:
+        base = self.scratch / "compatible-runtime"
+        self._conda_install(base)
+        before = _snapshot(base)
+        updated_source = {**SOURCE, "source_commit": "c" * 40, "source_sha256": "d" * 64}
+        with (
+            mock.patch.object(install_safety, "_source_identity", return_value=updated_source),
+            mock.patch.object(install_safety, "runtime_root", return_value=ROOT),
+        ):
+            with install_safety.managed_conda_runtime_lock(
+                base, require_poetry=False, semantic=True
+            ) as paths:
+                self.assertEqual(paths, {name: base / name for name in install_safety.CONDA_NAMES})
+            self.assertEqual(_snapshot(base), before)
+            foreign = base / "classifier" / "unexpected-file"
+            foreign.write_bytes(b"preserve foreign bytes")
+            with self.assertRaisesRegex(OncoTracerError, "changed or foreign entries"):
+                with install_safety.managed_conda_runtime_lock(base, require_poetry=False):
+                    self.fail("source compatibility must not bypass inventory checks")
+            self.assertEqual(foreign.read_bytes(), b"preserve foreign bytes")
+
+    def test_conda_runtime_rejects_changed_definitions_from_new_source(self) -> None:
+        base = self.scratch / "incompatible-runtime"
+        self._conda_install(base)
+        payload = self.scratch / "updated-payload"
+        shutil.copytree(ROOT / "environments", payload / "environments")
+        before = _snapshot(base)
+        with (
+            mock.patch.object(install_safety, "_source_identity", return_value={**SOURCE, "source_commit": "c" * 40}),
+            mock.patch.object(install_safety, "runtime_root", return_value=payload),
+        ):
+            for name in install_safety.CONDA_NAMES:
+                filename = "native-gistic2.yml" if name == "gistic" else f"native-{name}.yml"
+                definition = payload / "environments" / filename
+                original = definition.read_bytes()
+                with self.subTest(environment=name):
+                    definition.write_bytes(original + b"\n# changed definition\n")
+                    with self.assertRaisesRegex(OncoTracerError, f"{name} environment definition differs"):
+                        with install_safety.managed_conda_runtime_lock(base, require_poetry=False):
+                            self.fail("changed tool definitions must fail before yielding")
+                    definition.write_bytes(original)
+            with self.assertRaisesRegex(OncoTracerError, "gistic environment definition differs"):
+                with install_safety.managed_conda_runtime_lock(base, require_poetry=False):
+                    definition.write_bytes(original + b"\n# changed during use\n")
+        self.assertEqual(_snapshot(base), before)
+
+    def test_poetry_runtime_still_requires_exact_source(self) -> None:
+        base = self.scratch / "exact-poetry-runtime"
+        self._conda_install(base, poetry=True)
+        before = _snapshot(base)
+        with (
+            mock.patch.object(install_safety, "_source_identity", return_value={**SOURCE, "source_commit": "c" * 40}),
+            self.assertRaisesRegex(OncoTracerError, "source identity differs"),
+        ):
+            with install_safety.managed_conda_runtime_lock(base, require_poetry=True):
+                self.fail("Poetry application must match the executable source")
+        self.assertEqual(_snapshot(base), before)
+
+    def test_conda_runtime_rejects_child_source_differing_from_owned_base(self) -> None:
+        base = self.scratch / "runtime-mixed-child-source"
+        self._conda_install(base)
+        path = base / "classifier" / install_safety.ENV_MARKER
+        marker = json.loads(path.read_text())
+        marker["source"]["source_commit"] = "c" * 40
+        path.write_text(json.dumps(marker) + "\n")
+        before = _snapshot(base)
+        with (
+            mock.patch.object(install_safety, "_source_identity", return_value={**SOURCE, "source_commit": "c" * 40}),
+            self.assertRaisesRegex(OncoTracerError, "managed child ownership is invalid"),
+        ):
+            with install_safety.managed_conda_runtime_lock(base, require_poetry=False):
+                self.fail("compatible definitions must not bypass source-bound ownership")
+        self.assertEqual(_snapshot(base), before)
 
     def test_managed_runtime_post_use_rejects_identity_replacement(self) -> None:
         child_base = self.scratch / "runtime-replaced-child"

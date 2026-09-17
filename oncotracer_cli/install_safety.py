@@ -27,7 +27,7 @@ from pathlib import Path
 
 from . import __version__
 from .provenance import ProvenanceError, get_provenance
-from .runtime import OncoTracerError, sha256_file
+from .runtime import OncoTracerError, runtime_root, sha256_file
 from .reporting import detail, status
 
 
@@ -713,9 +713,24 @@ def _verify_child_inventory(storage: Path, marker: Mapping[str, object]) -> None
         )
     observed = _tree_inventory(storage)
     if observed != inventory:
+        expected_by_path = {entry["path"]: entry for entry in inventory["entries"]}
+        observed_by_path = {entry["path"]: entry for entry in observed["entries"]}
+        added = sorted(observed_by_path.keys() - expected_by_path.keys())
+        missing = sorted(expected_by_path.keys() - observed_by_path.keys())
+        changed = sorted(
+            path
+            for path in expected_by_path.keys() & observed_by_path.keys()
+            if expected_by_path[path] != observed_by_path[path]
+        )
+        differences = "; ".join(
+            f"{kind}={paths[:5]!r} ({len(paths)} total)"
+            for kind, paths in (
+                ("added", added), ("missing", missing), ("changed", changed)
+            )
+        )
         raise OncoTracerError(
             "managed environment contains changed or foreign entries and will not "
-            f"be reused or replaced: {storage}"
+            f"be reused or replaced: {storage}; {differences}"
         )
 
 
@@ -1256,6 +1271,8 @@ def _classify_base(base: Path) -> tuple[str, dict[str, object] | None]:
             raise OncoTracerError(
                 f"managed child ownership marker is malformed or mismatched: {child_marker}"
             )
+        if value.get("source") != marker.get("source"):
+            raise OncoTracerError(f"managed child ownership is invalid: {child}")
         _verify_child_inventory(child, value)
         if name == "poetry-runtime" and (
             not _poetry_complete(child)
@@ -4342,6 +4359,25 @@ def install_sif_managed(
     return {"sif": str(destination), "image": image}
 
 
+def _verify_runtime_conda_definitions(base: Path, root: Path) -> None:
+    """Require identical tool specifications when reusing an older Conda install."""
+    for name in CONDA_NAMES:
+        filename = "native-gistic2.yml" if name == "gistic" else f"native-{name}.yml"
+        definition = root / "environments" / filename
+        marker = _safe_read_json(base / name / ENV_MARKER, f"{name} ownership marker")
+        try:
+            digest = sha256_file(definition)
+        except OSError as error:
+            raise OncoTracerError(
+                f"could not verify native {name} environment definition: {definition}: {error}"
+            ) from error
+        if digest != marker.get("definition_sha256"):
+            raise OncoTracerError(
+                f"managed runtime {name} environment definition differs from this "
+                f"executable: {definition}"
+            )
+
+
 @contextlib.contextmanager
 def managed_conda_runtime_lock(
     base: Path, *, require_poetry: bool, semantic: bool = False
@@ -4359,10 +4395,17 @@ def managed_conda_runtime_lock(
                 f"Conda runtime is not strictly installer-owned: {base}"
             )
         source = _source_identity()
+        compatible_root: Path | None = None
         if marker.get("source") != source:
-            raise OncoTracerError(
-                f"managed runtime source identity differs from this executable: {base}"
-            )
+            # Conda supplies tools, so an unchanged dependency specification can
+            # serve a newer clean CLI. Poetry also contains the application and
+            # must remain bound to its exact executable source.
+            if require_poetry:
+                raise OncoTracerError(
+                    f"managed runtime source identity differs from this executable: {base}"
+                )
+            compatible_root = runtime_root()
+            _verify_runtime_conda_definitions(base, compatible_root)
         base_metadata = base.lstat()
         base_identity = (base_metadata.st_dev, base_metadata.st_ino)
         protected_identities: dict[Path, tuple[int, int]] = {}
@@ -4455,6 +4498,8 @@ def managed_conda_runtime_lock(
                 raise OncoTracerError(
                     f"managed runtime ownership changed during use: {base}"
                 )
+            if compatible_root is not None:
+                _verify_runtime_conda_definitions(base, compatible_root)
             require_original_identities()
 
 
