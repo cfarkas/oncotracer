@@ -98,7 +98,11 @@ class WebState:
             reference = args.hg38_build or args.reference_root
             defaults["reference"] = "build" if args.build_reference else "reuse" if reference else "download"
             defaults["reference_path"] = str(Path(reference).expanduser().resolve()) if reference else ""
-        return {"hardware": self.hardware, "defaults": defaults,
+        places = [("Home", Path.home()), ("This computer", Path("/")),
+                  ("Starting folder", self.start_dir), ("Mounted drives", Path("/media")),
+                  ("Other mounts", Path("/mnt"))]
+        locations = [{"name": name, "path": str(path)} for name, path in places if path.is_dir()]
+        return {"hardware": self.hardware, "defaults": defaults, "locations": locations,
                 "suggested_threads": resource_report(hardware=self.hardware, path=self.start_dir)["suggested_threads"],
                 "start_dir": str(self.start_dir), "qdnaseq_binsizes": sorted(QDNASEQ_HG38_SOURCE_SHA256)}
 
@@ -108,7 +112,7 @@ class WebState:
             path = path.parent
         if not path.is_dir():
             raise OncoTracerError(f"Folder does not exist or is not accessible: {path}")
-        directories, files, fastqs, pod5s, bams, truncated = [], [], 0, 0, 0, False
+        directories, files, fastq_entries, fastqs, pod5s, bams, truncated = [], [], [], 0, 0, 0, False
         with os.scandir(path) as entries:
             for entry in entries:
                 if entry.is_dir():
@@ -118,10 +122,14 @@ class WebState:
                         truncated = True
                 elif entry.name.lower().endswith((".fastq", ".fastq.gz", ".fq", ".fq.gz")):
                     fastqs += 1
+                    if len(fastq_entries) < 1000:
+                        fastq_entries.append({"name": entry.name, "path": str(path / entry.name)})
+                    else:
+                        truncated = True
                 elif entry.is_file():
                     pod5s += entry.name.lower().endswith(".pod5")
                     bams += entry.name.lower().endswith(".bam")
-                    if kind == "asset" or entry.name.lower().endswith((".yaml", ".yml", ".bam")):
+                    if kind == "asset" or entry.name.lower().endswith((".yaml", ".yml", ".bam", ".pod5")):
                         if len(files) < 1000:
                             files.append({"name": entry.name, "path": str(path / entry.name)})
                         else:
@@ -129,6 +137,7 @@ class WebState:
         directories.sort(key=lambda item: item["name"].casefold())
         return {"path": str(path), "parent": str(path.parent), "directories": directories,
                 "files": sorted(files, key=lambda item: item["name"].casefold()),
+                "fastq_entries": sorted(fastq_entries, key=lambda item: item["name"].casefold()),
                 "fastq_files": fastqs, "pod5_files": pod5s, "bam_files": bams, "truncated": truncated}
 
     def ont_inputs(self, data):
