@@ -164,6 +164,14 @@ else:
         assert js("return document.querySelectorAll('#normal-samples .sample,#cancer-samples .sample').length") == 0
         assert js("return document.querySelector('#gistic').disabled")
         report["checks"].append("setup opens browser workflow with supplied paths, threads and 100 kb default; groups start empty")
+        assert not js("return document.querySelector('#fastq-preview').hidden")
+        assert js("return document.querySelectorAll('#fastq-rows tr').length") == 4
+        assert js("return document.querySelectorAll('.sample .fastq-files li').length") == 4
+        fill('#fastq-filter', 'case_R1')
+        assert js("return document.querySelectorAll('#fastq-rows tr').length") == 1
+        assert js("return document.querySelectorAll('#normal-samples .sample,#cancer-samples .sample').length") == 0
+        fill('#fastq-filter', '')
+        report['checks'].append('FASTQ filenames visible by default in folder inventory and sample cards; filtering preserves assignment')
         drag('.sample[data-id="0"] .drag-handle', '#cancer-samples')
         assert js("return document.querySelectorAll('#cancer-samples .sample').length") == 1
         drag('.sample[data-id="1"] .drag-handle', '#normal-samples')
@@ -195,6 +203,8 @@ else:
         (root / "sample-board.png").write_bytes(base64.b64decode(wd("GET", "/screenshot")))
         scan_ont(fixture / 'ont', 2)
         assert js("return document.querySelector('.sample[data-id=\"0\"] small').textContent").startswith('69 FASTQs')
+        assert js("return document.querySelectorAll('#fastq-rows tr').length") == 71
+        assert js("return document.querySelectorAll('.sample[data-id=\"0\"] .fastq-files li').length") == 69
         fill('.sample[data-id="0"] .type-select', 'cancer')
         fill('.sample[data-id="1"] .type-select', 'normal')
         assert js("return document.querySelector('#caller').value") == 'qdnaseq'
@@ -254,8 +264,25 @@ else:
         click('#choose-illumina');click('[data-browse="input-folder"]')
         fill('#browser-location', str(fixture / 'illumina'));click('#browser-go')
         wait(lambda: js("return document.querySelector('#browser-path').textContent===arguments[0] && !document.querySelector('#use-folder').disabled", str(fixture / 'illumina')), 'folder navigator')
+        assert js("return document.querySelectorAll('#folders .fastq-file').length") == 4
+        assert 'Home' in js("return document.querySelector('#browser-shortcuts').textContent")
+        assert 'Mounted drives' in js("return document.querySelector('#browser-shortcuts').textContent")
+        # Unsaved text must not select the previous directory.
+        fill('#browser-location', str(fixture / 'ont'))
+        assert js("return document.querySelector('#use-folder').disabled")
+        # Clicking a breadcrumb returns to that folder without typing a path.
+        js("[...document.querySelectorAll('#browser-breadcrumbs button')].at(-1).click()")
+        wait(lambda: js("return !document.querySelector('#use-folder').disabled"), 'breadcrumb navigation')
+        (root / 'folder-file-picker.png').write_bytes(base64.b64decode(wd('GET', '/screenshot')))
         click('#use-folder');sample_count(2)
         report["checks"].append("folder navigator selection automatically discovers Illumina pairs")
+        js("document.querySelector('#fastq-preview').scrollIntoView()")
+        (root / 'visible-fastqs.png').write_bytes(base64.b64decode(wd('GET', '/screenshot')))
+        fill('#input-folder', str(fixture / 'missing-folder'))
+        wait(lambda: js("return !document.querySelector('main').inert && !document.querySelector('#error').hidden"), 'failed discovery')
+        assert js("return document.querySelector('#fastq-preview').hidden && document.querySelector('#samples-card').hidden")
+        fill('#input-folder', str(fixture / 'illumina'));sample_count(2)
+        report['checks'].append('folder picker lists FASTQs, has Home/mount/breadcrumb navigation, blocks stale selection; failed discovery clears inventory')
         assert before == {str(path): path.read_bytes() for path in fixture.rglob('*.gz')}
         report["checks"].append("input FASTQs unchanged; no analysis or reference downloads started")
         if options.test_stop:
