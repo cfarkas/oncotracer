@@ -49,6 +49,13 @@ def publish_refinement(stage: Path, dataset: str) -> Path:
             shutil.copy2(source, destination)
             records.append({"path": str(destination.relative_to(stage)), "source": str(source.relative_to(stage)),
                             "bytes": destination.stat().st_size})
+    coordinates = raw / "coordinate_system.json"
+    if coordinates.is_file():
+        destination = published / coordinates.name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(coordinates, destination)
+        records.append({"path": str(destination.relative_to(stage)), "source": str(coordinates.relative_to(stage)),
+                        "bytes": destination.stat().st_size})
     atomic_write_json(published / "published_results.json", {"schema": "oncotracer-refinement-publication-v1", "files": records})
     return published
 
