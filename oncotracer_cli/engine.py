@@ -228,6 +228,19 @@ class Toolchain:
         """
         prefix = self._prefix(group)
         fontconfig = self._fontconfig_environment(group)
+        if group == "classifier" and fontconfig:
+            # Font isolation replaces HOME/XDG_CACHE_HOME. Resolve model caches
+            # against the caller's environment first so cached LLMs stay visible.
+            default_cache = os.path.join(os.path.expanduser("~"), ".cache")
+            hf_home = os.environ.get(
+                "HF_HOME",
+                os.path.join(os.environ.get("XDG_CACHE_HOME", default_cache), "huggingface"),
+            )
+            fontconfig["HF_HOME"] = os.path.expandvars(os.path.expanduser(hf_home))
+            # Keep explicit overrides and their precedence, including ~/ paths.
+            for key in ("HF_HUB_CACHE", "HUGGINGFACE_HUB_CACHE", "TRANSFORMERS_CACHE"):
+                if key in os.environ:
+                    fontconfig[key] = os.path.expandvars(os.path.expanduser(os.environ[key]))
         if prefix is None:
             return fontconfig
         prefix = prefix.expanduser().resolve()

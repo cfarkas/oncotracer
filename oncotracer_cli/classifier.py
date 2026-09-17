@@ -190,7 +190,13 @@ def _stage(
     force: bool,
     containment: Mapping[str, str | None] | None = None,
 ) -> None:
-    signature = ledger.signature(name, command, inputs)
+    signature_command = command
+    if name in {"classifier-knowledge", "classifier-pathology"}:
+        cache_keys = ("HF_HOME", "HF_HUB_CACHE", "HUGGINGFACE_HUB_CACHE", "TRANSFORMERS_CACHE")
+        cache_environment = {key: containment[key] for key in cache_keys if containment and key in containment}
+        if cache_environment:
+            signature_command = [*command, "model-cache=" + json.dumps(cache_environment, sort_keys=True)]
+    signature = ledger.signature(name, signature_command, inputs)
     if force or not ledger.reusable(name, signature, outputs):
         cwd.mkdir(parents=True, exist_ok=True)
         runner.run(name, command, cwd=cwd, containment=containment)

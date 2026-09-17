@@ -9,9 +9,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
-from oncotracer_cli.classifier import _run_gistic, _update_summary, run_native_classifier, sample_set_key
+from oncotracer_cli.classifier import _stage, _run_gistic, _update_summary, run_native_classifier, sample_set_key
 from oncotracer_cli.engine import Toolchain
 from oncotracer_cli.runtime import CommandRunner, OncoTracerError, StageLedger
 
@@ -33,6 +33,20 @@ class _RecordingRunner(CommandRunner):
 
 
 class NativeClassifierTests(unittest.TestCase):
+    def test_model_cache_changes_invalidate_llm_stage_but_font_cache_does_not(self):
+        ledger = Mock()
+        ledger.signature.side_effect = StageLedger.signature
+        ledger.reusable.return_value = True
+        runner = Mock()
+        def signature(env):
+            _stage("classifier-knowledge", ["python", "knowledge.py"], [], [],
+                   cwd=Path("."), runner=runner, ledger=ledger, force=False, containment=env)
+            return ledger.reusable.call_args.args[1]
+        first = signature({"HF_HOME":"/models/a", "HOME":"/font/run1"})
+        self.assertEqual(first, signature({"HF_HOME":"/models/a", "HOME":"/font/run2"}))
+        self.assertNotEqual(first, signature({"HF_HOME":"/models/b", "HOME":"/font/run2"}))
+        runner.run.assert_not_called()
+
     def test_sample_set_aliases(self) -> None:
         self.assertEqual(
             sample_set_key({"cna_classifier_sample_set": "DLBCL"}), "lymphoma"
