@@ -120,6 +120,25 @@ sed -n '1,8p' "$OUT"/02_bam_refinement/*/01_tables/boundary_refinement_statistic
 
 Use `04_final_results/final_segments.tsv` as the primary refined segment table. `01_tables/` and `03_consolidated/` preserve detailed calculations and comparisons for audit. `02_samurai_compatible/` is an interoperability representation, not a second independent call set.
 
+### Refinement coordinates and gaps
+
+Refinement uses **zero-based, half-open** intervals internally: `[100, 200)`
+contains 100 bases. Final segment TSV/BED files, refined bins, and boundary
+statistics use this convention. Compatibility SEG files use one-based, closed
+intervals: the same region is `101–200`. Each new dataset includes
+`coordinate_system.json` documenting its inputs and outputs.
+
+Gaps between prior segments retain both original endpoints and are excluded
+from refinement. A retained boundary leaves the original segments unchanged.
+Accepted shifts must remain inside the adjoining segments and cannot collapse
+or reorder them. Rejected proposals and gap widths appear in the boundary
+statistics. Search windows stay within the two adjoining segments.
+
+Older outputs without this metadata may contain gaps filled at their midpoint
+and mixed start-coordinate conventions. Rerun into a new output directory with
+this corrected version; keep earlier results separately for comparison. Do not
+mix older and corrected downstream CNA tables or reports.
+
 Key files:
 
 | File | Use |

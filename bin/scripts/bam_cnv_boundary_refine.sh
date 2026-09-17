@@ -1121,7 +1121,7 @@ def choose_value_col(df: pd.DataFrame, exclude: List[str]) -> str:
 # Input readers
 ###############################################################################
 
-def standardize_bin_df(df: pd.DataFrame, sample: str, source_file: Path) -> pd.DataFrame:
+def standardize_bin_df(df: pd.DataFrame, sample: str, source_file: Path, coordinate_system: str = "zero-based-half-open") -> pd.DataFrame:
     chrom_col = find_col(df, ["chrom", "chr", "chromosome", "seqnames", "seqname", "V1"], required=True)
     start_col = find_col(df, ["start", "loc.start", "loc_start", "begin", "V2"], required=True)
     end_col = find_col(df, ["end", "loc.end", "loc_end", "stop", "V3"], required=True)
@@ -1139,7 +1139,12 @@ def standardize_bin_df(df: pd.DataFrame, sample: str, source_file: Path) -> pd.D
     out = out.dropna(subset=["chrom", "start", "end"])
     out["start"] = out["start"].astype(int)
     out["end"] = out["end"].astype(int)
-    out = out[out["end"] > out["start"]].copy()
+    if coordinate_system == "one-based-closed":
+        out["start"] -= 1
+    elif coordinate_system != "zero-based-half-open":
+        raise ValueError(f"Unsupported coordinate system: {coordinate_system}")
+    if (out["start"] < 0).any() or (out["end"] <= out["start"]).any():
+        raise ValueError("Intervals must have nonnegative starts and positive lengths")
     out["chrom_order"] = out["chrom"].map(chrom_order)
     out = out.sort_values(["sample", "chrom_order", "start", "end"]).drop(columns=["chrom_order"])
     return out
@@ -1153,7 +1158,7 @@ def read_ichorcna_bins(input_dir: Path) -> pd.DataFrame:
     for f in files:
         sample = f.name.replace(".correctedDepth.txt.gz", "").replace(".correctedDepth.txt", "")
         log(f"Reading ichorCNA bins: {sample} <- {f}")
-        frames.append(standardize_bin_df(read_table(f), sample, f))
+        frames.append(standardize_bin_df(read_table(f), sample, f, coordinate_system="one-based-closed"))
     return pd.concat(frames, ignore_index=True)
 
 
@@ -1185,7 +1190,7 @@ def read_qdnaseq_bins(input_dir: Path) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
-def read_prior_segments(path: Path, samples: List[str]) -> pd.DataFrame:
+def read_prior_segments(path: Path, samples: List[str], coordinate_system: str = "one-based-closed") -> pd.DataFrame:
     if not path or str(path).lower() in ["none", "na", ""]:
         raise FileNotFoundError("A prior segmentation file is required for this boundary-refinement workflow.")
     df = read_table(path)
@@ -1214,7 +1219,12 @@ def read_prior_segments(path: Path, samples: List[str]) -> pd.DataFrame:
     out = out.dropna(subset=["sample", "chrom", "start", "end", "seg_log2"])
     out["start"] = out["start"].astype(int)
     out["end"] = out["end"].astype(int)
-    out = out[out["end"] > out["start"]].copy()
+    if coordinate_system == "one-based-closed":
+        out["start"] -= 1
+    elif coordinate_system != "zero-based-half-open":
+        raise ValueError(f"Unsupported coordinate system: {coordinate_system}")
+    if (out["start"] < 0).any() or (out["end"] <= out["start"]).any():
+        raise ValueError("Intervals must have nonnegative starts and positive lengths")
     # keep only samples with bins, but report if mismatches exist
     have = set(samples)
     extra = sorted(set(out["sample"]) - have)
@@ -1520,7 +1530,7 @@ def assign_cna_state(x: float, gain_thr: float, loss_thr: float) -> str:
 def empty_boundary_stats() -> pd.DataFrame:
     return pd.DataFrame(columns=[
         "sample", "chrom", "boundary_index", "left_segment_start", "left_segment_end",
-        "right_segment_start", "right_segment_end", "original_boundary", "refined_boundary",
+        "right_segment_start", "right_segment_end", "prior_gap_bp", "original_boundary", "refined_boundary",
         "final_boundary", "boundary_shift_bp", "left_seg_log2", "right_seg_log2",
         "adjacent_seg_delta", "adjacent_seg_abs_delta", "eligible_for_refinement",
         "coverage_resolution_status", "fine_bin_kb", "n_fine_bins", "n_left_bins",
@@ -1587,7 +1597,10 @@ def build_boundaries(prior: pd.DataFrame, min_adjacent_delta: float) -> pd.DataF
         for i in range(len(g) - 1):
             left = g.iloc[i]
             right = g.iloc[i + 1]
-            coarse_boundary = int(round((int(left["end"]) + int(right["start"])) / 2))
+            # Internal intervals are zero-based half-open. A gap has two
+            # endpoints, not a single refinable change point in its midpoint.
+            gap_bp = int(right["start"]) - int(left["end"])
+            coarse_boundary = int(left["end"])
             delta = float(right["seg_log2"] - left["seg_log2"])
             rows.append({
                 "sample": sample,
@@ -1597,57 +1610,84 @@ def build_boundaries(prior: pd.DataFrame, min_adjacent_delta: float) -> pd.DataF
                 "left_segment_end": int(left["end"]),
                 "right_segment_start": int(right["start"]),
                 "right_segment_end": int(right["end"]),
+                "prior_gap_bp": gap_bp,
                 "original_boundary": coarse_boundary,
                 "left_seg_log2": float(left["seg_log2"]),
                 "right_seg_log2": float(right["seg_log2"]),
                 "adjacent_seg_delta": delta,
                 "adjacent_seg_abs_delta": abs(delta),
-                "eligible_for_refinement": abs(delta) >= min_adjacent_delta,
+                "eligible_for_refinement": gap_bp == 0 and abs(delta) >= min_adjacent_delta,
             })
     return pd.DataFrame(rows)
 
 
 def apply_final_boundaries(prior: pd.DataFrame, bstats: pd.DataFrame) -> pd.DataFrame:
+    """Apply only accepted shifts of shared endpoints; retain gaps and all rows.
+
+    Reject conflicting proposals together instead of silently deleting a segment.
+    Update the audit table when a proposal cannot be applied geometrically.
+    """
     boundary_map = {}
     if not bstats.empty:
-        for _, r in bstats.iterrows():
-            boundary_map[(r["sample"], r["chrom"], int(r["boundary_index"]))] = int(r["final_boundary"])
+        for index, row in bstats.iterrows():
+            if row["final_decision"] == "refined_boundary":
+                boundary_map[(row["sample"], row["chrom"], int(row["boundary_index"]))] = (index, row)
+
+    def reject(index, reason):
+        bstats.loc[index, "final_decision"] = "kept_original_binning"
+        bstats.loc[index, "decision_reason"] = reason
+        bstats.loc[index, "final_boundary"] = bstats.loc[index, "original_boundary"]
+        bstats.loc[index, "boundary_shift_bp"] = 0
+
     out_rows = []
     for (sample, chrom), g in prior.groupby(["sample", "chrom"], sort=False):
         g = g.sort_values(["start", "end"]).reset_index(drop=True)
-        starts = [int(x) for x in g["start"]]
-        ends = [int(x) for x in g["end"]]
-        sources = ["prior_segmentation"] * len(g)
+        original_starts = [int(x) for x in g["start"]]
+        original_ends = [int(x) for x in g["end"]]
+        if any(end <= start for start, end in zip(original_starts, original_ends)):
+            raise ValueError("Prior segments must have positive lengths")
+        proposals = {}
         for i in range(len(g) - 1):
-            key = (sample, chrom, i + 1)
-            if key in boundary_map:
-                fb = boundary_map[key]
-                ends[i] = fb
-                starts[i + 1] = fb
-                row = bstats[(bstats["sample"] == sample) & (bstats["chrom"] == chrom) & (bstats["boundary_index"] == i + 1)]
-                if not row.empty and row.iloc[0]["final_decision"] == "refined_boundary":
-                    sources[i] = "bam_refined_boundary"
-                    sources[i + 1] = "bam_refined_boundary"
-        for i, row in g.iterrows():
-            if ends[i] <= starts[i]:
+            entry = boundary_map.get((sample, chrom, i + 1))
+            if entry is None:
                 continue
+            index, row = entry
+            if original_ends[i] != original_starts[i + 1]:
+                reject(index, "prior_segments_do_not_share_boundary")
+                bstats.loc[index, "final_boundary"] = np.nan
+                continue
+            value = row["final_boundary"]
+            if not np.isfinite(value) or not original_starts[i] < value < original_ends[i + 1]:
+                reject(index, "refined_boundary_outside_adjacent_segments")
+                continue
+            proposals[i] = (int(value), index)
+        while True:
+            starts, ends = original_starts.copy(), original_ends.copy()
+            for i, (value, _) in proposals.items():
+                ends[i] = value
+                starts[i + 1] = value
+            invalid = [i for i in range(len(g)) if ends[i] <= starts[i]]
+            if not invalid:
+                break
+            rejected = {edge for i in invalid for edge in (i - 1, i) if edge in proposals}
+            for edge in rejected:
+                _, index = proposals.pop(edge)
+                reject(index, "conflicting_boundary_shifts")
+        sources = ["prior_segmentation"] * len(g)
+        for i in proposals:
+            sources[i] = sources[i + 1] = "bam_refined_boundary"
+        for i, row in g.iterrows():
             out_rows.append({
-                "sample": sample,
-                "chrom": chrom,
-                "start": int(starts[i]),
-                "end": int(ends[i]),
-                "num_mark": row.get("num_mark", np.nan),
-                "seg_log2": float(row["seg_log2"]),
+                "sample": sample, "chrom": chrom, "start": starts[i], "end": ends[i],
+                "num_mark": row.get("num_mark", np.nan), "seg_log2": float(row["seg_log2"]),
                 "cna_state": assign_cna_state(float(row["seg_log2"]), args_global.state_gain_threshold, args_global.state_loss_threshold),
                 "final_source": sources[i],
             })
     if not out_rows:
         return pd.DataFrame(columns=["sample", "chrom", "start", "end", "num_mark", "seg_log2", "cna_state", "final_source"])
     segs = pd.DataFrame(out_rows)
-    if not segs.empty:
-        segs["chrom_order"] = segs["chrom"].map(chrom_order)
-        segs = segs.sort_values(["sample", "chrom_order", "start", "end"]).drop(columns=["chrom_order"])
-    return segs
+    segs["chrom_order"] = segs["chrom"].map(chrom_order)
+    return segs.sort_values(["sample", "chrom_order", "start", "end"]).drop(columns=["chrom_order"])
 
 
 def overlay_bins_with_segments(bins: pd.DataFrame, segs: pd.DataFrame) -> pd.DataFrame:
@@ -1706,8 +1746,8 @@ def refine_one_boundary(row, sample_bams, args, prepared_dir: Path) -> dict:
     coarse_bp = int(args.coarse_binsize_kb * 1000)
     fine_bp = int(args.fine_bin_kb * 1000)
     search_radius = int(args.search_radius_bp) if args.search_radius_bp and int(args.search_radius_bp) > 0 else int(args.search_radius_bins * coarse_bp)
-    search_start = max(0, original_boundary - search_radius)
-    search_end = original_boundary + search_radius
+    search_start = max(0, int(row["left_segment_start"]), original_boundary - search_radius)
+    search_end = min(int(row["right_segment_end"]), original_boundary + search_radius)
 
     base = {
         "sample": sample,
@@ -1717,6 +1757,7 @@ def refine_one_boundary(row, sample_bams, args, prepared_dir: Path) -> dict:
         "left_segment_end": int(row["left_segment_end"]),
         "right_segment_start": int(row["right_segment_start"]),
         "right_segment_end": int(row["right_segment_end"]),
+        "prior_gap_bp": int(row["right_segment_start"]) - int(row["left_segment_end"]),
         "original_boundary": original_boundary,
         "refined_boundary": np.nan,
         "final_boundary": original_boundary,
@@ -1747,6 +1788,12 @@ def refine_one_boundary(row, sample_bams, args, prepared_dir: Path) -> dict:
         "final_decision": "kept_original_binning",
         "decision_reason": "not_evaluated",
     }
+
+    if base["prior_gap_bp"] != 0:
+        base["coverage_resolution_status"] = "not_attempted_prior_gap" if base["prior_gap_bp"] > 0 else "not_attempted_prior_overlap"
+        base["decision_reason"] = "prior_segments_separated_by_gap" if base["prior_gap_bp"] > 0 else "prior_segments_overlap"
+        base["final_boundary"] = np.nan  # No shared boundary exists across a gap.
+        return base
 
     if not bool(row["eligible_for_refinement"]):
         base["coverage_resolution_status"] = "not_attempted"
@@ -1858,12 +1905,16 @@ def refine_one_boundary(row, sample_bams, args, prepared_dir: Path) -> dict:
         accept = (abs(best["diff"]) >= float(args.min_local_log2_diff) and best["bic_gain"] >= float(args.min_bic_gain)
                   and (max_ci <= 0 or ci_width <= max_ci) and abs(refined - original_boundary) >= int(args.min_shift_bp))
 
+    if not int(row["left_segment_start"]) < refined < int(row["right_segment_end"]):
+        accept = False
+        reasons.append("refined_boundary_outside_adjacent_segments")
     if accept:
         base["final_boundary"] = int(refined)
         base["final_decision"] = "refined_boundary"
         base["decision_reason"] = "bam_local_coverage_supports_boundary_shift"
     else:
         base["final_boundary"] = original_boundary
+        base["boundary_shift_bp"] = 0
         base["final_decision"] = "kept_original_binning"
         base["decision_reason"] = ";".join(reasons) if reasons else "boundary_shift_not_supported"
     return base
@@ -1922,6 +1973,15 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
     if refined_bins is None or refined_bins.empty:
         refined_bins = overlay_bins_with_segments(bins, final_segments)
 
+    (outdir / "coordinate_system.json").write_text(json.dumps({
+        "schema": "oncotracer-refinement-coordinates-v1",
+        "internal_tables_and_bed": "zero-based-half-open",
+        "boundary_statistics": "zero-based-half-open; boundary values are cut positions",
+        "compatibility_seg": "one-based-closed",
+        "prior_segments": "one-based-closed",
+        "input_bins": "zero-based-half-open" if args.caller == "qdnaseq" else "one-based-closed",
+        "gap_policy": "preserve; never refine across a gap",
+    }, indent=2) + "\n")
     refined_bins.to_csv(tables / "refined_bins.tsv.gz", sep="\t", index=False, compression="gzip")
     final_segments.to_csv(tables / "final_segments.tsv", sep="\t", index=False)
     final_segments_bed = final_segments.copy()
@@ -2000,6 +2060,7 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
     gistic = final_segments.rename(columns={"sample": "ID", "start": "loc.start", "end": "loc.end", "seg_log2": "seg.mean"})
     gistic = gistic[["ID", "chrom", "loc.start", "loc.end", "num_mark", "seg.mean"]].copy()
     gistic = gistic.rename(columns={"chrom": "chrom", "num_mark": "num.mark"})
+    gistic["loc.start"] += 1  # SEG uses one-based closed intervals.
     gistic["num.mark"] = pd.to_numeric(gistic["num.mark"], errors="coerce")
     # recalculate num.mark if missing
     if gistic["num.mark"].isna().any():
@@ -2011,6 +2072,7 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
     gistic.to_csv(compat / "bam_boundary_refined_gistic.seg", sep="\t", index=False)
 
     ichor_style = final_segments.rename(columns={"chrom": "chromosome", "seg_log2": "adj.seg", "num_mark": "num.mark"})
+    ichor_style["start"] += 1
     ichor_style = ichor_style[["sample", "chromosome", "start", "end", "num.mark", "adj.seg", "final_source", "cna_state"]].copy()
     ichor_style["chrom_order"] = ichor_style["chromosome"].map(chrom_order)
     ichor_style = ichor_style.sort_values(["sample", "chrom_order", "start", "end"]).drop(columns=["chrom_order"])
@@ -2036,8 +2098,8 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
         if "input_log2" in cytobed.columns:
             cytobed["codification_log2"] = cytobed["codification_log2"].fillna(pd.to_numeric(cytobed["input_log2"], errors="coerce"))
         cytobed["codification_log2"] = cytobed["codification_log2"].fillna(0.0)
-        cytobed["bed_start"] = (pd.to_numeric(cytobed["start"], errors="coerce").fillna(0).astype(int) - 1).clip(lower=0)
-        cytobed["name"] = cytobed["chrom"].astype(str) + ":" + cytobed["start"].astype(str) + "-" + cytobed["end"].astype(str)
+        cytobed["bed_start"] = pd.to_numeric(cytobed["start"], errors="raise").astype(int)
+        cytobed["name"] = cytobed["chrom"].astype(str) + ":" + (cytobed["start"] + 1).astype(str) + "-" + cytobed["end"].astype(str)
         cytobed["strand"] = "."
         cytobed_file = cna_bins / f"{sample}_markdup_bins.bed"
         cytobed_file.write_text(f"track name=\"{sample}_markdup\" description=\"bam_boundary_refined_final_log2\"\n")
@@ -2047,6 +2109,7 @@ def write_outputs(outdir: Path, bins: pd.DataFrame, prior: pd.DataFrame, bstats:
         sg = final_segments[final_segments["sample"] == sample].copy()
         sfile = compat / "segments" / f"{sample}.calls.seg"
         sg_g = sg.rename(columns={"sample": "ID", "start": "loc.start", "end": "loc.end", "seg_log2": "seg.mean", "num_mark": "num.mark"})
+        sg_g["loc.start"] += 1
         sg_g = sg_g[["ID", "chrom", "loc.start", "loc.end", "num.mark", "seg.mean"]]
         sg_g["chrom_order"] = sg_g["chrom"].map(chrom_order)
         sg_g = sg_g.sort_values(["ID", "chrom_order", "loc.start", "loc.end"]).drop(columns=["chrom_order"])
