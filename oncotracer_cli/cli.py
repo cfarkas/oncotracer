@@ -23,6 +23,7 @@ from .reporting import detail, is_active, operation, status
 from .setup import add_setup_commands
 from .web import add_web_command
 from .results import add_results_command
+from .report_command import add_reports_command
 from .system_check import add_system_command
 from .uninstall import add_uninstall_command
 from .reference_bundle import (
@@ -1507,6 +1508,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_setup_commands(subparsers)
     add_web_command(subparsers)
     add_results_command(subparsers)
+    add_reports_command(subparsers)
     add_system_command(subparsers)
     add_uninstall_command(subparsers)
     add_reference_command(subparsers)
@@ -1588,6 +1590,7 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "setup",
             "web",
             "results",
+            "reports",
             "check",
             "system",
             "uninstall",

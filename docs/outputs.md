@@ -1,7 +1,8 @@
 # Output files
 
-Results go to the `outdir` saved in your YAML. Start with the summary, check
-which samples completed, then inspect their copy-number tables and plots.
+Results go to the `outdir` saved in your YAML. Open `index.html` for the dashboard
+and `06_workflow_summary/final_report.html` for the combined report. Check which
+samples completed, then inspect their copy-number tables and plots.
 Use a new results directory for a different analysis; OncoTracer will not adopt
 an unrelated nonempty directory. See [resume and output safety](running.md#output-ownership-and-container-mounts).
 
@@ -14,6 +15,12 @@ cat "$OUT/06_workflow_summary/workflow_summary.txt"
 
 If `cat` says the file does not exist, either the run has not finished or `OUT` does not match the YAML.
 
+Stage indexes use four sections: **Primary results**, **Quality control**,
+**Supporting files**, and **Diagnostics**. Open the primary tables/reports first;
+the remaining sections preserve QC, exports and troubleshooting files.
+The dashboard explicitly marks stage 05 as disabled when interpretation was not
+requested. To add it later, see [reports for a completed run](llm_reports.md#add-reports-to-a-completed-run).
+
 ## Which result is authoritative?
 
 | Stage | Main question | Status |
@@ -21,9 +28,9 @@ If `cat` says the file does not exist, either the run has not finished or `OUT` 
 | `01_samurai_illumina/` or `01_samurai_ont/` | What did alignment and the initial CNA caller produce? | Upstream caller/QC output; important provenance, but refinement follows |
 | `02_bam_refinement/` | Where are the final refined segment boundaries and bins? | Authoritative refined segmentation |
 | `03_cna_codification/` | Which CNA events and cytogenomic descriptions does OncoTracer report? | Authoritative machine-readable OncoTracer CNA results |
-| `04_cna_custom_plots/` | Where are plots and final knowledge/LLM HTML/PDF reports? | Derived presentation and optional research interpretation; use stage 03 for exact calls |
-| `05_cna_classifier/` | Where are classifier results, clinician summaries and supporting evidence? | Optional research interpretation and its audit trail |
-| `06_workflow_summary/` | Where are the important folders? | Index/pointer file, not a scientific result |
+| `04_cna_custom_plots/` | Where are CNA plots? | Derived presentation; use stage 03 for exact calls |
+| `05_cna_classifier/` | Where are classifier, clinician and knowledge/LLM reports? | Optional research interpretation and its supporting evidence |
+| `06_workflow_summary/` | What completed, and how do the saved findings compare? | Combined report, completion status and provenance; source results retain their own status |
 | `07_methylation/` | What optional ONT modified-base/classifier result and provenance were produced? | Independent optional research result; review its status before predictions |
 
 Do not report temporary alignment/caller intermediates or `.oncotracer-native/` ledger files as scientific results. Preserve the ledger and trace for audit, but use the numbered stage-02/03 outputs for exact scientific values.
@@ -137,7 +144,7 @@ wc -l "$OUT/03_cna_codification/cna_events.tsv" "$OUT/03_cna_codification/cna_cy
 
 A table containing only a header can be a valid CNA-flat result; confirm the sample in the notation/QC outputs rather than assuming the workflow failed.
 
-## Stage 04: plots and knowledge/LLM reports
+## Stage 04: CNA plots
 
 ```bash
 find "$OUT/04_cna_custom_plots" -maxdepth 2 -type f | sort
@@ -147,8 +154,26 @@ xdg-open "$OUT/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf"   # 
 
 On a headless server, copy PDFs to your workstation. Common outputs include genome overview, event burden/counts, recurrent cytobands, gene-panel frequency, per-sample pages, and log2-ratio profiles. PNG/SVG files are convenient for slides; the TSV tables remain the source for exact values.
 
+## Stage 05: classifier reports and supporting evidence
+
+This directory is produced by `run_cna_classifier: true` or the public
+`oncotracer reports` command for a completed native CNA run.
+
+```bash
+sed -n '1,8p' "$OUT/05_cna_classifier/02_classification/cna_patient_classification.tsv"
+sed -n '1,8p' "$OUT/05_cna_classifier/06_knowledge/sample_knowledge_summary.tsv"
+sed -n '1,8p' "$OUT/05_cna_classifier/07_pathology/pathology_concordance.tsv"
+```
+
+The cohort report stays at `03_report/cna_classifier_report.html`, and clinician
+summaries stay in `03_report/clinician_reports/`, both beneath `05_cna_classifier/`.
+`06_knowledge/` retains evidence tables, references, metrics and LLM trial logs;
+finished knowledge HTML/PDF reports are in `03_report/llm_reports/`.
+
+Read [Models and pathology](models_pathology.md) before interpreting these files. They are research interpretations derived from stage 03, not replacements for the underlying event table or for diagnostic review.
+
 When the optional classifier and `run_pdf_reports` are enabled, open
-`04_cna_custom_plots/llm_reports/index.html` for final knowledge reports:
+`05_cna_classifier/03_report/llm_reports/index.html` for final knowledge reports:
 
 | File under `llm_reports/` | Contents |
 | --- | --- |
@@ -160,29 +185,18 @@ When the optional classifier and `run_pdf_reports` are enabled, open
 These reports may contain generated literature drafts or labeled catalog
 fallbacks. See [LLM-assisted reports](llm_reports.md) to check which was used.
 
-## Stage 05: classifier reports and supporting evidence
+## Stage 06: final report and workflow summary
 
-This directory exists only when `run_cna_classifier: true`.
+`06_workflow_summary/final_report.html` brings together saved CNA event summaries,
+literature drafts or fallbacks, and available methylation classifier predictions.
+`final_report.json` provides the corresponding structured data. Links lead to the
+exact source tables, evidence and provenance. Each branch keeps its own status;
+missing or failed methylation predictions are not negative results, and no
+combined diagnosis is inferred.
 
-```bash
-sed -n '1,8p' "$OUT/05_cna_classifier/02_classification/cna_patient_classification.tsv"
-sed -n '1,8p' "$OUT/05_cna_classifier/06_knowledge/sample_knowledge_summary.tsv"
-sed -n '1,8p' "$OUT/05_cna_classifier/07_pathology/pathology_concordance.tsv"
-```
-
-The cohort report stays at `03_report/cna_classifier_report.html`, and clinician
-summaries stay in `03_report/clinician_reports/`, both beneath `05_cna_classifier/`.
-`06_knowledge/` retains evidence tables, references, metrics and LLM trial logs;
-finished knowledge HTML/PDF reports are in stage 04.
-
-Read [Models and pathology](models_pathology.md) before interpreting these files. They are research interpretations derived from stage 03, not replacements for the underlying event table or for diagnostic review.
-
-## Stage 06: workflow summary
-
-Start with `06_workflow_summary/workflow_summary.txt` for output locations and
-`workflow_summary.json` for completion status and selected, completed and failed
-sample lists. Enabled knowledge reports are linked as `cna_knowledge_reports`
-and `cna_knowledge_report_index`; the classifier report and evidence have separate
+Use `workflow_summary.txt` for output locations and `workflow_summary.json` for
+completion status and selected, completed and failed sample lists. Enabled
+knowledge reports are linked as `cna_knowledge_reports` and `cna_knowledge_report_index`; the classifier report and evidence have separate
 `cna_classifier_report` and `cna_knowledge_evidence` entries.
 
 ## Stage 07: optional ONT methylation

@@ -27,10 +27,13 @@ import math
 import os
 import re
 import sys
+import tempfile
 import time
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import pandas as pd
 
@@ -550,55 +553,145 @@ def infer_refined_class(row: pd.Series, features: Iterable[str], cancer_type: st
 
 
 
+def normalize_doi(value: Any) -> str:
+    doi = re.sub(r"^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)", "", safe_str(value).strip(), flags=re.I)
+    return doi.lower() if re.fullmatch(r"10\.\d{4,9}/\S+", doi) else ""
+
+
+def reference_url(ref: dict[str, Any]) -> str:
+    pmid = safe_str(ref.get("pmid")).strip()
+    if pmid.isdigit():
+        return f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
+    pmcid = safe_str(ref.get("pmcid")).upper().strip()
+    if re.fullmatch(r"PMC\d+", pmcid):
+        return f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/"
+    doi = normalize_doi(ref.get("doi"))
+    if doi:
+        return "https://doi.org/" + quote(doi, safe="/():;._-")
+    url = safe_str(ref.get("url")).strip()
+    return url if url.startswith(("https://", "http://")) else ""
+
+
 class LiteratureClient:
-    def __init__(self, cache_dir: Path, timeout: float = 20, user_agent: str | None = None, sleep: float = 0.25):
+    def __init__(self, cache_dir: Path, timeout: float = 20, user_agent: str | None = None, sleep: float = 0.25, max_attempts: int = 3):
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("Literature HTTP timeout must be finite and positive")
+        if not 1 <= max_attempts <= 5:
+            raise ValueError("Literature HTTP attempts must be between 1 and 5")
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.timeout = timeout
         self.user_agent = user_agent or "OncoTracerAI-CNA-knowledge-enrichment/1.0 (research; contact: user-provided)"
         self.sleep = sleep
+        self.max_attempts = max_attempts
         self.session = requests.Session() if requests else None
         if self.session:
             self.session.headers.update({"User-Agent": self.user_agent})
         self.errors: list[str] = []
         self.disabled = False
         self.consecutive_errors = 0
+        self.request_log: list[dict[str, Any]] = []
 
     def _key(self, payload: str) -> Path:
         h = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]
         return self.cache_dir / f"{h}.json"
 
+    @staticmethod
+    def _validate_payload(data: Any) -> dict[str, Any]:
+        # A 200 response carrying an API error is not a successful empty search.
+        if not isinstance(data, dict) or "hitCount" not in data or data.get("error"):
+            raise ValueError("Invalid Europe PMC search response")
+        hits = int(data["hitCount"])
+        result_list = data.get("resultList")
+        if hits < 0 or not isinstance(result_list, dict):
+            raise ValueError("Invalid Europe PMC search results")
+        results = result_list.get("result", [])
+        if not isinstance(results, list) or any(not isinstance(row, dict) for row in results):
+            raise ValueError("Invalid Europe PMC result records")
+        if bool(hits) != bool(results):
+            raise ValueError("Inconsistent Europe PMC hit count")
+        return data
+
+    @staticmethod
+    def _retry_delay(response: Any, attempt: int) -> float:
+        value = response.headers.get("Retry-After", "") if response is not None else ""
+        try:
+            delay = float(value)
+        except (TypeError, ValueError):
+            try:
+                date = parsedate_to_datetime(value)
+                if date.tzinfo is None:
+                    date = date.replace(tzinfo=timezone.utc)
+                delay = (date - datetime.now(timezone.utc)).total_seconds()
+            except (TypeError, ValueError, OverflowError):
+                delay = 0.5 * (2 ** (attempt - 1))
+        return min(8.0, max(0.0, delay)) if math.isfinite(delay) else 8.0
+
     def get_json(self, url: str, params: dict[str, Any]) -> dict[str, Any] | None:
-        if self.disabled:
-            return None
-        if self.session is None:
-            self.errors.append("requests_not_available")
-            self.disabled = True
-            return None
         full_key = url + "?" + urlencode(sorted((k, str(v)) for k, v in params.items()))
         cp = self._key(full_key)
+        audit: dict[str, Any] = {"url": full_key, "query": params.get("query", ""), "sort": params.get("sort", ""), "attempts": 0, "cache_hit": False}
+        self.request_log.append(audit)
         if cp.exists():
             try:
-                return json.loads(cp.read_text())
-            except Exception:
-                cp.unlink(missing_ok=True)
-        try:
-            resp = self.session.get(url, params=params, timeout=self.timeout)
-            resp.raise_for_status()
-            data = resp.json()
-            cp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+                data = self._validate_payload(json.loads(cp.read_text()))
+                # Refresh empty searches after a day; never suppress new evidence forever.
+                if int(data["hitCount"]) or time.time() - cp.stat().st_mtime < 86400:
+                    audit.update(status="retrieved" if int(data["hitCount"]) else "no_results", cache_hit=True, hit_count=int(data["hitCount"]))
+                    return data
+            except (OSError, ValueError, TypeError) as exc:
+                audit["cache_error"] = f"{type(exc).__name__}: {exc}"
+        # Cached evidence remains available even after the network circuit opens.
+        if self.disabled or self.session is None:
+            audit["status"] = "skipped_network_disabled" if self.disabled else "requests_not_available"
+            if self.session is None and not self.disabled:
+                self.errors.append("requests_not_available")
+                self.disabled = True
+            return None
+        for attempt in range(1, self.max_attempts + 1):
+            resp = None
+            audit["attempts"] = attempt
+            try:
+                resp = self.session.get(url, params=params, timeout=(min(5.0, self.timeout), self.timeout))
+                audit["http_status"] = resp.status_code
+                resp.raise_for_status()
+                data = self._validate_payload(resp.json())
+            except (requests.RequestException, ValueError, TypeError) as exc:
+                status = resp.status_code if resp is not None else None
+                transient = isinstance(exc, (requests.Timeout, requests.ConnectionError)) or status in {408, 429, 500, 502, 503, 504} or (status == 200 and isinstance(exc, (ValueError, TypeError)))
+                audit.update(status="retrieval_failed", error=f"{type(exc).__name__}: {exc}")
+                if transient and attempt < self.max_attempts:
+                    time.sleep(self._retry_delay(resp, attempt))
+                    continue
+                self.errors.append(f"{url}: {audit['error']}")
+                # A bad query must not disable unrelated valid searches.
+                self.consecutive_errors = self.consecutive_errors + 1 if transient else 0
+                if self.consecutive_errors >= 2:
+                    self.disabled = True
+                    self.errors.append("web_enrichment_disabled_after_repeated_connection_errors")
+                return None
             self.consecutive_errors = 0
+            audit.pop("error", None)
+            audit.update(status="retrieved" if int(data["hitCount"]) else "no_results", hit_count=int(data["hitCount"]))
+            # A cache write failure must not discard successfully retrieved evidence.
+            temp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.cache_dir, suffix=".tmp", delete=False) as handle:
+                    temp_path = Path(handle.name)
+                    json.dump(data, handle, ensure_ascii=False)
+                temp_path.replace(cp)
+            except OSError as exc:
+                audit["cache_error"] = f"{type(exc).__name__}: {exc}"
+            finally:
+                if temp_path is not None:
+                    try:
+                        temp_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
             if self.sleep:
                 time.sleep(self.sleep)
             return data
-        except Exception as exc:
-            self.consecutive_errors += 1
-            self.errors.append(f"{url}: {type(exc).__name__}: {exc}")
-            # Avoid waiting on dozens of timeouts when the server has no internet.
-            if self.consecutive_errors >= 2:
-                self.disabled = True
-                self.errors.append("web_enrichment_disabled_after_repeated_connection_errors")
-            return None
+        return None
 
     def europepmc_search(self, query: str, page_size: int = 6, sort: str = "CITED desc") -> list[dict[str, Any]]:
         """Search Europe PMC. Uses cache, returns metadata and abstracts when available."""
@@ -606,7 +699,7 @@ class LiteratureClient:
         params = {
             "query": query,
             "format": "json",
-            "pageSize": str(page_size),
+            "pageSize": str(max(1, min(1000, int(page_size)))),
             "resultType": "core",
             "sort": sort,
         }
@@ -616,29 +709,33 @@ class LiteratureClient:
         results = (((data or {}).get("resultList") or {}).get("result") or [])
         out = []
         for r in results:
-            out.append({
+            row = {
                 "source": "EuropePMC",
                 "pmid": safe_str(r.get("pmid")),
                 "pmcid": safe_str(r.get("pmcid")),
-                "doi": safe_str(r.get("doi")),
+                "doi": normalize_doi(r.get("doi")),
                 "title": safe_str(r.get("title")),
-                "journal": safe_str(r.get("journalTitle")),
+                "journal": safe_str(r.get("journalTitle") or ((r.get("journalInfo") or {}).get("journal") or {}).get("title")),
                 "year": safe_str(r.get("pubYear")),
                 "authors": safe_str(r.get("authorString")),
                 "cited_by_count": safe_str(r.get("citedByCount")),
                 "abstract": safe_str(r.get("abstractText")),
-                "url": ("https://pubmed.ncbi.nlm.nih.gov/" + safe_str(r.get("pmid")) + "/") if r.get("pmid") else safe_str(r.get("doi")),
                 "query": query,
                 "query_sort": sort,
-            })
+                "evidence_status": "abstract_available" if safe_str(r.get("abstractText")).strip() else "metadata_only",
+            }
+            row["url"] = reference_url(row)
+            if not row["url"] and r.get("source") and r.get("id"):
+                row["url"] = "https://europepmc.org/article/" + quote(str(r["source"]), safe="") + "/" + quote(str(r["id"]), safe="")
+            out.append(row)
         return out
 
     def europepmc_by_pmid(self, pmid: str) -> dict[str, Any] | None:
         pmid = safe_str(pmid).strip()
-        if not pmid:
+        if not pmid.isdigit():
             return None
         got = self.europepmc_search(f"EXT_ID:{pmid} AND SRC:MED", page_size=1, sort="CITED desc")
-        if got:
+        if got and safe_str(got[0].get("pmid")) == pmid:
             g = dict(got[0])
             g["query"] = f"EXT_ID:{pmid} AND SRC:MED"
             g["source"] = "EuropePMC seed PMID metadata"
@@ -813,13 +910,24 @@ def compact_sentences(text: str, max_sentences: int = 3) -> str:
     return " ".join(keep)
 
 
-def deterministic_literature_synthesis(abstract_text: str, built: dict[str, Any], cancer_type: str) -> str:
+def deterministic_literature_synthesis(abstract_text: str, built: dict[str, Any], cancer_type: str, refs: list[dict[str, Any]] | None = None) -> str:
     context = canonical_sample_set(cancer_type)
     display = safe_str(built.get("display")) or "this CNA feature"
     genes = safe_str(built.get("genes"))
     base = safe_str(built.get("biological_interpretation"))
     hint = safe_str(built.get("classification_hint"))
-    extracted = compact_sentences(abstract_text, max_sentences=2)
+    if refs is None:
+        extracted = compact_sentences(abstract_text, max_sentences=2)
+    else:
+        excerpts = []
+        for ref in refs:
+            excerpt = compact_sentences(safe_str(ref.get("abstract")), max_sentences=1)
+            citation = ("PMID " + safe_str(ref.get("pmid"))) if ref.get("pmid") else ("DOI " + normalize_doi(ref.get("doi"))) if normalize_doi(ref.get("doi")) else reference_url(ref)
+            if excerpt and citation:
+                excerpts.append(f"{excerpt} [{citation}]")
+            if len(excerpts) == 2:
+                break
+        extracted = " ".join(excerpts)
     bits = []
     if base:
         bits.append(base)
@@ -947,25 +1055,52 @@ class ReferenceInfluenceLLMSelector:
 
 
 def merge_reference_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    by_key: dict[str, dict[str, Any]] = {}
-    for r0 in records:
-        r = dict(r0)
-        key = (safe_str(r.get("pmid")) or safe_str(r.get("doi")) or safe_str(r.get("title"))).lower().strip()
-        if not key:
+    # Index every identifier: a PMID+DOI record can bridge previously separate hits.
+    groups: list[tuple[set[str], dict[str, Any]]] = []
+    seed_title = "PMID seed from built-in CNA knowledge dictionary"
+
+    def combine(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
+        if safe_str(old.get("title")) == seed_title and safe_str(new.get("title")) != seed_title:
+            old, new = dict(new), old
+        for key, value in new.items():
+            if safe_str(value) and not safe_str(old.get(key)):
+                old[key] = value
+        # Retain every retrieval route and source link for audit/review.
+        for field, singular in (("source_urls", "url"), ("retrieval_queries", "query")):
+            values = []
+            for row in (old, new):
+                values.extend(safe_str(row.get(field)).split(" | "))
+                values.append(safe_str(row.get(singular)))
+            old[field] = " | ".join(dict.fromkeys(v for v in values if v))
+        old["url"] = reference_url(old)
+        return old
+
+    for raw in records:
+        row = dict(raw)
+        row["doi"] = normalize_doi(row.get("doi"))
+        row["pmid"] = safe_str(row.get("pmid")).strip()
+        row["pmcid"] = safe_str(row.get("pmcid")).strip().upper()
+        keys = {f"{field}:{row[field]}" for field in ("pmid", "pmcid", "doi") if row[field]}
+        if not keys:
+            title = re.sub(r"\s+", " ", safe_str(row.get("title"))).lower().strip()
+            if not title or title == seed_title.lower():
+                continue
+            keys = {"title:" + title}
+        matches = [i for i, (known, _) in enumerate(groups) if keys & known]
+        if not matches:
+            groups.append((keys, combine(row, {})))
             continue
-        old = by_key.get(key)
-        if old is None:
-            by_key[key] = r
-            continue
-        old_seed = safe_str(old.get("title")) == "PMID seed from built-in CNA knowledge dictionary"
-        new_seed = safe_str(r.get("title")) == "PMID seed from built-in CNA knowledge dictionary"
-        if old_seed and not new_seed:
-            by_key[key] = r
-        else:
-            for k, v in r.items():
-                if safe_str(v) and not safe_str(old.get(k)):
-                    old[k] = v
-    return list(by_key.values())
+        first = matches[0]
+        known, old = groups[first]
+        known.update(keys)
+        old = combine(old, row)
+        for i in matches[1:]:
+            known.update(groups[i][0])
+            old = combine(old, groups[i][1])
+        groups[first] = (known, old)
+        for i in reversed(matches[1:]):
+            del groups[i]
+    return [row for _, row in groups]
 
 
 def rank_and_select_references(
@@ -1302,6 +1437,7 @@ def build_feature_kb(
         built.setdefault("seed_pmids", [])
 
         feature_refs = []
+        request_start = len(getattr(client, "request_log", []))
         for pmid in built.get("seed_pmids", []) or []:
             seed_row = client.europepmc_by_pmid(str(pmid)) if (web and client is not None and hasattr(client, "europepmc_by_pmid")) else None
             if seed_row:
@@ -1322,6 +1458,7 @@ def build_feature_kb(
                     "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
                     "query": "built-in seed",
                     "abstract": "",
+                    "evidence_status": "unverified_seed",
                 })
         if web and client is not None:
             # Deep PubMed/Europe-PMC scraping: query multiple gene/region/context variants,
@@ -1339,6 +1476,17 @@ def build_feature_kb(
                     g["feature_id"] = fid
                     feature_refs.append(g)
 
+        feature_requests = getattr(client, "request_log", [])[request_start:]
+        request_failed = any(r.get("status") not in {"retrieved", "no_results"} for r in feature_requests)
+        retrieved_refs = [r for r in feature_refs if safe_str(r.get("source")).startswith("EuropePMC")]
+        if not web:
+            retrieval_status = "not_enabled"
+        elif retrieved_refs:
+            retrieval_status = "partial_failure" if request_failed else "retrieved"
+        elif client is None or request_failed:
+            retrieval_status = "retrieval_failed"
+        else:
+            retrieval_status = "no_results"
         dedup_refs = merge_reference_records(feature_refs)
         dedup_refs, selection_trials = rank_and_select_references(
             feature_id=fid,
@@ -1401,7 +1549,7 @@ def build_feature_kb(
                 for trial in trials:
                     llm_trial_rows.append({**trial, "display": display, "cancer_type": canonical_sample_set(cancer_type)})
 
-        deterministic = deterministic_literature_synthesis(abstracts, built, cancer_type)
+        deterministic = deterministic_literature_synthesis(abstracts, built, cancer_type, refs=evidence_refs)
         literature_synthesis = llm_text or catalog_text or deterministic
         literature_synthesis_source = "huggingface_llm" if llm_text else ("huggingface_catalog_llm" if catalog_text else ("deterministic_pubmed_text_fallback" if evidence_refs else "built_in_catalog"))
 
@@ -1425,7 +1573,9 @@ def build_feature_kb(
             "catalog_llm_model_used": catalog_model_used,
             "catalog_llm_status": catalog_status,
             "n_seed_pmids": len(built.get("seed_pmids", []) or []),
-            "n_web_references": sum(1 for r in dedup_refs if r.get("source") == "EuropePMC"),
+            "n_web_references": sum(1 for r in dedup_refs if safe_str(r.get("source")).startswith("EuropePMC")),
+            "literature_retrieval_status": retrieval_status,
+            "n_usable_literature_abstracts": len(evidence_refs),
             "n_selected_influential_references": sum(1 for r in dedup_refs if safe_str(r.get("selected_influential")).lower() == "true"),
             "top_pmids": ";".join([safe_str(r.get("pmid")) for r in selected_refs if r.get("pmid")][:8]),
             "top_reference_titles": " | ".join([safe_str(r.get("title")) for r in selected_refs if safe_str(r.get("title")) and safe_str(r.get("title")) != "PMID seed from built-in CNA knowledge dictionary"][:5]),
@@ -1436,6 +1586,8 @@ def build_feature_kb(
         "knowledge_features": len(kb_records),
         "references": len(refs),
         "web_errors": client.errors if client else errors,
+        "literature_requests": getattr(client, "request_log", []),
+        "literature_retrieval_status_counts": {status: sum(r["literature_retrieval_status"] == status for r in kb_records) for status in ("not_enabled", "retrieved", "partial_failure", "retrieval_failed", "no_results")},
         "cancer_type": canonical_sample_set(cancer_type),
         "literature_llm_enabled": bool(enable_literature_llm),
         "literature_llm_attempted_features": int(llm_attempts),
@@ -1504,6 +1656,8 @@ def build_sample_knowledge(classification: pd.DataFrame, driver_hits: pd.DataFra
                 "catalog_llm_model_used": "",
                 "catalog_llm_status": "not_applicable",
                 "n_web_references": 0,
+                "literature_retrieval_status": "not_applicable",
+                "n_usable_literature_abstracts": 0,
                 "n_selected_influential_references": 0,
                 "top_pmids": "",
                 "top_reference_titles": "",
@@ -1535,6 +1689,8 @@ def build_sample_knowledge(classification: pd.DataFrame, driver_hits: pd.DataFra
                     "catalog_llm_model_used": info.get("catalog_llm_model_used", ""),
                     "catalog_llm_status": info.get("catalog_llm_status", ""),
                     "n_web_references": info.get("n_web_references", 0),
+                    "literature_retrieval_status": info.get("literature_retrieval_status", "unknown"),
+                    "n_usable_literature_abstracts": info.get("n_usable_literature_abstracts", 0),
                     "n_selected_influential_references": info.get("n_selected_influential_references", 0),
                     "top_pmids": info.get("top_pmids", ""),
                     "top_reference_titles": info.get("top_reference_titles", ""),
@@ -1595,10 +1751,10 @@ def build_sample_knowledge(classification: pd.DataFrame, driver_hits: pd.DataFra
 
 
 def write_empty_outputs(reason: str) -> None:
-    pd.DataFrame(columns=["feature_id", "display", "genes", "category", "tier", "biological_interpretation", "classification_hint", "caveat", "literature_synthesis", "literature_synthesis_source", "literature_llm_model_used", "literature_llm_status", "catalog_llm_model_used", "catalog_llm_status", "n_seed_pmids", "n_web_references", "top_pmids", "hf_entities"]).to_csv("knowledge_base.tsv", sep="\t", index=False)
-    pd.DataFrame(columns=["sample", "feature_id", "display", "genes", "event_state", "event_cytoband", "tier", "category", "biological_interpretation", "classification_hint", "caveat", "literature_synthesis", "literature_synthesis_source", "literature_llm_model_used", "literature_llm_status", "catalog_llm_model_used", "catalog_llm_status", "n_web_references", "top_pmids"]).to_csv("sample_knowledge.tsv", sep="\t", index=False)
+    pd.DataFrame(columns=["feature_id", "display", "genes", "category", "tier", "biological_interpretation", "classification_hint", "caveat", "literature_synthesis", "literature_synthesis_source", "literature_llm_model_used", "literature_llm_status", "catalog_llm_model_used", "catalog_llm_status", "n_seed_pmids", "n_web_references", "literature_retrieval_status", "n_usable_literature_abstracts", "top_pmids", "hf_entities"]).to_csv("knowledge_base.tsv", sep="\t", index=False)
+    pd.DataFrame(columns=["sample", "feature_id", "display", "genes", "event_state", "event_cytoband", "tier", "category", "biological_interpretation", "classification_hint", "caveat", "literature_synthesis", "literature_synthesis_source", "literature_llm_model_used", "literature_llm_status", "catalog_llm_model_used", "catalog_llm_status", "n_web_references", "literature_retrieval_status", "n_usable_literature_abstracts", "top_pmids"]).to_csv("sample_knowledge.tsv", sep="\t", index=False)
     pd.DataFrame(columns=["sample", "knowledge_refined_class", "knowledge_refined_class_rationale", "knowledge_literature_synthesis", "knowledge_literature_llm_status", "n_knowledge_features", "knowledge_features", "knowledge_feature_ids"]).to_csv("sample_knowledge_summary.tsv", sep="\t", index=False)
-    pd.DataFrame(columns=["feature_id", "source", "pmid", "pmcid", "doi", "title", "journal", "year", "authors", "cited_by_count", "url", "query", "abstract"]).to_csv("knowledge_references.tsv", sep="\t", index=False)
+    pd.DataFrame(columns=["feature_id", "source", "pmid", "pmcid", "doi", "title", "journal", "year", "authors", "cited_by_count", "url", "query", "abstract", "evidence_status", "source_urls", "retrieval_queries"]).to_csv("knowledge_references.tsv", sep="\t", index=False)
     pd.DataFrame(columns=["sample", "feature_id", "feature_display", "paper_rank", "influence_score", "pmid", "title", "journal", "year", "url"]).to_csv("sample_literature.tsv", sep="\t", index=False)
     pd.DataFrame(columns=["sample", "n_candidate_papers", "n_selected_papers", "n_features_with_literature", "top_paper_pmids", "top_paper_titles", "top_paper_influence_scores", "literature_selection_method"]).to_csv("sample_literature_summary.tsv", sep="\t", index=False)
     pd.DataFrame(columns=["sample", *TRIAL_COLUMNS]).to_csv("knowledge_literature_ranker_trials.tsv", sep="\t", index=False)
@@ -1618,6 +1774,7 @@ def main() -> None:
     ap.add_argument("--cache-dir", default="knowledge_http_cache")
     ap.add_argument("--max-papers", type=int, default=6)
     ap.add_argument("--timeout", type=float, default=20)
+    ap.add_argument("--http-attempts", type=int, choices=range(1, 6), default=3, help="Maximum attempts per literature request, including transient retries")
     ap.add_argument("--sleep", type=float, default=0.25)
     ap.add_argument("--lymphoma-terms", default='lymphoma OR DLBCL OR "diffuse large B-cell lymphoma" OR "large B-cell lymphoma" OR "B-cell lymphoma"')
     ap.add_argument("--cancer-terms", default="cancer OR tumor OR tumour OR carcinoma OR leukemia OR lymphoma OR glioma OR sarcoma OR CNA")
@@ -1657,7 +1814,7 @@ def main() -> None:
         driver_hits = read_tsv(args.driver_hits)
         region_catalog = read_tsv(args.region_catalog)
         web = as_bool(args.enable_web)
-        client = LiteratureClient(Path(args.cache_dir), timeout=args.timeout, user_agent=args.user_agent, sleep=args.sleep) if web else None
+        client = LiteratureClient(Path(args.cache_dir), timeout=args.timeout, user_agent=args.user_agent, sleep=args.sleep, max_attempts=args.http_attempts) if web else None
         feature_kb, refs, llm_trials, metrics = build_feature_kb(
             region_catalog=region_catalog,
             driver_hits=driver_hits,
