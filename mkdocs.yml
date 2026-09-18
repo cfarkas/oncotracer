@@ -56,6 +56,7 @@ nav:
   - Understand Results:
       - Output Files: outputs.md
       - Models and Pathology: models_pathology.md
+      - CNA Evidence and Uncertainty: cna_evidence_assessment.md
       - LLM-Assisted Reports: llm_reports.md
       - Results Gallery: gallery.md
   - Validation:

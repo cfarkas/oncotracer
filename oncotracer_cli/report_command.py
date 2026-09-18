@@ -106,6 +106,72 @@ def _claim_reports(outdir: Path, owner: dict, manifest: dict, inputs: dict) -> t
     return output, identity
 
 
+
+def _report_files(output: Path) -> list[dict]:
+    return [{"path": str(path.relative_to(output.parent)), "sha256": sha256_file(path)}
+            for path in sorted(output.rglob("*")) if path.is_file()
+            and path.name != "report_provenance.json" and ".reports" not in path.relative_to(output).parts]
+
+
+def _organize_existing(outdir: Path, config_path: Path, config: dict, owner: dict, manifest: dict, inputs: dict) -> int:
+    from .classifier_layout import organize_classifier
+
+    if not (outdir / "05_cna_classifier").is_dir():
+        raise OncoTracerError("No existing classifier reports to organize; run reports first")
+    output, provenance = _claim_reports(outdir, owner, manifest, inputs)
+    marker = output / "report_provenance.json"
+    previous = _json(marker) if marker.exists() else {}
+    generation = output / ".reports" / uuid.uuid4().hex
+    generation.mkdir()
+    summary_path = outdir / "06_workflow_summary/workflow_summary.json"
+    classifier_summary = output / "native_classifier_summary.json"
+    for source in (summary_path, classifier_summary, marker):
+        if source.exists():
+            shutil.copyfile(source, generation / (source.stem + ".before.json"))
+    atomic_write_text(generation / "effective_config.yml", render_flat_yaml(config))
+    provenance.update(operation="organize_only", status="running", started_at=utc_now(),
+                      generation=str(generation.relative_to(outdir)),
+                      previous_generation=previous.get("generation"),
+                      literature_llm=previous.get("literature_llm"),
+                      runtime_identity=current_runtime_identity(),
+                      effective_config_sha256=sha256_file(generation / "effective_config.yml"))
+    atomic_write_json(marker, provenance)
+    try:
+        organize_classifier(output)
+        _authenticate(outdir, config_path)
+        if sha256_file(outdir / MANIFEST) != provenance["source_manifest_sha256"]:
+            raise OncoTracerError("Original native manifest changed during report organization")
+        summary = _json(summary_path)
+        summary.update(report_layout_status="complete", cna_classifier=str(output))
+        for filename, key in (("cohort_report.html", "cna_classifier_report"),
+                              ("final_report.html", "cna_knowledge_report_index")):
+            if (output / filename).is_file():
+                summary[key] = str(output / filename)
+        if (output / "final_report.html").is_file():
+            summary["cna_knowledge_reports"] = str(output)
+        if (output / "evidence").is_dir():
+            summary["cna_knowledge_evidence"] = str(output / "evidence")
+        atomic_write_workflow_summary(summary_path.parent, summary)
+        if classifier_summary.exists():
+            saved = _json(classifier_summary)
+            if (output / "final_report.html").is_file():
+                saved["knowledge_report_index"] = str(output / "final_report.html")
+            saved["knowledge_evidence"] = str(output / "evidence")
+            atomic_write_json(classifier_summary, saved)
+        write_results_index(outdir)
+        provenance.update(status="complete", finished_at=utc_now(),
+                          layout_manifest_sha256=sha256_file(output / "layout_manifest.json"))
+    except BaseException as error:
+        provenance.update(status="failed", finished_at=utc_now(), error=str(error))
+        raise
+    finally:
+        provenance["files"] = _report_files(output)
+        atomic_write_json(generation / "provenance.json", provenance)
+        atomic_write_json(marker, provenance)
+    print(f"Organized reports: {output}\nLayout audit: {output / 'layout_manifest.json'}")
+    return 0
+
+
 def _effective(config: dict, args) -> dict:
     result = dict(DEFAULTS, **config)
     result.update(run_cna_classifier=True, run_pdf_reports=True, run_clinician_reports=True,
@@ -130,6 +196,8 @@ def _effective(config: dict, args) -> dict:
 def command_reports(args) -> int:
     from .cli import _load_install_config, _managed_conda_base
 
+    if args.organize_only and (args.literature or args.deep_literature or args.model or args.allow_model_download or args.force):
+        raise OncoTracerError("--organize-only cannot be combined with report-generation options")
     if min(args.threads, args.max_features, args.max_papers, args.max_new_tokens) < 1:
         raise OncoTracerError("Report threads and feature/paper/token limits must be positive integers")
     config_path = require_file(Path(args.config).expanduser().absolute(), "original run config")
@@ -152,6 +220,8 @@ def command_reports(args) -> int:
         except BlockingIOError as error:
             raise OncoTracerError("An analysis or report generation is already running in this directory") from error
         owner, manifest, inputs = _authenticate(outdir, config_path)
+        if args.organize_only:
+            return _organize_existing(outdir, config_path, config, owner, manifest, inputs)
         install = _load_install_config()
         base = _managed_conda_base(install, require_poetry=False)
         with managed_conda_runtime_lock(base, require_poetry=False, semantic=False) as prefixes:
@@ -189,7 +259,9 @@ def command_reports(args) -> int:
                 ledger = StageLedger(output / ".reports" / "state.json")
                 run_native_classifier(root, effective, outdir, generation, runner, ledger, toolchain, force=args.force)
                 validate_inputs()
-                metrics_path = output / "06_knowledge/knowledge_metrics.json"
+                metrics_path = output / "evidence/knowledge_metrics.json"
+                if not metrics_path.exists():
+                    metrics_path = output / "06_knowledge/knowledge_metrics.json"
                 metrics = _json(metrics_path) if metrics_path.exists() else {}
                 accepted = metrics.get("literature_llm_completed_features")
                 provenance["literature_llm"] = {"requested": args.literature,
@@ -208,9 +280,7 @@ def command_reports(args) -> int:
                 write_results_index(outdir)
                 provenance.update(status="complete", finished_at=utc_now())
             finally:
-                provenance["files"] = [{"path": str(path.relative_to(outdir)), "sha256": sha256_file(path)}
-                                       for path in sorted(output.rglob("*"))
-                                       if path.is_file() and path != marker and ".reports" not in path.relative_to(output).parts]
+                provenance["files"] = _report_files(output)
                 atomic_write_json(generation / "provenance.json", provenance)
                 atomic_write_json(marker, provenance)
     except BaseException as error:
@@ -232,11 +302,11 @@ def command_reports(args) -> int:
         raise
     finally:
         os.close(descriptor)
-    print(f"Reports: {output / '03_report'}\nProvenance: {marker}")
+    print(f"Reports: {output}\nProvenance: {marker}")
     if args.literature:
         llm = provenance["literature_llm"]
         print(f"Literature LLM: {llm['status']}; accepted drafts: {llm['accepted_drafts']}; "
-              f"attempted features: {llm['attempted_features']}. See 05_cna_classifier/06_knowledge/knowledge_metrics.json.")
+              f"attempted features: {llm['attempted_features']}. See {metrics_path}.")
     return 0
 
 
@@ -244,6 +314,7 @@ def add_reports_command(subparsers) -> None:
     parser = subparsers.add_parser("reports", help="Add interpretation reports to completed native CNA outputs")
     parser.add_argument("--config", required=True, help="unchanged original run.yml containing the completed outdir")
     parser.add_argument("--backend", choices=("conda",), default="conda", help="managed Conda runtime (default: conda)")
+    parser.add_argument("--organize-only", action="store_true", help="physically organize existing reports without rerunning analysis, models, or network retrieval")
     parser.add_argument("--literature", action="store_true", help="retrieve literature and summarize with LLMs; default: catalog reports only")
     parser.add_argument("--deep-literature", action="store_true", help="add deep literature retrieval (requires --literature)")
     parser.add_argument("--max-features", type=int, default=8, help="maximum LLM feature summaries (default: 8)")

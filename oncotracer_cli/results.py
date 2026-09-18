@@ -140,7 +140,7 @@ def _important(stage: str, relative: Path) -> bool:
     if stage == "04_cna_custom_plots":
         return name in PRIMARY_PLOTS or relative.as_posix() == "llm_reports/index.html"
     if stage == "05_cna_classifier":
-        return name in {"cna_patient_classification.tsv", "cna_classifier_report.html", "knowledge_metrics.json"} or relative.as_posix() == "03_report/clinician_reports/index.html" or relative.as_posix() == "03_report/llm_reports/index.html"
+        return (len(relative.parts) == 1 and name in {"final_report.pdf", "final_report.html", "clinician_report.pdf", "clinician_report.html", "cohort_report.html"}) or name in {"cna_patient_classification.tsv", "cna_classifier_report.html", "knowledge_metrics.json"} or relative.as_posix() == "03_report/clinician_reports/index.html" or relative.as_posix() == "03_report/llm_reports/index.html"
     if stage == "06_workflow_summary":
         return name in {"final_report.html", "final_report.json", "workflow_summary.txt", "workflow_summary.json", "native_run_manifest.json"}
     if stage == "07_methylation":
@@ -207,16 +207,53 @@ def write_results_index(outdir: Path) -> Path:
         visible = [path for path in files if path not in diagnostics]
         quality = [path for path in visible if _quality(stage, path.relative_to(directory))]
         primary = [path for path in visible if path not in quality and _important(stage, path.relative_to(directory))]
+        if stage == "05_cna_classifier":
+            preferred = {name: i for i, name in enumerate(("final_report.pdf", "final_report.html", "clinician_report.pdf", "clinician_report.html", "cohort_report.html"))}
+            primary.sort(key=lambda path: (len(path.relative_to(directory).parts) > 1, preferred.get(path.name, 99), str(path)))
         navigation = _link(page, root_page, "← All results")
         body = f"<p>{navigation}</p><h1>{html.escape(title)}</h1><p>{html.escape(description)}</p>"
         if stage == "06_workflow_summary":
             body += '<section class="card"><h2>Final report</h2><p>' + _link(page, report_page, "Open combined analysis report") + ' · ' + _link(page, report_json, "Structured report (JSON)") + '</p></section>'
-        if primary:
-            body += '<section class="card"><h2>Primary results</h2>' + _table(page, directory, primary) + "</section>"
+        canonical_classifier = stage == "05_cna_classifier" and any(
+            path.parent == directory and path.name in {"final_report.pdf", "final_report.html", "clinician_report.pdf", "clinician_report.html", "cohort_report.html"}
+            for path in primary)
+        featured = []
+        if canonical_classifier:
+            body += '<section class="card"><h2>Reports</h2><p>Open the complete interpretation or the short clinician summary.</p><div class="grid">'
+            for stem, label in (("final_report", "Final report"), ("clinician_report", "Clinician summary")):
+                versions = [path for suffix in (".pdf", ".html") for path in primary
+                            if path.parent == directory and path.name == stem + suffix]
+                if versions:
+                    featured.extend(versions)
+                    body += '<div><h3>' + label + '</h3><p>' + ' · '.join(_link(page, path, "Open PDF" if path.suffix == ".pdf" else "Open HTML") for path in versions) + '</p></div>'
+            body += '</div>'
+            cohort = next((path for path in primary if path.parent == directory and path.name == "cohort_report.html"), None)
+            if cohort:
+                featured.append(cohort)
+                body += '<p>' + _link(page, cohort, "Cohort overview and plots") + '</p>'
+            body += '</section>'
+        other_primary = [path for path in primary if path not in featured]
+        if other_primary:
+            body += '<section class="card"><h2>Primary results</h2>' + _table(page, directory, other_primary) + "</section>"
         if quality:
             body += '<section class="card"><h2>Quality control</h2>' + _table(page, directory, quality) + "</section>"
         remaining = [path for path in visible if path not in primary and path not in quality]
-        if remaining:
+        if canonical_classifier:
+            evidence = directory / "evidence"
+            if evidence.is_dir() and not evidence.is_symlink():
+                body += '<section class="card"><h2>Literature evidence</h2><p>' + _link(page, evidence / "index.html", "Browse source text, citations and model audit") + '</p></section>'
+            plots = [path for path in remaining if path.relative_to(directory).parts[0] == "figures"]
+            if plots:
+                body += '<section class="card"><h2>Plots</h2>'
+                for group, label in (("summary", "Summary plots"), ("drivers", "Driver regions"), ("cohort", "Cohort plots")):
+                    selected = [path for path in plots if len(path.relative_to(directory).parts) > 2 and path.relative_to(directory).parts[1] == group]
+                    if selected:
+                        body += '<details><summary>' + label + ' · ' + str(len(selected)) + ' files</summary>' + _table(page, directory, selected) + '</details>'
+                body += '</section>'
+            supporting = [path for path in remaining if path.relative_to(directory).parts[0] not in {"figures", "evidence"}]
+            if supporting:
+                body += '<section class="card"><details><summary>Tables, sample files and provenance · ' + str(len(supporting)) + ' files</summary>' + _table(page, directory, supporting) + '</details></section>'
+        elif remaining:
             body += '<section class="card"><h2>Supporting files and exports</h2>' + _table(page, directory, remaining) + "</section>"
         if diagnostics:
             body += '<section class="card"><h2>Diagnostics and intermediate files</h2><p class="muted">Retained for troubleshooting and reproducibility. Final results are listed above.</p>' + _link(page, diagnostic_page, f"Browse {len(diagnostics)} diagnostic files") + "</section>"
@@ -224,7 +261,7 @@ def write_results_index(outdir: Path) -> Path:
             planned.append((diagnostic_page, _page(title + " diagnostics", diagnostic_body)))
         planned.append((page, _page(title, body)))
         if stage == "05_cna_classifier":
-            evidence = directory / "06_knowledge"
+            evidence = directory / ("evidence" if (directory / "evidence").is_dir() else "06_knowledge")
             if evidence.is_dir() and not evidence.is_symlink():
                 evidence_page = evidence / "index.html"
                 evidence_files = [path for path in files if path.parent == evidence and path != evidence_page]

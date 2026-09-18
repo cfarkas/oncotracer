@@ -55,25 +55,12 @@ def clamp(x: float, lo: float = 0.0, hi: float = 100.0) -> int:
     return int(max(lo, min(hi, round(x))))
 
 
-def sigmoid_probability(score: Any, center: float = 55.0, scale: float = 12.0) -> float:
-    """Convert a 0-100 score to a probability-like number.
-
-    This is not externally calibrated unless a user-supplied validation table is
-    used. It simply makes reports easier to read by mapping larger scores to
-    larger probability-like values.
-    """
-    x = max(0.0, min(100.0, num(score, 0.0)))
-    try:
-        return round(1.0 / (1.0 + math.exp(-(x - center) / scale)), 3)
-    except Exception:
-        return 0.0
-
-
-def score_to_probability_fields(score: Any, calibration_status: str = "heuristic_sigmoid_uncalibrated_no_reference_labels") -> dict[str, Any]:
+def score_to_probability_fields(score: Any, calibration_status: str = "not_estimated_no_reference_labels") -> dict[str, Any]:
+    """A hand-weighted score has no diagnostic probability without labelled data."""
     return {
-        "probability_estimate": sigmoid_probability(score),
+        "probability_estimate": "",
         "probability_calibration_status": calibration_status,
-        "probability_method": "sigmoid(score; center=55; scale=12) unless a user-supplied labelled calibration set is provided",
+        "probability_method": "Not estimated: heuristic CNA and agreement scores are not calibrated diagnostic probabilities.",
     }
 
 
@@ -674,13 +661,10 @@ def infer_cna_profile(row: pd.Series, sample_events: pd.DataFrame, sample_driver
     }
 
 def cna_probable_classification(cna_profile: dict[str, Any], row: pd.Series, ks_row: pd.Series | None = None, sample_set: str = "broad_cancer") -> dict[str, Any]:
-    """Assign a probable CNA-pattern class.
+    """Describe CNA findings within a supplied context, without inferring tissue.
 
-    In v8 the class space is context-aware.  When --sample_set is a specific
-    context such as lymphoma, breast, pancreas, etc., the function does not emit
-    unrelated disease labels even when generic pan-cancer regions overlap.  The
-    broad all-context behavior is used only for --sample_set broad_cancer or
-    synonyms such as pan_cancer/all.
+    A specific sample set is an explicit prior. Broad-cancer mode retains
+    molecular patterns; shared region hits do not choose a tumor type.
     """
     flags = cna_profile["flags"]
     n = cna_profile["n_cna_events"]
@@ -842,127 +826,27 @@ def cna_probable_classification(cna_profile: dict[str, Any], row: pd.Series, ks_
                 rationale.append(f"--sample_set {context} was supplied. CNA abnormalities are present but context-specific driver-region evidence is limited; unrelated tumor-type labels were suppressed.")
             class_tokens.update([context, "sample_set_context", "neoplastic"])
     else:
-        # Broad cancer mode: allow all tumor-type patterns to compete.
-        if flags["17q12_ERBB2"]:
-            class_label = "HER2/ERBB2-amplified carcinoma-compatible CNA pattern"
-            class_tokens.update(["carcinoma", "breast", "gastric", "her2", "erbb2"])
-            pattern_component = 24
-            rationale.append("17q12 ERBB2/HER2-region gain/amplification was detected; in broad_cancer mode this is allowed to map to a HER2-amplified carcinoma-compatible CNA context.")
-        elif flags["7p11_EGFR"] or (flags["7_gain"] and flags["10_loss"]):
-            class_label = "EGFR/chr7/chr10 CNS glioma-compatible CNA pattern"
-            class_tokens.update(["glioma", "cns", "egfr", "chromosome_7_gain", "chromosome_10_loss"])
-            pattern_component = 23
-            rationale.append("EGFR-region gain/amplification or chromosome 7 gain with chromosome 10 loss was detected; this supports a glioma-like CNA context when pathology/site is compatible.")
-        elif len(cna_profile.get("leukemia_features", [])) >= 2:
-            class_label = "Leukemia/MDS-compatible CNA pattern"
-            class_tokens.update(["leukemia", "aml", "mds", "hematologic"])
-            pattern_component = 22
-            rationale.append("Leukemia/MDS-associated CNA features were detected: " + ", ".join(cna_profile.get("leukemia_features", [])[:8]) + ".")
-        elif len(cna_profile.get("neuroblastoma_features", [])) >= 2:
-            class_label = "Neuroblastoma-compatible CNA pattern"
-            class_tokens.update(["neuroblastoma", "embryonal"])
-            pattern_component = 22
-            rationale.append("Neuroblastoma-associated CNA features were detected: " + ", ".join(cna_profile.get("neuroblastoma_features", [])[:8]) + ".")
-        elif len(cna_profile.get("germ_cell_features", [])) >= 1:
-            class_label = "Germ-cell tumor-compatible 12p/oncogene CNA pattern"
-            class_tokens.update(["germ_cell", "testicular"])
-            pattern_component = 21
-            rationale.append("Germ-cell tumor-associated CNA features were detected: " + ", ".join(cna_profile.get("germ_cell_features", [])[:8]) + ".")
-        elif len(cna_profile.get("ovarian_features", [])) >= 3:
-            class_label = "Ovarian/serous carcinoma-compatible CNA pattern"
-            class_tokens.update(["ovarian", "serous", "carcinoma"])
-            pattern_component = 21
-            rationale.append("Ovarian/serous carcinoma-associated CNA features were detected: " + ", ".join(cna_profile.get("ovarian_features", [])[:8]) + ".")
-        elif len(cna_profile.get("prostate_features", [])) >= 3:
-            class_label = "Prostate carcinoma-compatible CNA pattern"
-            class_tokens.update(["prostate", "carcinoma"])
-            pattern_component = 20
-            rationale.append("Prostate-associated CNA features were detected: " + ", ".join(cna_profile.get("prostate_features", [])[:8]) + ".")
-        elif len(cna_profile.get("lung_features", [])) >= 3:
-            class_label = "Lung carcinoma-compatible CNA pattern"
-            class_tokens.update(["lung", "nsclc", "carcinoma"])
-            pattern_component = 20
-            rationale.append("Lung carcinoma-associated CNA features were detected: " + ", ".join(cna_profile.get("lung_features", [])[:8]) + ".")
-        elif len(cna_profile.get("gastric_features", [])) >= 3:
-            class_label = "Gastric/esophageal carcinoma-compatible CNA pattern"
-            class_tokens.update(["gastric_esophageal", "carcinoma"])
-            pattern_component = 20
-            rationale.append("Gastric/esophageal carcinoma-associated CNA features were detected: " + ", ".join(cna_profile.get("gastric_features", [])[:8]) + ".")
-        elif len(cna_profile.get("renal_features", [])) >= 2:
-            class_label = "Renal-cell carcinoma-compatible CNA pattern"
-            class_tokens.update(["renal", "rcc", "carcinoma"])
-            pattern_component = 20
-            rationale.append("Renal-cell carcinoma-associated CNA features were detected: " + ", ".join(cna_profile.get("renal_features", [])[:8]) + ".")
-        elif len(cna_profile.get("urothelial_features", [])) >= 2:
-            class_label = "Urothelial carcinoma-compatible CNA pattern"
-            class_tokens.update(["urothelial", "bladder", "carcinoma"])
-            pattern_component = 20
-            rationale.append("Urothelial carcinoma-associated CNA features were detected: " + ", ".join(cna_profile.get("urothelial_features", [])[:8]) + ".")
-        elif len(cna_profile.get("colorectal_features", [])) >= 3:
-            class_label = "Colorectal-like chromosomal-instability CNA pattern"
-            class_tokens.update(["colorectal", "colon", "carcinoma", "chromosomal_instability"])
-            pattern_component = 21
-            rationale.append("Colorectal-like CIN features were detected: " + ", ".join(cna_profile.get("colorectal_features", [])[:8]) + ".")
-        elif len(cna_profile.get("pancreatic_features", [])) >= 3:
-            class_label = "Pancreaticobiliary/colorectal tumor-suppressor-loss CNA pattern"
-            class_tokens.update(["pancreas", "pancreatic", "carcinoma", "tumor_suppressor_loss"])
-            pattern_component = 20
-            rationale.append("Pancreaticobiliary/colorectal tumor-suppressor-loss CNA features were detected: " + ", ".join(cna_profile.get("pancreatic_features", [])[:8]) + ".")
-        elif len(cna_profile.get("breast_features", [])) >= 3:
-            class_label = "Breast/epithelial carcinoma-compatible CNA pattern"
-            class_tokens.update(["breast", "carcinoma", "solid_tumor"])
-            pattern_component = 19
-            rationale.append("Breast/epithelial carcinoma-associated CNA features were detected: " + ", ".join(cna_profile.get("breast_features", [])[:8]) + ".")
-        elif flags["9p24_JAK2_PDL1_PDL2"] and flags["2p16_REL_BCL11A"]:
-            class_label = "Hodgkin/PMBCL-compatible immune-evasion and 2p CNA pattern"
-            class_tokens.update(["lymphoma", "hodgkin", "pmbcl", "b_cell", "immune_evasion"])
-            pattern_component = 20
-            rationale.append("Both 9p24/JAK2-PD-L1/PD-L2-region and 2p16/REL-BCL11A-region CNA signals were detected.")
-        elif flags["17p13_TP53"] and (cna_profile["is_cna_high"] or len(cna_profile.get("strong_bcell_features", [])) >= 2):
-            class_label = "TP53-axis / chromosomal-instability CNA pattern"
-            class_tokens.update(["tp53_axis", "chromosomal_instability", "aggressive"])
-            pattern_component = 19
-            rationale.append("17p13/TP53-region loss is present with high/complex CNA burden or multiple driver-region CNA features.")
-        elif len(cna_profile.get("strong_bcell_features", [])) >= 2 or (flags["2p16_REL_BCL11A"] and (flags["18q21_BCL2_MALT1"] or flags["8q24_MYC"] or flags["3q27_BCL6"])):
-            class_label = "B-cell lymphoma / high-grade B-cell lymphoma-like CNA pattern"
-            class_tokens.update(["lymphoma", "b_cell", "large_b_cell", "dlbcl", "hgbl"])
-            pattern_component = 18
-            rationale.append("Multiple lymphoma-associated CNA features were detected: " + ", ".join(cna_profile.get("strong_bcell_features", [])[:8]) + ".")
-        elif flags["22q_loss"] and flags["1p_loss"] and len(cna_profile.get("strong_bcell_features", [])) == 0:
-            class_label = "Meningioma-compatible broad CNA pattern"
-            class_tokens.update(["meningioma", "non_lymphoid", "cns"])
-            pattern_component = 16
-            rationale.append("22q loss and 1p loss are present without strong lymphoma-specific CNA features.")
-        elif len(cna_profile.get("solid_features", [])) >= 2:
-            class_label = "Solid-tumor oncogene/tumor-suppressor CNA pattern, subtype-unspecific"
-            class_tokens.update(["solid_tumor", "carcinoma", "neoplastic"])
-            pattern_component = 14
-            rationale.append("Multiple pan-cancer solid-tumor CNA features were detected: " + ", ".join(cna_profile.get("solid_features", [])[:8]) + ".")
-        elif len(cna_profile.get("strong_bcell_features", [])) >= 1:
-            class_label = "Lymphoma-compatible CNA pattern, subtype-unspecific"
-            class_tokens.update(["lymphoma", "b_cell"])
-            pattern_component = 12
-            rationale.append("At least one lymphoma-associated CNA feature was detected: " + ", ".join(cna_profile.get("strong_bcell_features", [])[:5]) + ".")
-        elif "gain-dominant" in safe_str(row.get("gain_loss_direction_class", "")).lower():
-            class_label = "Gain-dominant CNA pattern, tumor-type-unspecific"
-            class_tokens.update(["neoplastic", "gain_dominant"])
-            pattern_component = 9
-            rationale.append("The profile is gain-dominant but lacks a specific canonical tumor-type CNA combination.")
+        # Shared CNA regions cannot identify tissue of origin by rule priority.
+        patterns = safe_str(row.get("matched_cna_patterns", ""))
+        if patterns and patterns != "none_detected":
+            class_label = "Molecular CNA patterns: " + patterns.replace("_", " ").replace(";", "; ")
         else:
-            class_label = "Complex CNA pattern, tumor-type-unspecific"
-            class_tokens.update(["neoplastic", "complex_cna"])
-            pattern_component = 8
-            rationale.append("The sample has CNA abnormalities but no highly specific tumor-type CNA pattern in the current catalog.")
+            class_label = "CNA pattern, tumor type unresolved"
+        class_tokens.update(["molecular_cna_pattern", "tumor_type_unresolved"])
+        pattern_component = 12 if any(flags.values()) else 0
+        rationale.append("Broad-cancer analysis retains molecular CNA findings without selecting a tumor type from shared catalog regions. Histology and independent molecular evidence are required to resolve tissue and subtype.")
 
+    # Reference availability affects interpretation, not sample-level CNA evidence.
     literature_component = 0
-    if ks_row is not None and not ks_row.empty:
-        literature_component = int(min(8, max(0, num(ks_row.get("knowledge_literature_strength", 0), 0))))
-    if knowledge:
-        # Use knowledge as supportive text, but do not let pan-cancer knowledge override a restricted sample_set label.
-        if broad_mode or context in knowledge.lower().replace("-", "_") or context == "lymphoma":
-            rationale.append("Knowledge-enrichment label: " + knowledge + ".")
-    if literature_component > 0:
-        rationale.append(f"PubMed/Europe-PMC influential-paper support contributed {literature_component} points because selected context-relevant references were found for detected CNA drivers; this supports interpretability but is not clinical validation.")
+    if ks_row is not None and not ks_row.empty and num(ks_row.get("knowledge_literature_strength", 0), 0) > 0:
+        rationale.append("Retrieved literature provides background and adds no points to the CNA evidence score.")
+    if safe_str(row.get("driver_segment_support_status", "")) == "complete":
+        support_segments = max(0, int(num(row.get("n_distinct_driver_supporting_segments", 0), 0)))
+        canonical_component = min(canonical_component, 8 * support_segments)
+        if num(row.get("n_shared_driver_supporting_segments", 0), 0) > 0:
+            rationale.append("Several catalog regions share a supporting segment; their score contribution is capped by distinct segment count.")
+    if safe_str(row.get("cna_assessment_summary", "")):
+        rationale.append(safe_str(row.get("cna_assessment_summary")))
 
     penalty = 0
     if cna_profile["is_flat_or_low"]:
@@ -1006,10 +890,13 @@ def cna_probable_classification(cna_profile: dict[str, Any], row: pd.Series, ks_
         "probable_cna_probability_calibration_status": prob_fields["probability_calibration_status"],
         "probable_cna_probability_method": prob_fields["probability_method"],
         "sample_set_context": context,
+        "context_assignment_status": "not_inferred_from_cna" if broad_mode else "supplied_study_context_not_independently_inferred",
+        "context_feature_counts": json.dumps({key: len(set(values)) for key, values in feature_groups.items() if values}, sort_keys=True),
+        "cna_diagnostic_resolution": safe_str(row.get("cna_diagnostic_resolution", "molecular_pattern_only")),
         "probable_cna_rationale": " ".join(rationale),
         "probable_cna_score_breakdown": "; ".join([f"{k}={v}" for k, v in breakdown.items()]),
         "probable_cna_tokens": ";".join(sorted(token_source)),
-        "probable_cna_model": TOKEN_SCORE_MODEL_VERSION + f" - CNA-only context-aware pattern score using --sample_set {context}. Cross-cancer tumor-type labels are allowed only with --sample_set broad_cancer/pan_cancer. The separate probability estimate is calibrated only when a labelled calibration table is supplied.",
+        "probable_cna_model": TOKEN_SCORE_MODEL_VERSION + f" - CNA-only context-aware pattern score using --sample_set {context}. Broad-cancer mode does not assign tissue of origin. Supplied study context is a prior, not a prediction. Scores are unvalidated; user-table probability fits require independent external validation.",
     }
 
 def marker_summary_from_row(row: pd.Series) -> str:
@@ -1444,27 +1331,30 @@ def build_probability_calibrator(table_path: str, score_col: str = "", label_col
     such a labelled table, a true calibrated probability cannot be estimated.
     """
     if not safe_str(table_path):
-        return None, "heuristic_sigmoid_uncalibrated_no_reference_labels", "No labelled calibration table was supplied."
+        return None, "not_estimated_no_reference_labels", "No labelled calibration table was supplied."
     p = Path(table_path)
     if not p.exists() or p.stat().st_size == 0:
-        return None, "heuristic_sigmoid_uncalibrated_calibration_table_missing", f"Calibration table not found or empty: {p}"
+        return None, "not_estimated_calibration_table_missing", f"Calibration table not found or empty: {p}"
     try:
         df = read_pathology_table(p)
     except Exception as e:
-        return None, "heuristic_sigmoid_uncalibrated_calibration_table_unreadable", f"Could not read calibration table: {e}"
+        return None, "not_estimated_calibration_table_unreadable", f"Could not read calibration table: {e}"
     if df.empty:
-        return None, "heuristic_sigmoid_uncalibrated_calibration_table_empty", "Calibration table was empty."
+        return None, "not_estimated_calibration_table_empty", "Calibration table was empty."
     s_col = choose_col(df, [score_col] if score_col else ["score", "agreement_score", "probable_cna_score", "model_score"])
     y_col = choose_col(df, [label_col] if label_col else ["label", "true_label", "agreement_true", "is_agreement", "outcome"])
     if not s_col or not y_col:
-        return None, "heuristic_sigmoid_uncalibrated_calibration_columns_missing", "Calibration table must contain score and binary label columns."
+        return None, "not_estimated_calibration_columns_missing", "Calibration table must contain score and binary label columns."
     x = pd.to_numeric(df[s_col], errors="coerce")
     y = pd.to_numeric(df[y_col], errors="coerce")
-    ok = x.notna() & y.notna()
+    ok = x.notna() & y.notna() & x.map(lambda value: math.isfinite(value)) & y.map(lambda value: math.isfinite(value))
     x = x[ok].astype(float)
-    y = (y[ok].astype(float) > 0).astype(int)
+    y = y[ok].astype(float)
+    if not y.isin([0, 1]).all():
+        return None, "not_estimated_calibration_nonbinary_labels", "Calibration labels must be exactly 0 or 1."
+    y = y.astype(int)
     if len(x) < 6 or y.nunique() < 2:
-        return None, "heuristic_sigmoid_uncalibrated_calibration_insufficient_labels", "Calibration requires at least 6 rows and both positive/negative labels."
+        return None, "not_estimated_calibration_insufficient_labels", "Calibration requires at least 6 rows and both positive/negative labels."
     try:
         from sklearn.linear_model import LogisticRegression  # type: ignore
         import numpy as np  # type: ignore
@@ -1473,23 +1363,29 @@ def build_probability_calibrator(table_path: str, score_col: str = "", label_col
         def calibrate(v: Any) -> float:
             vv = float(num(v, 0.0))
             return round(float(clf.predict_proba(np.array([[vv]], dtype=float))[0, 1]), 3)
-        return calibrate, f"platt_logistic_calibrated_from_user_table_n={len(x)}", f"Logistic calibration from {p.name}, score_col={s_col}, label_col={y_col}."
+        calibrate.score_target = "probable_cna_score" if s_col == "probable_cna_score" else "agreement_score"
+        return calibrate, f"user_table_logistic_fit_external_validation_not_established_n={len(x)}", f"Logistic mapping fitted from {p.name}, score_col={s_col}, label_col={y_col}; target={calibrate.score_target}. A fitted table does not establish independent external validation or clinical utility."
     except Exception as e:
-        return None, "heuristic_sigmoid_uncalibrated_calibration_fit_failed", f"Could not fit logistic calibrator: {e}"
+        return None, "not_estimated_calibration_fit_failed", f"Could not fit logistic calibrator: {e}"
 
 
-def probability_fields_for_score(score: Any, calibrator, calibration_status: str, calibration_method: str) -> dict[str, Any]:
+def probability_fields_for_score(score: Any, calibrator, calibration_status: str, calibration_method: str, score_target: str = "") -> dict[str, Any]:
     if calibrator is not None:
+        if score_target and getattr(calibrator, "score_target", score_target) != score_target:
+            return score_to_probability_fields(score, "not_estimated_calibration_target_mismatch")
         try:
+            value = float(calibrator(score))
+            if not math.isfinite(value) or not 0 <= value <= 1:
+                raise ValueError("Invalid fitted estimate")
             return {
-                "probability_estimate": calibrator(score),
+                "probability_estimate": value,
                 "probability_calibration_status": calibration_status,
                 "probability_method": calibration_method,
             }
         except Exception:
-            pass
+            return score_to_probability_fields(score, "not_estimated_calibration_prediction_failed")
     fields = score_to_probability_fields(score, calibration_status=calibration_status)
-    fields["probability_method"] = calibration_method + "; fallback: " + fields["probability_method"]
+    fields["probability_method"] = calibration_method + "; " + fields["probability_method"]
     return fields
 
 
@@ -1530,7 +1426,7 @@ def main() -> None:
     ap.add_argument("--biomed-models", default=",".join(DEFAULT_BIOMED_MODELS), help="Comma-separated Hugging Face model names to try for biomedical semantic scoring.")
     ap.add_argument("--biomed-local-files-only", default="false", help="Use only locally cached Hugging Face models; avoids web download attempts.")
     ap.add_argument("--biomed-max-tokens", type=int, default=256)
-    ap.add_argument("--score-calibration-table", default="", help="Optional labelled validation table to calibrate score-to-probability externally; otherwise the probability estimate is heuristic/uncalibrated.")
+    ap.add_argument("--score-calibration-table", default="", help="Optional binary-labelled score table for a logistic fit; no probability is reported without it. Fitting does not establish external validation.")
     ap.add_argument("--score-calibration-score-col", default="")
     ap.add_argument("--score-calibration-label-col", default="")
     args = ap.parse_args()
@@ -1617,7 +1513,7 @@ def main() -> None:
                 ksr = m.iloc[0]
         cprof = infer_cna_profile(crow, ev, dh, ksr)
         probable = cna_probable_classification(cprof, crow, ksr, sample_set=args.sample_set)
-        pprob = probability_fields_for_score(probable.get("probable_cna_score", 0), calibrator, calibration_status, calibration_method)
+        pprob = probability_fields_for_score(probable.get("probable_cna_score", 0), calibrator, calibration_status, calibration_method, score_target="probable_cna_score")
         probable["probable_cna_probability_estimate"] = pprob["probability_estimate"]
         probable["probable_cna_probability_calibration_status"] = pprob["probability_calibration_status"]
         probable["probable_cna_probability_method"] = pprob["probability_method"]
@@ -1647,7 +1543,7 @@ def main() -> None:
             "agreement_score_model": "" if pathology.empty else TOKEN_SCORE_MODEL_VERSION,
             "agreement_score_token_only": "" if pathology.empty else 0,
             "agreement_score_final_source": "" if pathology.empty else "token_only_no_match",
-            "agreement_probability_estimate": "" if pathology.empty else 0,
+            "agreement_probability_estimate": "",
             "agreement_probability_calibration_status": "" if pathology.empty else "not_calculated_no_match",
             "agreement_probability_method": "" if pathology.empty else "not_calculated_no_match",
             "agreement_biomed_consensus_score": "",
@@ -1702,7 +1598,7 @@ def main() -> None:
         )
         model_trial_rows.extend(trials)
         assess = apply_biomed_consensus_to_assessment(assess, consensus, trials, pprof)
-        aprob = probability_fields_for_score(assess.get("agreement_score", 0), calibrator, calibration_status, calibration_method)
+        aprob = probability_fields_for_score(assess.get("agreement_score", 0), calibrator, calibration_status, calibration_method, score_target="agreement_score")
         assess["agreement_probability_estimate"] = aprob["probability_estimate"]
         assess["agreement_probability_calibration_status"] = aprob["probability_calibration_status"]
         assess["agreement_probability_method"] = aprob["probability_method"]

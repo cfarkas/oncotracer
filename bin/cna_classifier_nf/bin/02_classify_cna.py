@@ -223,65 +223,133 @@ def driver_flags_for_sample(driver_row: pd.Series) -> list[str]:
     return flags
 
 
-def final_class(burden: str, direction: str, flags: list[str]) -> str:
-    """Pan-cancer CNA pattern class.
+def matching_cna_patterns(burden: str, flags: list[str]) -> list[str]:
+    """Describe every matched molecular pattern without assigning tissue origin."""
+    if burden.startswith("CNA-flat"):
+        return []
+    found = set(flags)
+    patterns = []
+    single_regions = {
+        "2p24_MYCN_gain_amp": "MYCN_region_gain_amp",
+        "19q12_CCNE1_gain_amp": "CCNE1_region_gain_amp",
+        "Xq12_AR_gain_amp": "AR_region_gain_amp",
+        "17q12_ERBB2_HER2_gain_amp": "ERBB2_HER2_region_gain_amp",
+        "7p11_EGFR_gain_amp": "EGFR_region_gain_amp",
+        "7q31_MET_gain_amp": "MET_region_gain_amp",
+        "10q26_FGFR2_gain_amp": "FGFR2_region_gain_amp",
+        "11q13_CCND1_FGF_gain_amp": "CCND1_FGF_region_gain_amp",
+        "12q15_MDM2_CDK4_gain_amp": "MDM2_CDK4_region_gain_amp",
+        "12p_gain_germ_cell_pattern": "12p_gain",
+        "5q_loss_MDS_AML_pattern": "5q_loss",
+        "7q_loss_pattern": "7q_loss",
+        "21q_RUNX1_region_CNA": "RUNX1_region_CNA",
+        "9p21_CDKN2A_B_loss": "CDKN2A_B_region_loss",
+        "8q24_MYC_gain_amp": "MYC_region_gain_amp",
+    }
+    patterns.extend(label for flag, label in single_regions.items() if flag in found)
+    combinations = [
+        ({"chr7_gain_pattern", "chr10_loss_pattern"}, "chr7_gain_chr10_loss"),
+        ({"8q_gain_pattern", "17p13_TP53_loss", "4q_loss_pattern"}, "8q_gain_17p_4q_loss"),
+        ({"20q_gain_pattern", "18q_loss_SMAD4_DCC_pattern"}, "20q_gain_18q_loss"),
+        ({"9q_loss_bladder_pattern", "9p21_CDKN2A_B_loss"}, "9p21_9q_loss"),
+        ({"5q_gain_RCC_pattern", "3p_loss_pattern"}, "3p_loss_5q_gain"),
+        ({"9p21_CDKN2A_B_loss", "18q_loss_SMAD4_DCC_pattern", "17p13_TP53_loss"}, "9p21_18q_17p_loss"),
+        ({"2p16_REL_BCL11A_gain_amp", "18q21_BCL2_MALT1_gain_amp"}, "REL_BCL11A_BCL2_MALT1_region_gains"),
+    ]
+    patterns.extend(label for required, label in combinations if required <= found)
+    if burden in {"CNA-high_complex", "CNA-ultracomplex"} and "17p13_TP53_loss" in found:
+        patterns.append("complex_CNA_with_TP53_region_loss")
+    return patterns
 
-    This is deliberately agnostic to histology: it labels molecular CNA patterns
-    such as HER2/ERBB2 amplification, EGFR/chr7/chr10 glioma-like context,
-    myeloid-type 5q/7q losses, colorectal-like 20q/18q patterns, and lymphoma-
-    associated patterns.  It must not be read as a formal tumor diagnosis.
-    """
+
+def final_class(burden: str, direction: str, flags: list[str]) -> str:
+    """Return a descriptive CNA class; multiple matching rules remain visible."""
     if burden.startswith("CNA-flat"):
         return "CNA-flat"
-    flagset = set(flags)
-
-    if "2p24_MYCN_gain_amp" in flagset:
-        return "MYCN_gain_amp_neuroblastoma_or_embryonal_tumor_CNA_pattern"
-    if "19q12_CCNE1_gain_amp" in flagset:
-        return "CCNE1_gain_amp_ovarian_endometrial_gastric_CNA_pattern"
-    if "Xq12_AR_gain_amp" in flagset:
-        return "AR_gain_amp_prostate_CNA_pattern"
-    if burden in {"CNA-high_complex", "CNA-ultracomplex"} and "17p13_TP53_loss" in flagset:
-        return "CNA-high_complex__TP53_axis_CNA_pattern"
-    if "17q12_ERBB2_HER2_gain_amp" in flagset:
-        return "ERBB2_HER2_gain_amp_CNA_pattern"
-    if "7p11_EGFR_gain_amp" in flagset or ({"chr7_gain_pattern", "chr10_loss_pattern"}.issubset(flagset)):
-        return "EGFR_chr7_chr10_CNS_glioma_like_CNA_pattern"
-    if "10q26_FGFR2_gain_amp" in flagset or "7q31_MET_gain_amp" in flagset:
-        return "MET_FGFR2_receptor_tyrosine_kinase_gain_amp_CNA_pattern"
-    if "11q13_CCND1_FGF_gain_amp" in flagset:
-        return "11q13_CCND1_FGF_gain_amp_CNA_pattern"
-    if "12q15_MDM2_CDK4_gain_amp" in flagset:
-        return "MDM2_CDK4_gain_amp_CNA_pattern"
-    if "12p_gain_germ_cell_pattern" in flagset:
-        return "germ_cell_12p_gain_CNA_pattern"
-    if "5q_loss_MDS_AML_pattern" in flagset or "7q_loss_pattern" in flagset or "21q_RUNX1_region_CNA" in flagset:
-        return "myeloid_leukemia_MDS_compatible_CNA_pattern"
-    if "8q_gain_pattern" in flagset and "17p13_TP53_loss" in flagset and "4q_loss_pattern" in flagset:
-        return "liver_HCC_like_8q_17p_CNA_pattern"
-    if "20q_gain_pattern" in flagset and ("18q_loss_SMAD4_DCC_pattern" in flagset or "8q24_MYC_gain_amp" in flagset or "13q_gain_pattern" in flagset):
-        return "colorectal_like_20q_18q_CNA_pattern"
-    if "9q_loss_bladder_pattern" in flagset and "9p21_CDKN2A_B_loss" in flagset:
-        return "urothelial_9p_9q_loss_CNA_pattern"
-    if "5q_gain_RCC_pattern" in flagset and "3p_loss_pattern" in flagset:
-        return "renal_cell_carcinoma_3p_loss_5q_gain_CNA_pattern"
-    if "9p21_CDKN2A_B_loss" in flagset and "18q_loss_SMAD4_DCC_pattern" in flagset and "17p13_TP53_loss" in flagset:
-        return "pancreatic_colorectal_tumor_suppressor_loss_CNA_pattern"
-    if "2p16_REL_BCL11A_gain_amp" in flagset and "18q21_BCL2_MALT1_gain_amp" in flagset:
-        return "B_cell_lymphoma_oncogene_gain_CNA_pattern"
-    if "9p21_CDKN2A_B_loss" in flagset:
-        return "CDKN2A_B_loss_CNA_pattern"
-    if "8q24_MYC_gain_amp" in flagset:
-        return "MYC_gain_amp_CNA_pattern"
+    patterns = matching_cna_patterns(burden, flags)
+    if len(patterns) > 1:
+        return "multiple_molecular_CNA_patterns"
+    if patterns:
+        return patterns[0] + "_CNA_pattern"
     if direction == "amplification-rich":
         return "amplification-rich_CNA"
-    if direction == "deletion-dominant" or direction == "deep-deletion-rich":
+    if direction in {"deletion-dominant", "deep-deletion-rich"}:
         return "deletion-dominant_CNA"
     if direction == "gain-dominant":
         return "gain-dominant_CNA"
     if burden in {"CNA-high_complex", "CNA-ultracomplex"}:
         return "CNA-high_complex"
     return "mixed_CNA_pattern"
+
+
+def assess_cna_evidence(row: pd.Series, flags: list[str], hits: pd.DataFrame, patterns: list[str]) -> dict:
+    """Audit supporting segments and limits; these counts are not confidence scores."""
+    n = safe_int(row.get("n_cna_events"))
+    features = set(hits["feature_id"].dropna().astype(str)) if "feature_id" in hits else set()
+    features.discard("")
+    event_keys = set()
+    multihit_events: dict[tuple, set[str]] = {}
+    states = {}
+    coordinates_missing = 0
+    partial_features = set()
+    for _, hit in hits.iterrows():
+        start, end = safe_float(hit.get("event_start"), float("nan")), safe_float(hit.get("event_end"), float("nan"))
+        chrom = str(hit.get("event_chrom", "")).strip()
+        if not chrom or chrom == "nan" or not np.isfinite(start) or not np.isfinite(end) or end <= start:
+            coordinates_missing += 1
+        else:
+            state = str(hit.get("event_state", ""))
+            key = (chrom.removeprefix("chr"), int(start), int(end), state)
+            event_keys.add(key)
+            states[key] = state
+            multihit_events.setdefault(key, set()).add(str(hit.get("feature_id", "")))
+        fraction = safe_float(hit.get("overlap_fraction_region"), float("nan"))
+        if np.isfinite(fraction) and 0 < fraction < 1:
+            partial_features.add(str(hit.get("feature_id", "")))
+    uncertainty = ["tumor_type_not_resolved_by_cna", "purity_ploidy_not_evaluated_here"]
+    if n == 0:
+        status = "no_detected_cna"
+        summary = "No CNA met the current thresholds. This does not exclude a tumor or a low-purity/subclonal CNA."
+    elif not features and not flags:
+        status = "cna_without_catalog_driver"
+        summary = "CNA was detected without a matching canonical driver-region pattern. Tumor type remains unresolved."
+    else:
+        status = "catalog_region_overlap"
+        summary = f"{len(features)} catalog regions overlap {len(event_keys)} distinct CNA segments with available coordinates. Region overlap does not establish gene-level activation or inactivation."
+    if len(patterns) > 1:
+        uncertainty.append("multiple_pattern_rules_matched")
+        summary += " Multiple molecular patterns are retained; no single tumor type is selected."
+    shared = sum(len(fids) > 1 for fids in multihit_events.values())
+    if shared:
+        uncertainty.append("catalog_hits_share_segments")
+        summary += " Some catalog hits share a segment and are not independent alterations."
+    if partial_features:
+        uncertainty.append("partial_catalog_region_overlap")
+    if coordinates_missing:
+        uncertainty.append("supporting_segment_coordinates_incomplete")
+    if n == 0 and (features or flags):
+        status = "inconsistent_input"
+        uncertainty.append("driver_hits_with_zero_event_count")
+        summary = "Driver overlaps were supplied despite a zero-event summary; reconcile inputs before interpretation."
+    if "7p11_EGFR_gain_amp" in flags:
+        summary += " EGFR-region gain does not establish focal EGFR amplification or an integrated glioma diagnosis."
+    if "17p13_TP53_loss" in flags:
+        summary += " TP53-region loss does not establish a TP53 sequence mutation or biallelic inactivation."
+    return {
+        "cna_evidence_status": status,
+        "cna_diagnostic_resolution": "not_assessable" if n == 0 else "molecular_pattern_only",
+        "matched_cna_patterns": ";".join(patterns) if patterns else "none_detected",
+        "n_matched_cna_patterns": len(patterns),
+        "n_catalog_regions_detected": len(features),
+        "n_distinct_driver_supporting_segments": len(event_keys),
+        "driver_segment_support_status": "partial" if coordinates_missing else "complete" if len(hits) else "no_driver_hits",
+        "n_shared_driver_supporting_segments": shared,
+        "n_partial_catalog_region_overlaps": len(partial_features),
+        "n_driver_supporting_amplification_segments": sum(state == "amplification" for state in states.values()),
+        "n_driver_supporting_gain_segments": sum(state == "gain" for state in states.values()),
+        "cna_uncertainty_flags": ";".join(uncertainty),
+        "cna_assessment_summary": summary,
+    }
 
 
 def build_unsupervised_matrix(
@@ -408,7 +476,7 @@ def main() -> None:
     gistic_matrix = read_tsv(args.gistic_matrix, index_col=0)
     gistic_long = read_tsv(args.gistic_long)
     gistic_summary = read_tsv(args.gistic_summary)
-    _ = weighted_event_matrix, driver_hits, gistic_summary  # retained for future extension
+    _ = weighted_event_matrix, gistic_summary  # retained for future extension
 
     # Ensure sample index sync.
     samples = summary["sample"].astype(str).tolist()
@@ -428,6 +496,8 @@ def main() -> None:
         else:
             flags = []
         f = final_class(b, d, flags)
+        sample_hits = driver_hits[driver_hits["sample"].astype(str) == sample] if "sample" in driver_hits else pd.DataFrame()
+        assessment = assess_cna_evidence(row, flags, sample_hits, matching_cna_patterns(b, flags))
         if not gistic_matrix.empty and sample in gistic_matrix.index:
             gvals = pd.to_numeric(gistic_matrix.loc[sample], errors="coerce").fillna(0).astype(int)
             n_gistic = int((gvals != 0).sum())
@@ -440,6 +510,7 @@ def main() -> None:
         class_rows.append({
             "sample": sample,
             "rule_based_cna_class": f,
+            **assessment,
             "cna_burden_class": b,
             "gain_loss_direction_class": d,
             "focal_broad_class": br,
@@ -471,6 +542,9 @@ def main() -> None:
         "n_gistic_lesion_features": int(gistic_matrix.shape[1]) if not gistic_matrix.empty else 0,
         "n_gistic_long_rows": int(len(gistic_long)),
         "nmf_clusters_requested": int(args.nmf_clusters),
+        "classification_method": "descriptive_molecular_patterns_v2_no_tissue_assignment",
+        "diagnostic_probability": "not_estimated",
+        "evidence_status_counts": classification["cna_evidence_status"].value_counts().to_dict(),
         "rule_classes": classification["rule_based_cna_class"].value_counts().to_dict(),
         "burden_classes": classification["cna_burden_class"].value_counts().to_dict(),
     }

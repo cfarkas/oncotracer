@@ -86,7 +86,7 @@ jobs:
             tests/test_native_docs.py \
             tests/test_poetry_cli.py \
             tests/test_native_classifier.py tests/test_gistic_inputs.py \
-            tests/test_report_llm.py \
+            tests/test_report_llm.py tests/test_classifier_layout.py tests/test_report_presentation.py tests/test_cna_evidence_assessment.py \
             tests/test_system_check.py \
             tests/test_uninstall.py \
             tests/test_reference_bundle.py \

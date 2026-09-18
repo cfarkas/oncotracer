@@ -82,7 +82,7 @@ pathology_biomed_local_files_only: false
 
 These models score compatibility with supplied pathology text; they do not write
 the report's literature paragraphs. Attempts are recorded in
-`07_pathology/pathology_model_trials.tsv`. The first run may download model weights.
+`diagnostics/pathology/pathology_model_trials.tsv`. The first run may download model weights.
 
 For the machinery that writes report text, see [LLM-assisted reports](llm_reports.md).
 
@@ -118,29 +118,34 @@ LP-WGS read-depth CNA analysis does not reliably determine:
 ```bash
 OUT="$PWD/project/results/illumina_pathology/05_cna_classifier"
 
-sed -n '1,12p' "$OUT/01_prepared/sample_cna_summary.tsv"
-sed -n '1,12p' "$OUT/02_classification/cna_patient_classification.tsv"
-sed -n '1,12p' "$OUT/06_knowledge/sample_knowledge_summary.tsv"
-sed -n '1,12p' "$OUT/07_pathology/pathology_concordance.tsv"
-sed -n '1,120p' "$OUT/07_pathology/pathology_status.txt"
-ls -lh "$OUT/03_report/cna_classifier_report.html"
+sed -n '1,12p' "$OUT/diagnostics/prepared/sample_cna_summary.tsv"
+sed -n '1,12p' "$OUT/tables/classification/cna_patient_classification.tsv"
+sed -n '1,12p' "$OUT/evidence/sample_knowledge_summary.tsv"
+sed -n '1,12p' "$OUT/diagnostics/pathology/pathology_concordance.tsv"
+sed -n '1,120p' "$OUT/diagnostics/pathology/pathology_status.txt"
+ls -lh "$OUT/cohort_report.html"
 ```
 
 | Location | Contents | Status |
 | --- | --- | --- |
-| `01_prepared/` | Event and feature tables | Derived classifier input |
-| `02_classification/` | Context scores and classes | Research interpretation |
-| `03_report/` | Cohort classifier report, figures, clinician summaries and `llm_reports/` | Presentation layer |
-| `04_gistic2/`, `05_gistic2_parsed/` | Optional recurrence analysis | Cohort-level research output |
-| `06_knowledge/` | Driver-region/literature evidence, metrics and model trials | Requires expert verification |
-| `07_pathology/` | Matching, concordance, status, model trials | Compatibility assessment |
+| `diagnostics/prepared/` | Event and feature tables | Derived classifier input |
+| `tables/classification/` | Context scores and classes | Research interpretation |
+| `final_report.html`, `final_report.pdf` | Complete knowledge report | Matched browser/PDF presentation |
+| `clinician_report.html`, `clinician_report.pdf` | Short summary | Research interpretation |
+| `cohort_report.html`, `figures/` | Cohort overview and grouped plots | Presentation layer |
+| `diagnostics/gistic/`, `diagnostics/gistic_parsed/` | Optional recurrence analysis | Cohort-level research output |
+| `evidence/` | Literature evidence, metrics and model trials | Requires expert verification |
+| `diagnostics/pathology/` | Matching, concordance, status, model trials | Compatibility assessment |
 
-In native runs, final matched knowledge/LLM HTML and PDF reports are published
-in `05_cna_classifier/03_report/llm_reports/` below the analysis output root.
-Open its `index.html` to choose a sample, download the combined PDF, or follow
-links back to the stage-05 reports and evidence. See [LLM-assisted reports](llm_reports.md).
+With multiple samples, individual reports are in `samples/<sample>/` and the root
+PDFs combine them. For a single sample, only the root report is kept. See
+[LLM-assisted reports](llm_reports.md) for the report audit and migration command.
 
 ## Interpret concordance carefully
+
+See [CNA evidence and diagnostic uncertainty](cna_evidence_assessment.md) for
+supporting-segment counts, overlapping catalog regions, research scores and the
+limits of tissue-origin inference.
 
 Concordance asks whether CNA features are compatible with the supplied diagnosis in the selected context. A disagreement or indeterminate result may reflect low tumor fraction, low sequencing depth, CNA-quiet biology, sample mismatch, an incomplete catalog, or alterations that LP-WGS cannot detect.
 

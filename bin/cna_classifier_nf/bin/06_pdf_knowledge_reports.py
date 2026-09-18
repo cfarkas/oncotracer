@@ -239,7 +239,7 @@ def html_table(df: pd.DataFrame, columns: list[str] | None = None, max_rows: int
         d = d.head(max_rows)
     if d.empty:
         return "<p class='muted'>No rows.</p>"
-    return d.to_html(index=False, escape=True, border=0, classes=css_class)
+    return "<div class='table-wrap'>" + d.to_html(index=False, escape=True, border=0, classes=css_class) + "</div>"
 
 
 def dataframe_from_pairs(pairs: list[tuple[str, Any]]) -> pd.DataFrame:
@@ -405,8 +405,8 @@ def pathology_score_explanation(pathology_row: pd.Series | None) -> str:
         f"Model: {model}. Final score = {score}/100. "
         f"Token-only score = {token_only or 'not available'}. Biomedical transformer consensus = {biomed or 'not available'}. Final source = {final_source or 'token_only'}. "
         f"Numeric breakdown: {breakdown}. Token overlap used: {overlap or 'none'}. "
-        f"Probability estimate = {probability or 'not calculated'}; calibration status = {calibration or 'not available'}. "
-        f"A probability is calibrated only when --score_calibration_table supplies labelled reference outcomes; otherwise it is a sigmoid-derived probability-like estimate. "
+        f"User-table estimate = {probability or 'not estimated'}; calibration status = {calibration or 'not available'}. "
+        f"A fit to user-supplied labels is not independent validation and does not establish diagnostic accuracy. "
         f"Reason: {rationale}"
     )
 
@@ -427,13 +427,13 @@ def pathology_score_method_text() -> str:
     return (
         "When --pathology is supplied, the agreement score is calculated only in that pathology-enabled branch. The baseline model is a local token agreement model: it extracts tokens from pathology diagnosis/IHC/site text and from CNA-derived features, then sums auditable numeric components: base matched-pathology evidence, pathology-CNA token overlap, diagnosis-specific CNA biomarker support, CNA-burden context, IHC-token support, and penalties for discordant patterns. "
         "If --pathology_use_biomed_models true, three optional biomedical transformer language models are attempted on the pathology text versus CNA-evidence text. When at least one model succeeds, the final agreement score is 0.70 × token-only score + 0.30 × mean biomedical semantic score. If the models are unavailable or fail, the report keeps the token-only score and records the model status. "
-        "The score is an explainability/compatibility score, not a final diagnosis. A probability is truly calibrated only if --score_calibration_table is supplied with labelled reference outcomes; otherwise the probability shown is an uncalibrated sigmoid-derived probability-like estimate."
+        "The score is an explainability/compatibility score, not a final diagnosis. Diagnostic probability is not estimated by default. A user-supplied labelled table can fit a score mapping for its specified target; external validation and target-population calibration remain unestablished."
     )
 
 
 def probable_cna_score_method_text() -> str:
     return (
-        "The probable CNA-based classification is calculated for every sample, even without pathology, from CNA tokens alone. The score uses base informative-CNA evidence, CNA-burden context, canonical driver-region tokens, pattern-specificity support, a small PubMed/Europe-PMC influential-literature support component when context-relevant selected papers are found for the detected CNA drivers, and penalties for flat/ambiguous or discordant patterns. This is a molecular CNA-pattern suggestion, not an integrated tumor diagnosis."
+        "CNA pattern assessment summarizes measured copy-number events and catalog overlaps. The heuristic score describes rule support; it is not a diagnostic probability. Shared alterations cannot establish tumor origin. Literature and LLM summaries provide context and do not increase the measured CNA evidence score. Tissue-specific interpretation requires an explicit study context and independent pathology or molecular confirmation."
     )
 
 
@@ -485,7 +485,7 @@ def pathology_agreement_pdf_blocks(pathology_row: pd.Series | None) -> list[Any]
         ("Biomedical model consensus score", pathology_row.get("agreement_biomed_consensus_score", "")),
         ("Biomedical model trial scores", pathology_row.get("agreement_biomed_model_scores", "")),
         ("Biomedical model status", pathology_row.get("agreement_biomed_model_status", "")),
-        ("Probability estimate", pathology_row.get("agreement_probability_estimate", "")),
+        ("User-table estimate (external validation not established)", pathology_row.get("agreement_probability_estimate", "")),
         ("Probability calibration status", pathology_row.get("agreement_probability_calibration_status", "")),
         ("Probability method", pathology_row.get("agreement_probability_method", "")),
         ("Token overlap", pathology_row.get("agreement_token_overlap", "")),
@@ -538,19 +538,19 @@ def probable_cna_pdf_blocks(pathology_row: pd.Series | None) -> list[Any]:
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
     pairs = [
-        ("Probable CNA-based classification", pathology_row.get("probable_cna_classification", "")),
-        ("Probable CNA score", pathology_row.get("probable_cna_score", "")),
+        ("CNA pattern assessment", pathology_row.get("probable_cna_classification", "")),
+        ("Heuristic CNA score", pathology_row.get("probable_cna_score", "")),
         ("Why this classification was assigned", pathology_row.get("probable_cna_rationale", "")),
         ("Numeric score breakdown", pathology_row.get("probable_cna_score_breakdown", "")),
-        ("Probability estimate", pathology_row.get("probable_cna_probability_estimate", "")),
+        ("User-table estimate (external validation not established)", pathology_row.get("probable_cna_probability_estimate", "")),
         ("Probability calibration status", pathology_row.get("probable_cna_probability_calibration_status", "")),
         ("Probability method", pathology_row.get("probable_cna_probability_method", "")),
         ("CNA tokens used", pathology_row.get("probable_cna_tokens", "")),
         ("Model", pathology_row.get("probable_cna_model", "local token CNA-pattern score")),
     ]
-    caveat = "This is a CNA-only molecular-pattern suggestion calculated even without pathology. The probability is calibrated only when a labelled calibration table is supplied; otherwise it is an uncalibrated probability-like estimate. It is not a final pathology diagnosis and must be integrated with morphology, IHC, SNVs/indels, fusions/translocations, methylation/expression, and clinical context."
+    caveat = "This is a CNA-only molecular-pattern suggestion calculated even without pathology. Diagnostic probability is not estimated by default. Optional user-table estimates have not been independently validated. It is not a final pathology diagnosis and must be integrated with morphology, IHC, SNVs/indels, fusions/translocations, methylation/expression, and clinical context."
     return [
-        section_header("PROBABLE CNA-BASED CLASSIFICATION"),
+        section_header("CNA PATTERN ASSESSMENT"),
         Spacer(1, 7),
         banner,
         Spacer(1, 6),
@@ -568,20 +568,20 @@ def html_probable_cna_assessment(data: dict[str, Any]) -> str:
     score = fmt(pr.get("probable_cna_score", ""), 0)
     label = safe_str(pr.get("probable_cna_classification", ""))
     pairs = [
-        ("Probable CNA-based classification", pr.get("probable_cna_classification", "")),
-        ("Probable CNA score", pr.get("probable_cna_score", "")),
+        ("CNA pattern assessment", pr.get("probable_cna_classification", "")),
+        ("Heuristic CNA score", pr.get("probable_cna_score", "")),
         ("Why this classification was assigned", pr.get("probable_cna_rationale", "")),
         ("Numeric score breakdown", pr.get("probable_cna_score_breakdown", "")),
-        ("Probability estimate", pr.get("probable_cna_probability_estimate", "")),
+        ("User-table estimate (external validation not established)", pr.get("probable_cna_probability_estimate", "")),
         ("Probability calibration status", pr.get("probable_cna_probability_calibration_status", "")),
         ("Probability method", pr.get("probable_cna_probability_method", "")),
         ("CNA tokens used", pr.get("probable_cna_tokens", "")),
         ("Model", pr.get("probable_cna_model", "local token CNA-pattern score")),
     ]
-    caveat = "This is a CNA-only molecular-pattern suggestion calculated even without pathology. The probability is calibrated only with a user-supplied labelled calibration table; otherwise it is uncalibrated. It is not a final pathology diagnosis."
+    caveat = "This is a CNA-only molecular-pattern suggestion calculated even without pathology. Diagnostic probability is not estimated by default. Optional user-table estimates have not been independently validated. It is not a final pathology diagnosis."
     return f"""
     <section class='pathology-section'>
-      <h2>PROBABLE CNA-BASED CLASSIFICATION</h2>
+      <h2>CNA PATTERN ASSESSMENT</h2>
       <div class='agreement-banner' style='background:#2f6f9f'>
         <div><strong>{html.escape(label)}</strong></div><div>Score: <strong>{html.escape(score)}</strong></div>
       </div>
@@ -801,6 +801,52 @@ def filter_driver_matrix(driver_matrix: pd.DataFrame, sample: str) -> pd.DataFra
     return vals
 
 
+def unique_report_references(references: pd.DataFrame) -> pd.DataFrame:
+    """One bibliography row per publication; retain all feature-to-paper links.
+
+    Raw retrieval/ranker records stay in the evidence tables. Never merge records
+    without a shared stable identifier (or an identical non-placeholder title).
+    """
+    if references.empty:
+        return references.copy()
+    groups: list[dict[str, Any]] = []
+    aliases: dict[str, int] = {}
+    for number, (_, row) in enumerate(references.iterrows()):
+        keys = []
+        for field in ("pmid", "pmcid", "doi"):
+            value = safe_str(row.get(field, "")).strip().lower()
+            if field == "doi":
+                value = value.removeprefix("https://doi.org/").removeprefix("doi:")
+            if value:
+                keys.append(field + ":" + value)
+        title = safe_str(row.get("title", "")).strip().lower()
+        if not keys and title and not title.startswith("pmid seed"):
+            keys.append("title:" + " ".join(title.split()))
+        existing = {aliases[key] for key in keys if key in aliases}
+        target = min(existing) if existing else len(groups)
+        if not existing:
+            groups.append(row.to_dict())
+        else:
+            # Bridge aliases when one source has only a DOI and another only a PMID.
+            for other in sorted(existing - {target}):
+                for key, group in list(aliases.items()):
+                    if group == other:
+                        aliases[key] = target
+                for field in ("feature_id", "feature_display"):
+                    values = [safe_str(groups[target].get(field)), safe_str(groups[other].get(field))]
+                    groups[target][field] = "; ".join(dict.fromkeys(v for text in values for v in text.split("; ") if v))
+                groups[other] = {}
+            for field, value in row.items():
+                if field in {"feature_id", "feature_display"}:
+                    values = [safe_str(groups[target].get(field)), safe_str(value)]
+                    groups[target][field] = "; ".join(dict.fromkeys(v for text in values for v in text.split("; ") if v))
+                elif not safe_str(groups[target].get(field)) and safe_str(value):
+                    groups[target][field] = value
+        for key in keys:
+            aliases[key] = target
+    return pd.DataFrame([group for group in groups if group])
+
+
 def sample_report_data(
     sample: str,
     row: pd.Series,
@@ -882,6 +928,8 @@ def sample_report_data(
                 sample_lit["_score"] = pd.to_numeric(sample_lit["influence_score"], errors="coerce").fillna(0)
                 sample_lit = sample_lit.sort_values(["_score"], ascending=False).drop(columns=["_score"], errors="ignore")
 
+    refs = unique_report_references(pd.concat([refs, sample_lit], ignore_index=True))
+
     sample_lit_summary_row = pd.Series(dtype=object)
     if sample_literature_summary is not None and not sample_literature_summary.empty and "sample" in sample_literature_summary.columns:
         sm = sample_literature_summary[sample_literature_summary["sample"].astype(str) == sample]
@@ -889,9 +937,15 @@ def sample_report_data(
             sample_lit_summary_row = sm.iloc[0]
 
     class_pairs = [
-        ("Probable CNA-based classification", pathology_row.get("probable_cna_classification", "") if not pathology_row.empty else ""),
-        ("Probable CNA score", pathology_row.get("probable_cna_score", "") if not pathology_row.empty else ""),
-        ("Probable CNA score breakdown", pathology_row.get("probable_cna_score_breakdown", "") if not pathology_row.empty else ""),
+        ("Evidence assessment", row.get("cna_assessment_summary", "")),
+        ("All matching molecular patterns", row.get("matched_cna_patterns", "")),
+        ("Diagnostic resolution", row.get("cna_diagnostic_resolution", "molecular_pattern_only")),
+        ("Distinct supporting segments", row.get("n_distinct_driver_supporting_segments", "")),
+        ("Segments shared by catalog hits", row.get("n_shared_driver_supporting_segments", "")),
+        ("Uncertainty flags", row.get("cna_uncertainty_flags", "")),
+        ("CNA pattern assessment", pathology_row.get("probable_cna_classification", "") if not pathology_row.empty else ""),
+        ("Heuristic CNA score", pathology_row.get("probable_cna_score", "") if not pathology_row.empty else ""),
+        ("Heuristic CNA score breakdown", pathology_row.get("probable_cna_score_breakdown", "") if not pathology_row.empty else ""),
         ("Knowledge-refined CNA pattern", ks_row.get("knowledge_refined_class", "") if not ks_row.empty else ""),
         ("Knowledge rationale", ks_row.get("knowledge_refined_class_rationale", "") if not ks_row.empty else ""),
         (CATALOG_PATTERN_LABEL, row.get("rule_based_cna_class", "")),
@@ -910,7 +964,7 @@ def sample_report_data(
     event_cols = [c for c in ["state", "chrom", "start", "end", "size_mb", "cytoband", "n_bins", "mean_log2", "median_log2", "estimated_total_copy_number", "copy_code", "cna_shorthand", "source", "input_source_file"] if c in ev_pdf.columns]
     driver_hit_cols = [c for c in ["feature_id", "feature_label", "genes", "event_state", "event_chrom", "event_start", "event_end", "event_cytoband", "mean_log2", "overlap_fraction_region"] if c in driver_hits.columns]
     gistic_cols = list(gistic_calls.columns) if not gistic_calls.empty else []
-    ref_cols = [c for c in ["feature_id", "source", "selected_influential", "influence_rank", "influence_score", "feature_reference_rank", "pmid", "year", "title", "journal", "cited_by_count", "url", "selected_by", "llm_model_used", "llm_status", "abstract_excerpt"] if c in refs.columns]
+    ref_cols = [c for c in ["pmid", "doi", "year", "title", "journal", "feature_id", "url"] if c in refs.columns]
     sample_lit_cols = [c for c in ["paper_rank", "feature_display", "genes", "influence_score", "pmid", "year", "title", "journal", "cited_by_count", "selection_method", "llm_ranker_model", "abstract_excerpt"] if c in sample_lit.columns]
 
     return {
@@ -972,7 +1026,7 @@ def build_sample_pdf(
         author="OncoTracer AI CNA classifier",
     )
     story: list[Any] = []
-    story.append(Paragraph("OncoTracer AI CNA Knowledge Report", STYLES["title"]))
+    story.append(Paragraph("OncoTracer CNA Interpretation Report", STYLES["title"]))
     story.append(Paragraph(f"Sample: <b>{esc(sample)}</b> | Assay context: low-pass WGS / SAMURAI CNA codification", STYLES["subtitle"]))
     story.append(Paragraph("Research-style interpretation: relevant findings, biological context, caveats, methods, and references.", STYLES["subtitle"]))
     story.append(Spacer(1, 4))
@@ -989,11 +1043,6 @@ def build_sample_pdf(
     add_section(story, "2 - SAMPLE CLASSIFICATION AND BURDEN METRICS", min_space=6.0*cm)
     story.append(kv_table(data["class_pairs"]))
     story.append(Spacer(1, 6))
-    story.append(KeepTogether([
-        Paragraph("SAMURAI CNA summary row", STYLES["h2"]),
-        dataframe_table(data["sample_summary"], style="tiny", max_char=110),
-    ]))
-    story.append(Spacer(1, 5))
     story.append(CondPageBreak(3.0*cm))
     story.append(KeepTogether([
         Paragraph("CNA state counts", STYLES["h2"]),
@@ -1004,9 +1053,6 @@ def build_sample_pdf(
     story.extend(knowledge_feature_blocks(data["sample_knowledge"]))
 
     add_section(story, "4 - DRIVER-REGION CALLS AND HIT TABLE", min_space=7.0*cm)
-    story.append(Paragraph("Driver-region matrix calls", STYLES["h2"]))
-    story.append(dataframe_table(data["driver_matrix_calls"], columns=["driver_region", "signed_call"], style="tiny", max_char=100))
-    story.append(Spacer(1, 6))
     story.append(Paragraph("Driver-region hit table", STYLES["h2"]))
     story.append(dataframe_table(data["driver_hits"], columns=data["driver_hit_cols"], style="tiny", max_char=90))
 
@@ -1034,11 +1080,7 @@ def build_sample_pdf(
     add_section(story, "7 - REFERENCES AND SOURCE TRACE", min_space=5.0*cm)
     story.append(raw_para("<b>Literature-selection method:</b> when online literature is enabled, the pipeline queries PubMed/Europe-PMC metadata and abstracts for detected driver CNAs and ranks candidate papers by citation count, CNA/gene/context text overlap, abstract availability, recency, and optional local Hugging Face model scores. The selected papers below are intended to prioritize manual review, not to provide clinical-grade evidence grading. Bundled catalog PMID seeds are reference pointers, not retrieved abstracts or evidence for catalog drafts.", "body"))
     story.append(Spacer(1, 5))
-    if not data.get("sample_literature", pd.DataFrame()).empty:
-        story.append(Paragraph("Selected influential papers for this sample", STYLES["h2"]))
-        story.append(dataframe_table(data["sample_literature"], columns=data["sample_lit_cols"], style="tiny", max_char=115))
-        story.append(Spacer(1, 6))
-    story.append(Paragraph("Feature-level reference metadata and source trace", STYLES["h2"]))
+    story.append(Paragraph("Unique publications; linked CNA features are listed together", STYLES["h2"]))
     story.append(dataframe_table(data["references"], columns=data["ref_cols"], style="tiny", max_char=120))
     story.append(Spacer(1, 5))
     story.append(warning_box("generated automatically by the CNA classifier PDF/HTML extension. Web-derived literature titles/abstracts and Hugging Face outputs are assistive traces and should be reviewed manually before use in manuscripts or clinical documents."))
@@ -1144,7 +1186,7 @@ def html_pathology_agreement(data: dict[str, Any]) -> str:
         ("Biomedical model consensus score", pr.get("agreement_biomed_consensus_score", "")),
         ("Biomedical model trial scores", pr.get("agreement_biomed_model_scores", "")),
         ("Biomedical model status", pr.get("agreement_biomed_model_status", "")),
-        ("Probability estimate", pr.get("agreement_probability_estimate", "")),
+        ("User-table estimate (external validation not established)", pr.get("agreement_probability_estimate", "")),
         ("Probability calibration status", pr.get("agreement_probability_calibration_status", "")),
         ("Probability method", pr.get("agreement_probability_method", "")),
         ("Token overlap", pr.get("agreement_token_overlap", "")),
@@ -1180,9 +1222,9 @@ def build_sample_html(out_html: Path, sample: str, row: pd.Series, data: dict[st
     # The per-sample HTML mirrors the PDF sections and uses the same source tables.
     body = html_probable_cna_assessment(data) + html_pathology_agreement(data) + "".join([
         html_section("1 - CNA INTERPRETATION SUMMARY", html_interpretation(row, data)),
-        html_section("2 - SAMPLE CLASSIFICATION AND BURDEN METRICS", html_metric_cards(row) + "<h3>Classification fields</h3>" + html_kv_table(data["class_pairs"]) + "<h3>SAMURAI CNA summary row</h3>" + html_table(data["sample_summary"]) + "<h3>CNA state counts</h3>" + state_counts_html),
+        html_section("2 - SAMPLE CLASSIFICATION AND BURDEN METRICS", html_metric_cards(row) + "<h3>Classification fields</h3>" + html_kv_table(data["class_pairs"]) + "<h3>CNA state counts</h3>" + state_counts_html),
         html_section("3 - RELEVANT CNA BIOMARKERS AND BIOLOGICAL INTERPRETATION", html_knowledge_cards(data["sample_knowledge"])),
-        html_section("4 - DRIVER-REGION CALLS AND HIT TABLE", "<h3>Driver-region matrix calls</h3>" + html_table(data["driver_matrix_calls"], columns=["driver_region", "signed_call"]) + "<h3>Driver-region hit table</h3>" + html_table(data["driver_hits"], columns=data["driver_hit_cols"])),
+        html_section("4 - DRIVER-REGION CALLS AND HIT TABLE", "<h3>Driver-region hit table</h3>" + html_table(data["driver_hits"], columns=data["driver_hit_cols"])),
         html_section("5 - CNA EVENT TABLE", event_note + html_table(data["events_pdf"], columns=data["event_cols"])),
         html_section("6 - METHODS AND INTERPRETATION LIMITATIONS", f"""
             <ul>
@@ -1196,9 +1238,9 @@ def build_sample_html(out_html: Path, sample: str, row: pd.Series, data: dict[st
               <li>{html.escape(probable_cna_score_method_text())}</li>
               <li>{html.escape(evidence_tier_method_text())}</li>
             </ul>"""),
-        html_section("7 - REFERENCES AND SOURCE TRACE", "<p><strong>Literature-selection method:</strong> when online literature is enabled, the pipeline queries PubMed/Europe-PMC metadata and abstracts for detected driver CNAs and ranks candidate papers by citation count, CNA/gene/context text overlap, abstract availability, recency, and optional local Hugging Face model scores. The selected papers prioritize manual review; they are not clinical-grade evidence grading. Bundled catalog PMID seeds are reference pointers, not retrieved abstracts or evidence for catalog drafts.</p>" + ("<h3>Selected influential papers for this sample</h3>" + html_table(data["sample_literature"], columns=data["sample_lit_cols"]) if not data.get("sample_literature", pd.DataFrame()).empty else "") + "<h3>Feature-level reference metadata and source trace</h3>" + html_table(data["references"], columns=data["ref_cols"]) + "<div class='warning'><strong>Report status:</strong> generated automatically by the CNA classifier PDF/HTML extension. Web-derived literature titles/abstracts and Hugging Face outputs are assistive traces and should be reviewed manually before use in manuscripts or clinical documents.</div>"),
+        html_section("7 - REFERENCES AND SOURCE TRACE", "<p><strong>Literature-selection method:</strong> when online literature is enabled, the pipeline queries PubMed/Europe-PMC metadata and abstracts for detected driver CNAs and ranks candidate papers by citation count, CNA/gene/context text overlap, abstract availability, recency, and optional local Hugging Face model scores. The selected papers prioritize manual review; they are not clinical-grade evidence grading. Bundled catalog PMID seeds are reference pointers, not retrieved abstracts or evidence for catalog drafts.</p>" + "<h3>Unique publications and linked CNA features</h3>" + html_table(data["references"], columns=data["ref_cols"]) + "<div class='warning'><strong>Report status:</strong> generated automatically by the CNA classifier PDF/HTML extension. Web-derived literature titles/abstracts and Hugging Face outputs are assistive traces and should be reviewed manually before use in manuscripts or clinical documents.</div>"),
     ])
-    title = f"OncoTracer AI CNA Knowledge Report - {sample}"
+    title = f"OncoTracer CNA Interpretation Report - {sample}"
     burden = safe_str(row.get("cna_burden_class", "unknown"))
     burden_color_hex = "#999999"
     if burden in BURDEN_COLORS:
@@ -1225,7 +1267,7 @@ h3 {{ font-size:15px; margin:18px 0 8px; }}
 .badge-row > div {{ padding:10px 12px; border-right:1px solid var(--line); }}
 .badge-label {{ font-weight:700; background:#f5f7fb; }}
 .badge-value {{ background:{burden_color_hex}; }}
-.agreement-banner {{ color:white; display:grid; grid-template-columns:1fr 130px; gap:10px; align-items:center; border-radius:12px; padding:13px 16px; margin:12px 0; box-shadow:0 2px 8px rgba(23,32,51,.08); }}
+.agreement-banner {{ color:white; display:grid; grid-template-columns:minmax(0, 1fr) 130px; gap:10px; align-items:center; border-radius:12px; padding:13px 16px; margin:12px 0; box-shadow:0 2px 8px rgba(23,32,51,.08); }}
 .agreement-banner div:last-child {{ text-align:right; }}
 .metric-grid {{ display:grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap:10px; margin:12px 0; }}
 .metric-card {{ background:white; border:1px solid var(--line); border-radius:12px; padding:14px 12px; text-align:center; }}
@@ -1237,7 +1279,10 @@ h3 {{ font-size:15px; margin:18px 0 8px; }}
 .table th {{ background:#eef2f7; }}
 .table th, .table td {{ border:1px solid #d7dde6; padding:6px 8px; text-align:left; vertical-align:top; }}
 .table-wrap {{ overflow-x:auto; background:white; border:1px solid #d7dde6; border-radius:12px; padding:8px; margin:8px 0 14px; }}
-.kv-table td:first-child {{ font-weight:700; background:#f5f7fb; white-space:nowrap; }}
+.kv-table {{ width:100%; table-layout:fixed; }}
+.kv-table td:first-child {{ width:30%; font-weight:700; background:#f5f7fb; white-space:normal; }}
+main {{ overflow-wrap:anywhere; }}
+@media (max-width:650px) {{ main {{ padding:16px; }} .metric-grid {{ grid-template-columns:repeat(2, minmax(0,1fr)); }} }}
 .biomarker-card {{ background:white; border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin:14px 0; box-shadow:0 1px 4px rgba(23,32,51,.035); }}
 .biomarker-card h3 {{ margin-top:0; color:#172033; }}
 .muted {{ color:var(--muted); }}
@@ -1248,9 +1293,9 @@ ul {{ line-height:1.65; }}
 <body><main>
 <p><a href="index.html">Report index</a> | <a href="{html.escape(pdf_name)}">Matched PDF</a> | <a href="{html.escape(cohort_report_href)}">Cohort report</a></p>
 <div class="header">
-  <h1>OncoTracer AI CNA Knowledge Report</h1>
+  <h1>OncoTracer CNA Interpretation Report</h1>
   <p class="subtitle">Sample: <strong>{html.escape(sample)}</strong> | Assay context: low-pass WGS / SAMURAI CNA codification</p>
-  <p class="subtitle">The HTML and PDF report are generated from the same section data and contain the same report tables.</p>
+  <p class="subtitle">CNA findings, evidence assessment, and literature interpretation. Full retrieval records and model audits are in the evidence folder.</p>
   <div class="badge-row"><div class="badge-label">CNA burden</div><div class="badge-value">{html.escape(burden.replace('_',' '))}</div></div>
 </div>
 {body}

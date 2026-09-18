@@ -79,35 +79,49 @@ The dry run shows the plan; it does not load or evaluate the model.
 
 ## Open the finished reports
 
-In native runs, final knowledge/LLM reports are published alongside classifier reports in
-`05_cna_classifier/03_report/llm_reports/` below your YAML's `outdir`:
+Finished reports are directly under `05_cna_classifier/` below your YAML's
+`outdir`:
 
-| File | Contents |
+| File or directory | Contents |
 | --- | --- |
-| `index.html` | Sample list with links to matching HTML and PDF reports |
-| `<sample>_CNA_knowledge_report.html` | Per-sample report for browser review |
-| `<sample>_CNA_knowledge_report.pdf` | PDF for the same sample and source sections |
-| `all_sample_CNA_knowledge_reports.pdf` | Combined PDF for the reported sample set |
-| `pdf_html_report_index.tsv` | Sample-to-HTML/PDF mapping and report metadata |
-| `pdf_report_index.tsv` | Compatibility index with the same report rows |
+| `final_report.html`, `final_report.pdf` | Full knowledge/LLM report for one sample |
+| `clinician_report.html`, `clinician_report.pdf` | Short clinician summary |
+| `cohort_report.html` | Classifier overview and cohort plots |
+| `samples/<sample>/` | Individual reports when there is more than one sample |
+| `tables/report_index.tsv` | Sample-to-HTML/PDF mapping and report metadata |
+| `evidence/` | Source text, citations, generation status and model audit |
+| `layout_manifest.json` | Publication/migration paths and checksums |
+
+For multiple samples, the root PDFs are combined reports and the root HTML pages
+link to the individual files. A single-sample run has no duplicate combined PDF.
 
 ```bash
 OUT="/absolute/path/project/results" # replace with the outdir from your YAML
-xdg-open "$OUT/05_cna_classifier/03_report/llm_reports/index.html"
+xdg-open "$OUT/05_cna_classifier/final_report.html"
 ```
 
-The HTML/PDF indexes describe the same sample set. The folder can also contain
-catalog-based reports when model generation is off or falls back; its presence
-alone does not establish that an LLM generated text. `run_pdf_reports: false`
-suppresses these matched knowledge reports. The cohort classifier report and
-clinician summaries remain in `05_cna_classifier/03_report/`.
-The combined `06_workflow_summary/final_report.html` and `final_report.json`
-summarize CNA findings, literature sources and available methylation predictions,
-retaining each branch's status.
+Catalog-based reports use the same filenames when model generation is off or
+falls back. A report file alone does not establish that an LLM generated text.
+`run_pdf_reports: false` suppresses the matched knowledge reports. The combined
+`06_workflow_summary/final_report.html` and `final_report.json` summarize CNA
+findings, literature and available methylation predictions with separate statuses.
+
+### Organize existing reports without regenerating them
+
+```bash
+oncotracer reports --config /absolute/path/project/config/run.yml --organize-only
+```
+
+This uses the original config, output ownership and CNA checksums, and holds the
+existing analysis lock. It needs no Conda environment, model, or network access.
+Files move into the same compact layout; redundant table copies and one-sample
+combined PDFs are recorded in the layout audit. The original native manifest,
+CNA inputs and prior report audit records remain unchanged. Report generation
+options such as `--literature` and `--force` cannot accompany `--organize-only`.
 
 ## Check what actually happened
 
-Evidence and model audit files remain in `05_cna_classifier/06_knowledge/` under
+Evidence and model audit files remain in `05_cna_classifier/evidence/` under
 the analysis output; the report index links back to this evidence:
 
 | File | What to check |
@@ -147,7 +161,7 @@ knowledge_deep_llm_ranker_max_candidates_per_sample: 18
 ```
 
 Its attempts are recorded in
-`05_cna_classifier/06_knowledge/knowledge_literature_ranker_trials.tsv`.
+`05_cna_classifier/evidence/knowledge_literature_ranker_trials.tsv`.
 
 ## Network and privacy
 

@@ -206,9 +206,9 @@ not treat the cohort as complete. See [troubleshooting](troubleshooting.md).
 | `01_samurai_illumina/qdnaseq/plots/` | Copy-number profile for each library |
 | `03_cna_codification/cna_events.tsv` | Final gains and losses to inspect |
 | `04_cna_custom_plots/cna_per_sample_pages.pdf` | Per-sample plots in one PDF |
-| `05_cna_classifier/03_report/llm_reports/index.html` | Matched knowledge HTML/PDF reports and combined PDF |
-| `05_cna_classifier/03_report/cna_classifier_report.html` | Research interpretation; open in a browser |
-| `05_cna_classifier/03_report/clinician_reports/` | Per-sample research reports |
+| `05_cna_classifier/final_report.html` | Matched knowledge HTML/PDF reports and combined PDF |
+| `05_cna_classifier/cohort_report.html` | Research interpretation; open in a browser |
+| `05_cna_classifier/clinician_report.html` | Per-sample research reports |
 
 A completed run is not a diagnosis. Examine read quality, coverage and the
 underlying copy-number tables before interpreting a report. No pathology table

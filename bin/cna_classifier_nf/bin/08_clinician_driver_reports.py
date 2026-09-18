@@ -181,7 +181,7 @@ def driver_table(drivers: pd.DataFrame):
     if "event_state" in raw_d.columns:
         d["Observed CNA"] = raw_d["event_state"]
     if "tier" in raw_d.columns:
-        d["Evidence tier"] = raw_d["tier"]
+        d["Catalog annotation"] = raw_d["tier"]
     if "classification_hint" in raw_d.columns:
         d[CATALOG_BACKGROUND_LABEL] = raw_d["classification_hint"]
     elif "feature_label" in raw_d.columns:
@@ -362,13 +362,12 @@ def driver_names_from_data(row: pd.Series, drivers: pd.DataFrame | None = None, 
 
 
 def context_cna_pattern(pr: pd.Series, ks: pd.Series) -> str:
-    return safe(pr.get("probable_cna_classification", "")) or safe(ks.get("knowledge_refined_class", ""))
+    return safe(pr.get("probable_cna_classification", ""))
 
 
 def make_interpretation_pairs(pr: pd.Series, row: pd.Series, ks: pd.Series, drivers: pd.DataFrame | None = None) -> list[tuple[str, str]]:
     cls = context_cna_pattern(pr, ks)
     score = safe(pr.get("probable_cna_score", ""))
-    probability = safe(pr.get("probable_cna_probability_estimate", ""))
     n_events = safe(row.get("n_cna_events", ""))
     burden = safe(row.get("cna_burden_class", ""))
     altered = safe(row.get("altered_mb", ""))
@@ -380,14 +379,17 @@ def make_interpretation_pairs(pr: pd.Series, row: pd.Series, ks: pd.Series, driv
         evidence = "No curated driver-region CNA was detected under the current thresholds."
     if not rationale:
         rationale = "The call is based on the CNA burden class, altered genome size, and overlap with the selected CNA driver-region catalog."
-    score_text = "The numeric score summarizes CNA burden, driver-region matches, context-restricted classification rules, and literature support when available. It is not a standalone diagnostic probability."
+    score_text = "This hand-weighted score summarizes CNA burden and catalog-pattern evidence. It is not a calibrated diagnostic probability; literature availability adds no points."
     if score:
-        score_text = f"Score {score}" + (f" (probability-like estimate {probability})" if probability else "") + ": " + score_text
+        score_text = f"Score {score}: " + score_text
     return [
         ("Context-aware CNA interpretation", cls or "Context-aware interpretation unavailable."),
         ("Main copy-number evidence", evidence),
         ("Assessment rationale", rationale if cls else "No context-aware CNA assessment was supplied; the separate catalog pattern is not a diagnosis."),
-        ("CNA burden context", f"{n_events or '0'} high-confidence CNA events; {altered or '0'} Mb altered; burden class: {burden or 'not available'}."),
+        ("CNA burden context", f"{n_events or 'not available'} CNA events passing analysis thresholds; {altered or 'not available'} Mb altered; burden class: {burden or 'not available'}."),
+        ("Evidence assessment", safe(row.get("cna_assessment_summary", "")) or "Segment-level evidence assessment unavailable; review the source CNA table."),
+        ("Distinct supporting segments", f"{safe(row.get('n_distinct_driver_supporting_segments', 'not available'))}; coordinate audit: {safe(row.get('driver_segment_support_status', 'not available'))}. Multiple catalog hits can share a segment."),
+        ("Interpretation limits", safe(row.get("cna_uncertainty_flags", "")).replace("_", " ").replace(";", "; ") or "Tumor type and gene mechanism remain unresolved by CNA alone."),
         ("How to use this result", "Use as supportive genomic context for the pathology diagnosis. CNA patterns can prioritize confirmatory tests such as IHC, FISH, karyotype, SNV/SV assays, expression, or methylation profiling when relevant."),
         ("Score meaning", score_text),
     ]
@@ -422,17 +424,25 @@ def brief_interpretation(pr: pd.Series, row: pd.Series, ks: pd.Series) -> str:
     return " ".join(f"{k}: {v}" for k, v in pairs[:3])
 
 
+def probability_pair(pr: pd.Series) -> tuple[str, str]:
+    value = safe(pr.get("probable_cna_probability_estimate", ""))
+    status = safe(pr.get("probable_cna_probability_calibration_status", ""))
+    if value and status.startswith("user_table_logistic_fit_"):
+        return "User-table fitted estimate", f"{value}; external validation not established. Review the calibration target and source table."
+    return "Diagnostic probability", "Not estimated. The CNA evidence score is not a diagnostic probability."
+
+
 def build_pdf(out_pdf: Path, sample: str, row: pd.Series, ss: pd.Series, pr: pd.Series, ks: pd.Series, drivers: pd.DataFrame, papers: pd.DataFrame) -> None:
     doc = SimpleDocTemplate(str(out_pdf), pagesize=A4, leftMargin=LEFT, rightMargin=RIGHT, topMargin=TOP, bottomMargin=BOTTOM, title=f"CNA clinician driver summary - {sample}")
     story = []
-    story.append(Paragraph("CNA Driver and Probable Classification Report", styles["Title2"]))
+    story.append(Paragraph("CNA Pattern and Evidence Assessment", styles["Title2"]))
     story.append(raw(f"Sample: <b>{esc(sample)}</b> | Assay: low-pass WGS / SAMURAI CNA codification", "BodyX"))
     story.append(Spacer(1, 5))
-    story.append(section("1 - PROBABLE CNA CLASSIFICATION"))
+    story.append(section("1 - CNA PATTERN ASSESSMENT"))
     story.append(kv([
-        ("Probable CNA classification", context_cna_pattern(pr, ks) or "Context-aware interpretation unavailable."),
-        ("Probable CNA score", pr.get("probable_cna_score", "")),
-        ("Probability estimate", pr.get("probable_cna_probability_estimate", "")),
+        ("Context-aware CNA pattern", context_cna_pattern(pr, ks) or "Context-aware interpretation unavailable."),
+        ("Heuristic evidence score", pr.get("probable_cna_score", "")),
+        probability_pair(pr),
         (CATALOG_PATTERN_LABEL, row.get("rule_based_cna_class", "")),
         ("CNA burden class", row.get("cna_burden_class", "")),
         ("N CNA events", row.get("n_cna_events", "")),
@@ -487,7 +497,7 @@ def html_driver_table(drivers: pd.DataFrame) -> str:
     if "event_state" in raw_d.columns:
         d["Observed CNA"] = raw_d["event_state"]
     if "tier" in raw_d.columns:
-        d["Evidence tier"] = raw_d["tier"]
+        d["Catalog annotation"] = raw_d["tier"]
     if "classification_hint" in raw_d.columns:
         d[CATALOG_BACKGROUND_LABEL] = raw_d["classification_hint"]
     elif "feature_label" in raw_d.columns:
@@ -515,10 +525,10 @@ def build_html(out_html: Path, sample: str, row: pd.Series, ss: pd.Series, pr: p
         ]) + "</section>"
     text = f"""<!DOCTYPE html><html><head><meta charset='utf-8'><title>CNA clinician driver summary - {html.escape(sample)}</title>
 <style>body{{font-family:Arial,Helvetica,sans-serif;margin:30px;color:#172033;background:#f5f7fb}}main{{max-width:1120px;margin:auto;background:white;border:1px solid #d7dde6;border-radius:14px;padding:24px}}h1{{margin-top:0}}h2{{background:#162033;color:white;padding:10px 12px;border-radius:6px;font-size:18px}}table{{border-collapse:collapse;width:100%;font-size:12px;table-layout:auto}}th,td{{border:1px solid #d7dde6;padding:6px 8px;text-align:left;vertical-align:top;white-space:normal;word-break:normal;overflow-wrap:anywhere}}th{{background:#eef2f7}}table.interpretation th{{width:260px}}.muted{{color:#5f6b7a}}.warning{{background:#fff6cc;border:1px solid #e0b800;padding:12px;margin-top:12px}}.plain{{background:#f8fafc;border:1px solid #d7dde6;padding:12px;border-radius:8px;margin-top:10px}}a{{color:#2f6f9f;text-decoration:none}}</style></head><body><main>
-<h1>CNA Driver and Probable Classification Report</h1><p class='muted'>Sample: <b>{html.escape(sample)}</b> | <a href='{html.escape(pdf_name)}'>PDF version</a></p>
-<section><h2>1 - Probable CNA classification</h2>{html_kv([
-("Probable CNA classification", context_cna_pattern(pr, ks) or "Context-aware interpretation unavailable."),
-("Probable CNA score", pr.get("probable_cna_score", "")), ("Probability estimate", pr.get("probable_cna_probability_estimate", "")),
+<h1>CNA Pattern and Evidence Assessment</h1><p class='muted'>Sample: <b>{html.escape(sample)}</b> | <a href='{html.escape(pdf_name)}'>PDF version</a></p>
+<section><h2>1 - CNA pattern assessment</h2>{html_kv([
+("Context-aware CNA pattern", context_cna_pattern(pr, ks) or "Context-aware interpretation unavailable."),
+("Heuristic evidence score", pr.get("probable_cna_score", "")), probability_pair(pr),
 (CATALOG_PATTERN_LABEL, row.get("rule_based_cna_class", "")), ("CNA burden class", row.get("cna_burden_class", "")),
 ("N CNA events", row.get("n_cna_events", "")), ("Altered genome size (Mb)", row.get("altered_mb", "")),
 ])}<div class='plain'><h3>Plain-language interpretation for clinician review</h3>{html_interpretation_table(pr, row, ks, drivers)}</div></section>

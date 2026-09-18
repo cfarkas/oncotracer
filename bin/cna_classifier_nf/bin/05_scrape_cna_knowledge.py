@@ -485,10 +485,8 @@ def feature_ids_from_flag(flag: str) -> list[str]:
 def infer_refined_class(row: pd.Series, features: Iterable[str], cancer_type: str = "broad_cancer") -> tuple[str, str]:
     """Knowledge-level CNA pattern label.
 
-    This mirrors the pathology-concordance layer: broad_cancer allows all
-    pan-cancer labels; specific sample_set values restrict labels to the current
-    context so lymphoma runs do not become CNS/breast/etc. merely because of
-    generic pan-cancer CNA overlap.
+    Broad-cancer analysis preserves molecular findings without inferring tissue.
+    A specific sample set is an explicitly supplied context, not a prediction.
     """
     fset = set(features)
     rule = safe_str(row.get("rule_based_cna_class", "CNA_pattern"))
@@ -521,35 +519,18 @@ def infer_refined_class(row: pd.Series, features: Iterable[str], cancer_type: st
         # Context-specific but not lymphoma.  Keep the label within the requested context.
         return f"{context} context CNA pattern", f"--sample_set {context} was supplied, so knowledge interpretation is constrained to that context. Driver-region interpretation is supportive and should be integrated with pathology and orthogonal molecular tests."
 
-    # Broad cancer mode: allow pan-cancer labels.
-    if has("17q12_ERBB2_gain_amp"):
-        return "ERBB2/HER2-amplified CNA pattern", "17q12 ERBB2/HER2-region gain/amplification supports a HER2-amplified CNA context. Confirm with clinical-grade HER2 testing and integrate with tumor type."
-    if has("7p11_EGFR_gain_amp") or (has("7_gain") and has("10_loss_GBM_context")):
-        return "EGFR/chr7/chr10 CNS-glioma-like CNA pattern", "EGFR-region gain/amplification or chromosome 7 gain with chromosome 10 loss supports a CNS high-grade glioma-like CNA context when pathology/site is compatible."
-    if has("5q_loss_MDS_AML") or has("7q_loss") or has("12p13_ETV6_loss") or has("21q_RUNX1_region_CNA"):
-        return "Leukemia/MDS-compatible CNA pattern", "5q/7q/12p13/21q-region CNAs can support leukemia or myeloid/MDS-compatible context when sample source and pathology are compatible; fusions and mutations require separate testing."
-    if has("20q_gain_colon_context") and (has("18q_loss_SMAD4_DCC") or has("8q24_MYC_gain_amp") or has("13q_gain_colon_context") or has("17p13_TP53_loss")):
-        return "Colorectal-like chromosomal-instability CNA pattern", "20q gain with colorectal-type co-events such as 18q loss, 8q gain/MYC-region gain, 13q gain, or 17p loss supports a colorectal-like CIN context when pathology is compatible."
-    if has("18q_loss_SMAD4_DCC") and has("9p21_CDKN2A_B_loss") and has("17p13_TP53_loss"):
-        return "Pancreatic/colorectal tumor-suppressor-loss CNA pattern", "Co-occurring 9p21/CDKN2A-B, 17p/TP53 and 18q/SMAD4-DCC-region losses support a carcinoma tumor-suppressor-loss context such as pancreatic or colorectal carcinoma when pathology is compatible."
-    if has("11q13_CCND1_FGF_gain_amp") and (has("1q_gain") or has("16q_loss_breast_context") or has("17q12_ERBB2_gain_amp") or has("8q24_MYC_gain_amp")):
-        return "Breast/solid-tumor 11q13-amplified CNA pattern", "11q13 CCND1/FGF-region gain/amplification with breast/solid-tumor CNA context supports an 11q13-amplified epithelial-tumor pattern when pathology is compatible."
-    if has("17p13_TP53_loss") and ("ultra" in burden.lower() or "high" in burden.lower()):
-        return "CNA-high TP53-axis candidate pattern", "Complex CNA plus TP53-region loss supports a TP53-axis/chromosomal-instability pattern. This is not a formal subtype call without TP53 mutation, histology, and integrated molecular classification."
-    if has("9p24_JAK2_PDL1_PDL2_gain_amp") and (has("2p16_REL_BCL11A_gain_amp") or has("18q21_BCL2_MALT1_gain_amp")):
-        return "Immune-evasion enriched lymphoma-compatible CNA pattern", "9p24 gain/amplification with additional lymphoma-associated driver CNAs suggests immune-evasion/JAK-STAT-region biology; correlate with morphology, CD30/PD-L1 expression, EBV status, and SV data."
-    if has("2p16_REL_BCL11A_gain_amp") and has("18q21_BCL2_MALT1_gain_amp"):
-        return "B-cell lymphoma oncogene-gain CNA pattern", "Combined 2p16 and 18q21 gains/amplifications support a B-cell lymphoma oncogene-gain CNA pattern; correlate with REL/BCL2 expression and rearrangement data."
-    if has("8q24_MYC_gain_amp") and (has("18q21_BCL2_MALT1_gain_amp") or has("2p16_REL_BCL11A_gain_amp") or has("11q13_CCND1_FGF_gain_amp")):
-        return "Multi-oncogene gain/amplification CNA pattern", "MYC-region gain with additional oncogene-region gains indicates an amplification/gain-rich profile. Tumor-type assignment requires pathology and orthogonal genomic data."
-    if has("9p21_CDKN2A_B_loss") and (has_6q or has("10q23_PTEN_loss") or has("1p_loss") or has("18q_loss_SMAD4_DCC")):
-        return "Deletion-rich tumor-suppressor CNA pattern", "CDKN2A/B-region loss with additional suppressor-region deletions supports a deletion-rich CNA profile. This can be biologically important but does not define a subtype by itself."
-    if "gain-dominant" in safe_str(row.get("gain_loss_direction_class", "")):
-        return "Gain-dominant CNA pattern", "The CNA profile is dominated by gains. Driver-region interpretation depends on which oncogene loci are included."
-    if "deletion" in safe_str(row.get("gain_loss_direction_class", "")).lower() or "loss" in safe_str(row.get("gain_loss_direction_class", "")).lower():
-        return "Deletion-dominant CNA pattern", "The CNA profile is dominated by losses. Tumor-suppressor-region involvement should be reviewed with orthogonal data."
-    return rule.replace("_", " "), "CNA-based pattern retained from the rule-based classifier. Literature-derived annotations are supportive only."
-
+    # Reuse the descriptive classifier evidence, never legacy tissue hints or
+    # literature/catalog associations as a newly inferred sample diagnosis.
+    patterns = safe_str(row.get("matched_cna_patterns", "")).strip()
+    if patterns and patterns.lower() not in MISSING_STRINGS:
+        label = "Molecular CNA patterns: " + patterns.replace("_", " ").replace(";", "; ")
+    else:
+        label = "CNA pattern, tumor type unresolved"
+    rationale = "Broad-cancer knowledge interpretation retains molecular CNA findings without assigning tissue of origin. Shared catalog regions and retrieved literature do not establish a tumor type."
+    assessment = safe_str(row.get("cna_assessment_summary", "")).strip()
+    if assessment:
+        rationale += " " + assessment
+    return label, rationale
 
 
 
