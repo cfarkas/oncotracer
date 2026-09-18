@@ -627,7 +627,7 @@ def pathology_score_method_text() -> str:
     return (
         "When --pathology is supplied, the agreement score is calculated only in that pathology-enabled branch. The baseline model is a local token agreement model: it extracts tokens from pathology diagnosis/IHC/site fields (for example Hodgkin, tumor, B-cell, follicular, leukemia, carcinoma, CNS tumor, or other terms present in the supplied pathology text) and from CNA-derived features (for example CNA burden, TP53-region loss, CDKN2A/B loss, 2p16/REL-BCL11A, 9p24/JAK2-PD-L1/PD-L2, 18q21/BCL2-MALT1, or other regions allowed by the selected --sample_set catalog). "
         "The token-only score sums base matched-pathology evidence, pathology-CNA token overlap, diagnosis-specific CNA biomarker support, CNA-burden context, IHC-token support, and penalties for discordant patterns. If --pathology_use_biomed_models true, three optional biomedical transformer language models compare pathology text against CNA-evidence text; when at least one succeeds, final score = 0.70 × token-only score + 0.30 × mean biomedical semantic score. "
-        "The score is an explainability/compatibility score and not a final diagnosis. A probability is truly calibrated only if --score_calibration_table supplies labelled reference outcomes; otherwise the probability shown is an uncalibrated sigmoid-derived probability-like estimate."
+        "The score is an explainability/compatibility score and not a final diagnosis. Diagnostic probability is not estimated by default. A user-table fit requires independent validation for its specified target and population."
     )
 
 
@@ -724,7 +724,7 @@ def probable_cna_section_for_sample(sample: str, pathology_concordance: pd.DataF
     ]
     table = pd.DataFrame([{"field": k, "value": fmt_value(v)} for k, v in pairs]).to_html(index=False, escape=True, border=0, classes="table kv-table")
     return f"""
-<div class="card probable-card"><h2>Probable CNA-based classification</h2>
+<div class="card probable-card"><h2>CNA pattern assessment</h2>
 <div class="note"><strong>Scope:</strong> This is calculated from CNA tokens only. It is shown even when no pathology table is supplied. It should be treated as a molecular pattern suggestion, not as a final pathology diagnosis.</div>
 <div class="table-wrap">{table}</div></div>
 """
@@ -934,7 +934,7 @@ ul {{ line-height: 1.6; }}
 <p class="muted">Low-pass WGS / SAMURAI CNA-only report.</p>
 <div class="note"><strong>Scope:</strong> this report summarizes CNA burden, CNA state composition, canonical driver-region flags, and probable CNA-pattern interpretation for one sample. It does not replace integrated molecular/pathology classification.</div>
 <div class="note"><strong>What low-pass WGS can do:</strong> {html.escape(low_pass_wgs_capability_text())}</div>
-<div class="note"><strong>Probable CNA score:</strong> {html.escape(probable_cna_score_method_text())}</div>
+<div class="note"><strong>Heuristic CNA score:</strong> {html.escape(probable_cna_score_method_text())}</div>
 <div class="note"><strong>Evidence tiers:</strong> {html.escape(evidence_tier_method_text())}</div>
 <div class="note"><strong>PubMed / LLM fallback:</strong> when --knowledge_web true, feature-level literature is retrieved from Europe-PMC/PubMed-style metadata using the --sample_set context. When --knowledge_literature_llm true, retrieved titles/abstracts are processed by local Hugging Face summarization/text-generation models; if no model completes, the pipeline falls back to deterministic PubMed-text extraction and reports the model/status in the biomarker cards.</div>
 {probable_html}
@@ -1008,7 +1008,7 @@ def make_report(figures: list[str], classification: pd.DataFrame, recurrent: pd.
         path_counts = pathology_concordance["agreement_call"].value_counts(dropna=False).rename_axis("agreement_call").reset_index(name="n_samples")
         probable_counts = pathology_concordance["probable_cna_classification"].value_counts(dropna=False).rename_axis("probable_cna_classification").reset_index(name="n_samples") if "probable_cna_classification" in pathology_concordance.columns else pd.DataFrame()
         cols = [c for c in ["sample", "probable_cna_classification", "probable_cna_score", "probable_cna_probability_estimate", "agreement_call", "agreement_score", "agreement_probability_estimate", "agreement_score_token_only", "agreement_biomed_consensus_score", "agreement_biomed_model_status", "agreement_score_breakdown", "pathology_final_diagnosis", "agreement_summary"] if c in pathology_concordance.columns]
-        pathology_summary = "<h2>Probable CNA-based classification summary</h2><div class='note'><strong>Model:</strong> local token CNA-pattern model. This classification is calculated even without --pathology and is not a final diagnosis.</div><div class='table-wrap'>" + html_table_preview(probable_counts, n=50) + "</div><h2>Pathology agreement summary</h2><div class='note'><strong>Score method:</strong> " + html.escape(pathology_score_method_text()) + "</div><div class='table-wrap'>" + html_table_preview(path_counts, n=50) + "</div><h2>Pathology/probable-classification table preview</h2><div class='table-wrap'>" + html_table_preview(pathology_concordance[cols], n=30) + "</div>"
+        pathology_summary = "<h2>CNA pattern assessment summary</h2><div class='note'><strong>Model:</strong> local token CNA-pattern model. This classification is calculated even without --pathology and is not a final diagnosis.</div><div class='table-wrap'>" + html_table_preview(probable_counts, n=50) + "</div><h2>Pathology agreement summary</h2><div class='note'><strong>Score method:</strong> " + html.escape(pathology_score_method_text()) + "</div><div class='table-wrap'>" + html_table_preview(path_counts, n=50) + "</div><h2>Pathology/probable-classification table preview</h2><div class='table-wrap'>" + html_table_preview(pathology_concordance[cols], n=30) + "</div>"
     text = f"""
 <!DOCTYPE html>
 <html>
@@ -1044,7 +1044,7 @@ ul {{ line-height: 1.65; }}
 <p class="subtitle">Publication-oriented CNA-only summary from low-pass WGS / SAMURAI CNA codification. Samples analyzed: <strong>{n_samples}</strong>.</p>
 <div class="note"><strong>Interpretation note:</strong> this is Cancer-agnostic CNA-only classification from low-pass WGS/SAMURAI CNA calls. It is useful for CNA burden, recurrent event patterns, and exploratory patient grouping. It should not be interpreted as a formal molecular tumor subtype without SNVs/indels, SV/translocation/fusion data, pathology, and clinical context.</div>
 <div class="note"><strong>What low-pass WGS can do:</strong> {html.escape(low_pass_wgs_capability_text())}</div>
-<div class="note"><strong>Probable CNA score:</strong> {html.escape(probable_cna_score_method_text())}</div>
+<div class="note"><strong>Heuristic CNA score:</strong> {html.escape(probable_cna_score_method_text())}</div>
 <div class="note"><strong>Evidence tiers:</strong> {html.escape(evidence_tier_method_text())}</div>
 <div class="note"><strong>PubMed / LLM fallback:</strong> when --knowledge_web true, feature-level literature is retrieved from Europe-PMC/PubMed-style metadata using the --sample_set context. When --knowledge_literature_llm true, retrieved titles/abstracts are processed by local Hugging Face summarization/text-generation models; if no model completes, the pipeline falls back to deterministic PubMed-text extraction and reports the model/status in the biomarker cards.</div>
 {single_note}

@@ -7,7 +7,9 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Mapping, Protocol, Sequence
+from typing import Callable, Mapping, Protocol, Sequence
+
+from .classifier_layout import organize_classifier
 
 from .runtime import (
     CommandRunner,
@@ -189,6 +191,7 @@ def _stage(
     ledger: StageLedger,
     force: bool,
     containment: Mapping[str, str | None] | None = None,
+    publish: Callable[[], object] | None = None,
 ) -> None:
     signature_command = command
     if name in {"classifier-knowledge", "classifier-pathology"}:
@@ -200,25 +203,32 @@ def _stage(
     if force or not ledger.reusable(name, signature, outputs):
         cwd.mkdir(parents=True, exist_ok=True)
         runner.run(name, command, cwd=cwd, containment=containment)
+        if publish is not None:
+            publish()
         for output in outputs:
             require_file(output, f"{name} output")
         ledger.complete(name, signature, outputs)
 
 
 def _write_gistic_skip(directory: Path, reason: str, segmentation: str) -> tuple[Path, Path, Path]:
+    def write_if_changed(path: Path, text: str) -> None:
+        # Skip status is an input to downstream stages; preserve its mtime on resume.
+        if not path.is_file() or path.read_text(encoding="utf-8") != text:
+            atomic_write_text(path, text)
+
     output = directory / "gistic2_out"
     output.mkdir(parents=True, exist_ok=True)
     status = directory / "gistic2_status.tsv"
     command = directory / "gistic2_command.txt"
     versions = directory / "gistic2_versions.txt"
-    atomic_write_text(
+    write_if_changed(
         status,
         "status\treason\tsegmentation\tcommand\texecutable\trefgene\n"
         f"skipped\t{reason}\t{segmentation}\tNA\tNA\tNA\n",
     )
-    atomic_write_text(command, "")
-    atomic_write_text(versions, "")
-    atomic_write_text(output / "GISTIC_NOT_RUN.txt", f"GISTIC2 was skipped: {reason}.\n")
+    write_if_changed(command, "")
+    write_if_changed(versions, "")
+    write_if_changed(output / "GISTIC_NOT_RUN.txt", f"GISTIC2 was skipped: {reason}.\n")
     return output, status, command
 
 
@@ -450,7 +460,10 @@ def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_re
     json_path = require_file(summary_dir / "workflow_summary.json", "workflow summary JSON")
     value = json.loads(json_path.read_text(encoding="utf-8"))
     value["cna_classifier"] = str(classifier_out)
-    gistic_status, gistic_reason = _read_gistic_status(classifier_out / "04_gistic2/gistic2_status.tsv")
+    status_file = classifier_out / "diagnostics/gistic/gistic2_status.tsv"
+    if not status_file.exists():
+        status_file = classifier_out / "04_gistic2/gistic2_status.tsv"
+    gistic_status, gistic_reason = _read_gistic_status(status_file)
     incomplete = not reports_completed or (gistic_requested and gistic_status == "failed")
     value["gistic_requested"] = gistic_requested
     value["gistic_status"] = gistic_status
@@ -460,13 +473,13 @@ def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_re
     if incomplete:
         value.setdefault("cna_status", value.get("workflow_status", "complete"))
         value["workflow_status"] = "partial_failure"
-    value["cna_classifier_report"] = str(classifier_out / "03_report/cna_classifier_report.html") if reports_completed else None
-    value["cna_knowledge_evidence"] = str(classifier_out / "06_knowledge")
+    value["cna_classifier_report"] = str(classifier_out / "cohort_report.html") if reports_completed else None
+    value["cna_knowledge_evidence"] = str(classifier_out / "evidence")
     for key in ("cna_knowledge_reports", "cna_knowledge_report_index"):
         value.pop(key, None)
     if knowledge_reports is not None:
         value["cna_knowledge_reports"] = str(knowledge_reports)
-        value["cna_knowledge_report_index"] = str(knowledge_reports / "index.html")
+        value["cna_knowledge_report_index"] = str(classifier_out / "final_report.html")
     value["completed_at"] = utc_now()
     atomic_write_workflow_summary(summary_dir, value)
 
@@ -487,14 +500,16 @@ def run_native_classifier(
     scripts = require_directory(package / "bin", "CNA classifier scripts")
     assets = require_directory(package / "assets", "CNA classifier assets")
     classifier_out = analysis_outdir / "05_cna_classifier"
-    prepared = classifier_out / "01_prepared"
-    classification = classifier_out / "02_classification"
+    if classifier_out.exists():
+        organize_classifier(classifier_out)
+    prepared = classifier_out / "diagnostics/prepared"
+    classification = classifier_out / "tables/classification"
     report = classifier_out / "03_report"
     knowledge_reports = report / "llm_reports"
-    gistic = classifier_out / "04_gistic2"
-    parsed = classifier_out / "05_gistic2_parsed"
-    knowledge = classifier_out / "06_knowledge"
-    pathology_out = classifier_out / "07_pathology"
+    gistic = classifier_out / "diagnostics/gistic"
+    parsed = classifier_out / "diagnostics/gistic_parsed"
+    knowledge = classifier_out / "evidence"
+    pathology_out = classifier_out / "diagnostics/pathology"
     for directory in (prepared, classification, report, gistic, parsed, knowledge, pathology_out):
         directory.mkdir(parents=True, exist_ok=True)
     classifier_environment = toolchain.environment("classifier")
@@ -606,7 +621,7 @@ def run_native_classifier(
         classification / "classification_metrics.json",
     ]
     _stage(
-        "classifier-classify", classify_command, prepare_outputs + parsed_outputs, classify_outputs,
+        "classifier-classify", classify_command, prepare_outputs + parsed_outputs + [scripts / "02_classify_cna.py"], classify_outputs,
         cwd=classification, runner=runner, ledger=ledger, force=force,
         containment=classifier_environment,
     )
@@ -621,7 +636,7 @@ def run_native_classifier(
             "--region-catalog", region_catalog,
             "--enable-web", str(_bool(config, "knowledge_web")).lower(),
             "--allow-fail", str(_bool(config, "knowledge_allow_fail")).lower(),
-            "--cache-dir", knowledge / "knowledge_http_cache",
+            "--cache-dir", classifier_out / "diagnostics/cache/http",
             "--max-papers", _string(config, "knowledge_max_papers"),
             "--timeout", _string(config, "knowledge_timeout"),
             "--sleep", _string(config, "knowledge_sleep"),
@@ -705,7 +720,7 @@ def run_native_classifier(
     ]
     _stage(
         "classifier-pathology", pathology_wrapped,
-        [pathology, classification / "cna_patient_classification.tsv", knowledge / "sample_knowledge_summary.tsv"],
+        [pathology, classification / "cna_patient_classification.tsv", knowledge / "sample_knowledge_summary.tsv", scripts / "07_pathology_concordance.py"],
         pathology_outputs, cwd=pathology_out, runner=runner, ledger=ledger, force=force,
         containment=classifier_environment,
     )
@@ -737,22 +752,13 @@ def run_native_classifier(
             "--pathology-records", pathology_out / "pathology_records_matched.tsv",
         ],
     )
-    plot_outputs = [report / "cna_classifier_report.html", report / "figures" / "cna_event_burden.pdf"]
+    plot_outputs = [classifier_out / "cohort_report.html", classifier_out / "figures/summary/cna_event_burden.pdf"]
     _stage(
         "classifier-report", plot_command,
-        prepare_outputs + classify_outputs + parsed_outputs + pathology_outputs,
+        prepare_outputs + classify_outputs + parsed_outputs + pathology_outputs + [scripts / "03_plot_report.py"],
         plot_outputs, cwd=report, runner=runner, ledger=ledger, force=force,
-        containment=classifier_environment,
+        containment=classifier_environment, publish=lambda: organize_classifier(classifier_out),
     )
-    report_tables = report / "report_tables"
-    report_tables.mkdir(parents=True, exist_ok=True)
-    for source, name in [
-        (pathology_out / "pathology_concordance.tsv", "pathology_concordance.tsv"),
-        (pathology_out / "pathology_records_matched.tsv", "pathology_records_matched.tsv"),
-        (pathology_out / "pathology_status.txt", "pathology_status.txt"),
-        (pathology_out / "pathology_model_trials.tsv", "pathology_model_trials.tsv"),
-    ]:
-        shutil.copy2(source, report_tables / name)
 
     if _bool(config, "run_pdf_reports"):
         pdf_command = toolchain.wrap(
@@ -772,7 +778,7 @@ def run_native_classifier(
                 "--knowledge-references", knowledge / "knowledge_references.tsv",
                 "--sample-literature", knowledge / "sample_literature.tsv",
                 "--sample-literature-summary", knowledge / "sample_literature_summary.tsv",
-                "--figures", report / "figures",
+                "--figures", classifier_out / "figures",
                 "--pathology-concordance", pathology_out / "pathology_concordance.tsv",
                 "--pathology-records", pathology_out / "pathology_records_matched.tsv",
                 "--outdir", knowledge_reports,
@@ -786,11 +792,10 @@ def run_native_classifier(
         )
         _stage(
             "classifier-pdf-reports", pdf_command,
-            classify_outputs + knowledge_outputs + pathology_outputs,
-            [knowledge_reports / name for name in ("index.html", "pdf_report_index.tsv", "pdf_html_report_index.tsv",
-                                                    "all_sample_CNA_knowledge_reports.pdf")],
+            classify_outputs + knowledge_outputs + pathology_outputs + [scripts / "06_pdf_knowledge_reports.py"],
+            [classifier_out / name for name in ("final_report.html", "final_report.pdf", "tables/report_index.tsv")],
             cwd=report, runner=runner, ledger=ledger, force=force,
-            containment=classifier_environment,
+            containment=classifier_environment, publish=lambda: organize_classifier(classifier_out),
         )
 
     if _bool(config, "run_clinician_reports"):
@@ -812,11 +817,18 @@ def run_native_classifier(
         )
         _stage(
             "classifier-clinician-reports", clinician_command,
-            classify_outputs + knowledge_outputs + pathology_outputs,
-            [report / "clinician_reports" / "clinician_report_index.tsv"],
+            classify_outputs + knowledge_outputs + pathology_outputs + [scripts / "08_clinician_driver_reports.py"],
+            [classifier_out / name for name in ("clinician_report.html", "clinician_report.pdf", "tables/clinician_report_index.tsv")],
             cwd=report, runner=runner, ledger=ledger, force=force,
-            containment=classifier_environment,
+            containment=classifier_environment, publish=lambda: organize_classifier(classifier_out),
         )
+
+    for stage_name in ("classifier-report", "classifier-pdf-reports", "classifier-clinician-reports"):
+        record = ledger.data.get("stages", {}).get(stage_name)
+        if record and record.get("signature"):
+            final_outputs = [Path(item["path"]) for item in record.get("outputs", [])]
+            if final_outputs and all(path.is_file() for path in final_outputs):
+                ledger.complete(stage_name, record["signature"], final_outputs)
 
     summary = {
         "schema": "oncotracer-native-classifier-v1",
@@ -824,13 +836,13 @@ def run_native_classifier(
         "nextflow_used": False,
         "sample_set": context,
         "classifier_outdir": str(classifier_out),
-        "knowledge_report_index": str(knowledge_reports / "index.html") if _bool(config, "run_pdf_reports") else None,
+        "knowledge_report_index": str(classifier_out / "final_report.html") if _bool(config, "run_pdf_reports") else None,
         "knowledge_evidence": str(knowledge),
         "gistic_status": gistic_status.read_text(encoding="utf-8", errors="replace").splitlines()[-1].split("\t", 1)[0],
         "completed_at": utc_now(),
     }
     atomic_write_json(classifier_out / "native_classifier_summary.json", summary)
     _update_summary(analysis_outdir, classifier_out,
-                    knowledge_reports=knowledge_reports if _bool(config, "run_pdf_reports") else None,
+                    knowledge_reports=classifier_out if _bool(config, "run_pdf_reports") else None,
                     gistic_requested=_bool(config, "run_gistic"))
     return classifier_out

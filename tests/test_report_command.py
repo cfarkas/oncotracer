@@ -134,6 +134,58 @@ class ReportCommandTests(unittest.TestCase):
         self.assertEqual(config["knowledge_literature_llm_max_new_tokens"], 256)
         self.assertTrue(config["knowledge_deep_literature"])
 
+    def test_organize_only_preserves_science_and_skips_runtime_and_models(self):
+        self.invoke()
+        self.classifier.reset_mock()
+        original = {p: p.read_bytes() for p in (self.config, self.output / reports.MANIFEST,
+                    self.output / OUTPUT_OWNER_RELATIVE, self.native / "state.json", self.native / "trace.tsv")}
+        self.args.organize_only = True
+        self.args.literature = False
+        self.args.model = None
+        def organize(stage):
+            source = stage / "03_report/llm_reports/index.html"
+            source.replace(stage / "final_report.html")
+            atomic_write_json(stage / "layout_manifest.json", {"schema": "oncotracer-classifier-layout-v1"})
+            return {}
+        with patch("oncotracer_cli.classifier_layout.organize_classifier", side_effect=organize) as organizer, \
+             patch("oncotracer_cli.cli._load_install_config") as install, \
+             patch.object(reports, "managed_conda_runtime_lock") as runtime:
+            self.assertEqual(self.invoke(), 0)
+        organizer.assert_called_once()
+        install.assert_not_called()
+        runtime.assert_not_called()
+        self.classifier.assert_not_called()
+        for path, contents in original.items():
+            self.assertEqual(path.read_bytes(), contents)
+        marker = reports._json(self.output / "05_cna_classifier/report_provenance.json")
+        self.assertEqual(marker["operation"], "organize_only")
+        self.assertEqual(marker["status"], "complete")
+        self.assertIn("layout_manifest_sha256", marker)
+        summary = reports._json(self.output / "06_workflow_summary/workflow_summary.json")
+        self.assertEqual(summary["cna_knowledge_report_index"], str(self.output / "05_cna_classifier/final_report.html"))
+
+    def test_organize_only_rejects_generation_flags_and_missing_reports(self):
+        self.args.organize_only = True
+        with self.assertRaisesRegex(OncoTracerError, "cannot be combined"):
+            self.invoke()
+        self.args.literature = False
+        self.args.model = None
+        with self.assertRaisesRegex(OncoTracerError, "No existing classifier"):
+            self.invoke()
+        self.classifier.assert_not_called()
+        self.assertFalse((self.output / "05_cna_classifier").exists())
+
+    def test_canonical_evidence_metrics_are_used(self):
+        def canonical(*args, **kwargs):
+            result = self.fake_classifier(*args, **kwargs)
+            atomic_write_json(self.output / "05_cna_classifier/evidence/knowledge_metrics.json",
+                              {"literature_llm_completed_features": 2, "literature_llm_attempted_features": 3})
+            return result
+        self.classifier.side_effect = canonical
+        self.invoke()
+        marker = reports._json(self.output / "05_cna_classifier/report_provenance.json")
+        self.assertEqual(marker["literature_llm"]["accepted_drafts"], 2)
+
     def test_existing_report_generation_is_allowed(self):
         self.invoke()
         first = reports._json(self.output / "05_cna_classifier/report_provenance.json")

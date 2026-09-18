@@ -252,7 +252,7 @@ The classifier is not invoked for a sample with zero usable modified-CpG calls. 
 | --- | --- | --- |
 | `cna_classifier_sample_set` | `broad_cancer` | Study-defined cancer context |
 | `cna_classifier_samples` | optional IDs | Optional subset of sequencing samples |
-| `run_pdf_reports` | `true` | Publish matched knowledge HTML/PDF reports and indexes in `05_cna_classifier/03_report/llm_reports/` |
+| `run_pdf_reports` | `true` | Publish matched knowledge HTML/PDF reports and indexes in `05_cna_classifier/` |
 | `pathology_csv` | optional path | De-identified matched pathology table |
 | `pathology_sample_col` | `illumina_sample_id` | Column matching sequencing sample IDs |
 | `pathology_case_col` | `case_code` | De-identified case/accession column |

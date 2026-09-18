@@ -93,14 +93,16 @@ def final_report(root: Path, summary: dict) -> tuple[str, dict]:
         body += '<p>'+link('03_cna_codification/cna_events.tsv','Exact CNA event table')+' · '+link('04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf','Copy-number profiles')+'</p>'
     body += '</section>'
 
-    metrics = _json(root, '05_cna_classifier/06_knowledge/knowledge_metrics.json')
+    evidence = ('05_cna_classifier/evidence' if (root / '05_cna_classifier/evidence').is_dir()
+                else '05_cna_classifier/06_knowledge')
+    metrics = _json(root, evidence + '/knowledge_metrics.json')
     generated = metrics.get('literature_llm_completed_features')
     data['literature'] = {"status": summary.get('cna_classifier_status', 'available' if metrics else 'not_requested'),
                           "llm_generated_features": generated,
                           "source_counts": metrics.get('literature_source_counts', {}),
                           "failed_llm_trials": metrics.get('literature_llm_failed_trials'),
                           "retrieval_errors": metrics.get('web_errors', []),
-                          "metrics": '05_cna_classifier/06_knowledge/knowledge_metrics.json' if metrics else None}
+                          "metrics": evidence + '/knowledge_metrics.json' if metrics else None}
     body += '<section class="card"><h2>2. Literature and LLM interpretation</h2><p>Status: '+_e(data['literature']['status'])+'</p>'
     if data['literature']['status'] in {'failed', 'partial_failure'}:
         body += '<p>Report generation failed or is incomplete. Any retained draft below may come from an earlier attempt.</p>'
@@ -114,17 +116,19 @@ def final_report(root: Path, summary: dict) -> tuple[str, dict]:
             body += '<p>No accepted literature LLM draft was generated. Any catalog or retrieved-text fallback is labeled below.</p>'
         if data['literature']['retrieval_errors']:
             body += '<p>Some literature requests failed. Check the evidence audit; incomplete retrieval is not evidence of no association.</p>'
-        drafts = _rows(root,'05_cna_classifier/06_knowledge/sample_knowledge.tsv', limit=100)
+        drafts = _rows(root,evidence + '/sample_knowledge.tsv', limit=100)
         drafts = [row for row in drafts if row.get('literature_synthesis')]
         data['literature']['drafts'] = [{key: row.get(key, '') for key in ('sample','feature_id','literature_synthesis','literature_synthesis_source')} for row in drafts]
         if drafts:
             body += _table(['Sample / feature','Draft or fallback text','Source'], [(row.get('sample','')+' / '+row.get('display',row.get('feature_id','')),row['literature_synthesis'],row.get('literature_synthesis_source','unknown')) for row in drafts])
             body += '<p class="muted">Up to 100 feature entries shown. Drafts require review against the cited papers; model acceptance checks do not establish clinical validity.</p>'
-        report_path = '05_cna_classifier/03_report/llm_reports/index.html'
+        report_path = '05_cna_classifier/final_report.html'
+        if _file(root, report_path) is None:
+            report_path = '05_cna_classifier/03_report/llm_reports/index.html'
         if _file(root, report_path) is None:
             report_path = '04_cna_custom_plots/llm_reports/index.html'  # Existing releases.
-        body += '<p>'+link(report_path,'Full sample HTML/PDF reports')+' · '+link('05_cna_classifier/06_knowledge/knowledge_references.tsv','Citations and source metadata')+' · '+link('05_cna_classifier/06_knowledge/knowledge_llm_trials.tsv','Model generation audit')+'</p>'
-        references = _rows(root,'05_cna_classifier/06_knowledge/knowledge_references.tsv', limit=100)
+        body += '<p>'+link(report_path,'Full sample HTML/PDF reports')+' · '+link(evidence + '/knowledge_references.tsv','Citations and source metadata')+' · '+link(evidence + '/knowledge_llm_trials.tsv','Model generation audit')+'</p>'
+        references = _rows(root,evidence + '/knowledge_references.tsv', limit=100)
         links, seen = [], set()
         for row in references:
             url = row.get('url','')

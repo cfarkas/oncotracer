@@ -133,6 +133,32 @@ class ResultsTests(unittest.TestCase):
         self.assertIn("gistic2_status.tsv", (self.root / "05_cna_classifier/index.html").read_text())
         self.assert_links()
 
+    def test_canonical_classifier_reports_and_evidence_navigation(self):
+        for name in ("final_report.html", "final_report.pdf", "clinician_report.html", "clinician_report.pdf", "cohort_report.html"):
+            self.put("05_cna_classifier/" + name, "<h1>Saved report</h1>" if name.endswith(".html") else "pdf fixture")
+        self.put("05_cna_classifier/evidence/knowledge_metrics.json", '{"literature_llm_completed_features":1}')
+        self.put("05_cna_classifier/diagnostics/prepared/clean_events.tsv", "diagnostic fixture")
+        self.put("05_cna_classifier/figures/summary/pdf/burden.pdf", "plot fixture")
+        before = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        write_results_index(self.root)
+        self.assert_links()
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+        self.assertTrue((self.root / "05_cna_classifier/evidence/index.html").is_file())
+        catalog = json.loads((self.root / "06_workflow_summary/results_catalog.json").read_text())
+        stage = next(row for row in catalog["stages"] if row["stage"] == "05_cna_classifier")
+        self.assertEqual(stage["primary_files"][0], "05_cna_classifier/final_report.pdf")
+        self.assertEqual(stage["diagnostic_file_count"], 1)
+        page = (self.root / "05_cna_classifier/index.html").read_text()
+        self.assertIn("<h2>Reports</h2>", page)
+        self.assertIn("<h3>Clinician summary</h3>", page)
+        self.assertIn("<summary>Summary plots", page)
+        self.assertLess(page.index("<h2>Reports</h2>"), page.index("<h2>Quality control</h2>"))
+        self.assertEqual(page.count('href="final_report.pdf"'), 1)
+        self.assertEqual(page.count('href="clinician_report.html"'), 1)
+        final = json.loads((self.root / "06_workflow_summary/final_report.json").read_text())
+        self.assertEqual(final["literature"]["llm_generated_features"], 1)
+        self.assertEqual(final["literature"]["metrics"], "05_cna_classifier/evidence/knowledge_metrics.json")
+
     def test_methylation_only_and_partial_status_are_explicit(self):
         self.put("06_workflow_summary/workflow_summary.json",json.dumps({"workflow_status":"partial_failure",
             "cna_status":"not_requested","methylation_status":"partial_failure",

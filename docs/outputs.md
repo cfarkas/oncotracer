@@ -179,44 +179,44 @@ This directory is produced by `run_cna_classifier: true` or the public
 `oncotracer reports` command for a completed native CNA run.
 
 ```bash
-sed -n '1,8p' "$OUT/05_cna_classifier/02_classification/cna_patient_classification.tsv"
-sed -n '1,8p' "$OUT/05_cna_classifier/06_knowledge/sample_knowledge_summary.tsv"
-sed -n '1,8p' "$OUT/05_cna_classifier/07_pathology/pathology_concordance.tsv"
+sed -n '1,8p' "$OUT/05_cna_classifier/tables/classification/cna_patient_classification.tsv"
+sed -n '1,8p' "$OUT/05_cna_classifier/evidence/sample_knowledge_summary.tsv"
+sed -n '1,8p' "$OUT/05_cna_classifier/diagnostics/pathology/pathology_concordance.tsv"
 ```
 
-The cohort report stays at `03_report/cna_classifier_report.html`, and clinician
-summaries stay in `03_report/clinician_reports/`, both beneath `05_cna_classifier/`.
-`06_knowledge/` retains evidence tables, references, metrics and LLM trial logs;
-finished knowledge HTML/PDF reports are in `03_report/llm_reports/`.
+Open `05_cna_classifier/final_report.pdf` or `final_report.html` for the complete
+CNA interpretation, and `clinician_report.pdf` or `clinician_report.html` for the
+short summary. With one sample, these are the only sample report copies. With
+multiple samples, the root PDFs combine the cohort and individual reports are
+under `samples/<sample>/`; the root HTML pages list those samples.
 
-Read [Models and pathology](models_pathology.md) before interpreting these files. They are research interpretations derived from stage 03, not replacements for the underlying event table or for diagnostic review.
-
-When the optional classifier and `run_pdf_reports` are enabled, open
-`05_cna_classifier/03_report/llm_reports/index.html` for final knowledge reports:
-
-| File under `llm_reports/` | Contents |
+| Path beneath `05_cna_classifier/` | Contents |
 | --- | --- |
-| `<sample>_CNA_knowledge_report.html` and `.pdf` | Matched reports for each included sample |
-| `all_sample_CNA_knowledge_reports.pdf` | All included sample reports in one PDF |
-| `index.html` | Browser index and links to classifier reports and evidence |
-| `pdf_html_report_index.tsv`, `pdf_report_index.tsv` | Matching sample sets and HTML/PDF filenames |
+| `cohort_report.html` | Cohort plots and classifier overview |
+| `figures/{summary,drivers,cohort}/{png,pdf}/` | Grouped plots and export formats |
+| `tables/classification/` | Classification results and related tables |
+| `tables/report_index.tsv` | One sample-to-report mapping |
+| `evidence/` | Literature text, references, generation metrics and model trials |
+| `diagnostics/` | Prepared inputs, GISTIC/pathology internals, caches and other supporting files |
+| `layout_manifest.json` | Original-to-canonical paths and artifact checksums |
+| `.reports/` | Report invocation history and separate resume ledger |
 
-These reports may contain generated literature drafts or labeled catalog
-fallbacks. See [LLM-assisted reports](llm_reports.md) to check which was used.
+The evidence labels distinguish accepted model drafts, retrieved-text fallbacks
+and built-in catalog text. See [LLM-assisted reports](llm_reports.md).
+The analysis-wide report in `06_workflow_summary/final_report.html` also includes
+available methylation results and each branch's completion status.
 
-## Stage 06: final report and workflow summary
+To physically organize reports from an older release without running models,
+retrieval, or analysis:
 
-`06_workflow_summary/final_report.html` brings together saved CNA event summaries,
-literature drafts or fallbacks, and available methylation classifier predictions.
-`final_report.json` provides the corresponding structured data. Links lead to the
-exact source tables, evidence and provenance. Each branch keeps its own status;
-missing or failed methylation predictions are not negative results, and no
-combined diagnosis is inferred.
+```bash
+oncotracer reports --config /absolute/path/project/config/run.yml --organize-only
+```
 
-Use `workflow_summary.txt` for output locations and `workflow_summary.json` for
-completion status and selected, completed and failed sample lists. Enabled
-knowledge reports are linked as `cna_knowledge_reports` and `cna_knowledge_report_index`; the classifier report and evidence have separate
-`cna_classifier_report` and `cna_knowledge_evidence` entries.
+This requires the unchanged original config and an authenticated completed CNA
+run. Existing report histories and the original native manifest are preserved;
+`layout_manifest.json` records moves and redundant copies. `oncotracer results`
+refreshes navigation for both old and new layouts without moving report files.
 
 ## Stage 07: optional ONT methylation
 

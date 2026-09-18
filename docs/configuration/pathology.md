@@ -99,11 +99,11 @@ Open these paths below `pathology-project/results/`:
 | --- | --- |
 | `06_workflow_summary/workflow_summary.txt` | Overall completion and warnings |
 | `03_cna_codification/cna_events.tsv` | Underlying copy-number gains and losses |
-| `05_cna_classifier/03_report/llm_reports/index.html` | Matched knowledge HTML/PDF reports, when enabled |
-| `05_cna_classifier/03_report/cna_classifier_report.html` | Cohort classifier report; open in a browser |
-| `05_cna_classifier/06_knowledge/` | Supporting evidence, references and model trial logs |
-| `05_cna_classifier/07_pathology/pathology_status.txt` | Matching or processing problems |
-| `05_cna_classifier/07_pathology/pathology_concordance.tsv` | Compatibility with the supplied diagnosis |
+| `05_cna_classifier/final_report.html` | Matched knowledge HTML/PDF reports, when enabled |
+| `05_cna_classifier/cohort_report.html` | Cohort classifier report; open in a browser |
+| `05_cna_classifier/evidence/` | Supporting evidence, references and model trial logs |
+| `05_cna_classifier/diagnostics/pathology/pathology_status.txt` | Matching or processing problems |
+| `05_cna_classifier/diagnostics/pathology/pathology_concordance.tsv` | Compatibility with the supplied diagnosis |
 
 An indeterminate or discordant result can reflect low depth, low tumor DNA,
 sample mismatch or biology that copy-number analysis cannot measure. A matching
