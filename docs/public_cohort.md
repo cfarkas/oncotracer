@@ -60,6 +60,7 @@ the corresponding `curl` command.
 ## 2. Assign the three libraries in the browser (recommended)
 
 ```bash
+cd /path/to/my/analyses_dir/
 oncotracer setup --project "$PWD/oncotracer-quickstart2/analysis" \
   --mode illumina --input-folder "$PWD/oncotracer-quickstart2/input"
 ```
