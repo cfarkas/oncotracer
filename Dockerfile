@@ -1,3 +1,7 @@
+# Pin the tested ONT callers and their original environment/model paths.
+# No Docker socket, privileged execution, or nested Singularity is needed.
+FROM hkubal/clairs-to:v0.4.4@sha256:4587ee6307575f68eec686f8cce23919a59b20b8f97c6d84d0084b1ef46a8c01 AS ont_callers
+
 # OncoTracer v2 native runtime: no Nextflow. Picard's Java runtime is managed inside Conda.
 FROM condaforge/miniforge3:24.11.3-0
 
@@ -6,7 +10,7 @@ ARG SOURCE_SHA256
 
 LABEL org.opencontainers.image.title="OncoTracer" \
       org.opencontainers.image.version="2.1.0" \
-      org.opencontainers.image.description="Native LP-WGS CNA analysis" \
+      org.opencontainers.image.description="Native LP-WGS CNA and small-variant analysis" \
       org.opencontainers.image.source="https://github.com/cfarkas/oncotracer" \
       org.opencontainers.image.revision="${SOURCE_COMMIT}" \
       org.opencontainers.image.source.sha256="${SOURCE_SHA256}" \
@@ -20,6 +24,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     ONCOTRACER_ICHORCNA_PREFIX=/opt/oncotracer-envs/ichorcna \
     ONCOTRACER_CLASSIFIER_PREFIX=/opt/oncotracer-envs/classifier \
     ONCOTRACER_GISTIC_PREFIX=/opt/oncotracer-envs/gistic \
+    ONCOTRACER_VARIANTS_PREFIX=/opt/oncotracer-envs/variants \
+    ONCOTRACER_FFPERASE_PREFIX=/opt/oncotracer-envs/ffperase \
     MPLBACKEND=Agg \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/conda/bin:/usr/local/bin:$PATH
@@ -28,17 +34,43 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # wget, tar, and gzip. Keeping the image Conda-only avoids dependence on an
 # independently changing Ubuntu package mirror during reproducible builds.
 WORKDIR ${ONCOTRACER_HOME}
-COPY . ${ONCOTRACER_HOME}/
+COPY environments/ ${ONCOTRACER_HOME}/environments/
 
 # Core tools live in base so the direct BAM-refinement helper can use the
 # read-only-container fallback without creating another environment.
 RUN conda config --system --set channel_priority strict \
     && conda env update --prefix /opt/conda --file environments/native-core.yml \
-    && conda env create --prefix "${ONCOTRACER_QDNASEQ_PREFIX}" --file environments/native-qdnaseq.yml \
-    && conda env create --prefix "${ONCOTRACER_ICHORCNA_PREFIX}" --file environments/native-ichorcna.yml \
-    && conda env create --prefix "${ONCOTRACER_CLASSIFIER_PREFIX}" --file environments/native-classifier.yml \
-    && conda env create --prefix "${ONCOTRACER_GISTIC_PREFIX}" --file environments/native-gistic2.yml \
     && conda clean -afy
+
+COPY scripts/bioconductor_mirror.sh /opt/build-support/bioconductor_mirror.sh
+
+# Cache completed environments separately; legacy annotation checksum checks stay.
+RUN BASH_ENV=/opt/build-support/bioconductor_mirror.sh conda env create --prefix "${ONCOTRACER_QDNASEQ_PREFIX}" --file environments/native-qdnaseq.yml \
+    && conda clean -afy
+RUN BASH_ENV=/opt/build-support/bioconductor_mirror.sh conda env create --prefix "${ONCOTRACER_ICHORCNA_PREFIX}" --file environments/native-ichorcna.yml \
+    && conda clean -afy
+RUN conda env create --prefix "${ONCOTRACER_CLASSIFIER_PREFIX}" --file environments/native-classifier.yml \
+    && conda clean -afy
+RUN conda env create --prefix "${ONCOTRACER_GISTIC_PREFIX}" --file environments/native-gistic2.yml \
+    && conda clean -afy
+RUN conda env create --prefix "${ONCOTRACER_VARIANTS_PREFIX}" --file environments/native-variants.yml \
+    && conda clean -afy
+RUN conda env create --prefix "${ONCOTRACER_FFPERASE_PREFIX}" --file environments/native-ffperase.yml \
+    && conda clean -afy
+
+# Preserve upstream absolute prefixes and licenses. The isolated wrappers keep
+# ONT Python/TensorFlow/PyTorch libraries out of the core and short-read envs.
+COPY --from=ont_callers /opt/bin/ /opt/bin/
+COPY --from=ont_callers /opt/micromamba/ /opt/micromamba/
+COPY scripts/docker_run_clairs_to.sh /usr/local/bin/run_clairs_to
+COPY scripts/docker_run_clair3.sh /usr/local/bin/run_clair3.sh
+RUN chmod 0755 /usr/local/bin/run_clairs_to /usr/local/bin/run_clair3.sh \
+    && /usr/local/bin/run_clairs_to --help >/dev/null \
+    && /usr/local/bin/run_clair3.sh --help >/dev/null
+
+ENV ONCOTRACER_CONTAINER_RUNTIME=docker
+
+COPY . ${ONCOTRACER_HOME}/
 
 RUN if [[ -z "${SOURCE_COMMIT}" && -z "${SOURCE_SHA256}" ]]; then \
         python scripts/build_native_binary.py \

@@ -1,0 +1,15 @@
+# Legacy model runtime, isolated from OncoTracer and modern callers.
+# Source and model files remain external; see docs/variants.md.
+name: oncotracer-ffperase
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.8
+  - numpy=1.19.5
+  - pandas=1.1.5
+  - scipy=1.5.3
+  - scikit-learn=0.24.1
+  - joblib=1.1.1
+  - pysam=0.19.1
+  - imbalanced-learn=0.8.1

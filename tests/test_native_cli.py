@@ -57,6 +57,7 @@ class NativeCliTests(unittest.TestCase):
             patch("oncotracer_cli.cli.os.getgid", return_value=8765),
             patch("oncotracer_cli.cli._load_install_config", return_value={}),
             patch("oncotracer_cli.cli._project_mounts", return_value=[config.parent]),
+            patch("oncotracer_cli.cli.load_flat_yaml", return_value={}),
             patch("oncotracer_cli.cli._run") as execute,
         ):
             _run_docker(config, args)

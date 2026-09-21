@@ -14,13 +14,13 @@ yours. Paste each `cat` block through `CSV`; it replaces the named file if it ex
 mkdir -p "$PWD/pathology-project/input/fastq"
 cat > "$PWD/pathology-project/input/samples.csv" <<'CSV'
 sample_name,status
-I7738,TUMOR
-V480,TUMOR
+SAMPLE_CNS,TUMOR
+SAMPLE_LYMPHOMA,TUMOR
 CSV
 ```
 
-Place `I7738_R1.fastq.gz`, `I7738_R2.fastq.gz`, `V480_R1.fastq.gz` and
-`V480_R2.fastq.gz` in `pathology-project/input/fastq/`. You can instead point
+Place `SAMPLE_CNS_R1.fastq.gz`, `SAMPLE_CNS_R2.fastq.gz`, `SAMPLE_LYMPHOMA_R1.fastq.gz` and
+`SAMPLE_LYMPHOMA_R2.fastq.gz` in `pathology-project/input/fastq/`. You can instead point
 `--reads-folder` below at their existing folder.
 
 ## 2. Create the de-identified pathology table
@@ -31,8 +31,8 @@ capitalization. The diagnoses here are examples, not findings from your data.
 ```bash
 cat > "$PWD/pathology-project/input/pathology.csv" <<'CSV'
 illumina_sample_id,case_code,final_diagnosis
-I7738,Case_07738,"Glioblastoma, IDH-wildtype."
-V480,Case_00480,"Diffuse large B-cell lymphoma, NOS."
+SAMPLE_CNS,SYNTH_CASE_CNS,"Glioblastoma, IDH-wildtype."
+SAMPLE_LYMPHOMA,SYNTH_CASE_LYMPHOMA,"Diffuse large B-cell lymphoma, NOS."
 CSV
 ```
 

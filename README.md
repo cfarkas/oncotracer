@@ -17,6 +17,8 @@ OncoTracer is for research use, not a standalone diagnostic system.
 | Prepare many libraries or ONT barcodes | [Batch examples](docs/auto_params.md) · [Create CSV tables](docs/command_basics.md) |
 | Check RAM or reuse genome indexes | [System requirements](docs/installation.md#requirements) · [Prebuilt indexes](docs/reference_indexes.md) |
 | Classify ONT methylation | [Methylation guide](docs/configuration/methylation.md) |
+| Add small-variant calling or reuse existing BAMs | [Variant guide](docs/variants.md) |
+| Prepare manuscript figures from saved results | [Paper report](docs/paper_report.md) |
 | Understand a result or an error | [Outputs](docs/outputs.md) · [Troubleshooting](docs/troubleshooting.md) |
 
 ## Install
@@ -76,10 +78,8 @@ oncotracer setup --project "$PWD/my-study" --mode illumina \
 ```
 
 Replace `/data/illumina` with your FASTQ folder. Follow the separate [Illumina and ONT walkthroughs](docs/setup.md) or [QuickStart 1](docs/quick_start.md).
-For terminal prompts, use `oncotracer setup --terminal`; press Enter to accept
-shown defaults such as `[100]` for the QDNAseq bin size. Scripts can use
-`setup --non-interactive` with explicit sample flags. `setup --project PATH --run`
-resumes an existing saved project.
+For terminal prompts, use `oncotracer setup --terminal`; press Enter to accept shown defaults such as `[100]` for the QDNAseq bin size.
+Scripts can use `setup --non-interactive` with explicit sample flags. `setup --project PATH --run` resumes an existing saved project.
 
 The page saves `my-study/config/run.yml` and sample metadata. To run later:
 
@@ -97,3 +97,7 @@ Methylation also produces `07_methylation/methylation_status.json`.
 [QuickStart 1](docs/quick_start.md) provides small public Illumina and ONT downloads, then uses the same `setup`, `check`, and `run` commands shown above. [QuickStart 2](docs/public_cohort.md) shows a three-library Illumina analysis. Genome-index reuse is optional; neither analysis needs a special example launcher.
 
 The [complete documentation](https://cfarkas.github.io/oncotracer/) includes [batch setup](docs/auto_params.md), [all settings](docs/configuration/parameter_reference.md), and [release validation](docs/parity_release.md). The optional `run_cna_classifier: true` setting adds interpretation of copy-number changes; it is separate from methylation classification. Runs record their commands and output checksums. Released builds also include `release-provenance.json`.
+
+### Additional variant assessments
+
+Illumina FFPE projects now require FFPERASE unless explicitly disabled. Optional Varlociraptor evaluates BAM evidence and applies local FDR filtering. Original caller genotypes and filters are retained; insufficient or unsupported evidence stays explicitly unevaluated. See [variant configuration and environments](docs/variants.md#additional-assessments-ffperase-and-varlociraptor). The Dockerfile includes separate pinned variant and FFPERASE environments; source/models and optional ANNOVAR databases remain external. For CNA plus variants from FASTQ, select Docker and a local image in browser setup, or use `setup --backend docker --image YOUR_IMAGE`. The project retains the image for its run. Docker uses native image tools and mounts external resources; host/Conda remains available for existing SIF callers. Set `ONCOTRACER_IMAGE` to select a locally built image with Docker Compose.

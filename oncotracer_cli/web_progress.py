@@ -9,16 +9,43 @@ _ETA = re.compile(r"^\s*(\S+\.part):\s*(\d+)%\s*\|\s*[\d.]+ MiB/s\s*\|\s*ETA (\d
 _COMMAND = re.compile(r"^\[([A-Za-z][\w.-]*)\] ")
 
 
+def _command_stage(name):
+    if name.startswith("variant-"):
+        for suffix, label in (
+            ("-ffperase-coverage", "Measuring coverage for FFPERASE"),
+            ("-varlociraptor-estimate", "Measuring alignment properties for Varlociraptor"),
+            ("-varlociraptor-preprocess", "Preparing Varlociraptor evidence"),
+            ("-varlociraptor-call", "Calculating variant probabilities"),
+            ("-varlociraptor-fdr", "Filtering variants by local FDR"),
+            ("-varlociraptor-view", "Preparing Varlociraptor results"),
+            ("-annovar", "Annotating variants"),
+        ):
+            if name.endswith(suffix):
+                return label
+        if "-ffperase-" in name:
+            return "Assessing FFPE artifacts"
+        if name.endswith(("-call", "-pileup")):
+            return "Calling small variants"
+        if name.endswith(("-orientation", "-filter")):
+            return "Filtering small variants"
+        return "Preparing variant analysis"
+    return next((label for term, label in (
+        ("align", "Aligning reads"), ("markdup", "Marking duplicate reads"),
+        ("refine", "Refining copy-number results"), ("classifier", "Creating interpretation reports"),
+        ("methyl", "Analyzing methylation"), ("qdnaseq", "Calling copy-number changes"),
+        ("ichorcna", "Calling copy-number changes")) if term in name), "Processing analysis")
+
+
 def progress_for_job(job, log, *, now=None):
     now = time.monotonic() if now is None else now
     end = job.get("_finished_at", now)
     elapsed = max(0, int(end - job.get("_started_at", end)))
     status = job["status"]
     if status not in {"running", "stopping"}:
-        return {"elapsed_seconds": elapsed, "stage": {"complete": "Completed", "stopped": "Stopped", "removed": "Project removed"}.get(status, "Failed"),
+        return {"elapsed_seconds": elapsed, "stage": {"complete": "Completed", "partial_failure": "Partial failure", "stopped": "Stopped", "removed": "Project removed"}.get(status, "Failed"),
                 "eta_seconds": 0 if status == "complete" else None,
                 "overall_eta_seconds": 0 if status == "complete" else None,
-                "eta_scope": "analysis", "note": ""}
+                "eta_scope": "analysis", "note": "Completed results are retained; some assessments remain incomplete." if status == "partial_failure" else ""}
     stage, eta, marker, percent = "Preparing analysis", None, None, None
     for line in log.splitlines():
         match = _DOWNLOAD.match(line)
@@ -36,11 +63,7 @@ def progress_for_job(job, log, *, now=None):
             stage, eta, marker, percent = "Preparing analysis tools", None, None, None
         elif command:
             name = command[1].lower()
-            stage = next((label for term, label in (
-                ("align", "Aligning reads"), ("markdup", "Marking duplicate reads"),
-                ("refine", "Refining copy-number results"), ("classifier", "Creating interpretation reports"),
-                ("methyl", "Analyzing methylation"), ("qdnaseq", "Calling copy-number changes"),
-                ("ichorcna", "Calling copy-number changes")) if term in name), "Processing analysis")
+            stage = _command_stage(name)
             eta, marker, percent = None, None, None
     if status == "stopping":
         stage, eta, marker, percent = "Stopping analysis", None, None, None

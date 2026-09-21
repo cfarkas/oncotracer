@@ -18,6 +18,8 @@ import time
 import urllib.error
 import urllib.request
 
+# Permit the documented direct script invocation from any working directory.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 def http(method, url, data=None):
     request = urllib.request.Request(url, data=None if data is None else json.dumps(data).encode(),
@@ -55,6 +57,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--test-stop", action="store_true", help="also test Stop and cleanup using a harmless sleeping job")
+    parser.add_argument("--test-variants", action="store_true", help="also test Fresh/FFPE buttons and platform-specific variant configuration; no caller execution")
     options = parser.parse_args()
     root = options.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
@@ -201,6 +204,44 @@ else:
         report["checks"].append("case normalization, editable names, clearing GISTIC after unassignment, save/check and enabled Run button")
         js("document.querySelector('#samples-card').scrollIntoView()")
         (root / "sample-board.png").write_bytes(base64.b64decode(wd("GET", "/screenshot")))
+        if options.test_variants:
+            from oncotracer_cli.runtime import load_flat_yaml
+            click('#variants');click('#variant-ffpe')
+            assert js("return document.querySelector('#variant-ffpe').getAttribute('aria-pressed')") == 'true'
+            assert js("return [...document.querySelectorAll('[data-variant-caller]')].map(e=>e.value)") == ['mutect2','freebayes','bcftools']
+            assert not js("return document.querySelector('#variant-ffperase-fields').hidden")
+            fill('#variant_varlociraptor','required');fill('#variant_varlociraptor_fdr','0.05')
+            click('[data-variant-caller="freebayes"]');fill('#variant_annovar','off')
+            prepare('illumina-variants-project')
+            config = load_flat_yaml(root / 'illumina-variants-project/config/run.yml')
+            assert config['run_variants'] is True and config['variant_specimen_type'] == 'ffpe'
+            assert config['variant_callers'] == 'mutect2,freebayes' and config['variant_annovar'] == 'off'
+            assert config['variant_ffperase'] == 'required' and config['variant_varlociraptor'] == 'required'
+            # Docker uses its own tools; stale host SIF/prefix values stay out of YAML.
+            fill('#variant_tool_prefix', '/host-only/variant-tools')
+            fill('#variant_ffperase_prefix', '/host-only/ffperase')
+            fill('#variant_ffperase_sif', '/host-only/ffperase.sif')
+            assert not js("return document.querySelector('#backend option[value=docker]').disabled")
+            fill('#backend', 'docker');fill('#docker_image', 'oncotracer:browser-fixture')
+            assert not js("return document.querySelector('#docker-image-field').hidden")
+            assert js("return document.querySelector('#variant-tool-prefix-fields').hidden && document.querySelector('#variant-ffperase-prefix-fields').hidden && document.querySelector('#variant-ffperase-sif-fields').hidden")
+            prepare('illumina-docker-variants-project')
+            config = load_flat_yaml(root / 'illumina-docker-variants-project/config/run.yml')
+            assert config['execution_backend'] == 'docker' and config['docker_image'] == 'oncotracer:browser-fixture'
+            assert not any(key in config for key in ('variant_tool_prefix','variant_ffperase_prefix','variant_ffperase_sif'))
+            fill('#backend', 'conda')
+            assert js("return document.querySelector('#docker-image-field').hidden")
+            for field in ('variant_tool_prefix','variant_ffperase_prefix','variant_ffperase_sif'):fill('#'+field, '')
+            report['checks'].append('Docker CNA+variants saves local image, omits host prefixes/SIFs, checks inputs without tools, and restores host controls')
+            click('#variant-fresh')
+            assert js("return variantPayload().variant_specimen_type") == 'fresh'
+            assert js("return document.querySelector('#variant-ffperase-fields').hidden")
+            assert js("return variantPayload().variant_ffperase === undefined")
+            assert js("return document.querySelector('#variant-ffpe').getAttribute('aria-pressed')") == 'false'
+            js("document.querySelector('#variant-fields').scrollIntoView()")
+            (root / 'variant-preservation-form.png').write_bytes(base64.b64decode(wd('GET', '/screenshot')))
+            click('#variants')
+            report['checks'].append('Fresh/FFPE buttons switch explicitly; Illumina callers and ANNOVAR choice save/check without starting tools')
         scan_ont(fixture / 'ont', 2)
         assert js("return document.querySelector('.sample[data-id=\"0\"] small').textContent").startswith('69 FASTQs')
         assert js("return document.querySelectorAll('#fastq-rows tr').length") == 71
@@ -211,6 +252,21 @@ else:
         metadata = prepare('ont-project')
         assert [len(json.loads(r['fastq_files'])) for r in metadata] == [69,2]
         report["checks"].append("ONT barcode batches remain grouped as 69 and 2 files; Normal selects QDNAseq")
+        if options.test_variants:
+            model = root / 'clair3-fixture-model';model.mkdir();(model / 'fixture.txt').write_text('model-path fixture; never executed')
+            click('#variants');click('#variant-fresh')
+            assert js("return [...document.querySelectorAll('[data-variant-caller]')].map(e=>e.value)") == ['clair3','clairs_to']
+            assert not js("return document.querySelector('#variant-clair3-field').hidden")
+            fill('#variant_clair3_model', str(model));click('[data-variant-caller="clairs_to"]')
+            fill('#backend', 'docker');fill('#docker_image', 'oncotracer:browser-fixture')
+            assert not js("return document.querySelector('#variant-clairsto-field').hidden")
+            fill('#variant_clairsto_platform', 'ont_fixture')
+            prepare('ont-variants-project')
+            config = load_flat_yaml(root / 'ont-variants-project/config/run.yml')
+            assert config['variant_callers'] == 'clair3,clairs_to' and config['variant_specimen_type'] == 'fresh'
+            assert config['variant_clair3_model'] == str(model) and config['variant_clairsto_platform'] == 'ont_fixture'
+            fill('#backend', 'conda');click('#variants')
+            report['checks'].append('ONT exposes only Clair3/ClairS-TO with explicit model/preset fields; config check starts no tools')
         # Exercise the ONT linking and resource form with real config validation.
         from tests.test_native_methylation import Fixture
         from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES

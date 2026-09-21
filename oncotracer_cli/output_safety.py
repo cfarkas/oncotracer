@@ -49,6 +49,7 @@ _RESERVED_TOP_LEVEL = {
     "05_cna_classifier",
     "06_workflow_summary",
     "07_methylation",
+    "08_variants",
 }
 _RUNTIME_PAYLOAD_ROOTS = (
     "oncotracer_cli",

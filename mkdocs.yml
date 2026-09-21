@@ -47,6 +47,7 @@ nav:
       - Illumina Setup: configuration/illumina.md
       - ONT Setup: configuration/ont.md
       - Methylation Resource Reference: configuration/methylation_reference.md
+      - Small-Variant Calling: variants.md
       - Pathology and Classifier: configuration/pathology.md
       - Advanced Refinement: configuration/refinement.md
       - All Parameters: configuration/parameter_reference.md
@@ -58,6 +59,7 @@ nav:
       - Models and Pathology: models_pathology.md
       - CNA Evidence and Uncertainty: cna_evidence_assessment.md
       - LLM-Assisted Reports: llm_reports.md
+      - Manuscript Figures: paper_report.md
       - Results Gallery: gallery.md
   - Validation:
       - Implementation Details: architecture_details.md

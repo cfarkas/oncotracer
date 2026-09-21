@@ -105,6 +105,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 "ONT CNA method": "ichorcna",
                 "CNA bin size (kb)": "100",
                 "Add CNA interpretation reports?": "no",
+                "Add small-variant calling?": "no",
                 "Analysis tools (--backend)": "conda",
                 "hg38 reference": "download",
                 "Final action": "save",

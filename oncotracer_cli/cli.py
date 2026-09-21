@@ -24,6 +24,8 @@ from .setup import add_setup_commands
 from .web import add_web_command
 from .results import add_results_command
 from .report_command import add_reports_command
+from .paper_report_command import add_paper_report_command
+from .variant_command import add_variants_command
 from .system_check import add_system_command
 from .uninstall import add_uninstall_command
 from .reference_bundle import (
@@ -43,6 +45,8 @@ from .install_safety import (
 from .provenance import ProvenanceError, get_provenance
 from .runtime import (
     OncoTracerError,
+    OncoTracerPartialFailure,
+    OncoTracerCommandError,
     atomic_write_json,
     atomic_write_text,
     download,
@@ -118,8 +122,9 @@ def _run(
     if completed.stderr:
         detail(completed.stderr, end="")
     if completed.returncode:
-        raise OncoTracerError(
-            f"command failed with exit code {completed.returncode}: {shlex.join(argv)}"
+        raise OncoTracerCommandError(
+            f"command failed with exit code {completed.returncode}: {shlex.join(argv)}",
+            completed.returncode,
         )
 
 
@@ -435,7 +440,12 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         "docker" if args.dry_run else require_command("docker")
     )
     install = _load_install_config()
-    image = args.image or str(install.get("image") or DEFAULT_IMAGE)
+    config = load_flat_yaml(config_path)
+    image = args.image or str(config.get("docker_image") or install.get("image") or DEFAULT_IMAGE)
+    from .docker_runtime import (docker_mounts, docker_resource_environment,
+                                 validate_docker_variants, variants_enabled)
+    enabled = variants_enabled(config)
+    validate_docker_variants(config)
     command: list[str | Path] = [
         docker,
         "run",
@@ -444,8 +454,23 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         f"{os.getuid()}:{os.getgid()}",
     ]
     command.extend(["--env", "HOME=/tmp", "--env", "MPLCONFIGDIR=/tmp/matplotlib"])
-    for mount in _project_mounts(config_path):
-        command.extend(["--volume", f"{mount}:{mount}"])
+    if enabled:
+        environment = docker_resource_environment(config)
+        for key, value in environment.items():
+            command.extend(["--env", f"{key}={value}"])
+        command.extend(["--workdir", Path.cwd()])
+        for mount, access in docker_mounts(config_path, environment=environment, create=not args.dry_run):
+            command.extend(["--volume", f"{mount}:{mount}:{access}"])
+        # Fail early if the selected image lacks callers/resources, before an
+        # expensive alignment. Execute image code, never the mounted host tree.
+        preflight = [*command, "--entrypoint", "/opt/conda/bin/python", image, "-I", "-c",
+                     "import sys; sys.path.insert(0, '/opt/oncotracer'); "
+                     "from oncotracer_cli.docker_runtime import preflight; preflight(sys.argv[1])",
+                     config_path]
+        _run(preflight, dry_run=args.dry_run)
+    else:
+        for mount in _project_mounts(config_path):
+            command.extend(["--volume", f"{mount}:{mount}"])
     command.extend(
         [image, "internal-run", "--config", config_path, "--backend", "host"]
     )
@@ -461,7 +486,25 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--pod5-dir", Path(args.pod5_dir).expanduser().resolve()])
     if args.gpu:
         command.append("--gpu")
-    _run(command, dry_run=args.dry_run)
+    outdir = Path(str(config["outdir"])).expanduser().absolute() if config.get("outdir") else None
+    config_sha256 = sha256_file(config_path) if outdir is not None else ""
+    manifest_path = outdir / "06_workflow_summary/native_run_manifest.json" if outdir is not None else None
+    try:
+        prior_manifest_mtime = manifest_path.stat().st_mtime_ns if manifest_path is not None else None
+    except OSError:
+        prior_manifest_mtime = None
+    try:
+        _run(command, dry_run=args.dry_run)
+    except OncoTracerCommandError as error:
+        # Exit 2 also represents genuine failure. Only a newly finalized,
+        # hash-verified partial result from this config changes presentation.
+        from .run_completion import published_native_partial
+        if (error.returncode == 2 and outdir is not None
+                and published_native_partial(outdir, config_sha256, prior_manifest_mtime)):
+            raise OncoTracerPartialFailure(
+                "Docker analysis retained completed results; requested branches remain incomplete.", outdir
+            ) from error
+        raise
 
 
 def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
@@ -600,6 +643,13 @@ def _prepare_configured_hg38(config_path: Path, args: argparse.Namespace) -> Non
 def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
     config_path = require_file(config_path, "OncoTracer YAML config")
     backend = _backend_from(args)
+    if backend in {"singularity", "apptainer"}:
+        requested = load_flat_yaml(config_path).get("run_variants", False)
+        if str(requested).strip().lower() not in {"false", "0", "no", "off", "", "none"}:
+            raise OncoTracerError(
+                "the optional variants branch requires backend host, conda, poetry, or docker; "
+                "integrated variants are not supported by the Singularity backend"
+            )
     if backend in {"docker", "singularity", "apptainer"} and _methylation_requested(
         config_path, args
     ):
@@ -628,8 +678,11 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
         _prepare_configured_hg38(config_path, args)
         return _run_host(config_path, args)
     if backend == "docker":
-        _prepare_configured_hg38(config_path, args)
-        outdir = _run_host(config_path, args) if args.dry_run else None
+        from .docker_runtime import docker_host_preview, validate_docker_variants
+        validate_docker_variants(load_flat_yaml(config_path))
+        with docker_host_preview():
+            _prepare_configured_hg38(config_path, args)
+            outdir = _run_host(config_path, args) if args.dry_run else None
         _run_docker(config_path, args)
         return outdir
     if backend in {"singularity", "apptainer"}:
@@ -1509,6 +1562,8 @@ def build_parser() -> argparse.ArgumentParser:
     add_web_command(subparsers)
     add_results_command(subparsers)
     add_reports_command(subparsers)
+    add_paper_report_command(subparsers)
+    add_variants_command(subparsers)
     add_system_command(subparsers)
     add_uninstall_command(subparsers)
     add_reference_command(subparsers)
@@ -1576,6 +1631,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _legacy_to_modern(values: list[str]) -> list[str]:
     """Translate v1 launcher syntax while keeping v2 execution native."""
+    if values and values[0] in {"--paper_report", "--paper-report"}:
+        return ["paper-report", *values[1:]]
     if (
         not values
         or values[0]
@@ -1591,6 +1648,8 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
             "web",
             "results",
             "reports",
+            "paper-report",
+            "variants",
             "check",
             "system",
             "uninstall",
@@ -1652,6 +1711,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             bool(getattr(args, "dry_run", False)) or args.command in {"check", "system"}
         ):
             return int(args.func(args))
+    except OncoTracerPartialFailure as outcome:
+        print(f"PARTIAL FAILURE: {outcome}", file=sys.stderr)
+        print(f"Completed outputs are preserved: {outcome.outdir}", file=sys.stderr)
+        print(f"Results: {outcome.outdir / 'index.html'}", file=sys.stderr)
+        return 2
     except OncoTracerError as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2

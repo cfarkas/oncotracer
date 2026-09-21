@@ -76,6 +76,7 @@ class WebState:
         self.token = secrets.token_urlsafe(32)
         self.lock = threading.RLock()
         self.scans = {}
+        self.variant_loads = {}
         self.projects = {}
         self.result_roots = {}
         self.job = None
@@ -87,16 +88,17 @@ class WebState:
         defaults = {}
         if self.setup_args:
             args = self.setup_args
+            from .setup import VARIANT_FIELDS
             defaults = {key: getattr(args, key, None) for key in
-                        ("mode", "analysis", "threads", "backend", "classifier", "gpu", "accept_sturgeon_license")}
-            for key, value in {"input_folder": args.input_folder or args.reads_folder,
-                               "project": args.project, "resources": args.resources,
-                               "methylation_path": args.modbam or args.pod5_dir}.items():
+                        ("mode", "analysis", "threads", "backend", "classifier", "gpu", "accept_sturgeon_license", "variants", "variant_config", "image", *VARIANT_FIELDS)}
+            for key, value in {"input_folder": getattr(args, 'input_folder', None) or getattr(args, 'reads_folder', None),
+                               "project": getattr(args, "project", None), "resources": getattr(args, "resources", None),
+                               "methylation_path": getattr(args, "modbam", None) or getattr(args, "pod5_dir", None)}.items():
                 if value:
                     defaults[key] = str(Path(value).expanduser().resolve())
-            defaults["methylation_source"] = "pod5" if args.pod5_dir else "modbam"
-            reference = args.hg38_build or args.reference_root
-            defaults["reference"] = "build" if args.build_reference else "reuse" if reference else "download"
+            defaults["methylation_source"] = "pod5" if getattr(args, "pod5_dir", None) else "modbam"
+            reference = getattr(args, "hg38_build", None) or getattr(args, "reference_root", None)
+            defaults["reference"] = "build" if getattr(args, "build_reference", False) else "reuse" if reference else "download"
             defaults["reference_path"] = str(Path(reference).expanduser().resolve()) if reference else ""
         places = [("Home", Path.home()), ("This computer", Path("/")),
                   ("Starting folder", self.start_dir), ("Mounted drives", Path("/media")),
@@ -244,6 +246,20 @@ class WebState:
                 for key in ("reference_cache", *EXECUTABLES, *RESOURCE_FLAGS,
                             *RESOURCE_FILES["marlin"], *RESOURCE_FILES["sturgeon"]):
                     setattr(args, key, copy.deepcopy(getattr(self.setup_args, key, None)))
+            from .setup import VARIANT_FIELDS
+            variants = data.get("variants", False)
+            if type(variants) is not bool:
+                raise OncoTracerError("Small-variant calling selection must be true or false.")
+            args.variants = variants
+            if data.get('docker_image') not in (None, ''):
+                if backend != 'docker':
+                    raise OncoTracerError('Docker image selection requires the Docker backend.')
+                args.image = _text(data, 'docker_image')
+            for key in VARIANT_FIELDS:
+                # Empty optional fields are omitted. Explicit false, arrays and
+                # dictionaries are invalid rather than silently truthy defaults.
+                if key in data and data[key] not in (None, ""):
+                    setattr(args, key, _text(data, key))
             values = {}
             if discovered.mode == "illumina":
                 args._wizard_rows = [[row["sample"], str(row["source"].fastq_1),
@@ -347,6 +363,14 @@ class WebState:
             return {key: value for key, value in prepared.items()
                     if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot", "project_created", "project_identity"}}
 
+    def variant_load(self, data):
+        from .variant_web import load_for_browser
+        return load_for_browser(self, data)
+
+    def variant_prepare(self, data):
+        from .variant_web import prepare_for_browser
+        return prepare_for_browser(self, data)
+
     def run(self, data):
         with self.lock:
             prepared = self.projects.get(_text(data, "project_id"))
@@ -358,20 +382,29 @@ class WebState:
                 raise OncoTracerError("An analysis is already running in this browser session.")
             if _fingerprint([Path(path) for path in prepared["fingerprint"]]) != prepared["fingerprint"]:
                 raise OncoTracerError("Saved configuration changed after review. Check and run it with the CLI, or prepare a new project.")
-            discovered = prepared["discovered"]
-            try:
-                refreshed = discover_fastqs(discovered.root, discovered.mode)
-                current = {sample.fastq_dir if discovered.mode == "ont" else sample.fastq_1: sample
-                           for sample in refreshed.samples}
-                for sample in prepared["selected_sources"]:
-                    key = sample.fastq_dir if discovered.mode == "ont" else sample.fastq_1
-                    if current.get(key) != sample:
-                        raise OncoTracerError("The selected FASTQ listing changed.")
-                if _input_snapshot(prepared["selected_sources"]) != prepared["input_snapshot"]:
-                    raise OncoTracerError("A selected FASTQ file changed.")
-            except (OncoTracerError, OSError) as error:
-                raise OncoTracerError("FASTQ inputs changed after review. Rescan and review the samples in a new project before running.") from error
+            if prepared.get('kind') == 'existing_bam_variants':
+                from .variant_web import assert_snapshot
+                assert_snapshot(prepared['input_snapshot'], prepared['input_digests'])
+            else:
+                discovered = prepared["discovered"]
+                try:
+                    refreshed = discover_fastqs(discovered.root, discovered.mode)
+                    current = {sample.fastq_dir if discovered.mode == "ont" else sample.fastq_1: sample
+                               for sample in refreshed.samples}
+                    for sample in prepared["selected_sources"]:
+                        key = sample.fastq_dir if discovered.mode == "ont" else sample.fastq_1
+                        if current.get(key) != sample:
+                            raise OncoTracerError("The selected FASTQ listing changed.")
+                    if _input_snapshot(prepared["selected_sources"]) != prepared["input_snapshot"]:
+                        raise OncoTracerError("A selected FASTQ file changed.")
+                except (OncoTracerError, OSError) as error:
+                    raise OncoTracerError("FASTQ inputs changed after review. Rescan and review the samples in a new project before running.") from error
             project = Path(prepared["project"])
+            if project.is_symlink() or project.resolve() != project:
+                raise OncoTracerError('The reviewed project folder was redirected. Prepare a new project.')
+            project_stat = project.stat()
+            if (project_stat.st_dev, project_stat.st_ino) != prepared['project_identity']:
+                raise OncoTracerError('The reviewed project folder was replaced. Prepare a new project.')
             logs = project / "logs"
             logs.mkdir(exist_ok=True)
             log_path = logs / "web-analysis.log"
@@ -379,8 +412,15 @@ class WebState:
             while log_path.exists() or log_path.is_symlink():
                 attempt += 1
                 log_path = logs / f"web-analysis-{attempt}.log"
-            command = _launcher() + ["setup", "--project", str(project), "--run", "--non-interactive",
-                                     "--backend", prepared["backend"]]
+            if prepared.get('kind') == 'existing_bam_variants':
+                command = _launcher() + ['variants', '--config', prepared['config_path']]
+            else:
+                command = _launcher() + ["setup", "--project", str(project), "--run", "--non-interactive",
+                                         "--backend", prepared["backend"]]
+            status_path = Path(prepared['outdir']) / '08_variants/variant_status.json'
+            prior_status = status_path.stat().st_mtime_ns if status_path.exists() else None
+            manifest_path = Path(prepared['outdir']) / '06_workflow_summary/native_run_manifest.json'
+            prior_manifest = manifest_path.stat().st_mtime_ns if manifest_path.exists() else None
             with log_path.open("xb") as handle:
                 try:
                     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=handle,
@@ -391,7 +431,8 @@ class WebState:
                     raise
             self.job = {"project_id": prepared["id"], "status": "running", "exit_code": None,
                         "log_path": str(log_path), "pid": process.pid, "process": process,
-                        "_started_at": time.monotonic()}
+                        "_started_at": time.monotonic(), '_prior_variant_status_mtime': prior_status,
+                        '_prior_manifest_mtime': prior_manifest}
             threading.Thread(target=self._wait, args=(self.job,), daemon=True).start()
             return self.status()
 
@@ -406,6 +447,15 @@ class WebState:
             job["status"] = "complete" if result == 0 else "failed"
             prepared = self.projects[job["project_id"]]
             outdir = Path(prepared["outdir"]).resolve()
+            if result == 2 and prepared.get('kind') == 'existing_bam_variants':
+                from .variant_web import published_partial_result
+                if published_partial_result(prepared, job.get('_prior_variant_status_mtime')):
+                    job['status'] = 'partial_failure'
+            elif result == 2:
+                from .run_completion import published_native_partial
+                if published_native_partial(outdir, prepared['fingerprint'][prepared['config_path']],
+                                            job.get('_prior_manifest_mtime')):
+                    job['status'] = 'partial_failure'
             if (outdir / "index.html").is_file():
                 key = secrets.token_urlsafe(32)
                 self.result_roots[key] = outdir
@@ -664,11 +714,15 @@ class WebHandler(BaseHTTPRequestHandler):
         if url.path.startswith("/results/"):
             self._result(url)
             return
-        if url.path == "/":
+        if url.path in ("/", "/variants", "/variants/"):
             if self.headers.get("Host") != urlsplit(self.server.origin).netloc:
                 self._reply(403, {"error": "Use the printed loopback address."})
             else:
-                self._reply(200, PAGE, html=True)
+                if url.path != '/':
+                    from .variant_web_ui import PAGE as variant_page
+                    self._reply(200, variant_page, html=True)
+                else:
+                    self._reply(200, PAGE, html=True)
             return
         if not self._authorized():
             return
@@ -700,6 +754,7 @@ class WebHandler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise OncoTracerError("Expected a JSON object.")
             methods = {"/api/ont-inputs": self.server.state.ont_inputs, "/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
+                       '/api/variant-load': self.server.state.variant_load, '/api/variant-prepare': self.server.state.variant_prepare,
                        "/api/run": self.server.state.run, "/api/stop": self.server.state.stop,
                        "/api/remove-project": self.server.state.remove_project}
             method = methods.get(urlsplit(self.path).path)
@@ -721,13 +776,14 @@ class WebHandler(BaseHTTPRequestHandler):
 def command_web(args):
     if not 1 <= args.port <= 65535:
         raise OncoTracerError("--port must be from 1 to 65535.")
-    state = WebState(Path(args.start_dir), args if hasattr(args, "input_folder") else None)
+    state = WebState(Path(args.start_dir), args if hasattr(args, "input_folder") or getattr(args, "variant_config", None) else None)
     try:
         server = WebServer(args.port, state)
     except OSError as error:
         alternate = args.port + 1 if args.port < 65535 else 8888
         raise OncoTracerError(f"Cannot open 127.0.0.1:{args.port}: {error}. Try --port {alternate}.") from error
-    url = f"{server.origin}/#{state.token}"
+    route = '/variants/' if getattr(args, 'variant_config', None) else '/'
+    url = f"{server.origin}{route}#{state.token}"
     print(f"OncoTracer browser URL (copy the entire link, including #):\n{url}", flush=True)
     print("Folders are on this computer. Keep this terminal open; Ctrl+C closes the setup page.", flush=True)
     try:
@@ -750,4 +806,5 @@ def add_web_command(subparsers):
     parser.add_argument("--port", type=int, default=8888, help="loopback HTTP port (default: 8888)")
     parser.add_argument("--start-dir", default=str(Path.cwd()), help="starting folder in the local file navigator")
     parser.add_argument("--no-browser", action="store_true", help="print the local URL without opening a browser automatically")
+    parser.add_argument('--variant-config', help='Review and rerun an existing-BAM variant YAML in the browser')
     parser.set_defaults(func=command_web)

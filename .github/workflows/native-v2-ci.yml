@@ -62,6 +62,21 @@ jobs:
           python3 -m unittest -v \
             tests/test_native_cli.py \
             tests/test_native_engine.py \
+            tests/test_native_variants.py \
+            tests/test_variant_command.py \
+            tests/test_variant_engine.py \
+            tests/test_variant_container.py \
+            tests/test_docker_variants.py \
+            tests/test_variant_assessments.py \
+            tests/test_annovar.py \
+            tests/test_variant_results.py \
+            tests/test_variant_setup.py \
+            tests/test_variant_web.py \
+            tests/test_variant_web_ui.py \
+            tests/test_web_progress.py \
+            tests/test_run_completion.py \
+            tests/test_paper_report_command.py \
+            tests/test_paper_report_rendering.py \
             tests/test_boundary_refinement_gaps.py \
             tests/test_fontconfig_safety.py \
             tests/test_command_runner_containment.py \
@@ -157,12 +172,24 @@ jobs:
               'oncotracer_cli/web.py',
               'oncotracer_cli/web_ui.py',
               'oncotracer_cli/results.py',
+              'oncotracer_cli/variants.py',
+              'oncotracer_cli/docker_runtime.py',
+              'oncotracer_cli/variant_command.py',
+              'oncotracer_cli/variant_web.py',
+              'oncotracer_cli/annovar.py',
+              'oncotracer_cli/ffperase.py',
+              'oncotracer_cli/varlociraptor.py',
+              'oncotracer_cli/run_completion.py',
+              'oncotracer_cli/paper_report.py',
+              'oncotracer_cli/paper_report_command.py',
               'payload/bin/cna_classifier_nf/bin/01_prepare_cna_inputs.py',
               'payload/bin/cna_classifier_nf/bin/llm_runtime.py',
               'payload/bin/cna_classifier_nf/bin/08_clinician_driver_reports.py',
               'payload/bin/cna_classifier_nf/assets/pancancer_cna_regions.tsv',
               'payload/environments/native-classifier.yml',
               'payload/environments/native-gistic2.yml',
+              'payload/environments/native-variants.yml',
+              'payload/environments/native-ffperase.yml',
           }
           assert not (required - names), sorted(required - names)
           assert not any(
@@ -204,6 +231,8 @@ jobs:
           - native-ichorcna
           - native-classifier
           - native-gistic2
+          - native-variants
+          - native-ffperase
     defaults:
       run:
         shell: bash -el {0}
@@ -301,6 +330,17 @@ jobs:
                 "$PREFIX/bin/python" -c \
                 'import pandas,openpyxl,numpy,scipy,sklearn,matplotlib,jinja2,requests,reportlab,pypdf,transformers,torch,safetensors,huggingface_hub; print("CLASSIFIER_OK")'
               ;;
+            native-variants)
+              "$PREFIX/bin/samtools" --version | sed -n '1p'
+              "$PREFIX/bin/bcftools" --version | sed -n '1p'
+              "$PREFIX/bin/freebayes" --version
+              "$PREFIX/bin/gatk" --version
+              "$PREFIX/bin/varlociraptor" --version
+              ;;
+            native-ffperase)
+              "$PREFIX/bin/python" -c \
+                'import numpy,pandas,scipy,sklearn,joblib,pysam,imblearn; assert sklearn.__version__ == "0.24.1"; print("FFPERASE_RUNTIME_OK")'
+              ;;
             native-gistic2)
               test -x "$PREFIX/bin/gistic2"
               shopt -s nullglob
@@ -364,19 +404,23 @@ jobs:
       - name: Require safe Docker build capacity
         run: |
           set -Eeuo pipefail
-          # 14 GiB final scientific environments + 18 GiB transient solve/export
-          # space + 8 GiB runner reserve = 40 GiB free before the build.
+          # The existing 40 GiB CNA budget is extended for the variant and ONT
+          # runtimes (the tested full image is 31.3 GiB) and upstream pull/export.
+          # Require 72 GiB free before the build.
           FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=14
           TRANSIENT_SOLVE_AND_EXPORT_GIB=18
+          VARIANT_AND_ONT_RUNTIME_GIB=20
+          ONT_PULL_AND_EXPORT_GIB=12
           RUNNER_RESERVE_GIB=8
           MIN_PHYSICAL_GIB=15
           MIN_FREE_GIB=$((
             FINAL_SCIENTIFIC_ENVIRONMENTS_GIB +
-            TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB
+            TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB +
+            VARIANT_AND_ONT_RUNTIME_GIB + ONT_PULL_AND_EXPORT_GIB
           ))
           DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
           bash scripts/ci_resource_preflight.sh \
-            --purpose 'OncoTracer native five-environment Docker build' \
+            --purpose 'OncoTracer seven-environment and ONT-caller Docker build' \
             --min-free-gib "$MIN_FREE_GIB" \
             --min-physical-gib "$MIN_PHYSICAL_GIB" \
             --min-addressable-gib "$MIN_PHYSICAL_GIB" \
@@ -410,7 +454,7 @@ jobs:
             --build-arg SOURCE_COMMIT='${{ steps.source.outputs.source_commit }}' \
             --build-arg SOURCE_SHA256='${{ steps.source.outputs.source_sha256 }}' \
             --tag oncotracer:v2-ci .
-      - name: Verify native image provenance, all five environments, and absent Nextflow
+      - name: Verify image provenance, seven environments, ONT callers, and absent Nextflow
         run: |
           docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.1.0'
           docker run --rm oncotracer:v2-ci provenance --json \
@@ -461,6 +505,15 @@ jobs:
             env CUDA_VISIBLE_DEVICES="" NVIDIA_VISIBLE_DEVICES=void \
               "$ONCOTRACER_CLASSIFIER_PREFIX/bin/python" -c \
               "import pandas,openpyxl,numpy,scipy,sklearn,matplotlib,jinja2,requests,reportlab,pypdf,transformers,torch,safetensors,huggingface_hub; print(\"CLASSIFIER_OK\")"
+            "$ONCOTRACER_VARIANTS_PREFIX/bin/samtools" --version | sed -n "1p"
+            "$ONCOTRACER_VARIANTS_PREFIX/bin/bcftools" --version | sed -n "1p"
+            "$ONCOTRACER_VARIANTS_PREFIX/bin/freebayes" --version
+            "$ONCOTRACER_VARIANTS_PREFIX/bin/gatk" --version
+            "$ONCOTRACER_VARIANTS_PREFIX/bin/varlociraptor" --version
+            "$ONCOTRACER_FFPERASE_PREFIX/bin/python" -c \
+              "import numpy,pandas,scipy,sklearn,joblib,pysam,imblearn; assert sklearn.__version__ == \"0.24.1\"; print(\"FFPERASE_RUNTIME_OK\")"
+            /usr/local/bin/run_clairs_to --help >/dev/null
+            /usr/local/bin/run_clair3.sh --help >/dev/null
             test -x "$ONCOTRACER_GISTIC_PREFIX/bin/gistic2"
             shopt -s nullglob
             MCR_ROOTS=("$ONCOTRACER_GISTIC_PREFIX"/share/mcr-*/v*)

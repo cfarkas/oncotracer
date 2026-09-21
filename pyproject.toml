@@ -8,6 +8,9 @@ license = "MIT"
 requires-python = ">=3.10,<3.14"
 dependencies = []
 
+[project.optional-dependencies]
+paper = ["matplotlib>=3.6", "numpy>=1.24"]
+
 [project.scripts]
 oncotracer = "oncotracer_cli.cli:main"
 
@@ -45,6 +48,7 @@ include = [
   { path = "examples/prjna754199/samples.csv", format = ["wheel", "sdist"] },
   { path = "examples/prjna754199/verify_outputs.py", format = ["wheel", "sdist"] },
   { path = "examples/quickstart", format = ["wheel", "sdist"] },
+  { path = "examples/paper_report", format = ["wheel", "sdist"] },
   { path = "params", format = ["wheel", "sdist"] },
   { path = "environments", format = ["wheel", "sdist"] },
   { path = "provenance", format = ["wheel", "sdist"] },

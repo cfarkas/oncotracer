@@ -142,7 +142,7 @@ class WizardTests(unittest.TestCase):
             for batch in range(69):
                 self.fastq(reads / f"batch{batch:03}.fastq.gz")
             for project_name, answers, expected_code in (
-                ("complete", "all\n\ncancer\ncna\nichorcna\nno\nsave\n", 0),
+                ("complete", "all\n\ncancer\ncna\nichorcna\nno\nno\nsave\n", 0),
                 ("input-ended", "all\n", 2),
             ):
                 project = root / project_name

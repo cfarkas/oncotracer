@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Iterable, Iterator, Mapping, Sequence
 
 from . import __version__
+from .variants import resolve_variant_request, variant_plan, preflight_variant_tools, run_variants
 from .classifier import run_native_classifier
 from .methylation import (
     MethylationRequest,
@@ -34,6 +35,7 @@ from .output_safety import OutputRunLease, claim_output_run, inspect_output_targ
 from .runtime import (
     CommandRunner,
     OncoTracerError,
+    OncoTracerPartialFailure,
     StageLedger,
     atomic_write_json,
     atomic_write_text,
@@ -3311,6 +3313,8 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "01_samurai_ont/qdnaseq/qdnaseq_sample_roles.tsv",
         "01_samurai_illumina/qdnaseq/qdnaseq_sample_status.json",
         "01_samurai_illumina/qdnaseq/qdnaseq_sample_roles.tsv",
+        "08_variants/variant_status.json",
+        "08_variants/variant_provenance.json",
         "07_methylation/methylation_status.json",
         "07_methylation/methylation_provenance.json",
     ]:
@@ -3346,6 +3350,7 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "completed_samples": summary.get("completed_samples", []),
         "failed_samples": summary.get("failed_samples", []),
         "cna_status": summary.get("cna_status"),
+        "variant_status": summary.get("variant_status"),
         "methylation_status": summary.get("methylation_status"),
         "methylation_completed_samples": summary.get(
             "methylation_completed_samples", []
@@ -3529,6 +3534,10 @@ def _validate_native_dry_run(
             *methylation_plan(methylation_request)["stages"],
             "workflow-summary",
         ]
+    variants = resolve_variant_request(config, mode=mode)
+    plan["variants"] = variant_plan(variants) if variants else None
+    if variants:
+        plan["stages"].extend(variant_plan(variants)["stages"])
     plan["methylation_only"] = _as_bool(config.get("methylation_only"), False)
     if pathology:
         require_file(Path(str(pathology)), "Pathology CSV")
@@ -3551,9 +3560,10 @@ def _run_ont_cna_branch(
     caller: str,
     threads: int,
     force: bool,
+    existing_bams: dict[str, Path] | None = None,
 ) -> None:
     """Execute the CNA branch so optional methylation can isolate its failure."""
-    bams = align_ont(
+    bams = existing_bams if existing_bams is not None else align_ont(
         samples,
         reference,
         samurai_out,
@@ -3608,6 +3618,22 @@ def _run_ont_cna_branch(
         caller=caller,
     )
 
+
+
+def _run_variant_branch(request, bams, reference, outdir, runner, ledger, toolchain, samples, threads, force):
+    """Preserve successful CNA work when an optional caller fails."""
+    try:
+        with _validated_fasta_reader(reference, runner):
+            return run_variants(request, bams, reference, outdir, runner, ledger,
+                                threads=threads, force=force, toolchain=toolchain,
+                                sample_statuses={s.sample: s.status for s in samples})
+    except (OSError, OncoTracerError, ValueError) as error:
+        status = {"overall_status": "failed", "completed_samples": [], "failed_samples": list(bams),
+                  "error": _sanitize_sample_error(error)}
+        # An output-ownership error must never write into the rejected tree.
+        status["status_file"] = str(outdir / ".oncotracer-native/variant_failure.json")
+        atomic_write_json(Path(status["status_file"]), status)
+        return status
 
 def run_native(
     config_path: Path,
@@ -3694,6 +3720,11 @@ def _run_native_impl(
     if mode not in {"illumina", "ont"}:
         raise OncoTracerError("config mode must be illumina or ont")
     ont_caller = _ont_caller(config) if mode == "ont" else None
+    variant_request = resolve_variant_request(config, mode=mode)
+    if variant_request and only_methylation:
+        raise OncoTracerError("Variants require alignment; select CNA with optional methylation, not methylation_only")
+    if variant_request and variant_request.reference_build != "hg38":
+        raise OncoTracerError("Native CNA alignment uses hg38; variants must use variant_reference_build: hg38")
     methylation_request = resolve_methylation_request(
         config,
         mode=mode,
@@ -3782,6 +3813,8 @@ def _run_native_impl(
         validators=(toolchain.validate_environment,),
     )
     ledger = StageLedger(native_dir / "state.json")
+    # Caller preflight runs within the optional branch, so a missing caller does
+    # not suppress independently requested CNA/methylation outputs.
 
     # The native trace is an explicit release invariant.
     atomic_write_text(
@@ -3790,6 +3823,7 @@ def _run_native_impl(
     )
     cna_error: BaseException | None = None
     methylation_status: dict[str, object] | None = None
+    variant_status: dict[str, object] | None = None
 
     if mode == "illumina":
         samplesheet_value = config.get("illumina_samplesheet")
@@ -3817,32 +3851,41 @@ def _run_native_impl(
             threads=cpu,
             force=force_run,
         )
-        qdna_dir, refine_bam_dir = run_qdnaseq(
-            root,
-            lpwgs_root,
-            samples,
-            bams,
-            samurai_out,
-            _as_int(config.get("illumina_binsize_kb"), 100),
-            runner,
-            ledger,
-            toolchain,
-            force=force_run,
-        )
-        run_refinement_and_outputs(
-            root,
-            config,
-            mode,
-            samurai_out,
-            qdna_dir,
-            refine_bam_dir,
-            outdir,
-            lpwgs_root,
-            runner,
-            toolchain,
-            force=force_run,
-            caller="qdnaseq",
-        )
+        if variant_request:
+            variant_bams = {sample.sample: samurai_out / "markduplicates" / f"{sample.sample}_markdup.bam" for sample in samples}
+            variant_status = _run_variant_branch(variant_request, variant_bams, reference, outdir,
+                                                 runner, ledger, toolchain, samples, cpu, force_run)
+        try:
+            qdna_dir, refine_bam_dir = run_qdnaseq(
+                root,
+                lpwgs_root,
+                samples,
+                bams,
+                samurai_out,
+                _as_int(config.get("illumina_binsize_kb"), 100),
+                runner,
+                ledger,
+                toolchain,
+                force=force_run,
+            )
+            run_refinement_and_outputs(
+                root,
+                config,
+                mode,
+                samurai_out,
+                qdna_dir,
+                refine_bam_dir,
+                outdir,
+                lpwgs_root,
+                runner,
+                toolchain,
+                force=force_run,
+                caller="qdnaseq",
+            )
+        except (OSError, OncoTracerError, ValueError) as error:
+            if variant_request is None:
+                raise
+            cna_error = error
     else:
         samples = parse_ont_samples(config)
         samurai_out = outdir / "01_samurai_ont"
@@ -3876,26 +3919,28 @@ def _run_native_impl(
                     outdir, methylation_request, error
                 )
         try:
+            existing_bams = None
+            if variant_request:
+                existing_bams = align_ont(samples, reference, samurai_out, runner, ledger, toolchain,
+                                          threads=cpu, min_age_minutes=_as_int(config.get("ont_min_age_minutes"), 0), force=force_run)
+                variant_status = _run_variant_branch(variant_request, existing_bams, reference, outdir,
+                                                     runner, ledger, toolchain, samples, cpu, force_run)
             if not only_methylation:
                 _run_ont_cna_branch(
-                    root,
-                    config,
-                    samples,
-                    samurai_out,
-                    reference,
-                    outdir,
-                    lpwgs_root,
-                    runner,
-                    ledger,
-                    toolchain,
-                    caller=ont_caller,
-                    threads=cpu,
-                    force=force_run,
+                    root, config, samples, samurai_out, reference, outdir, lpwgs_root,
+                    runner, ledger, toolchain, caller=ont_caller, threads=cpu,
+                    force=force_run, existing_bams=existing_bams,
                 )
         except (OSError, OncoTracerError, ValueError) as error:
-            if methylation_request is None:
+            if methylation_request is None and variant_request is None:
                 raise
             cna_error = error
+            if variant_request and variant_status is None:
+                variant_status = {"overall_status": "failed", "completed_samples": [],
+                                  "failed_samples": [s.sample for s in samples],
+                                  "error": "Alignment failed before variant calling: " + _sanitize_sample_error(error),
+                                  "status_file": str(outdir / ".oncotracer-native/variant_failure.json")}
+                atomic_write_json(Path(variant_status["status_file"]), variant_status)
 
     if (
         not only_methylation
@@ -3936,6 +3981,27 @@ def _run_native_impl(
             cna_requested=not only_methylation,
         )
 
+    if variant_status is not None:
+        summary_path = outdir / "06_workflow_summary/workflow_summary.json"
+        summary = json.loads(summary_path.read_text()) if summary_path.is_file() else {
+            "oncotracer_version": __version__, "engine": "native", "nextflow_used": False,
+            "mode": mode, "outdir": str(outdir), "completed_at": utc_now(),
+            "workflow_status": "failed", "completed_samples": [],
+            "failed_samples": [sample.sample for sample in samples],
+        }
+        summary.setdefault("cna_status", summary.get("workflow_status", "failed"))
+        if cna_error is not None:
+            summary["cna_status"] = "failed"
+            summary["cna_error"] = _sanitize_sample_error(cna_error)
+        summary["variant_status"] = variant_status["overall_status"]
+        summary["variant_status_file"] = variant_status.get("status_file", str(outdir / "08_variants/variant_status.json"))
+        summary["variant_completed_samples"] = variant_status.get("completed_samples", [])
+        summary["variant_failed_samples"] = variant_status.get("failed_samples", [])
+        if variant_status["overall_status"] != "complete" or cna_error is not None:
+            any_success = summary.get("cna_status") in {"complete", "partial_failure"} or bool(summary.get("methylation_completed_samples")) or bool(variant_status.get("completed_samples")) or variant_status["overall_status"] == "partial_failure"
+            summary["workflow_status"] = "partial_failure" if any_success else "failed"
+        atomic_write_workflow_summary(summary_path.parent, summary)
+
     trace_text = trace.read_text(encoding="utf-8", errors="replace")
     if "nextflow" in trace_text.lower():
         raise OncoTracerError(
@@ -3950,12 +4016,17 @@ def _run_native_impl(
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     if summary.get("workflow_status") != "complete":
         failed = ", ".join(str(sample) for sample in summary.get("failed_samples", []))
-        raise OncoTracerError(
-            "native analysis completed with one or more incomplete branches "
+        message = (
+            "One or more requested branches are incomplete "
             f"(CNA={summary.get('cna_status', summary.get('workflow_status'))}, "
             f"methylation={summary.get('methylation_status', 'not_requested')}, "
             f"classifier={summary.get('cna_classifier_status', 'not_requested')}, "
-            f"failed_samples={failed or 'none'}); successful outputs and the "
-            f"failure manifest were preserved under {outdir}"
+            f"variants={summary.get('variant_status', 'not_requested')}, "
+            f"failed_samples={failed or 'none'})."
         )
+        # Only the finalized, lease-validated partial outcome gets this status.
+        # Exceptions during calling or publication keep their original failure.
+        if summary.get("workflow_status") == "partial_failure":
+            raise OncoTracerPartialFailure(message, outdir)
+        raise OncoTracerError(message + f" See the failure manifest under {outdir}")
     return outdir
