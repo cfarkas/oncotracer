@@ -36,3 +36,6 @@ work_*/
 
 # Quickstart data and outputs
 test/
+
+# Generated executable builds
+dist/

@@ -14,7 +14,7 @@ used guided setup. Install once, run `check`, then use the matching run command.
 | Singularity/Apptainer | `oncotracer install --singularity` | HPC execution with a reusable SIF |
 | Poetry | `./oncotracer install --poetry` | Launcher development; scientific programs remain in five Conda prefixes |
 
-The five Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`.
+The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`. Variant-enabled images also include isolated `variants` and `ffperase` environments.
 
 ## Conda
 
@@ -48,6 +48,28 @@ oncotracer install --conda \
 
 ## Docker
 
+### FASTQ to CNA and variants
+
+Use the current source checkout and this published integration image for the
+combined workflow (Linux x86-64):
+
+```bash
+docker pull carlosfarkas/oncotracer:fastq-variants-20260921
+oncotracer setup --backend docker \
+  --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants
+```
+
+Select Illumina or ONT, Fresh or FFPE, and the compatible callers. **Save and
+check**, then **Run analysis**, starts alignment, CNA analysis and the selected
+variant stages in one project. ANNOVAR uses an existing licensed installation
+and databases; FFPERASE requires its external source/model resources.
+
+This dated image includes the synthetic FASTQ integration checks described in
+[small-variant calling](variants.md#run-cna-and-variants-with-docker). The stable
+release below predates this optional variant branch.
+
+### Stable CNA release
+
 Stable native image:
 
 ```text
@@ -65,11 +87,11 @@ oncotracer run \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
 
-The CLI reads the YAML and mounts the minimal distinct parents required for the configuration file, `lpwgs_root`, inputs, outputs, optional pathology table, and reference assets. Absolute paths are mounted at the same path inside the container, so the YAML does not need a container-specific rewrite.
+For variant-enabled runs, the CLI reads the YAML and binds the configuration, FASTQs, reference and external resources at their existing absolute paths. Inputs and supplied resources are read-only; output and reference-cache locations are writable. Host tool environments are not mounted over the image environments.
 
 Docker runs as the invoking `UID:GID` so result ownership remains with the user. Docker daemon access is privileged; follow institutional policy instead of adding undocumented administrator workarounds.
 
-Override an image only for a controlled test:
+Select a local image tag or immutable registry digest:
 
 ```bash
 oncotracer run \
@@ -77,6 +99,21 @@ oncotracer run \
   --image ghcr.io/cfarkas/oncotracer:2.1.0 \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
+
+The browser's **Docker image tag or digest** field and `setup --image` save the
+selection as `docker_image` in the project YAML. `setup --project PROJECT --run`
+also reuses the saved `execution_backend`. For `run --backend docker`, an explicit
+`--image` takes precedence over `docker_image`, then the installed/default image.
+A local tag can therefore be tested without replacing the configured release.
+
+Docker supports CNA with optional [small-variant calling](variants.md#run-cna-and-variants-with-docker)
+from Illumina or ONT FASTQs. The updated Dockerfile bundles native Clair3 v1.2.0 and ClairS-TO v0.4.4 alongside
+the Illumina callers. Requested callers must be native tools in the chosen image;
+a container preflight checks them before alignment. Docker does not nest
+ClairS-TO or FFPERASE SIF execution. External source/model folders and existing
+ANNOVAR databases remain host resources and are mounted read-only. Browser setup
+hides host prefix and SIF fields when Docker is selected. Docker methylation and
+Singularity with small variants remain unsupported.
 
 For direct Compose inspection:
 
@@ -184,4 +221,4 @@ oncotracer run --backend singularity \
   --config "$PWD/oncotracer-quickstart2/analysis/config/run.yml"
 ```
 
-Preparation and YAML content are backend-independent. The same generated config can be moved between supported backends when all absolute paths remain available.
+The scientific settings remain the same across supported backends. Setup also records the selected execution backend and optional Docker image. All absolute input paths must remain available; use the tool and container options supported by the selected backend.

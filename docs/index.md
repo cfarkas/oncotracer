@@ -9,7 +9,9 @@ OncoTracer turns Illumina or Oxford Nanopore (ONT) sequencing data into DNA copy
 | You want to test the software | [Install](installation.md), then [QuickStart 1](quick_start.md) |
 | You have Illumina or ONT FASTQs | [Set up your project](setup.md) |
 | You have ONT methylation data | [Methylation guide](configuration/methylation.md) |
+| You want small variants from reads or existing BAMs | [Variant guide](variants.md) |
 | You want LLM-assisted report text | [Report LLM settings and audit](llm_reports.md) |
+| You want manuscript panels from saved evidence | [Paper report](paper_report.md) |
 | You have a result or an error | [Read the outputs](outputs.md) or [troubleshoot](troubleshooting.md) |
 
 ## The usual workflow

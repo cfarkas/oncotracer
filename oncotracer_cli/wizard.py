@@ -89,7 +89,7 @@ def _show_hardware(hardware, suggested):
 
 def command_wizard(original_args) -> int:
     from . import cli
-    from .setup import _command_setup, _existing_hg38_parent, _run_setup, command_check
+    from .setup import _command_setup, _existing_hg38_parent, _run_setup, _variant_values, command_check
 
     args = copy.copy(original_args)
     run_requested = args.run
@@ -207,11 +207,17 @@ def command_wizard(original_args) -> int:
             values["gistic_required"] = values["run_gistic"]
             if len(entries) < 2:
                 print("GISTIC is unavailable for one sample; it needs at least two selected samples. Continuing with your CNA reports.")
-    if args.analysis != "cna" and args.gpu is None:
-        args.gpu = _ask(None, "Methylation compute device", default="cpu", choices=("cpu", "gpu")) == "gpu"
     backend = args.backend or str(cli._load_install_config().get("backend") or "conda")
     args.backend = _ask(args.backend, "Analysis tools (--backend)", default=backend,
                         choices=("conda", "docker", "singularity", "poetry", "host"))
+    if not getattr(args, "variants", False):
+        args.variants = _ask(None, "Add small-variant calling?", default="no", choices=("yes", "no")) == "yes"
+    if args.variants:
+        print("Choose one preservation type per project. Mutect2 and ClairS-TO make tumor-only candidate calls; other callers use germline-style models. Normal labels do not define matched tumor/normal pairs.")
+        print("FFPE damage, low coverage, and tumor copy-number changes require artifact review; calls do not establish somatic origin.")
+    values.update(_variant_values(args, args.mode, interactive=True))
+    if args.analysis != "cna" and args.gpu is None:
+        args.gpu = _ask(None, "Methylation compute device", default="cpu", choices=("cpu", "gpu")) == "gpu"
     reference_chosen = args.hg38_build is not None or args.reference_root is not None or args.build_reference
     if not reference_chosen:
         reference = _ask(None, "hg38 reference", default="download", choices=("download", "reuse", "build"))
@@ -248,6 +254,8 @@ def command_wizard(original_args) -> int:
             print(f"Report context: {config['cna_classifier_sample_set']}; local catalog models: {config['knowledge_catalog_llm']}; GISTIC: {config['run_gistic']}")
     if args.analysis != "cna":
         print(f"Methylation classifier: {config['methylation_classifier']}; GPU allowed: {config['methylation_gpu']}")
+    if config.get("run_variants"):
+        print(f"Small variants: {config['variant_callers']}; preservation: {config['variant_specimen_type']}; ANNOVAR: {config['variant_annovar']}")
     reference = "download prebuilt indexes when needed" if config["hg38_auto_download"] else ("build missing indexes locally" if args.build_reference else "reuse prepared reference")
     print(f"Reference: {reference}\nReference folder: {config['lpwgs_root']}\nSample types: {config['sample_metadata']}")
     print("Analysis may download reference files and prepare missing tools when it starts.")

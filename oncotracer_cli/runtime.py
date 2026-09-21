@@ -32,6 +32,22 @@ class OncoTracerError(RuntimeError):
     """Base exception for clear user-facing failures."""
 
 
+class OncoTracerPartialFailure(OncoTracerError):
+    """Finalized results exist, but one or more requested branches are incomplete."""
+
+    def __init__(self, message: str, outdir: Path):
+        super().__init__(message)
+        self.outdir = Path(outdir)
+
+
+class OncoTracerCommandError(OncoTracerError):
+    """A child command failed; preserve its exit code without parsing its text."""
+
+    def __init__(self, message: str, returncode: int):
+        super().__init__(message)
+        self.returncode = returncode
+
+
 _SCOPED_PAYLOAD_CACHE: ContextVar[Path | None] = ContextVar(
     "oncotracer_scoped_payload_cache", default=None
 )

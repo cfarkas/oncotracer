@@ -1,0 +1,34 @@
+{
+  "schema": "oncotracer-paper-report-v1",
+  "language": "en",
+  "title": "Synthetic cohort illustration",
+  "figures": [
+    {
+      "id": "Fig1",
+      "stem": "Figure_1_synthetic_cohort",
+      "title": "Synthetic cohort illustration",
+      "caption": "Illustrative library counts only; these are synthetic data and do not describe patients or biological validation.",
+      "evidence_status": "descriptive",
+      "layout": {
+        "rows": 1,
+        "cols": 1,
+        "width": 7.2,
+        "height": 4.8
+      },
+      "panels": [
+        {
+          "letter": "A",
+          "type": "bar",
+          "title": "Synthetic libraries by platform",
+          "data": "cohort_counts.tsv",
+          "xlabel": "Sequencing platform",
+          "ylabel": "Libraries",
+          "colors": {
+            "Illumina": "#177E89",
+            "ONT": "#D97732"
+          }
+        }
+      ]
+    }
+  ]
+}

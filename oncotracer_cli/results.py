@@ -22,6 +22,7 @@ STAGES = (
     ("05_cna_classifier", "05 · Interpretation and evidence", "CNA-pattern classifications, clinician summaries, and literature evidence."),
     ("06_workflow_summary", "06 · Final report and run status", "Combined CNA, literature and methylation report, status and provenance."),
     ("07_methylation", "07 · Methylation", "Per-sample status, CpG results, classifier predictions, and scores."),
+    ("08_variants", "08 · Small variants", "Independent caller VCFs, genotype evidence, annotation and completion status."),
 )
 PRIMARY_PLOTS = ("cna_per_sample_pages.pdf", "cna_log2_ratio_profiles_all_samples.pdf")
 
@@ -101,7 +102,7 @@ def _link(page: Path, target: Path, label: str) -> str:
 
 def _page(title: str, body: str) -> str:
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)} · OncoTracer</title><style>
-body{{margin:0;background:#f3f6f4;color:#1d343c;font:16px/1.55 system-ui,sans-serif}}main{{max-width:1100px;margin:35px auto;padding:0 24px 50px}}h1{{font-size:32px;letter-spacing:-.8px}}h2{{font-size:21px}}a{{color:#116d62;overflow-wrap:anywhere}}.intro,.card{{background:#fff;border:1px solid #d8e3df;border-radius:12px;padding:22px;margin:18px 0}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}}.grid .card{{margin:0}}.muted{{color:#617078;font-size:14px}}.status{{font-weight:650;color:#166c5d}}table{{border-collapse:collapse;width:100%;font-size:14px}}td,th{{text-align:left;padding:9px 8px;border-bottom:1px solid #e1e8e5;overflow-wrap:anywhere}}th{{color:#617078}}td:last-child{{white-space:nowrap}}.scroll{{overflow:auto}}.prediction-table th,.prediction-table td{{min-width:9rem;white-space:normal}}.badge{{font:12px ui-monospace,monospace;background:#edf3ef;border-radius:5px;padding:4px 8px}}ul{{padding-left:20px}}code{{overflow-wrap:anywhere}}details{{margin-top:18px}}summary{{cursor:pointer;color:#116d62}}</style></head><body><main>{body}</main></body></html>'''
+body{{margin:0;background:#f3f6f4;color:#1d343c;font:16px/1.55 system-ui,sans-serif}}main{{max-width:1100px;margin:35px auto;padding:0 24px 50px}}h1{{font-size:32px;letter-spacing:-.8px}}h2{{font-size:21px}}a{{color:#116d62;overflow-wrap:anywhere}}.intro,.card{{background:#fff;border:1px solid #d8e3df;border-radius:12px;padding:22px;margin:18px 0}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}}.grid .card{{margin:0}}.muted{{color:#617078;font-size:14px}}.status{{font-weight:650;color:#166c5d}}.status.partial{{color:#8a5a12;background:#fff4d6;border-left:4px solid #d49a32;padding:12px 15px;border-radius:4px}}table{{border-collapse:collapse;width:100%;font-size:14px}}td,th{{text-align:left;padding:9px 8px;border-bottom:1px solid #e1e8e5;overflow-wrap:anywhere}}th{{color:#617078}}td:last-child{{white-space:nowrap}}.scroll{{overflow:auto}}.prediction-table th,.prediction-table td{{min-width:9rem;white-space:normal}}.badge{{font:12px ui-monospace,monospace;background:#edf3ef;border-radius:5px;padding:4px 8px}}ul{{padding-left:20px}}code{{overflow-wrap:anywhere}}details{{margin-top:18px}}summary{{cursor:pointer;color:#116d62}}</style></head><body><main>{body}</main></body></html>'''
 
 
 def _diagnostic(stage: str, relative: Path) -> bool:
@@ -110,6 +111,10 @@ def _diagnostic(stage: str, relative: Path) -> bool:
         return True
     if stage.startswith("01_samurai_") and (relative.suffix in {".bam", ".bai", ".rds"} or "input" in parts):
         return True
+    if stage == "08_variants":
+        return ("failed_logs" in parts or any(part.startswith(".") for part in parts)
+                or relative.suffix == ".log" or relative.name in {"owner.json", "complete.json"}
+                or relative.name.startswith(("raw.", "caller_raw.", "unfiltered.", "normalized.", "review.", "f1r2.", "orientation-priors.")))
     if stage == "02_bam_refinement":
         return not (len(parts) == 3 and
                     ((parts[1] == "04_final_results" and relative.name in {"final_segments.tsv", "final_segments.bed", "refined_bins_boundary_bp_difference.csv", "refined_bins_boundary_bp_difference.xlsx"})
@@ -125,7 +130,7 @@ def _quality(stage: str, relative: Path) -> bool:
             or name in {"sample_refinement_summary.csv", "boundary_refinement_statistics.csv",
                         "bam_preparation_report.csv", "refined_bins_boundary_bp_difference.csv",
                         "refined_bins_boundary_bp_difference.xlsx", "knowledge_metrics.json",
-                        "methylation_status.json"})
+                        "methylation_status.json", "variant_status.json"})
 
 
 def _important(stage: str, relative: Path) -> bool:
@@ -145,6 +150,8 @@ def _important(stage: str, relative: Path) -> bool:
         return name in {"final_report.html", "final_report.json", "workflow_summary.txt", "workflow_summary.json", "native_run_manifest.json"}
     if stage == "07_methylation":
         return name in {"methylation_status.json", "methylation_provenance.json"} or (relative.suffix in {".tsv", ".csv", ".json", ".pdf", ".html"} and any(word in name.lower() for word in ("score", "prediction", "probabilit", "summary", "qc")))
+    if stage == "08_variants":
+        return (name.endswith((".vcf.gz", ".vcf", "_multianno.txt")) or name == "evidence.tsv")
     return name.endswith("sample_status.json") or name.endswith("summary_mqc.txt")
 
 
@@ -156,6 +163,78 @@ def _table(page: Path, root: Path, files: list[Path]) -> str:
         readable = f"{size / 1048576:.1f} MiB" if size >= 1048576 else f"{size:,} B"
         rows.append(f"<tr><td>{_link(page, path, label)}</td><td>{readable}</td></tr>")
     return '<div class="scroll"><table><thead><tr><th>File</th><th>Size</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table></div>"
+
+
+def _variant_status_location(outdir: Path, summary: dict) -> tuple[Path | None, bool]:
+    """Honor the current attempt's status pointer, without reading outside output."""
+    default = outdir / "08_variants/variant_status.json"
+    value = summary.get("variant_status_file")
+    if not value:
+        return default, False
+    candidate = Path(str(value))
+    if not candidate.is_absolute():
+        candidate = outdir / candidate
+    candidate = Path(os.path.abspath(candidate))
+    try:
+        candidate.relative_to(outdir)
+        _safe_child(outdir, candidate)
+    except (ValueError, OncoTracerError):
+        return None, True
+    return candidate, candidate != default
+
+
+def _status_label(value) -> str:
+    """Human-readable presentation; saved status codes remain unchanged."""
+    return "Partial failure" if value == "partial_failure" else str(value)
+
+
+def _variant_presentation(directory: Path, files: list[Path], *, status_path: Path | None = None) -> tuple[dict, str]:
+    """Render saved caller statuses without reading VCFs or following status paths."""
+    path = status_path or directory / "variant_status.json"
+    data = {}
+    if path in files:
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                data = loaded
+        except (OSError, ValueError):
+            pass
+    status = str(data.get("overall_status") or "unavailable")
+    status_class = 'status partial' if status == 'partial_failure' else 'status'
+    body = '<section class="card"><h2>Calling and annotation status</h2><p class="' + status_class + '">Status: ' + html.escape(_status_label(status)) + '</p>'
+    if status == 'partial_failure':
+        body += '<p>Some requested steps are incomplete. Available variant results are preserved; the assessment details below identify what remains unfinished.</p>'
+    if not data:
+        body += '<p>Saved variant status is missing or unreadable. File presence alone does not establish successful calling.</p></section>'
+        return {"overall_status": "unavailable"}, body
+    rows = []
+    samples = data.get("samples", [])
+    for sample in samples if isinstance(samples, list) else []:
+        if not isinstance(sample, dict):
+            continue
+        callers = sample.get("callers", [])
+        callers = callers if isinstance(callers, list) else []
+        callers = [caller for caller in callers if isinstance(caller, dict)]
+        if not callers:
+            callers = [{"caller": "not reported", "status": sample.get("status", "unknown")}]
+        for caller in callers:
+            count = caller.get("variant_records")
+            count = str(count) if isinstance(count, int) and not isinstance(count, bool) and count >= 0 else "not reported"
+            annotation = caller.get("annotation", {})
+            annotation = annotation if isinstance(annotation, dict) else {}
+            annotation_text = str(annotation.get("status") or "not reported")
+            if annotation.get("reason"):
+                annotation_text += ": " + str(annotation["reason"])
+            assessments = caller.get("assessments", {})
+            assessments = {k:v for k,v in assessments.items() if isinstance(v,dict)} if isinstance(assessments,dict) else {}
+            assessment_text = "; ".join(f"{name}: {item.get('status', 'unknown')}" + (f" — {item['reason']}" if item.get('reason') else "") for name, item in assessments.items()) or "not requested"
+            values = (sample.get("sample", "unknown"), caller.get("caller", "unknown"),
+                      _status_label(caller.get("status", "unknown")), count, annotation_text, assessment_text)
+            rows.append('<tr>' + ''.join('<td>' + html.escape(str(value)) + '</td>' for value in values) + '</tr>')
+    if rows:
+        body += '<div class="scroll"><table class="prediction-table"><thead><tr><th>Sample</th><th>Caller</th><th>Calling status</th><th>Variant records</th><th>Annotation</th><th>Additional assessments</th></tr></thead><tbody>' + ''.join(rows) + '</tbody></table></div>'
+    body += '<p class="muted">Zero records in a completed call differs from failed or skipped calling. Database availability does not mean annotation completed. Caller genotypes and filters remain separate; no consensus genotype is inferred from allele fractions.</p></section>'
+    return data, body
 
 
 def write_results_index(outdir: Path) -> Path:
@@ -184,14 +263,32 @@ def write_results_index(outdir: Path) -> Path:
             raise OncoTracerError(f"Refusing to overwrite an unrelated final report: {report_json}")
     report_body, report_data = final_report(outdir, summary)
     cards, catalog = [], []
+    variant_data = {}
+    variant_status_path, variant_status_redirected = _variant_status_location(outdir, summary)
     planned = [(report_page, _page("Final analysis report", report_body))]
     for stage, title, description in STAGES:
         directory = outdir / stage
+        if stage == "08_variants" and variant_status_redirected:
+            status_files = ([variant_status_path] if variant_status_path and variant_status_path.is_file() else [])
+            variant_data, variant_body = _variant_presentation(directory, status_files, status_path=variant_status_path)
+            current_status = str(variant_data.get("overall_status", "unavailable"))
+            status_link = ('<p>' + _link(root_page, variant_status_path, "Current variant status") + '</p>') if status_files else ""
+            cards.append('<section class="card"><h2>' + html.escape(title) + '</h2><p>Current attempt status: ' + html.escape(current_status) + '</p><p>This attempt did not publish a current variant output set.</p>' + status_link + '</section>')
+            catalog.append({"stage": stage, "title": title, "status": current_status, "index": None,
+                            "primary_files": [], "quality_control_files": [str(p.relative_to(outdir)) for p in status_files],
+                            "supporting_files": [], "diagnostic_file_count": 0})
+            continue
         if not directory.is_dir() or directory.is_symlink():
-            if stage == "05_cna_classifier":
+            if stage == "05_cna_classifier" and summary.get("analysis") != "variants":
                 report_status = str(summary.get("cna_classifier_status") or "not_requested")
                 cards.append(f'<section class="card"><h2>{html.escape(title)}</h2><p>Status: {html.escape(report_status)}</p><p>Interpretation files are absent. Add them from the completed CNA outputs with <code>oncotracer reports --config /path/to/run.yml --literature</code>.</p></section>')
                 catalog.append({"stage": stage, "title": title, "status": report_status, "index": None,
+                                "primary_files": [], "quality_control_files": [], "supporting_files": [],
+                                "diagnostic_file_count": 0})
+            if stage == "08_variants" and summary.get("variant_status") not in {None, "not_requested"}:
+                variant_status = str(summary["variant_status"])
+                cards.append(f'<section class="card"><h2>{html.escape(title)}</h2><p>Status: {html.escape(_status_label(variant_status))}</p><p>Variant output files are absent; check the workflow status and logs.</p></section>')
+                catalog.append({"stage": stage, "title": title, "status": variant_status, "index": None,
                                 "primary_files": [], "quality_control_files": [], "supporting_files": [],
                                 "diagnostic_file_count": 0})
             continue
@@ -214,6 +311,9 @@ def write_results_index(outdir: Path) -> Path:
         body = f"<p>{navigation}</p><h1>{html.escape(title)}</h1><p>{html.escape(description)}</p>"
         if stage == "06_workflow_summary":
             body += '<section class="card"><h2>Final report</h2><p>' + _link(page, report_page, "Open combined analysis report") + ' · ' + _link(page, report_json, "Structured report (JSON)") + '</p></section>'
+        if stage == "08_variants":
+            variant_data, variant_body = _variant_presentation(directory, files)
+            body += variant_body
         canonical_classifier = stage == "05_cna_classifier" and any(
             path.parent == directory and path.name in {"final_report.pdf", "final_report.html", "clinician_report.pdf", "clinician_report.html", "cohort_report.html"}
             for path in primary)
@@ -268,12 +368,15 @@ def write_results_index(outdir: Path) -> Path:
                 evidence_body = f'<p>{_link(evidence_page, page, "← Interpretation results")}</p><h1>Literature evidence and model audit</h1><p>Check generation status and cited sources before interpreting the knowledge reports.</p>' + _table(evidence_page, evidence, evidence_files)
                 planned.append((evidence_page, _page("Literature evidence", evidence_body)))
         links = "".join(f"<li>{_link(root_page, path, path.name if path.name != 'index.html' else ('Clinician summaries' if path.parent.name == 'clinician_reports' else 'Knowledge HTML/PDF reports'))}</li>" for path in primary[:6])
-        cards.append(f'<section class="card"><h2>{_link(root_page, page, title)}</h2><p class="muted">{html.escape(description)}</p><ul>{links}</ul></section>')
+        stage_status = ('<p>Status: ' + html.escape(_status_label(variant_data.get("overall_status", "unavailable"))) + '</p>') if stage == "08_variants" else ""
+        cards.append(f'<section class="card"><h2>{_link(root_page, page, title)}</h2>{stage_status}<p class="muted">{html.escape(description)}</p><ul>{links}</ul></section>')
         catalog.append({"stage": stage, "title": title, "index": str(page.relative_to(outdir)),
                         "primary_files": [str(path.relative_to(outdir)) for path in primary] + ([str(report_page.relative_to(outdir)), str(report_json.relative_to(outdir))] if stage == "06_workflow_summary" else []),
                         "quality_control_files": [str(path.relative_to(outdir)) for path in quality],
                         "supporting_files": [str(path.relative_to(outdir)) for path in remaining],
                         "diagnostic_file_count": len(diagnostics)})
+        if stage == "08_variants":
+            catalog[-1]["status"] = str(variant_data.get("overall_status", "unavailable"))
     completed = summary.get("completed_samples", [])
     failed = summary.get("failed_samples", [])
     status = str(summary.get("workflow_status") or "unknown")
@@ -284,7 +387,23 @@ def write_results_index(outdir: Path) -> Path:
         counts += (f" Methylation status: {summary['methylation_status']} · Completed samples: "
                    f"{len(summary.get('methylation_completed_samples', []))} · Failed samples: "
                    f"{len(summary.get('methylation_failed_samples', []))}.")
-    body = f'<div class="intro"><span class="badge">OncoTracer results</span><h1>Your analysis results</h1><p class="status">Status: {html.escape(status)}</p><p>Open the combined report for CNA findings, literature evidence and available methylation results. Stages 01 and 02 use the same groups: primary results, quality control, supporting files and diagnostics.</p><p>{_link(root_page, report_page, "Open final analysis report")}</p><p class="muted">{html.escape(counts)} Check the workflow and per-sample status files before interpreting results.</p></div><div class="grid">' + "".join(cards) + '</div><p class="muted">This dashboard is a presentation of the saved files. Refreshing it does not rerun analysis or alter scientific outputs.</p>'
+    variant_status = summary.get("variant_status") or variant_data.get("overall_status")
+    if variant_status:
+        partial_samples = {row.get("sample") for row in variant_data.get("samples", [])
+                           if isinstance(row, dict) and row.get("status") == "partial_failure"}
+        failed_samples = set(summary.get("variant_failed_samples", variant_data.get("failed_samples", [])))
+        counts += (f" Small-variant status: {_status_label(variant_status)} · Completed samples: "
+                   f"{len(summary.get('variant_completed_samples', variant_data.get('completed_samples', [])))} · "
+                   f"Partial samples: {len(partial_samples)} · Failed samples: {len(failed_samples - partial_samples)}.")
+    intro_description = "Open the combined report for CNA findings, literature evidence and available methylation results. Stages 01 and 02 use the same groups: primary results, quality control, supporting files and diagnostics."
+    entry_page, entry_label = report_page, "Open final analysis report"
+    if summary.get("analysis") == "variants":
+        intro_description = "Review the independent caller VCFs, genotype evidence and calling/annotation status in Small variants."
+        has_variant_index = any(row["stage"] == "08_variants" and row.get("index") for row in catalog)
+        entry_page = outdir / ("08_variants/index.html" if has_variant_index else "06_workflow_summary/index.html")
+        entry_label = "Open small-variant results" if has_variant_index else "Open workflow status"
+    status_class = "status partial" if status == "partial_failure" else "status"
+    body = f'<div class="intro"><span class="badge">OncoTracer results</span><h1>Your analysis results</h1><p class="{status_class}">Status: {html.escape(_status_label(status))}</p><p>{html.escape(intro_description)}</p><p>{_link(root_page, entry_page, entry_label)}</p><p class="muted">{html.escape(counts)} Check the workflow and per-sample status files before interpreting results.</p></div><div class="grid">' + "".join(cards) + '</div><p class="muted">This dashboard is a presentation of the saved files. Refreshing it does not rerun analysis or alter scientific outputs.</p>'
     planned.append((root_page, _page("Analysis results", body)))
     # Fail before changing any page if a user-created index occupies a target.
     for path, _content in planned:

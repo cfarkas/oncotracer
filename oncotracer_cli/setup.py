@@ -85,6 +85,10 @@ COMMENTS = {
     "methylation_modbam": "Existing modified-base BAM file or directory. Reuses MM/ML calls; aligns to hg38 on CPU.",
     "methylation_pod5_dir": "Existing raw-signal directory. Only FASTQ-selected read IDs are re-basecalled.",
     "run_cna_classifier": "Optional interpretation of copy-number changes; separate from methylation classification.",
+    "run_variants": "Add native small-variant calling using locally installed tools.",
+    "variant_specimen_type": "Documented preservation: fresh or ffpe. FFPE calls require artifact review.",
+    "variant_callers": "Comma-separated callers compatible with the selected sequencing platform.",
+    "variant_annovar": "auto uses an existing local ANNOVAR installation/database when available; off skips annotation.",
 }
 
 
@@ -211,6 +215,17 @@ def command_setup(args: argparse.Namespace) -> int:
     try:
         explicit_samples = any((args.samplesheet, args.fastq_1, args.fastq_2, args.sample_name,
                                 args.barcodes, args.sample_names, args.status))
+        if getattr(args, "variant_config", None):
+            if (args.terminal or args.non_interactive or args.manual or args.run or
+                    args.input_folder or args.reads_folder or explicit_samples):
+                raise OncoTracerError(
+                    "--variant-config opens the existing-BAM browser form; omit terminal, "
+                    "manual, non-interactive, run and FASTQ input flags"
+                )
+            from .web import command_web
+
+            args.start_dir = str(Path.cwd())
+            return command_web(args)
         resuming = (args.run and args.project and
                     (Path(args.project).expanduser() / "config/run.yml").is_file())
         if args.input_folder and args.reads_folder:
@@ -250,36 +265,120 @@ def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
     # Installation is explicit through --run; reuse configured tools when present.
     install = cli._load_install_config()
     backend = args.backend
+    image = getattr(args, 'image', None) or load_flat_yaml(config_path).get('docker_image')
+    if getattr(args, 'image', None) and backend != 'docker':
+        raise OncoTracerError('--image in setup requires --backend docker')
     if backend in {"conda", "poetry"}:
         required = [install.get(name + "_prefix") for name in
                     ("core", "qdnaseq", "ichorcna", "classifier", "gistic")]
         ready = all(value and Path(str(value)).is_dir() for value in required)
         if backend == "poetry":
             ready = ready and bool(install.get("poetry_prefix")) and Path(str(install["poetry_prefix"])).is_dir()
+    elif backend == 'docker':
+        ready = bool(shutil.which('docker'))
     elif backend == "singularity":
         ready = bool(install.get("sif")) and Path(str(install["sif"])).is_file()
     else:
         ready = backend == "host" or install.get("backend") == backend
     if not ready:
         print(f"Preparing the {backend} tools required for this run…", flush=True)
-        cli.command_install(parser.parse_args(["install", "--" + backend]))
+        install_flags = ['install', '--' + backend]
+        if backend == 'docker' and image:
+            install_flags += ['--image', str(image)]
+        cli.command_install(parser.parse_args(install_flags))
     run = parser.parse_args(["run", "--config", str(config_path), "--backend", backend])
+    if backend == 'docker' and image:
+        run.image = str(image)
     if args.threads is not None:
         run.threads = args.threads
     return cli.command_run(run)
 
 
+
+from .variants import SUPPORTED_CALLERS as VARIANT_CALLERS_BY_MODE, DEFAULT_CALLERS
+
+VARIANT_DEFAULT_CALLER = {mode: ",".join(callers) for mode, callers in DEFAULT_CALLERS.items()}
+VARIANT_RESOURCE_FIELDS = (
+    "variant_targets_bed", "variant_clair3_model", "variant_clairsto_platform", "variant_clairsto_sif",
+    "variant_tool_prefix", "variant_annovar_dir", "variant_annovar_db",
+    "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_sif", "variant_ffperase_prefix",
+    "variant_varlociraptor_scenario",
+)
+VARIANT_ASSESSMENT_FIELDS = ("variant_ffperase", "variant_varlociraptor", "variant_varlociraptor_fdr", "variant_varlociraptor_events", "variant_varlociraptor_sample")
+VARIANT_FIELDS = ("variant_specimen_type", "variant_callers", "variant_annovar", *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
+
+
+def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None = None) -> dict[str, object]:
+    """Collect native variant options; the engine owns their scientific validation."""
+    enabled = getattr(args, "variants", False)
+    if not isinstance(enabled, bool):
+        raise OncoTracerError("--variants must be a boolean selection")
+    if not enabled:
+        if any(getattr(args, key, None) not in (None, "") for key in VARIANT_FIELDS):
+            raise OncoTracerError("Variant options require --variants (Add small-variant calling).")
+        return {"run_variants": False}
+    if (analysis or args.analysis) == "methylation":
+        raise OncoTracerError("Small-variant calling needs aligned reads: choose CNA or CNA and methylation, rather than methylation-only analysis.")
+    if args.backend and args.backend not in {"host", "conda", "poetry", "docker"}:
+        raise OncoTracerError("Small-variant calling needs --backend conda, host, poetry, or docker; Singularity remains unsupported.")
+    if args.backend == 'docker' and (analysis or args.analysis) != 'cna':
+        raise OncoTracerError('Docker small-variant calling currently supports --analysis cna only.')
+    specimen = _ask(getattr(args, "variant_specimen_type", None),
+                    "Sample preservation (--variant-specimen-type)",
+                    choices=("fresh", "ffpe"), interactive=interactive)
+    callers = _ask(getattr(args, "variant_callers", None),
+                   "Variant callers (--variant-callers; comma-separated: " + ", ".join(VARIANT_CALLERS_BY_MODE[mode]) + ")",
+                   default=VARIANT_DEFAULT_CALLER[mode], interactive=interactive)
+    selected = [item.strip() for item in str(callers).split(",")]
+    if not selected or any(item not in VARIANT_CALLERS_BY_MODE[mode] for item in selected):
+        raise OncoTracerError(f"Variant callers for {mode}: {', '.join(VARIANT_CALLERS_BY_MODE[mode])}.")
+    if len(selected) != len(set(selected)):
+        raise OncoTracerError("Choose each variant caller only once.")
+    values = {"run_variants": True, "variant_specimen_type": specimen,
+              "variant_callers": ",".join(selected),
+              "variant_annovar": _ask(getattr(args, "variant_annovar", None),
+                  "ANNOVAR annotation (--variant-annovar; auto uses an existing local installation)",
+                  default="auto", choices=("auto", "off"), interactive=interactive)}
+    for key in VARIANT_ASSESSMENT_FIELDS:
+        value = getattr(args, key, None)
+        if key == 'variant_ffperase' and specimen == 'ffpe' and mode == 'illumina':
+            value = _ask(value, 'FFPErase artifact assessment', default='required', choices=('required','off'), interactive=interactive)
+        if key == 'variant_varlociraptor':
+            value = _ask(value, 'Varlociraptor local FDR assessment', default='off', choices=('required','off'), interactive=interactive)
+        if value is not None:
+            values[key] = value
+    for key in VARIANT_RESOURCE_FIELDS:
+        value = getattr(args, key, None)
+        if key == "variant_clair3_model" and "clair3" in selected:
+            value = _ask(value, "Chemistry-compatible Clair3 model folder (--variant-clair3-model)", interactive=interactive)
+        if key == "variant_clairsto_platform" and "clairs_to" in selected:
+            value = _ask(value, "ClairS-TO platform/model preset (--variant-clairsto-platform)", interactive=interactive)
+        if value:
+            values[key] = str(Path(value).expanduser().resolve()) if key != "variant_clairsto_platform" else str(value)
+    if args.backend == 'docker':
+        from .docker_runtime import validate_docker_variants
+        validate_docker_variants(dict(values, mode=mode))
+    else:
+        from .variants import resolve_variant_request
+        resolve_variant_request(values, mode=mode)
+    return values
+
+
 def _command_setup(args: argparse.Namespace) -> int:
     from .cli import _load_install_config
 
+    explicit_backend = args.backend
     args.backend = args.backend or str(_load_install_config().get("backend") or "conda")
     interactive = not args.non_interactive
     if getattr(args, "run", False) and args.project:
         existing = Path(args.project).expanduser().resolve() / "config/run.yml"
         if existing.is_file():
+            if explicit_backend is None:
+                args.backend = str(load_flat_yaml(existing).get('execution_backend') or args.backend)
             selection = ("mode", "analysis", "hg38_build", "reference_root", "build_reference",
                          "reference_cache", "input_folder", "reads_folder", "barcodes", "sample_names",
                          "samplesheet", "sample_name", "fastq_1", "fastq_2", "status",
+                         "variants", *VARIANT_FIELDS,
                          "classifier", "modbam", "pod5_dir", "resources", "gpu",
                          "accept_sturgeon_license", *EXECUTABLES, *RESOURCE_FLAGS,
                          *RESOURCE_FILES["marlin"], *RESOURCE_FILES["sturgeon"])
@@ -289,6 +388,8 @@ def _command_setup(args: argparse.Namespace) -> int:
                                      f"{shlex.quote(str(existing.parents[1]))} --run, or edit its YAML")
             print(f"Using saved configuration: {existing}")
             return _run_setup(existing, args)
+    if getattr(args, 'image', None) and args.backend != 'docker':
+        raise OncoTracerError('--image in setup requires --backend docker')
     if args.threads is None:
         args.threads = 8
     inferred_mode = "illumina" if args.fastq_1 or args.samplesheet else (
@@ -475,6 +576,26 @@ def _command_setup(args: argparse.Namespace) -> int:
         samples = parse_ont_samples(values)
         _check_ont_fastqs(samples)
     values.update(getattr(args, "_wizard_values", {}))
+    # Validate variant configuration before creating any project files. Browser
+    # and terminal discoveries use exactly the same flat YAML contract.
+    if "run_variants" not in getattr(args, "_wizard_values", {}):
+        values.update(_variant_values(args, mode, interactive=interactive, analysis=analysis))
+    elif values.get("run_variants"):
+        from .variants import resolve_variant_request
+        if args.backend not in {"host", "conda", "poetry", "docker"}:
+            raise OncoTracerError("Small-variant calling needs --backend conda, host, poetry, or docker.")
+        if args.backend == 'docker':
+            if analysis != 'cna':
+                raise OncoTracerError('Docker small-variant calling currently supports --analysis cna only.')
+            from .docker_runtime import validate_docker_variants
+            validate_docker_variants(dict(values, mode=mode))
+        else:
+            resolve_variant_request(values, mode=mode)
+
+    values['execution_backend'] = args.backend
+    if args.backend == 'docker' and getattr(args, 'image', None):
+        values['docker_image'] = args.image
+
     if analysis != "cna":
         classifier = _ask(
             args.classifier,
@@ -729,7 +850,13 @@ def command_check(args: argparse.Namespace) -> int:
                 errors.append(str(error))
         if not errors:
             output = io.StringIO()
-            with contextlib.redirect_stdout(output):
+            preview = contextlib.nullcontext()
+            if config.get("execution_backend") == "docker":
+                from .docker_runtime import docker_host_preview, validate_docker_variants
+
+                validate_docker_variants(config)
+                preview = docker_host_preview()
+            with contextlib.redirect_stdout(output), preview:
                 run_native(
                     path, dry_run=True, root=Path(args.root) if args.root else None
                 )
@@ -792,6 +919,10 @@ def add_setup_commands(subparsers) -> None:
     parser.add_argument("--terminal", action="store_true", help="use the terminal folder wizard instead of the browser")
     parser.add_argument("--port", type=int, default=8888, help="local browser port (default: 8888)")
     parser.add_argument("--no-browser", action="store_true", help="print the local URL without opening a browser automatically")
+    parser.add_argument(
+        "--variant-config", metavar="PATH",
+        help="open existing-BAM variant settings from a variants YAML configuration",
+    )
     reference_options = parser.add_mutually_exclusive_group()
     reference_options.add_argument(
         "--hg38_build",
@@ -841,6 +972,7 @@ def add_setup_commands(subparsers) -> None:
         choices=("host", "conda", "docker", "singularity", "poetry"),
         help="execution backend (default: saved installation, otherwise conda)",
     )
+    parser.add_argument('--image', help='Docker image tag or digest; saved as docker_image and reused by setup --run')
     parser.add_argument(
         "--run", action="store_true",
         help="validate, prepare missing backend tools, and run; also resumes an existing project"
@@ -885,6 +1017,27 @@ def add_setup_commands(subparsers) -> None:
         choices=("tumor", "normal"),
         help="single Illumina library status (default: tumor)",
     )
+    variant = parser.add_argument_group("Optional native small-variant calling")
+    variant.add_argument("--variants", action="store_true", help="add native small-variant calling to the selected analysis")
+    variant.add_argument("--variant-specimen-type", choices=("fresh", "ffpe"),
+                         help="sample preservation; required when variants are enabled (one preservation type per project)")
+    variant.add_argument("--variant-callers", help="comma-separated callers: Illumina mutect2/freebayes/bcftools; ONT clair3/clairs_to")
+    variant.add_argument("--variant-targets-bed", metavar="PATH", help="optional hg38 BED of variant-calling intervals")
+    variant.add_argument("--variant-clair3-model", metavar="PATH", help="installed Clair3 model folder matching the ONT chemistry")
+    variant.add_argument("--variant-clairsto-platform", help="installed ClairS-TO platform/model preset")
+    variant.add_argument("--variant-clairsto-sif", metavar="PATH", help="optional existing ClairS-TO SIF image; uses local Apptainer/Singularity without downloading")
+    variant.add_argument("--variant-tool-prefix", metavar="PATH", help="environment prefix containing installed variant tools")
+    variant.add_argument("--variant-annovar", choices=("auto", "off"), help="use existing local ANNOVAR if detected (default: auto), or disable annotation")
+    variant.add_argument("--variant-annovar-dir", metavar="PATH", help="optional existing ANNOVAR installation folder")
+    variant.add_argument("--variant-annovar-db", metavar="PATH", help="optional existing ANNOVAR database folder")
+    variant.add_argument('--variant-ffperase', choices=('required','off'), help='FFPErase assessment; default required for Illumina FFPE, off otherwise')
+    for key, label in [('root','upstream nf-ffperase source'),('models','directory with SNV and indel joblib models'),('sif','existing FFPErase SIF'),('prefix','compatible native FFPErase Python environment')]:
+        variant.add_argument('--variant-ffperase-'+key, metavar='PATH', help=label)
+    variant.add_argument('--variant-varlociraptor', choices=('required','off'), help='additional probabilistic assessment and local FDR control (default off)')
+    variant.add_argument('--variant-varlociraptor-fdr', type=float, help='local FDR threshold, default 0.05')
+    variant.add_argument('--variant-varlociraptor-scenario', metavar='PATH', help='optional scenario YAML; default assesses single-sample presence, not somatic origin')
+    variant.add_argument('--variant-varlociraptor-events', help='comma-separated uppercase scenario events; default PRESENT')
+    variant.add_argument('--variant-varlociraptor-sample', help='observed sample name in custom scenario; default sample')
     meth = parser.add_argument_group("ONT methylation")
     meth.add_argument(
         "--classifier",

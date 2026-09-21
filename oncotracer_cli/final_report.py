@@ -80,7 +80,9 @@ def final_report(root: Path, summary: dict) -> tuple[str, dict]:
             "failed_samples": summary.get("failed_samples", []),
             "cna_events": {}, "literature": {}, "methylation": {"status": summary.get("methylation_status") or "not_requested"}}
     body = '<p><a href="../index.html">← All results</a></p><h1>Final analysis report</h1>'
-    body += '<p class="status">Workflow: '+_e(data['workflow_status'])+'</p><p>Saved CNA findings, literature evidence and available methylation results. Each analysis retains its own status; missing or failed predictions are not normal results.</p>'
+    status_class = 'status partial' if data['workflow_status'] == 'partial_failure' else 'status'
+    status_label = 'Partial failure' if data['workflow_status'] == 'partial_failure' else data['workflow_status']
+    body += '<p class="'+status_class+'">Workflow: '+_e(status_label)+'</p><p>Saved CNA findings, literature evidence and available methylation results. Each analysis retains its own status; missing or failed predictions are not normal results.</p>'
     events = [] if data['cna_status'] == 'not_requested' else _rows(root, '03_cna_codification/cna_events.tsv', limit=None)
     for row in events:
         counts = data['cna_events'].setdefault(row.get('sample', 'unknown'), {})
