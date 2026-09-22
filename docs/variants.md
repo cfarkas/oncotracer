@@ -29,6 +29,26 @@ install external models or licensed annotation resources. CNA plus methylation
 can also include variants on supported host backends; methylation-only analysis
 cannot, and Docker methylation is unavailable.
 
+## Autodetect tools and models
+
+In either the FASTQ setup or existing-BAM form, select your platform, Fresh/FFPE,
+callers and backend, then click **Autodetect resources**. The **Tools and model
+paths** panel checks the computer running the setup server, fills empty path
+fields and preserves paths you entered. Review every candidate model against
+your actual chemistry/basecaller; finding a directory does not establish compatibility.
+
+Missing resources get **Copy commands** boxes and official setup links. Review
+and run the commands yourself in a terminal, then click Autodetect again.
+The button does not install tools, download models, accept licenses or run analysis.
+If a command exports environment variables, either paste its printed paths into
+the browser or restart setup from that terminal before checking again.
+
+Conda recipes create separate user-owned optional environments and leave existing
+folders unchanged. Docker uses the image's caller runtimes; external model/source
+folders still need your selection. Container tools marked **Check at run time**
+are verified when the analysis starts. [ANNOVAR](annovar.md) remains optional and
+requires separately obtained software and matching databases.
+
 ## Choose a platform and specimen type
 
 | Platform | Caller | What it produces |

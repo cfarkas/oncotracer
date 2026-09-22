@@ -19,7 +19,7 @@ async function demoLoad(platform){
   for(const field of document.querySelectorAll('[data-variant-caller]'))field.checked=selected.includes(field.value);
   $('variant_clair3_model').value='/demo/resources/clair3-model';$('variant_clairsto_platform').value='ont_r10_dorado_sup_5khz';
   $('variant_ffperase').value='required';$('variant_ffperase_root').value='/demo/resources/ffperase';$('variant_ffperase_models').value='/demo/resources/ffperase/models';
-  $('variant_varlociraptor').value='required';$('variant_varlociraptor_fdr').value='0.05';$('variant_annovar').value='auto';$('variant_annovar_dir').value='/demo/resources/annovar';$('variant_annovar_db').value='/demo/resources/annovar/humandb';
+  $('variant_varlociraptor').value='required';$('variant_varlociraptor_fdr').value='0.05';$('variant_annovar').value='auto';$('variant_annovar_dir').value='';$('variant_annovar_db').value='';
   $('reports').checked=false;$('gistic').checked=false;methylationSettings();
   await $('scan').onclick();
   demoMessage((platform==='illumina'?'Illumina FFPE':'Nanopore Fresh')+' example loaded. Assign cards with the type dropdown or drag them into Normal and Cancer.');
