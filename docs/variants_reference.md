@@ -4,6 +4,24 @@ Start with the [browser variant guide](variants.md) or [ANNOVAR setup](annovar.m
 
 OncoTracer can run optional SNV/indel callers alongside CNA analysis, or from an explicit manifest of existing BAMs. Each caller keeps its own VCF and evidence table. This research feature does not establish clinical sensitivity, reliable germline genotypes at low coverage, or a validated somatic diagnosis.
 
+## Browser, terminal or remote server
+
+Each browser example below has a terminal-only alternative. Use **one route**
+per new project. `setup --non-interactive` takes explicit input/sample flags and
+writes the YAML; `check` reviews it and `run` starts analysis. `--input-folder`
+belongs to interactive discovery, so the scripted examples use explicit files
+or barcodes. `setup --terminal` instead asks questions in your terminal.
+
+For a browser connected to a remote server, follow the [SSH tunnel guide](headless.md).
+The remote variant form can start with `oncotracer setup --variants --no-browser`,
+or `oncotracer setup --variant-config /data/variants.yml --no-browser` for BAMs.
+These still use a browser; `--no-browser` only suppresses automatic launch.
+There is no `--headless` flag.
+
+Replace example paths with existing inputs/resources, activate your launcher,
+and install the requested tools before running. Explicit backends below avoid
+relying on the most recently installed backend.
+
 ## Choose a platform and specimen type
 
 | Platform | Supported caller names | Meaning of the calls |
@@ -31,6 +49,36 @@ oncotracer setup --project "$PWD/ffpe-study" --mode illumina \
 
 Replace `/data/illumina` with your FASTQ folder. Review the generated configuration before running. The selected backend must provide the tools; adding this option does not install callers or accept their licenses. Missing requested callers stop preflight rather than silently substituting another caller.
 
+### Terminal only: the same Illumina FFPE project
+
+Use this instead of the preceding browser command. This example explicitly keeps
+FFPERASE enabled; its separately obtained source/models and compatible runtime
+must exist. The example selects one tumor library from the same FASTQ folder.
+
+```bash
+oncotracer setup --non-interactive --project "$PWD/ffpe-study" \
+  --mode illumina --analysis cna --backend conda --threads 4 \
+  --sample-name TUMOR01 --status tumor \
+  --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
+  --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
+  --hg38_build --variants \
+  --variant-specimen-type ffpe --variant-callers mutect2 \
+  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
+  --variant-ffperase required \
+  --variant-ffperase-root /resources/nf-ffperase \
+  --variant-ffperase-models /resources/ffperase-models \
+  --variant-ffperase-prefix "$HOME/.local/share/oncotracer/optional-tools/ffperase" \
+  --variant-varlociraptor off --variant-annovar auto
+oncotracer check --config "$PWD/ffpe-study/config/run.yml"
+oncotracer run --backend conda --config "$PWD/ffpe-study/config/run.yml"
+```
+
+If you intentionally choose **Skip FFPERASE**, set `--variant-ffperase off` and
+omit its source/model/runtime flags. To enable the browser's Varlociraptor
+option, use `--variant-varlociraptor required --variant-varlociraptor-fdr 0.05`
+in the setup command. [Assessment details](#additional-assessments-ffperase-and-varlociraptor)
+explain these separate choices.
+
 | Setup flag | Purpose |
 |---|---|
 | `--variant-tool-prefix PATH` | Existing environment containing the required executables in `bin/`. |
@@ -51,6 +99,24 @@ oncotracer setup --project "$PWD/docker-study" --mode illumina \
   --input-folder /data/illumina --backend docker \
   --image carlosfarkas/oncotracer:fastq-variants-20260921 \
   --variants --variant-specimen-type fresh --variant-callers mutect2,bcftools
+```
+
+**Terminal only**, using the same Fresh Illumina caller/backend settings:
+
+```bash
+oncotracer setup --non-interactive --project "$PWD/docker-study" \
+  --mode illumina --analysis cna --backend docker --threads 4 \
+  --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --sample-name TUMOR01 --status tumor \
+  --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
+  --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
+  --hg38_build --variants \
+  --variant-specimen-type fresh --variant-callers mutect2,bcftools \
+  --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
+oncotracer check --config "$PWD/docker-study/config/run.yml"
+oncotracer run --backend docker \
+  --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --config "$PWD/docker-study/config/run.yml"
 ```
 
 Synthetic hg38 FASTQ integration checks recovered both inserted SNVs with each
@@ -79,6 +145,29 @@ downloaded. Use absolute paths (expand `~` before saving manual YAML); browser s
 This browser Docker route starts from FASTQ and includes CNA. The **Existing BAMs**
 form below runs its standalone variant workflow on the host.
 
+### Terminal only: ONT FASTQs
+
+This example selects `barcode01` as one Fresh sample and runs Clair3 after CNA.
+Replace the tool prefix and model directory with a compatible installation/model;
+the example does not choose a chemistry or model on your behalf.
+
+```bash
+oncotracer setup --non-interactive --project "$PWD/ont-variant-study" \
+  --mode ont --analysis cna --backend conda --threads 4 \
+  --reads-folder /data/run/fastq_pass \
+  --barcodes barcode01 --sample-names TUMOR01 \
+  --hg38_build --variants \
+  --variant-specimen-type fresh --variant-callers clair3 \
+  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/clair3" \
+  --variant-clair3-model /resources/clair3-compatible-model \
+  --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
+oncotracer check --config "$PWD/ont-variant-study/config/run.yml"
+oncotracer run --backend conda --config "$PWD/ont-variant-study/config/run.yml"
+```
+
+The explicit barcode/sample lists determine inclusion. Review the same choices
+in browser setup if desired; resource autodetection never determines chemistry.
+
 ## Call from existing BAMs without rerunning CNA
 
 Create a tab-separated manifest with one sample per BAM. Paths must identify existing files; normal samples are independent controls, not automatically paired normals.
@@ -91,7 +180,8 @@ CONTROL01	/data/control01.bam	normal
 TSV
 ```
 
-Use a dedicated new output directory and a flat configuration, for example:
+Use a dedicated new output directory. Save this flat configuration as
+`/data/variants.yml`, replacing its paths with your existing resources:
 
 ```yaml
 mode: illumina
@@ -121,6 +211,19 @@ oncotracer setup --variant-config /data/variants.yml
 oncotracer web --variant-config /data/variants.yml
 ```
 
+**Terminal only**, using that same configuration:
+
+```bash
+oncotracer variants --config /data/variants.yml --dry-run
+oncotracer variants --config /data/variants.yml --threads 4
+```
+
+This command runs directly with the configured local tool prefix/environment;
+it has no `--backend` argument and does not inherit the installed CNA backend.
+For Docker, use the [explicit container invocation](#conda-and-docker).
+`setup --variant-config` and `web --variant-config` are browser entry points;
+`--non-interactive`, `--terminal` and `--run` cannot be combined with that setup mode.
+
 The **Existing BAMs** link in the main setup page opens the same form. Load the
 configuration, check the listed samples and platform, select Fresh or FFPE and
 compatible callers, and choose a new project directory. **Save and check**
@@ -144,6 +247,15 @@ variant_callers: clairs_to
 variant_clairsto_platform: ont_r10_dorado_sup_5khz
 variant_clairsto_sif: /data/containers/clairs-to.sif
 variant_tool_prefix: /data/environments/variant-tools
+```
+
+Save the complete configuration, with these keys replacing its Illumina
+settings and its manifest pointing to ONT BAMs, as `/data/ont-variants.yml`.
+Run without a browser:
+
+```bash
+oncotracer variants --config /data/ont-variants.yml --dry-run
+oncotracer variants --config /data/ont-variants.yml --threads 4
 ```
 
 `variant_clairsto_sif` is an explicit configuration option. It requires local Apptainer or Singularity and a SIF exposing `/opt/bin/run_clairs_to`; no image is downloaded. Choose a model preset matching the BAM's chemistry/basecaller. The adapter uses CPU execution with a clean container environment, mounts the private working directory writable and the resolved input directories read-only, and keeps the image's own dependencies separate from the host tool prefix. Image path, size and modification time enter provenance and resume checks. Explicit output prefixes support ClairS-TO releases that otherwise add the sample name to VCF filenames.
@@ -174,6 +286,17 @@ Open `index.html`, then **08 · Small variants**. The dashboard lists calling an
 | `samples/SAMPLE/CALLER/evidence.tsv` | Per-record caller evidence, call semantics and FFPE review flag. |
 | `samples/SAMPLE/CALLER/annovar.BUILD_multianno.txt` and `.vcf` | Optional annotation tables and annotated VCF when annotation succeeds. |
 | Caller logs and retained intermediate evidence | Diagnostics for failure review, filtering and reproducibility. |
+
+For a terminal review of the existing-BAM example above:
+
+```bash
+cat /data/variant-results/06_workflow_summary/workflow_summary.txt
+python3 -m json.tool /data/variant-results/08_variants/variant_status.json
+head -n 5 /data/variant-results/08_variants/samples/TUMOR01/mutect2/evidence.tsv
+```
+
+For a FASTQ project, use `PROJECT/results` instead of `/data/variant-results`.
+A file is available only if its corresponding step produced it.
 
 If preflight or output ownership fails before stage 08 can be written, the workflow summary points to `.oncotracer-native/variant_failure.json`. The dashboard follows that current status and excludes earlier stage-08 files from the current result listing.
 

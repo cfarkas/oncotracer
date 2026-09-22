@@ -9,6 +9,10 @@ Start with [variant setup](variants.md). Open **4 · Annotation** and leave
 or choose **Skip ANNOVAR annotation**. Open the path controls to inspect or enter
 the installation and database folders.
 
+For a remote browser session, use the [SSH tunnel guide](headless.md).
+For execution with no browser, use the complete terminal example under
+[Set paths explicitly](#set-paths-explicitly).
+
 ## Use Autodetect resources
 
 Use **Autodetect** beside the installation or database path to check that resource,
@@ -80,12 +84,49 @@ oncotracer setup --variants --variant-annovar auto \
   --variant-annovar-db /resources/annovar/humandb
 ```
 
+**Terminal only: CNA, Mutect2 and annotation for one Fresh Illumina sample.**
+The following is an alternative to the browser command. It specifies the input
+library, preservation, callers, backend and ANNOVAR paths; use a new project folder.
+Core Conda tools and the [optional variant environment](variants_reference.md#conda-and-docker)
+must already be installed.
+
+```bash
+oncotracer setup --non-interactive --project "$PWD/annotated-study" \
+  --mode illumina --analysis cna --backend conda --threads 4 \
+  --sample-name TUMOR01 --status tumor \
+  --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
+  --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
+  --hg38_build --variants \
+  --variant-specimen-type fresh --variant-callers mutect2 \
+  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
+  --variant-ffperase off --variant-varlociraptor off \
+  --variant-annovar auto --variant-annovar-dir /resources/annovar \
+  --variant-annovar-db /resources/annovar/humandb
+oncotracer check --config "$PWD/annotated-study/config/run.yml"
+oncotracer run --backend conda --config "$PWD/annotated-study/config/run.yml"
+```
+
+The native FASTQ workflow uses hg38; the selected database pair must match it.
+For the Docker equivalent, follow the [terminal Docker example](variants_reference.md#run-cna-and-variants-with-docker)
+and add the three ANNOVAR flags above to its setup command. Use absolute host
+paths; the runner mounts the resources for annotation.
+
 For an existing configuration, the equivalent fields are:
 
 ```yaml
 variant_annovar: auto
 variant_annovar_dir: /resources/annovar
 variant_annovar_db: /resources/annovar/humandb
+```
+
+For existing BAMs, add those fields to the
+[complete BAM configuration](variants_reference.md#call-from-existing-bams-without-rerunning-cna),
+set its output to a new folder, and save it as `/data/variants-annotated.yml`.
+Then run directly with the configured local tools:
+
+```bash
+oncotracer variants --config /data/variants-annotated.yml --dry-run
+oncotracer variants --config /data/variants-annotated.yml --threads 4
 ```
 
 Use paths without spaces or shell metacharacters: ANNOVAR's internal commands
@@ -108,6 +149,17 @@ Successful calling and successful annotation are separate outcomes:
 A skipped annotation is not an empty variant callset. Read the caller's record
 count and annotation reason in **08 · Small variants** and `variant_status.json`.
 A runtime annotation error can make the overall run partially complete.
+
+Without a browser, inspect the FASTQ example's status and annotation table:
+
+```bash
+python3 -m json.tool "$PWD/annotated-study/results/08_variants/variant_status.json"
+head -n 5 "$PWD/annotated-study/results/08_variants/samples/TUMOR01/mutect2/annovar.hg38_multianno.txt"
+```
+
+The table exists only after successful annotation; the JSON records a skip or
+failure even when no table was produced.
+
 
 ## Where are the annotations?
 

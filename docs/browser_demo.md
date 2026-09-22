@@ -40,6 +40,27 @@ oncotracer setup --project "$PWD/my-study" --backend docker \
   --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants
 ```
 
+### Terminal equivalents
+
+Use these **instead of** the corresponding browser command for a new project.
+Answer the terminal questions; `--run` validates and starts the analysis:
+
+```bash
+oncotracer setup --terminal --project "$PWD/my-study" --backend conda --run
+```
+
+```bash
+oncotracer setup --terminal --project "$PWD/my-study" --backend docker \
+  --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants --run
+```
+
+The [headless guide](headless.md) includes fully scripted Illumina/ONT runs,
+remote-browser SSH commands, logs and resuming. The public QuickStarts include
+complete terminal runs using real downloadable examples. The synthetic demo
+itself produces no reads or executable analysis.
+
+### Server behavior
+
 The real interface opens at **127.0.0.1:8888**. Keep the terminal open and use its
 complete printed URL, including the session code after `#`, if the browser does
 not open automatically. Folder browsing reads files on the computer running

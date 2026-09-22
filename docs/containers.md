@@ -6,6 +6,8 @@ Use the YAML you already created with [setup](setup.md) or [batch setup](auto_pa
 Choose **one** backend below. The examples assume batch setup's
 `project/config/illumina.auto.yml`; substitute `my-study/config/run.yml` if you
 used guided setup. Install once, run `check`, then use the matching run command.
+Every `run` example works from a terminal without a browser. For unattended setup
+and SSH access, see [terminal and headless servers](headless.md).
 
 | Backend | Install command | Primary use |
 | --- | --- | --- |
@@ -21,6 +23,7 @@ The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and 
 ```bash
 oncotracer install --conda
 oncotracer doctor --backend conda
+oncotracer check --config "$PWD/project/config/illumina.auto.yml"
 
 oncotracer run \
   --backend conda \
@@ -64,6 +67,27 @@ check**, then **Run analysis**, starts alignment, CNA analysis and the selected
 variant stages in one project. ANNOVAR uses an existing licensed installation
 and databases; FFPERASE requires its external source/model resources.
 
+Terminal equivalent, using the same image and variant branch:
+
+```bash
+oncotracer setup --terminal --backend docker \
+  --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants --run
+```
+
+Answer the platform, input, preservation, caller and resource questions. `--run`
+starts analysis after validation. To save first, omit `--run` and choose **save**;
+then use the project path you selected:
+
+```bash
+oncotracer check --config /absolute/path/to/my-study/config/run.yml
+oncotracer run --backend docker \
+  --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --config /absolute/path/to/my-study/config/run.yml
+```
+
+Choose either setup route for a new project. For fully unattended FASTQ setup,
+use the [explicit sample commands](headless.md) with `--non-interactive`.
+
 This dated image includes the synthetic FASTQ integration checks described in
 [small-variant calling](variants.md#run-cna-and-variants-with-docker). The stable
 release below predates this optional variant branch.
@@ -81,6 +105,7 @@ Install and run:
 ```bash
 oncotracer install --docker
 oncotracer doctor --backend docker
+oncotracer check --config "$PWD/project/config/illumina.auto.yml"
 
 oncotracer run \
   --backend docker \
@@ -129,6 +154,7 @@ The ordinary CLI route is preferred for analyses because it derives mounts from 
 ```bash
 oncotracer install --singularity
 oncotracer doctor --backend singularity
+oncotracer check --config "$PWD/project/config/illumina.auto.yml"
 
 oncotracer run \
   --backend singularity \
@@ -168,6 +194,7 @@ oncotracer run \
 
 ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
 "$ONCOTRACER_DEV" doctor --backend poetry
+"$ONCOTRACER_DEV" check --config "$PWD/project/config/illumina.auto.yml"
 "$ONCOTRACER_DEV" run \
   --backend poetry \
   --config "$PWD/project/config/illumina.auto.yml"

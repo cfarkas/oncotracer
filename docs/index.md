@@ -29,6 +29,15 @@ Keep the terminal open. The browser lets you select Conda or Docker, choose the
 reference, and start the run. The first analysis also prepares reference files
 and takes longer. See [hardware requirements](installation.md#requirements).
 
+**Terminal-only alternative** for a new project:
+
+```bash
+oncotracer setup --terminal --project "$PWD/my-study" --backend conda --run
+```
+
+Answer the terminal questions; configuration is checked before execution.
+For scripts and SSH forwarding, see [CLI and headless servers](headless.md).
+
 If you saved the configuration without running, use:
 
 ```bash

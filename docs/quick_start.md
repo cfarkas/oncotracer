@@ -7,7 +7,7 @@ library. Reads total approximately 225 MB, plus tools, references and results.
 This example assesses copy number; FASTQs do not contain methylation calls.
 
 [Install OncoTracer once](installation.md). Then **download → configure in the
-browser → run → inspect results**. Choose either platform or try both separately.
+browser → run → inspect results**, or use the [terminal-only alternative](#alternative-scripted-setup-and-terminal-run). Choose either platform. For SSH, see [headless servers](headless.md).
 
 ## 1. Download and verify the reads
 
@@ -41,9 +41,8 @@ Continue only when all three checksum lines say `OK`. Repeat an interrupted
 
 ## 2. Open setup and run
 
-Each command opens browser setup with samples and paths prefilled. Keep its
-terminal open and use the complete printed URL if needed. Finish one example,
-then stop its setup server with Ctrl+C before starting the other.
+Each command opens prefilled browser setup. Keep its terminal open. Finish one
+example, then stop its server with Ctrl+C before starting the other.
 
 ### Illumina
 
@@ -91,6 +90,40 @@ Open results from the browser, or find them under
 
 Next: [your own samples](setup.md) or [three-library QuickStart 2](public_cohort.md).
 
+## Alternative: scripted setup and terminal run
+
+After downloading, use these **instead of browser setup**. They create, check
+and run the same projects without prompts. For Docker, use `--backend docker`
+in setup/run, plus your installed `--image`.
+
+### Illumina — terminal only
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --non-interactive \
+  --project "$PWD/oncotracer-quickstart1/illumina" --mode illumina --analysis cna \
+  --sample-name ERR12341627 --status tumor \
+  --fastq-1 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz" \
+  --fastq-2 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz" \
+  --backend conda --threads 4
+oncotracer check --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
+```
+
+### ONT — terminal only
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --non-interactive \
+  --project "$PWD/oncotracer-quickstart1/ont" --mode ont --analysis cna \
+  --reads-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
+  --barcodes barcode01 --sample-names DRR165691 --backend conda --threads 4
+oncotracer check --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
+```
+
 ## Optional: reuse prepared genome indexes
 
 With the default choice, run downloads prebuilt indexes: about 8.0 GiB for
@@ -100,8 +133,7 @@ Choose **Reuse a prepared OncoTracer reference** in the browser if one exists.
 <details markdown="1">
 <summary>Show commands that reuse an existing reference</summary>
 
-Use the matching command instead of step 2, before creating its configuration.
-Replace `/data/shared-reference` with your reference parent or its
+Instead of step 2, select your reference parent or its
 `references/samurai_hg38` folder. Illumina needs BWA; ONT needs minimap2.
 
 ### Illumina with an existing reference
@@ -122,6 +154,25 @@ oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
   --hg38_build /data/shared-reference
 ```
 
+### Same reference examples — terminal questions and run
+
+Use step 2's sample names/settings. Each command configures, validates and runs:
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --terminal --run --backend conda \
+  --project "$PWD/oncotracer-quickstart1/illumina" --mode illumina \
+  --input-folder "$PWD/oncotracer-quickstart1/input/illumina" \
+  --hg38_build /data/shared-reference
+```
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --terminal --run --backend conda \
+  --project "$PWD/oncotracer-quickstart1/ont" --mode ont \
+  --input-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
+  --hg38_build /data/shared-reference
+```
 
 </details>
 
@@ -161,12 +212,10 @@ Use `--backend docker` or `--backend singularity` for the corresponding
 
 </details>
 
-For terminal setup questions, add `--terminal` to a step 2 command.
-Press Enter for the displayed default; finish with `save` or `run`:
+For questions, add `--terminal` to step 2. Enter accepts the default:
 
 ```text
 CNA bin size (kb) (1/5/10/15/30/50/100/500/1000) [100]:
 ```
 
-This selects 100 kb for QDNAseq; ONT ichorCNA uses 500 kb.
-For scripts, use [non-interactive setup](setup.md#optional-scripted-setup-without-prompts).
+QDNAseq defaults to 100 kb; ONT ichorCNA to 500 kb.

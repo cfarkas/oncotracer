@@ -12,6 +12,15 @@ Choose your files and settings. Click **Save configuration and check**, review
 any messages, then **Run analysis**. Keep the terminal open to keep the server
 available. [Try the demo](browser_demo.md) or follow the [setup guide](setup.md).
 
+**Terminal equivalent for a new project:**
+
+```bash
+oncotracer setup --terminal --project "$PWD/my-study" --backend conda --run
+```
+
+This asks questions in the terminal, validates, and starts analysis.
+For scripts or remote access, see [CLI and headless servers](headless.md).
+
 ## Run a saved configuration
 
 If you closed setup after saving, run from the terminal:

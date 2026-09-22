@@ -6,13 +6,33 @@ A configuration is a YAML text file containing your input paths, sample names, a
 
 After [installation](installation.md), run:
 
+Choose either browser setup:
+
 ```bash
 oncotracer setup --project /absolute/path/to/my-study
+```
+
+Or terminal questions for the same project:
+
+```bash
+oncotracer setup --terminal --project /absolute/path/to/my-study --backend conda
+```
+
+Replace the project path with yours. In the browser, select inputs, choose Conda and
+**Save configuration and check**. In the terminal, answer the questions and
+finish with **save**. Both save the commented `config/run.yml`.
+
+Then check and run that configuration from the terminal:
+
+```bash
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
 
-Replace the project path with yours. Setup asks for inputs, saves a commented YAML, and prints the exact next commands. [The setup guide](setup.md) explains each flag and shows single-sample and multisample examples.
+Skip this run command if you already started the analysis from setup. For another
+backend, change `--backend` explicitly. [The setup guide](setup.md) covers sample
+selection; [terminal and headless servers](headless.md) covers unattended commands
+and remote browser access.
 
 ## Which settings should I change?
 

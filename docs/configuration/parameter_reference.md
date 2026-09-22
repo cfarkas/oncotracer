@@ -8,12 +8,15 @@ Start with [guided setup](../setup.md), or [batch setup](../auto_params.md) for 
 oncotracer install ...
 oncotracer doctor ...
 oncotracer setup --project PATH ...
+oncotracer setup --terminal --project PATH ...
+oncotracer setup --non-interactive --project PATH ...
 oncotracer check --config FILE
 oncotracer system --path PATH
 oncotracer reference install ...
 oncotracer uninstall ...
 oncotracer auto ...
 oncotracer run ...
+oncotracer variants --config FILE ...
 oncotracer provenance --json
 ```
 
@@ -58,20 +61,52 @@ oncotracer doctor --backend singularity
 oncotracer doctor --backend poetry
 ```
 
-The command returns JSON and exits nonzero when required source identity, prefixes, packages, or semantic executable probes fail.
+Add `--json` for machine-readable output. The command exits nonzero when required source identity, prefixes, packages, or semantic executable probes fail.
 
 ## `oncotracer setup` and `oncotracer check`
 
-`setup` opens a terminal wizard for folder discovery, sample selection/types,
-analysis options and hardware settings, then saves the same YAML used by ordinary
-runs. Its final **save** choice finishes without analysis; **run** starts it.
-`--non-interactive` skips questions and uses supplied flags/defaults.
+Plain `setup` opens the browser form. `setup --terminal` asks terminal questions
+for folder discovery, sample selection/types, analysis and hardware settings.
+Both save the same YAML used by ordinary runs. The terminal wizard's final
+**save** choice finishes without analysis; **run** starts it.
+
+`--non-interactive` uses explicit sample flags and defaults without questions;
+it cannot be combined with `--input-folder`. Use `--samplesheet` or the
+single-library flags for Illumina, and `--reads-folder` plus `--barcodes` for ONT.
+See [terminal and headless servers](../headless.md) for complete scripted and SSH
+examples. `--no-browser` still starts the local web server; it only suppresses
+automatic browser launch.
+
+Choose one setup interface for this project:
+
+```bash
+oncotracer setup --project /work/my-study --backend conda
+```
+
+Terminal equivalent:
+
+```bash
+oncotracer setup --terminal --project /work/my-study --backend conda
+```
+
+Save the configuration, then run these terminal commands. Skip the run command
+if you already selected Run in setup:
+
+```bash
+oncotracer check --config /work/my-study/config/run.yml
+oncotracer run --backend conda --config /work/my-study/config/run.yml
+```
 
 | Option | Meaning |
 | --- | --- |
+| `--terminal` | Ask terminal questions instead of starting the browser form |
+| `--no-browser` | Start the loopback server without opening a browser; not a terminal workflow |
+| `--port N` | Browser server port, default 8888; bind address is fixed to 127.0.0.1 |
+| `--backend NAME` | Select host, conda, poetry, docker or singularity; optional branches have backend restrictions |
+| `--image IMAGE` | Docker image saved in project YAML; requires `--backend docker` |
 | `--project PATH` | New project containing `config/run.yml` and future results |
 | `--mode illumina` or `--mode ont` | Sequencing platform |
-| `--input-folder PATH` | Prefill the wizard's FASTQ folder; detects Illumina pairs or ONT barcode samples |
+| `--input-folder PATH` | Folder for browser or terminal discovery; incompatible with `--non-interactive` and explicit sample flags |
 | `--manual` | Use individual file/barcode prompts instead of folder discovery |
 | `--analysis cna`, `methylation` or `both` | Requested analysis; methylation requires ONT |
 | `--fastq-1 FILE`, `--fastq-2 FILE`, `--sample-name NAME` | One Illumina library; omit R2 for single-end |
@@ -82,7 +117,19 @@ runs. Its final **save** choice finishes without analysis; **run** starts it.
 | `--build_reference` | Build missing hg38 indexes locally on CPU when run starts; cannot be combined with `--hg38_build` |
 | `--threads NUMBER` | CPU workers to request |
 | `--non-interactive` | Skip questions; missing required inputs are errors, defaults still apply |
-| `--run` | Validate, prepare tools and run after setup; skip the wizard's final choice |
+| `--run` | Validate, prepare tools and run after setup; with `--terminal`, questions remain but the final save/run choice is skipped |
+| `--variant-config FILE` | Existing-BAM browser form; terminal equivalent is `oncotracer variants --config FILE` |
+
+`setup --terminal --run` configures and runs through terminal questions.
+`setup --non-interactive ... --run` configures and runs without prompts when all
+required inputs and resources are supplied. `setup --project PROJECT --run`
+resumes an existing project using its saved backend and image. Setup has no
+`--dry-run`; save first, then use `run --dry-run`.
+
+Optional variant flags belong to `setup`, or to YAML when using `run` or
+`variants`. See [variant flags and terminal examples](../variants_reference.md).
+`setup --variant-config` cannot be combined with `--terminal`, `--non-interactive`
+or `--run`; use the standalone `variants` command instead.
 
 These options save `lpwgs_root` and `hg38_auto_download` in YAML. The default is
 `true`: download a missing prebuilt reference at run time. `--build_reference`
@@ -112,6 +159,8 @@ oncotracer auto \
   --sample-table "$PWD/project/input/samples.csv" \
   --config-dir "$PWD/project/config" \
   --outdir "$PWD/project/results"
+oncotracer check --config "$PWD/project/config/illumina.auto.yml"
+oncotracer run --backend conda --config "$PWD/project/config/illumina.auto.yml"
 ```
 
 | Option | Required | Meaning |
@@ -134,7 +183,8 @@ Existing generated files are never overwritten. Defaults are
 `READS/oncotracer_config` and `READS/oncotracer_results`; pass both folder flags
 to keep settings and results separate from the reads. Automatic reference
 downloads go to `CONFIG_DIR/reference` only when `run` starts. `auto` does not
-create the results directory. Web/LLM report enrichment is off by default.
+create the results directory and has no `--run` flag. Run its saved configuration
+with `oncotracer run`. Web/LLM report enrichment is off by default.
 
 ## `oncotracer run`
 
@@ -148,7 +198,7 @@ oncotracer run \
 | Option | Meaning |
 | --- | --- |
 | `--config FILE` | Required flat native YAML |
-| `--backend NAME` | `host`, `conda`, `docker`, `singularity`, or `poetry`; saved backend used when omitted |
+| `--backend NAME` | `host`, `conda`, `docker`, `singularity`, or `poetry`; the global installation backend is used when omitted (fallback: host) |
 | `--threads N` | Thread limit passed to supported native stages |
 | `--force` | Deliberate stage refresh |
 | `--dry-run` | Validate and print native commands without launching tools |
@@ -165,6 +215,9 @@ oncotracer run \
 | `--gpu` | Use `cuda:all` for Dorado and expose the GPU to MARLIN; requires `--methylation` |
 
 Repeating the same command reuses valid content-matched stages automatically.
+Give `--backend` explicitly for reproducible scripts: ordinary `run` does not
+select the backend from YAML `execution_backend`. To reuse that project setting,
+use `setup --project PROJECT --run` instead.
 
 Optional methylation is ONT-only and supports the `host`, `conda`, and `poetry` backends with explicit user-installed resources. The stable container does not redistribute the licensed tools/models, so Docker and Singularity/Apptainer reject this branch.
 
