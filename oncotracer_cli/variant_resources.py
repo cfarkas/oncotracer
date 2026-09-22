@@ -277,22 +277,34 @@ def discover_variant_resources(data, *, roots=(), environment=None):
     mode, backend, specimen, callers, values, image = _payload(data)
     search = _Search(environment, roots)
     fields = {k: v for k, v in values.items() if k in PATH_FIELDS and v and not (backend == "docker" and k in DOCKER_IGNORED)}
-    resources, missing = [], []
+    resources, missing, candidates = [], [], []
     prefixes = search.prefixes()
     locations = search.resource_locations()
     if backend == "singularity":
         search.note("Variant discovery uses host tools for this backend. OncoTracer has no all-callers Singularity workflow; only supported ClairS-TO and FFPERASE SIF resources are used.")
 
-    def row(identity, label, status, path=None, detail=""):
-        resources.append({"id": identity, "label": label, "status": status, "path": str(path) if path else "", "detail": detail})
+    def row(identity, label, status, path=None, detail="", *, field=None):
+        if field is None:
+            field = "variant_" + identity if "variant_" + identity in PATH_FIELDS else {
+                "variant_tools": "variant_tool_prefix", "clairsto_model": "variant_clairsto_platform",
+                "ffperase": "variant_ffperase", "ffperase_runtime": "variant_ffperase_prefix",
+                "annovar": "variant_annovar", "docker_image": "docker_image",
+            }.get(identity, "")
+        resources.append({"id": identity, "label": label, "status": status, "path": str(path) if path else "", "detail": detail, "field": field})
+
+    def offer(field, path, label, detail):
+        item = {"field": field, "path": str(path), "label": label,
+                "status": "candidate", "detail": detail}
+        if not any(c["field"] == field and c["path"] == str(path) for c in candidates):
+            candidates.append(item)
 
     def need(identity):
         if identity not in missing:
             missing.append(identity)
 
-    def find_resource(field, label, candidates, predicate, *, candidate=False):
+    def find_resource(field, label, paths, predicate, *, candidate=False, fill=True, optional=False):
         override = search.override(field, values)
-        choices = [override] if override else search.existing(candidates, directories=not field.endswith("_sif"))
+        choices = [override] if override else search.existing(paths, directories=not field.endswith("_sif"))
         found = []
         for path in choices:
             search.record(path)
@@ -305,20 +317,29 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         if override:
             fields.setdefault(field, str(override))
         if not found:
-            row(identity, label, "missing", override, "The supplied path is unavailable or incomplete; it was preserved." if override else "No matching resource in the bounded search locations.")
+            status = "not_needed" if optional and not override else "missing"
+            detail = "The supplied path is unavailable or incomplete; it was preserved." if override else "No matching resource in the bounded search locations."
+            if optional and not override:
+                detail += " This is an optional alternative to the available runtime."
+            row(identity, label, status, override, detail, field=field)
             return None
         selected = found[0]
-        if len(found) == 1 or override:
+        if (len(found) == 1 or override) and fill:
             fields.setdefault(field, str(selected))
-        else:
+        elif len(found) > 1 and not override:
             search.note(f"Multiple {label} candidates found; choose a path explicitly: " + ", ".join(str(p) for p in found[:4]))
         status = "candidate" if candidate or len(found) > 1 else "found"
         detail = "Matching files exist; versions and compatibility have not been tested."
         if candidate:
             detail = "Candidate only. Model chemistry or container contents have not been verified; review before running."
         if len(found) > 1 and not override:
-            detail += " Multiple candidates exist; the form was not filled automatically."
-        row(identity, label, status, selected, detail)
+            detail += " Multiple candidates exist; select the intended path. The form was not filled automatically."
+        if not fill:
+            detail += " Alternative runtime; select it explicitly to use it."
+        if (len(found) > 1 and not override) or not fill:
+            for path in found:
+                offer(field, path, label, detail)
+        row(identity, label, status, selected, detail, field=field)
         return selected
 
     ffpe_needed = mode == "illumina" and specimen == "ffpe" and values.get("variant_ffperase", "required") != "off"
@@ -345,11 +366,12 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         has_native = any(search.which(("run_clairs_to",), prefix) and
                          search.which(("samtools",), prefix) and search.which(("bcftools",), prefix)
                          for prefix in native_candidates)
-        if sif_override or not has_native:
-            found_sif = find_resource("variant_clairsto_sif", "ClairS-TO SIF", sif_candidates("clairsto"), lambda p: search.file(p), candidate=True)
-            sif = found_sif if fields.get("variant_clairsto_sif") else None
-            if not found_sif and sif_override:
-                need("clairsto_caller")
+        found_sif = find_resource("variant_clairsto_sif", "ClairS-TO SIF", sif_candidates("clairsto"),
+                                  lambda p: search.file(p), candidate=True,
+                                  fill=bool(sif_override) or not has_native, optional=has_native)
+        sif = found_sif if fields.get("variant_clairsto_sif") else None
+        if not found_sif and sif_override:
+            need("clairsto_caller")
     required = {"samtools": ("samtools",), "bcftools": ("bcftools",)}
     for caller in callers:
         if caller != "clairs_to" or not sif:
@@ -369,41 +391,53 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         if not selected_image or not docker:
             need("docker_image")
         for identity in required:
-            row(identity, identity.replace("_", " "), "unverified", detail="Provided by the selected Docker image; host executables are not substituted.")
+            row(identity, identity.replace("_", " "), "unverified", detail="Provided by the selected Docker image; host executables are not substituted.", field="docker_image")
         if any(values.get(field) for field in DOCKER_IGNORED):
             search.note("Docker ignores host caller/FFPERASE prefixes and SIFs. External source, models and annotation paths remain host resources.")
     else:
-        if not selected_prefix and not all(search.which(names) for names in required.values()):
-            selected_prefix = next((p for p in prefixes if all(search.which(names, p) for names in required.values())), None)
-            if selected_prefix:
+        matching = []
+        path_complete = all(search.which(names) for names in required.values())
+        if not selected_prefix:
+            matching = [p for p in prefixes if all(search.which(names, p) for names in required.values())]
+            if not path_complete and len(matching) == 1:
+                selected_prefix = matching[0]
                 fields["variant_tool_prefix"] = str(selected_prefix)
-        elif selected_prefix:
+            elif matching:
+                detail = "All requested executable files exist; dependencies and versions have not been tested."
+                detail += " PATH already provides the required tools." if path_complete else " Select one complete environment; no prefix was chosen automatically."
+                for path in matching:
+                    offer("variant_tool_prefix", path, "Caller environment", detail)
+        else:
             fields.setdefault("variant_tool_prefix", str(selected_prefix))
+        choice_needed = not selected_prefix and not path_complete and len(matching) > 1
         absent = []
         for identity, names in required.items():
             found = search.which(names, selected_prefix)
-            row(identity, "/".join(names), "found" if found else "missing", found,
-                "Executable file found; it was not run." if found else "Missing in the selected prefix." if selected_prefix else "No executable found on PATH or in a complete candidate environment.")
-            if not found:
+            detail = "Executable file found; it was not run." if found else "Missing in the selected prefix." if selected_prefix else "No executable found on PATH or in a complete candidate environment."
+            if choice_needed:
+                detail = "Available in multiple complete environments. Select the caller environment path first."
+            row(identity, "/".join(names), "candidate" if choice_needed else "found" if found else "missing", found,
+                detail, field="variant_tool_prefix")
+            if not found and not choice_needed:
                 absent.append(identity)
                 if identity == "clair3": need("clair3_caller")
                 elif identity == "clairs_to": need("clairsto_caller")
         if absent:
             need("variant_tools")
-        row("variant_tools", "Caller environment", "missing" if absent else "found", selected_prefix,
+        row("variant_tools", "Caller environment", "candidate" if choice_needed else "missing" if absent else "found", selected_prefix,
+            "Multiple complete environments exist; choose the intended prefix." if choice_needed else
             ("Missing: " + ", ".join(absent)) if absent else "Requested executable files are present. Dependencies and versions need run preflight.")
 
     if "clair3" in callers:
         models = []
         for base in search.existing([*locations, *prefixes]):
-            for folder in (base / "models", base / "models/clair3", base / "clair3-model", base / "clair3_models"):
-                if "clair3" in str(folder).lower():
-                    models += [folder, *search.children(folder)]
+            for folder in (base / "models", base / "bin/models", base / "models/clair3", base / "clair3-model", base / "clair3_models"):
+                models += [folder, *search.children(folder)]
             if "clair3" in base.name.lower():
                 models += [base, *search.children(base)]
         # A model candidate needs checkpoint marker names, not merely any folder.
         def clair_model(path):
-            names = [p.name.lower() for p in search.children(path)]
+            names = [p.name.lower() for p in search.children(path) if search.file(p)]
             return any(n.startswith("pileup") for n in names) and any(n.startswith("full_alignment") for n in names)
         model = find_resource("variant_clair3_model", "Clair3 model", models,
                               (lambda p: p.is_dir() and bool(search.children(p))) if values.get("variant_clair3_model") else clair_model,
@@ -427,32 +461,34 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         if not source: need("ffperase_source")
         model_candidates = [p / name for p in locations for name in ("ffperase-models", "ffperase_models", "ffperase/models")]
         model_candidates += [p for p in locations if "ffperase" in p.name.lower()]
-        if source: model_candidates = [source / "models", source / "model", *model_candidates]
+        sources = [search.path(c["path"]) for c in candidates if c["field"] == "variant_ffperase_root"]
+        if source:
+            sources.append(source)
+        model_candidates = [p / name for p in search.unique(sources) for name in ("models", "model")] + model_candidates
         model = find_resource("variant_ffperase_models", "FFPERASE models", model_candidates,
                               lambda p: all(search.file(p / f"model.{kind}.joblib") for kind in ("snvs", "indels")))
         if not model: need("ffperase_models")
         if backend == "docker":
-            row("ffperase_runtime", "FFPERASE runtime", "unverified", detail="The Docker image supplies this runtime; external source/models are still required.")
+            row("ffperase_runtime", "FFPERASE runtime", "unverified", detail="The Docker image supplies this runtime; external source/models are still required.", field="docker_image")
         else:
             ffpe_sif_override = search.override("variant_ffperase_sif", values)
-            if ffpe_sif_override:
-                ffpe_sif = find_resource("variant_ffperase_sif", "FFPERASE SIF", [], lambda p: search.file(p), candidate=True)
-                if ffpe_sif: sif = ffpe_sif
-                else: need("ffperase_runtime")
-            else:
-                named = [p for p in prefixes if "ffperase" in p.name.lower() and search.file(p / "bin/python", executable=True)]
-                specialized = named or [p for p in prefixes if "ffpe" in p.name.lower()]
-                prefix_override = search.override("variant_ffperase_prefix", values)
-                native = [p for p in specialized if search.file(p / "bin/python", executable=True)]
-                possible_sifs = sif_candidates("ffperase")
-                if prefix_override or native or not possible_sifs:
-                    prefix = find_resource("variant_ffperase_prefix", "FFPERASE runtime", specialized,
-                                           lambda p: search.file(p / "bin/python", executable=True), candidate=True)
-                    if not prefix: need("ffperase_runtime")
-                else:
-                    found_sif = find_resource("variant_ffperase_sif", "FFPERASE SIF", possible_sifs, lambda p: search.file(p), candidate=True)
-                    if found_sif and fields.get("variant_ffperase_sif"): sif = found_sif
-                    if not found_sif: need("ffperase_runtime")
+            prefix_override = search.override("variant_ffperase_prefix", values)
+            named = [p for p in prefixes if "ffperase" in p.name.lower() and search.file(p / "bin/python", executable=True)]
+            specialized = named or [p for p in prefixes if "ffpe" in p.name.lower()]
+            native = [p for p in specialized if search.file(p / "bin/python", executable=True)]
+            prefer_native = not ffpe_sif_override and bool(prefix_override or native)
+            possible_sifs = sif_candidates("ffperase")
+            prefix = find_resource("variant_ffperase_prefix", "FFPERASE native runtime", specialized,
+                                   lambda p: search.file(p / "bin/python", executable=True), candidate=True,
+                                   fill=prefer_native, optional=bool(ffpe_sif_override or possible_sifs))
+            ffpe_sif = find_resource("variant_ffperase_sif", "FFPERASE SIF", possible_sifs,
+                                     lambda p: search.file(p), candidate=True,
+                                     fill=not prefer_native, optional=bool(prefix))
+            if ffpe_sif and fields.get("variant_ffperase_sif"):
+                sif = ffpe_sif
+            selected_missing = (ffpe_sif_override and not ffpe_sif) or (prefix_override and not prefix)
+            if selected_missing or (not prefix and not ffpe_sif):
+                need("ffperase_runtime")
     else:
         row("ffperase", "FFPERASE", "not_needed", detail="Only requested for Illumina FFPE; choose preservation explicitly and enable the assessment to search its resources.")
     if sif:
@@ -464,75 +500,134 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         if values.get(field):
             find_resource(field, label, [], lambda p: search.file(p))
 
-    _annovar(search, values, locations, fields, row, need, backend=backend)
+    _annovar(search, values, locations, fields, row, need, offer, backend=backend)
     recipe_root = next((p for p in [Path(__file__).absolute().parent.parent, *search.roots]
                         if (p / "environments/native-variants.yml").is_file()), None)
     from .variant_install_help import installation_guides
     guides = installation_guides(missing, backend=backend, mode=mode, root=recipe_root)
-    return {"backend": backend, "fields": fields, "resources": resources, "install_guides": guides,
+    return {"backend": backend, "fields": fields, "resources": resources, "candidates": candidates, "install_guides": guides,
             "searched": search.searched, "notes": ["Read-only discovery: no executable, model, installer, download or analysis was run. Review suggestions before saving.",
-            "Only common installation folders and a bounded set of their children were checked. For resources elsewhere, enter the exact path and select Autodetect resources again.", *search.notes]}
+            "Only common installation folders and a bounded set of their children were checked. For resources elsewhere, enter the exact path and select Autodetect resources again.",
+            "Clinical target BEDs, Varlociraptor scenarios and reference genomes are never selected from filenames; supply the intended files explicitly.", *search.notes]}
 
 
-def _annovar(search, values, locations, fields, row, need, *, backend):
+def _annovar(search, values, locations, fields, row, need, offer, *, backend):
+    """Discover the executable installation and database directory independently.
+
+    The two paths often live in different folders. Finding either is useful even
+    when the other is absent. Selection never crosses an explicit override, and
+    multiple matches require an explicit choice before combined validation.
+    """
     if values.get("variant_annovar") == "off":
-        row("annovar", "ANNOVAR", "not_needed", detail="Annotation is disabled.")
+        for identity, label in (("annovar_dir", "ANNOVAR installation"),
+                                ("annovar_db", "ANNOVAR databases"), ("annovar", "ANNOVAR")):
+            row(identity, label, "not_needed", detail="Annotation is disabled.")
         return
     from .annovar import discover_annovar
+
     override = search.override("variant_annovar_dir", values)
     db_override = search.override("variant_annovar_db", values)
     for field, path in (("variant_annovar_dir", override), ("variant_annovar_db", db_override)):
-        if path: fields.setdefault(field, str(path))
+        if path:
+            fields.setdefault(field, str(path))
     on_path = search.which(("table_annovar.pl",))
-    choices = [override] if override else search.unique(([on_path.parent] if on_path else []) + [search.home / "annovar"] + [p / "annovar" for p in locations] + [p for p in locations if p.name.lower() == "annovar"])
-    build = values.get("variant_reference_build") or "hg38"
-    detail = "No complete local ANNOVAR installation and matching unpacked RefSeq pair found."
-    unverified = None
-    for install in ([override] if override else search.existing(choices)):
+    paths = ([on_path.parent] if on_path else []) + [search.home / "annovar"]
+    paths += [p / "annovar" for p in locations] + [p for p in locations if p.name.lower() == "annovar"]
+    installs, oversized = [], set()
+    for install in ([override] if override else search.existing(paths)):
         search.record(install)
         scripts = [install / name for name in ("table_annovar.pl", "annotate_variation.pl", "convert2annovar.pl", "coding_change.pl")]
         if not all(search.file(p, executable=True) for p in scripts):
             continue
         try:
-            oversized = any(p.stat().st_size > 1024 * 1024 for p in scripts)
+            if any(p.stat().st_size > 1024 * 1024 for p in scripts):
+                oversized.add(install)
         except OSError:
             continue
-        if oversized:
-            unverified = install
-            detail = "ANNOVAR helper exceeds the bounded inspection size; supply and validate resources manually."
-            continue
-        database = db_override or install / "humandb"
-        gene = next((name for name in ("refGeneWithVer", "refGene") if all(search.file(database / filename) for filename in (f"{build}_{name}.txt", f"{build}_{name}Mrna.fa"))), None)
-        if not gene:
-            detail = f"Missing complete unpacked {build} RefSeq TXT and Mrna FASTA pair in {database}."
-            continue
-        clinvar = sorted((p.stem[len(build) + 1:] for p in search.children(database) if re.fullmatch(re.escape(build) + r"_clinvar_\d{8}\.txt", p.name) and search.file(p)), reverse=True)
-        protocols = [gene, *clinvar[:1]]
-        # Explicit protocols prevent a second unbounded database glob. Large DBs
-        # receive stat-only provenance in discover_annovar; no models are loaded.
-        # Preserve removed environment keys and the bounded PATH when calling
-        # the existing helper, whose environment argument is itself an overlay.
-        env = {key: None for key in os.environ if key not in search.env}
-        env.update(search.env)
-        env["PATH"] = os.pathsep.join(str(p) for p in search.path_dirs)
-        try:
-            detection = discover_annovar(build, annovar_dir=install, database_dir=database,
-                                         environment=env, protocols=protocols)
-        except (OSError, RuntimeError) as error:
-            detail = f"Local resources could not be inspected: {error}"
-            continue
-        if backend == "docker" and not detection.available and not search.which(("perl",)):
-            fields.setdefault("variant_annovar_dir", str(install))
-            fields.setdefault("variant_annovar_db", str(database))
-            row("annovar", "ANNOVAR", "candidate", install,
-                "Executable helpers and the matching RefSeq pair exist. Container Perl and full annotation compatibility require run preflight.")
-            return
-        detail = detection.reason
-        if detection.available:
-            fields.setdefault("variant_annovar_dir", str(install))
-            fields.setdefault("variant_annovar_db", str(database))
-            row("annovar", "ANNOVAR", "found", install, "Matching local resources: " + ", ".join(detection.protocols) + ". No annotation or download was run.")
-            return
-    row("annovar", "ANNOVAR", "unverified" if unverified else "missing", override or unverified,
-        detail + (" Explicit installation/database overrides were preserved." if override or db_override else ""))
-    need("annovar")
+        installs.append(install)
+
+    build = values.get("variant_reference_build") or "hg38"
+    # Exact paired RefSeq filenames establish a usable database directory. No
+    # database content, arbitrary analysis folder or clinical BED is scanned.
+    db_paths = [p / "humandb" for p in installs]
+    for base in locations:
+        db_paths += [base, base / "humandb", base / "annovar/humandb", base / "annovar_db", base / "annovar-db"]
+    databases = {}
+    for database in ([db_override] if db_override else search.existing(db_paths)):
+        search.record(database)
+        gene = next((name for name in ("refGeneWithVer", "refGene")
+                     if all(search.file(database / filename)
+                            for filename in (f"{build}_{name}.txt", f"{build}_{name}Mrna.fa"))), None)
+        if gene:
+            databases[database] = gene
+
+    selected_install = installs[0] if len(installs) == 1 else None
+    selected_db = next(iter(databases)) if len(databases) == 1 else None
+    if selected_install:
+        fields.setdefault("variant_annovar_dir", str(selected_install))
+        detail = "All four executable helper files exist. Database availability is checked separately."
+        if selected_install in oversized:
+            detail += " A helper exceeds the inspection size limit; content and compatibility remain unverified."
+        row("annovar_dir", "ANNOVAR installation", "unverified" if selected_install in oversized else "found",
+            selected_install, detail)
+    elif installs:
+        for install in installs:
+            paired = install / "humandb"
+            hint = f" Matching {build} database pair at {paired}." if paired in databases else f" Default database location: {paired}; its database selection is checked separately."
+            offer("variant_annovar_dir", install, "ANNOVAR installation", "All four executable helpers exist." + hint)
+        row("annovar_dir", "ANNOVAR installation", "candidate", detail="Multiple installations exist; select one explicitly. No installation path was filled.")
+    else:
+        row("annovar_dir", "ANNOVAR installation", "missing", override,
+            "No complete set of four executable ANNOVAR helper files found." + (" The explicit installation path was preserved." if override else ""))
+
+    if selected_db:
+        fields.setdefault("variant_annovar_db", str(selected_db))
+        row("annovar_db", "ANNOVAR databases", "found", selected_db,
+            f"Complete unpacked {build} {databases[selected_db]} TXT and Mrna FASTA pair found. ClinVar is optional; installation helpers are checked separately.")
+    elif databases:
+        for database, gene in databases.items():
+            offer("variant_annovar_db", database, f"ANNOVAR {build} databases",
+                  f"Complete unpacked {gene} TXT and Mrna FASTA pair. Choose the intended database release; dates or folder names do not establish a preferred release.")
+        row("annovar_db", "ANNOVAR databases", "candidate", detail=f"Multiple matching {build} database directories exist; select the intended release. No database path was filled.")
+    else:
+        row("annovar_db", "ANNOVAR databases", "missing", db_override,
+            f"No complete unpacked {build} RefSeq TXT and Mrna FASTA pair found." + (" The explicit database path was preserved." if db_override else "") + " An installation folder alone is not an annotation database.")
+
+    if not installs or not databases:
+        row("annovar", "ANNOVAR", "missing", override or selected_install,
+            "Annotation requires both executable helpers and a matching database pair; see the separate path checks above.")
+        need("annovar")
+        return
+    if not selected_install or not selected_db:
+        row("annovar", "ANNOVAR", "candidate", detail="Select the installation and database paths to validate their combination. Existing manual paths were preserved.")
+        return
+    if selected_install in oversized:
+        row("annovar", "ANNOVAR", "unverified", selected_install,
+            "ANNOVAR helper exceeds the bounded inspection size; validate the installation manually.")
+        need("annovar")
+        return
+
+    clinvar = sorted((p.stem[len(build) + 1:] for p in search.children(selected_db)
+                      if re.fullmatch(re.escape(build) + r"_clinvar_\d{8}\.txt", p.name) and search.file(p)), reverse=True)
+    protocols = [databases[selected_db], *clinvar[:1]]
+    # Avoid a second unbounded glob or restoring environment keys explicitly
+    # removed by the caller. Large databases receive stat-only provenance.
+    env = {key: None for key in os.environ if key not in search.env}
+    env.update(search.env)
+    env["PATH"] = os.pathsep.join(str(p) for p in search.path_dirs)
+    try:
+        detection = discover_annovar(build, annovar_dir=selected_install, database_dir=selected_db,
+                                     environment=env, protocols=protocols)
+    except (OSError, RuntimeError) as error:
+        row("annovar", "ANNOVAR", "unverified", selected_install, f"Local resources could not be inspected: {error}")
+        need("annovar")
+        return
+    if backend == "docker" and detection.reason == "Perl executable is unavailable on PATH":
+        row("annovar", "ANNOVAR", "candidate", selected_install,
+            "Executable helpers and the matching RefSeq pair exist. Container Perl and full annotation compatibility require run preflight.")
+    elif detection.available:
+        row("annovar", "ANNOVAR", "found", selected_install,
+            "Matching local resources: " + ", ".join(detection.protocols) + ". No annotation or download was run.")
+    else:
+        row("annovar", "ANNOVAR", "missing", selected_install, detection.reason)
+        need("annovar")

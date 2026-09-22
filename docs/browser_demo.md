@@ -16,8 +16,12 @@ analysis.
    Leave a sample unassigned to exclude it.
 3. Choose **Conda** or **Docker** and enable small variants. Compare **Fresh** and
    **FFPE** settings and the callers available for each sequencing platform.
-4. Click **Preview configuration** to inspect an example configuration and simulated checks.
-5. Click **Simulate Run** to see simulated progress, then explore the example
+4. Explore the four variant sections: specimen and callers, caller tools and
+   models, filtering and FFPE, and annotation. Open path controls and try
+   **Autodetect resources** or a path's **Autodetect** button. Resource results,
+   candidate choices and installation help use synthetic examples in the demo.
+5. Click **Preview configuration** to inspect an example configuration and simulated checks.
+6. Click **Simulate Run** to see simulated progress, then explore the example
    results. Use the demo controls to reset and try another configuration.
 
 ## Start the real server

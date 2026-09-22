@@ -18,9 +18,10 @@ oncotracer setup --variants
 1. Choose **Illumina or Oxford Nanopore**, discover your FASTQs and assign samples
    to Normal or Cancer. Unassigned samples are excluded.
 2. Keep **Copy-number analysis (CNA)** selected and enable **Add small-variant calling**.
-3. Select **Fresh or FFPE**, then choose compatible callers below.
-4. Choose your analysis tools and supply any requested model/resource folders.
-5. Optionally enable **Varlociraptor** and local **ANNOVAR annotation**.
+3. Work through the four variant sections below. Start with **Fresh or FFPE**
+   and your callers, then check their resources.
+4. Optionally enable **Varlociraptor** and local **ANNOVAR annotation**.
+5. Review any missing resources or model candidates before continuing.
 6. Choose a new project folder, click **Save configuration and check**, then
    **Run analysis**. Review CNA and variant results from the same page.
 
@@ -29,23 +30,42 @@ install external models or licensed annotation resources. CNA plus methylation
 can also include variants on supported host backends; methylation-only analysis
 cannot, and Docker methylation is unavailable.
 
-## Autodetect tools and models
+## Configure variants in four sections
 
-In either the FASTQ setup or existing-BAM form, select your platform, Fresh/FFPE,
-callers and backend, then click **Autodetect resources**. The **Tools and model
-paths** panel checks the computer running the setup server, fills empty path
-fields and preserves paths you entered. Review every candidate model against
-your actual chemistry/basecaller; finding a directory does not establish compatibility.
+The FASTQ setup and existing-BAM forms use the same order:
 
-Missing resources get **Copy commands** boxes and official setup links. Review
-and run the commands yourself in a terminal, then click Autodetect again.
-The button does not install tools, download models, accept licenses or run analysis.
-If a command exports environment variables, either paste its printed paths into
-the browser or restart setup from that terminal before checking again.
+| Section | Choose here |
+| --- | --- |
+| **1 · Specimen and callers** | Fresh or FFPE, and the callers available for your platform. |
+| **2 · Caller tools and models** | Caller resources, including a compatible ONT model or preset. |
+| **3 · Filtering and FFPE** | Varlociraptor and, for Illumina FFPE, FFPERASE. |
+| **4 · Annotation** | Optional ANNOVAR software and databases. |
+
+Common choices stay visible. Open the path controls when you need to inspect or
+enter a folder; controls adapt to your platform, callers and backend.
+
+### Find resources
+
+Click **Autodetect resources** to check resources for your selected settings, or
+use **Autodetect** beside an individual path. Discovery checks the computer
+running the setup server, fills empty paths and preserves paths you entered.
+If several candidates are found, review them and choose the one to use. Review
+every ONT model against your actual chemistry/basecaller; a detected directory
+does not establish compatibility.
+
+The compact resource summary opens detailed results and installation help.
+Missing resources include **Copy commands** boxes and official setup links in
+that dialog. Review and run the commands yourself in a terminal, then check
+again. Discovery does not install tools, download models, accept licenses or run
+analysis. If a command exports environment variables, either paste its printed
+paths into the browser or restart setup from that terminal before checking again.
+
+A target BED and a custom Varlociraptor scenario describe your intended analysis.
+Select these files explicitly; resource discovery does not choose them.
 
 Conda recipes create separate user-owned optional environments and leave existing
 folders unchanged. Docker uses the image's caller runtimes; external model/source
-folders still need your selection. Container tools marked **Check at run time**
+folders still need your selection. Container tools marked **Not verified**
 are verified when the analysis starts. [ANNOVAR](annovar.md) remains optional and
 requires separately obtained software and matching databases.
 

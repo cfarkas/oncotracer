@@ -1,9 +1,12 @@
 """Terminal browser states retain raw logs without presenting partial work as a crash."""
 import shutil
+from collections import Counter
+from html.parser import HTMLParser
 import subprocess
 import unittest
 
 from oncotracer_cli.variant_web_ui import PAGE
+from oncotracer_cli.web_ui import PAGE as FASTQ_PAGE
 
 
 class VariantBrowserStatusTests(unittest.TestCase):
@@ -46,6 +49,53 @@ renderJobStatus({project_id:'four',status:'complete',exit_code:0});
 assert.equal(nodes['job-status'].textContent,'Variant analysis completed');
 assert.equal(nodes['job-note'].hidden,true);
 assert.equal(nodes.logs.textContent,originalLog);
+"""
+        result = subprocess.run([shutil.which("node"), "-e", script], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_shared_forms_have_unique_paths_and_scoped_discovery(self):
+        class Elements(HTMLParser):
+            def __init__(self, page):
+                super().__init__()
+                self.elements = []
+                self.feed(page)
+            def handle_starttag(self, tag, attrs):
+                self.elements.append((tag, dict(attrs)))
+        for page in (PAGE, FASTQ_PAGE):
+            with self.subTest(existing_bam=page is PAGE):
+                elements = Elements(page).elements
+                ids = Counter(attrs["id"] for _, attrs in elements if "id" in attrs)
+                self.assertEqual([key for key, count in ids.items() if count > 1], [])
+                paths = ["variant_tool_prefix", "variant_clair3_model", "variant_clairsto_sif",
+                         "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_prefix",
+                         "variant_ffperase_sif", "variant_annovar_dir", "variant_annovar_db"]
+                discovery = {attrs["data-variant-detect"] for _, attrs in elements if "data-variant-detect" in attrs}
+                for key in paths:
+                    self.assertEqual(ids[key], 1)
+                    self.assertIn(key, discovery)
+                self.assertNotIn("variant_targets_bed", discovery)
+                self.assertNotIn("variant_varlociraptor_scenario", discovery)
+                sections = [attrs["data-variant-section"] for _, attrs in elements if "data-variant-section" in attrs]
+                self.assertEqual(sections, [f"variant-{part}-section" for part in ("specimen", "tools", "filter", "annotation")])
+                self.assertFalse(any(attrs.get("href", "").startswith("#variant-") for _, attrs in elements))
+                self.assertEqual(ids["variant-resource-dialog"], 1)
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for browser state checks")
+    def test_saved_runtime_uses_one_alternative_and_docker_status_remains_visible(self):
+        runtime = PAGE.split("function filterVariantRuntime", 1)[1].split("function resetVariantResourceResults", 1)[0]
+        fields = PAGE.split("function variantResourceField", 1)[1].split("function variantGuideMatches", 1)[0]
+        script = """
+const assert=require('node:assert/strict');
+let choice='native';const document={getElementById:()=>({value:choice})};
+""" + "function filterVariantRuntime" + runtime + "function variantResourceField" + fields + """
+const data={variant_ffperase_prefix:'/native',variant_ffperase_sif:'/runtime.sif'};
+assert.deepEqual(filterVariantRuntime({...data}),{variant_ffperase_prefix:'/native'});
+choice='sif';
+assert.deepEqual(filterVariantRuntime({...data},true),{variant_ffperase_prefix:'',variant_ffperase_sif:'/runtime.sif'});
+assert.equal(data.variant_ffperase_prefix,'/native');
+assert.equal(variantResourceField({id:'varlociraptor',field:'docker_image'}),'variant_tool_prefix');
+assert.equal(variantResourceField({id:'ffperase_runtime',field:'docker_image'}),'variant_ffperase_prefix');
+assert.equal(variantResourceField({id:'annovar_db',field:'variant_annovar_db'}),'variant_annovar_db');
 """
         result = subprocess.run([shutil.which("node"), "-e", script], text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)

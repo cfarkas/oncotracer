@@ -121,7 +121,7 @@ function demoBrowse(path){
 }
 const demoInstallGuides=__VARIANT_INSTALL_GUIDES__;
 function demoVariantResources(payload){
-  const docker=payload.backend==='docker',values=payload.values||{},fields={},resources=[];
+  const docker=payload.backend==='docker',values=payload.values||{},fields={},resources=[],candidates=[];
   const found=(id,label,key,path,status='found',detail='Synthetic example path; no files were inspected.')=>{fields[key]=values[key]||path;resources.push({id,label,status,path:fields[key],detail});};
   if(docker)resources.push({id:'variant_tools',label:'Caller tools in Docker',status:'unverified',path:payload.docker_image,detail:'The real app checks container tools during preflight. This demo does not run Docker.'});
   else found('variant_tools','Variant tool environment','variant_tool_prefix','/demo/tools/oncotracer-variants');
@@ -136,7 +136,8 @@ function demoVariantResources(payload){
     resources.push({id:'annovar',label:'ANNOVAR and local databases',status:'missing',detail:'This example deliberately leaves optional ANNOVAR unavailable so you can explore the installation codebox. Manually entered paths are kept.'});
     guides.push(...demoInstallGuides[docker?'docker':'host']);
   }
-  return {backend:payload.backend,fields,resources,install_guides:guides,searched:['/demo/tools','/demo/resources'],notes:['Synthetic resource discovery only. Your computer has not been inspected.']};
+  if(payload.mode==='ont'&&payload.callers.includes('clair3'))for(const path of ['/demo/resources/clair3-model','/demo/resources/clair3-alternative'])candidates.push({field:'variant_clair3_model',path,label:'Synthetic Clair3 model',status:'candidate',detail:'Fictional candidate: confirm chemistry and basecaller before choosing a real model.'});
+  return {backend:payload.backend,fields,resources,candidates,install_guides:guides,searched:['/demo/tools','/demo/resources'],notes:['Synthetic resource discovery only. Your computer has not been inspected.']};
 }
 function demoApi(path,payload){
   const url=new URL(path,location.href);
