@@ -24,6 +24,7 @@ from .discovery import discover_fastqs
 from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
 from .runtime import OncoTracerError, load_flat_yaml
 from .system_check import inspect_hardware, resource_report
+from .variant_resources import discover_variant_resources
 from .web_ui import PAGE
 from .web_progress import progress_for_job
 
@@ -362,6 +363,9 @@ class WebState:
             self.projects[project_id] = prepared
             return {key: value for key, value in prepared.items()
                     if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot", "project_created", "project_identity"}}
+
+    def variant_resources(self, data):
+        return discover_variant_resources(data, roots=(self.start_dir,))
 
     def variant_load(self, data):
         from .variant_web import load_for_browser
@@ -754,6 +758,7 @@ class WebHandler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise OncoTracerError("Expected a JSON object.")
             methods = {"/api/ont-inputs": self.server.state.ont_inputs, "/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
+                       '/api/variant-resources': self.server.state.variant_resources,
                        '/api/variant-load': self.server.state.variant_load, '/api/variant-prepare': self.server.state.variant_prepare,
                        "/api/run": self.server.state.run, "/api/stop": self.server.state.stop,
                        "/api/remove-project": self.server.state.remove_project}

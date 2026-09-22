@@ -337,6 +337,24 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.request(server, "POST", "/api/run", {"project_id": "guess"})[0], 400)
         self.assertEqual(self.request(server, "GET", "/api/system")[0], 200)
 
+    def test_variant_resource_discovery_is_authenticated_and_read_only(self):
+        server = self.start_server()
+        payload = {"mode": "illumina", "backend": "conda", "callers": ["mutect2"],
+                   "values": {"variant_tool_prefix": "/explicit/tools"}}
+        result = {"fields": {}, "resources": [], "install_guides": [], "notes": [], "searched": []}
+        before = set(self.root.iterdir())
+        with patch("oncotracer_cli.web.discover_variant_resources", return_value=result) as discover:
+            for changes in ({"X-OncoTracer-Token": ""}, {"Origin": "https://example.com"}, {"Host": "example.com"}):
+                self.assertEqual(self.request(server, "POST", "/api/variant-resources", payload, **changes)[0], 403)
+            discover.assert_not_called()
+            code, content, _ = self.request(server, "POST", "/api/variant-resources", payload)
+            self.assertEqual(code, 200)
+            self.assertEqual(json.loads(content), result)
+            discover.assert_called_once_with(payload, roots=(self.root,))
+        self.assertEqual(set(self.root.iterdir()), before)
+        self.assertEqual(self.state.projects, {})
+        self.assertIsNone(self.state.job)
+
     def test_browse_escaped_names_and_permission_errors(self):
         folder = self.root / '<img src=x onerror=alert(1)>'
         folder.mkdir()

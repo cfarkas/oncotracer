@@ -8,6 +8,19 @@ Start with [variant setup](variants.md). In the browser, leave **ANNOVAR annotat
 on **Automatically use an existing local installation**, or choose **Skip ANNOVAR annotation**.
 If discovery cannot find your resources, fill the installation and database folders.
 
+## Use Autodetect resources
+
+In variant settings, click **Autodetect resources**. It checks the server's local
+installation and database candidates, fills blank fields and preserves paths you
+entered. A missing or incomplete installation gets a **Copy commands** box plus
+links to ANNOVAR registration and database setup. The button never installs
+ANNOVAR or downloads a database.
+
+Obtain resources separately under their terms, enter their paths, then rerun
+Autodetect. You can also choose **Skip ANNOVAR annotation** and retain variant
+calling. Software discovery cannot determine the reference build from your
+intent: choose databases matching the actual alignment/reference.
+
 ## What must already be available?
 
 | Resource | Required locally |

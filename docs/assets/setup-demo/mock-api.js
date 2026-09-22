@@ -119,10 +119,30 @@ function demoBrowse(path){
   const files=path==='/demo/nanopore/bam_pass'?[{name:'SYNTHETIC_RUN.mod.bam',path:path+'/SYNTHETIC_RUN.mod.bam'}]:[];
   return {path,parent:path==='/demo'?'/demo':path.slice(0,path.lastIndexOf('/'))||'/demo',directories:(tree[path]||[]).map(name=>({name,path:path+'/'+name})),files,fastq_entries:fastqs.map(path=>({name:path.split('/').pop(),path})),fastq_files:fastqs.length,pod5_files:path.endsWith('/pod5_pass')?3:0,bam_files:files.length,truncated:false};
 }
+const demoInstallGuides=__VARIANT_INSTALL_GUIDES__;
+function demoVariantResources(payload){
+  const docker=payload.backend==='docker',values=payload.values||{},fields={},resources=[];
+  const found=(id,label,key,path,status='found',detail='Synthetic example path; no files were inspected.')=>{fields[key]=values[key]||path;resources.push({id,label,status,path:fields[key],detail});};
+  if(docker)resources.push({id:'variant_tools',label:'Caller tools in Docker',status:'unverified',path:payload.docker_image,detail:'The real app checks container tools during preflight. This demo does not run Docker.'});
+  else found('variant_tools','Variant tool environment','variant_tool_prefix','/demo/tools/oncotracer-variants');
+  if(payload.mode==='ont'&&payload.callers.includes('clair3'))found('clair3','Clair3 model','variant_clair3_model','/demo/resources/clair3-model','candidate','Check sequencing chemistry and basecaller compatibility; a folder name alone cannot verify a model.');
+  if(payload.mode==='illumina'&&payload.specimen_type==='ffpe'&&values.variant_ffperase==='required'){
+    found('ffperase_source','FFPERASE source','variant_ffperase_root','/demo/resources/ffperase');
+    found('ffperase_models','FFPERASE models','variant_ffperase_models','/demo/resources/ffperase/models','candidate');
+    if(!docker)found('ffperase_runtime','FFPERASE environment','variant_ffperase_prefix','/demo/tools/oncotracer-ffperase');
+  }
+  const guides=[];
+  if(values.variant_annovar!=='off'){
+    resources.push({id:'annovar',label:'ANNOVAR and local databases',status:'missing',detail:'This example deliberately leaves optional ANNOVAR unavailable so you can explore the installation codebox. Manually entered paths are kept.'});
+    guides.push(...demoInstallGuides[docker?'docker':'host']);
+  }
+  return {backend:payload.backend,fields,resources,install_guides:guides,searched:['/demo/tools','/demo/resources'],notes:['Synthetic resource discovery only. Your computer has not been inspected.']};
+}
 function demoApi(path,payload){
   const url=new URL(path,location.href);
   switch(url.pathname){
     case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:fastq-variants-20260921'}};
+    case '/api/variant-resources':return demoVariantResources(payload);
     case '/api/browse':return demoBrowse(url.searchParams.get('path'));
     case '/api/scan':{
       demoAssertPath(payload.folder);

@@ -135,7 +135,7 @@ function renderSamples(){
 $('scan').onclick=()=>busy($('scan'),async()=>{if(!mode)throw Error('Choose a platform first.');scan=null;invalidate();show('fastq-preview',false);show('samples-card',false);show('settings-card',false);scan=await api('/api/scan',{mode,folder:$('input-folder').value});invalidate();$('scan-warnings').replaceChildren();for(const warning of scan.warnings)$('scan-warnings').append(node('p',warning,'notice'));renderSamples();show('samples-card',true);show('settings-card',true);$('fastq-preview').scrollIntoView({behavior:'smooth',block:'start'});});
 const variantCallerOptions={illumina:[['mutect2','Mutect2 · tumor-only candidates'],['freebayes','FreeBayes · germline-style'],['bcftools','bcftools · germline-style']],ont:[['clair3','Clair3 · germline-style'],['clairs_to','ClairS-TO · tumor-only candidates']]};
 function selectedVariantCallers(){return [...document.querySelectorAll('[data-variant-caller]:checked')].map(field=>field.value);}
-function variantSettings(){
+function variantSettings(){resetVariantResourceResults();
   show('variant-fields',$('variants').checked);
   const docker=$('backend').value==='docker';
   show('docker-image-field',docker);
@@ -257,3 +257,7 @@ $('device').value=defaults.gpu?'gpu':'cpu';$('license').checked=Boolean(defaults
 if(defaults.mode&&defaults.input_folder)await $('scan').onclick();
 await poll();}catch(error){failure(error);}})();
 </script></body></html>'''
+
+from .variant_resource_ui import add_resource_ui
+
+PAGE = add_resource_ui(PAGE, existing_bam=False)
