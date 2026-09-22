@@ -24,7 +24,7 @@ oncotracer setup --variants
    to Normal or Cancer. Unassigned samples are excluded.
 2. Keep **Copy-number analysis (CNA)** selected and enable **Add small-variant calling**.
 3. Work through the four variant sections below. Start with **Fresh or FFPE**
-   and your callers, then check their resources.
+   and your callers, then choose matching ONT profiles or review FFPE resources.
 4. Optionally enable **Varlociraptor** and local **ANNOVAR annotation**.
 5. Review any missing resources or model candidates before continuing.
 6. Choose a new project folder, click **Save configuration and check**, then
@@ -59,8 +59,9 @@ the [documented CSV layout](setup.md#illumina-multiple-libraries).
 
 </details>
 
-Missing required callers or models stop preflight. The variant option does not
-install external models or licensed annotation resources. CNA plus methylation
+Missing caller programs stop preflight. Selected Clair3 models and approved
+FFPERASE resources can be prepared when **Run analysis** starts; saving, checking
+and dry runs download no variant resources. ANNOVAR remains separately supplied. CNA plus methylation
 can also include variants on supported host backends; methylation-only analysis
 cannot, and Docker methylation is unavailable.
 
@@ -72,11 +73,12 @@ The FASTQ setup and existing-BAM forms use the same order:
 | --- | --- |
 | **1 · Specimen and callers** | Fresh or FFPE, and the callers available for your platform. |
 | **2 · Caller tools and models** | Caller resources, including a compatible ONT model or preset. |
-| **3 · Filtering and FFPE** | Varlociraptor and, for Illumina FFPE, FFPERASE. |
+| **3 · Variant filtering / FFPE damage and filtering** | Optional Varlociraptor and, for Illumina FFPE, FFPERASE. |
 | **4 · Annotation** | Optional ANNOVAR software and databases. |
 
-Common choices stay visible. Open the path controls when you need to inspect or
-enter a folder; controls adapt to your platform, callers and backend.
+Choose **Fresh or FFPE** first; the remaining sections then appear. Controls adapt
+to your platform, callers and backend. Open advanced paths only to inspect or
+change an installation.
 
 ### Find resources
 
@@ -98,8 +100,8 @@ A target BED and a custom Varlociraptor scenario describe your intended analysis
 Select these files explicitly; resource discovery does not choose them.
 
 Conda recipes create separate user-owned optional environments and leave existing
-folders unchanged. Docker uses the image's caller runtimes; external model/source
-folders still need your selection. Container tools marked **Not verified**
+folders unchanged. Docker uses the image's caller runtimes. Choose automatic model
+preparation or existing resource paths. Container tools marked **Not verified**
 are verified when the analysis starts. [ANNOVAR](annovar.md) remains optional and
 requires separately obtained software and matching databases.
 
@@ -109,7 +111,7 @@ requires separately obtained software and matching databases.
 | --- | --- | --- |
 | Illumina | **Mutect2** (default) | Tumor-only candidates with a learned read-orientation artifact model. |
 | Illumina | **FreeBayes**, **bcftools** | Independent germline-style calls. |
-| ONT | **Clair3** (default) | Germline-style calls; provide a model matching your chemistry/basecaller. |
+| ONT | **Clair3** (default) | Germline-style calls; select a matching basecaller profile for automatic preparation, or an existing model. |
 | ONT | **ClairS-TO** | Tumor-only candidates; choose a compatible platform/model preset. |
 
 A normal sample skips tumor-only callers. Controls are analyzed independently;
@@ -117,9 +119,35 @@ OncoTracer does not infer matched tumor–normal pairs or combine callers into a
 consensus genotype. Multiple callers remain separate for comparison.
 
 **Fresh/FFPE describes preservation, not sequencing platform.** Use one preservation
-type per project. Illumina FFPE selects FFPERASE by default; provide its external
-source and model folders, or explicitly select **Skip FFPERASE**. FFPERASE is not
+type per project. Illumina FFPE selects FFPERASE by default; review its preparation
+and license choices below, or explicitly select **Skip FFPERASE**. FFPERASE is not
 supported for Fresh or ONT inputs.
+
+### ONT models: select the sequencing profile
+
+For **Clair3**, keep **Automatic** and select the flow cell/basecaller profile
+used for the reads. Run downloads the corresponding approximately 75 MB model,
+checks its pinned size and SHA-256, and reuses the verified cache on resume.
+Select **Use an existing model folder** for an installation or profile outside
+the catalog. Preservation does not identify the sequencing chemistry.
+
+For **ClairS-TO**, select the readable sequencing/basecaller preset. Its models
+come from the installed caller or container. **Other installed preset (advanced)**
+accepts the exact preset name supported by your installation. See the
+[profile table and paired terminal examples](variants_reference.md#automatic-ont-model-preparation).
+
+### Illumina FFPE: review FFPERASE preparation
+
+**Prepare missing FFPERASE source and models when the run starts** can fetch the
+pinned resources after you explicitly accept their license. Existing paths are
+reused. A compatible FFPERASE runtime must already be installed; Docker includes it.
+
+The [pinned FFPERASE license](https://github.com/papaemmelab/nf-ffperase/blob/b0dd56cbd0a939896a966b9ce30c4d719b158170/LICENSE)
+limits use to personal, academic and noncommercial purposes, excludes clinical
+use, and requires MSK's express written permission to publish research results.
+The checkbox acknowledges these terms; it does not grant publication permission.
+You can instead supply existing licensed resources or skip FFPERASE. See the
+[automatic and local terminal examples](variants_reference.md#ffperase-for-illumina-ffpe).
 
 ## Conda and Docker
 
@@ -134,7 +162,7 @@ Select **Docker** and this image in browser settings, or prefill them:
 
 ```bash
 oncotracer setup --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants
 ```
 
 <details markdown="1">
@@ -146,7 +174,7 @@ image runs alignment, CNA and variants; no host Conda environment is needed.
 ```bash
 oncotracer setup --non-interactive --project "$PWD/docker-variant-study" \
   --mode illumina --analysis cna --backend docker --threads 4 \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 \
   --sample-name TUMOR01 --status tumor \
   --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
   --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
@@ -155,17 +183,18 @@ oncotracer setup --non-interactive --project "$PWD/docker-variant-study" \
   --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
 oncotracer check --config "$PWD/docker-variant-study/config/run.yml"
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 \
   --config "$PWD/docker-variant-study/config/run.yml"
 ```
 
 </details>
 
-The image supplies native callers and the FFPERASE runtime. Clair3 models,
-FFPERASE source/models and ANNOVAR remain external resources. Select their host
-paths in the browser; OncoTracer mounts them for analysis. **Save and check**
-checks paths/settings; **Run analysis** checks the image tools before alignment.
-The saved project retains its backend and image.
+The image supplies native callers and the FFPERASE runtime. The 20260922 image
+also supports verified model preparation on Run. Existing resource folders and
+licensed ANNOVAR resources use host paths; OncoTracer mounts them for analysis.
+**Save and check** checks paths/settings; **Run analysis** checks the image tools
+before alignment. The saved project retains its backend and image. The older
+20260921 image requires preexisting model/source paths.
 
 ## What filtering is applied?
 
@@ -180,12 +209,13 @@ The saved project retains its backend and image.
 There is no universal post-calling QUAL/DP cutoff applied across every caller.
 Assessment steps retain candidates and add FILTER/evidence fields; they do not
 rescue an existing caller failure. The default Varlociraptor model assesses
-presence, not somatic origin. See the [filtering reference](variants_reference.md#additional-assessments-ffperase-and-varlociraptor)
+presence, not somatic origin: enabling it requires **no scenario YAML or sample
+key**. Custom models remain under **Advanced evidence settings**. See the [filtering reference](variants_reference.md#additional-assessments-ffperase-and-varlociraptor)
 for exact behavior and low-depth FFPERASE limitations.
 
 ## Optional local ANNOVAR
 
-Choose **Automatically use an existing local installation**, or **Skip ANNOVAR annotation**.
+Choose **Use ANNOVAR when available**, or **Skip ANNOVAR annotation**.
 Automatic discovery uses existing scripts and matching databases; it downloads
 nothing. Annotation adds gene/database descriptions after filtering.
 Follow [ANNOVAR setup and output guidance](annovar.md).

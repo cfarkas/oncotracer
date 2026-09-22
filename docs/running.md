@@ -39,7 +39,7 @@ oncotracer run --backend conda --config "$PWD/my-study/config/run.yml"
 
 ```bash
 oncotracer run --backend docker --config "$PWD/my-study/config/run.yml" \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921
+  --image carlosfarkas/oncotracer:fastq-variants-20260922
 ```
 
 ## Check progress and results

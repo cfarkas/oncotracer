@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from oncotracer_cli.discovery import detect_fastq_mode, discover_fastqs
+from oncotracer_cli.discovery import detect_fastq_mode, discover_fastqs, discover_ont_inputs
 from oncotracer_cli.engine import parse_illumina_samplesheet, parse_ont_samples
 from oncotracer_cli.runtime import OncoTracerError
 
@@ -122,6 +122,63 @@ class DiscoveryTests(unittest.TestCase):
         parsed = parse_ont_samples(config)
         self.assertEqual([(sample.sample, sample.status, sample.fastq_dir) for sample in parsed], [("Cancer_A", "tumor", found.samples[0].fastq_dir), ("Control_A", "normal", found.samples[1].fastq_dir)])
         self.assertEqual(before, {path: path.read_bytes() for path in self.reads.rglob("*") if path.is_file()})
+
+    def test_ont_signal_discovery_uses_nested_run_and_barcode_without_parent_signals(self):
+        fastq = self.fastq("experiment/sample/run/fastq_pass/barcode01/batch.fastq.gz")
+        run = fastq.parent.parent.parent
+        for signal in ("pod5_pass", "bam_pass"):
+            (self.reads / signal).mkdir()
+            (run / signal / "barcode01").mkdir(parents=True)
+            (run / signal / "barcode02").mkdir()
+        before = sorted(self.reads.rglob("*"))
+        found = discover_fastqs(self.reads, "ont")
+        linked = discover_ont_inputs(self.reads, fastq_root=found.root)
+        self.assertEqual(linked["run"], str(run))
+        self.assertEqual(linked["pod5"], str(run / "pod5_pass"))
+        self.assertEqual(linked["modbam"], str(run / "bam_pass"))
+        # The run-selection route and an explicit barcode selection agree.
+        nested = discover_ont_inputs(self.reads / "experiment")
+        self.assertEqual(nested, linked)
+        barcode = discover_ont_inputs(fastq.parent, fastq_root=found.root)
+        self.assertEqual(barcode["fastq"], str(fastq.parent))
+        self.assertEqual(barcode["pod5"], str(run / "pod5_pass/barcode01"))
+        self.assertEqual(barcode["modbam"], str(run / "bam_pass/barcode01"))
+        self.assertEqual(before, sorted(self.reads.rglob("*")))
+
+    def test_ont_signal_discovery_rejects_outside_symlinks_and_unrelated_runs(self):
+        selected = self.fastq("selected/fastq_pass/barcode01/batch.fastq.gz")
+        self.fastq("other/fastq_pass/barcode01/batch.fastq.gz")
+        other_pod5 = self.reads / "other/pod5_pass"
+        other_pod5.mkdir()
+        (self.reads / "other/bam_pass").mkdir()
+        (self.reads / "selected/pod5_pass").symlink_to(other_pod5, target_is_directory=True)
+        found = discover_fastqs(selected.parent, "ont")
+        linked = discover_ont_inputs(selected.parent, fastq_root=found.root)
+        self.assertEqual((linked["pod5"], linked["modbam"]), ("", ""))
+        with self.assertRaisesRegex(OncoTracerError, "Multiple ONT runs"):
+            discover_ont_inputs(self.reads / "selected" / "..")
+
+    def test_ont_signal_discovery_direct_files_requires_one_nonempty_bam(self):
+        fastq = self.fastq("run/fastq_pass/batch.fastq.gz")
+        run = fastq.parent.parent
+        (run / "batch.pod5").write_bytes(b"signal fixture")
+        (run / "empty.bam").write_bytes(b"")
+        (run / "sample.bam").write_bytes(b"bam fixture")
+        linked = discover_ont_inputs(run)
+        self.assertEqual(linked["pod5"], str(run))
+        self.assertEqual(linked["modbam"], str(run / "sample.bam"))
+        (run / "second.bam").write_bytes(b"another bam fixture")
+        linked = discover_ont_inputs(run)
+        self.assertEqual(linked["modbam"], "")
+        self.assertIn("Multiple BAM files", " ".join(linked["notes"]))
+
+    def test_ont_signal_discovery_bounded_parent_search_requires_specific_run(self):
+        parent = self.reads / "many-runs"
+        parent.mkdir()
+        for index in range(129):
+            (parent / f"folder-{index:03}").mkdir()
+        with self.assertRaisesRegex(OncoTracerError, "search was incomplete"):
+            discover_ont_inputs(parent)
 
     def test_platform_detection_ignores_empty_failed_ont_batches(self):
         self.fastq("run/fastq_pass/barcode01/batch.fastq")

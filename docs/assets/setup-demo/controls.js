@@ -13,11 +13,12 @@ async function demoLoad(platform){
   if(operationBusy)return;
   demoRestoreControls();choose(platform);
   $('input-folder').value=demoPaths[platform];$('project-parent').value='/demo/projects';$('project-name').value=platform==='illumina'?'synthetic-illumina-ffpe':'synthetic-nanopore-fresh';
-  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:fastq-variants-20260921';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();
+  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:fastq-variants-20260922';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();
   $('variants').checked=true;variantSpecimen=platform==='illumina'?'ffpe':'fresh';variantSettings();
   const selected=platform==='illumina'?['mutect2','bcftools']:['clairs_to'];
   for(const field of document.querySelectorAll('[data-variant-caller]'))field.checked=selected.includes(field.value);
-  $('variant_clair3_model').value='/demo/resources/clair3-model';$('variant_clairsto_platform').value='ont_r10_dorado_sup_5khz';
+  $('variant_clair3_model').value='auto';$('variant_ont_profile').selectedIndex=0;$('variant-clairsto-preset').selectedIndex=0;$('variant_clairsto_platform').value=$('variant-clairsto-preset').value;
+  $('variant_download_resources').checked=true;$('variant_accept_ffperase_license').checked=false;$('variant-scenario-mode').value='standard';$('variant_varlociraptor_scenario').value='';
   $('variant_ffperase').value='required';$('variant_ffperase_root').value='/demo/resources/ffperase';$('variant_ffperase_models').value='/demo/resources/ffperase/models';
   $('variant_varlociraptor').value='required';$('variant_varlociraptor_fdr').value='0.05';$('variant_annovar').value='auto';$('variant_annovar_dir').value='';$('variant_annovar_db').value='';
   $('reports').checked=false;$('gistic').checked=false;methylationSettings();

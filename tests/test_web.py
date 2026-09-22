@@ -263,6 +263,19 @@ class WebTests(unittest.TestCase):
         self.assertEqual(linked["fastq"], str(self.root / "ligation"))
         self.assertEqual((linked["pod5"], linked["modbam"]), ("", ""))
 
+    def test_ont_scan_groups_nine_batches_into_three_samples_and_links_run(self):
+        for barcode in ("barcode01", "barcode02", "barcode03"):
+            for batch in range(3):
+                self.fastq(f"run/fastq_pass/{barcode}/batch{batch}.fastq.gz")
+        (self.root / "run/pod5_pass").mkdir()
+        (self.root / "run/bam_pass").mkdir()
+        scan = self.state.scan({"mode": "ont", "folder": str(self.root / "run/fastq_pass")})
+        self.assertEqual(len(scan["samples"]), 3)
+        self.assertEqual([row["file_count"] for row in scan["samples"]], [3, 3, 3])
+        self.assertEqual(sum(len(row["files"]) for row in scan["samples"]), 9)
+        self.assertEqual(scan["ont_inputs"]["pod5"], str(self.root / "run/pod5_pass"))
+        self.assertEqual(scan["ont_inputs"]["modbam"], str(self.root / "run/bam_pass"))
+
     def test_browser_selects_executable_models_and_counts_signal_files(self):
         for name in ("model.zip", "dorado", "batch.pod5", "calls.bam"):
             (self.root / name).write_text("fixture")

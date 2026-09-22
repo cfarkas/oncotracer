@@ -230,3 +230,109 @@ def discover_fastqs(folder: str | Path, mode: str) -> FastqDiscovery:
         raise OncoTracerError("FASTQ discovery mode must be illumina or ont")
     except OSError as error:
         raise OncoTracerError(f"Cannot inspect FASTQ folder {root}: {error}") from error
+
+
+def discover_ont_inputs(folder: str | Path, *, fastq_root: Path | None = None) -> dict:
+    """Suggest only signal inputs belonging to the selected/discovered ONT run.
+
+    Match conventional sibling directories without following directory symlinks
+    outside that run. This is path discovery, not MM/ML or read-ID validation.
+    The optional FASTQ root is supplied by the completed FASTQ discovery so a
+    nested MinKNOW run cannot accidentally borrow a different run's signals.
+    """
+    selected = require_directory(Path(folder), "ONT input folder")
+    notes: list[str] = []
+    fastq_names = {"fastq_pass", "fastq", "fastqs"}
+    signal_names = {"pod5_pass", "pod5", "bam_pass", "modbam"}
+
+    def children(path: Path) -> list[Path]:
+        try:
+            with os.scandir(path) as entries:
+                paths = []
+                for index, entry in enumerate(entries):
+                    if index >= 256:
+                        notes.append(f"Only the first 256 entries in {path} were checked; browse explicitly if needed.")
+                        break
+                    paths.append(Path(entry.path))
+            return sorted(paths)
+        except OSError:
+            notes.append(f"Could not inspect signal inputs in {path}; browse explicitly if needed.")
+            return []
+
+    if fastq_root is not None:
+        fastq = require_directory(fastq_root, "Discovered ONT FASTQ folder")
+        if _barcode(selected.name) and selected.parent == fastq:
+            fastq = selected
+    elif _barcode(selected.name) or selected.name in fastq_names:
+        fastq = selected
+    elif selected.name in signal_names:
+        fastq = selected.parent / "fastq_pass"
+        if not fastq.is_dir():
+            fastq = selected.parent
+    elif (selected / "fastq_pass").is_dir():
+        fastq = (selected / "fastq_pass").resolve()
+    else:
+        # A run-selection button can start one or two folders above a MinKNOW
+        # run. Search at most three levels and 128 directories; never global disks.
+        notes_before_search = len(notes)
+        matches, pending, visited = [], [(selected, 0)], 0
+        while pending and visited < 128:
+            parent, depth = pending.pop(0)
+            visited += 1
+            for child in children(parent):
+                if child.is_symlink() or not child.is_dir():
+                    continue
+                if child.name == "fastq_pass":
+                    matches.append(child)
+                elif depth < 2 and child.name not in signal_names and not _barcode(child.name):
+                    pending.append((child, depth + 1))
+        if pending or len(notes) > notes_before_search:
+            raise OncoTracerError("ONT run search was incomplete; select the specific run or its FASTQ folder.")
+        if len(matches) > 1:
+            raise OncoTracerError("Multiple ONT runs found; choose one run or its fastq_pass folder.")
+        fastq = matches[0] if matches else selected
+
+    parent = fastq.parent if _barcode(fastq.name) else fastq
+    run = parent.parent if parent.name in fastq_names else parent
+    selected_barcode = fastq.name if _barcode(fastq.name) else None
+
+    def local_directory(path: Path) -> Path | None:
+        try:
+            resolved = path.resolve()
+            if path.is_dir() and (resolved == run or run in resolved.parents):
+                return path
+        except OSError:
+            pass
+        return None
+
+    def signal_directory(names: tuple[str, ...]) -> Path | None:
+        for name in names:
+            candidate = local_directory(run / name)
+            if candidate is not None:
+                if selected_barcode:
+                    specific = local_directory(candidate / selected_barcode)
+                    if specific is not None:
+                        return specific
+                return candidate
+        return None
+
+    pod5 = signal_directory(("pod5_pass", "pod5"))
+    modbam = signal_directory(("bam_pass", "modbam"))
+    direct = children(run) if pod5 is None or modbam is None else []
+    direct_files = []
+    for path in direct:
+        try:
+            if path.is_file() and not path.is_symlink() and path.stat().st_size > 0:
+                direct_files.append(path)
+        except OSError:
+            notes.append(f"Could not inspect {path}; browse explicitly if needed.")
+    if pod5 is None and any(path.suffix.lower() == ".pod5" for path in direct_files):
+        pod5 = run
+    if modbam is None:
+        bams = [path for path in direct_files if path.suffix.lower() == ".bam"]
+        if len(bams) == 1:
+            modbam = bams[0]
+        elif len(bams) > 1:
+            notes.append("Multiple BAM files exist in this run; select the intended modified-base BAM or folder explicitly.")
+    return {"run": str(run), "fastq": str(fastq), "pod5": str(pod5) if pod5 else "",
+            "modbam": str(modbam) if modbam else "", "notes": notes}

@@ -8,7 +8,7 @@ PAGE = r'''<!doctype html>
 
 .sample-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:20px}.sample-column{border:1px solid var(--line);border-radius:10px;background:#f6f8f7;padding:14px;min-width:0}.sample-column h3{margin:0 0 10px}.sample-column[data-group=normal]{background:#eef5fc}.sample-column[data-group=cancer]{background:#fff3ef}.sample-column[data-group=custom]{grid-column:1/-1}.sample-list{min-height:190px}.sample-list:empty:after{content:attr(data-empty);display:block;padding:25px 8px;color:var(--muted);font-size:14px;text-align:center}.sample-column.drag-over{outline:3px solid var(--accent);outline-offset:2px}.sample{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:0 2px 5px #192c3b08;overflow-wrap:anywhere}.sample.dragging{opacity:.45}.sample .sample-name{font-weight:650}.sample .type-select{margin-top:12px}.sample small{display:block;font-size:12px;color:var(--muted);margin:7px 0}.drag-handle{font-size:12px;color:var(--muted);cursor:grab;touch-action:none;user-select:none;margin-bottom:8px}.sample input,.sample select{cursor:auto}.sample .custom-label,.sample .role{margin-top:8px}@media(max-width:800px){.sample-board{grid-template-columns:1fr}.sample-list{min-height:100px}}
 .browser-shortcuts,.breadcrumbs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.browser-shortcuts button,.breadcrumbs button{font-size:12px;padding:5px 9px}.breadcrumbs{max-height:90px;overflow:auto}
-.fastq-inventory{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:12px}.fastq-inventory td:first-child{width:auto}.fastq-inventory td{padding:8px;overflow-wrap:anywhere}.fastq-inventory thead{position:sticky;top:0;background:#f6f8f7}.fastq-inventory code{font-size:12px}.fastq-files{list-style:none;padding:0;margin:8px 0;max-height:140px;overflow:auto;border-top:1px solid var(--line);font-size:12px}.fastq-files li{padding:5px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.fastq-file{padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px;overflow-wrap:anywhere}.fastq-file:before{content:var(--file-label,'FASTQ · ');color:var(--accent);font-weight:650}
+.fastq-inventory{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:12px}.fastq-inventory td:first-child{width:auto}.fastq-inventory td{padding:8px;overflow-wrap:anywhere}.fastq-inventory thead{position:sticky;top:0;background:#f6f8f7}.fastq-inventory code{font-size:12px}.fastq-inventory summary{cursor:pointer}.fastq-inventory pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;max-height:180px;overflow:auto}.fastq-files{list-style:none;padding:0;margin:8px 0;max-height:140px;overflow:auto;border-top:1px solid var(--line);font-size:12px}.fastq-files li{padding:5px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.fastq-file{padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px;overflow-wrap:anywhere}.fastq-file:before{content:var(--file-label,'FASTQ · ');color:var(--accent);font-weight:650}
 </style></head><body>
 <header><div class="brand">Onco<span>Tracer</span></div><div class="local">Local analysis workspace</div></header>
 <main><div class="intro"><h1>Configure and run an analysis</h1><p class="muted">Browse to your FASTQ folder, assign and name samples, and choose analysis settings. Save the configuration, start or stop analysis, follow its progress, and open the results here.</p><a id="existing-bam-link" href="/variants" style="color:var(--accent)">Call variants from existing BAMs →</a></div>
@@ -17,7 +17,7 @@ PAGE = r'''<!doctype html>
 <button class="platform" id="choose-ont" aria-pressed="false"><strong>Oxford Nanopore</strong><span>Barcode folders with FASTQ batches, or one folder from a nonbarcoded ligation library.</span></button>
 <button class="platform" id="choose-illumina" aria-pressed="false"><strong>Illumina</strong><span>Paired-end or single-end FASTQs. Sample names and read pairs are discovered for you.</span></button></div></section>
 <div id="workflow" hidden>
-<section class="card"><div class="sectionhead"><span class="step">2</span><h2>Find your FASTQ folder</h2></div><p class="muted">Browse folders on the computer running OncoTracer. Select the folder containing your FASTQs or barcode folders.</p><div id="ont-inputs" hidden><label for="ont-run-folder">ONT run folder (optional)</label><div class="row"><input id="ont-run-folder" placeholder="Select the MinKNOW run containing fastq_pass and POD5/BAM folders"><button data-browse="ont-run-folder">Browse run</button><button id="link-ont-run">Find matching folders</button></div><p class="hint">Select a run to fill its matching folders, or browse each path below. Review the paths before saving.</p></div><label for="input-folder" id="input-folder-label">FASTQ folder</label><div class="row"><input id="input-folder" autocomplete="off" spellcheck="false"><button data-browse="input-folder">Browse folders</button><button class="primary" id="scan">Discover samples</button></div><p class="hint" id="layout-hint"></p><div id="ont-signal-inputs" hidden><div class="grid"><div><label for="ont-pod5">Raw POD5 folder</label><div class="row"><input id="ont-pod5"><button data-browse="ont-pod5">Browse POD5</button></div></div><div><label for="ont-modbam">Modified-base BAM file or bam_pass folder</label><div class="row"><input id="ont-modbam"><button data-browse="ont-modbam" data-kind="bam">Browse BAMs</button></div></div></div><p id="ont-links-note" class="hint">Link completed POD5 or modified-base BAMs from this run for methylation. Use files MinKNOW has finished writing. FASTQs define each barcode's read IDs; only matching reads enter its methylation profile. A ligation FASTQ folder defines one sample. Choose which signal source to use in analysis settings.</p></div><div id="scan-warnings"></div><div id="fastq-preview" hidden><h3>FASTQs in the selected folder</h3><p id="fastq-summary" class="hint" role="status"></p><label for="fastq-filter">Find a FASTQ or sample</label><input id="fastq-filter" type="search" placeholder="Filter by filename, sample, or barcode"><p id="fastq-matches" class="hint" role="status"></p><div class="fastq-inventory" tabindex="0" aria-label="Detected FASTQ files"><table><thead><tr><th>Detected sample / barcode</th><th>FASTQ filename</th></tr></thead><tbody id="fastq-rows"></tbody></table></div><p class="hint">Assign samples in the columns below. Illumina read pairs stay together; ONT batches stay grouped by barcode. Filtering this list does not exclude samples.</p></div></section>
+<section class="card"><div class="sectionhead"><span class="step">2</span><h2>Find your FASTQ folder</h2></div><p class="muted">Browse folders on the computer running OncoTracer. Select the folder containing your FASTQs or barcode folders.</p><div id="ont-inputs" hidden><label for="ont-run-folder">ONT run folder (optional)</label><div class="row"><input id="ont-run-folder" placeholder="Select the MinKNOW run containing fastq_pass and POD5/BAM folders"><button data-browse="ont-run-folder">Browse run</button><button id="link-ont-run">Find matching folders</button></div><p class="hint">Select a run to fill its matching folders, or browse each path below. Review the paths before saving.</p></div><label for="input-folder" id="input-folder-label">FASTQ folder</label><div class="row"><input id="input-folder" autocomplete="off" spellcheck="false"><button data-browse="input-folder">Browse folders</button><button class="primary" id="scan">Discover samples</button></div><p class="hint" id="layout-hint"></p><div id="ont-signal-inputs" hidden><div class="grid"><div><label for="ont-pod5">Raw POD5 folder</label><div class="row"><input id="ont-pod5"><button data-browse="ont-pod5">Browse POD5</button></div><p id="ont-pod5-status" class="hint" role="status">Not checked — discover FASTQs or browse to your POD5 folder.</p></div><div><label for="ont-modbam">Modified-base BAM file or bam_pass folder</label><div class="row"><input id="ont-modbam"><button data-browse="ont-modbam" data-kind="bam">Browse BAMs</button></div><p id="ont-modbam-status" class="hint" role="status">Not checked — discover FASTQs or browse to your modified-base BAMs.</p></div></div><p id="ont-links-note" class="hint">Link completed POD5 or modified-base BAMs from this run for methylation. Use files MinKNOW has finished writing. FASTQs define each barcode's read IDs; only matching reads enter its methylation profile. A ligation FASTQ folder defines one sample. Choose which signal source to use in analysis settings.</p></div><div id="scan-warnings"></div><div id="fastq-preview" hidden><h3>Samples in the selected folder</h3><p id="fastq-summary" class="hint" role="status"></p><label for="fastq-filter">Find a FASTQ or sample</label><input id="fastq-filter" type="search" placeholder="Filter by filename, sample, or barcode"><p id="fastq-matches" class="hint" role="status"></p><div class="fastq-inventory" tabindex="0" aria-label="Detected samples and their FASTQ files"><table><thead><tr><th>Detected sample / barcode</th><th>FASTQ files</th></tr></thead><tbody id="fastq-rows"></tbody></table></div><p class="hint">Assign samples in the columns below. Illumina read pairs stay together; ONT batches stay grouped by barcode. Filtering this list does not exclude samples.</p></div></section>
 <section class="card" id="samples-card" hidden><div class="sectionhead"><span class="step">3</span><h2>Assign and name your samples</h2><span id="sample-count" class="progress" role="status" aria-live="polite"></span></div><p class="muted">Drag detected samples into <strong>Normal</strong> or <strong>Cancer</strong>, or use the type dropdown on each card. Drag between columns to correct a type, or back to Unassigned to exclude a sample. Edit the detected names as needed.</p><p class="hint">Normal samples are analyzed independently; they are not pooled or subtracted. A custom tag also needs a study or control role.</p><button id="select-none">Clear assignments</button><div id="samples" class="sample-board">
 <div class="sample-column" data-group=""><h3>Detected · unassigned</h3><div id="available-samples" class="sample-list" data-empty="All detected samples have been assigned."></div></div>
 <div class="sample-column" data-group="normal"><h3>Normal</h3><div id="normal-samples" class="sample-list" data-empty="Drop normal samples here."></div></div>
@@ -97,13 +97,23 @@ function renderFastqInventory(){
   if(!scan){show('fastq-preview',false);return;}
   const query=$('fastq-filter').value.trim().toLowerCase();let total=0,matches=0;
   $('fastq-rows').replaceChildren();
-  for(const sample of scan.samples)for(const path of sample.files){
-    total++;if(query&&!(sample.name+' '+(sample.barcode||'')+' '+path).toLowerCase().includes(query))continue;
+  for(const sample of scan.samples){
+    total+=sample.files.length;
+    const nameMatch=(sample.name+' '+(sample.barcode||'')).toLowerCase().includes(query);
+    const fileMatches=query?sample.files.filter(path=>path.toLowerCase().includes(query)):sample.files;
+    if(query&&!nameMatch&&!fileMatches.length)continue;
     matches++;if(matches>500)continue;
-    const row=node('tr'),name=node('td',sample.name),file=node('td');file.append(node('code',path.split('/').pop()));file.title=path;row.append(name,file);$('fastq-rows').append(row);
+    const row=node('tr'),name=node('td',sample.name),files=node('td');
+    if(sample.barcode&&sample.barcode!==sample.name&&sample.barcode!=='.')name.append(node('small',sample.barcode));
+    const count=sample.files.length,details=node('details');
+    details.append(node('summary',count+' FASTQ file'+(count===1?'':'s')+' · show paths'));
+    details.ontoggle=()=>{if(details.open&&!details.querySelector('pre'))details.append(node('pre',sample.files.join('\n')));};
+    files.append(details);
+    if(query&&!nameMatch)files.append(node('small',fileMatches.length+' matching file'+(fileMatches.length===1?'':'s'),'hint'));
+    row.append(name,files);$('fastq-rows').append(row);
   }
-  $('fastq-summary').textContent=total+' FASTQ file'+(total===1?'':'s')+' in '+scan.samples.length+' sample'+(scan.samples.length===1?'':'s')+' · '+scan.root;
-  $('fastq-matches').textContent=matches===0?'No files match this filter.':matches>500?'Showing the first 500 of '+matches+' matching files. Refine the filter to find a file.':matches+' file'+(matches===1?'':'s')+' shown';
+  $('fastq-summary').textContent=scan.samples.length+' sample'+(scan.samples.length===1?'':'s')+' · '+total+' FASTQ file'+(total===1?'':'s')+' total · '+scan.root;
+  $('fastq-matches').textContent=matches===0?'No samples match this filter.':matches>500?'Showing the first 500 of '+matches+' matching samples. Refine the filter.':matches+' sample'+(matches===1?'':'s')+' shown'+(query?' · matching sample names, barcodes or FASTQ paths':' · one row per sample');
   show('fastq-preview',true);
 }
 $('fastq-filter').oninput=renderFastqInventory;
@@ -121,14 +131,13 @@ function renderSamples(){
     for(const [value,label]of[['','Choose analysis role…'],['tumor','Study (tumor workflow group)'],['normal','Control (normal workflow group)']]){const option=node('option',label);option.value=value;role.append(option);}
     select.onchange=()=>moveSample(row,select.value);role.onchange=settings;custom.oninput=invalidate;
     custom.onchange=()=>{const label=custom.value.trim().toLowerCase();if(['normal','control','cancer'].includes(label))moveSample(row,label==='control'?'normal':label);else invalidate();};
-    const files=node('ul',undefined,'fastq-files');files.setAttribute('aria-label','FASTQ files for '+sample.name);for(const path of sample.files){const item=node('li',path.split('/').pop());item.title=path;files.append(item);}
-    const details=node('details');details.append(node('summary','Full file paths'),node('pre',sample.files.join('\n')));
-    row.append(node('div','⠿ Drag to a group, or choose below','drag-handle'),included,input,node('small',sample.file_count+' FASTQ'+(sample.file_count===1?'':'s')+' · '+(sample.barcode||sample.layout)),select,custom,role,files,details);
+    const details=node('details');details.append(node('summary','Show FASTQ paths'),node('pre',sample.files.join('\n')));
+    row.append(node('div','⠿ Drag to a group, or choose below','drag-handle'),included,input,node('small',sample.file_count+' FASTQ'+(sample.file_count===1?'':'s')+' · '+(sample.barcode||sample.layout)),select,custom,role,details);
     $('available-samples').append(row);
   }
   settings();
 }
-$('scan').onclick=()=>busy($('scan'),async()=>{if(!mode)throw Error('Choose a platform first.');scan=null;invalidate();show('fastq-preview',false);show('samples-card',false);show('settings-card',false);scan=await api('/api/scan',{mode,folder:$('input-folder').value});invalidate();$('scan-warnings').replaceChildren();for(const warning of scan.warnings)$('scan-warnings').append(node('p',warning,'notice'));renderSamples();show('samples-card',true);show('settings-card',true);$('fastq-preview').scrollIntoView({behavior:'smooth',block:'start'});});
+$('scan').onclick=()=>busy($('scan'),async()=>{if(!mode)throw Error('Choose a platform first.');scan=null;invalidate();show('fastq-preview',false);show('samples-card',false);show('settings-card',false);scan=await api('/api/scan',{mode,folder:$('input-folder').value});if(mode==='ont')await linkDiscoveredOntInputs();invalidate();$('scan-warnings').replaceChildren();for(const warning of scan.warnings)$('scan-warnings').append(node('p',warning,'notice'));renderSamples();show('samples-card',true);show('settings-card',true);$('fastq-preview').scrollIntoView({behavior:'smooth',block:'start'});});
 const variantCallerOptions={illumina:[['mutect2','Mutect2 · tumor-only candidates'],['freebayes','FreeBayes · germline-style'],['bcftools','bcftools · germline-style']],ont:[['clair3','Clair3 · germline-style'],['clairs_to','ClairS-TO · tumor-only candidates']]};
 function selectedVariantCallers(){return [...document.querySelectorAll('[data-variant-caller]:checked')].map(field=>field.value);}
 function variantSettings(){resetVariantResourceResults();
@@ -137,13 +146,13 @@ function variantSettings(){resetVariantResourceResults();
   show('docker-image-field',docker);
   show('variant-clairsto-sif-fields',!docker);show('variant-ffperase-sif-fields',!docker);
   show('variant-tool-prefix-fields',!docker);show('variant-ffperase-prefix-fields',!docker);
-  $('variant-tool-note').textContent=docker?'Docker uses the image’s caller and FFPERASE environments. Select existing host folders for external models, FFPERASE source and ANNOVAR resources.':'Variant callers and models must already be installed locally. Leave the environment blank to use available local tools. No variant tools or licensed annotation databases are downloaded by this option.';
+  $('variant-tool-note').textContent=docker?'Docker supplies the caller and FFPERASE environments. Automatic resources are prepared when the run starts; ANNOVAR uses your existing licensed installation.':'Use installed caller tools, or Autodetect their environment. Models set to Automatic are prepared when the run starts. ANNOVAR uses your existing licensed installation.';
   if(mode&&variantMode!==mode){variantMode=mode;$('variant-callers').replaceChildren();for(const [index,[value,label]] of variantCallerOptions[mode].entries()){const wrapper=node('label',undefined,'check'),field=node('input');field.type='checkbox';field.value=value;field.dataset.variantCaller=value;field.checked=index===0;field.onchange=()=>{variantSettings();invalidate();};wrapper.append(field,document.createTextNode(label));$('variant-callers').append(wrapper);}}
   for(const type of ['fresh','ffpe'])$('variant-'+type).setAttribute('aria-pressed',String(variantSpecimen===type));
-  $('variant-preservation-note').textContent=variantSpecimen==='ffpe'?'FFPE damage can create false variant calls. Review orientation artifacts, coverage and tumor copy-number changes; ONT models must match the sequencing chemistry.':variantSpecimen==='fresh'?'Fresh preservation recorded. Low coverage and tumor copy-number changes still affect variant confidence.':'Select Fresh or FFPE before saving variant settings.';
+  $('variant-preservation-note').textContent=variantSpecimen==='ffpe'?'FFPE damage can create false variant calls. Review damage-related artifacts, coverage and tumor copy-number changes.':variantSpecimen==='fresh'?'Fresh preservation recorded. Low coverage and tumor copy-number changes still affect variant confidence.':'Select Fresh or FFPE before saving variant settings.';
   show('variant-ffperase-fields',mode==='illumina'&&variantSpecimen==='ffpe');show('variant-varlociraptor-fields',$('variant_varlociraptor').value==='required');
   const callers=selectedVariantCallers();show('variant-clair3-field',mode==='ont'&&callers.includes('clair3'));show('variant-clairsto-field',mode==='ont'&&callers.includes('clairs_to'));show('variant-annovar-fields',$('variant_annovar').value==='auto');
-  syncVariantLayout();
+  syncVariantChoices(mode,variantSpecimen);syncVariantLayout();
 }
 for(const type of ['fresh','ffpe'])$('variant-'+type).onclick=()=>{variantSpecimen=type;variantSettings();invalidate();};
 $('variant_ffperase').onchange=()=>{variantSettings();invalidate();};
@@ -155,8 +164,8 @@ function variantPayload(){
   if(!variantSpecimen)throw Error('Select Fresh or FFPE for small-variant calling.');
   const docker=$('backend').value==='docker';
   const callers=selectedVariantCallers();if(!callers.length)throw Error('Select at least one variant caller.');
-  if(callers.includes('clair3')&&!$('variant_clair3_model').value.trim())throw Error('Select a chemistry-compatible Clair3 model folder.');
-  if(callers.includes('clairs_to')&&!$('variant_clairsto_platform').value.trim())throw Error('Specify the ClairS-TO platform/model preset.');
+  if(callers.includes('clair3')&&$('variant-clair3-source').value==='local'&&!$('variant_clair3_model').value.trim())throw Error('Choose an existing Clair3 model folder, or select Automatic model preparation.');
+  if(callers.includes('clairs_to')&&!$('variant_clairsto_platform').value.trim())throw Error('Choose a sequencing profile for ClairS-TO, or enter the name of your custom installed preset.');
   const data={variants:true,variant_specimen_type:variantSpecimen,variant_callers:callers.join(','),variant_annovar:$('variant_annovar').value};
   for(const key of ['variant_targets_bed',...(!docker?['variant_tool_prefix']:[]),...(callers.includes('clair3')?['variant_clair3_model']:[]),...(callers.includes('clairs_to')?['variant_clairsto_platform',...(!docker?['variant_clairsto_sif']:[])]:[]),...($('variant_annovar').value==='auto'?['variant_annovar_dir','variant_annovar_db']:[])])if($(key).value.trim())data[key]=$(key).value.trim();
   if(mode==='illumina'&&variantSpecimen==='ffpe'){
@@ -168,7 +177,7 @@ function variantPayload(){
     data.variant_varlociraptor_fdr=$('variant_varlociraptor_fdr').value.trim();
     for(const key of ['variant_varlociraptor_scenario','variant_varlociraptor_events','variant_varlociraptor_sample'])if($(key).value.trim())data[key]=$(key).value.trim();
   }
-  return filterVariantRuntime(data);
+  return filterVariantRuntime(guidedVariantPayload(data));
 }
 function methylationSettings(){
   const classifier=$('classifier').value,source=$('methylation-source').value;
@@ -181,19 +190,46 @@ function methylationSettings(){
 }
 $('backend').onchange=()=>{methylationSettings();invalidate();};
 $('classifier').onchange=()=>{methylationSettings();invalidate();};$('methylation-source').onchange=()=>{methylationSettings();invalidate();};
-for(const id of ['ont-pod5','ont-modbam'])$(id).onchange=()=>{methylationSettings();invalidate();};
+function clearAutoOntInputs(){
+  for(const id of ['ont-pod5','ont-modbam','ont-run-folder']){
+    const field=$(id);if(field.dataset.ontAuto!==undefined&&field.value===field.dataset.ontAuto)field.value='';delete field.dataset.ontAuto;
+  }
+  for(const id of ['ont-pod5','ont-modbam'])$(id+'-status').textContent=$(id).value.trim()?'Entered path kept. Discover FASTQs to check matching run folders.':'Not checked — discover FASTQs or select a path.';
+}
+function applyOntInputs(linked){
+  show('ont-signal-inputs',mode==='ont');
+  for(const [id,key]of[['ont-run-folder','run'],['ont-pod5','pod5'],['ont-modbam','modbam']]){
+    const field=$(id),suggestion=linked[key]||'',manual=field.value.trim()&&field.value!==field.dataset.ontAuto;
+    if(!manual){field.value=suggestion;field.dataset.ontAuto=suggestion;}
+    if(id==='ont-run-folder')continue;
+    $(id+'-status').textContent=manual?'Entered path kept. '+(suggestion?'Matching run path: '+suggestion:'Not found in the matching run folders; confirm your entered path.'):
+      suggestion?'Found in this run: '+suggestion:'Not found in matching run folders. Browse to an existing '+(key==='pod5'?'POD5 folder.':'modified-base BAM or folder.');
+  }
+  const source=$('methylation-source'),selected=$(source.value==='pod5'?'ont-pod5':'ont-modbam');
+  if(!selected.value.trim()&&$('ont-pod5').value.trim())source.value='pod5';
+  else if(!selected.value.trim()&&$('ont-modbam').value.trim())source.value='modbam';
+  $('ont-links-note').textContent='Matching folders are suggestions. Use completed files and confirm that BAMs contain modified-base MM/ML tags. FASTQs define the read IDs used for each sample. '+(linked.notes||[]).join(' ');
+  methylationSettings();
+}
+async function linkDiscoveredOntInputs(){
+  try{applyOntInputs(scan.ont_inputs||await api('/api/ont-inputs',{folder:scan.root}));}
+  catch(error){for(const id of ['ont-pod5','ont-modbam'])$(id+'-status').textContent='Not found automatically. Browse to your existing input.';$('ont-links-note').textContent=error.message;}
+}
+for(const id of ['ont-pod5','ont-modbam']){
+  $(id).addEventListener('input',()=>{delete $(id).dataset.ontAuto;$(id+'-status').textContent=$(id).value.trim()?'Entered path — confirm it matches these FASTQs.':'Not selected. Browse to a path or discover FASTQs.';});
+  $(id).onchange=()=>{delete $(id).dataset.ontAuto;$(id+'-status').textContent=$(id).value.trim()?'Entered path — confirm it matches these FASTQs.':'Not selected. Browse to a path or discover FASTQs.';methylationSettings();invalidate();};
+}
 $('link-ont-run').onclick=()=>busy($('link-ont-run'),async()=>{
   scan=null;invalidate();show('fastq-preview',false);show('samples-card',false);show('settings-card',false);
   const linked=await api('/api/ont-inputs',{folder:$('ont-run-folder').value});
-  $('input-folder').value=linked.fastq;$('ont-pod5').value=linked.pod5;$('ont-modbam').value=linked.modbam;
-  if(linked.modbam)$('methylation-source').value='modbam';else if(linked.pod5)$('methylation-source').value='pod5';
-  methylationSettings();scan=await api('/api/scan',{mode:'ont',folder:linked.fastq});invalidate();
+  $('input-folder').value=linked.fastq;
+  scan=await api('/api/scan',{mode:'ont',folder:linked.fastq});await linkDiscoveredOntInputs();invalidate();
   $('scan-warnings').replaceChildren();for(const warning of scan.warnings)$('scan-warnings').append(node('p',warning,'notice'));
   renderSamples();show('samples-card',true);show('settings-card',true);
 });
 $('ont-run-folder').onchange=()=>{if(mode==='ont'&&$('ont-run-folder').value.trim())$('link-ont-run').click();};
 $('select-none').onclick=()=>{for(const row of sampleRows())moveSample(row,'');};$('analysis').onchange=settings;$('caller').onchange=settings;$('reports').onchange=()=>{show('report-context-field',$('reports').checked);invalidate();};$('report-detail').onchange=()=>{$('report-detail-note').textContent=$('report-detail').value==='catalog'?'Uses the included evidence catalog. No publication searches or language-model downloads.':$('report-detail').value==='models'?'Drafts use the bundled CNA catalog and run on this computer. No publication searches. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Sample files are not uploaded.':'Searches publication services using CNA feature terms and study context. Language models run on this computer. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Raw reads and sample names are not sent to publication services.';invalidate();};$('reference').onchange=()=>{show('reference-path-field',$('reference').value==='reuse');$('reference-note').textContent=$('reference').value==='build'?'Local indexing downloads hg38 source files as needed and requires more RAM, temporary disk space, and time.':$('reference').value==='reuse'?'Select a prepared OncoTracer reference parent, or its references/samurai_hg38 folder. It must contain indexes for this platform.':'Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project’s reference folder.';invalidate();};
-for(const field of document.querySelectorAll('#settings-card input,#settings-card select'))field.addEventListener('change',invalidate);$('input-folder').onchange=()=>{if(mode==='ont'){$('ont-pod5').value='';$('ont-modbam').value='';$('ont-run-folder').value='';methylationSettings();}scan=null;invalidate();show('samples-card',false);show('settings-card',false);show('fastq-preview',false);if(mode&&$('input-folder').value.trim())$('scan').click();};
+for(const field of document.querySelectorAll('#settings-card input,#settings-card select'))field.addEventListener('change',invalidate);$('input-folder').onchange=()=>{if(mode==='ont'){clearAutoOntInputs();methylationSettings();}scan=null;invalidate();show('samples-card',false);show('settings-card',false);show('fastq-preview',false);if(mode&&$('input-folder').value.trim())$('scan').click();};
 $('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const projectName=$('project-name').value.trim();if(!projectName||projectName==='.'||projectName==='..'||projectName.includes('/')||projectName.includes('\\'))throw Error('Use a new project folder name without slashes.');const samples=selectedRows().map(row=>({id:Number(row.dataset.id),name:row.querySelector('.sample-name').value,type:row.querySelector('.type-select').value,label:row.querySelector('.custom-label').value,role:row.querySelector('.role').value}));if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');const data={...variantPayload(),scan_id:scan.scan_id,samples,project:$('project-parent').value.replace(/\/$/,'')+'/'+projectName,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:$('backend').value==='docker'?$('docker_image').value.trim():'',caller:$('caller').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});
 function offerCleanup(job){
   if(cleanupShown===job.project_id)return;cleanupShown=job.project_id;
@@ -250,6 +286,7 @@ if(defaults.methylation_path)$(defaults.methylation_source==='pod5'?'ont-pod5':'
 $('variants').checked=Boolean(defaults.variants);variantSpecimen=defaults.variant_specimen_type||null;variantSettings();
 if(defaults.variant_callers){const selected=defaults.variant_callers.split(',').map(value=>value.trim());for(const field of document.querySelectorAll('[data-variant-caller]'))field.checked=selected.includes(field.value);}
 for(const key of ['variant_ffperase','variant_ffperase_root','variant_ffperase_models','variant_ffperase_sif','variant_ffperase_prefix','variant_varlociraptor','variant_varlociraptor_fdr','variant_varlociraptor_scenario','variant_varlociraptor_events','variant_varlociraptor_sample','variant_annovar','variant_targets_bed','variant_tool_prefix','variant_clair3_model','variant_clairsto_platform','variant_clairsto_sif','variant_annovar_dir','variant_annovar_db'])if(defaults[key])$(key).value=defaults[key];
+configureVariantModelControls(defaults);variantSettings();
 variantSettings();methylationSettings();
 $('device').value=defaults.gpu?'gpu':'cpu';$('license').checked=Boolean(defaults.accept_sturgeon_license);$('reference').onchange();
 if(defaults.mode&&defaults.input_folder)await $('scan').onclick();

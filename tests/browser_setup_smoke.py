@@ -149,6 +149,7 @@ else:
             wait(lambda: js("return document.querySelectorAll('.sample').length===arguments[0] && !document.querySelector('#samples-card').hidden && !document.querySelector('main').inert", count), "sample discovery")
         def scan_ont(folder, count):
             click("#choose-ont")
+            assert not js("return document.querySelector('#ont-signal-inputs').hidden")
             fill("#input-folder", str(folder))
             sample_count(count)
         def prepare(name):
@@ -168,13 +169,17 @@ else:
         assert js("return document.querySelector('#gistic').disabled")
         report["checks"].append("setup opens browser workflow with supplied paths, threads and 100 kb default; groups start empty")
         assert not js("return document.querySelector('#fastq-preview').hidden")
-        assert js("return document.querySelectorAll('#fastq-rows tr').length") == 4
-        assert js("return document.querySelectorAll('.sample .fastq-files li').length") == 4
+        assert js("return document.querySelectorAll('#fastq-rows tr').length") == 2
+        assert js("return document.querySelector('#fastq-summary').textContent").startswith('2 samples · 4 FASTQ files total')
+        assert js("return [...document.querySelectorAll('#fastq-rows summary')].every(e=>e.textContent.startsWith('2 FASTQ files'))")
+        click('#fastq-rows details summary')
+        wait(lambda: js("return document.querySelector('#fastq-rows pre')!==null"), 'expand paired FASTQs')
+        assert len(js("return document.querySelector('#fastq-rows pre').textContent").splitlines()) == 2
         fill('#fastq-filter', 'case_R1')
         assert js("return document.querySelectorAll('#fastq-rows tr').length") == 1
         assert js("return document.querySelectorAll('#normal-samples .sample,#cancer-samples .sample').length") == 0
         fill('#fastq-filter', '')
-        report['checks'].append('FASTQ filenames visible by default in folder inventory and sample cards; filtering preserves assignment')
+        report['checks'].append('inventory shows one row per sample, accurate file totals and expandable full FASTQ paths; filename filtering preserves assignment')
         drag('.sample[data-id="0"] .drag-handle', '#cancer-samples')
         assert js("return document.querySelectorAll('#cancer-samples .sample').length") == 1
         drag('.sample[data-id="1"] .drag-handle', '#normal-samples')
@@ -244,8 +249,11 @@ else:
             report['checks'].append('Fresh/FFPE buttons switch explicitly; Illumina callers and ANNOVAR choice save/check without starting tools')
         scan_ont(fixture / 'ont', 2)
         assert js("return document.querySelector('.sample[data-id=\"0\"] small').textContent").startswith('69 FASTQs')
-        assert js("return document.querySelectorAll('#fastq-rows tr').length") == 71
-        assert js("return document.querySelectorAll('.sample[data-id=\"0\"] .fastq-files li').length") == 69
+        assert js("return document.querySelectorAll('#fastq-rows tr').length") == 2
+        assert js("return document.querySelector('#fastq-summary').textContent").startswith('2 samples · 71 FASTQ files total')
+        click('#fastq-rows details summary')
+        wait(lambda: js("return document.querySelector('#fastq-rows pre')!==null"), 'expand ONT batches')
+        assert len(js("return document.querySelector('#fastq-rows pre').textContent").splitlines()) == 69
         fill('.sample[data-id="0"] .type-select', 'cancer')
         fill('.sample[data-id="1"] .type-select', 'normal')
         assert js("return document.querySelector('#caller').value") == 'qdnaseq'
@@ -279,7 +287,10 @@ else:
             (bam_dir / "calls.bam").write_bytes(b"fixture-bam")
             click('#choose-ont')
             assert not js("return document.querySelector('#ont-inputs').hidden || document.querySelector('#ont-signal-inputs').hidden")
-            fill('#ont-run-folder', str(resource_root));sample_count(1)
+            if classifier == 'sturgeon':
+                fill('#input-folder', str(resources.fastq.parent));sample_count(1)
+            else:
+                fill('#ont-run-folder', str(resource_root));sample_count(1)
             assert js("return document.querySelector('#input-folder').value") == str(resources.fastq.parent)
             assert js("return document.querySelector('#ont-pod5').value") == str(resources.pod5)
             assert js("return document.querySelector('#ont-modbam').value") == str(bam_dir)
@@ -306,9 +317,17 @@ else:
             assert ('methylation_modbam' in config) == (source == 'modbam')
             js("document.querySelector('#methylation-fields').scrollIntoView()")
             (root / (classifier + '-methylation-form.png')).write_bytes(base64.b64decode(wd('GET', '/screenshot')))
-        report['checks'].append('ONT run links fastq_pass/barcodes, POD5 and BAMs; resource file picker and checked Modkit+Sturgeon/POD5 and Modkit+MARLIN/BAM configs')
+        report['checks'].append('ONT signal fields are visible on platform selection; FASTQ discovery and run linking fill matching POD5/BAM paths; methylation resource/config checks pass')
         scan_ont(fixture / 'ligation', 1)
         assert js("return document.querySelector('#ont-pod5').value==='' && document.querySelector('#ont-modbam').value===''")
+        assert js("return ['ont-pod5-status','ont-modbam-status'].every(id=>document.getElementById(id).textContent.startsWith('Not found'))")
+        manual_pod5 = root / 'sturgeon-resources/pod5'
+        fill('#ont-pod5', str(manual_pod5))
+        click('#scan');sample_count(1)
+        assert js("return document.querySelector('#ont-pod5').value") == str(manual_pod5)
+        assert js("return document.querySelector('#ont-pod5-status').textContent").startswith('Entered path kept.')
+        fill('#ont-pod5', '')
+        report['checks'].append('changing ONT folders clears stale auto-filled signal paths; Not found hints stay visible and manual signal paths survive rescans')
         fill('.sample[data-id="0"] .type-select', 'custom')
         fill('.sample[data-id="0"] .custom-label', 'research tag')
         fill('.sample[data-id="0"] .role', 'tumor')

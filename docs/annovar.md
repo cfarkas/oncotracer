@@ -5,7 +5,7 @@ an **existing local installation** after variant calling and filtering. It does
 not install ANNOVAR, accept its license, download databases or decompress them.
 
 Start with [variant setup](variants.md). Open **4 · Annotation** and leave
-**ANNOVAR annotation** on **Automatically use an existing local installation**,
+**ANNOVAR annotation** on **Use ANNOVAR when available**,
 or choose **Skip ANNOVAR annotation**. Open the path controls to inspect or enter
 the installation and database folders.
 
@@ -24,7 +24,9 @@ The software installation and database are detected separately. Finding ANNOVAR
 can fill its installation path even when a matching gene database is missing;
 annotation still needs both. The resource details dialog provides **Copy commands**
 boxes and official registration/setup links for missing resources. Discovery
-never installs ANNOVAR or downloads a database.
+never installs ANNOVAR or downloads a database. The optional automatic Clair3
+and FFPERASE resource preparation described in the [variant guide](variants.md)
+does not include ANNOVAR.
 
 Obtain resources separately under their terms, enter their paths, then rerun
 Autodetect. You can also choose **Skip ANNOVAR annotation** and retain variant

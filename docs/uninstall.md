@@ -62,7 +62,7 @@ After stopping containers that use it, remove the image installed by the
 [Docker installation route](installation.md#docker):
 
 ```bash
-docker image rm carlosfarkas/oncotracer:fastq-variants-20260921
+docker image rm carlosfarkas/oncotracer:fastq-variants-20260922
 ```
 
 If you installed another tag, use that exact name instead. Removing a tag reclaims

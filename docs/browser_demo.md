@@ -11,15 +11,17 @@ analysis.
 
 ## What to try
 
-1. Load an **Illumina** or **ONT** example and explore the detected FASTQs.
+1. Load an **Illumina** or **ONT** example. The inventory has one row per sample;
+   expand its file count to inspect FASTQ paths. ONT also shows POD5/BAM inputs.
 2. Assign samples to **Cancer** or **Normal**, using drag-and-drop or dropdowns.
    Leave a sample unassigned to exclude it.
 3. Choose **Conda** or **Docker** and enable small variants. Compare **Fresh** and
    **FFPE** settings and the callers available for each sequencing platform.
-4. Explore the four variant sections: specimen and callers, caller tools and
-   models, filtering and FFPE, and annotation. Open path controls and try
-   **Autodetect resources** or a path's **Autodetect** button. Resource results,
-   candidate choices and installation help use synthetic examples in the demo.
+4. Choose preservation to reveal caller tools/models, filtering and annotation.
+   Try the readable ONT profile choices, automatic model preparation, FFPE
+   license control and optional Varlociraptor presence filter. Open paths and try
+   **Autodetect resources** or a path's **Autodetect** button. Resource results
+   and installation help are synthetic; the demo downloads no models.
 5. Click **Preview configuration** to inspect an example configuration and simulated checks.
 6. Click **Simulate Run** to see simulated progress, then explore the example
    results. Use the demo controls to reset and try another configuration.
@@ -37,7 +39,7 @@ For Docker, use the image that includes the variant tools:
 
 ```bash
 oncotracer setup --project "$PWD/my-study" --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants
 ```
 
 ### Terminal equivalents
@@ -51,7 +53,7 @@ oncotracer setup --terminal --project "$PWD/my-study" --backend conda --run
 
 ```bash
 oncotracer setup --terminal --project "$PWD/my-study" --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants --run
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants --run
 ```
 
 The [headless guide](headless.md) includes fully scripted Illumina/ONT runs,
