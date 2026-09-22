@@ -27,6 +27,7 @@ nav:
       - Install — Conda or Docker: installation.md
       - Interactive Browser Demo: browser_demo.md
       - Set Up Your Own Data: setup.md
+      - CLI and Headless Servers: headless.md
       - Run, Stop and Resume: running.md
       - How OncoTracer Works: native_architecture.md
       - Uninstall: uninstall.md

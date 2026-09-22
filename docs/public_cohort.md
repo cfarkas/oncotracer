@@ -70,6 +70,8 @@ Keep the terminal open; use its complete printed URL if the browser does not ope
    **Run analysis** after checks pass. GISTIC is optional for this three-sample cohort.
 
 Each library is analyzed separately. Setup protects existing configurations.
+For a terminal-only run, use the [scripted alternative below](#alternative-scripted-setup-and-terminal-run).
+For a remote browser, see [SSH setup](headless.md#remote-browser-through-ssh).
 
 ## 3. Review the results
 

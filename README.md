@@ -1,8 +1,6 @@
 # OncoTracer
 
-[![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases)
-[![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/)
-[![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
+[![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
 Analyze Illumina and Oxford Nanopore (ONT) reads for DNA copy-number changes and optional small variants. Configure samples in your browser and follow analysis progress through to tables, plots and reports. ONT methylation supports MARLIN leukemia and Sturgeon CNS-tumor research classifiers. For research use.
 
@@ -79,7 +77,7 @@ oncotracer setup --project "$PWD/my-study" --mode illumina --input-folder /data/
 
 The server opens **127.0.0.1:8888**. Keep its terminal open; if necessary, copy the complete printed URL including the session code after `#`. See the [browser walkthrough](docs/browser_demo.md) or [full setup guide](docs/setup.md).
 
-To run saved settings later (replace `conda` with `docker` for Docker):
+**Terminal-only new project:** `oncotracer setup --terminal --project "$PWD/my-study" --backend conda --run`. Add `--terminal --run` to the Conda/Docker examples above for terminal questions followed by execution. To run saved settings later, choose the matching backend:
 
 ```bash
 oncotracer check --config "$PWD/my-study/config/run.yml"
@@ -91,6 +89,7 @@ oncotracer run --backend conda --config "$PWD/my-study/config/run.yml"
 | Task | Guide |
 | --- | --- |
 | Test with public Illumina and ONT data | [QuickStart 1](docs/quick_start.md) · [QuickStart 2](docs/public_cohort.md) |
+| Terminal runs or remote browser over SSH | [CLI and headless servers](docs/headless.md) |
 | Prepare many libraries or barcodes | [Batch setup](docs/auto_params.md) · [Create CSV tables](docs/command_basics.md) |
 | Check hardware or reuse genome indexes | [Requirements](docs/installation.md#requirements) · [Prebuilt indexes](docs/reference_indexes.md) |
 | Add methylation, variants or manuscript panels | [Methylation](docs/configuration/methylation.md) · [Variants](docs/variants.md) · [ANNOVAR](docs/annovar.md) · [Paper report](docs/paper_report.md) |

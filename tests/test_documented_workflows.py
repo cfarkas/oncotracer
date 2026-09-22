@@ -51,6 +51,11 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 if line.strip().startswith(executable + " "):
                     yield shlex.split(line)
 
+    def section(self, text, heading):
+        marker = f"## {heading}\n"
+        self.assertIn(marker, text)
+        return text.split(marker, 1)[1].split("\n## ", 1)[0]
+
     def fastq(self, path, name):
         path.parent.mkdir(parents=True, exist_ok=True)
         with gzip.open(path, "wt") as handle:
@@ -85,7 +90,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                     self.fastq(Path(row[end]), row["sample"] + "_" + end)
         return rows
 
-    def steps(self, text, base, expected):
+    def steps(self, text, base, expected, *, unattended=False):
         configured, checked, planned = [], [], []
         # Follow the guide's choices through the real terminal wizard. Deeper
         # prompt validation and alternate routes live in test_wizard.py.
@@ -120,6 +125,9 @@ class DocumentedWorkflowTests(unittest.TestCase):
             action = args[0]
             self.assertIn(action, ("setup", "auto", "check", "run"))
             if action == "setup":
+                if unattended:
+                    self.assertIn("--non-interactive", args)
+                    self.assertNotIn("--input-folder", args)
                 project = Path(args[args.index("--project") + 1])
                 configured.append(project / "config/run.yml")
                 names = iter(expected[len(configured) - 1])
@@ -147,7 +155,8 @@ class DocumentedWorkflowTests(unittest.TestCase):
                                            "threads": 2, "samples": selections})
                 code, output = (0 if saved["valid"] else 2), json.dumps(saved)
             else:
-                with patch("builtins.input", side_effect=answer_prompt):
+                prompt_handler = AssertionError("Scripted workflow requested terminal input") if unattended else answer_prompt
+                with patch("builtins.input", side_effect=prompt_handler):
                     code, output = self.cli(*args)
             self.assertEqual(code, 0, f"{shlex.join(command)}\n{output}")
             if action == "setup" and "--input-folder" in args:
@@ -239,10 +248,11 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 # Hardware/backend commands are useful prerequisites, not analysis steps.
                 workflow_text = text if relative != "docs/full_tutorial.md" else text.split("## 4. Save the settings", 1)[1]
                 if relative == "docs/quick_start.md":
-                    # Existing-reference commands replace step 2; the default
-                    # walkthrough creates each project exactly once.
+                    # Alternatives replace step 2; the default browser
+                    # walkthrough creates each project exactly once. Scripted
+                    # setup is exercised independently below.
                     workflow_text = re.sub(
-                        r"^## Optional: reuse prepared genome indexes\n.*?(?=^## )",
+                        r"^## (?:Alternative: scripted setup and terminal run|Optional: reuse prepared genome indexes)\n.*?(?=^## |\Z)",
                         "", workflow_text, flags=re.MULTILINE | re.DOTALL,
                     )
                 if relative == "docs/public_cohort.md":
@@ -260,6 +270,90 @@ class DocumentedWorkflowTests(unittest.TestCase):
                         self.assertFalse(config["knowledge_web"])
                         self.assertTrue(all(sample.fastq_2 is None for sample in parse_illumina_samplesheet(Path(config["illumina_samplesheet"]))))
                     self.assertEqual(Path(config["lpwgs_root"]), expected_parent / "reference")
+
+    def test_quickstart_scripted_alternative_uses_downloaded_inputs_without_prompts(self):
+        page = (ROOT / "docs/quick_start.md").read_text()
+        text = self.section(page, "Alternative: scripted setup and terminal run")
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary) / "analysis with spaces"
+            inputs = []
+            for command in self.commands(page, "curl"):
+                if command[-1].endswith(".fastq.gz"):
+                    target = base / command[command.index("--output") + 1]
+                    self.fastq(target, target.name)
+                    inputs.append(target)
+            self.assertEqual({path.name for path in inputs}, {Path(path).name for _, path, _, _ in QS1_FILES})
+            original = {path: path.read_bytes() for path in inputs}
+            illumina, ont = self.steps(text, base, [["ERR12341627"], ["DRR165691"]], unattended=True)
+            sample, = parse_illumina_samplesheet(Path(illumina["illumina_samplesheet"]))
+            folder = base / "oncotracer-quickstart1/input"
+            self.assertEqual((sample.fastq_1, sample.fastq_2, sample.status), (
+                folder / "illumina/ERR12341627_1.fastq.gz",
+                folder / "illumina/ERR12341627_2.fastq.gz", "tumor",
+            ))
+            sample, = parse_ont_samples(ont)
+            self.assertEqual((sample.sample, sample.barcode), ("DRR165691", "barcode01"))
+            self.assertEqual(_fastq_files(sample.fastq_dir, 0), [folder / "fastq_pass/barcode01/DRR165691_1.fastq.gz"])
+            for config in (illumina, ont):
+                self.assertEqual(config["threads"], 4)
+                self.assertTrue(config["hg38_auto_download"])
+            self.assertEqual({path: path.read_bytes() for path in inputs}, original)
+
+    def test_headless_scripted_workflows_keep_pairs_and_selected_barcode_batches(self):
+        page = (ROOT / "docs/headless.md").read_text()
+        text = "\n".join(self.section(page, heading) for heading in (
+            "Scripted Illumina: setup, check and run", "Scripted ONT: setup, check and run",
+        ))
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary) / "analysis with spaces"
+            for mate in ("R1", "R2"):
+                self.fastq(base / "data/illumina" / f"sampleA_{mate}.fastq.gz", f"sampleA_{mate}")
+            folder = base / "data/run/fastq_pass"
+            for barcode in ("barcode01", "barcode02", "unclassified"):
+                for batch in (1, 2):
+                    self.fastq(folder / barcode / f"reads_{batch:03}.fastq.gz", f"{barcode}_{batch}")
+            original = {path: path.read_bytes() for path in (base / "data").rglob("*.fastq.gz")}
+            illumina, ont = self.steps(text, base, [["sampleA"], ["sampleA", "sampleB"]], unattended=True)
+            sample, = parse_illumina_samplesheet(Path(illumina["illumina_samplesheet"]))
+            self.assertEqual((sample.fastq_1, sample.fastq_2, sample.status), (
+                base / "data/illumina/sampleA_R1.fastq.gz",
+                base / "data/illumina/sampleA_R2.fastq.gz", "tumor",
+            ))
+            samples = parse_ont_samples(ont)
+            self.assertEqual([(sample.sample, sample.barcode) for sample in samples], [
+                ("sampleA", "barcode01"), ("sampleB", "barcode02"),
+            ])
+            for sample in samples:
+                self.assertEqual(_fastq_files(sample.fastq_dir, 0), [
+                    folder / sample.barcode / f"reads_{batch:03}.fastq.gz" for batch in (1, 2)
+                ])
+            for config in (illumina, ont):
+                self.assertEqual(config["threads"], 8)
+                self.assertTrue(config["hg38_auto_download"])
+            self.assertEqual({path: path.read_bytes() for path in original}, original)
+
+    def test_headless_docker_and_existing_bam_commands_parse_without_execution(self):
+        page = (ROOT / "docs/headless.md").read_text()
+        text = self.section(page, "Docker without a browser")
+        commands = list(self.commands(text))
+        self.assertEqual([command[1] for command in commands], ["setup", "check", "run", "variants", "variants"])
+        # Parser validation only: this documentation test must never contact
+        # Docker, pull an image, inspect data, or dispatch an analysis.
+        with patch("subprocess.run", side_effect=AssertionError("Parser launched a subprocess")):
+            setup, check, run, variant_plan, variant_run = [
+                build_parser().parse_args(command[1:]) for command in commands
+            ]
+        self.assertTrue(setup.non_interactive)
+        self.assertEqual((setup.mode, setup.analysis, setup.backend, run.backend), ("illumina", "cna", "docker", "docker"))
+        self.assertEqual(setup.image, "carlosfarkas/oncotracer:fastq-variants-20260921")
+        self.assertEqual(run.image, setup.image)
+        self.assertEqual(Path(check.config), Path(setup.project) / "config/run.yml")
+        self.assertEqual(run.config, check.config)
+        self.assertEqual((setup.sample_name, setup.threads), ("sampleA", 8))
+        self.assertTrue(variant_plan.dry_run)
+        self.assertFalse(variant_run.dry_run)
+        self.assertEqual(variant_plan.config, variant_run.config)
+        self.assertEqual(variant_run.threads, 8)
 
     def test_all_input_table_examples_create_files_with_cat(self):
         count = 0

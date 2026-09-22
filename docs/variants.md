@@ -9,6 +9,11 @@ Try the controls in the [synthetic setup demo](browser_demo.md), then
 are research candidates: a successful run does not establish clinical sensitivity
 or prove that a tumor-only candidate is somatic.
 
+For a remote server, use the [SSH browser instructions](headless.md), or choose
+one of the **Terminal only** alternatives below. `--no-browser` keeps the web
+interface running; `--non-interactive` creates a configuration without a web
+server or questions. Replace `/data` and `/resources` examples with your paths.
+
 ## Add calling during setup
 
 ```bash
@@ -24,6 +29,35 @@ oncotracer setup --variants
 5. Review any missing resources or model candidates before continuing.
 6. Choose a new project folder, click **Save configuration and check**, then
    **Run analysis**. Review CNA and variant results from the same page.
+
+<details markdown="1">
+<summary>Terminal only: Illumina Fresh, Conda, Mutect2</summary>
+
+This is an alternative to the browser steps, using one tumor library. Install
+[the optional variant environment](variants_reference.md#conda-and-docker) first
+and set its actual prefix below. Use a new project folder.
+
+```bash
+oncotracer setup --non-interactive --project "$PWD/variant-study" \
+  --mode illumina --analysis cna --backend conda --threads 4 \
+  --sample-name TUMOR01 --status tumor \
+  --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
+  --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
+  --hg38_build --variants \
+  --variant-specimen-type fresh --variant-callers mutect2 \
+  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
+  --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
+oncotracer check --config "$PWD/variant-study/config/run.yml"
+oncotracer run --backend conda --config "$PWD/variant-study/config/run.yml"
+```
+
+The reference downloads when the run starts. For [FFPE](variants_reference.md#add-calling-during-setup)
+or [ONT](variants_reference.md#terminal-only-ont-fastqs), use the corresponding
+complete terminal example. For several Illumina libraries, replace the
+single-library flags with `--samplesheet /data/illumina/samplesheet.csv` using
+the [documented CSV layout](setup.md#illumina-multiple-libraries).
+
+</details>
 
 Missing required callers or models stop preflight. The variant option does not
 install external models or licensed annotation resources. CNA plus methylation
@@ -103,6 +137,30 @@ oncotracer setup --backend docker \
   --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants
 ```
 
+<details markdown="1">
+<summary>Terminal only: the same Docker workflow</summary>
+
+This example selects one Fresh Illumina tumor library and Mutect2. The same
+image runs alignment, CNA and variants; no host Conda environment is needed.
+
+```bash
+oncotracer setup --non-interactive --project "$PWD/docker-variant-study" \
+  --mode illumina --analysis cna --backend docker --threads 4 \
+  --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --sample-name TUMOR01 --status tumor \
+  --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
+  --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
+  --hg38_build --variants \
+  --variant-specimen-type fresh --variant-callers mutect2 \
+  --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
+oncotracer check --config "$PWD/docker-variant-study/config/run.yml"
+oncotracer run --backend docker \
+  --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --config "$PWD/docker-variant-study/config/run.yml"
+```
+
+</details>
+
 The image supplies native callers and the FFPERASE runtime. Clair3 models,
 FFPERASE source/models and ANNOVAR remain external resources. Select their host
 paths in the browser; OncoTracer mounts them for analysis. **Save and check**
@@ -145,6 +203,19 @@ existing BAMs** link in initial setup opens the same form. Review samples,
 Fresh/FFPE, callers and resources; save to a new project and run. This standalone
 browser route uses host tools and existing alignments; it does not repeat CNA.
 [Container and terminal alternatives](variants_reference.md) remain available.
+
+**Terminal only**, with that same existing-BAM configuration:
+
+```bash
+oncotracer variants --config /data/variants.yml --dry-run
+oncotracer variants --config /data/variants.yml --threads 4
+```
+
+`variants` uses local tools from the configuration/environment and has no
+`--backend` argument. The [explicit Docker command](variants_reference.md#conda-and-docker)
+is the container alternative. `setup --variant-config` always opens the browser;
+it cannot be combined with `--non-interactive` or `--terminal`.
+
 
 ## Read the results
 

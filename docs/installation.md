@@ -53,7 +53,13 @@ oncotracer doctor --backend conda
 oncotracer setup --backend conda
 ```
 
-This installs five isolated core environments: alignment, QDNAseq, ichorCNA,
+Terminal setup alternative to the last command:
+
+```bash
+oncotracer setup --terminal --backend conda
+```
+
+The install command creates five isolated core environments: alignment, QDNAseq, ichorCNA,
 classifier/reporting and GISTIC. The optional `variants` and `ffperase`
 environments are installed separately; follow [variant setup](variants.md#conda-and-docker).
 
@@ -65,6 +71,13 @@ oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variant
 oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260921
 ```
 
+Terminal setup alternative with the same image:
+
+```bash
+oncotracer setup --terminal --backend docker \
+  --image carlosfarkas/oncotracer:fastq-variants-20260921
+```
+
 This published Linux/amd64 image supports Illumina/ONT FASTQs through CNA and
 optional variants. Enable **Add small-variant calling** in the browser, or append
 `--variants` to setup. Chemistry-matched Clair3 models, FFPERASE source/models and
@@ -74,9 +87,8 @@ Use this explicit tag for variants. The older `ghcr.io/cfarkas/oncotracer:2.1.0`
 image supports the earlier CNA workflow. Docker methylation is unavailable;
 use the [native methylation setup](configuration/methylation.md).
 
-The installer prints progress and its detailed log path. Add `--verbose` for
-package output, or `--json` for automation. See [execution backends](containers.md)
-and [advanced installation](installation_details.md) for other configurations.
+Add `--verbose` to installation for package output, or `--json` for automation.
+See [execution backends](containers.md) and [advanced installation](installation_details.md).
 
 ## 3. Start a project
 
@@ -85,7 +97,9 @@ open. Select FASTQs, assign samples to Normal or Cancer, review settings and
 choose a project folder. Click **Save configuration and check**, then **Run analysis**.
 See the [setup guide](setup.md) or [QuickStart 1](quick_start.md).
 
-For terminal prompts, use `oncotracer setup --terminal`. To resume a saved project:
+The terminal alternatives ask the same configuration questions; finish with
+**run**, or **save** to run later. For scripts and SSH, see
+[terminal and headless servers](headless.md). Resume a saved project with:
 
 ```bash
 oncotracer setup --project /absolute/path/to/my-study --run
@@ -98,6 +112,7 @@ oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
 
+For Docker, replace `--backend conda` with `--backend docker` in the run command.
 The browser Run button and `setup --project PATH --run` reuse the saved backend
 and image. Runs download prebuilt hg38
 indexes by default; reuse or build alternatives are covered in [genome indexes](reference_indexes.md).

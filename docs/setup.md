@@ -1,7 +1,8 @@
 # Set up your own data
 
 [Install once](installation.md), then configure and run from your browser.
-The [interactive demo](browser_demo.md) lets you try the steps with synthetic samples.
+Try the [demo](browser_demo.md), or use terminal examples below.
+[Headless servers](headless.md) covers scripted runs and remote browsers through SSH.
 
 ## 1. Configure interactively (recommended)
 
@@ -30,6 +31,13 @@ including its `#` session code, if the browser does not open automatically.
 Settings are saved in `PROJECT/config/run.yml`; Illumina also gets
 `config/samplesheet.csv`. Existing configurations are protected.
 **Stop analysis** offers to keep the project or remove its folder after path confirmation.
+
+**Terminal equivalent:** ask the same setup questions without a browser, then
+validate and run:
+
+```bash
+oncotracer setup --terminal --backend conda --run
+```
 
 ### Optional analyses
 
@@ -137,6 +145,20 @@ oncotracer setup --project /work/ont-reuse --mode ont \
 The browser prefills these paths; assign samples, save/check, then run.
 Illumina needs BWA indexes; ONT needs minimap2.
 
+**Terminal equivalents** (questions followed by validation and execution):
+
+```bash
+oncotracer setup --terminal --run --backend conda \
+  --project /work/illumina-reuse --mode illumina \
+  --input-folder /data/illumina --hg38_build /data/shared-reference
+```
+
+```bash
+oncotracer setup --terminal --run --backend conda \
+  --project /work/ont-reuse --mode ont \
+  --input-folder /data/run/fastq_pass --hg38_build /data/shared-reference
+```
+
 </details>
 
 `--hg38_build` without a path selects automatic download. Replace it with
@@ -146,7 +168,8 @@ See [reference details](reference_indexes.md).
 ## Optional: scripted setup without prompts
 
 `--non-interactive` uses supplied flags/defaults and stops on missing required
-answers. Omit it for the browser or use `--terminal` for questions.
+answers. For browser setup, use the earlier browser commands; for folder-selection
+questions, use `--terminal`.
 
 <details markdown="1">
 <summary>Show one-library Illumina and multi-barcode ONT examples</summary>
@@ -155,10 +178,12 @@ answers. Omit it for the browser or use `--terminal` for questions.
 
 ```bash
 oncotracer setup --non-interactive \
-  --project /work/illumina-scripted --mode illumina --analysis cna \
+  --project /work/illumina-scripted --mode illumina --analysis cna --backend conda \
   --sample-name sampleA \
   --fastq-1 /data/illumina/sampleA_R1.fastq.gz \
   --fastq-2 /data/illumina/sampleA_R2.fastq.gz --threads 4
+oncotracer check --config /work/illumina-scripted/config/run.yml
+oncotracer run --backend conda --config /work/illumina-scripted/config/run.yml
 ```
 
 Omit `--fastq-2` for single-end reads.
@@ -167,9 +192,11 @@ Omit `--fastq-2` for single-end reads.
 
 ```bash
 oncotracer setup --non-interactive \
-  --project /work/ont-scripted --mode ont --analysis cna \
+  --project /work/ont-scripted --mode ont --analysis cna --backend conda \
   --reads-folder /data/run/fastq_pass \
   --barcodes barcode01,barcode02 --sample-names sampleA,sampleB --threads 4
+oncotracer check --config /work/ont-scripted/config/run.yml
+oncotracer run --backend conda --config /work/ont-scripted/config/run.yml
 ```
 
 Check and run the saved `config/run.yml`.
@@ -193,11 +220,12 @@ sampleB,"/data/illumina/sampleB_R1.fastq.gz","/data/illumina/sampleB_R2.fastq.gz
 CSV
 ```
 
+This terminal example saves the supplied sample settings, then checks/runs.
 Use existing paths; leave `fastq_2` empty for single-end libraries:
 
 ```bash
 oncotracer setup --project /work/illumina-batch --mode illumina --analysis cna \
-  --samplesheet /data/illumina/samplesheet.csv --threads 4
+  --samplesheet /data/illumina/samplesheet.csv --threads 4 --backend conda
 oncotracer check --config /work/illumina-batch/config/run.yml
 oncotracer run --backend conda --config /work/illumina-batch/config/run.yml
 ```

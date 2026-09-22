@@ -3,7 +3,8 @@
 Choose **MARLIN** for leukemia research or **Sturgeon** for CNS-tumor research. You must select the appropriate classifier; OncoTracer does not decide the disease family for you. Predictions need review alongside the other laboratory findings.
 
 Start with [installation](../installation.md). Tool and model details are in the
-[resource reference](methylation_reference.md).
+[resource reference](methylation_reference.md). Both browser and terminal routes
+are below; see [headless servers](../headless.md) for SSH and unattended operation.
 
 ## What you need
 
@@ -45,7 +46,7 @@ Replace the paths, barcode, and sample name below with yours:
 
 ```bash
 oncotracer setup --terminal \
-  --project /work/leukemia-study \
+  --project /work/leukemia-study --backend conda \
   --mode ont --analysis methylation \
   --reads-folder /data/run/fastq_pass \
   --barcodes barcode01 --sample-names sampleA \
@@ -54,7 +55,14 @@ oncotracer setup --terminal \
   --cpu --threads 8
 ```
 
-Setup asks only for the remaining tool and model paths. It saves them with explanations in `/work/leukemia-study/config/run.yml`.
+This runs entirely in the terminal and asks for remaining tool and model paths.
+It saves `/work/leukemia-study/config/run.yml`; use the check/run commands below.
+`--no-browser` would still start a web server, so use `--terminal` here.
+
+For unattended reuse, add `--non-interactive --resources /work/previous-study/config/run.yml`
+to this command and choose a new project path. The resource YAML must contain
+all tools and assets for the selected classifier; missing settings stop setup.
+The explicit FASTQ, barcode and methylation input flags select the new sample.
 
 | Flag | Meaning |
 | --- | --- |
