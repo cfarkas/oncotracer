@@ -1,8 +1,9 @@
 # QuickStart 2: three HCC1143 libraries
 
-Analyze three public Illumina libraries using the same `setup → check → run`
-workflow as your own data. Download all six paired-end FASTQs, check them, and
-use one CSV to keep the sample pairs clear.
+Analyze three public Illumina libraries in one project. Download all six paired-end
+FASTQs, assign the three samples in the browser, then run.
+[Install once](installation.md); [QuickStart 1](quick_start.md) is the smaller first example.
+Reads total approximately 1.16 GB, plus tools, references, BAMs and results.
 
 | Sample | Public run |
 | --- | --- |
@@ -10,15 +11,12 @@ use one CSV to keep the sample pairs clear.
 | `HCC1143_BEZ235` | `SRR7085655` |
 | `HCC1143_TRAMETINIB` | `SRR7085657` |
 
-DMSO is a treatment control, not a normal genome. All three rows are analyzed
-as tumor libraries. Start with [installation](installation.md) and
-[QuickStart 1](quick_start.md). The reads total approximately 1.16 GB; allow
-additional space for tools, references, BAMs and results.
+DMSO is a treatment control, not a normal genome. All three are tumor libraries.
 
-## 1. Download and check the six FASTQs
+## 1. Download and verify the reads
 
-Replace `/path/to/my/analyses_dir/` with your writable analysis directory.
-Use the same directory in every block. `$PWD` means its absolute path.
+Replace `/path/to/my/analyses_dir/` with your writable analysis directory in every
+block. `$PWD` means its absolute path.
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -54,10 +52,9 @@ MD5
 ```
 
 Continue only when all six lines say `OK`. The versioned manifest records each
-exact size and MD5 checksum; interrupted downloads can be resumed by repeating
-the corresponding `curl` command.
+exact size and MD5 checksum. Repeat an interrupted `curl` command to resume.
 
-## 2. Assign the three libraries in the browser (recommended)
+## 2. Open setup and run
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -65,21 +62,31 @@ oncotracer setup --project "$PWD/oncotracer-quickstart2/analysis" \
   --mode illumina --input-folder "$PWD/oncotracer-quickstart2/input"
 ```
 
-Open the complete local URL printed in the terminal if the browser does not open.
-The six FASTQs are detected as three paired-end samples. Drag all three cards into
-**Cancer**; DMSO is a treatment control and belongs to this group too. Review the
-automatically detected names, choose threads and keep **100 kb (default)** bins.
-GISTIC is available because this cohort has three samples; enabling it is optional.
-Choose the reference, click **Save configuration and check**, then **Run analysis**.
+Keep the terminal open; use its complete printed URL if the browser does not open.
 
-To use commands instead, follow the alternative below. Use only one setup method
-per project; an existing configuration will not be overwritten.
+1. Move all three detected paired-end samples into **Cancer**, including DMSO.
+2. Review names and threads. Keep CNA, QDNAseq, **100 kb** bins and reference download.
+3. Select your installed backend, click **Save configuration and check**, then
+   **Run analysis** after checks pass. GISTIC is optional for this three-sample cohort.
 
-## Alternative: create the samplesheet for scripted setup
+Each library is analyzed separately. Setup protects existing configurations.
 
-Paste this entire block, including the final `CSV` line. It creates
-`input/samplesheet.csv` with the absolute paths from step 1. `$PWD` means your
-current directory. `cat >` replaces that file if it already exists.
+## 3. Review the results
+
+Open the browser results dashboard, or visit `oncotracer-quickstart2/analysis/results/`.
+Start with `06_workflow_summary/workflow_summary.txt`, then inspect plots and
+`03_cna_codification/cna_events.tsv`. See [outputs](outputs.md).
+
+## Alternative: scripted setup and terminal run
+
+**Skip this section if you used the browser above.** It creates the same project
+without questions. Use only one setup method per project.
+
+<details markdown="1">
+<summary>Show samplesheet, setup, check and run commands</summary>
+
+Create the samplesheet with absolute paths. Paste the final `CSV` line too.
+`cat >` replaces the CSV if it already exists.
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -91,10 +98,7 @@ HCC1143_TRAMETINIB,"$PWD/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fast
 CSV
 ```
 
-Each row links one sample to its matching R1 and R2. It does not combine the
-three libraries into one sample.
-
-## 3. Set up the project
+Create settings without starting analysis:
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -106,22 +110,7 @@ oncotracer setup --non-interactive \
   --threads 4
 ```
 
-`--project` sets the configuration/result location; `--samplesheet` selects the
-CSV; `--threads` requests CPU workers.
-
-The hg38 path is optional. To reuse QuickStart 1's Illumina build, replace the
-bare flag with `--hg38_build /absolute/path/oncotracer-quickstart1/illumina/reference`.
-Another compatible reference parent or its `references/samurai_hg38` folder also
-works. Without a path, or with the flag omitted, run downloads about 8.0 GiB of
-prebuilt hg38 indexes into `analysis/reference/` automatically. Setup and check
-do not download them. See [reference details](reference_indexes.md).
-
-To build your own indexes, replace `--hg38_build` with `--build_reference` in
-the setup command. Run then downloads hg38 source files as needed and builds
-missing BWA indexes on CPU. This needs more RAM, temporary disk and time;
-do not combine the two flags.
-
-## 4. Check and run
+Check should list all three names. Resolve errors before running:
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -130,13 +119,22 @@ oncotracer run --backend conda \
   --config "$PWD/oncotracer-quickstart2/analysis/config/run.yml"
 ```
 
-Check should list all three sample names. Resolve errors before running.
-Results go to `oncotracer-quickstart2/analysis/results/`. Start with
-`06_workflow_summary/workflow_summary.txt`, then review the sample plots and
-`03_cna_codification/cna_events.tsv`.
+Use the corresponding [backend](containers.md) for Docker or Apptainer.
+
+</details>
+
+## Optional: reuse a reference
+
+With the default choice, run downloads about 8.0 GiB of prebuilt hg38 indexes into
+`analysis/reference/`. Saving/checking does not download them.
+To reuse QuickStart 1's reference, select it in the browser or replace the bare
+`--hg38_build` flag with
+`--hg38_build /absolute/path/oncotracer-quickstart1/illumina/reference`.
+To build locally, replace it with `--build_reference`; this needs more RAM, disk
+and time. See [genome indexes](reference_indexes.md).
 
 ## Resume
 
-Repeat the same `run` command after fixing any error. Leave the samplesheet,
-YAML and output directory unchanged; do not repeat setup or use `--force`
-for a normal resume. Other [backends](containers.md) use the same configuration.
+Repeat the same `run` command after fixing an error. Keep the samplesheet, YAML
+and output directory unchanged; omit setup and `--force` for a normal resume.
+See [running and resuming](running.md).

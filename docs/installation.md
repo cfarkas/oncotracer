@@ -1,13 +1,14 @@
 # Install OncoTracer
 
-Install the OncoTracer command first, then its analysis tools. Keep software and
-analysis projects in separate folders.
+Install the OncoTracer command, then choose **Conda or Docker** for analysis tools.
+Keep software and analysis projects in separate folders.
 
 ## Requirements
 
-You need 64-bit Linux, Python 3.10–3.13, Git and Conda. If Conda is missing, follow
-the [Miniforge installation instructions](https://github.com/conda-forge/miniforge#install).
-OncoTracer does not install Conda itself.
+Both routes need 64-bit Linux, Python 3.10–3.13 and Git for the launcher.
+The Conda route also needs [Conda/Miniforge](https://github.com/conda-forge/miniforge#install).
+The Docker route needs a running Docker engine accessible to your user; host
+Conda is unnecessary. OncoTracer does not install either backend itself.
 
 For a small low-pass genome run with 2–4 threads, plan for:
 
@@ -17,10 +18,9 @@ For a small low-pass genome run with 2–4 threads, plan for:
 | ONT copy-number analysis | 24 GiB |
 | Methylation classifiers or report LLMs | Depends on the model; checked separately |
 
-These are planning estimates, not guaranteed minimums. Leave at least 60 GiB
-free for tools, reference files and a small run, plus space for your FASTQs,
-BAMs and temporary files. Large datasets need more. Prebuilt indexes avoid
-index construction; they still need RAM during alignment.
+These are planning estimates. Leave at least 60 GiB free for tools, references
+and a small run, plus space for FASTQs, BAMs and temporary files. Docker image
+downloads and extraction also need free disk. Large datasets need more.
 
 ## 1. Install the command
 
@@ -34,48 +34,56 @@ source oncotracer-env/bin/activate
 oncotracer --help
 ```
 
-`oncotracer-src` holds the code; `oncotracer-env` holds the command. Keep both
-folders. The `-e` option links them and preserves the source identity used by
-the tool installer. Do not edit the source or put results inside it.
+Keep both folders: the editable installation links the launcher to its source.
+Keep results elsewhere and leave the source unchanged.
 
-## 2. Check this computer and install the tools
+## 2. Choose an analysis backend
 
 Replace the project path with the location where you plan to keep your analysis:
 
 ```bash
 oncotracer system --path /absolute/path/to/my-study
-oncotracer install --conda
-oncotracer doctor --backend conda
 ```
 
-`system` reports CPU, available RAM, free disk and limits before any download.
-`install --conda` creates separate environments for the analysis tools.
-`doctor` checks those tools and prints a short OK/FAIL summary. The installer shows
-progress and elapsed time, with colors in supported terminals. Full package output
-goes to the printed log path; add `--verbose` to show package output in the terminal.
-Use `install --json` or `doctor --json` for automation, and `NO_COLOR=1` to disable colors.
+### Conda
 
-Conda is the recommended starting backend. Docker, Apptainer and development
-options are described in [execution backends](containers.md) and
-[advanced installation](installation_details.md).
+```bash
+oncotracer install --conda
+oncotracer doctor --backend conda
+oncotracer setup --backend conda
+```
 
-Methylation needs separately installed Dorado, Modkit and classifier resources;
-see the [methylation guide](configuration/methylation.md). Installing the standard
-tools does not install those models.
+This installs five isolated core environments: alignment, QDNAseq, ichorCNA,
+classifier/reporting and GISTIC. The optional `variants` and `ffperase`
+environments are installed separately; follow [variant setup](variants.md#conda-and-docker).
+
+### Docker
+
+```bash
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260921
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260921
+oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260921
+```
+
+This published Linux/amd64 image supports Illumina/ONT FASTQs through CNA and
+optional variants. Enable **Add small-variant calling** in the browser, or append
+`--variants` to setup. Chemistry-matched Clair3 models, FFPERASE source/models and
+licensed ANNOVAR resources remain external; see [Docker variants](variants.md#run-cna-and-variants-with-docker).
+
+Use this explicit tag for variants. The older `ghcr.io/cfarkas/oncotracer:2.1.0`
+image supports the earlier CNA workflow. Docker methylation is unavailable;
+use the [native methylation setup](configuration/methylation.md).
+
+The installer prints progress and its detailed log path. Add `--verbose` for
+package output, or `--json` for automation. See [execution backends](containers.md)
+and [advanced installation](installation_details.md) for other configurations.
 
 ## 3. Start a project
 
-Start the local browser setup:
-
-```bash
-oncotracer setup
-```
-
-The page opens at **127.0.0.1:8888**; use the complete printed URL if needed.
-Keep the terminal open. Choose the platform, browse to FASTQs, assign detected
-samples to Normal or Cancer, and review threads and bins (**100 kb** for QDNAseq).
-Choose a project folder, click **Save configuration and check**, then **Run analysis**.
-See the [setup guide](setup.md) or try [QuickStart 1](quick_start.md).
+Setup opens **127.0.0.1:8888**; use the complete printed URL and keep the terminal
+open. Select FASTQs, assign samples to Normal or Cancer, review settings and
+choose a project folder. Click **Save configuration and check**, then **Run analysis**.
+See the [setup guide](setup.md) or [QuickStart 1](quick_start.md).
 
 For terminal prompts, use `oncotracer setup --terminal`. To resume a saved project:
 
@@ -83,18 +91,16 @@ For terminal prompts, use `oncotracer setup --terminal`. To resume a saved proje
 oncotracer setup --project /absolute/path/to/my-study --run
 ```
 
-Matching alignment and CNA calling results are reused; refinement and reports
-are regenerated. To check and run separately:
+To check and run a Conda project separately:
 
 ```bash
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
 
-By default, run downloads prebuilt hg38 indexes.
-Use `setup --hg38_build /path/to/reference` to reuse a build, or
-`setup --build_reference` to build indexes locally using more RAM, disk and time.
-See [genome indexes](reference_indexes.md).
+The browser Run button and `setup --project PATH --run` reuse the saved backend
+and image. Runs download prebuilt hg38
+indexes by default; reuse or build alternatives are covered in [genome indexes](reference_indexes.md).
 
 ## In a new terminal
 
@@ -105,4 +111,8 @@ source /absolute/path/to/oncotracer-env/bin/activate
 oncotracer --help
 ```
 
-To remove OncoTracer later, follow [uninstall](uninstall.md).
+## Uninstall
+
+Preview managed Conda removal with `oncotracer uninstall --conda --dry-run`.
+Follow [uninstall](uninstall.md) to remove Conda tools, the Docker image or the
+launcher while preserving project data and results.

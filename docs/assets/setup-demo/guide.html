@@ -1,0 +1,20 @@
+<aside class="demo-guide" aria-labelledby="demo-heading">
+  <span class="demo-chip">Interactive demo · synthetic data</span>
+  <h1 id="demo-heading">Try the OncoTracer setup</h1>
+  <p>Explore the real setup interface with an example Illumina or Nanopore project. Assign samples, select Fresh or FFPE, choose callers and preview a configuration.</p>
+  <p><strong>Demo only:</strong> samples, files, checks and progress are simulated in your browser. Reload to clear your choices.</p>
+  <div class="demo-actions" aria-label="Example projects">
+    <button class="primary" id="demo-load-illumina">Load Illumina · FFPE</button>
+    <button id="demo-load-ont">Load Nanopore · Fresh</button>
+    <button id="demo-reset">Reset demo</button>
+  </div>
+  <nav class="demo-steps" aria-label="Explore demo stages">
+    <button data-demo-stage="platform-card">1 · Platform</button>
+    <button data-demo-stage="samples-card">2 · Assign samples</button>
+    <button data-demo-stage="settings-card">3 · Settings</button>
+    <button id="demo-review">4 · Preview configuration</button>
+    <button id="demo-assign">Assign example groups</button>
+  </nav>
+  <p id="demo-status" class="demo-status" role="status" aria-live="polite">Load an example to begin. All displayed resources are synthetic.</p>
+  <p class="hint">For a real analysis, <a href="../../installation/">install OncoTracer</a> and start <code>oncotracer setup</code> on your computer. <a href="../../setup/">Read the setup guide</a>.</p>
+</aside>

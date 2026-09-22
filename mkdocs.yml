@@ -13,7 +13,6 @@ theme:
   name: material
   features:
     - navigation.sections
-    - navigation.expand
     - content.code.copy
     - content.action.edit
     - navigation.tabs
@@ -25,53 +24,60 @@ theme:
 nav:
   - Home: index.md
   - Getting Started:
-      - How OncoTracer Works: native_architecture.md
-      - Install Requirements: installation.md
-      - Copy Commands and Create Tables: command_basics.md
-      - QuickStart 1 — Illumina + ONT: quick_start.md
+      - Install — Conda or Docker: installation.md
+      - Interactive Browser Demo: browser_demo.md
       - Set Up Your Own Data: setup.md
-      - ONT Methylation: configuration/methylation.md
-      - Genome Indexes: reference_indexes.md
-      - Batch Setup — Many FASTQs: auto_params.md
+      - Run, Stop and Resume: running.md
+      - How OncoTracer Works: native_architecture.md
+      - Uninstall: uninstall.md
+  - Tutorials:
+      - QuickStart 1 — Illumina + ONT: quick_start.md
       - QuickStart 2 — HCC1143: public_cohort.md
-      - Input Files and Folder Layouts: inputs.md
-      - Manual YAML Editing: configuration/yaml_basics.md
-  - Full Tutorial:
       - Complete PRJNA754199 archive: full_tutorial.md
-  - Other Example Runs:
       - Mock cohort — six tumors + four independent normals: six_tumor_four_normal.md
-  - Run and Configure:
-      - Choose a Configuration Route: configuration.md
-      - Native Workflow Overview: running.md
-      - Canonical Native YAML: configuration_v2.md
-      - Illumina Setup: configuration/illumina.md
-      - ONT Setup: configuration/ont.md
-      - Methylation Resource Reference: configuration/methylation_reference.md
+  - Analyses and Results:
       - Small-Variant Calling: variants.md
-      - Pathology and Classifier: configuration/pathology.md
-      - Advanced Refinement: configuration/refinement.md
-      - All Parameters: configuration/parameter_reference.md
-      - Execution Environments: containers.md
-      - Poetry Development Install: poetry.md
-      - Programs and Provenance: programs.md
-  - Understand Results:
-      - Output Files: outputs.md
-      - Models and Pathology: models_pathology.md
-      - CNA Evidence and Uncertainty: cna_evidence_assessment.md
+      - ANNOVAR Annotation: annovar.md
+      - ONT Methylation: configuration/methylation.md
       - LLM-Assisted Reports: llm_reports.md
       - Manuscript Figures: paper_report.md
+      - Output Files: outputs.md
       - Results Gallery: gallery.md
-  - Validation:
-      - Implementation Details: architecture_details.md
-      - Parity and release gate: parity_release.md
-  - Help and About:
-      - Advanced Installation: installation_details.md
-      - Uninstall: uninstall.md
+      - Models and Pathology: models_pathology.md
+      - CNA Evidence and Uncertainty: cna_evidence_assessment.md
+  - Reference:
+      - Input preparation:
+          - Copy Commands and Create Tables: command_basics.md
+          - Input Files and Folder Layouts: inputs.md
+          - Batch Setup — Many FASTQs: auto_params.md
+          - Genome Indexes: reference_indexes.md
+      - Configuration:
+          - Choose a Configuration Route: configuration.md
+          - Manual YAML Editing: configuration/yaml_basics.md
+          - Illumina Setup: configuration/illumina.md
+          - ONT Setup: configuration/ont.md
+          - Methylation Resource Reference: configuration/methylation_reference.md
+          - Pathology and Classifier: configuration/pathology.md
+          - Advanced Refinement: configuration/refinement.md
+          - Canonical Native YAML: configuration_v2.md
+          - All Parameters: configuration/parameter_reference.md
+      - Execution:
+          - Detailed Execution Reference: running_details.md
+          - Variant Examples and Reference: variants_reference.md
+          - Execution Environments: containers.md
+          - Advanced Installation: installation_details.md
+          - Programs and Provenance: programs.md
+  - Help and Development:
       - Troubleshooting: troubleshooting.md
+      - Repository Map: repository_guide.md
       - Citation and Research Use: citation_research_use.md
       - Developer Guide: developer_guide.md
+      - Poetry Development Install: poetry.md
+      - Implementation Details: architecture_details.md
+      - Parity and release gate: parity_release.md
 
 markdown_extensions:
+  - md_in_html
   - admonition
   - tables
   - toc:

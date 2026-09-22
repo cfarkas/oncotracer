@@ -162,7 +162,13 @@ REQUIRED_TEXT = {
         "nextflow_used",
     ),
     "docs/running.md": (
-        "Running the native workflow",
+        "oncotracer setup",
+        "oncotracer run --backend conda",
+        "## Resume behavior",
+        "running_details.md",
+    ),
+    "docs/running_details.md": (
+        "Detailed execution reference",
         "direct qDNAseq or direct HMMcopy/ichorCNA",
         "BAM-supported boundary refinement",
         "run_cna_classifier: true",
