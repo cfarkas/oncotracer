@@ -4,7 +4,7 @@ Results go to the `outdir` saved in your YAML. Open `index.html` for the dashboa
 and `06_workflow_summary/final_report.html` for the combined report. Check which
 samples completed, then inspect their copy-number tables and plots.
 Use a new results directory for a different analysis; OncoTracer will not adopt
-an unrelated nonempty directory. See [resume and output safety](running.md#output-ownership-and-container-mounts).
+an unrelated nonempty directory. See [resume and output safety](running_details.md#output-ownership-and-container-mounts).
 
 Set one shell variable so the commands below are easy to reuse:
 

@@ -1,50 +1,56 @@
 # OncoTracer
 
-OncoTracer turns Illumina or Oxford Nanopore (ONT) sequencing data into DNA copy-number tables and plots. With ONT methylation data, it can also run a leukemia or CNS-tumor research classifier.
+Analyze Illumina and Oxford Nanopore (ONT) reads for copy-number changes,
+optional small variants, and ONT methylation research classifications.
+Choose your samples and settings in the browser, then follow the run to its results.
 
-## Choose your first task
+## Start here
 
-| Your starting point | Start with |
+| Step | What to do |
 | --- | --- |
-| You want to test the software | [Install](installation.md), then [QuickStart 1](quick_start.md) |
-| You have Illumina or ONT FASTQs | [Set up your project](setup.md) |
-| You have ONT methylation data | [Methylation guide](configuration/methylation.md) |
-| You want small variants from reads or existing BAMs | [Variant guide](variants.md) |
-| You want LLM-assisted report text | [Report LLM settings and audit](llm_reports.md) |
-| You want manuscript panels from saved evidence | [Paper report](paper_report.md) |
-| You have a result or an error | [Read the outputs](outputs.md) or [troubleshoot](troubleshooting.md) |
+| **1. Install once** | [Choose Conda or Docker](installation.md). Both use the same browser interface. |
+| **2. Configure** | [Open setup](setup.md), select your FASTQs, and assign samples. |
+| **3. Run** | Click **Save configuration and check**, then **Run analysis**. [Read the results](outputs.md). |
 
-## The usual workflow
+**[Try the interactive demo](assets/setup-demo/index.html)** before installing.
+It uses synthetic samples and simulated progress.
+
+[![Explore the browser setup with synthetic samples](assets/setup-demo-preview.png)](assets/setup-demo/index.html)
+
+## Already installed?
+
+Activate your OncoTracer launcher environment, then:
 
 ```bash
 oncotracer setup --project "$PWD/my-study"
 ```
 
-This opens the browser at **127.0.0.1:8888**. Choose ONT or Illumina, browse to
-FASTQs, and drag detected samples into Normal or Cancer. Edit names and settings,
-choose a project folder, then **Save configuration and check** and **Run analysis**.
-Keep the terminal open; use the complete printed URL if the browser does not open.
-`setup --terminal` provides terminal prompts. See the [setup walkthrough](setup.md).
+Keep the terminal open. The browser lets you select Conda or Docker, choose the
+reference, and start the run. The first analysis also prepares reference files
+and takes longer. See [hardware requirements](installation.md#requirements).
 
-If you saved without running, use:
+If you saved the configuration without running, use:
 
 ```bash
 oncotracer check --config "$PWD/my-study/config/run.yml"
-oncotracer run --config "$PWD/my-study/config/run.yml" --backend conda
+oncotracer run --config "$PWD/my-study/config/run.yml"
 ```
 
-New to terminal commands? See [copying commands and creating sample tables](command_basics.md).
-For many FASTQs or ONT barcodes, use the [batch examples](auto_params.md).
+The `run` command uses the most recently installed backend unless you pass
+`--backend`. See [run, stop and resume](running.md) for continuing an interrupted analysis.
 
-## What to expect
+## Choose a tutorial
 
-The first run takes longer because it prepares the human reference genome and analysis tools. Use `oncotracer system --path /path/to/project` for hardware guidance; see [requirements](installation.md#requirements) and [prebuilt indexes](reference_indexes.md). Your input files stay in their original folders; results go to the `outdir` saved in your configuration. [Uninstall](uninstall.md) removes selected tools without deleting projects.
+- **[QuickStart 1](quick_start.md):** start here for small public Illumina and ONT examples.
+- **[QuickStart 2](public_cohort.md):** try a three-library Illumina study.
+- **[Full public cohort](full_tutorial.md):** reproduce a larger archive after your first run.
 
-Open `index.html` for the results dashboard and `06_workflow_summary/final_report.html`
-for saved CNA, literature and available methylation findings. `workflow_summary.txt`
-in the same summary directory records output locations and completion. A completed computation does not by itself establish a reliable tumor classification. The [methylation guide](configuration/methylation.md#read-the-result) explains insufficient-data results.
+## Add an analysis when needed
 
-For a short workflow overview, read [How OncoTracer works](native_architecture.md).
-For larger examples, use [QuickStart 2](public_cohort.md) or the [full tutorial](full_tutorial.md).
-Developer references cover [implementation details](architecture_details.md) and
-[release validation](parity_release.md).
+[Small variants](variants.md) · [ANNOVAR annotation](annovar.md) · [ONT methylation](configuration/methylation.md) ·
+[LLM-assisted reports](llm_reports.md) · [Manuscript panels](paper_report.md)
+
+[How OncoTracer works](native_architecture.md) explains the workflow.
+[Uninstall](uninstall.md) covers tool removal and recovery.
+[Repository map](repository_guide.md) explains the folders; advanced settings live
+under **Reference**, and [release validation](parity_release.md) under **Help and Development**.

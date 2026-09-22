@@ -136,3 +136,12 @@ A stable release binds:
 - checksum-verified parity audit artifacts.
 
 The release workflow must remain fail-closed when the current `main` SHA moves or any required evidence is missing.
+
+## Refresh the browser demo
+
+The [interactive demo](browser_demo.md) reuses `oncotracer_cli/web_ui.py` with a
+synthetic API adapter. After changing the setup interface or demo assets, run
+`python scripts/build_setup_demo.py` and commit the generated page.
+`python scripts/build_setup_demo.py --check` verifies that it is current.
+The demo assets live in `docs/assets/setup-demo/`; no real server or patient
+inputs are used.

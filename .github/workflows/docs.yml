@@ -8,6 +8,8 @@ on:
       - "README.md"
       - "docs/**"
       - "mkdocs.yml"
+      - "scripts/build_setup_demo.py"
+      - "oncotracer_cli/web_ui.py"
       - ".github/workflows/docs.yml"
       - "tests/test_native_docs.py"
       - "tests/test_docs_style.py"
@@ -21,6 +23,8 @@ on:
       - "README.md"
       - "docs/**"
       - "mkdocs.yml"
+      - "scripts/build_setup_demo.py"
+      - "oncotracer_cli/web_ui.py"
       - ".github/workflows/docs.yml"
       - "tests/test_native_docs.py"
       - "tests/test_docs_style.py"
@@ -59,6 +63,7 @@ jobs:
 
       - name: Check documentation and command examples
         run: |
+          python3 scripts/build_setup_demo.py --check
           python3 tests/test_docs_style.py
           python3 -m unittest tests.test_native_docs -q
           python3 -m unittest tests.test_documented_workflows -q

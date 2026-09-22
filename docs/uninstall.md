@@ -9,7 +9,7 @@ OncoTracer using the [installation instructions](installation.md).
 Integrity checks show progress and can take several minutes for large environments.
 **No command below removes project data or results.**
 
-## Remove the analysis tools
+## Conda: remove the managed analysis tools
 
 Preview the exact managed Conda paths first:
 
@@ -27,6 +27,8 @@ oncotracer uninstall --conda --prefix /data/oncotracer-tools --dry-run
 
 This directory contains `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`.
 Include the same `--prefix` in your removal command below.
+Separately created `variants` and `ffperase` environments are not part of this
+managed installation; remove those separately with Conda if no other analyses use them.
 
 Choose one removal method:
 
@@ -54,16 +56,32 @@ Saved installation settings are retained. Reinstall the backend before using it
 again. To restore a recovery copy, move its named entries back to the original
 paths listed in `uninstall.json`; do not overwrite a newer installation.
 
-## Remove a container or launcher
+## Docker: remove the installed image
 
-For a managed Singularity/Apptainer image:
+After stopping containers that use it, remove the image installed by the
+[Docker installation route](installation.md#docker):
 
 ```bash
-oncotracer uninstall --singularity --sif /absolute/path/oncotracer.sif --dry-run
-oncotracer uninstall --singularity --sif /absolute/path/oncotracer.sif --yes --purge
+docker image rm carlosfarkas/oncotracer:fastq-variants-20260921
 ```
 
-For a copied standalone executable, remove it **last**:
+If you installed another tag, use that exact name instead. Removing a tag reclaims
+its layers only when no other image references them. This leaves mounted project
+data and results intact; a system-wide Docker prune is unnecessary.
+
+## Remove the launcher last
+
+For a pip/editable installation, activate the environment used to install it:
+
+```bash
+source /absolute/path/to/oncotracer-env/bin/activate
+python -m pip uninstall oncotracer
+```
+
+This removes the command from that environment. It leaves the environment and
+source folders in place.
+
+For a copied standalone executable:
 
 ```bash
 oncotracer uninstall --launcher /absolute/path/bin/oncotracer --dry-run
@@ -74,22 +92,17 @@ This recognizes copied OncoTracer executables, not arbitrary files. A
 system-owned path may require administrator help; uninstall does not escalate
 permissions automatically.
 
-For a pip/editable installation, activate the environment used to install it:
+## Singularity/Apptainer
+
+For a managed Singularity/Apptainer image:
 
 ```bash
-python -m pip uninstall oncotracer
+oncotracer uninstall --singularity --sif /absolute/path/oncotracer.sif --dry-run
+oncotracer uninstall --singularity --sif /absolute/path/oncotracer.sif --yes --purge
 ```
 
-For Docker, remove only the OncoTracer image you installed, after stopping its
-containers:
-
-```bash
-docker image rm ghcr.io/cfarkas/oncotracer:2.1.0
-```
-
-Do not use a system-wide Docker prune. Conda itself, Python, Docker/Apptainer,
-reference files, model caches, FASTQs, POD5s, BAMs, YAML and analysis results are
-left alone.
+Conda itself, Python, Docker/Apptainer, reference files, model caches, FASTQs,
+POD5s, BAMs, YAML and analysis results are left alone.
 
 ## If uninstall did not work
 
