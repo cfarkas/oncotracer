@@ -4,17 +4,23 @@ ANNOVAR adds gene and database descriptions to called variants. OncoTracer uses
 an **existing local installation** after variant calling and filtering. It does
 not install ANNOVAR, accept its license, download databases or decompress them.
 
-Start with [variant setup](variants.md). In the browser, leave **ANNOVAR annotation**
-on **Automatically use an existing local installation**, or choose **Skip ANNOVAR annotation**.
-If discovery cannot find your resources, fill the installation and database folders.
+Start with [variant setup](variants.md). Open **4 · Annotation** and leave
+**ANNOVAR annotation** on **Automatically use an existing local installation**,
+or choose **Skip ANNOVAR annotation**. Open the path controls to inspect or enter
+the installation and database folders.
 
 ## Use Autodetect resources
 
-In variant settings, click **Autodetect resources**. It checks the server's local
-installation and database candidates, fills blank fields and preserves paths you
-entered. A missing or incomplete installation gets a **Copy commands** box plus
-links to ANNOVAR registration and database setup. The button never installs
-ANNOVAR or downloads a database.
+Use **Autodetect** beside the installation or database path to check that resource,
+or **Autodetect resources** to check all selected variant resources. These checks
+run on the server, fill blank fields and preserve paths you entered. If several
+candidates are found, review them and choose a folder.
+
+The software installation and database are detected separately. Finding ANNOVAR
+can fill its installation path even when a matching gene database is missing;
+annotation still needs both. The resource details dialog provides **Copy commands**
+boxes and official registration/setup links for missing resources. Discovery
+never installs ANNOVAR or downloads a database.
 
 Obtain resources separately under their terms, enter their paths, then rerun
 Autodetect. You can also choose **Skip ANNOVAR annotation** and retain variant
@@ -45,7 +51,11 @@ Obtain software and resources under the applicable terms using the
 [official ANNOVAR guide](https://annovar.openbioinformatics.org/en/latest/user-guide/startup/).
 No ANNOVAR software or database is bundled in OncoTracer's Docker image.
 
-## How automatic discovery works
+## How annotation resolves paths
+
+Browser Autodetect checks a bounded set of common local folders and lets you
+review candidates. During annotation, saved paths and environment settings take
+the following priority.
 
 For the installation folder, OncoTracer checks:
 

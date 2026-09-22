@@ -77,7 +77,7 @@ class VariantResourceTests(unittest.TestCase):
              patch("subprocess.Popen", side_effect=AssertionError("Executed command")), \
              patch("os.system", side_effect=AssertionError("Executed shell")):
             result = self.detect()
-        self.assertEqual(set(result), {"backend", "fields", "resources", "install_guides", "searched", "notes"})
+        self.assertEqual(set(result), {"backend", "fields", "resources", "candidates", "install_guides", "searched", "notes"})
         self.assertEqual(result["fields"], {})
         self.assertEqual(self.resources(result)["variant_tools"]["status"], "missing")
         self.assertIn("variant_tools", [g["id"] for g in result["install_guides"]])
@@ -288,6 +288,114 @@ class VariantResourceTests(unittest.TestCase):
         result = self.detect(backend="singularity")
         self.assertEqual(result["backend"], "singularity")
         self.assertIn("uses host tools", " ".join(result["notes"]))
+
+    def test_resource_rows_identify_corresponding_form_fields(self):
+        result = self.detect(specimen_type="ffpe", values={"variant_targets_bed": "/synthetic/missing.bed"})
+        rows = self.resources(result)
+        expected = {"samtools": "variant_tool_prefix", "variant_tools": "variant_tool_prefix",
+                    "ffperase_root": "variant_ffperase_root", "ffperase_models": "variant_ffperase_models",
+                    "ffperase_prefix": "variant_ffperase_prefix", "ffperase_sif": "variant_ffperase_sif",
+                    "annovar": "variant_annovar", "annovar_dir": "variant_annovar_dir",
+                    "annovar_db": "variant_annovar_db", "targets_bed": "variant_targets_bed"}
+        for identity, field in expected.items():
+            self.assertEqual(rows[identity]["field"], field, identity)
+        self.assertTrue(all("field" in r for r in result["resources"]))
+
+    def test_multiple_complete_environments_require_choice(self):
+        prefixes = [self.tools(self.project / f"envs/{name}", "samtools", "bcftools", "freebayes") for name in ("first", "second")]
+        result = self.detect()
+        choices = [c for c in result["candidates"] if c["field"] == "variant_tool_prefix"]
+        self.assertEqual({c["path"] for c in choices}, set(map(str, prefixes)))
+        self.assertTrue(all(c["status"] == "candidate" and c["detail"] for c in choices))
+        self.assertNotIn("variant_tool_prefix", result["fields"])
+        self.assertEqual(self.resources(result)["variant_tools"]["status"], "candidate")
+        self.assertNotIn("variant_tools", [g["id"] for g in result["install_guides"]])
+        result = self.detect(values={"variant_tool_prefix": str(prefixes[1]), "variant_annovar": "off"})
+        self.assertEqual(result["fields"]["variant_tool_prefix"], str(prefixes[1]))
+        self.assertFalse([c for c in result["candidates"] if c["field"] == "variant_tool_prefix"])
+
+    def test_clair3_conda_bin_models_and_multiple_model_choices(self):
+        prefix = self.tools(self.project / "tools/ont-tools", "samtools", "bcftools", "run_clair3.sh")
+        folders = [prefix / "bin/models" / name for name in ("synthetic_a", "synthetic_b")]
+        for folder in folders:
+            self.file(folder / "pileup.index")
+            self.file(folder / "full_alignment.index")
+        result = self.detect(mode="ont", callers=["clair3"])
+        choices = [c for c in result["candidates"] if c["field"] == "variant_clair3_model"]
+        self.assertEqual({c["path"] for c in choices}, set(map(str, folders)))
+        self.assertNotIn("variant_clair3_model", result["fields"])
+        self.assertTrue(all("chemistry" in c["detail"] for c in choices))
+
+    def test_ffperase_native_and_sif_alternatives_are_both_visible(self):
+        prefix = self.tools(self.project / "tools/oncotracer-ffperase-env", "python")
+        sif = self.file(self.project / "tools/containers/ffperase.sif")
+        result = self.detect(specimen_type="ffpe")
+        self.assertEqual(result["fields"]["variant_ffperase_prefix"], str(prefix))
+        self.assertNotIn("variant_ffperase_sif", result["fields"])
+        self.assertIn(str(sif), [c["path"] for c in result["candidates"] if c["field"] == "variant_ffperase_sif"])
+        result = self.detect(specimen_type="ffpe", values={"variant_ffperase_sif": str(sif), "variant_annovar": "off"})
+        self.assertEqual(result["fields"]["variant_ffperase_sif"], str(sif))
+        self.assertNotIn("variant_ffperase_prefix", result["fields"])
+        self.assertIn(str(prefix), [c["path"] for c in result["candidates"] if c["field"] == "variant_ffperase_prefix"])
+
+    def test_annovar_install_can_be_found_without_databases(self):
+        install = self.annovar(self.project / "tools/annovar")
+        for file in (install / "humandb").iterdir():
+            file.unlink()
+        result = self.detect(values={})
+        rows = self.resources(result)
+        self.assertEqual(result["fields"]["variant_annovar_dir"], str(install))
+        self.assertNotIn("variant_annovar_db", result["fields"])
+        self.assertEqual(rows["annovar_dir"]["status"], "found")
+        self.assertEqual(rows["annovar_db"]["status"], "missing")
+        self.assertEqual(rows["annovar"]["status"], "missing")
+
+    def test_annovar_databases_can_be_found_independently(self):
+        database = self.project / "resources/humandb"
+        self.file(database / "hg38_refGene.txt")
+        self.file(database / "hg38_refGeneMrna.fa")
+        result = self.detect(values={})
+        self.assertNotIn("variant_annovar_dir", result["fields"])
+        self.assertEqual(result["fields"]["variant_annovar_db"], str(database))
+        self.assertEqual(self.resources(result)["annovar_db"]["status"], "found")
+        self.assertEqual(self.resources(result)["annovar"]["status"], "missing")
+        install = self.annovar(self.project / "tools/annovar", build="hg19")
+        result = self.detect(values={})
+        self.assertEqual(result["fields"]["variant_annovar_dir"], str(install))
+        self.assertEqual(result["fields"]["variant_annovar_db"], str(database))
+        self.assertEqual(self.resources(result)["annovar"]["status"], "found")
+
+    def test_multiple_annovar_installations_and_databases_offer_separate_choices(self):
+        installs = [self.annovar(p) for p in (self.home / "annovar", self.project / "tools/annovar")]
+        result = self.detect(values={})
+        for field in ("variant_annovar_dir", "variant_annovar_db"):
+            self.assertNotIn(field, result["fields"])
+        choices = result["candidates"]
+        self.assertEqual({c["path"] for c in choices if c["field"] == "variant_annovar_dir"}, set(map(str, installs)))
+        self.assertEqual({c["path"] for c in choices if c["field"] == "variant_annovar_db"}, {str(p / "humandb") for p in installs})
+        self.assertEqual(self.resources(result)["annovar"]["status"], "candidate")
+        self.assertTrue(all("Matching hg38 database pair" in c["detail"] for c in choices if c["field"] == "variant_annovar_dir"))
+        result = self.detect(values={"variant_annovar_dir": str(installs[0]), "variant_annovar_db": str(installs[1] / "humandb")})
+        self.assertEqual(self.resources(result)["annovar"]["status"], "found")
+        self.assertFalse([c for c in result["candidates"] if c["field"].startswith("variant_annovar_")])
+
+    def test_explicit_invalid_annovar_install_does_not_offer_replacement(self):
+        self.annovar(self.home / "annovar")
+        bad = str(self.root / "missing")
+        result = self.detect(values={"variant_annovar_dir": bad})
+        self.assertEqual(result["fields"]["variant_annovar_dir"], bad)
+        self.assertEqual(self.resources(result)["annovar_dir"]["status"], "missing")
+        self.assertFalse([c for c in result["candidates"] if c["field"] == "variant_annovar_dir"])
+
+    def test_clinical_files_are_not_guessed_from_names(self):
+        self.file(self.project / "resources/targets.bed")
+        self.file(self.project / "resources/scenario.yaml")
+        self.file(self.project / "resources/genome.fa")
+        result = self.detect()
+        for field in ("variant_targets_bed", "variant_varlociraptor_scenario", "variant_reference"):
+            self.assertNotIn(field, result["fields"])
+            self.assertFalse([c for c in result["candidates"] if c["field"] == field])
+        self.assertIn("Clinical target BEDs", " ".join(result["notes"]))
 
     def test_invalid_payloads_fail_predictably(self):
         for changes in ({"mode": "unknown"}, {"backend": "shell"}, {"callers": ["clair3"]},

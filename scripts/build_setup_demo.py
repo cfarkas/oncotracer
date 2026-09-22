@@ -31,7 +31,8 @@ def render() -> str:
     from oncotracer_cli.variant_install_help import installation_guides
     mock = (ASSETS / 'mock-api.js').read_text().replace('__VARIANT_INSTALL_GUIDES__', json.dumps({backend: installation_guides(['annovar'], backend=backend, mode='illumina') for backend in ('host', 'docker')}))
     component = (ROOT / "oncotracer_cli/variant_resource_ui.py").read_text(encoding="utf-8")
-    digest = hashlib.sha256((source + component).encode()).hexdigest()
+    form = (ROOT / "oncotracer_cli/variant_form_ui.py").read_text(encoding="utf-8")
+    digest = hashlib.sha256((source + component + form).encode()).hexdigest()
     policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     page = replace_once(page, '<meta name="viewport" content="width=device-width,initial-scale=1">', '<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta http-equiv="Content-Security-Policy" content="' + policy + '">\n<meta name="description" content="Try the OncoTracer setup interface with synthetic examples. Browser-only simulation; no files accessed or analysis run.">')
     page = replace_once(page, '<title>OncoTracer · Analysis setup</title>', '<title>OncoTracer · Interactive setup demo</title>')
