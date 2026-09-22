@@ -36,11 +36,11 @@ Small-variant calling and FFPERASE need [additional Conda environments and resou
 With Docker running and accessible to your user, install the image that supports **FASTQ → alignment → CNA and variants**:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260921
-oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants
 ```
 
-This route needs no host Conda. Omit `--variants` for CNA alone. Select Fresh or FFPE and compatible callers in the browser. External FFPERASE resources, Clair3 models and optional licensed ANNOVAR resources are described in the [variant guide](docs/variants.md). ONT methylation uses the Conda route.
+This route needs no host Conda. Omit `--variants` for CNA alone. Select Fresh or FFPE and compatible callers in the browser. Choose verified model preparation on Run or existing resources in the [variant guide](docs/variants.md); FFPERASE downloads require license acceptance, and ANNOVAR remains separately supplied. ONT methylation uses the Conda route.
 
 ## Uninstall
 
@@ -54,7 +54,7 @@ oncotracer uninstall --conda --yes
 For permanent removal instead, add `--purge` to the second command. Separately created variant environments need separate removal. To remove the Docker image:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:fastq-variants-20260921
+docker image rm carlosfarkas/oncotracer:fastq-variants-20260922
 ```
 
 To remove the launcher, run `python -m pip uninstall oncotracer` inside `oncotracer-env`. These commands preserve projects, reads and results. See [uninstall and recovery](docs/uninstall.md) for custom locations and full cleanup.

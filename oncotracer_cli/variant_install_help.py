@@ -9,7 +9,7 @@ import shlex
 from pathlib import Path
 from typing import Iterable
 
-IMAGE = "carlosfarkas/oncotracer:fastq-variants-20260921"
+IMAGE = "carlosfarkas/oncotracer:fastq-variants-20260922"
 SPEC_REVISION = "f378d5e28f629ab88be803460a44453df690cf69"
 FFPERASE_REVISION = "b0dd56cbd0a939896a966b9ce30c4d719b158170"
 FFPERASE_MODEL_REVISION = "dc4a9ab71bde34d084c4cc91d0ec291dc1f04258"
@@ -88,7 +88,7 @@ def installation_guides(missing_ids: Iterable[str], *, backend: str, mode: str,
                 ("FFPERASE setup", DOCS + "variants_reference/#ffperase-for-illumina-ffpe"))
         elif identifier == "docker_image":
             guide = _guide(identifier, "Prepare the variant-enabled Docker image",
-                "The tested image includes native callers and variant/FFPERASE runtimes; host Conda is not needed. Docker must already be installed and accessible. Clair3 models, FFPERASE source/models and licensed ANNOVAR resources remain external. Change the image field explicitly if needed.",
+                "The tested image includes native callers and variant/FFPERASE runtimes; host Conda is not needed. Docker must already be installed and accessible. Run can prepare the selected Clair3 model and, after license acknowledgment, missing FFPERASE resources. Licensed ANNOVAR resources must be supplied separately. Change the image field explicitly if needed.",
                 f"docker pull {IMAGE}\noncotracer doctor --backend docker --image {IMAGE}",
                 ("Docker installation", "https://docs.docker.com/engine/install/"),
                 ("OncoTracer Docker setup", DOCS + "installation/#docker"))
@@ -107,7 +107,7 @@ else
 fi
 printf '%s\\n' "$ONCOTRACER_FFPERASE_ROOT"
 # Paste the printed path into FFPERASE source folder.''',
-                ("FFPERASE license", FFPERASE + "/blob/main/LICENSE"),
+                ("FFPERASE license", FFPERASE + "/blob/" + FFPERASE_REVISION + "/LICENSE"),
                 ("Tested source revision", FFPERASE + "/tree/" + FFPERASE_REVISION))
         elif identifier == "ffperase_models":
             guide = _guide(identifier, "Obtain the FFPERASE SNV and indel models",
@@ -128,7 +128,7 @@ for ONCOTRACER_KIND in snvs indels; do
 done
 printf '%s\\n' "$ONCOTRACER_FFPERASE_MODELS"''',
                 ("Official model files", MODELS + "/tree/" + FFPERASE_MODEL_REVISION),
-                ("FFPERASE terms", FFPERASE + "/blob/main/LICENSE"))
+                ("FFPERASE terms", FFPERASE + "/blob/" + FFPERASE_REVISION + "/LICENSE"))
         elif identifier == "clair3_caller":
             guide = _guide(identifier, "Install Clair3 with shared variant utilities",
                 "Creates a separate ONT tool environment including Clair3 1.2.0 with CPU TensorFlow, samtools, bcftools and Varlociraptor. Set this as the variant environment when using Clair3. Choose a compatible TensorFlow model separately; newer Clair3 v2 PyTorch models do not fit this pinned runtime.",
@@ -148,7 +148,7 @@ printf '%s\\n' "$ONCOTRACER_VARIANTS_PREFIX"
                 ("Model compatibility", CLAIR3 + "#pre-trained-models"))
         elif identifier == "clair3_model":
             guide = _guide(identifier, "Select a chemistry-matched Clair3 model",
-                "Choose the model using the actual pore, chemistry, basecaller and caller version. The published OncoTracer image uses Clair3 1.2.0 (TensorFlow), not Clair3 v2 PyTorch models. No model is selected or downloaded automatically. A Conda installation may already include compatible models under PREFIX/bin/models; otherwise use the official model links.",
+                "Choose the model using the actual pore, chemistry, basecaller and caller version. The published OncoTracer image uses Clair3 1.2.0 (TensorFlow), not Clair3 v2 PyTorch models. The Automatic option downloads and verifies your selected supported profile when Run starts. This manual route is for an existing compatible model; a Conda installation may include models under PREFIX/bin/models.",
                 '''# Obtain the matching model using the official links below.
 # Enter its extracted directory, not the archive or the parent of all models.
 read -r -p "Absolute path to the matching Clair3 model: " ONCOTRACER_CLAIR3_MODEL

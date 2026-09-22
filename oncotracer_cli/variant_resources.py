@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .runtime import OncoTracerError
+from .variant_model_assets import is_auto_resource, validate_profile, FFPERASE_LICENSE
 
 MAX_ROOTS = 12
 MAX_CHILDREN = 64
@@ -33,7 +34,8 @@ PATH_FIELDS = {
 }
 SETTING_FIELDS = {"variant_ffperase", "variant_varlociraptor", "variant_annovar", "variant_reference_build",
                   "variant_clairsto_platform", "variant_specimen_type", "variant_callers", "variant_varlociraptor_fdr",
-                  "variant_varlociraptor_events", "variant_varlociraptor_sample"}
+                  "variant_varlociraptor_events", "variant_varlociraptor_sample", "variant_ont_profile",
+                  "variant_download_resources", "variant_accept_ffperase_license"}
 ENV_FIELDS = {
     "variant_tool_prefix": ("ONCOTRACER_VARIANTS_PREFIX",),
     "variant_ffperase_root": ("ONCOTRACER_FFPERASE_ROOT",),
@@ -75,7 +77,17 @@ def _payload(data):
     values = data.get("values", {})
     if not isinstance(values, Mapping) or any(k not in PATH_FIELDS | SETTING_FIELDS for k in values):
         raise OncoTracerError("values must contain supported variant resource/settings fields")
-    values = {k: _string(v, k) for k, v in values.items() if v is not None}
+    normalized = {}
+    for key, value in values.items():
+        if value is None:
+            continue
+        if key in {'variant_download_resources', 'variant_accept_ffperase_license'}:
+            if type(value) is not bool:
+                raise OncoTracerError(f'{key} must be true or false')
+            normalized[key] = value
+        else:
+            normalized[key] = _string(value, key)
+    values = normalized
     for key, allowed in (("variant_ffperase", {"", "required", "off"}),
                          ("variant_varlociraptor", {"", "required", "off"}),
                          ("variant_annovar", {"", "auto", "off"}),
@@ -303,6 +315,14 @@ def discover_variant_resources(data, *, roots=(), environment=None):
             missing.append(identity)
 
     def find_resource(field, label, paths, predicate, *, candidate=False, fill=True, optional=False):
+        if is_auto_resource(field, values.get(field)):
+            if field == 'variant_clair3_model':
+                metadata = validate_profile(values.get('variant_ont_profile', ''))
+                detail = 'Selected public model: ' + metadata['label'] + '. Download/checksum verification occurs at RUN only.'
+            else:
+                detail = 'Automatic public resource requested; preparation occurs at RUN only, after upstream terms are acknowledged.'
+            row(field.removeprefix('variant_'), label, 'unverified', detail=detail, field=field)
+            return None
         override = search.override(field, values)
         choices = [override] if override else search.existing(paths, directories=not field.endswith("_sif"))
         found = []
@@ -503,6 +523,19 @@ def discover_variant_resources(data, *, roots=(), environment=None):
     _annovar(search, values, locations, fields, row, need, offer, backend=backend)
     recipe_root = next((p for p in [Path(__file__).absolute().parent.parent, *search.roots]
                         if (p / "environments/native-variants.yml").is_file()), None)
+    deferred_ids = set()
+    for item in resources:
+        field = item['field']
+        if field == 'variant_clair3_model' and is_auto_resource(field, values.get(field)):
+            deferred_ids.add('clair3_model')
+        if (ffpe_needed and values.get('variant_download_resources') and field in {'variant_ffperase_root', 'variant_ffperase_models'}
+                and (is_auto_resource(field, values.get(field)) or (not search.override(field, values) and item['status'] == 'missing'))):
+            item['status'] = 'unverified'
+            item['detail'] = ('Public resource will be checksum-verified and prepared at RUN; no download now. '
+                              + ('Terms acknowledged. ' if values.get('variant_accept_ffperase_license') else 'Acknowledge upstream terms before saving. ')
+                              + FFPERASE_LICENSE)
+            deferred_ids.add('ffperase_source' if field == 'variant_ffperase_root' else 'ffperase_models')
+    missing = [identifier for identifier in missing if identifier not in deferred_ids]
     from .variant_install_help import installation_guides
     guides = installation_guides(missing, backend=backend, mode=mode, root=recipe_root)
     return {"backend": backend, "fields": fields, "resources": resources, "candidates": candidates, "install_guides": guides,

@@ -7,6 +7,7 @@ import unittest
 
 from oncotracer_cli.variant_web_ui import PAGE
 from oncotracer_cli.web_ui import PAGE as FASTQ_PAGE
+from oncotracer_cli.variant_model_assets import FFPERASE_LICENSE
 
 
 class VariantBrowserStatusTests(unittest.TestCase):
@@ -79,6 +80,14 @@ assert.equal(nodes.logs.textContent,originalLog);
                 self.assertEqual(sections, [f"variant-{part}-section" for part in ("specimen", "tools", "filter", "annotation")])
                 self.assertFalse(any(attrs.get("href", "").startswith("#variant-") for _, attrs in elements))
                 self.assertEqual(ids["variant-resource-dialog"], 1)
+                for key in ["variant-clair3-source", "variant_ont_profile", "variant-clairsto-preset",
+                            "variant-scenario-mode", "variant-custom-scenario", "variant_download_resources",
+                            "variant_accept_ffperase_license"]:
+                    self.assertEqual(ids[key], 1)
+                self.assertIn(FFPERASE_LICENSE, page)
+                hidden = {attrs.get("id") for _, attrs in elements if "hidden" in attrs}
+                self.assertTrue({"variant-tools-section", "variant-filter-section", "variant-annotation-section",
+                                 "variant-caller-settings", "variant-custom-scenario"}.issubset(hidden))
 
     @unittest.skipUnless(shutil.which("node"), "Node is required for browser state checks")
     def test_saved_runtime_uses_one_alternative_and_docker_status_remains_visible(self):
@@ -99,6 +108,61 @@ assert.equal(variantResourceField({id:'annovar_db',field:'variant_annovar_db'}),
 """
         result = subprocess.run([shutil.which("node"), "-e", script], text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for browser state checks")
+    def test_guided_payload_has_explicit_profiles_and_safe_standard_scenario_defaults(self):
+        for page in (PAGE, FASTQ_PAGE):
+            with self.subTest(existing_bam=page is PAGE):
+                function = page.split("function guidedVariantPayload(data){", 1)[1].split(
+                    "for(const id of ['variant-clair3-source'", 1)[0]
+                script = r"""
+const assert=require('node:assert/strict');
+const nodes={
+  'variant-clair3-source':{value:'auto'},
+  variant_ont_profile:{value:'r1041_e82_400bps_sup_v500'},
+  variant_download_resources:{checked:true},
+  variant_accept_ffperase_license:{checked:false},
+  'variant-scenario-mode':{value:'standard'},
+  variant_varlociraptor_scenario:{value:'/kept/advanced.yml'}
+};
+const document={getElementById:key=>nodes[key]};
+""" + "function guidedVariantPayload(data){" + function + r"""
+let value=guidedVariantPayload({variant_callers:'clair3',variant_clair3_model:'/previous/model',
+  variant_varlociraptor:'required',variant_varlociraptor_scenario:'/previous/scenario.yml',
+  variant_varlociraptor_events:'SOMATIC',variant_varlociraptor_sample:'tumor'});
+assert.equal(value.variant_clair3_model,'auto');
+assert.equal(value.variant_ont_profile,'r1041_e82_400bps_sup_v500');
+assert.equal(value.variant_varlociraptor_scenario,'');
+assert.equal(value.variant_varlociraptor_events,'PRESENT');
+assert.equal(value.variant_varlociraptor_sample,'sample');
+assert.equal(value.variant_download_resources,false);
+assert.equal(value.variant_accept_ffperase_license,false);
+nodes['variant-clair3-source'].value='local';
+value=guidedVariantPayload({variant_callers:'clair3',variant_clair3_model:'/existing/model'});
+assert.equal(value.variant_clair3_model,'/existing/model');
+assert.equal(value.variant_ont_profile,'');
+value=guidedVariantPayload({variant_callers:'bcftools',variant_ffperase:'required'});
+assert.equal(value.variant_download_resources,true);
+assert.equal(value.variant_accept_ffperase_license,false);
+nodes.variant_accept_ffperase_license.checked=true;
+assert.equal(guidedVariantPayload({variant_ffperase:'required'}).variant_accept_ffperase_license,true);
+nodes['variant-scenario-mode'].value='custom';
+value=guidedVariantPayload({variant_varlociraptor:'required',variant_varlociraptor_scenario:'/kept/advanced.yml',
+  variant_varlociraptor_events:'SOMATIC',variant_varlociraptor_sample:'tumor'});
+assert.equal(value.variant_varlociraptor_scenario,'/kept/advanced.yml');
+assert.equal(value.variant_varlociraptor_events,'SOMATIC');
+assert.equal(value.variant_varlociraptor_sample,'tumor');
+nodes.variant_varlociraptor_scenario.value='';
+assert.throws(()=>guidedVariantPayload({variant_varlociraptor:'required'}),/Choose a custom scenario YAML/);
+nodes['variant-scenario-mode'].value='standard';
+value=guidedVariantPayload({variant_varlociraptor:'required',variant_varlociraptor_scenario:'/stale.yml',
+  variant_varlociraptor_events:'SOMATIC',variant_varlociraptor_sample:'tumor'});
+assert.equal(value.variant_varlociraptor_scenario,'');
+assert.equal(value.variant_varlociraptor_events,'PRESENT');
+assert.equal(value.variant_varlociraptor_sample,'sample');
+"""
+                result = subprocess.run([shutil.which("node"), "-e", script], text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_raw_log_is_accessible_under_a_named_disclosure(self):
         self.assertIn('<details id="log-details" open><summary>Raw execution log</summary>', PAGE)

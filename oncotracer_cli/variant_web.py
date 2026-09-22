@@ -7,6 +7,7 @@ from pathlib import Path
 from .runtime import OncoTracerError, load_flat_yaml, require_file, sha256_file
 from .variant_command import _check_overlap, _path, read_bam_manifest
 from .variants import resolve_variant_request
+from .variant_model_assets import is_auto_resource, resource_download_plan
 
 
 PATH_FIELDS = (
@@ -41,7 +42,7 @@ def resource_paths(config):
     """Capture model files, tool entry points and environment package records."""
     paths = []
     for key in PATH_FIELDS:
-        if not config.get(key):
+        if not config.get(key) or is_auto_resource(key, config.get(key)):
             continue
         path = Path(str(config[key]))
         if not path.exists():
@@ -68,7 +69,7 @@ def load_configuration(config_path):
     digest = sha256_file(config_path)
     config = load_flat_yaml(config_path)
     for key in ('variant_reference', 'variant_bam_manifest', 'outdir', *PATH_FIELDS):
-        if config.get(key):
+        if config.get(key) and not is_auto_resource(key, config[key]):
             config[key] = str(_path(config[key], config_path.parent, key).resolve())
     mode = str(config.get('mode') or '').strip().lower()
     config['mode'] = mode
@@ -103,7 +104,7 @@ def load_configuration(config_path):
 def protect_project(project, config, inputs):
     """A removable browser project must never contain or sit inside an input."""
     directories = [Path(str(config[key])) for key in PATH_FIELDS
-                   if config.get(key) and Path(str(config[key])).is_dir()]
+                   if config.get(key) and not is_auto_resource(key, config[key]) and Path(str(config[key])).is_dir()]
     _check_overlap(project, [Path(path) for path in inputs], directories)
 
 
@@ -131,7 +132,7 @@ def prepare_for_browser(state, data):
     import secrets
     from .engine import Toolchain
     from .runtime import atomic_write_text, render_flat_yaml
-    from .setup import VARIANT_FIELDS
+    from .setup import VARIANT_FIELDS, VARIANT_BOOLEAN_FIELDS
     from .variants import preflight_variant_tools
     from .web import _fingerprint, _text
     with state.lock:
@@ -146,10 +147,14 @@ def prepare_for_browser(state, data):
             if key in data:
                 if data[key] == '':
                     config.pop(key, None)
+                elif key in VARIANT_BOOLEAN_FIELDS:
+                    if type(data[key]) is not bool:
+                        raise OncoTracerError(f"{key} must be true or false.")
+                    config[key] = data[key]
                 else:
                     config[key] = _text(data, key)
         for key in PATH_FIELDS:
-            if config.get(key):
+            if config.get(key) and not is_auto_resource(key, config[key]):
                 config[key] = str(_path(config[key], Path(loaded['config_path']).parent, key).resolve())
         request = resolve_variant_request(config, mode=config['mode'])
         threads = data.get('threads')
@@ -179,11 +184,17 @@ def prepare_for_browser(state, data):
         config.update(outdir=str(project / 'results'), threads=threads, force=False)
         inputs = {**loaded['input_snapshot'], **snapshot(resource_paths(config))}
         protect_project(project, config, inputs)
-        check = {'errors': [], 'warnings': ['BAM contents are validated when the analysis starts.']}
+        pending = resource_download_plan(request)
+        check = {'errors': [], 'warnings': ['BAM contents are validated when the analysis starts.'], 'resource_downloads': pending}
+        if pending:
+            check['warnings'].append('Selected public resources will be verified and prepared when Run starts; setup downloads nothing.')
         try:
             tools = preflight_variant_tools(request, Toolchain.from_environment())
+            if any(item['resource'].startswith('ffperase') for item in pending):
+                from .variant_model_assets import preflight_ffperase_runtime
+                preflight_ffperase_runtime(request)
             inputs.update(snapshot(tools.values()))
-            if request.ffperase != 'off':
+            if request.ffperase != 'off' and not any(item['resource'].startswith('ffperase') for item in pending):
                 from .ffperase import discover
                 detection = discover(request.ffperase_root, request.ffperase_models,
                                      request.ffperase_sif, request.ffperase_prefix)

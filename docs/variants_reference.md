@@ -28,7 +28,7 @@ relying on the most recently installed backend.
 |---|---|---|
 | Illumina | `mutect2` (default) | Tumor-only candidates; without a matched normal they are not confirmed somatic variants. |
 | Illumina | `freebayes`, `bcftools` | Independent germline-style calls; tumor purity, copy number and sparse depth still affect interpretation. |
-| ONT | `clair3` (default) | Germline-style calls using an existing model appropriate for the chemistry and basecaller. |
+| ONT | `clair3` (default) | Germline-style calls using an explicitly selected compatible model, prepared on Run or supplied locally. |
 | ONT | `clairs_to` | Tumor-only candidates using an explicitly selected compatible platform/model preset. |
 
 See the developers’ [Clair3](https://github.com/HKU-BAL/Clair3) and [ClairS-TO](https://github.com/HKU-BAL/ClairS-TO) documentation for model compatibility and caller scope.
@@ -37,12 +37,12 @@ Preservation is a separate choice: `fresh` or `ffpe`. Use one preservation type 
 
 ## Add calling during setup
 
-In browser setup, enable **Add small-variant calling**, select preservation and platform-compatible callers, and provide any required local tools/models. This branch requires aligned reads, so choose CNA or CNA plus methylation; methylation-only analysis is not eligible. Supported execution backends are `conda`, `host` and `poetry`. Docker supports CNA plus variants from FASTQ; Docker methylation and the Singularity backend with variants remain unavailable.
+In browser setup, enable **Add small-variant calling**, select preservation and platform-compatible callers, and select automatic model preparation or existing resources. This branch requires aligned reads, so choose CNA or CNA plus methylation; methylation-only analysis is not eligible. Supported execution backends are `conda`, `host` and `poetry`. Docker supports CNA plus variants from FASTQ; Docker methylation and the Singularity backend with variants remain unavailable.
 
 For example, prefill an Illumina FFPE project:
 
 ```bash
-oncotracer setup --project "$PWD/ffpe-study" --mode illumina \
+oncotracer setup --project "$PWD/ffpe-study" --mode illumina --backend conda \
   --input-folder /data/illumina --variants \
   --variant-specimen-type ffpe --variant-callers mutect2
 ```
@@ -52,8 +52,8 @@ Replace `/data/illumina` with your FASTQ folder. Review the generated configurat
 ### Terminal only: the same Illumina FFPE project
 
 Use this instead of the preceding browser command. This example explicitly keeps
-FFPERASE enabled; its separately obtained source/models and compatible runtime
-must exist. The example selects one tumor library from the same FASTQ folder.
+FFPERASE enabled with **existing local** source/models and a compatible runtime.
+For automatic source/model preparation, use the [licensed-download example](#automatic-ffperase-resources-at-run-time). The example selects one tumor library from the same FASTQ folder.
 
 ```bash
 oncotracer setup --non-interactive --project "$PWD/ffpe-study" \
@@ -83,7 +83,10 @@ explain these separate choices.
 |---|---|
 | `--variant-tool-prefix PATH` | Existing environment containing the required executables in `bin/`. |
 | `--variant-targets-bed PATH` | Optional BED intervals matching the reference assembly and contig names. |
-| `--variant-clair3-model PATH` | Existing nonempty Clair3 model directory; select its chemistry/basecaller compatibility explicitly. |
+| `--variant-clair3-model PATH` or `auto` | Existing compatible model directory, or prepare the selected profile on Run. |
+| `--variant-ont-profile ID` | Exact catalog profile required with automatic Clair3 preparation; see [supported profiles](#automatic-ont-model-preparation). |
+| `--variant-download-resources` | Prepare missing FFPERASE source/models on Run; the runtime must already be installed. |
+| `--variant-accept-ffperase-license` | Explicit acknowledgment of the pinned FFPERASE terms before downloading its resources. |
 | `--variant-clairsto-platform VALUE` | Installed ClairS-TO preset beginning `ont_`, matching the sequencing configuration. |
 | `--variant-annovar auto` or `off` | Discover existing annotation resources, or skip annotation. |
 | `--variant-annovar-dir PATH` / `--variant-annovar-db PATH` | Explicit existing ANNOVAR installation/database directories. |
@@ -91,7 +94,10 @@ explain these separate choices.
 ### Run CNA and variants with Docker
 
 Choose **Docker** under analysis tools in the browser and enter the **Docker image
-tag or digest**. Use the published integration image, or a compatible local build.
+tag or digest**. The following retained integration example uses the
+20260921 image with existing resources. For new automatic model preparation use
+`carlosfarkas/oncotracer:fastq-variants-20260922` consistently in setup and run,
+as shown in the [current Docker guide](variants.md#run-cna-and-variants-with-docker).
 The same selection can prefill the form:
 
 ```bash
@@ -124,8 +130,8 @@ Illumina caller (BCFtools, FreeBayes, Mutect2) and native ONT ClairS-TO. CNA,
 Varlociraptor and existing ANNOVAR annotation completed. The low-depth FFPE case
 correctly retained results with partial-failure status when FFPERASE was not
 assessable. These are software integration checks; they do not establish clinical
-accuracy. Clair3 is bundled and startup-tested, with a matching external model
-required for inference.
+accuracy. Clair3 is bundled and startup-tested; inference requires a model matching
+the reads. The newer 20260922 image can prepare a selected catalog model on Run.
 
 The project saves `execution_backend: docker` and `docker_image`; **Run analysis**
 and `oncotracer setup --project "$PWD/docker-study" --run` reuse those selections.
@@ -136,7 +142,7 @@ input paths and configuration without starting Docker or analysis.
 Container environments supply the caller and FFPERASE dependencies, so the browser
 hides host environment prefixes and SIF selectors for Docker. Existing host prefix
 settings in a reused YAML do not replace the image environments. Use host paths for
-target BEDs, a chemistry-compatible Clair3 model, FFPERASE source/models, custom
+target BEDs, any existing Clair3 model or FFPERASE source/models, custom
 Varlociraptor scenarios and licensed ANNOVAR resources; the runner mounts them at
 the same absolute paths. It discovers available host ANNOVAR resources in `auto`
 mode and records whether annotation was available. No annotation database is
@@ -167,6 +173,92 @@ oncotracer run --backend conda --config "$PWD/ont-variant-study/config/run.yml"
 
 The explicit barcode/sample lists determine inclusion. Review the same choices
 in browser setup if desired; resource autodetection never determines chemistry.
+
+### Automatic ONT model preparation
+
+In the browser, **Clair3 → Automatic** shows readable flow cell/basecaller profiles.
+Select the profile matching the sequencing records. Neither preservation nor
+finding a folder establishes that match. The supported Clair3 1.2.0 catalog is:
+
+| Profile ID | Sequencing/basecaller profile |
+| --- | --- |
+| `r1041_e82_400bps_sup_v500` | R10.4.1 E8.2, Dorado SUP v5.0.0, 400 bps, 5 kHz |
+| `r1041_e82_400bps_hac_v500` | R10.4.1 E8.2, Dorado HAC v5.0.0, 400 bps, 5 kHz |
+| `r1041_e82_400bps_sup_v420` | R10.4.1 E8.2, Dorado SUP v4.2.0, 400 bps, 5 kHz |
+| `r1041_e82_400bps_sup_v410` | R10.4.1 E8.2, Dorado SUP v4.1.0, 400 bps, 4 kHz |
+| `r1041_e82_400bps_hac_v410` | R10.4.1 E8.2, Dorado HAC v4.1.0, 400 bps, 4 kHz |
+
+The following example assumes the reads actually used **SUP v5.0.0 / 5 kHz**.
+Change the profile if needed; for other chemistries/basecallers, use the existing
+model route above and verify compatibility with the
+[upstream Clair3 model documentation](https://github.com/HKU-BAL/Clair3/tree/v1.2.0#pre-trained-models).
+
+**Browser**, prefilled for that profile:
+
+```bash
+oncotracer setup --project "$PWD/ont-auto-model-study" \
+  --mode ont --backend conda --input-folder /data/run/fastq_pass --variants \
+  --variant-specimen-type fresh --variant-callers clair3 \
+  --variant-clair3-model auto --variant-ont-profile r1041_e82_400bps_sup_v500 \
+  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/clair3"
+```
+
+**Terminal only**, instead of that browser command:
+
+```bash
+oncotracer setup --non-interactive --project "$PWD/ont-auto-model-study" \
+  --mode ont --analysis cna --backend conda --threads 4 \
+  --reads-folder /data/run/fastq_pass \
+  --barcodes barcode01 --sample-names TUMOR01 --hg38_build --variants \
+  --variant-specimen-type fresh --variant-callers clair3 \
+  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/clair3" \
+  --variant-clair3-model auto --variant-ont-profile r1041_e82_400bps_sup_v500 \
+  --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
+oncotracer check --config "$PWD/ont-auto-model-study/config/run.yml"
+oncotracer run --backend conda --config "$PWD/ont-auto-model-study/config/run.yml"
+```
+
+Setup, **Save and check**, `check` and dry runs download no variant resources.
+Run fetches the selected approximately 75 MB archive over HTTPS, verifies pinned
+size/SHA-256 records and extracts the expected model files. The records are
+OncoTracer's pinned verification catalog, not upstream-published checksum claims.
+Verified files are reused under `OUTDIR/08_variants/resources/`; changed or
+incomplete caches stop with an explanation instead of replacing custom resources.
+
+For existing BAMs, add these keys to a complete ONT configuration:
+
+```yaml
+variant_clair3_model: auto
+variant_ont_profile: r1041_e82_400bps_sup_v500
+```
+
+Save that complete configuration as `/data/ont-auto-model.yml`, with an ONT BAM
+manifest, `variant_callers: clair3`, a compatible caller runtime and a new output
+folder, then run:
+
+```bash
+oncotracer variants --config /data/ont-auto-model.yml --dry-run
+oncotracer variants --config /data/ont-auto-model.yml --threads 4
+```
+
+**ClairS-TO** uses the selected preset's models from its installation/container.
+The browser translates these supported preset IDs into readable choices:
+
+| Preset ID | Flow cell/basecaller profile |
+| --- | --- |
+| `ont_r10_dorado_sup_5khz_ssrs` | R10.4.1, Dorado SUP v4.2.0, 5 kHz; synthetic + real training |
+| `ont_r10_dorado_sup_5khz_ss` | R10.4.1, Dorado SUP v4.2.0, 5 kHz; synthetic training |
+| `ont_r10_dorado_sup_5khz` | R10.4.1, Dorado SUP v4.2.0, 5 kHz; legacy preset |
+| `ont_r10_dorado_sup_4khz` | R10.4.1, Dorado SUP v4.1.0, 4 kHz |
+| `ont_r10_dorado_hac_4khz` | R10.4.1, Dorado HAC v4.1.0, 4 kHz |
+| `ont_r10_guppy_sup_4khz` | R10.4.1, Guppy SUP v6.1.5, 4 kHz |
+| `ont_r10_guppy_hac_5khz` | R10.4.1, Guppy HAC v6.5.7, 5 kHz |
+
+The catalog matches the tested v0.4.4 distribution. Other installed presets remain
+available under **Other installed preset (advanced)**. Use
+`--variant-clairsto-platform ID` in terminal setup, or
+`variant_clairsto_platform: ID` in YAML. The complete
+[existing-SIF example](#use-an-existing-clairs-to-container) is retained below.
 
 ## Call from existing BAMs without rerunning CNA
 
@@ -308,7 +400,9 @@ These stages run **after caller-native filtering and normalization**, before ANN
 
 ### FFPERASE for Illumina FFPE
 
-Selecting Illumina + FFPE now defaults to `variant_ffperase: required`. Fresh and ONT inputs default to `off`; explicitly requesting FFPERASE for those inputs is rejected. To deliberately retain the previous orientation-model/review-only behavior, set `variant_ffperase: off`.
+Selecting Illumina + FFPE defaults to `variant_ffperase: required`. Fresh and ONT inputs default to `off`; explicitly requesting FFPERASE for those inputs is rejected. To deliberately retain the previous orientation-model/review-only behavior, set `variant_ffperase: off`.
+
+For an existing licensed source/model installation, keep explicit paths:
 
 ```yaml
 variant_ffperase: required
@@ -321,9 +415,69 @@ variant_ffperase_prefix: /envs/ffperase
 
 The adapter invokes the external `annotate_w_pileup`, `annotate_variants.py` and `classify_w_random_forest.py` interfaces directly. It does not invoke Nextflow. The tested upstream interface is revision `b0dd56cbd0a939896a966b9ce30c4d719b158170`. Both `model.snvs.joblib` and `model.indels.joblib` must exist. Source/model hashes enter provenance and resume signatures. Equivalent environment variables are `ONCOTRACER_FFPERASE_ROOT`, `ONCOTRACER_FFPERASE_MODELS`, `ONCOTRACER_FFPERASE_PREFIX` and `ONCOTRACER_FFPERASE_SIF`. Inputs/resources remain read-only; metrics, uppercase reference and temporary indexes are generated under the run's private work directory.
 
-The implementation measures genome-wide depth and paired-end insert size, collects Picard sequencing-artifact metrics, extracts pileup features and applies the corresponding SNV/indel model. Unsupported alleles or ambiguous reference contexts are explicitly unevaluated. Models and source must be obtained separately under the [FFPErase upstream terms](https://github.com/papaemmelab/nf-ffperase); they are not redistributed in OncoTracer or silently downloaded.
+The implementation measures genome-wide depth and paired-end insert size, collects Picard sequencing-artifact metrics, extracts pileup features and applies the corresponding SNV/indel model. Unsupported alleles or ambiguous reference contexts are explicitly unevaluated. Existing licensed resources remain supported. Alternatively, opt into the verified preparation below; source/models are fetched from upstream only when Run starts and are not bundled in OncoTracer.
 
 **Low-pass limitation:** this upstream feature code requires an integer coverage greater than one for its logarithmic depth feature. Measured coverage is truncated as required by that interface, without inventing a larger value. If the resulting value is <=1, all records receive `FFPERASE_NOT_EVALUATED`; the stage reports `not_assessed` and the run reports partial failure. This is a mathematical compatibility check, not a validated minimum sequencing depth. No low-pass accuracy claim follows from a successful model execution.
+
+### Automatic FFPERASE resources at run time
+
+In the Illumina FFPE browser form, keep **Prepare missing FFPERASE source and
+models when the run starts** selected, review the
+[pinned nf-ffperase license](https://github.com/papaemmelab/nf-ffperase/blob/b0dd56cbd0a939896a966b9ce30c4d719b158170/LICENSE),
+and explicitly accept it only if its terms fit your use. It excludes clinical
+use and requires MSK's express written permission for publishing research results.
+The download acknowledgment does not provide that permission. Uncheck preparation
+to use existing resources exclusively, or choose **Skip FFPERASE**.
+
+The compatible runtime is still required: a local FFPERASE environment/SIF, or
+the Docker runtime in the 20260922 image. Automatic pinned binary preparation
+supports Linux x86-64. It fetches only missing source/models, verifies file sizes
+and SHA-256, and caches them under `OUTDIR/08_variants/resources/`. Source is
+pinned to `b0dd56cbd0a939896a966b9ce30c4d719b158170`; the two official Hugging Face
+model files are pinned to `dc4a9ab71bde34d084c4cc91d0ec291dc1f04258` and checked
+against their LFS SHA-256 identifiers. Explicit invalid paths are not replaced.
+
+**Terminal only**, equivalent to enabling preparation and accepting the license
+in the browser. Run this example only after reviewing and accepting those terms;
+it uses a new project and one FFPE tumor library:
+
+```bash
+oncotracer setup --non-interactive --project "$PWD/ffpe-auto-resources-study" \
+  --mode illumina --analysis cna --backend conda --threads 4 \
+  --sample-name TUMOR01 --status tumor \
+  --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
+  --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz --hg38_build --variants \
+  --variant-specimen-type ffpe --variant-callers mutect2 \
+  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
+  --variant-ffperase required \
+  --variant-ffperase-prefix "$HOME/.local/share/oncotracer/optional-tools/ffperase" \
+  --variant-download-resources --variant-accept-ffperase-license \
+  --variant-varlociraptor off --variant-annovar auto
+oncotracer check --config "$PWD/ffpe-auto-resources-study/config/run.yml"
+oncotracer run --backend conda --config "$PWD/ffpe-auto-resources-study/config/run.yml"
+```
+
+For an existing-BAM configuration, the equivalent additional YAML fields are:
+
+```yaml
+variant_ffperase: required
+variant_download_resources: true
+variant_accept_ffperase_license: true
+```
+
+Add those keys to the complete Illumina configuration, set
+`variant_specimen_type: ffpe`, supply a compatible FFPERASE runtime, and save as
+`/data/ffpe-auto-resources.yml` with a new output folder. Use the same direct
+runner as other existing-BAM examples:
+
+```bash
+oncotracer variants --config /data/ffpe-auto-resources.yml --dry-run
+oncotracer variants --config /data/ffpe-auto-resources.yml --threads 4
+```
+
+These flags do not install caller environments, accept any license on your behalf,
+or obtain ANNOVAR. Checks and dry runs report the planned resources without
+fetching them.
 
 ### Varlociraptor
 
@@ -332,9 +486,16 @@ variant_varlociraptor: required
 variant_varlociraptor_fdr: 0.05
 ```
 
-Default: `off`. When enabled, OncoTracer estimates alignment properties, extracts observations from the BAM, calculates event probabilities and applies **local-smart FDR** at the requested threshold. The bundled scenario evaluates the event `PRESENT` in a single observed sample with a continuous allele-frequency universe. It makes no somatic/germline distinction and assumes no tumor purity or Chilean population allele frequencies. ONT uses the homopolymer alignment mode. Normalized candidates are treated as atomic variants.
+Default: `off`. In the browser, enable **Also assess variant evidence with Varlociraptor**
+and leave **Standard variant presence** selected. No user-provided scenario YAML
+or sample key is required; the default local false discovery rate is 5%. The
+terminal equivalent is `--variant-varlociraptor required --variant-varlociraptor-fdr 0.05`
+in any setup example, or the two YAML fields above for an existing-BAM run.
 
-A custom single-observed-sample scenario can be supplied with:
+When enabled, OncoTracer estimates alignment properties, extracts observations from the BAM, calculates event probabilities and applies **local-smart FDR** at the requested threshold. The bundled scenario evaluates the event `PRESENT` in a single observed sample with a continuous allele-frequency universe. It makes no somatic/germline distinction and assumes no tumor purity or Chilean population allele frequencies. ONT uses the homopolymer alignment mode. Normalized candidates are treated as atomic variants.
+
+Open **Advanced evidence settings → Custom scenario YAML** only for a custom
+single-observed-sample model. The equivalent YAML is:
 
 ```yaml
 variant_varlociraptor_scenario: /resources/scenario.yaml
@@ -342,24 +503,30 @@ variant_varlociraptor_sample: tumor
 variant_varlociraptor_events: SOMATIC_TUMOR_HIGH,SOMATIC_TUMOR_LOW,GERMLINE
 ```
 
-The sample name and events must match that scenario. The adapter currently supplies one observed BAM per call; it does not infer matched tumor/normal pairs. Do not copy tumor-purity assumptions from an example as if they were measured. See the official [calling](https://varlociraptor.github.io/docs/calling/), [FDR filtering](https://varlociraptor.github.io/docs/filtering/) and [output](https://varlociraptor.github.io/docs/output/) documentation.
+The internal model sample key and event names must match that scenario; the key
+is not a patient identifier, barcode or manifest sample name. The adapter currently supplies one observed BAM per call; it does not infer matched tumor/normal pairs. Do not copy tumor-purity assumptions from an example as if they were measured. See the official [calling](https://varlociraptor.github.io/docs/calling/), [FDR filtering](https://varlociraptor.github.io/docs/filtering/) and [output](https://varlociraptor.github.io/docs/output/) documentation.
 
 The original caller genotypes remain in the final annotated VCF. Varlociraptor's own BCF/VCF outputs are saved separately; its estimated allele fraction is not substituted for `GT`. `VARLOCIRAPTOR_SCORE` reports the **PHRED-scaled ARTIFACT posterior** (lower means more probable), whereas `FFPERASE_SCORE` is the **raw artifact model score** (higher means more likely). They are different quantities. Per-allele evidence TSVs and stage summary JSON files document decisions and missing assessments. Stages also appear in the results dashboard.
 
 ### Conda and Docker
 
-The pinned variant environment supplies Mutect2, FreeBayes, bcftools, samtools and **Varlociraptor 8.9.5**. FFPERASE uses a separate legacy environment to match its model dependencies:
+The pinned variant environment supplies Mutect2, FreeBayes, bcftools, samtools and **Varlociraptor 8.9.5**. FFPERASE uses a separate legacy environment to match its model dependencies. From your `oncotracer-src` checkout, create these user-owned prefixes once (skip creation for an existing compatible environment):
 
 ```bash
-conda env create -p /envs/variants -f environments/native-variants.yml
-conda env create -p /envs/ffperase -f environments/native-ffperase.yml
-export ONCOTRACER_VARIANTS_PREFIX=/envs/variants
-export ONCOTRACER_FFPERASE_PREFIX=/envs/ffperase
+export ONCOTRACER_VARIANTS_PREFIX="$HOME/.local/share/oncotracer/optional-tools/variants"
+export ONCOTRACER_FFPERASE_PREFIX="$HOME/.local/share/oncotracer/optional-tools/ffperase"
+conda env create -p "$ONCOTRACER_VARIANTS_PREFIX" -f environments/native-variants.yml
+conda env create -p "$ONCOTRACER_FFPERASE_PREFIX" -f environments/native-ffperase.yml
 ```
+
+The `/envs/...` paths in the illustrative local-resource YAML above must be replaced
+with your actual prefixes when running on the host; those paths are used inside
+the supplied Docker image. ONT caller installation commands are available from
+**Autodetect resources → Copy commands**.
 
 These additional environments are installed explicitly; the existing CNA environment installer is unchanged. `variant_tool_prefix` overrides `ONCOTRACER_VARIANTS_PREFIX`. Existing environments and user installations are never modified by an analysis run. For exact platform-specific reproducibility, save `conda list --explicit -p PREFIX` after creation.
 
-The updated Dockerfile builds both environments and sets these prefixes. Each environment has its own cached build layer. Legacy Bioconda annotation downloads use listed Bioconductor mirrors during the build (TU Dortmund for the archived QDNAseq release and Posit for current data), with the original package checksum verification retained. In Docker, use the native FFPERASE prefix and mount external source/models read-only; no nested container is necessary. ANNOVAR and chemistry-compatible Clair3 models remain separately supplied resources. The pinned ClairS-TO runtime includes its platform models; select the matching preset explicitly. For example:
+The updated Dockerfile builds both environments and sets these prefixes. Each environment has its own cached build layer. Legacy Bioconda annotation downloads use listed Bioconductor mirrors during the build (TU Dortmund for the archived QDNAseq release and Posit for current data), with the original package checksum verification retained. In Docker, use the native FFPERASE prefix; no nested container is necessary. Existing source/model folders are mounted read-only. A current build or the 20260922 image can instead prepare selected Clair3/FFPERASE resources on Run as described above. ANNOVAR remains separately supplied. The pinned ClairS-TO runtime includes its platform models; select the matching preset explicitly. For example:
 
 ```bash
 docker build -t oncotracer:variant-filters .

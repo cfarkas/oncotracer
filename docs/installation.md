@@ -66,22 +66,23 @@ environments are installed separately; follow [variant setup](variants.md#conda-
 ### Docker
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260921
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260921
-oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260921
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
 ```
 
 Terminal setup alternative with the same image:
 
 ```bash
 oncotracer setup --terminal --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921
+  --image carlosfarkas/oncotracer:fastq-variants-20260922
 ```
 
 This published Linux/amd64 image supports Illumina/ONT FASTQs through CNA and
 optional variants. Enable **Add small-variant calling** in the browser, or append
-`--variants` to setup. Chemistry-matched Clair3 models, FFPERASE source/models and
-licensed ANNOVAR resources remain external; see [Docker variants](variants.md#run-cna-and-variants-with-docker).
+`--variants` to setup. Run can prepare a selected Clair3 model or, after explicit
+license acceptance, missing FFPERASE resources. ANNOVAR stays separately supplied;
+see [Docker variants](variants.md#run-cna-and-variants-with-docker).
 
 Use this explicit tag for variants. The older `ghcr.io/cfarkas/oncotracer:2.1.0`
 image supports the earlier CNA workflow. Docker methylation is unavailable;

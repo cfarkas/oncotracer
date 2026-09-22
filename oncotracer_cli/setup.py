@@ -305,7 +305,8 @@ VARIANT_RESOURCE_FIELDS = (
     "variant_varlociraptor_scenario",
 )
 VARIANT_ASSESSMENT_FIELDS = ("variant_ffperase", "variant_varlociraptor", "variant_varlociraptor_fdr", "variant_varlociraptor_events", "variant_varlociraptor_sample")
-VARIANT_FIELDS = ("variant_specimen_type", "variant_callers", "variant_annovar", *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
+VARIANT_BOOLEAN_FIELDS = ("variant_download_resources", "variant_accept_ffperase_license")
+VARIANT_FIELDS = ("variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
 
 
 def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None = None) -> dict[str, object]:
@@ -339,6 +340,15 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
               "variant_annovar": _ask(getattr(args, "variant_annovar", None),
                   "ANNOVAR annotation (--variant-annovar; auto uses an existing local installation)",
                   default="auto", choices=("auto", "off"), interactive=interactive)}
+    for key in VARIANT_BOOLEAN_FIELDS:
+        value = getattr(args, key, None)
+        if value is not None:
+            if type(value) is not bool:
+                raise OncoTracerError(f"{key} must be true or false")
+            values[key] = value
+    profile = getattr(args, "variant_ont_profile", None)
+    if profile:
+        values["variant_ont_profile"] = str(profile)
     for key in VARIANT_ASSESSMENT_FIELDS:
         value = getattr(args, key, None)
         if key == 'variant_ffperase' and specimen == 'ffpe' and mode == 'illumina':
@@ -350,11 +360,15 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
     for key in VARIANT_RESOURCE_FIELDS:
         value = getattr(args, key, None)
         if key == "variant_clair3_model" and "clair3" in selected:
-            value = _ask(value, "Chemistry-compatible Clair3 model folder (--variant-clair3-model)", interactive=interactive)
+            value = _ask(value, "Chemistry-compatible Clair3 model folder or auto (--variant-clair3-model)", interactive=interactive)
+            if str(value).strip().lower() == "auto":
+                from .variant_model_assets import CLAIR3_PROFILES
+                values["variant_ont_profile"] = _ask(profile, "ONT basecaller model profile (--variant-ont-profile)", choices=tuple(CLAIR3_PROFILES), interactive=interactive)
         if key == "variant_clairsto_platform" and "clairs_to" in selected:
             value = _ask(value, "ClairS-TO platform/model preset (--variant-clairsto-platform)", interactive=interactive)
         if value:
-            values[key] = str(Path(value).expanduser().resolve()) if key != "variant_clairsto_platform" else str(value)
+            from .variant_model_assets import is_auto_resource
+            values[key] = str(value) if key == "variant_clairsto_platform" or is_auto_resource(key, value) else str(Path(value).expanduser().resolve())
     if args.backend == 'docker':
         from .docker_runtime import validate_docker_variants
         validate_docker_variants(dict(values, mode=mode))
@@ -1023,7 +1037,10 @@ def add_setup_commands(subparsers) -> None:
                          help="sample preservation; required when variants are enabled (one preservation type per project)")
     variant.add_argument("--variant-callers", help="comma-separated callers: Illumina mutect2/freebayes/bcftools; ONT clair3/clairs_to")
     variant.add_argument("--variant-targets-bed", metavar="PATH", help="optional hg38 BED of variant-calling intervals")
-    variant.add_argument("--variant-clair3-model", metavar="PATH", help="installed Clair3 model folder matching the ONT chemistry")
+    variant.add_argument("--variant-clair3-model", metavar="PATH|auto", help="existing Clair3 model or auto to prepare the explicitly selected profile at run time")
+    variant.add_argument("--variant-ont-profile", help="exact supported Clair3 basecaller profile for automatic model preparation")
+    variant.add_argument("--variant-download-resources", action="store_true", default=None, help="prepare missing public FFPERASE source/models at RUN only; tools and ANNOVAR are never downloaded")
+    variant.add_argument("--variant-accept-ffperase-license", action="store_true", default=None, help="acknowledge upstream FFPERASE terms before automatic source/model download")
     variant.add_argument("--variant-clairsto-platform", help="installed ClairS-TO platform/model preset")
     variant.add_argument("--variant-clairsto-sif", metavar="PATH", help="optional existing ClairS-TO SIF image; uses local Apptainer/Singularity without downloading")
     variant.add_argument("--variant-tool-prefix", metavar="PATH", help="environment prefix containing installed variant tools")

@@ -74,6 +74,7 @@ jobs:
             tests/test_variant_web.py \
             tests/test_variant_web_ui.py \
             tests/test_variant_resources.py \
+            tests/test_variant_model_assets.py \
             tests/test_web_progress.py \
             tests/test_run_completion.py \
             tests/test_paper_report_command.py \

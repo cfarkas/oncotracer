@@ -84,7 +84,7 @@ function demoCheck(payload){
   if(new Set(names).size!==names.length)errors.push('Each sample needs a different name.');
   if(demoState.scan.mode==='ont'&&!(payload.samples||[]).some(s=>s.type==='cancer'||(s.type==='custom'&&s.role==='tumor')))errors.push('An ONT project needs at least one study sample; controls are analyzed independently.');
   if(payload.reference==='reuse'){demoAssertPath(payload.reference_path);}
-  if(payload.variants&&payload.variant_specimen_type==='ffpe'&&demoState.scan.mode==='illumina'&&payload.variant_ffperase==='required'&&(!payload.variant_ffperase_root||!payload.variant_ffperase_models))errors.push('Choose synthetic FFPERASE source and model folders, or skip FFPERASE.');
+  if(payload.variants&&payload.variant_specimen_type==='ffpe'&&demoState.scan.mode==='illumina'&&payload.variant_ffperase==='required'&&(!payload.variant_ffperase_root||!payload.variant_ffperase_models)){if(!payload.variant_download_resources)errors.push('Enable automatic FFPERASE preparation, or choose existing source and model folders.');else if(!payload.variant_accept_ffperase_license)errors.push('Review and accept the FFPERASE resource license, or provide existing local resources.');}
   if(payload.variants&&payload.variant_varlociraptor==='required'&&!(Number(payload.variant_varlociraptor_fdr)>0&&Number(payload.variant_varlociraptor_fdr)<1))errors.push('Local false discovery rate must be greater than zero and less than one.');
   if(payload.backend==='docker'&&payload.analysis!=='cna')errors.push('Docker supports CNA with optional variants; methylation requires a supported host backend.');
   return {errors,warnings:['Simulated checks only: no files, tools, reference assembly, model compatibility or annotation database have been inspected.'],plan:{samples:names}};
@@ -125,7 +125,7 @@ function demoVariantResources(payload){
   const found=(id,label,key,path,status='found',detail='Synthetic example path; no files were inspected.')=>{fields[key]=values[key]||path;resources.push({id,label,status,path:fields[key],detail});};
   if(docker)resources.push({id:'variant_tools',label:'Caller tools in Docker',status:'unverified',path:payload.docker_image,detail:'The real app checks container tools during preflight. This demo does not run Docker.'});
   else found('variant_tools','Variant tool environment','variant_tool_prefix','/demo/tools/oncotracer-variants');
-  if(payload.mode==='ont'&&payload.callers.includes('clair3'))found('clair3','Clair3 model','variant_clair3_model','/demo/resources/clair3-model','candidate','Check sequencing chemistry and basecaller compatibility; a folder name alone cannot verify a model.');
+  if(payload.mode==='ont'&&payload.callers.includes('clair3')){if(values.variant_clair3_model==='auto')resources.push({id:'clair3_model',label:'Clair3 model',status:'download_pending',path:'',detail:'The selected model will be verified and prepared at run time. This demo does not download files.'});else found('clair3_model','Clair3 model','variant_clair3_model','/demo/resources/clair3-model','candidate','Check sequencing chemistry and basecaller compatibility; a folder name alone cannot verify a model.');}
   if(payload.mode==='illumina'&&payload.specimen_type==='ffpe'&&values.variant_ffperase==='required'){
     found('ffperase_source','FFPERASE source','variant_ffperase_root','/demo/resources/ffperase');
     found('ffperase_models','FFPERASE models','variant_ffperase_models','/demo/resources/ffperase/models','candidate');
@@ -136,13 +136,13 @@ function demoVariantResources(payload){
     resources.push({id:'annovar',label:'ANNOVAR and local databases',status:'missing',detail:'This example deliberately leaves optional ANNOVAR unavailable so you can explore the installation codebox. Manually entered paths are kept.'});
     guides.push(...demoInstallGuides[docker?'docker':'host']);
   }
-  if(payload.mode==='ont'&&payload.callers.includes('clair3'))for(const path of ['/demo/resources/clair3-model','/demo/resources/clair3-alternative'])candidates.push({field:'variant_clair3_model',path,label:'Synthetic Clair3 model',status:'candidate',detail:'Fictional candidate: confirm chemistry and basecaller before choosing a real model.'});
+  if(payload.mode==='ont'&&payload.callers.includes('clair3')&&values.variant_clair3_model!=='auto')for(const path of ['/demo/resources/clair3-model','/demo/resources/clair3-alternative'])candidates.push({field:'variant_clair3_model',path,label:'Synthetic Clair3 model',status:'candidate',detail:'Fictional candidate: confirm chemistry and basecaller before choosing a real model.'});
   return {backend:payload.backend,fields,resources,candidates,install_guides:guides,searched:['/demo/tools','/demo/resources'],notes:['Synthetic resource discovery only. Your computer has not been inspected.']};
 }
 function demoApi(path,payload){
   const url=new URL(path,location.href);
   switch(url.pathname){
-    case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:fastq-variants-20260921'}};
+    case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:fastq-variants-20260922'}};
     case '/api/variant-resources':return demoVariantResources(payload);
     case '/api/browse':return demoBrowse(url.searchParams.get('path'));
     case '/api/scan':{

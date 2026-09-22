@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .runtime import OncoTracerError, load_flat_yaml
+from .variant_model_assets import is_auto_resource
 
 
 _HOST_PREVIEW = ContextVar("oncotracer_docker_host_preview", default=False)
@@ -62,7 +63,7 @@ def validate_docker_variants(config: Mapping[str, object]) -> None:
                 "or select the host/Conda backend for this SIF image"
             )
     for key in ("variant_ffperase_root", "variant_ffperase_models", "variant_annovar_dir", "variant_annovar_db"):
-        if config.get(key) and not Path(str(config[key])).expanduser().is_dir():
+        if config.get(key) and not is_auto_resource(key, config[key]) and not Path(str(config[key])).expanduser().is_dir():
             raise OncoTracerError(f"{key} must be an existing host directory for Docker")
     from .variants import resolve_variant_request
     with docker_host_preview():
@@ -149,7 +150,7 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
     for key in ("illumina_samplesheet", "ont_folder", "ont_normal_folder", "pathology_csv",
                 "variant_targets_bed", "variant_clair3_model", "variant_annovar_dir", "variant_annovar_db",
                 "variant_ffperase_root", "variant_ffperase_models", "variant_varlociraptor_scenario"):
-        if config.get(key):
+        if config.get(key) and not is_auto_resource(key, config[key]):
             add(config[key], resource=True)
     for key in ("ANNOVAR_HOME", "ANNOVAR_DB", "ONCOTRACER_FFPERASE_ROOT", "ONCOTRACER_FFPERASE_MODELS"):
         if environment.get(key):
@@ -212,6 +213,12 @@ def preflight(config_path: str) -> None:
     if request:
         preflight_variant_tools(request)
         if request.ffperase != "off":
-            from .ffperase import discover
-            discover(request.ffperase_root, request.ffperase_models, request.ffperase_sif, request.ffperase_prefix)
+            from .variant_model_assets import ffperase_pending, preflight_ffperase_runtime
+            if ffperase_pending(request):
+                # Alignment preflight remains read-only. Fetch resources later
+                # under the authenticated variant output directory at RUN.
+                preflight_ffperase_runtime(request)
+            else:
+                from .ffperase import discover
+                discover(request.ffperase_root, request.ffperase_models, request.ffperase_sif, request.ffperase_prefix)
     print("Docker variant caller and resource preflight passed.")

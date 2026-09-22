@@ -10,8 +10,8 @@ DIALOG = '''<dialog id="variant-resource-dialog" aria-labelledby="variant-resour
 <p id="variant-resource-dialog-status" class="hint" role="status" aria-live="polite"></p><div id="variant-detection-results" hidden></div></dialog>'''
 
 STYLE = '''
-.variant-form{margin:20px 0 30px;min-width:0}.variant-nav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}.variant-nav button{border:0;font-size:12px;text-decoration:none;color:var(--accent);background:var(--wash);border-radius:5px;padding:7px 10px}.variant-section{border:1px solid var(--line);border-radius:10px;padding:22px;margin:16px 0;scroll-margin-top:20px;min-width:0}.variant-section-heading{display:flex;gap:12px;align-items:flex-start;margin-bottom:18px}.variant-section-heading h3{margin:0;font-size:19px}.variant-section-heading p{margin:3px 0 0}.variant-step{border:1px solid #b7d7d0;background:var(--wash);color:var(--accent);border-radius:7px;padding:2px 9px;font-size:14px;font-weight:700}.variant-section h4{font-size:15px;margin:16px 0 10px}.variant-specimen{display:grid;grid-template-columns:1fr 1fr;gap:12px}.variant-specimen .platform{min-height:0;padding:12px 16px}.variant-specimen .platform[aria-pressed=true]{padding:11px 15px}.variant-specimen .platform strong{font-size:17px;margin:0}.variant-specimen .platform span{font-size:12px;margin-top:3px}.variant-caller-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.variant-caller-list label{display:flex;align-items:center;gap:10px;margin:0;padding:12px;border:1px solid var(--line);border-radius:7px;background:white;font-size:13px;line-height:1.5;cursor:pointer}.variant-caller-list label:has(input:checked){border-color:var(--accent);background:var(--wash)}.variant-caller-list input{flex:none;margin:0}.variant-explainer{margin-bottom:0}.variant-path-details{border-top:1px solid var(--line);padding-top:12px;margin:14px 0 0}.variant-path-details>summary{font-weight:600;font-size:13px;padding:3px 0}.variant-path-details[open]>summary{margin-bottom:14px}.variant-path{margin:14px 0;min-width:0}.variant-path-row{display:flex;gap:10px;align-items:center;min-width:0}.variant-path-row>input{flex:1;min-width:0;font-size:13px}.variant-path-actions{display:flex;gap:6px;flex:none}.variant-path-actions button,.variant-tool-block button,.variant-detection button{font-size:13px;padding:8px 12px}.variant-path-summary{font-size:12px;font-weight:400;color:var(--muted);margin-left:6px}.variant-path-status:empty{display:none}.variant-path-status{margin:6px 0 0}.variant-path-status[data-state=missing],.variant-required-summary[data-missing=true]{color:#886219}.variant-path-status[data-state=found]{color:var(--accent)}.variant-required-summary{font-size:13px;margin:8px 0}#variant-annotation-section .variant-block-heading{margin-top:14px}.variant-tool-block{margin:18px 0;padding:0 0 10px}.variant-block-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.variant-block-heading h4{margin:0}.variant-block-heading p{margin:3px 0}.variant-detection{padding:16px;border-radius:8px;background:var(--wash);margin:12px 0}.variant-detection>p{margin:10px 0 0}.variant-detection #variant-resource-review{margin-top:10px;background:transparent}.variant-short{max-width:210px;margin-top:18px}#variant-resource-dialog{width:min(860px,calc(100vw - 28px));max-height:85vh;padding:24px;overflow:auto}.variant-dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1px solid var(--line);padding-bottom:14px}.variant-dialog-heading h2{font-size:22px;margin-top:4px}.variant-dialog-heading>button{font-size:13px}.resource-list{padding:0;list-style:none}.resource-list li{padding:12px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.resource-list strong{margin-right:10px}.resource-list .resource-detail{margin:5px 0;font-size:13px;color:var(--muted)}.resource-list [data-state=missing],.resource-list [data-state=candidate]{background:#fff1d7;color:#805817}.resource-install{margin:14px 0;border:1px solid var(--line);padding:12px;border-radius:8px}.resource-install summary{font-weight:600;cursor:pointer}.resource-install pre{white-space:pre;overflow:auto;max-height:270px;padding:14px;background:#162d36;color:#edf5f3;border-radius:7px;font:12px/1.6 ui-monospace,monospace}.resource-install a{color:var(--accent);margin-right:14px;font-size:13px}.resource-install .actions{gap:12px;margin:10px 0}.resource-install p{font-size:13px}.resource-path{display:block;font:12px/1.5 ui-monospace,monospace;overflow-wrap:anywhere}.resource-candidate{padding:12px;margin:8px 0;border:1px solid var(--line);border-radius:7px}.resource-candidate button{font-size:12px;padding:6px 12px}.resource-candidate p{font-size:13px;margin:5px 0 8px}.resource-choice-label{font-weight:650;font-size:14px}.resource-help-actions{margin:8px 0}.resource-help-actions button{font-size:12px;padding:6px 10px}body:has(#variant-resource-dialog[open]){overflow:hidden}
-@media(max-width:720px){.variant-section{padding:16px}.variant-path-row{flex-wrap:wrap}.variant-path-row>input{flex-basis:100%}.variant-path-actions{width:100%}.variant-path-actions button{flex:1}.variant-nav button{border:0;font-size:11px}.variant-caller-list{grid-template-columns:1fr}.variant-specimen{gap:8px}.variant-specimen .platform{padding:10px}.variant-specimen .platform[aria-pressed=true]{padding:9px}#variant-resource-dialog{padding:16px}.variant-dialog-heading h2{font-size:19px}.variant-section-heading h3{font-size:17px}.variant-block-heading>button{max-width:100%;white-space:normal}}
+.variant-form{margin:20px 0 30px;min-width:0}.variant-nav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}.variant-nav button{border:0;font-size:12px;text-decoration:none;color:var(--accent);background:var(--wash);border-radius:5px;padding:7px 10px}.variant-section{border:1px solid var(--line);border-radius:10px;padding:22px;margin:16px 0;scroll-margin-top:20px;min-width:0}.variant-section-heading{display:flex;gap:12px;align-items:flex-start;margin-bottom:18px}.variant-section-heading h3{margin:0;font-size:19px}.variant-section-heading p{margin:3px 0 0}.variant-step{border:1px solid #b7d7d0;background:var(--wash);color:var(--accent);border-radius:7px;padding:2px 9px;font-size:14px;font-weight:700}.variant-section h4{font-size:15px;margin:16px 0 10px}.variant-specimen{display:grid;grid-template-columns:1fr 1fr;gap:12px}.variant-specimen .platform{min-height:0;padding:12px 16px}.variant-specimen .platform[aria-pressed=true]{padding:11px 15px}.variant-specimen .platform strong{font-size:17px;margin:0}.variant-specimen .platform span{font-size:12px;margin-top:3px}.variant-caller-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.variant-caller-list label{display:flex;align-items:center;gap:10px;margin:0;padding:12px;border:1px solid var(--line);border-radius:7px;background:white;font-size:13px;line-height:1.5;cursor:pointer}.variant-caller-list label:has(input:checked){border-color:var(--accent);background:var(--wash)}.variant-caller-list input{flex:none;margin:0}.variant-explainer{margin-bottom:0}.variant-path-details{border-top:1px solid var(--line);padding-top:12px;margin:14px 0 0}.variant-path-details>summary{font-weight:600;font-size:13px;padding:3px 0}.variant-path-details[open]>summary{margin-bottom:14px}.variant-path{margin:14px 0;min-width:0}.variant-path-row{display:flex;gap:10px;align-items:center;min-width:0}.variant-path-row>input,.variant-path-row>select{flex:1;min-width:0;font-size:13px}.variant-path-actions{display:flex;gap:6px;flex:none}.variant-path-actions button,.variant-tool-block button,.variant-detection button{font-size:13px;padding:8px 12px}.variant-path-summary{font-size:12px;font-weight:400;color:var(--muted);margin-left:6px}.variant-path-status:empty{display:none}.variant-path-status{margin:6px 0 0}.variant-path-status[data-state=missing],.variant-required-summary[data-missing=true]{color:#886219}.variant-path-status[data-state=found]{color:var(--accent)}.variant-required-summary{font-size:13px;margin:8px 0}#variant-annotation-section .variant-block-heading{margin-top:14px}.variant-tool-block{margin:18px 0;padding:0 0 10px}.variant-block-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.variant-block-heading h4{margin:0}.variant-block-heading p{margin:3px 0}.variant-detection{padding:16px;border-radius:8px;background:var(--wash);margin:12px 0}.variant-detection>p{margin:10px 0 0}.variant-detection #variant-resource-review{margin-top:10px;background:transparent}.variant-short{max-width:210px;margin-top:18px}#variant-resource-dialog{width:min(860px,calc(100vw - 28px));max-height:85vh;padding:24px;overflow:auto}.variant-dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1px solid var(--line);padding-bottom:14px}.variant-dialog-heading h2{font-size:22px;margin-top:4px}.variant-dialog-heading>button{font-size:13px}.resource-list{padding:0;list-style:none}.resource-list li{padding:12px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.resource-list strong{margin-right:10px}.resource-list .resource-detail{margin:5px 0;font-size:13px;color:var(--muted)}.resource-list [data-state=missing],.resource-list [data-state=candidate]{background:#fff1d7;color:#805817}.resource-install{margin:14px 0;border:1px solid var(--line);padding:12px;border-radius:8px}.resource-install summary{font-weight:600;cursor:pointer}.resource-install pre{white-space:pre;overflow:auto;max-height:270px;padding:14px;background:#162d36;color:#edf5f3;border-radius:7px;font:12px/1.6 ui-monospace,monospace}.resource-install a{color:var(--accent);margin-right:14px;font-size:13px}.resource-install .actions{gap:12px;margin:10px 0}.resource-install p{font-size:13px}.resource-path{display:block;font:12px/1.5 ui-monospace,monospace;overflow-wrap:anywhere}.resource-candidate{padding:12px;margin:8px 0;border:1px solid var(--line);border-radius:7px}.resource-candidate button{font-size:12px;padding:6px 12px}.resource-candidate p{font-size:13px;margin:5px 0 8px}.resource-choice-label{font-weight:650;font-size:14px}.resource-help-actions{margin:8px 0}.resource-help-actions button{font-size:12px;padding:6px 10px}body:has(#variant-resource-dialog[open]){overflow:hidden}
+@media(max-width:720px){.variant-section{padding:16px}.variant-path-row{flex-wrap:wrap}.variant-path-row>input,.variant-path-row>select{flex-basis:100%}.variant-path-actions{width:100%}.variant-path-actions button{flex:1}.variant-nav button{border:0;font-size:11px}.variant-caller-list{grid-template-columns:1fr}.variant-specimen{gap:8px}.variant-specimen .platform{padding:10px}.variant-specimen .platform[aria-pressed=true]{padding:9px}#variant-resource-dialog{padding:16px}.variant-dialog-heading h2{font-size:19px}.variant-section-heading h3{font-size:17px}.variant-block-heading>button{max-width:100%;white-space:normal}}
 '''
 
 SCRIPT = r'''
@@ -24,9 +24,75 @@ function variantScopeFields(scope){
   return [scope];
 }
 function variantFieldLabel(key){return document.querySelector('label[for="'+key+'"]')?.textContent||key.replace(/^variant_/,'').replaceAll('_',' ');}
+function configureVariantModelControls(config={}){
+  const get=id=>document.getElementById(id);
+  const model=String(config.variant_clair3_model??get('variant_clair3_model').value??'');
+  get('variant_clair3_model').value=model||'auto';
+  if(config.variant_ont_profile)get('variant_ont_profile').value=config.variant_ont_profile;
+  if(config.variant_clairsto_platform)get('variant_clairsto_platform').value=config.variant_clairsto_platform;
+  get('variant-scenario-mode').value=config.variant_varlociraptor_scenario?'custom':'standard';
+  for(const key of ['variant_download_resources','variant_accept_ffperase_license']){
+    if(config[key]!==undefined)get(key).checked=config[key]===true||String(config[key]).toLowerCase()==='true';
+  }
+}
+function syncVariantChoices(platform,preservation){
+  const ready=Boolean(preservation);
+  show('variant-caller-settings',ready);
+  for(const id of ['variant-tools-section','variant-filter-section','variant-annotation-section'])show(id,ready);
+  for(const button of document.querySelectorAll('[data-variant-section]'))if(button.dataset.variantSection!=='variant-specimen-section')button.disabled=!ready;
+  document.getElementById('variant-filter-title').textContent=preservation==='ffpe'&&platform==='illumina'?'FFPE damage and filtering':'Variant filtering';
+  document.getElementById('variant-filter-note').textContent=preservation==='ffpe'?
+    (platform==='illumina'?'Caller filters and FFPE orientation checks apply. FFPERASE provides a separate damage assessment.':'ONT caller filters apply. FFPERASE supports Illumina reads and is not applied to ONT.'):
+    'Caller quality filters are applied automatically. Add Varlociraptor only when you want the extra evidence assessment.';
+}
+function syncVariantModelControls(){
+  const get=id=>document.getElementById(id),source=get('variant-clair3-source'),model=get('variant_clair3_model');
+  if(model.value.trim()==='auto')source.value='auto';
+  else if(model.value.trim())source.value='local';
+  else if(source.value==='auto')model.value='auto';
+  show('variant-clair3-auto-fields',source.value==='auto');show('variant-clair3-local-fields',source.value==='local');
+  const preset=get('variant-clairsto-preset'),platform=get('variant_clairsto_platform');
+  if(platform.value.trim()){
+    preset.value=[...preset.options].some(option=>option.value===platform.value.trim())?platform.value.trim():'custom';
+  }else if(preset.value!=='custom')platform.value=preset.value;
+  show('variant-clairsto-custom',preset.value==='custom');
+  show('variant-custom-scenario',get('variant-scenario-mode').value==='custom');
+  const automatic=get('variant_download_resources').checked;
+  const supplied=['variant_ffperase_root','variant_ffperase_models'].every(key=>get(key).value.trim()&&get(key).value.trim()!=='auto');
+  show('variant-ffperase-license',automatic&&!supplied);
+}
+function guidedVariantPayload(data){
+  const get=id=>document.getElementById(id);
+  if(String(data.variant_callers||'').split(',').includes('clair3')&&get('variant-clair3-source').value==='auto'){
+    data.variant_clair3_model='auto';data.variant_ont_profile=get('variant_ont_profile').value;
+  }else data.variant_ont_profile='';
+  const ffpe=data.variant_ffperase==='required';
+  data.variant_download_resources=ffpe&&get('variant_download_resources').checked;
+  data.variant_accept_ffperase_license=ffpe&&get('variant_accept_ffperase_license').checked;
+  if(data.variant_varlociraptor==='required'&&get('variant-scenario-mode').value==='standard'){
+    data.variant_varlociraptor_scenario='';data.variant_varlociraptor_events='PRESENT';data.variant_varlociraptor_sample='sample';
+  }else if(data.variant_varlociraptor==='required'&&!get('variant_varlociraptor_scenario').value.trim()){
+    throw Error('Choose a custom scenario YAML, or select Standard variant presence under Advanced evidence settings.');
+  }
+  return data;
+}
+for(const id of ['variant-clair3-source','variant-clairsto-preset','variant-scenario-mode','variant_download_resources','variant_accept_ffperase_license','variant_ont_profile']){
+  for(const event of ['input','change'])document.getElementById(id).addEventListener(event,()=>{
+    const get=key=>document.getElementById(key);
+    if(id==='variant-clair3-source'){
+      const model=get('variant_clair3_model');
+      if(get(id).value==='auto'){if(model.value&&model.value!=='auto')model.dataset.localPath=model.value;model.value='auto';}
+      else if(model.value==='auto')model.value=model.dataset.localPath||'';
+    }
+    if(id==='variant-clairsto-preset')get('variant_clairsto_platform').value=get(id).value==='custom'?'':get(id).value;
+    syncVariantModelControls();resetVariantResourceResults();invalidate();
+  },true);
+}
+configureVariantModelControls();
 function syncVariantLayout(){
   const docker=document.getElementById('backend')?.value==='docker',runtime=document.getElementById('variant-ffperase-runtime');
   if(!runtime)return;
+  syncVariantModelControls();
   if(!runtime.dataset.chosen)runtime.value=document.getElementById('variant_ffperase_sif').value.trim()?'sif':'native';
   show('variant-tool-prefix-fields',!docker);show('variant-clairsto-sif-fields',!docker);show('variant-ffperase-runtime-fields',!docker);
   show('variant-ffperase-prefix-fields',!docker&&runtime.value==='native');show('variant-ffperase-sif-fields',!docker&&runtime.value==='sif');
@@ -35,8 +101,9 @@ function syncVariantLayout(){
   for(const summary of document.querySelectorAll('[data-path-summary]')){
     const keys=summary.dataset.pathSummary.split(','),count=keys.filter(key=>document.getElementById(key)?.value.trim()).length;
     const required=summary.dataset.requiredPath==='true';
-    summary.textContent=required?(count===keys.length?'Paths selected · check resource details before running':(keys.length-count)+' required path'+(keys.length-count===1?'':'s')+' to select · use Autodetect'):(count?count+' path'+(count===1?'':'s')+' selected':'Automatic search · no manual override');
-    summary.dataset.missing=String(required&&count<keys.length);
+    const deferred=required&&keys.some(key=>key.startsWith('variant_ffperase'))&&document.getElementById('variant_download_resources').checked;
+    summary.textContent=deferred&&count<keys.length?'Missing public resources will be prepared when the run starts':required?(count===keys.length?'Paths selected · check resource details before running':(keys.length-count)+' required path'+(keys.length-count===1?'':'s')+' to select · use Autodetect'):(count?count+' path'+(count===1?'':'s')+' selected':'Automatic search · no manual override');
+    summary.dataset.missing=String(required&&!deferred&&count<keys.length);
   }
 }
 function filterVariantRuntime(data,blank=false){
@@ -52,8 +119,10 @@ function resetVariantResourceResults(){
   for(const status of document.querySelectorAll('.variant-path-status')){status.textContent='';delete status.dataset.state;}
 }
 function variantResourceValues(){
-  const keys=[...variantPathKeys,'variant_clairsto_platform','variant_ffperase','variant_varlociraptor','variant_annovar'];
+  const keys=[...variantPathKeys,'variant_clairsto_platform','variant_ffperase','variant_varlociraptor','variant_annovar','variant_ont_profile'];
   const values=Object.fromEntries(keys.map(key=>[key,document.getElementById(key).value.trim()]));
+  values.variant_download_resources=document.getElementById('variant_download_resources').checked;
+  values.variant_accept_ffperase_license=document.getElementById('variant_accept_ffperase_license').checked;
   // Keep inactive alternative paths in the form, but don't use them for this check.
   const other=document.getElementById('variant-ffperase-runtime').value==='sif'?'variant_ffperase_prefix':'variant_ffperase_sif';values[other]='';
   return values;
@@ -87,7 +156,7 @@ function renderVariantResources(result,scope='all'){
   const fields=variantScopeFields(scope),matches=resource=>scope==='all'||fields.includes(variantResourceField(resource))||(resource.id==='annovar'&&fields.some(field=>field.startsWith('variant_annovar')));
   const resources=(result.resources||[]).filter(resource=>(resource.status!=='not_needed'||scope!=='all')&&matches(resource));
   const list=node('ul',undefined,'resource-list');
-  const labels={found:'Found',missing:'Not found',candidate:'Review candidate',unverified:'Not verified',not_needed:'Not needed'};
+  const labels={found:'Found',missing:'Not found',candidate:'Review candidate',unverified:'Not verified',not_needed:'Not needed',download_pending:'Prepared at run time',prepare_at_run:'Prepared at run time'};
   for(const resource of resources){
     const item=node('li'),badge=node('span',labels[resource.status]||resource.status,'badge');badge.dataset.state=resource.status;item.append(node('strong',resource.label),badge);
     if(resource.path)item.append(node('code',resource.path,'resource-path'));

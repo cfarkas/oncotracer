@@ -20,7 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-from .discovery import discover_fastqs
+from .discovery import discover_fastqs, discover_ont_inputs
 from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
 from .runtime import OncoTracerError, load_flat_yaml
 from .system_check import inspect_hardware, resource_report
@@ -144,22 +144,8 @@ class WebState:
                 "fastq_files": fastqs, "pod5_files": pod5s, "bam_files": bams, "truncated": truncated}
 
     def ont_inputs(self, data):
-        """Suggest conventional sibling inputs from the explicitly selected run only."""
-        folder = Path(_text(data, "folder")).expanduser().resolve()
-        if not folder.is_dir():
-            raise OncoTracerError(f"ONT run folder is not accessible: {folder}")
-        run = folder
-        if folder.parent.name == "fastq_pass":
-            run = folder.parent.parent
-        elif folder.name in {"fastq_pass", "pod5_pass", "pod5", "bam_pass"}:
-            run = folder.parent
-        fastq = folder if folder != run and (folder.name == "fastq_pass" or folder.parent.name == "fastq_pass") else run / "fastq_pass"
-        if not fastq.is_dir():
-            fastq = folder  # Nonbarcoded ligation library, or manual FASTQ selection.
-        pod5 = next((run / name for name in ("pod5_pass", "pod5") if (run / name).is_dir()), None)
-        bam = run / "bam_pass"
-        return {"run": str(run), "fastq": str(fastq), "pod5": str(pod5) if pod5 else "",
-                "modbam": str(bam) if bam.is_dir() else ""}
+        """Suggest bounded matching folders without reading or modifying data."""
+        return discover_ont_inputs(_text(data, "folder"))
 
     def scan(self, data):
         mode = _choice(data, "mode", ("illumina", "ont"))
@@ -169,13 +155,16 @@ class WebState:
             if len(self.scans) >= 32:
                 self.scans.pop(next(iter(self.scans)))
             self.scans[scan_id] = discovered
-        return {"scan_id": scan_id, "mode": mode, "root": str(discovered.root),
+        result = {"scan_id": scan_id, "mode": mode, "root": str(discovered.root),
                 "warnings": list(discovered.warnings), "samples": [
                     {"id": index, "name": sample.sample, "barcode": sample.barcode,
                      "file_count": len(sample.files), "files": [str(p) for p in sample.files],
                      "layout": ("ONT batches" if mode == "ont" else
                                 "paired-end" if sample.fastq_2 else "single-end")}
                     for index, sample in enumerate(discovered.samples)]}
+        if mode == "ont":
+            result["ont_inputs"] = discover_ont_inputs(_text(data, "folder"), fastq_root=discovered.root)
+        return result
 
     def prepare(self, data):
         from .cli import build_parser
@@ -260,7 +249,13 @@ class WebState:
                 # Empty optional fields are omitted. Explicit false, arrays and
                 # dictionaries are invalid rather than silently truthy defaults.
                 if key in data and data[key] not in (None, ""):
-                    setattr(args, key, _text(data, key))
+                    from .setup import VARIANT_BOOLEAN_FIELDS
+                    if key in VARIANT_BOOLEAN_FIELDS:
+                        if type(data[key]) is not bool:
+                            raise OncoTracerError(f"{key} must be true or false.")
+                        setattr(args, key, data[key])
+                    else:
+                        setattr(args, key, _text(data, key))
             values = {}
             if discovered.mode == "illumina":
                 args._wizard_rows = [[row["sample"], str(row["source"].fastq_1),

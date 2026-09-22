@@ -57,21 +57,23 @@ Use the current source checkout and this published integration image for the
 combined workflow (Linux x86-64):
 
 ```bash
-docker pull carlosfarkas/oncotracer:fastq-variants-20260921
+docker pull carlosfarkas/oncotracer:fastq-variants-20260922
 oncotracer setup --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants
 ```
 
 Select Illumina or ONT, Fresh or FFPE, and the compatible callers. **Save and
 check**, then **Run analysis**, starts alignment, CNA analysis and the selected
 variant stages in one project. ANNOVAR uses an existing licensed installation
-and databases; FFPERASE requires its external source/model resources.
+and databases. With the 20260922 image, Run can prepare the selected Clair3
+model and missing FFPERASE source/models after explicit license acceptance.
+Checks and dry runs download no variant resources; existing paths remain supported.
 
 Terminal equivalent, using the same image and variant branch:
 
 ```bash
 oncotracer setup --terminal --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921 --variants --run
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants --run
 ```
 
 Answer the platform, input, preservation, caller and resource questions. `--run`
@@ -81,7 +83,7 @@ then use the project path you selected:
 ```bash
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 \
   --config /absolute/path/to/my-study/config/run.yml
 ```
 

@@ -56,6 +56,10 @@ class VariantRequest:
     varlociraptor_scenario: Path | None = None
     varlociraptor_events: tuple[str, ...] = ('PRESENT',)
     varlociraptor_sample: str = 'sample'
+    ont_profile: str = ''
+    clair3_auto: bool = False
+    download_resources: bool = False
+    accept_ffperase_license: bool = False
 
     def as_dict(self):
         return {k: str(v) if isinstance(v, Path) else list(v) if isinstance(v, tuple) else v
@@ -79,14 +83,23 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
     callers = tuple(x.strip().lower() for x in raw.split(',')) if isinstance(raw, str) else tuple(raw)
     if not callers or len(set(callers)) != len(callers) or any(c not in SUPPORTED_CALLERS[mode] for c in callers):
         raise OncoTracerError(f'Supported {mode} variant callers: {", ".join(SUPPORTED_CALLERS[mode])}; select each at most once')
+    from .variant_model_assets import is_auto_resource, validate_profile
     def path(key):
         v = config.get(key)
-        return Path(str(v)).expanduser().resolve() if v else None
+        return Path(str(v)).expanduser().resolve() if v and not is_auto_resource(key, v) else None
     annotation = str(config.get('variant_annovar') or 'auto').lower()
     if annotation not in {'auto', 'off'}:
         raise OncoTracerError('variant_annovar must be auto or off')
+    auto_model = is_auto_resource('variant_clair3_model', config.get('variant_clair3_model'))
+    profile = str(config.get('variant_ont_profile') or '').strip()
+    download_resources = config.get('variant_download_resources', False)
+    accept_license = config.get('variant_accept_ffperase_license', False)
+    if type(download_resources) is not bool or type(accept_license) is not bool:
+        raise OncoTracerError('variant_download_resources and variant_accept_ffperase_license must be true or false')
+    if auto_model and 'clair3' in callers:
+        validate_profile(profile)
     model = path('variant_clair3_model')
-    if 'clair3' in callers and (model is None or not model.is_dir() or not any(model.iterdir())):
+    if 'clair3' in callers and not auto_model and (model is None or not model.is_dir() or not any(model.iterdir())):
         raise OncoTracerError('Clair3 requires an existing, nonempty variant_clair3_model directory matching the basecaller/chemistry')
     platform = str(config.get('variant_clairsto_platform') or '').strip()
     if 'clairs_to' in callers and not re.fullmatch(r'ont_[A-Za-z0-9_]+', platform):
@@ -135,15 +148,20 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
         raise OncoTracerError('Use comma-separated uppercase Varlociraptor event names and a safe scenario sample name')
     if not scenario and (events != ('PRESENT',) or vl_sample != 'sample'):
         raise OncoTracerError('Nondefault Varlociraptor events/sample require an explicit scenario')
-    return VariantRequest(mode, specimen, callers, targets, annotation, path('variant_annovar_dir'),
+    request = VariantRequest(mode, specimen, callers, targets, annotation, path('variant_annovar_dir'),
                           path('variant_annovar_db'), model, platform, prefix, mq, bq, count, fraction, build, clairsto_sif,
                           ffpe_mode, path('variant_ffperase_root'), path('variant_ffperase_models'),
                           path('variant_ffperase_sif'), path('variant_ffperase_prefix'),
-                          vl_mode, fdr, scenario, events, vl_sample)
+                          vl_mode, fdr, scenario, events, vl_sample, profile, auto_model, download_resources, accept_license)
+    from .variant_model_assets import resource_download_plan
+    resource_download_plan(request)
+    return request
 
 
 def variant_plan(request: VariantRequest) -> dict:
+    from .variant_model_assets import resource_download_plan
     return {**request.as_dict(), 'engine': 'native', 'nextflow_used': False,
+            'resource_downloads': resource_download_plan(request),
             'stages': ['variant-bam-validation', *[f'variant-{c}' for c in request.callers],
                        'variant-normalization', *(['ffperase-assessment'] if request.ffperase != 'off' else []), *(['varlociraptor-local-fdr'] if request.varlociraptor != 'off' else []), 'variant-evidence', 'annovar-autodetect' if request.annovar == 'auto' else 'annotation-off'],
             'ffpe_handling': (('Mutect2 orientation model; ' if 'mutect2' in request.callers else '') + 'C>T/G>A review flag without automatic exclusion' + ('; independent FFPErase artifact assessment required' if request.ffperase != 'off' else '')) if request.specimen_type == 'ffpe' else 'caller-native filtering',
@@ -471,6 +489,11 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
     status = {'schema': SCHEMA, 'requested': variant_plan(request), 'started_at': utc_now(), 'samples':[], 'tools': tools,
               'overall_status':'running', 'completed_samples':[], 'failed_samples':[], 'annotation':'off'}
     atomic_write_json(root/'variant_status.json', status)
+    from .variant_model_assets import prepare_variant_resources
+    request = prepare_variant_resources(request, root)
+    status['resolved_resources'] = {'clair3_model': str(request.clair3_model) if request.clair3_model else None,
+                                  'ffperase_root': str(request.ffperase_root) if request.ffperase_root else None,
+                                  'ffperase_models': str(request.ffperase_models) if request.ffperase_models else None}
     from .annovar import discover_annovar, build_annovar_command, expected_outputs
     annotation = discover_annovar(request.reference_build, annovar_dir=request.annovar_dir, database_dir=request.annovar_db) if request.annovar == 'auto' else None
     status['annovar_detection'] = annotation.as_dict() if annotation else {'available':False,'reason':'disabled'}
