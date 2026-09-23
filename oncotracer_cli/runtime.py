@@ -584,6 +584,14 @@ def parse_scalar(value: str):
         return False
     if lowered in {"null", "none", "~"}:
         return None
+    if value.startswith("{"):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError as error:
+            raise OncoTracerError("Inline configuration mappings must use JSON object syntax") from error
+        if not isinstance(parsed, dict):
+            raise OncoTracerError("Expected a JSON object")
+        return parsed
     if value.startswith("[") and value.endswith("]"):
         inner = value[1:-1].strip()
         return [] if not inner else [parse_scalar(part) for part in inner.split(",")]
@@ -655,6 +663,8 @@ def render_flat_yaml(values: Mapping[str, object]) -> str:
             rendered = "null"
         elif isinstance(value, (int, float)):
             rendered = str(value)
+        elif isinstance(value, Mapping):
+            rendered = json.dumps(dict(value), ensure_ascii=False, sort_keys=True)
         elif isinstance(value, list):
             rendered = "[" + ", ".join(str(item) for item in value) + "]"
         else:

@@ -5,6 +5,9 @@ diagnosis; it does not diagnose the sample. Start with a successful [CNA run](..
 and inspect its QC. For a separate report analysis, use new configuration and
 result folders as below. This example uses **two libraries and four FASTQs**.
 
+**Terminal / headless version:** follow the sample-table, configuration and
+check/run blocks below. A browser is only needed to view HTML reports.
+
 ## 1. Create the sequencing sample table
 
 Work from your analysis directory. Replace these research sample names with

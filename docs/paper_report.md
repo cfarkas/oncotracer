@@ -16,7 +16,7 @@ The optional `paper` extra supplies Matplotlib and NumPy. If an existing environ
 
 ## Try the small synthetic example
 
-From the source checkout:
+**Terminal / headless version**, from the source checkout:
 
 ```bash
 oncotracer --paper_report \

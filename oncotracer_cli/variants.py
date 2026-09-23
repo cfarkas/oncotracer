@@ -16,15 +16,15 @@ import os
 import re
 import shutil
 import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Mapping
 
 from .runtime import OncoTracerError, atomic_write_json, require_file, sha256_file, utc_now
 
-SUPPORTED_CALLERS = {'illumina': ('mutect2', 'freebayes', 'bcftools'), 'ont': ('clair3', 'clairs_to')}
+SUPPORTED_CALLERS = {'illumina': ('mutect2', 'freebayes', 'bcftools', 'strelka2_germline', 'strelka2_somatic'), 'ont': ('clair3', 'clairs_to')}
 DEFAULT_CALLERS = {'illumina': ('mutect2',), 'ont': ('clair3',)}
-SOMATIC_CALLERS = frozenset({'mutect2', 'clairs_to'})
+SOMATIC_CALLERS = frozenset({'mutect2', 'clairs_to', 'strelka2_somatic'})
 SCHEMA = 'oncotracer-native-variants-v1'
 
 
@@ -60,10 +60,14 @@ class VariantRequest:
     clair3_auto: bool = False
     download_resources: bool = False
     accept_ffperase_license: bool = False
+    strelka_prefix: Path | None = None
+    matched_normals: tuple[tuple[str, str], ...] = ()
 
     def as_dict(self):
-        return {k: str(v) if isinstance(v, Path) else list(v) if isinstance(v, tuple) else v
+        result = {k: str(v) if isinstance(v, Path) else list(v) if isinstance(v, tuple) else v
                 for k, v in asdict(self).items()}
+        result["matched_normals"] = dict(self.matched_normals)
+        return result
 
 
 def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> VariantRequest | None:
@@ -148,14 +152,27 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
         raise OncoTracerError('Use comma-separated uppercase Varlociraptor event names and a safe scenario sample name')
     if not scenario and (events != ('PRESENT',) or vl_sample != 'sample'):
         raise OncoTracerError('Nondefault Varlociraptor events/sample require an explicit scenario')
+    from .strelka2 import parse_matched_normals
+    matched_normals = parse_matched_normals(config.get('variant_matched_normals'))
+    if 'strelka2_somatic' in callers and not matched_normals:
+        raise OncoTracerError('Strelka2 somatic requires variant_matched_normals: an explicit tumor-to-matched-normal sample mapping')
+    if matched_normals and 'strelka2_somatic' not in callers:
+        raise OncoTracerError('variant_matched_normals requires selecting strelka2_somatic')
+    strelka_prefix = path('variant_strelka_prefix') or (Path(os.environ['ONCOTRACER_STRELKA_PREFIX']).expanduser().resolve() if os.environ.get('ONCOTRACER_STRELKA_PREFIX') else None)
+    if strelka_prefix and any(c.startswith('strelka2_') for c in callers) and not config.get('_docker_skip_host_tools') and not (strelka_prefix / 'bin').is_dir():
+        raise OncoTracerError('variant_strelka_prefix must contain a bin directory')
     request = VariantRequest(mode, specimen, callers, targets, annotation, path('variant_annovar_dir'),
                           path('variant_annovar_db'), model, platform, prefix, mq, bq, count, fraction, build, clairsto_sif,
                           ffpe_mode, path('variant_ffperase_root'), path('variant_ffperase_models'),
                           path('variant_ffperase_sif'), path('variant_ffperase_prefix'),
-                          vl_mode, fdr, scenario, events, vl_sample, profile, auto_model, download_resources, accept_license)
+                          vl_mode, fdr, scenario, events, vl_sample, profile, auto_model, download_resources, accept_license, strelka_prefix, tuple(sorted(matched_normals.items())))
     from .variant_model_assets import resource_download_plan
     resource_download_plan(request)
     return request
+
+
+def call_semantics(caller):
+    return 'matched_tumor_normal_somatic' if caller == 'strelka2_somatic' else ('tumor_only_candidates' if caller in SOMATIC_CALLERS else 'germline_style_independent_calls')
 
 
 def variant_plan(request: VariantRequest) -> dict:
@@ -166,7 +183,7 @@ def variant_plan(request: VariantRequest) -> dict:
                        'variant-normalization', *(['ffperase-assessment'] if request.ffperase != 'off' else []), *(['varlociraptor-local-fdr'] if request.varlociraptor != 'off' else []), 'variant-evidence', 'annovar-autodetect' if request.annovar == 'auto' else 'annotation-off'],
             'ffpe_handling': (('Mutect2 orientation model; ' if 'mutect2' in request.callers else '') + 'C>T/G>A review flag without automatic exclusion' + ('; independent FFPErase artifact assessment required' if request.ffperase != 'off' else '')) if request.specimen_type == 'ffpe' else 'caller-native filtering',
             'genotypes': 'caller GT preserved; missing remains missing; no AF-derived consensus',
-            'call_semantics': {c: 'tumor_only_candidates' if c in SOMATIC_CALLERS else 'germline_style_independent_calls' for c in request.callers}}
+            'call_semantics': {c: call_semantics(c) for c in request.callers}}
 
 
 def preflight_variant_tools(request: VariantRequest, toolchain=None) -> dict[str, str]:
@@ -210,6 +227,11 @@ def preflight_variant_tools(request: VariantRequest, toolchain=None) -> dict[str
                 result['clairs_to_sif'] = str(require_file(request.clairsto_sif, 'ClairS-TO SIF image'))
             else:
                 result['clairs_to'] = find('run_clairs_to')
+    if any(c.startswith('strelka2_') for c in request.callers):
+        from .strelka2 import discover_runtime
+        result.update(discover_runtime(request.strelka_prefix or request.tool_prefix, request.callers))
+        if request.targets_bed:
+            result.update({name: find(name) for name in ('bgzip', 'tabix')})
     if request.ffperase != 'off':
         result.setdefault('gatk', find('gatk'))
     if request.varlociraptor != 'off':
@@ -331,7 +353,7 @@ def _evidence(vcf: Path, text_vcf: Path, table: Path, request: VariantRequest, s
     count = 0
     with text_vcf.open('w') as out, table.open('w', newline='') as evidence:
         fields_out = ['sample', 'caller', 'call_semantics', 'chrom', 'pos', 'ref', 'alt', 'qual', 'filter',
-                      'GT', 'DP', 'AD', 'AF', 'GQ', 'PL', 'GL', 'ffpe_deamination_review']
+                      'GT', 'DP', 'AD', 'AF', 'GQ', 'PL', 'GL', 'ffpe_deamination_review', 'strelka_tier1_ref_count', 'strelka_tier1_alt_count', 'strelka_tier1_alt_fraction', 'AU', 'CU', 'GU', 'TU', 'TAR', 'TIR']
         writer = csv.DictWriter(evidence, fields_out, delimiter='\t')
         writer.writeheader()
         for line, fields in _read_vcf(vcf):
@@ -347,8 +369,11 @@ def _evidence(vcf: Path, text_vcf: Path, table: Path, request: VariantRequest, s
             out.write('\t'.join(fields) + '\n')
             fmt = dict(zip(fields[8].split(':'), fields[9].split(':')))
             row = dict(zip(['chrom', 'pos', 'ref', 'alt', 'qual', 'filter'], [fields[i] for i in (0,1,3,4,5,6)]))
-            row.update(sample=sample, caller=caller, call_semantics='tumor_only_candidates' if caller in SOMATIC_CALLERS else 'germline_style_independent_calls', ffpe_deamination_review=str(review).lower())
+            row.update(sample=sample, caller=caller, call_semantics=call_semantics(caller), ffpe_deamination_review=str(review).lower())
             row.update({key: fmt.get(key, '.') for key in ('GT','DP','AD','AF','GQ','PL','GL')})
+            if caller == 'strelka2_somatic':
+                from .strelka2 import allele_evidence
+                row.update(allele_evidence(fmt, fields[3], fields[4]))
             writer.writerow(row)
     return count
 
@@ -397,10 +422,10 @@ def _clairsto_command_prefix(request, tools, directory: Path, bam: Path, ref: Pa
     return [*command, tools['clairs_to_sif'], '/opt/bin/run_clairs_to']
 
 
-def _call(request, caller, sample, bam, ref, directory, tools, runner, threads, env, targets):
+def _call(request, caller, sample, bam, ref, directory, tools, runner, threads, env, targets, normal_bam=None):
     def run(label, argv, **kwargs):
         with (directory / f'{label}.stderr.log').open('w') as err:
-            runner.run(f'variant-{sample}-{caller}-{label}', argv, env=env, stderr=err, **kwargs)
+            runner.run(f'variant-{sample}-{caller}-{label}', argv, env=kwargs.pop('env', env), stderr=err, **kwargs)
     raw = directory / 'raw.vcf.gz'
     if caller == 'bcftools':
         bcf = directory / 'pileup.bcf'
@@ -431,6 +456,9 @@ def _call(request, caller, sample, bam, ref, directory, tools, runner, threads, 
         run('orientation', [tools['gatk'], 'LearnReadOrientationModel', '-I', f1r2, '-O', priors])
         run('filter', [tools['gatk'], 'FilterMutectCalls', '-R', ref, '-V', unfiltered,
                        '--stats', str(unfiltered)+'.stats', '--ob-priors', priors, '-O', raw])
+    elif caller.startswith('strelka2_'):
+        from .strelka2 import call
+        raw = call(caller, sample, bam, normal_bam, ref, directory, tools, run, threads, env, targets)
     elif caller == 'clair3':
         results = directory / 'clair3'
         cmd = [tools['clair3'], f'--bam_fn={bam}', f'--ref_fn={ref}', f'--threads={threads}', '--platform=ont',
@@ -473,6 +501,11 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
         raise OncoTracerError('Variants require BAM inputs and positive threads')
     if any(not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', s) for s in bams):
         raise OncoTracerError('Unsafe variant sample identifier')
+    from .strelka2 import validate_samples
+    validate_samples(request, bams, sample_statuses or {})
+    for tumor, normal in request.matched_normals:
+        if Path(bams[tumor]).samefile(Path(bams[normal])):
+            raise OncoTracerError('Strelka2 tumor and matched normal must be different physical BAM files')
     tools = preflight_variant_tools(request, toolchain)
     fasta = require_file(Path(reference['fasta'] if isinstance(reference, Mapping) else reference), 'Variant reference FASTA')
     fai = Path(str(fasta)+'.fai')
@@ -506,7 +539,8 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                                  request.ffperase_prefix) if request.ffperase != 'off' else None
     status['ffperase_detection'] = detection or {'status':'off'}
     for sample, source_bam in bams.items():
-        sample_result = {'sample':sample, 'input_bam':str(source_bam), 'callers':[], 'status':'running'}
+        sample_request = replace(request, specimen_type='not_supplied', ffperase='off') if sample in dict(request.matched_normals).values() else request
+        sample_result = {'sample':sample, 'specimen_type': sample_request.specimen_type, 'input_bam':str(source_bam), 'callers':[], 'status':'running'}
         status['samples'].append(sample_result)
         try:
             source_bam = require_file(Path(source_bam), 'Variant input BAM')
@@ -552,25 +586,34 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                 targets = work/'targets.bed' if request.targets_bed else None
                 if targets:
                     _validate_bed(request.targets_bed, lengths, targets)
+                normal_bam = None
+                if any(c.startswith('strelka2_') for c in request.callers):
+                    from .strelka2 import validate_paired_bam, stage_normal
+                    validate_paired_bam(bam, header, lengths, work, tools, runner, env, sample)
+                    normal_id = dict(request.matched_normals).get(sample)
+                    if normal_id:
+                        normal_bam = stage_normal(normal_id, Path(bams[normal_id]), work, lengths, tools, runner, env, threads)
                 for caller in request.callers:
                     result = {'caller':caller, 'status':'running'}
                     sample_result['callers'].append(result)
                     if caller in SOMATIC_CALLERS and (sample_statuses or {}).get(sample) == 'normal':
-                        result.update(status='not_applicable', reason='Tumor-only caller omitted for a sample explicitly marked normal')
+                        result.update(status='not_applicable', reason='Somatic caller omitted for a sample explicitly marked normal')
                         continue
                     dest = root/'samples'/sample/caller
                     if any(p.is_symlink() for p in (root/'samples',root/'samples'/sample,dest)):
                         raise OncoTracerError('Variant output path contains a symlink')
                     signature_inputs = [source_bam,fasta,fai,*([request.targets_bed] if request.targets_bed else []), *map(Path,tools.values())]
+                    if caller == 'strelka2_somatic':
+                        signature_inputs.append(Path(bams[dict(request.matched_normals)[sample]]))
                     if request.clair3_model and caller == 'clair3':
                         signature_inputs += sorted(p for p in request.clair3_model.rglob('*') if p.is_file())
-                    signature = ledger.signature(f'variants-{sample}-{caller}', [json.dumps(request.as_dict(),sort_keys=True),_module_digest(),json.dumps(status['annovar_detection'],sort_keys=True),_module_digest('annovar.py'),_module_digest('ffperase.py'),_module_digest('varlociraptor.py'),_module_digest('variant_filters.py'),json.dumps(detection,sort_keys=True)], signature_inputs + ([request.varlociraptor_scenario] if request.varlociraptor_scenario else []))
+                    signature = ledger.signature(f'variants-{sample}-{caller}', [json.dumps(request.as_dict(),sort_keys=True),_module_digest(),json.dumps(status['annovar_detection'],sort_keys=True),_module_digest('annovar.py'),_module_digest('ffperase.py'),_module_digest('varlociraptor.py'),_module_digest('variant_filters.py'),_module_digest('strelka2.py'),json.dumps(detection,sort_keys=True)], signature_inputs + ([request.varlociraptor_scenario] if request.varlociraptor_scenario else []))
                     completed = dest/'complete.json'
                     if completed.is_symlink():
                         raise OncoTracerError('Variant completion manifest must not be a symlink')
                     previous = json.loads(completed.read_text()) if completed.is_file() else None
                     _owned_outputs(dest, previous)
-                    accepted_samples = {sample} if request.mode == 'ont' else sm
+                    accepted_samples = {sample} if request.mode == 'ont' or caller == 'strelka2_somatic' else sm
                     if not force and previous and previous.get('signature') == signature and previous.get('result', {}).get('status') == 'complete':
                         if all((dest/f).is_file() and sha256_file(dest/f)==digest for f,digest in previous['outputs'].items()):
                             validate_vcf(dest/previous['vcf'], expected_samples=accepted_samples)
@@ -579,10 +622,10 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                     scratch = work/caller
                     scratch.mkdir()
                     try:
-                        final,evidence,count = _call(request,caller,sample,bam,ref,scratch,tools,runner,threads,env,targets)
+                        final,evidence,count = _call(sample_request,caller,sample,bam,ref,scratch,tools,runner,threads,env,targets, **({"normal_bam": normal_bam} if caller == "strelka2_somatic" else {}))
                         validate_vcf(final, expected_samples=accepted_samples)
                         assessments, assessment_files = {}, []
-                        if request.ffperase != 'off' or request.varlociraptor != 'off':
+                        if sample_request.ffperase != 'off' or sample_request.varlociraptor != 'off':
                             def assess_run(label, argv, **kwargs):
                                 with (scratch/f'{label}.stderr.log').open('a') as err:
                                     runner.run(f'variant-{sample}-{caller}-{label}',argv,env=env,stderr=err,**kwargs)
@@ -592,7 +635,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                             shutil.copy2(final,original_filter)
                             assessment_files.append(original_filter)
                             current = final
-                            for name, enabled in [('ffperase',request.ffperase),('varlociraptor',request.varlociraptor)]:
+                            for name, enabled in [('ffperase',sample_request.ffperase),('varlociraptor',sample_request.varlociraptor)]:
                                 if enabled == 'off':
                                     continue
                                 assessed_vcf = scratch/f'{name}.assessed.vcf'
@@ -611,7 +654,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                             assess_run('assessment-compress',[tools['bcftools'],'view','-Oz','-o',final,current])
                             assess_run('assessment-index',[tools['bcftools'],'index','-t','-f',final])
                             # Rebuild the evidence table with final FILTERs, preserving original genotypes.
-                            _evidence(final,scratch/'assessment.review.vcf',evidence,request,sample,caller)
+                            _evidence(final,scratch/'assessment.review.vcf',evidence,sample_request,sample,caller)
                             assessment_files += [p for p in scratch.iterdir() if p.is_file() and p.name.startswith(('ffperase.','varlociraptor.'))]
                         annotation_result = {'status':'skipped','reason':status['annovar_detection'].get('reason','disabled')}
                         annotation_files = []
@@ -637,7 +680,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                         result.update(status='complete' if annotation_result['status']!='failed' and not any(a['status'] == 'not_assessed' for a in assessments.values()) else 'partial_failure',
                                       assessments=assessments,
                                       vcf=str(dest/final.name), evidence=str(dest/evidence.name), variant_records=count,
-                                      annotation=annotation_result, call_semantics='tumor_only_candidates' if caller in SOMATIC_CALLERS else 'germline_style_independent_calls')
+                                      annotation=annotation_result, call_semantics=call_semantics(caller))
                         # Preserve the original caller evidence and small orientation diagnostics.
                         raw_candidates = [scratch/'raw.vcf.gz', scratch/'raw.vcf',
                                           scratch/'clair3/merge_output.vcf.gz']
@@ -647,6 +690,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                             raw_copy = scratch/('caller_raw.vcf.gz' if original.name.endswith('.gz') else 'caller_raw.vcf')
                             shutil.copy2(original, raw_copy)
                             diagnostics.append(raw_copy)
+                        diagnostics += list(scratch.glob('strelka_original.*.vcf.gz'))
                         diagnostics += [p for p in scratch.iterdir() if p.is_file() and
                                         (p.name.startswith('unfiltered.vcf') or p.name in {'f1r2.tar.gz','orientation-priors.tar.gz'})]
                         result['bam_sample_names'] = sorted(sm)

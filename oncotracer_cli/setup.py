@@ -300,13 +300,13 @@ from .variants import SUPPORTED_CALLERS as VARIANT_CALLERS_BY_MODE, DEFAULT_CALL
 VARIANT_DEFAULT_CALLER = {mode: ",".join(callers) for mode, callers in DEFAULT_CALLERS.items()}
 VARIANT_RESOURCE_FIELDS = (
     "variant_targets_bed", "variant_clair3_model", "variant_clairsto_platform", "variant_clairsto_sif",
-    "variant_tool_prefix", "variant_annovar_dir", "variant_annovar_db",
+    "variant_tool_prefix", "variant_strelka_prefix", "variant_annovar_dir", "variant_annovar_db",
     "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_sif", "variant_ffperase_prefix",
     "variant_varlociraptor_scenario",
 )
 VARIANT_ASSESSMENT_FIELDS = ("variant_ffperase", "variant_varlociraptor", "variant_varlociraptor_fdr", "variant_varlociraptor_events", "variant_varlociraptor_sample")
 VARIANT_BOOLEAN_FIELDS = ("variant_download_resources", "variant_accept_ffperase_license")
-VARIANT_FIELDS = ("variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
+VARIANT_FIELDS = ("variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", "variant_matched_normals", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
 
 
 def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None = None) -> dict[str, object]:
@@ -315,9 +315,12 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
     if not isinstance(enabled, bool):
         raise OncoTracerError("--variants must be a boolean selection")
     if not enabled:
-        if any(getattr(args, key, None) not in (None, "") for key in VARIANT_FIELDS):
+        if any(getattr(args, key, None) not in (None, "") for key in VARIANT_FIELDS if key != "variant_specimen_type"):
             raise OncoTracerError("Variant options require --variants (Add small-variant calling).")
-        return {"run_variants": False}
+        specimen = getattr(args, "variant_specimen_type", None)
+        if specimen not in (None, "", "fresh", "ffpe"):
+            raise OncoTracerError("Sample preservation must be fresh or ffpe")
+        return {"run_variants": False, **({"variant_specimen_type": specimen} if specimen else {})}
     if (analysis or args.analysis) == "methylation":
         raise OncoTracerError("Small-variant calling needs aligned reads: choose CNA or CNA and methylation, rather than methylation-only analysis.")
     if args.backend and args.backend not in {"host", "conda", "poetry", "docker"}:
@@ -340,6 +343,12 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
               "variant_annovar": _ask(getattr(args, "variant_annovar", None),
                   "ANNOVAR annotation (--variant-annovar; auto uses an existing local installation)",
                   default="auto", choices=("auto", "off"), interactive=interactive)}
+    from .strelka2 import parse_matched_normals
+    pairs = getattr(args, "variant_matched_normals", None)
+    if "strelka2_somatic" in selected:
+        pairs = _ask(pairs, 'Matched normal samples (--variant-matched-normals; JSON tumor-to-normal mapping)', interactive=interactive)
+    if pairs:
+        values['variant_matched_normals'] = parse_matched_normals(pairs)
     for key in VARIANT_BOOLEAN_FIELDS:
         value = getattr(args, key, None)
         if value is not None:
@@ -605,6 +614,20 @@ def _command_setup(args: argparse.Namespace) -> int:
             validate_docker_variants(dict(values, mode=mode))
         else:
             resolve_variant_request(values, mode=mode)
+
+    if values.get('run_variants') and mode == 'illumina':
+        from .variants import resolve_variant_request
+        from .strelka2 import validate_samples
+        from .docker_runtime import docker_host_preview
+        with docker_host_preview() if args.backend == 'docker' else contextlib.nullcontext():
+            validation_request = resolve_variant_request(values, mode=mode)
+        if sample_rows is not None:
+            validate_samples(validation_request, [r[0] for r in sample_rows], {r[0]: r[3] for r in sample_rows},
+                             paired={r[0]: bool(r[2]) for r in sample_rows})
+        else:
+            validation_samples = parse_illumina_samplesheet(Path(str(values['illumina_samplesheet'])))
+            validate_samples(validation_request, [s.sample for s in validation_samples], {s.sample: s.status for s in validation_samples},
+                             paired={s.sample: s.fastq_2 is not None for s in validation_samples})
 
     values['execution_backend'] = args.backend
     if args.backend == 'docker' and getattr(args, 'image', None):
@@ -1035,7 +1058,7 @@ def add_setup_commands(subparsers) -> None:
     variant.add_argument("--variants", action="store_true", help="add native small-variant calling to the selected analysis")
     variant.add_argument("--variant-specimen-type", choices=("fresh", "ffpe"),
                          help="sample preservation; required when variants are enabled (one preservation type per project)")
-    variant.add_argument("--variant-callers", help="comma-separated callers: Illumina mutect2/freebayes/bcftools; ONT clair3/clairs_to")
+    variant.add_argument("--variant-callers", help="comma-separated callers: Illumina mutect2/freebayes/bcftools/strelka2_germline/strelka2_somatic; ONT clair3/clairs_to")
     variant.add_argument("--variant-targets-bed", metavar="PATH", help="optional hg38 BED of variant-calling intervals")
     variant.add_argument("--variant-clair3-model", metavar="PATH|auto", help="existing Clair3 model or auto to prepare the explicitly selected profile at run time")
     variant.add_argument("--variant-ont-profile", help="exact supported Clair3 basecaller profile for automatic model preparation")
@@ -1043,6 +1066,8 @@ def add_setup_commands(subparsers) -> None:
     variant.add_argument("--variant-accept-ffperase-license", action="store_true", default=None, help="acknowledge upstream FFPERASE terms before automatic source/model download")
     variant.add_argument("--variant-clairsto-platform", help="installed ClairS-TO platform/model preset")
     variant.add_argument("--variant-clairsto-sif", metavar="PATH", help="optional existing ClairS-TO SIF image; uses local Apptainer/Singularity without downloading")
+    variant.add_argument("--variant-matched-normals", metavar="JSON", help='explicit tumor-to-normal sample mapping for Strelka2 somatic, e.g. {"TUMOR":"NORMAL"}')
+    variant.add_argument("--variant-strelka-prefix", metavar="PATH", help="separate Strelka2 Python 2.7 environment")
     variant.add_argument("--variant-tool-prefix", metavar="PATH", help="environment prefix containing installed variant tools")
     variant.add_argument("--variant-annovar", choices=("auto", "off"), help="use existing local ANNOVAR if detected (default: auto), or disable annotation")
     variant.add_argument("--variant-annovar-dir", metavar="PATH", help="optional existing ANNOVAR installation folder")

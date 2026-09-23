@@ -9,6 +9,8 @@ These **20 FASTQs are not bundled**. Use your own de-identified data, changing
 the names below to match. For checksum-validated public-data examples, choose
 [QuickStart 1](quick_start.md) or [QuickStart 2](public_cohort.md).
 
+**Terminal / headless version:** every step below runs without a browser.
+
 ## 1. Check the installation
 
 Follow [installation](installation.md). If you have not installed the Conda tools:

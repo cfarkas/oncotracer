@@ -15,7 +15,7 @@ cd /path/to/my/oncotracer_source/
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
 
-ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
 "$ONCOTRACER_DEV" --help
 ```
 
@@ -35,7 +35,7 @@ checkout-local `.venv`.
 ```bash
 cd /path/to/my/oncotracer_source/
 
-ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
 
@@ -44,14 +44,42 @@ ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
 
 ## Run QuickStart 1 through Poetry
 
-Download the reads, run `setup`, and check the configurations as shown in
-[QuickStart 1](quick_start.md). Keep the source checkout separate from the
-analysis output. Use the same configurations with the installed Poetry launcher:
+Download and checksum-verify the three read files in
+[QuickStart 1, step 1](quick_start.md#1-download-and-verify-the-reads). Keep the
+source checkout separate from analysis output. For new projects, these terminal
+commands create the same Illumina and ONT configurations without browser setup.
+Replace both directory placeholders with your actual paths:
+
+```bash
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
+ONCOTRACER_ANALYSES="/path/to/my/analyses_dir"
+
+"$ONCOTRACER_DEV" setup --non-interactive \
+  --project "$ONCOTRACER_ANALYSES/oncotracer-quickstart1/illumina" \
+  --mode illumina --analysis cna --backend poetry --threads 4 \
+  --sample-name ERR12341627 --status tumor \
+  --fastq-1 "$ONCOTRACER_ANALYSES/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz" \
+  --fastq-2 "$ONCOTRACER_ANALYSES/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz" \
+  --hg38_build
+"$ONCOTRACER_DEV" check \
+  --config "$ONCOTRACER_ANALYSES/oncotracer-quickstart1/illumina/config/run.yml"
+
+"$ONCOTRACER_DEV" setup --non-interactive \
+  --project "$ONCOTRACER_ANALYSES/oncotracer-quickstart1/ont" \
+  --mode ont --analysis cna --backend poetry --threads 4 \
+  --reads-folder "$ONCOTRACER_ANALYSES/oncotracer-quickstart1/input/fastq_pass" \
+  --barcodes barcode01 --sample-names DRR165691 --hg38_build
+"$ONCOTRACER_DEV" check \
+  --config "$ONCOTRACER_ANALYSES/oncotracer-quickstart1/ont/config/run.yml"
+```
+
+If these projects are already configured, skip setup and check their existing
+configuration files. Run them with the installed Poetry launcher:
 
 ```bash
 cd /path/to/my/oncotracer_source/
 
-ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
 "$ONCOTRACER_DEV" run --backend poetry \
   --config /path/to/my/analyses_dir/oncotracer-quickstart1/illumina/config/run.yml
 "$ONCOTRACER_DEV" run --backend poetry \
@@ -60,13 +88,41 @@ ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
 
 ## Run QuickStart 2 through Poetry
 
-Follow the download, samplesheet, setup and check steps in
-[QuickStart 2](public_cohort.md), then run:
+Download and checksum-verify all six FASTQs in
+[QuickStart 2, step 1](public_cohort.md#1-download-and-verify-the-reads). Then
+create the sample table and configuration entirely in the terminal. All three
+libraries are tumor samples; DMSO is a treatment control. Replace both directory
+placeholders. The `cat` block writes the samplesheet and replaces that CSV if it
+already exists; include the final `CSV` line:
+
+```bash
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
+ONCOTRACER_ANALYSES="/path/to/my/analyses_dir"
+
+mkdir -p "$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input"
+cat > "$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input/samplesheet.csv" <<CSV
+sample,fastq_1,fastq_2,status
+HCC1143_DMSO,"$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz","$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz",tumor
+HCC1143_BEZ235,"$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input/HCC1143_BEZ235_R1.fastq.gz","$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input/HCC1143_BEZ235_R2.fastq.gz",tumor
+HCC1143_TRAMETINIB,"$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fastq.gz","$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R2.fastq.gz",tumor
+CSV
+
+"$ONCOTRACER_DEV" setup --non-interactive \
+  --project "$ONCOTRACER_ANALYSES/oncotracer-quickstart2/analysis" \
+  --mode illumina --analysis cna --backend poetry --threads 4 \
+  --samplesheet "$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input/samplesheet.csv" \
+  --hg38_build
+"$ONCOTRACER_DEV" check \
+  --config "$ONCOTRACER_ANALYSES/oncotracer-quickstart2/analysis/config/run.yml"
+```
+
+Skip table generation and setup if this project is already configured. After
+checking that all three libraries are selected, run:
 
 ```bash
 cd /path/to/my/oncotracer_source/
 
-ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
 "$ONCOTRACER_DEV" run --backend poetry \
   --config /path/to/my/analyses_dir/oncotracer-quickstart2/analysis/config/run.yml
 ```

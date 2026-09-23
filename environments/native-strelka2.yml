@@ -1,0 +1,8 @@
+# Pin the Linux build: the later noarch build has an incompatible somatic ELF loader layout.
+name: oncotracer-strelka2
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=2.7.15=h5a48372_1011_cpython
+  - strelka=2.9.10=h9ee0642_1

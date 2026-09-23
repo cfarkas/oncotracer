@@ -11,10 +11,10 @@ function demoRestoreControls(){
 }
 async function demoLoad(platform){
   if(operationBusy)return;
-  demoRestoreControls();choose(platform);
-  $('input-folder').value=demoPaths[platform];$('project-parent').value='/demo/projects';$('project-name').value=platform==='illumina'?'synthetic-illumina-ffpe':'synthetic-nanopore-fresh';
+  demoRestoreControls();choose(platform);show('demo-stage-controls',true);
+  $('input-folder').value=demoPaths[platform];$('project-parent').value='/demo/projects';$('project-name').value='synthetic-'+platform;
   $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:fastq-variants-20260922';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();
-  $('variants').checked=true;variantSpecimen=platform==='illumina'?'ffpe':'fresh';variantSettings();
+  $('variants').checked=true;variantSettings();
   const selected=platform==='illumina'?['mutect2','bcftools']:['clairs_to'];
   for(const field of document.querySelectorAll('[data-variant-caller]'))field.checked=selected.includes(field.value);
   $('variant_clair3_model').value='auto';$('variant_ont_profile').selectedIndex=0;$('variant-clairsto-preset').selectedIndex=0;$('variant_clairsto_platform').value=$('variant-clairsto-preset').value;
@@ -22,9 +22,10 @@ async function demoLoad(platform){
   $('variant_ffperase').value='required';$('variant_ffperase_root').value='/demo/resources/ffperase';$('variant_ffperase_models').value='/demo/resources/ffperase/models';
   $('variant_varlociraptor').value='required';$('variant_varlociraptor_fdr').value='0.05';$('variant_annovar').value='auto';$('variant_annovar_dir').value='';$('variant_annovar_db').value='';
   $('reports').checked=false;$('gistic').checked=false;methylationSettings();
-  await $('scan').onclick();
-  demoMessage((platform==='illumina'?'Illumina FFPE':'Nanopore Fresh')+' example loaded. Assign cards with the type dropdown or drag them into Normal and Cancer.');
-  demoJump('samples-card');
+  if(platform==='ont')applyOntInputs({run:'/demo/nanopore',fastq:demoPaths.ont,pod5:'/demo/nanopore/pod5_pass',modbam:'/demo/nanopore/bam_pass',notes:[]});
+  variantSettings();
+  demoMessage((platform==='illumina'?'Illumina':'Oxford Nanopore')+' selected. Choose Fresh or FFPE in step 2, then discover the example files in step 3.');
+  demoJump('specimen-card');
 }
 function demoAssign(){
   if(!scan){demoMessage('Load an Illumina or Nanopore example first.');return;}
@@ -39,15 +40,14 @@ function demoRenderResults(){
   show('demo-results',true);
 }
 document.addEventListener('DOMContentLoaded',()=>{
-  $('demo-load-illumina').onclick=()=>demoLoad('illumina');$('demo-load-ont').onclick=()=>demoLoad('ont');
-  $('demo-reset').onclick=()=>{demoRestoreControls();demoState.scan=null;demoState.prepared=null;demoState.lastPayload=null;$('new-analysis').onclick();demoMessage('Demo reset. Load a synthetic example to begin.');demoJump('platform-card');};
+  $('choose-illumina').onclick=()=>demoLoad('illumina');$('choose-ont').onclick=()=>demoLoad('ont');
+  for(const type of ['fresh','ffpe'])$('variant-'+type).addEventListener('click',()=>{$('project-name').value='synthetic-'+mode+'-'+type;demoMessage('Preservation: '+(type==='ffpe'?'FFPE':'Fresh')+'. Review the example input paths and choose Discover samples.');});
+  $('demo-reset').onclick=()=>{demoRestoreControls();demoState.scan=null;demoState.prepared=null;demoState.lastPayload=null;$('new-analysis').onclick();show('demo-stage-controls',false);demoMessage('Demo reset. Choose a platform to begin.');demoJump('platform-card');};
   $('demo-assign').onclick=()=>{demoAssign();demoJump('samples-card');};
-  for(const button of document.querySelectorAll('[data-demo-stage]'))button.onclick=()=>{if(button.dataset.demoStage!=='platform-card'&&!scan){demoMessage('Load a synthetic example to reveal these stages.');return;}demoJump(button.dataset.demoStage);};
-  $('demo-review').onclick=async()=>{if(!scan){demoMessage('Load a synthetic example first.');return;}if(!selectedRows().length)demoAssign();await $('prepare').onclick();if(prepared?.valid){$('config-preview').closest('details').open=true;demoMessage('Configuration preview ready. The checks and Run button are simulated.');}};
+  for(const button of document.querySelectorAll('[data-demo-stage]'))button.onclick=()=>{if(button.dataset.demoStage==='specimen-card'&&!mode){demoMessage('Choose a platform first.');return;}if(['input-card','samples-card','settings-card'].includes(button.dataset.demoStage)&&!variantSpecimen){demoMessage('Choose Fresh or FFPE first.');return;}if(['samples-card','settings-card'].includes(button.dataset.demoStage)&&!scan){demoMessage('Choose Discover samples in step 3 first.');return;}demoJump(button.dataset.demoStage);};
+  $('demo-review').onclick=async()=>{if(!scan){demoMessage('Choose a platform and preservation, then discover samples in step 3.');return;}if(!selectedRows().length)demoAssign();await $('prepare').onclick();if(prepared?.valid){$('config-preview').closest('details').open=true;demoMessage('Configuration preview ready. The checks and Run button are simulated.');}};
   $('existing-bam-link').textContent='Learn about calling variants from existing BAMs →';$('existing-bam-link').href='../../variants/';
   $('open-results').removeAttribute('target');$('open-results').onclick=event=>{event.preventDefault();demoRenderResults();demoJump('demo-results');$('demo-results-heading').focus({preventScroll:true});};
   $('remove-project').hidden=true;
   const simulated=new MutationObserver(()=>{if(demoState.job?.status==='complete')demoRenderResults();});simulated.observe($('job-status'),{childList:true,characterData:true,subtree:true});
-  $('choose-illumina').addEventListener('click',()=>{$('input-folder').value=demoPaths.illumina;});
-  $('choose-ont').addEventListener('click',()=>{$('input-folder').value=demoPaths.ont;});
 });

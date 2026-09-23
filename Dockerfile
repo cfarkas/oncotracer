@@ -25,6 +25,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     ONCOTRACER_CLASSIFIER_PREFIX=/opt/oncotracer-envs/classifier \
     ONCOTRACER_GISTIC_PREFIX=/opt/oncotracer-envs/gistic \
     ONCOTRACER_VARIANTS_PREFIX=/opt/oncotracer-envs/variants \
+    ONCOTRACER_STRELKA_PREFIX=/opt/oncotracer-envs/strelka2 \
     ONCOTRACER_FFPERASE_PREFIX=/opt/oncotracer-envs/ffperase \
     MPLBACKEND=Agg \
     PYTHONUNBUFFERED=1 \
@@ -56,6 +57,9 @@ RUN conda env create --prefix "${ONCOTRACER_GISTIC_PREFIX}" --file environments/
 RUN conda env create --prefix "${ONCOTRACER_VARIANTS_PREFIX}" --file environments/native-variants.yml \
     && conda clean -afy
 RUN conda env create --prefix "${ONCOTRACER_FFPERASE_PREFIX}" --file environments/native-ffperase.yml \
+    && conda clean -afy
+
+RUN conda env create --prefix "${ONCOTRACER_STRELKA_PREFIX}" --file environments/native-strelka2.yml \
     && conda clean -afy
 
 # Preserve upstream absolute prefixes and licenses. The isolated wrappers keep

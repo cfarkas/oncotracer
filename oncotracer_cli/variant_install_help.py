@@ -16,6 +16,7 @@ FFPERASE_MODEL_REVISION = "dc4a9ab71bde34d084c4cc91d0ec291dc1f04258"
 DOCS = "https://cfarkas.github.io/oncotracer/"
 CLAIR3 = "https://github.com/HKU-BAL/Clair3/tree/v1.2.0"
 CLAIRSTO = "https://github.com/HKU-BAL/ClairS-TO/tree/v0.4.4"
+STRELKA2 = "https://github.com/Illumina/strelka/blob/v2.9.10/docs/userGuide/README.md"
 FFPERASE = "https://github.com/papaemmelab/nf-ffperase"
 MODELS = "https://huggingface.co/papaemmelab/ffperase"
 ANNOVAR = "https://annovar.openbioinformatics.org/en/latest/user-guide/"
@@ -39,13 +40,18 @@ def _environment(name: str, root: str | Path | None) -> str:
              "else"]
     if local is not None and local.is_file():
         lines.append(f"  conda env create --prefix \"$ONCOTRACER_ENV\" --file {shlex.quote(str(local.resolve()))}")
+    elif name == "strelka2":
+        # This optional specification is newer than SPEC_REVISION. Use the
+        # explicit tested packages until a published specification is pinned.
+        lines.append('  conda create --yes --prefix "$ONCOTRACER_ENV" --channel conda-forge --channel bioconda "python=2.7.15=h5a48372_1011_cpython" "strelka=2.9.10=h9ee0642_1"')
     else:
         url = f"https://raw.githubusercontent.com/cfarkas/oncotracer/{SPEC_REVISION}/{relative}"
         lines += ['  ONCOTRACER_SPEC_DIR="$(mktemp -d)"',
                   f'  curl --fail --location --output "$ONCOTRACER_SPEC_DIR/native-{name}.yml" \\',
                   f"    {shlex.quote(url)} && \\",
                   f'  conda env create --prefix "$ONCOTRACER_ENV" --file "$ONCOTRACER_SPEC_DIR/native-{name}.yml"']
-    variable = "ONCOTRACER_VARIANTS_PREFIX" if name == "variants" else "ONCOTRACER_FFPERASE_PREFIX"
+    variable = {"variants": "ONCOTRACER_VARIANTS_PREFIX", "ffperase": "ONCOTRACER_FFPERASE_PREFIX",
+                "strelka2": "ONCOTRACER_STRELKA_PREFIX"}[name]
     lines += ["fi", f'export {variable}="$ONCOTRACER_ENV"',
               '# Paste this environment path into the corresponding browser field:',
               'printf \'%s\\n\' "$ONCOTRACER_ENV"',
@@ -66,7 +72,7 @@ def installation_guides(missing_ids: Iterable[str], *, backend: str, mode: str,
     missing = list(dict.fromkeys(str(item) for item in missing_ids))
     docker = backend == "docker"
     native_clair3 = not docker and mode == "ont" and "clair3_caller" in missing
-    docker_tools = {"variant_tools", "ffperase_runtime", "clair3_caller", "clairsto_caller"}
+    docker_tools = {"variant_tools", "strelka2_runtime", "ffperase_runtime", "clair3_caller", "clairsto_caller"}
     output: list[dict] = []
     emitted: set[str] = set()
     for requested in missing:
@@ -81,6 +87,12 @@ def installation_guides(missing_ids: Iterable[str], *, backend: str, mode: str,
                 "Provides samtools, bcftools, Mutect2, FreeBayes and Varlociraptor in a separate Conda environment. ONT callers require the additional guidance below. Existing folders are left unchanged; choose a new prefix if the old environment is incomplete.",
                 _environment("variants", root),
                 ("OncoTracer variant environment", DOCS + "variants_reference/#conda-and-docker"))
+        elif identifier == "strelka2_runtime":
+            guide = _guide(identifier, "Install the Strelka2 Python 2 environment",
+                "Provides the tested Linux x86_64 Strelka2 2.9.10 build h9ee0642_1 and Python 2.7.15 in a separate environment for paired-end Illumina reads. Somatic calling requires an explicitly matched normal BAM. The later noarch build hdfd78af_2 crashes before somatic calling starts. Existing folders are left unchanged; choose a new prefix for an incomplete or incompatible environment.",
+                _environment("strelka2", root),
+                ("Strelka2 v2.9.10 user guide", STRELKA2),
+                ("Strelka2 runtime requirements", STRELKA2.replace("README.md", "installation.md")))
         elif identifier == "ffperase_runtime":
             guide = _guide(identifier, "Install the FFPERASE Python environment",
                 "This isolated legacy Python environment supplies model dependencies. It does not include FFPERASE source or models. Existing folders are left unchanged.",

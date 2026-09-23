@@ -20,11 +20,12 @@ server or questions. Replace `/data` and `/resources` examples with your paths.
 oncotracer setup --variants
 ```
 
-1. Choose **Illumina or Oxford Nanopore**, discover your FASTQs and assign samples
-   to Normal or Cancer. Unassigned samples are excluded.
+1. Choose **Illumina or Oxford Nanopore**, then **Fresh or FFPE** from specimen
+   records, before selecting inputs. Discover FASTQs and assign Normal or Cancer;
+   unassigned samples are excluded.
 2. Keep **Copy-number analysis (CNA)** selected and enable **Add small-variant calling**.
-3. Work through the four variant sections below. Start with **Fresh or FFPE**
-   and your callers, then choose matching ONT profiles or review FFPE resources.
+3. Review the four variant sections below. Confirm preservation and callers,
+   then choose matching ONT profiles or review FFPE resources.
 4. Optionally enable **Varlociraptor** and local **ANNOVAR annotation**.
 5. Review any missing resources or model candidates before continuing.
 6. Choose a new project folder, click **Save configuration and check**, then
@@ -111,12 +112,16 @@ requires separately obtained software and matching databases.
 | --- | --- | --- |
 | Illumina | **Mutect2** (default) | Tumor-only candidates with a learned read-orientation artifact model. |
 | Illumina | **FreeBayes**, **bcftools** | Independent germline-style calls. |
+| Illumina | **Strelka2 germline** | Single-sample germline calling on paired-end reads; no matched normal needed. |
+| Illumina | **Strelka2 somatic** | Paired-end tumor/normal calling with an explicit matched-normal assignment. |
 | ONT | **Clair3** (default) | Germline-style calls; select a matching basecaller profile for automatic preparation, or an existing model. |
 | ONT | **ClairS-TO** | Tumor-only candidates; choose a compatible platform/model preset. |
 
-A normal sample skips tumor-only callers. Controls are analyzed independently;
-OncoTracer does not infer matched tumor–normal pairs or combine callers into a
-consensus genotype. Multiple callers remain separate for comparison.
+Normal/Cancer labels do not create tumor–normal pairs. **Strelka2 somatic**
+requires you to select the corresponding normal for each study sample; use a
+biologically matched normal, not an unrelated cohort control. Other callers keep
+their existing independent or tumor-only behavior. Caller outputs remain separate.
+See [Strelka2 setup and terminal examples](variants_reference.md#strelka2-germline-and-somatic-calling).
 
 **Fresh/FFPE describes preservation, not sequencing platform.** Use one preservation
 type per project. Illumina FFPE selects FFPERASE by default; review its preparation

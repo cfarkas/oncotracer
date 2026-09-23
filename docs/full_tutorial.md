@@ -4,6 +4,9 @@ Download the complete **12-run PRJNA754199 archive**, create a sample table, and
 run a copy-number analysis with research reports. No custom script or Python
 programming is needed. For a smaller first test, use [QuickStart 1](quick_start.md).
 
+**Terminal / headless version:** all blocks below run in a terminal; no browser
+is required. Follow download, checksum, setup, check and run in order.
+
 ## Before you start
 
 Follow [installation](installation.md). This tutorial uses Conda; other

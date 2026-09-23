@@ -28,12 +28,14 @@ relying on the most recently installed backend.
 |---|---|---|
 | Illumina | `mutect2` (default) | Tumor-only candidates; without a matched normal they are not confirmed somatic variants. |
 | Illumina | `freebayes`, `bcftools` | Independent germline-style calls; tumor purity, copy number and sparse depth still affect interpretation. |
+| Illumina | `strelka2_germline` | Single-sample germline calls from paired-end Illumina reads. |
+| Illumina | `strelka2_somatic` | Paired-end Illumina tumor/normal calls; requires explicit matched-normal sample IDs. |
 | ONT | `clair3` (default) | Germline-style calls using an explicitly selected compatible model, prepared on Run or supplied locally. |
 | ONT | `clairs_to` | Tumor-only candidates using an explicitly selected compatible platform/model preset. |
 
 See the developers’ [Clair3](https://github.com/HKU-BAL/Clair3) and [ClairS-TO](https://github.com/HKU-BAL/ClairS-TO) documentation for model compatibility and caller scope.
 
-Preservation is a separate choice: `fresh` or `ffpe`. Use one preservation type per project. A sample explicitly labeled normal skips tumor-only callers; it can still use a compatible germline-style caller. Multiple callers remain separate; their agreement is not converted into a synthetic consensus genotype.
+Preservation is a separate choice: `fresh` or `ffpe`. Use one preservation type per project. A normal sample can use germline-style callers; it also supplies paired evidence for Strelka2 somatic only when explicitly assigned to a study sample. Normal labels alone never create a pair. Other callers remain independent or tumor-only. Multiple callers remain separate; their agreement is not converted into a synthetic consensus genotype.
 
 ## Add calling during setup
 
@@ -81,7 +83,9 @@ explain these separate choices.
 
 | Setup flag | Purpose |
 |---|---|
-| `--variant-tool-prefix PATH` | Existing environment containing the required executables in `bin/`. |
+| `--variant-tool-prefix PATH` | Existing environment containing shared caller utilities in `bin/`. |
+| `--variant-strelka-prefix PATH` | Separate Strelka2 2.9.10 / Python 2.7 environment for either Strelka2 caller. |
+| `--variant-matched-normals JSON` | Explicit tumor-ID → normal-ID mapping; required only for Strelka2 somatic. |
 | `--variant-targets-bed PATH` | Optional BED intervals matching the reference assembly and contig names. |
 | `--variant-clair3-model PATH` or `auto` | Existing compatible model directory, or prepare the selected profile on Run. |
 | `--variant-ont-profile ID` | Exact catalog profile required with automatic Clair3 preparation; see [supported profiles](#automatic-ont-model-preparation). |
@@ -262,7 +266,7 @@ available under **Other installed preset (advanced)**. Use
 
 ## Call from existing BAMs without rerunning CNA
 
-Create a tab-separated manifest with one sample per BAM. Paths must identify existing files; normal samples are independent controls, not automatically paired normals.
+Create a tab-separated manifest with one sample per BAM. Paths must identify existing files. Normal rows remain independent unless an explicit Strelka2 somatic mapping uses them; pairs are never inferred from row order or sample names.
 
 ```bash
 cat > /data/variant_bams.tsv <<'TSV'
@@ -351,6 +355,179 @@ oncotracer variants --config /data/ont-variants.yml --threads 4
 ```
 
 `variant_clairsto_sif` is an explicit configuration option. It requires local Apptainer or Singularity and a SIF exposing `/opt/bin/run_clairs_to`; no image is downloaded. Choose a model preset matching the BAM's chemistry/basecaller. The adapter uses CPU execution with a clean container environment, mounts the private working directory writable and the resolved input directories read-only, and keeps the image's own dependencies separate from the host tool prefix. Image path, size and modification time enter provenance and resume checks. Explicit output prefixes support ClairS-TO releases that otherwise add the sample name to VCF filenames.
+
+## Strelka2 germline and somatic calling
+
+OncoTracer exposes Strelka **2.9.10** as two Illumina callers:
+
+- **Strelka2 germline** (`strelka2_germline`) analyzes each sample independently.
+  It requires no matched normal; this adapter does not perform joint genotyping.
+- **Strelka2 somatic** (`strelka2_somatic`) analyzes an explicitly selected tumor
+  and matched normal. The normal must be included in the inputs with role `normal`.
+
+Both require **paired-end short reads**. They are unavailable for ONT or single-end
+Illumina inputs. BAM/reference contig names, lengths and order must agree. The upstream somatic workflow requires matched
+normal evidence and writes separate SNV and indel VCFs. Its Manta candidate-indel
+recommendation is optional; OncoTracer does not run a Manta stage here.
+See the [versioned Strelka user guide](https://github.com/Illumina/strelka/blob/v2.9.10/docs/userGuide/README.md#input-requirements).
+
+In browser setup, choose the platform, preservation and inputs first. Select the
+Strelka2 caller under **Specimen and callers**. For somatic calling, assign the
+correct **matched normal** for each selected study sample. Sample names, row
+order and Normal/Cancer labels do not establish a biological match. The mapping
+is used only by Strelka2 somatic; Mutect2 and ClairS-TO retain their tumor-only
+configuration.
+
+The adapter uses WGS settings; a target BED restricts calling regions and does
+not enable exome-specific calibration.
+
+A separate `variant_strelka_prefix` supplies the Strelka/Python 2.7 runtime;
+`variant_tool_prefix` still supplies shared utilities. Use **Autodetect resources**
+to locate these installations or obtain their installation commands. A current
+Strelka-enabled Docker image supplies both runtimes.
+
+### FASTQs: configure a somatic pair
+
+Prepare a CSV containing paired-end reads from the same patient's tumor and
+matched normal; replace the example paths:
+
+```bash
+cat > /data/strelka-paired-fastqs.csv <<'CSV'
+sample,fastq_1,fastq_2,status
+TUMOR01,/data/illumina/TUMOR01_R1.fastq.gz,/data/illumina/TUMOR01_R2.fastq.gz,tumor
+NORMAL01,/data/illumina/NORMAL01_R1.fastq.gz,/data/illumina/NORMAL01_R2.fastq.gz,normal
+CSV
+```
+
+**Browser**, prefilling a Fresh example; review the discovered samples and assign
+the matched normal before saving:
+
+```bash
+oncotracer setup --project "$PWD/strelka-fastq-study" \
+  --mode illumina --backend conda --input-folder /data/illumina --variants \
+  --variant-specimen-type fresh --variant-callers strelka2_somatic \
+  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
+  --variant-strelka-prefix "$HOME/.local/share/oncotracer/optional-tools/strelka2"
+```
+
+**Terminal only**, selecting the two CSV libraries and their explicit pairing:
+
+```bash
+oncotracer setup --non-interactive --project "$PWD/strelka-fastq-study" \
+  --mode illumina --analysis cna --backend conda --threads 4 \
+  --samplesheet /data/strelka-paired-fastqs.csv --hg38_build --variants \
+  --variant-specimen-type fresh --variant-callers strelka2_somatic \
+  --variant-matched-normals '{"TUMOR01":"NORMAL01"}' \
+  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
+  --variant-strelka-prefix "$HOME/.local/share/oncotracer/optional-tools/strelka2" \
+  --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
+oncotracer check --config "$PWD/strelka-fastq-study/config/run.yml"
+oncotracer run --backend conda --config "$PWD/strelka-fastq-study/config/run.yml"
+```
+
+For **Strelka2 germline**, use `--variant-callers strelka2_germline` and omit the
+matched-normal flag; each selected library is called independently. For FFPE,
+change preservation and choose the [FFPERASE resources](#ffperase-for-illumina-ffpe)
+explicitly. Neither change establishes performance at low coverage.
+
+### Existing BAMs: explicit tumor/normal pair
+
+Create a manifest containing both BAMs, with sample IDs matching the mapping:
+
+```bash
+cat > /data/strelka-paired-bams.tsv <<'TSV'
+sample	bam	status
+TUMOR01	/data/tumor01.bam	tumor
+NORMAL01	/data/normal01.bam	normal
+TSV
+```
+
+Save this complete configuration as `/data/strelka-paired.yml`, substituting
+existing reference, BAM and environment paths and a new output folder. The
+pairing value is a **quoted JSON string**, consistent with flat YAML:
+
+```yaml
+mode: illumina
+outdir: /data/strelka-paired-results
+variant_bam_manifest: /data/strelka-paired-bams.tsv
+variant_reference: /data/reference/hg38.fa
+run_variants: true
+variant_reference_build: hg38
+variant_specimen_type: fresh
+variant_callers: strelka2_somatic
+variant_matched_normals: '{"TUMOR01":"NORMAL01"}'
+variant_tool_prefix: /data/environments/variant-tools
+variant_strelka_prefix: /data/environments/strelka
+variant_ffperase: off
+variant_varlociraptor: off
+variant_annovar: auto
+```
+
+**Browser:** load, review the explicit pair, save to a new project and run:
+
+```bash
+oncotracer setup --variant-config /data/strelka-paired.yml
+```
+
+**Terminal only**, instead of the browser:
+
+```bash
+oncotracer variants --config /data/strelka-paired.yml --dry-run
+oncotracer variants --config /data/strelka-paired.yml --threads 4
+```
+
+These commands use the configured local runtimes and existing BAMs; they do not
+repeat CNA. Inspect each caller's evidence and FILTER fields. Strelka somatic
+uses native nucleotide/indel-count fields; missing `GT`, `AD` or `AF` values are
+not manufactured. Separately labeled `strelka_tier1_ref_count`,
+`strelka_tier1_alt_count` and `strelka_tier1_alt_fraction` columns report the native
+count evidence and its derived fraction. The final normalized per-tumor VCF uses
+the tumor sample column; the original paired `strelka_original.snvs.vcf.gz` and
+`strelka_original.indels.vcf.gz` are retained alongside it. A completed low-pass
+run does not establish diagnostic accuracy.
+
+### Existing BAMs: one germline sample
+
+This route needs no normal-pair mapping. Create a one-sample manifest:
+
+```bash
+cat > /data/strelka-germline-bams.tsv <<'TSV'
+sample	bam	status
+SAMPLE01	/data/sample01.bam	normal
+TSV
+```
+
+Save this complete configuration as `/data/strelka-germline.yml`, replacing the
+reference and environment paths with your installations:
+
+```yaml
+mode: illumina
+outdir: /data/strelka-germline-results
+variant_bam_manifest: /data/strelka-germline-bams.tsv
+variant_reference: /data/reference/hg38.fa
+run_variants: true
+variant_reference_build: hg38
+variant_specimen_type: fresh
+variant_callers: strelka2_germline
+variant_tool_prefix: /data/environments/variant-tools
+variant_strelka_prefix: /data/environments/strelka
+variant_ffperase: off
+variant_varlociraptor: off
+variant_annovar: auto
+```
+
+**Browser:**
+
+```bash
+oncotracer setup --variant-config /data/strelka-germline.yml
+```
+
+**Terminal only:**
+
+```bash
+oncotracer variants --config /data/strelka-germline.yml --dry-run
+oncotracer variants --config /data/strelka-germline.yml --threads 4
+```
 
 ## FFPE handling and genotype evidence
 
@@ -524,9 +701,21 @@ with your actual prefixes when running on the host; those paths are used inside
 the supplied Docker image. ONT caller installation commands are available from
 **Autodetect resources → Copy commands**.
 
+For either Strelka2 caller, additionally create its isolated legacy runtime:
+
+```bash
+export ONCOTRACER_STRELKA_PREFIX="$HOME/.local/share/oncotracer/optional-tools/strelka2"
+conda env create -p "$ONCOTRACER_STRELKA_PREFIX" -f environments/native-strelka2.yml
+```
+
+Set `variant_strelka_prefix` to this prefix, or use the exported variable when
+starting setup/run. Keep shared utilities in `variant_tool_prefix`. The supported
+runtime is Linux x86-64; the Strelka-enabled amd64 Docker image supplies it without
+host Conda.
+
 These additional environments are installed explicitly; the existing CNA environment installer is unchanged. `variant_tool_prefix` overrides `ONCOTRACER_VARIANTS_PREFIX`. Existing environments and user installations are never modified by an analysis run. For exact platform-specific reproducibility, save `conda list --explicit -p PREFIX` after creation.
 
-The updated Dockerfile builds both environments and sets these prefixes. Each environment has its own cached build layer. Legacy Bioconda annotation downloads use listed Bioconductor mirrors during the build (TU Dortmund for the archived QDNAseq release and Posit for current data), with the original package checksum verification retained. In Docker, use the native FFPERASE prefix; no nested container is necessary. Existing source/model folders are mounted read-only. A current build or the 20260922 image can instead prepare selected Clair3/FFPERASE resources on Run as described above. ANNOVAR remains separately supplied. The pinned ClairS-TO runtime includes its platform models; select the matching preset explicitly. For example:
+The updated Dockerfile builds the variant, FFPERASE and Strelka2 environments and sets their prefixes. Each environment has its own cached build layer. Legacy Bioconda annotation downloads use listed Bioconductor mirrors during the build (TU Dortmund for the archived QDNAseq release and Posit for current data), with the original package checksum verification retained. In Docker, use the native FFPERASE prefix; no nested container is necessary. Existing source/model folders are mounted read-only. A current build or the 20260922 image can instead prepare selected Clair3/FFPERASE resources on Run as described above. ANNOVAR remains separately supplied. The pinned ClairS-TO runtime includes its platform models; select the matching preset explicitly. For example:
 
 ```bash
 docker build -t oncotracer:variant-filters .

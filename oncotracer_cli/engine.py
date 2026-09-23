@@ -3537,6 +3537,9 @@ def _validate_native_dry_run(
     variants = resolve_variant_request(config, mode=mode)
     plan["variants"] = variant_plan(variants) if variants else None
     if variants:
+        if mode == "illumina":
+            from .strelka2 import validate_samples
+            validate_samples(variants, [s.sample for s in samples], {s.sample: s.status for s in samples}, paired={s.sample: s.fastq_2 is not None for s in samples})
         plan["stages"].extend(variant_plan(variants)["stages"])
     plan["methylation_only"] = _as_bool(config.get("methylation_only"), False)
     if pathology:
@@ -3725,6 +3728,10 @@ def _run_native_impl(
         raise OncoTracerError("Variants require alignment; select CNA with optional methylation, not methylation_only")
     if variant_request and variant_request.reference_build != "hg38":
         raise OncoTracerError("Native CNA alignment uses hg38; variants must use variant_reference_build: hg38")
+    if variant_request and mode == 'illumina':
+        from .strelka2 import validate_samples
+        variant_samples = parse_illumina_samplesheet(Path(str(config.get('illumina_samplesheet') or '')))
+        validate_samples(variant_request, [s.sample for s in variant_samples], {s.sample: s.status for s in variant_samples}, paired={s.sample: s.fastq_2 is not None for s in variant_samples})
     methylation_request = resolve_methylation_request(
         config,
         mode=mode,

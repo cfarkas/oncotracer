@@ -13,6 +13,9 @@ that directory. Replace sample names and paths before pasting. Each `cat` block
 creates its CSV: include the final `CSV` line. `cat >` replaces that file if it
 exists. See [copying commands](command_basics.md) if this is new to you.
 
+**Terminal / headless versions:** each platform below has its own sample table,
+configuration, check and run commands. No browser is started.
+
 ## Illumina: multiple libraries
 
 This example is **four libraries, eight FASTQs**. Place the following files in

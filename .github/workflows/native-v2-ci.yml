@@ -75,6 +75,7 @@ jobs:
             tests/test_variant_web_ui.py \
             tests/test_variant_resources.py \
             tests/test_variant_model_assets.py \
+            tests/test_strelka2.py \
             tests/test_web_progress.py \
             tests/test_run_completion.py \
             tests/test_paper_report_command.py \
@@ -181,6 +182,7 @@ jobs:
               'oncotracer_cli/annovar.py',
               'oncotracer_cli/ffperase.py',
               'oncotracer_cli/varlociraptor.py',
+              'oncotracer_cli/strelka2.py',
               'oncotracer_cli/run_completion.py',
               'oncotracer_cli/paper_report.py',
               'oncotracer_cli/paper_report_command.py',
@@ -192,6 +194,7 @@ jobs:
               'payload/environments/native-gistic2.yml',
               'payload/environments/native-variants.yml',
               'payload/environments/native-ffperase.yml',
+              'payload/environments/native-strelka2.yml',
           }
           assert not (required - names), sorted(required - names)
           assert not any(
@@ -235,6 +238,7 @@ jobs:
           - native-gistic2
           - native-variants
           - native-ffperase
+          - native-strelka2
     defaults:
       run:
         shell: bash -el {0}
@@ -343,6 +347,18 @@ jobs:
               "$PREFIX/bin/python" -c \
                 'import numpy,pandas,scipy,sklearn,joblib,pysam,imblearn; assert sklearn.__version__ == "0.24.1"; print("FFPERASE_RUNTIME_OK")'
               ;;
+            native-strelka2)
+              STRELKA_BIN="$PREFIX/bin"
+              env -u PYTHONHOME -u PYTHONPATH "$STRELKA_BIN/python2.7" -c \
+                'import sys; assert sys.version_info[:2] == (2, 7); print("STRELKA_PYTHON_OK")'
+              env -u PYTHONHOME -u PYTHONPATH "$STRELKA_BIN/python2.7" \
+                "$STRELKA_BIN/configureStrelkaGermlineWorkflow.py" --help
+              env -u PYTHONHOME -u PYTHONPATH "$STRELKA_BIN/python2.7" \
+                "$STRELKA_BIN/configureStrelkaSomaticWorkflow.py" --help
+              STRELKA_ROOT="$(dirname "$(dirname "$(readlink -f "$STRELKA_BIN/configureStrelkaSomaticWorkflow.py")")")"
+              "$STRELKA_ROOT/libexec/strelka2" --help >/dev/null
+              "$STRELKA_ROOT/libexec/starling2" --help >/dev/null
+              ;;
             native-gistic2)
               test -x "$PREFIX/bin/gistic2"
               shopt -s nullglob
@@ -422,7 +438,7 @@ jobs:
           ))
           DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
           bash scripts/ci_resource_preflight.sh \
-            --purpose 'OncoTracer seven-environment and ONT-caller Docker build' \
+            --purpose 'OncoTracer eight-environment and ONT-caller Docker build' \
             --min-free-gib "$MIN_FREE_GIB" \
             --min-physical-gib "$MIN_PHYSICAL_GIB" \
             --min-addressable-gib "$MIN_PHYSICAL_GIB" \
@@ -456,7 +472,7 @@ jobs:
             --build-arg SOURCE_COMMIT='${{ steps.source.outputs.source_commit }}' \
             --build-arg SOURCE_SHA256='${{ steps.source.outputs.source_sha256 }}' \
             --tag oncotracer:v2-ci .
-      - name: Verify image provenance, seven environments, ONT callers, and absent Nextflow
+      - name: Verify image provenance, eight environments, ONT callers, and absent Nextflow
         run: |
           docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.1.0'
           docker run --rm oncotracer:v2-ci provenance --json \
@@ -514,6 +530,14 @@ jobs:
             "$ONCOTRACER_VARIANTS_PREFIX/bin/varlociraptor" --version
             "$ONCOTRACER_FFPERASE_PREFIX/bin/python" -c \
               "import numpy,pandas,scipy,sklearn,joblib,pysam,imblearn; assert sklearn.__version__ == \"0.24.1\"; print(\"FFPERASE_RUNTIME_OK\")"
+            STRELKA_BIN="$ONCOTRACER_STRELKA_PREFIX/bin"
+            env -u PYTHONHOME -u PYTHONPATH "$STRELKA_BIN/python2.7" \
+              "$STRELKA_BIN/configureStrelkaGermlineWorkflow.py" --help >/dev/null
+            env -u PYTHONHOME -u PYTHONPATH "$STRELKA_BIN/python2.7" \
+              "$STRELKA_BIN/configureStrelkaSomaticWorkflow.py" --help >/dev/null
+            STRELKA_ROOT="$(dirname "$(dirname "$(readlink -f "$STRELKA_BIN/configureStrelkaSomaticWorkflow.py")")")"
+            "$STRELKA_ROOT/libexec/strelka2" --help >/dev/null
+            "$STRELKA_ROOT/libexec/starling2" --help >/dev/null
             /usr/local/bin/run_clairs_to --help >/dev/null
             /usr/local/bin/run_clair3.sh --help >/dev/null
             test -x "$ONCOTRACER_GISTIC_PREFIX/bin/gistic2"

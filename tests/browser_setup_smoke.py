@@ -83,7 +83,7 @@ def main():
         handle = web_log.open("w"); handles.append(handle)
         command = [sys.executable, "-m", "oncotracer_cli.cli", "setup", "--no-browser", "--port", str(free_port()),
                    "--project", str(root / "illumina-project"), "--mode", "illumina",
-                   "--input-folder", str(fixture / "illumina"), "--threads", "3"]
+                   "--input-folder", str(fixture / "illumina"), "--variant-specimen-type", "fresh", "--threads", "3"]
         if options.test_stop:
             # Use real HTTP/configuration paths with a harmless job instead of
             # executing an analysis. Other commands still call the actual CLI.
@@ -148,7 +148,7 @@ else:
         def sample_count(count):
             wait(lambda: js("return document.querySelectorAll('.sample').length===arguments[0] && !document.querySelector('#samples-card').hidden && !document.querySelector('main').inert", count), "sample discovery")
         def scan_ont(folder, count):
-            click("#choose-ont")
+            click("#choose-ont");click("#variant-fresh")
             assert not js("return document.querySelector('#ont-signal-inputs').hidden")
             fill("#input-folder", str(folder))
             sample_count(count)
@@ -213,7 +213,7 @@ else:
             from oncotracer_cli.runtime import load_flat_yaml
             click('#variants');click('#variant-ffpe')
             assert js("return document.querySelector('#variant-ffpe').getAttribute('aria-pressed')") == 'true'
-            assert js("return [...document.querySelectorAll('[data-variant-caller]')].map(e=>e.value)") == ['mutect2','freebayes','bcftools']
+            assert js("return [...document.querySelectorAll('[data-variant-caller]')].map(e=>e.value)") == ['mutect2','freebayes','bcftools','strelka2_germline','strelka2_somatic']
             assert not js("return document.querySelector('#variant-ffperase-fields').hidden")
             fill('#variant_varlociraptor','required');fill('#variant_varlociraptor_fdr','0.05')
             click('[data-variant-caller="freebayes"]');fill('#variant_annovar','off')
@@ -285,7 +285,7 @@ else:
             bam_dir = resource_root / "bam_pass"
             bam_dir.mkdir()
             (bam_dir / "calls.bam").write_bytes(b"fixture-bam")
-            click('#choose-ont')
+            click('#choose-ont');click('#variant-fresh')
             assert not js("return document.querySelector('#ont-inputs').hidden || document.querySelector('#ont-signal-inputs').hidden")
             if classifier == 'sturgeon':
                 fill('#input-folder', str(resources.fastq.parent));sample_count(1)
@@ -336,7 +336,7 @@ else:
         assert len(json.loads(metadata[0]['fastq_files'])) == 3
         report["checks"].append("nonbarcoded ligation files stay in one sample; custom tag preserved")
         # Check the real folder navigator and automatic discovery after selection.
-        click('#choose-illumina');click('[data-browse="input-folder"]')
+        click('#choose-illumina');click('#variant-fresh');click('[data-browse="input-folder"]')
         fill('#browser-location', str(fixture / 'illumina'));click('#browser-go')
         wait(lambda: js("return document.querySelector('#browser-path').textContent===arguments[0] && !document.querySelector('#use-folder').disabled", str(fixture / 'illumina')), 'folder navigator')
         assert js("return document.querySelectorAll('#folders .fastq-file').length") == 4
@@ -364,7 +364,7 @@ else:
             assert js("return document.querySelector('h1').textContent") == 'Configure and run an analysis'
             for remove in (False, True):
                 if remove:
-                    click('#new-analysis');click('#choose-illumina')
+                    click('#new-analysis');click('#choose-illumina');click('#variant-fresh')
                     fill('#input-folder', str(fixture / 'illumina'));sample_count(2)
                 fill('.sample[data-id="0"] .type-select', 'cancer')
                 name = 'stop-remove-project' if remove else 'stop-keep-project'
@@ -392,7 +392,7 @@ else:
                     assert not (root / name).exists()
                 report['checks'].append('Stop button with ' + ('confirmed folder removal' if remove else 'default Keep project'))
             assert before == {str(path): path.read_bytes() for path in fixture.rglob('*.gz')}
-            click('#new-analysis');click('#choose-illumina')
+            click('#new-analysis');click('#choose-illumina');click('#variant-fresh')
         # A stopped local server must give actionable recovery instructions.
         processes[0].terminate(); processes[0].wait(timeout=10)
         click('[data-browse="input-folder"]')

@@ -82,7 +82,9 @@ setup. For ONT controls and sample roles, follow [batch setup](auto_params.md).
 ## Docker without a browser
 
 The launcher runs on the server; analysis runs in Docker. Install the
-[variant-capable image](installation.md) first. This CNA example needs no host Conda:
+[Docker backend](installation.md) first. This older image is sufficient for the
+CNA-only example below; use the current installation image for Strelka2 or
+automatic variant-model preparation. No host Conda is needed:
 
 ```bash
 oncotracer setup --non-interactive \
@@ -143,9 +145,21 @@ For remote existing-BAM settings, replace the server command with:
 oncotracer setup --variant-config /data/variants.yml --no-browser --port 8888
 ```
 
-Use the same tunnel. For terminal-only execution, use the `oncotracer variants`
-commands above. For a new FASTQ project without a browser, use the scripted
-Illumina or ONT commands above instead.
+Use the same tunnel. **Terminal-only equivalent for that existing-BAM project:**
+
+```bash
+oncotracer variants --config /data/variants.yml --dry-run
+oncotracer variants --config /data/variants.yml --threads 8
+```
+
+**Terminal-only equivalent for the remote FASTQ setup**, with the same project
+and backend (answer its input/settings questions, then it checks and runs):
+
+```bash
+oncotracer setup --terminal --run --project /work/remote-study --backend conda
+```
+
+For unattended FASTQ execution, use the scripted Illumina or ONT blocks above.
 
 ## Long runs, logs and resuming
 

@@ -60,7 +60,7 @@ oncotracer setup --terminal --backend conda
 ```
 
 The install command creates five isolated core environments: alignment, QDNAseq, ichorCNA,
-classifier/reporting and GISTIC. The optional `variants` and `ffperase`
+classifier/reporting and GISTIC. Optional `variants`, `ffperase` and `strelka2`
 environments are installed separately; follow [variant setup](variants.md#conda-and-docker).
 
 ### Docker

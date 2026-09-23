@@ -31,12 +31,16 @@ def main():
     for mate in (1, 2):
         with gzip.open(reads / f'SYNTHETIC_R{mate}.fastq.gz', 'wt') as handle:
             handle.write('@read\nACGT\n+\nIIII\n')
+    for mate in (1, 2):
+        with gzip.open(reads / f'SYNTHETIC_NORMAL_R{mate}.fastq.gz', 'wt') as handle:
+            handle.write('@normal\nACGT\n+\nIIII\n')
     ont_reads = root / 'ont_reads'; ont_reads.mkdir()
     with gzip.open(ont_reads / 'SYNTHETIC.fastq.gz', 'wt') as handle:
         handle.write('@read\nACGT\n+\nIIII\n')
     (root / 'reference.fa').write_text('>chr1\nACGT\n')
     (root / 'sample.bam').write_text('Synthetic placeholder; never processed')
-    (root / 'samples.tsv').write_text('sample\tbam\tstatus\nSYNTHETIC\tsample.bam\ttumor\n')
+    (root / 'normal.bam').write_text('Synthetic normal placeholder; never processed')
+    (root / 'samples.tsv').write_text('sample\tbam\tstatus\nSYNTHETIC\tsample.bam\ttumor\nSYNTHETIC_NORMAL\tnormal.bam\tnormal\n')
     config = root / 'variants.yml'
     config.write_text(render_flat_yaml({'mode': 'illumina', 'variant_reference': 'reference.fa',
         'variant_bam_manifest': 'samples.tsv', 'outdir': 'old-results', 'run_variants': True,
@@ -181,6 +185,29 @@ def main():
             checks.append(form+': ONT auto Clair3 saves auto plus selected chemistry profile; local/auto changes preserve the local model path')
             checks.append(form+': ClairS-TO has readable populated presets and explicit custom entry; ONT FFPE does not enable Illumina FFPERASE')
             screenshot(form+'-guided-ont.png')
+        def check_strelka_pairing(form):
+            if form == 'main':
+                js("for(const row of sampleRows()){const field=row.querySelector('.type-select');field.value=row.querySelector('.sample-name').value==='SYNTHETIC'?'cancer':'normal';field.dispatchEvent(new Event('change',{bubbles:true}));}")
+            container='#variant-callers' if form=='main' else '#callers'
+            js("for(const field of document.querySelectorAll(arguments[0]+' input'))field.checked=field.value==='strelka2_germline';",container)
+            js('variantSettings()' if form=='main' else 'updateSettings()')
+            assert not visible('#variant-strelka-pairing')
+            assert saved(form)['variant_matched_normals']=={}
+            click(container+' input[value=strelka2_somatic]')
+            assert visible('#variant-strelka-pairing')
+            assert js("return document.querySelector('[data-variant-tumor]').value") == ''
+            assert js("try{variantPairPayload();return false;}catch(error){return error.message.includes('confirmed matched normal');}")
+            normal_id=js("return [...document.querySelector('[data-variant-tumor]').options].find(option=>option.textContent==='SYNTHETIC_NORMAL').value")
+            fill('[data-variant-tumor]',normal_id)
+            assert saved(form)['variant_matched_normals']=={'SYNTHETIC':'SYNTHETIC_NORMAL'}
+            click(container+' input[value=strelka2_somatic]')
+            assert saved(form)['variant_matched_normals']=={}
+            click(container+' input[value=strelka2_somatic]')
+            assert saved(form)['variant_matched_normals']=={'SYNTHETIC':'SYNTHETIC_NORMAL'}
+            screenshot(form+'-strelka-pairing.png')
+            checks.append(form+': Strelka2 germline is independent; somatic requires explicit matched-normal selection and never autopairs controls')
+            js("for(const field of document.querySelectorAll(arguments[0]+' input'))field.checked=field.value==='bcftools';",container)
+            js('variantSettings()' if form=='main' else 'updateSettings()')
         def detect(selector='#variant-autodetect'):
             click(selector)
             wait(lambda: js("return !document.querySelector('#variant-detection-results').hidden && !document.querySelector('main').inert && !document.querySelector('#variant-autodetect').disabled"), 'resource results')
@@ -188,15 +215,16 @@ def main():
         wd('POST', '/window/rect', {'width': 1440, 'height': 1000})
         wd('POST', '/url', {'url': server.origin+'/#'+state.token})
         wait(lambda: js("return typeof hardware!=='undefined' && hardware!==null"), 'main setup')
-        click('#choose-illumina');fill('#input-folder', str(reads));click('#scan')
-        wait(lambda: js("return !document.querySelector('#settings-card').hidden && !document.querySelector('main').inert"), 'sample scan')
-        click('#variants')
-        assert visible('#variant-specimen-section') and not visible('#variant-caller-settings')
-        assert all(not visible('#variant-'+part+'-section') for part in ('tools','filter','annotation'))
-        assert js("return [...document.querySelectorAll('[data-variant-section]')].filter(e=>e.dataset.variantSection!=='variant-specimen-section').every(e=>e.disabled)")
+        assert not visible('#specimen-card') and not visible('#input-card')
+        click('#choose-illumina')
+        assert visible('#specimen-card') and not visible('#input-card')
         screenshot('main-before-specimen.png')
-        checks.append('Main setup shows only the specimen step until preservation is chosen')
-        click('#variant-ffpe');fill('#backend', 'conda')
+        checks.append('Platform comes first; preservation is second; input files remain hidden until Fresh or FFPE is selected')
+        click('#variant-ffpe')
+        assert visible('#input-card')
+        fill('#input-folder', str(reads));click('#scan')
+        wait(lambda: js("return !document.querySelector('#settings-card').hidden && !document.querySelector('main').inert"), 'sample scan')
+        click('#variants');fill('#backend', 'conda')
         assert js("return [...document.querySelectorAll('.variant-section-heading h3')].map(e=>e.textContent)")==['Specimen and callers','Caller tools and models','FFPE damage and filtering','Annotation']
         assert not js("return [...document.querySelectorAll('.variant-path-details')].some(e=>e.open)")
         assert js("return document.querySelectorAll('[data-variant-detect]').length")>=12
@@ -238,7 +266,8 @@ def main():
         click('#variant-resource-close')
         click('#variant-fresh');assert js("return document.querySelector('#variant-detection-results').hidden")
         checks.append('Fresh/FFPE change clears stale resource results')
-        click('#choose-ont');fill('#input-folder',str(ont_reads));click('#scan')
+        check_strelka_pairing('main')
+        click('#choose-ont');click('#variant-fresh');fill('#input-folder',str(ont_reads));click('#scan')
         wait(lambda: js("return !document.querySelector('#settings-card').hidden && !document.querySelector('main').inert"), 'ONT sample scan')
         click('#variant-fresh');check_ont_guidance('main')
         next_window = wd('POST', '/window/new', {'type': 'tab'})
@@ -274,6 +303,7 @@ def main():
         checks.append('Native/SIF runtime choice shows and saves only one alternative, preserving inactive values for editing')
         click('#specimen-fresh');assert js("return document.querySelector('#variant-detection-results').hidden")
         wd('POST', '/window/rect', {'width':1440,'height':1000})
+        check_strelka_pairing('bam')
         fill('#config-path',str(ont_config));click('#load-config')
         wait(lambda: js("return !document.querySelector('#workflow').hidden && !document.querySelector('#load-config').disabled"), 'load synthetic ONT config')
         check_ont_guidance('bam')

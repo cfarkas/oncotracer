@@ -24,11 +24,12 @@ MAX_SEARCHED = 384
 MAX_TEXT_BYTES = 256 * 1024
 SYSTEM_PREFIXES = (Path("/opt/conda"), Path("/opt/miniforge3"))
 FFPERASE_REVISION = "b0dd56cbd0a939896a966b9ce30c4d719b158170"
-CALLERS = {"illumina": ("mutect2", "freebayes", "bcftools"), "ont": ("clair3", "clairs_to")}
+STRELKA_CALLERS = {"strelka2_germline", "strelka2_somatic"}
+CALLERS = {"illumina": ("mutect2", "freebayes", "bcftools", "strelka2_germline", "strelka2_somatic"), "ont": ("clair3", "clairs_to")}
 TOOLS = {"mutect2": ("gatk",), "freebayes": ("freebayes",), "bcftools": ("bcftools",),
          "clair3": ("run_clair3.sh", "run_clair3.py"), "clairs_to": ("run_clairs_to",)}
 PATH_FIELDS = {
-    "variant_tool_prefix", "variant_targets_bed", "variant_clair3_model", "variant_clairsto_sif",
+    "variant_tool_prefix", "variant_strelka_prefix", "variant_targets_bed", "variant_clair3_model", "variant_clairsto_sif",
     "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_prefix", "variant_ffperase_sif",
     "variant_annovar_dir", "variant_annovar_db", "variant_varlociraptor_scenario",
 }
@@ -38,6 +39,7 @@ SETTING_FIELDS = {"variant_ffperase", "variant_varlociraptor", "variant_annovar"
                   "variant_download_resources", "variant_accept_ffperase_license"}
 ENV_FIELDS = {
     "variant_tool_prefix": ("ONCOTRACER_VARIANTS_PREFIX",),
+    "variant_strelka_prefix": ("ONCOTRACER_STRELKA_PREFIX",),
     "variant_ffperase_root": ("ONCOTRACER_FFPERASE_ROOT",),
     "variant_ffperase_models": ("ONCOTRACER_FFPERASE_MODELS",),
     "variant_ffperase_prefix": ("ONCOTRACER_FFPERASE_PREFIX",),
@@ -45,7 +47,7 @@ ENV_FIELDS = {
     "variant_annovar_dir": ("ANNOVAR_HOME", "ANNOVAR_DIR"),
     "variant_annovar_db": ("ANNOVAR_DB", "ANNOVAR_DATABASE_DIR"),
 }
-DOCKER_IGNORED = {"variant_tool_prefix", "variant_ffperase_prefix", "variant_ffperase_sif", "variant_clairsto_sif"}
+DOCKER_IGNORED = {"variant_tool_prefix", "variant_strelka_prefix", "variant_ffperase_prefix", "variant_ffperase_sif", "variant_clairsto_sif"}
 
 
 def _string(value, label, *, maximum=4096):
@@ -69,7 +71,7 @@ def _payload(data):
     raw = data.get("callers", [])
     if isinstance(raw, str):
         raw = _string(raw, "callers").split(",") if raw.strip() else []
-    if not isinstance(raw, (list, tuple)) or len(raw) > 3:
+    if not isinstance(raw, (list, tuple)) or len(raw) > len(CALLERS[mode]):
         raise OncoTracerError("callers must be a list or comma-separated caller names")
     callers = [_string(c, "caller").lower() for c in raw]
     if len(set(callers)) != len(callers) or any(c not in CALLERS[mode] for c in callers):
@@ -215,10 +217,10 @@ class _Search:
 
     def prefixes(self):
         choices = []
-        for key in ("variants_prefix", "variant_tool_prefix", "ffperase_prefix", "core_prefix"):
+        for key in ("variants_prefix", "variant_tool_prefix", "strelka_prefix", "variant_strelka_prefix", "ffperase_prefix", "core_prefix"):
             if isinstance(self.config.get(key), str) and self.config[key]:
                 choices.append(self.path(self.config[key]))
-        for key in ("CONDA_PREFIX", "ONCOTRACER_VARIANTS_PREFIX", "ONCOTRACER_FFPERASE_PREFIX", "ONCOTRACER_CORE_PREFIX"):
+        for key in ("CONDA_PREFIX", "ONCOTRACER_VARIANTS_PREFIX", "ONCOTRACER_STRELKA_PREFIX", "ONCOTRACER_FFPERASE_PREFIX", "ONCOTRACER_CORE_PREFIX"):
             if self.env.get(key):
                 choices.append(self.path(self.env[key]))
         for directory in self.path_dirs:
@@ -242,7 +244,7 @@ class _Search:
         for version in self.children(data_home / "oncotracer", limit=16):
             env_dirs.append(version / "envs")
         optional = self.home / ".local/share/oncotracer/optional-tools"
-        choices += [optional / name for name in ("variants", "ffperase", "clair3")]
+        choices += [optional / name for name in ("variants", "strelka2", "ffperase", "clair3")]
         env_dirs.append(data_home / "oncotracer/optional-tools")
         choices += bases
         for folder in self.unique(env_dirs):
@@ -300,6 +302,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
             field = "variant_" + identity if "variant_" + identity in PATH_FIELDS else {
                 "variant_tools": "variant_tool_prefix", "clairsto_model": "variant_clairsto_platform",
                 "ffperase": "variant_ffperase", "ffperase_runtime": "variant_ffperase_prefix",
+                "strelka2_runtime": "variant_strelka_prefix",
                 "annovar": "variant_annovar", "docker_image": "docker_image",
             }.get(identity, "")
         resources.append({"id": identity, "label": label, "status": status, "path": str(path) if path else "", "detail": detail, "field": field})
@@ -394,8 +397,10 @@ def discover_variant_resources(data, *, roots=(), environment=None):
             need("clairsto_caller")
     required = {"samtools": ("samtools",), "bcftools": ("bcftools",)}
     for caller in callers:
-        if caller != "clairs_to" or not sif:
+        if caller not in STRELKA_CALLERS and (caller != "clairs_to" or not sif):
             required[caller] = TOOLS[caller]
+    if STRELKA_CALLERS.intersection(callers) and values.get("variant_targets_bed"):
+        required.update({name: (name,) for name in ("bgzip", "tabix")})
     if ffpe_needed:
         required["gatk"] = ("gatk",)
     if varlociraptor_needed:
@@ -413,7 +418,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         for identity in required:
             row(identity, identity.replace("_", " "), "unverified", detail="Provided by the selected Docker image; host executables are not substituted.", field="docker_image")
         if any(values.get(field) for field in DOCKER_IGNORED):
-            search.note("Docker ignores host caller/FFPERASE prefixes and SIFs. External source, models and annotation paths remain host resources.")
+            search.note("Docker ignores host caller/Strelka2/FFPERASE prefixes and SIFs. External source, models and annotation paths remain host resources.")
     else:
         matching = []
         path_complete = all(search.which(names) for names in required.values())
@@ -447,6 +452,39 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         row("variant_tools", "Caller environment", "candidate" if choice_needed else "missing" if absent else "found", selected_prefix,
             "Multiple complete environments exist; choose the intended prefix." if choice_needed else
             ("Missing: " + ", ".join(absent)) if absent else "Requested executable files are present. Dependencies and versions need run preflight.")
+
+    if STRELKA_CALLERS.intersection(callers):
+        if backend == "docker":
+            row("strelka2_runtime", "Strelka2 Python 2 runtime", "unverified", detail="The selected Docker image must supply its isolated Strelka2 2.9.10 and Python 2.7 runtime. Run preflight verifies this; no host prefix is substituted.", field="docker_image")
+        else:
+            incompatible = []
+
+            def strelka_candidate(path):
+                if "strelka2_somatic" in callers:
+                    marker = path / "conda-meta/strelka-2.9.10-hdfd78af_2.json"
+                    search.record(marker)
+                    if marker.is_file():
+                        incompatible.append(path)
+                        return False
+                return bool(search.which(("python2.7",), path)) and all(
+                    search.which((name,), path) for name in (
+                        "configureStrelkaGermlineWorkflow.py", "configureStrelkaSomaticWorkflow.py"))
+
+            strelka = find_resource(
+                "variant_strelka_prefix", "Strelka2 Python 2 runtime", prefixes,
+                strelka_candidate, candidate=True,
+            )
+            if incompatible:
+                detail = ("Installed Strelka2 noarch build hdfd78af_2 is incompatible with somatic calling: "
+                          "the native binary crashes before calling starts. Install the tested Linux build "
+                          "strelka=2.9.10=h9ee0642_1 in a new environment.")
+                search.note(detail + " Affected prefixes: " + ", ".join(map(str, incompatible)))
+                if not strelka:
+                    resources[-1]["detail"] += " " + detail
+            if not strelka:
+                need("strelka2_runtime")
+        if "strelka2_somatic" in callers:
+            search.note("Strelka2 somatic requires an explicitly matched normal BAM from the same patient; resource discovery never infers pairing.")
 
     if "clair3" in callers:
         models = []
