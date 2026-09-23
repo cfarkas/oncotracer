@@ -102,7 +102,7 @@ knowledge_literature_llm: false
 knowledge_deep_literature: false
 ```
 
-Supported contexts include `broad_cancer`, `lymphoma`, `brain_cns`, `breast`, `pancreas`, `colorectal`, `leukemia`, `lung`, `prostate`, `ovarian`, `gastric_esophageal`, `sarcoma`, `renal`, `urothelial`, `thyroid`, `melanoma`, `liver`, `head_neck`, `germ_cell`, `myeloma`, `neuroblastoma`, `neuroendocrine`, and `pediatric_solid`.
+See [all 24 study contexts and when to choose them](models_pathology.md#study-contexts) for exact `cna_classifier_sample_set` values, including `broad_cancer`, `brain_cns`, `leukemia` and `endometrial`.
 
 Classifier outputs are written under `05_cna_classifier/`, including prepared matrices, classifications, optional recurrence results, knowledge/pathology tables, HTML/PDF reports, clinician summaries, and `native_classifier_summary.json`.
 
