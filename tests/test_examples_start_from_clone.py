@@ -14,7 +14,7 @@ BASH_BLOCK_RE = re.compile(re.escape(FENCE) + r"bash[ \t]*\n(.*?)" + re.escape(F
 MARKDOWN_HEADING_RE = re.compile(r"^\s*#{2,6}\s")
 CHECKOUT_CD_RE = re.compile(r"(?m)^\s*cd\s+oncotracer\s*(?:#.*)?$")
 NATIVE_COMMAND_FILES = {
-    "docs/index.md": ("oncotracer setup --project", "oncotracer run --config"),
+    'docs/index.md': ("oncotracer setup --project", 'oncotracer setup --project "$PWD/my-study" --run'),
     "docs/quick_start.md": ("oncotracer setup", "oncotracer check", "oncotracer run"),
     "docs/public_cohort.md": ("oncotracer setup", "oncotracer check", "oncotracer run"),
     "docs/setup.md": ("--samplesheet", "--barcodes barcode01,barcode02", "oncotracer run"),
