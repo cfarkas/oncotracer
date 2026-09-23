@@ -8,9 +8,12 @@ Nested YAML is deliberately rejected by the standalone parser.
 
 ## Minimal Illumina
 
+Save this as `/data/study/config/illumina.manual.yml`, after replacing the example paths. The reference setting imports prebuilt hg38 assets on the first run, matching automatic setup.
+
 ```yaml
 mode: illumina
 lpwgs_root: /data/study
+hg38_auto_download: true
 outdir: /data/study/results/illumina
 illumina_samplesheet: /data/study/config/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy
@@ -36,9 +39,12 @@ For single-end data, keep the header and leave `fastq_2` empty for every row. Do
 
 ## Minimal ONT
 
+Save this alternative as `/data/study/config/ont.manual.yml` with your own paths.
+
 ```yaml
 mode: ont
 lpwgs_root: /data/study
+hg38_auto_download: true
 outdir: /data/study/results/ont
 ont_folder: /data/study/input/fastq_pass
 ont_barcodes: barcode01,barcode02
@@ -59,11 +65,18 @@ ONT methylation is available with `--methylation` plus `--sturgeon` or `--marlin
 
 ## Run a YAML
 
+Use the file you saved above. For Illumina:
+
 ```bash
-oncotracer run \
-  --backend conda \
-  --threads 16 \
-  --config "$PWD/project/config/illumina.auto.yml"
+oncotracer check --config /data/study/config/illumina.manual.yml
+oncotracer run --backend conda --threads 16 --config /data/study/config/illumina.manual.yml
+```
+
+For ONT instead:
+
+```bash
+oncotracer check --config /data/study/config/ont.manual.yml
+oncotracer run --backend conda --threads 16 --config /data/study/config/ont.manual.yml
 ```
 
 Repeat the same command to reuse valid completed stages. Add `--dry-run` to preview the analysis commands, or `--force` only for a deliberate refresh.
@@ -74,6 +87,8 @@ In an Illumina samplesheet, `status: normal` is preserved metadata for an
 independently analyzed qDNAseq sample. Automatic Setup does not pool normal
 rows, create a sample-derived reference, or exclude them from per-sample CNA
 outputs. Review `qdnaseq_sample_status.json` for exact completion status.
+
+Optional somatic Strelka2 uses an explicit [tumor-to-normal mapping](variants_reference.md#strelka2-germline-and-somatic-calling). Marking a sample `normal` does not assign it to a tumor automatically.
 
 ## Optional native CNA classifier
 
@@ -128,6 +143,7 @@ Use a new `outdir` and report every non-default setting. See [Advanced refinemen
 - Use one top-level `key: value` per line.
 - Use `true` and `false` for booleans.
 - Use comma-separated text for positional sample/barcode lists.
+- Matched-normal maps use inline JSON: `variant_matched_normals: {"TUMOR01":"NORMAL01"}`. Indented nested YAML is unsupported.
 - Use absolute paths for Docker, Singularity/Apptainer, and shared systems.
 - Do not use tabs.
 - Do not embed shell variables such as `$PWD`; expand them while writing the file.

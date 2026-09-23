@@ -17,7 +17,8 @@ desktop, you can also connect your laptop browser through SSH.
 `--non-interactive` for no web interface. There is no `--headless` flag.
 
 Install the [launcher and analysis tools](installation.md) on the server first.
-Activate the launcher environment in each shell. All read, reference, model,
+If installed in a Python environment, activate that launcher environment in each
+shell. All read, reference, model,
 database and project paths belong to the server. Replace `/data` and `/work`
 paths with your own. Choose one setup route per new project.
 
@@ -37,8 +38,15 @@ oncotracer check --config /work/illumina-study/config/run.yml
 oncotracer run --backend conda --config /work/illumina-study/config/run.yml
 ```
 
-For ONT, use `--mode ont --input-folder /data/run/fastq_pass` and a different
-project. Append `--run` to configure and run in the same terminal wizard.
+For ONT, use a separate project. This version asks the remaining questions and
+then checks and runs in the same terminal:
+
+```bash
+oncotracer setup --terminal --run --project /work/ont-interactive \
+  --mode ont --input-folder /data/run/fastq_pass --backend conda
+```
+
+Omit `--run` to choose `save` at the final question instead.
 
 ## Scripted Illumina: setup, check and run
 
@@ -82,9 +90,9 @@ setup. For ONT controls and sample roles, follow [batch setup](auto_params.md).
 ## Docker without a browser
 
 The launcher runs on the server; analysis runs in Docker. Install the
-[Docker backend](installation.md) first. This older image is sufficient for the
-CNA-only example below; use the current installation image for Strelka2 or
-automatic variant-model preparation. No host Conda is needed:
+[Docker backend](installation.md) first. The pinned image below includes the
+variant runtimes as well as the CNA tools; this example requests only CNA.
+No host Conda is needed:
 
 ```bash
 oncotracer setup --non-interactive \
@@ -92,11 +100,11 @@ oncotracer setup --non-interactive \
   --sample-name sampleA --status tumor \
   --fastq-1 /data/illumina/sampleA_R1.fastq.gz \
   --fastq-2 /data/illumina/sampleA_R2.fastq.gz \
-  --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922 \
   --threads 8
 oncotracer check --config /work/docker-study/config/run.yml
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260921 \
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 \
   --config /work/docker-study/config/run.yml
 ```
 
@@ -161,7 +169,7 @@ oncotracer setup --terminal --run --project /work/remote-study --backend conda
 
 For unattended FASTQ execution, use the scripted Illumina or ONT blocks above.
 
-## Long runs, logs and resuming
+## Keep a long run open
 
 If `tmux` is installed, create a persistent session **on the server**:
 
@@ -184,21 +192,23 @@ Ctrl+C in the setup-server terminal leaves an already-started analysis running.
 Use **Stop analysis** in the interface, or Ctrl+C in a terminal running
 `oncotracer run`, to stop the analysis itself.
 
-Inspect results without a browser:
+## Read the result
 
 ```bash
 tail -n 40 /work/illumina-scripted/logs/run.log
 cat /work/illumina-scripted/results/06_workflow_summary/workflow_summary.txt
 ```
 
-After correcting a partial failure, repeat the same `run` command. Completed,
-matching stages are reused; omit `--force` for normal resuming.
-`run` without `--backend` uses the most recently installed backend. To reuse
-the backend and image saved in a project instead:
+## Continue an interrupted run
+
+Fix the reported problem, then restart with the saved project:
 
 ```bash
 oncotracer setup --project /work/illumina-scripted --run
 ```
+
+This uses the project’s saved backend and reuses completed work. For settings
+changes and preview commands, see [running details](running_details.md).
 
 ## Complete examples
 

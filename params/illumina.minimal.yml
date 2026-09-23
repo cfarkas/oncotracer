@@ -1,8 +1,10 @@
 # Minimal Illumina YAML example.
 # Replace /path/to/my/directory/oncotracer with the absolute path used
-# for REPO_DIR. Keep every input and output below lpwgs_root.
+# for REPO_DIR. Use absolute paths for inputs and outputs.
 mode: illumina
 lpwgs_root: /path/to/my/directory/oncotracer/project
+# Import prebuilt hg38 assets on the first run, as in automatic setup.
+hg38_auto_download: true
 outdir: /path/to/my/directory/oncotracer/project/results/my_first_illumina_run
 illumina_samplesheet: /path/to/my/directory/oncotracer/project/input/illumina.samplesheet.csv
 illumina_analysis_type: solid_biopsy

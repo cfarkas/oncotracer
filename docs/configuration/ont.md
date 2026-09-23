@@ -81,7 +81,8 @@ A generated YAML resembles:
 
 ```yaml
 mode: ont
-lpwgs_root: /absolute/path/project
+lpwgs_root: /absolute/path/project/config/ont/reference
+hg38_auto_download: true
 outdir: /absolute/path/project/results/ont
 ont_folder: /absolute/path/project/input/fastq_pass
 ont_barcodes: barcode01
@@ -98,12 +99,21 @@ force: false
 ```
 
 Barcode and sample-name lists are positional. The first barcode maps to the first sample name.
-`ont_barcodes`/`ont_sample_names` identify TUMOR samples. When the input table contains NORMAL rows, Automatic Setup writes them separately as `ont_normal_folder`, `ont_normal_barcodes`, and `ont_normal_sample_names`. Native v2 runs qDNAseq for every TUMOR and NORMAL sample independently; it never pools, averages, or subtracts the NORMAL group. Mixed or NORMAL-containing ONT cohorts therefore use `ont_analysis_type: solid_biopsy` and `ont_caller: qdnaseq`. The frozen Nextflow comparator does not support this role-preserving route.
+`ont_barcodes`/`ont_sample_names` identify TUMOR samples. Automatic Setup records
+NORMAL rows separately in `ont_normal_folder`, `ont_normal_barcodes`, and
+`ont_normal_sample_names`.
+
+A cohort containing NORMAL rows uses `solid_biopsy` and `qdnaseq`, as shown above.
+Native v2 analyzes every sample independently; it never pools, averages, or subtracts the NORMAL group.
+The frozen Nextflow comparator does not support this route.
 
 
 ## Manual YAML
 
-Use a manual file when selecting a subset of barcodes, using a custom reference, or applying advanced settings:
+Use a manual file when selecting a subset of barcodes, reusing prepared hg38
+indexes, or applying advanced settings. This example explicitly downloads
+prebuilt indexes at run time; set `hg38_auto_download: false` for local index
+building or a prepared reference.
 
 ```bash
 PROJECT_DIR="$PWD/project"
@@ -111,12 +121,13 @@ mkdir -p "$PROJECT_DIR/config" "$PROJECT_DIR/results/manual_ont"
 
 cat > "$PROJECT_DIR/config/ont.manual.yml" <<YAML
 mode: ont
-lpwgs_root: $PROJECT_DIR
-outdir: $PROJECT_DIR/results/manual_ont
-ont_folder: $PROJECT_DIR/input/fastq_pass
+lpwgs_root: "$PROJECT_DIR/reference"
+hg38_auto_download: true
+outdir: "$PROJECT_DIR/results/manual_ont"
+ont_folder: "$PROJECT_DIR/input/fastq_pass"
 ont_barcodes: barcode01
 ont_sample_names: Patient_A
-ont_normal_folder: $PROJECT_DIR/input/fastq_pass
+ont_normal_folder: "$PROJECT_DIR/input/fastq_pass"
 ont_normal_barcodes: barcode02
 ont_normal_sample_names: Control_A
 ont_analysis_type: solid_biopsy
@@ -127,6 +138,7 @@ run_cna_classifier: false
 force: false
 YAML
 
+oncotracer check --config "$PROJECT_DIR/config/ont.manual.yml"
 oncotracer run \
   --backend conda \
   --config "$PROJECT_DIR/config/ont.manual.yml" \
@@ -143,7 +155,8 @@ For a solid-tumor ONT cohort, select qDNAseq explicitly and use a new `outdir` s
 
 ```yaml
 mode: ont
-lpwgs_root: /absolute/path/project
+lpwgs_root: /absolute/path/project/reference
+hg38_auto_download: true
 outdir: /absolute/path/project/results/ont_solid_qdnaseq
 ont_folder: /absolute/path/project/input/fastq_pass
 ont_barcodes: barcode01,barcode02
@@ -167,7 +180,10 @@ This route reuses the native qDNAseq implementation and its existing scientific 
 
 ## Optional POD5 methylation classification
 
-For an ONT run, `--methylation` can run modified-base basecalling and either Sturgeon (`--sturgeon`, CNS-tumor research) or MARLIN (`--marlin`, leukemia research) before the CNA branch. An explicit non-empty POD5 directory is mandatory; OncoTracer never searches for POD5 files:
+For an ONT run, `--methylation` adds Sturgeon (`--sturgeon`, CNS-tumor research)
+or MARLIN (`--marlin`, leukemia research) before CNA. The example below starts
+from an explicit POD5 directory and requires local Dorado models. To reuse
+modified-base BAMs without basecalling, follow the [BAM route](methylation.md#terminal-example-leukemia-using-existing-bams).
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -183,13 +199,19 @@ oncotracer run \
 
 The YAML must also contain explicit, checksum-pinned Dorado/Modkit/classifier resources. If Modkit detects zero usable modified-CpG calls, OncoTracer records `no_cpg_modifications`, skips the methylation classifier, and continues CNA. A CNA failure likewise does not discard a completed methylation result. Read [Optional ONT methylation](methylation.md) before enabling this research branch, especially the Sturgeon license, hg38 model/probe, backend, and GPU limitations.
 
-## Custom reference
+## Reuse a prepared hg38 reference
+
+Set the prepared OncoTracer reference parent in the same YAML:
 
 ```yaml
-ont_ref: /absolute/path/project/reference/custom_reference.fa
+lpwgs_root: /absolute/path/shared-reference
+hg38_auto_download: false
 ```
 
-The FASTA must exist and be visible to the selected backend. Keep it under `lpwgs_root` where possible.
+Use the directory accepted by `setup --hg38_build`, as described in the
+[reference guide](../reference_indexes.md). The legacy `ont_ref` key is ignored
+by the native engine; it does not select an arbitrary FASTA. The native CNA
+workflow requires the supported hg38 genome and compatible indexes.
 
 ## Completed-file age
 
@@ -203,11 +225,15 @@ The default public examples use `0` because the downloaded files are complete.
 
 ## Force realignment
 
-```yaml
-ont_force_realign: true
+The legacy `ont_force_realign` key is ignored by the native engine. To deliberately
+refresh the saved analysis, use the supported global flag:
+
+```bash
+oncotracer run --backend conda --config "$PWD/project/config/ont.manual.yml" --force
 ```
 
-Use this only when an existing ONT alignment is invalid or the relevant alignment inputs/settings changed. Prefer a new `outdir` for a scientifically distinct analysis.
+`--force` refreshes analysis stages, not only alignment. Ordinary reruns reuse
+matching stages; use a new `outdir` for different scientific settings.
 
 ## Main ONT settings
 
@@ -219,12 +245,11 @@ Use this only when an existing ONT alignment is invalid or the relevant alignmen
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
 | `ont_caller` | `ichorcna` | `ichorcna`, or `qdnaseq` for an explicit `solid_biopsy` analysis |
 | `ont_binsize_kb` | `500` | Initial caller bin width; set it explicitly for qDNAseq |
-| `ont_ref` | optional FASTA | Custom reference |
+| `lpwgs_root` | prepared hg38 reference parent | Supported reference location; legacy `ont_ref` does not override it |
 | `ont_min_age_minutes` | `0` | Minimum FASTQ age before use |
-| `ont_force_realign` | `false` | Deliberate alignment refresh |
+| `force` | `false` | Deliberate refresh of analysis stages, including alignment |
 | `--methylation --sturgeon|--marlin --pod5-dir PATH` | optional CLI branch | Explicit POD5 methylation/classifier route; see the dedicated page |
 | `run_cna_classifier` | `false` | Add native classifier/reports |
-| `force` | `false` | Preserve reusable stages |
 
 ## Pre-run checks
 

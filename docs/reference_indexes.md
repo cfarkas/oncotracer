@@ -25,6 +25,8 @@ minimap2 for ONT. A build containing both can be shared by both platforms.
 
 The table shows `setup` destinations. With `auto`, the default reference folder
 is `CONFIG_DIR/reference/` instead. The saved `lpwgs_root` shows the exact path.
+A hand-written YAML defaults to local preparation unless you explicitly set
+`hg38_auto_download: true`; setup and auto save that download choice for you.
 
 Setup saves `lpwgs_root` and `hg38_auto_download` in YAML. Choose **save** at the
 wizard's final question to finish without downloads or analysis. Manual/scripted
@@ -72,8 +74,16 @@ oncotracer reference install \
   --mode ont --dry-run
 ```
 
-Replace `/absolute/path/shared-reference` with your chosen folder. Remove
-`--dry-run` to install; there is no need to download individual parts manually.
+Replace `/absolute/path/shared-reference` with your chosen folder. To install the
+ONT bundle after checking the preview:
+
+```bash
+oncotracer reference install \
+  --lpwgs-root /absolute/path/shared-reference \
+  --mode ont
+```
+
+There is no need to download individual parts manually.
 
 | Flag | Meaning |
 | --- | --- |
@@ -95,6 +105,7 @@ file. For a project already configured, set that parent in its YAML:
 
 ```yaml
 lpwgs_root: /absolute/path/shared-reference
+hg38_auto_download: false
 ```
 
 The installed files are under `shared-reference/references/samurai_hg38/`.
@@ -126,8 +137,17 @@ replace tools inside a managed OncoTracer installation.
 ## Copy a bundle between computers
 
 Copy `hg38-reference.json` and all its `.part` files into one folder. Use that local
-JSON path for `--manifest`, keeping the other flags above. Installation then uses
-the copied files without an internet connection. Keep them until import succeeds.
+JSON path for `--manifest`. For a copied bundle containing both index sets:
+
+```bash
+oncotracer reference install \
+  --lpwgs-root /absolute/path/offline-reference \
+  --manifest /absolute/path/copied-bundle/hg38-reference.json \
+  --mode both
+```
+
+Installation uses the copied files without an internet connection. Choose `ont`
+or `illumina` for a single-platform bundle. Keep the files until import succeeds.
 
 ## Prepare a bundle on a larger computer
 

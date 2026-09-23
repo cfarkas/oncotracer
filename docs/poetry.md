@@ -32,6 +32,10 @@ checkout-local `.venv`.
 
 ## Prepare the Poetry backend
 
+The install command above already prepares the launcher and scientific tools.
+If it succeeded, run only the `doctor` line below. The repeated install command
+is for returning to an unfinished installation at the same prefix.
+
 ```bash
 cd /path/to/my/oncotracer_source/
 

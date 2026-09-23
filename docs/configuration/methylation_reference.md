@@ -34,6 +34,10 @@ explicit POD5 directory + selected barcode FASTQ read IDs
   -> Sturgeon (CNS) or MARLIN (leukemia) classification
 ```
 
+With an existing modified-base BAM, OncoTracer selects the sample read IDs and
+realigns them to hg38 on CPU, then follows the same Modkit/classifier steps.
+The BAM route reuses the modification calls and skips basecalling.
+
 Methylation starts before the CNA branch. The two outcomes are independent:
 
 - if methylation fails or has no usable modified-CpG calls, CNA still runs;
@@ -44,7 +48,7 @@ No classifier is launched for a sample with zero usable modified-CpG calls. Its 
 
 ## What you must provide
 
-The v2.1.0 POD5 route requires an explicit non-empty POD5 directory:
+The POD5 route requires an explicit non-empty POD5 directory:
 
 ```text
 --pod5-dir /absolute/path/to/pod5_pass
@@ -63,15 +67,15 @@ Also provide:
 - an explicit, compatible Dorado 5mCG/5hmCG model directory (POD5 route only);
 - classifier-specific executable/model/probe resources and exact SHA-256 values.
 
-OncoTracer does not download, install, discover, or update these optional resources. It writes only below `<outdir>/07_methylation/`; it never indexes or modifies the source POD5/FASTQ directories.
+OncoTracer does not download, install, or update these optional classifier/model resources. Supply their paths explicitly; executable names can also resolve from `PATH`. Methylation outputs go below `<outdir>/07_methylation/`; reference preparation uses the configured reference cache. The branch never indexes or modifies the source POD5/FASTQ directories.
 
 ## Backend restriction
 
-Use `host`, `conda`, or `poetry` with explicit local executable/resource paths. The v2.1.0 Docker and Singularity/Apptainer image deliberately does not redistribute Dorado, Sturgeon, their models, or user-licensed classifier resources, so the CLI rejects optional methylation with those container backends.
+Use `host`, `conda`, or `poetry` with explicit local executable/resource paths. The Docker and Singularity/Apptainer image deliberately does not redistribute Dorado, Sturgeon, their models, or user-licensed classifier resources, so the CLI rejects optional methylation with those container backends.
 
 ## CNS example: Sturgeon
 
-Add the resource fields below to the same flat ONT YAML. Replace every path and SHA-256 with the exact local value:
+Start with `project/config/ont.manual.yml` from the [manual ONT example](ont.md#manual-yaml). Add the fields below to that file, replacing paths and hashes with local values. These are additions, not a complete run configuration. Read [validation](#validate-before-running) before executing; classifier hashes are required. Choose a new `outdir` for each classifier/input alternative.
 
 ```yaml
 methylation_dorado_executable: /opt/ont/dorado/bin/dorado
@@ -98,7 +102,7 @@ cd /path/to/my/analyses_dir/
 
 oncotracer run \
   --backend conda \
-  --config "$PWD/project/config/ont.yml" \
+  --config "$PWD/project/config/ont.manual.yml" \
   --methylation \
   --sturgeon \
   --pod5-dir /absolute/path/to/pod5_pass \
@@ -132,11 +136,25 @@ cd /path/to/my/analyses_dir/
 
 oncotracer run \
   --backend conda \
-  --config "$PWD/project/config/ont.yml" \
+  --config "$PWD/project/config/ont.manual.yml" \
   --methylation \
   --marlin \
   --pod5-dir /absolute/path/to/pod5_pass \
   --gpu
+```
+
+### MARLIN with existing modified-base BAMs
+
+Use the same ONT sample mapping and MARLIN resource fields. Keep the Dorado
+executable for alignment; its basecalling/model directories are unnecessary.
+Remove any `methylation_pod5_dir` setting so only one input type is selected.
+With a new `outdir`, run:
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer run --backend conda \
+  --config "$PWD/project/config/ont.manual.yml" \
+  --methylation --marlin --modbam /absolute/path/to/bam_pass --cpu
 ```
 
 The explicit Python must already provide `h5py`, NumPy, and TensorFlow. OncoTracer disables reticulate's managed environments and offline-locks its cache, so a missing dependency fails before POD5 basecalling instead of triggering a download. The native adapter preserves the preprocessing defined by the supported MARLIN interface commit: per-probe beta is modified coverage divided by valid coverage; model features are ordered exactly, binarized at beta `0.5`, and uncovered features remain zero. OncoTracer does not alter classifier thresholds.
@@ -170,7 +188,7 @@ cd /path/to/my/analyses_dir/
 
 oncotracer run \
   --backend conda \
-  --config "$PWD/project/config/ont.yml" \
+  --config "$PWD/project/config/ont.manual.yml" \
   --methylation \
   --sturgeon \
   --pod5-dir /absolute/path/to/pod5_pass \

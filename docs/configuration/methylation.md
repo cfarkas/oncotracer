@@ -28,8 +28,11 @@ Locate executables, model and probe BED; MARLIN also needs feature-order `.RData
 
 ## 2. Link inputs in the browser
 
-Run `oncotracer setup`, choose **Oxford Nanopore**, then **Fresh or FFPE** from
-specimen records. **Browse run** fills matching
+```bash
+oncotracer setup
+```
+
+Choose **Oxford Nanopore**, then **Fresh or FFPE** from specimen records. **Browse run** fills matching
 `fastq_pass`, POD5 and `bam_pass` paths. You can also browse each path separately,
 including a single barcode folder or a nonbarcoded ligation FASTQ folder.
 Assign and name the samples, then choose **Methylation classification** or **CNA and methylation**.
@@ -58,10 +61,18 @@ oncotracer setup --terminal \
 This asks for remaining tool/model paths in the terminal. Check/run the saved
 `/work/leukemia-study/config/run.yml` below. `--no-browser` still starts a server.
 
-For unattended reuse, replace `--terminal` with
-`--non-interactive --resources /work/previous-study/config/run.yml` and choose a new project. The resource YAML must contain
-all tools and assets for the selected classifier; missing settings stop setup.
-The explicit FASTQ, barcode and methylation input flags select the new sample.
+For unattended reuse, use a complete resource YAML from a previous project.
+Missing tools or assets stop setup. This alternative checks and runs automatically:
+
+```bash
+oncotracer setup --non-interactive --run \
+  --project /work/new-leukemia-study --backend conda \
+  --resources /work/previous-study/config/run.yml \
+  --mode ont --analysis methylation --classifier marlin \
+  --reads-folder /data/new-run/fastq_pass \
+  --barcodes barcode01 --sample-names sampleB \
+  --modbam /data/new-run/bam_pass --cpu --threads 8
+```
 
 | Flag | Meaning |
 | --- | --- |
@@ -109,9 +120,11 @@ oncotracer setup --terminal --run --project /work/cns-pod5-study \
   --classifier sturgeon --pod5-dir /data/run/pod5_pass --cpu --threads 8
 ```
 
-CPU basecalling can take days. `--gpu` enables GPU basecalling/MARLIN; keep `--cpu` when the GPU is busy. Modkit and Sturgeon use CPU.
+CPU basecalling can be slow for large inputs. `--gpu` enables GPU basecalling/MARLIN; keep `--cpu` when the GPU is busy. Modkit and Sturgeon use CPU.
 
 ## 3. Check and run
+
+For the saved leukemia-BAM example above (the `--run` alternatives already execute):
 
 ```bash
 oncotracer check --config /work/leukemia-study/config/run.yml
@@ -125,7 +138,7 @@ Reuse tool/model settings with `setup --resources /work/leukemia-study/config/ru
 
 ## Read the result
 
-Open `results/07_methylation/methylation_status.json` first. Each sample has a status and paths to any outputs:
+Within your project, open `results/07_methylation/methylation_status.json` first. Each sample has a status and paths to any outputs:
 
 | Status | What it means | Next step |
 | --- | --- | --- |

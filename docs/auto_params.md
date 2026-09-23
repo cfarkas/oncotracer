@@ -2,7 +2,8 @@
 
 `oncotracer auto` connects sample names to FASTQ files and saves a configuration
 (a YAML text file). It does not start the scientific analysis. Use it for many
-libraries or barcodes; for one sample or methylation, start with [setup](setup.md).
+libraries or barcodes in a CNA analysis. For methylation or variants, use
+[setup](setup.md).
 
 Follow [installation](installation.md) first. These examples use Conda and your
 own completed FASTQs; example reads are not bundled. For downloadable data, use
@@ -158,16 +159,29 @@ this takes more RAM, disk and time. The two options cannot be combined. Neither
 
 For optional copy-number reports, add `--run-cna-classifier` to the initial
 `auto` command. `--cna-classifier-sample-set sarcoma` selects a known study context;
-it does not establish a diagnosis. Add `--no-pathology-models` to disable optional
+it does not establish a diagnosis. With reports enabled, add `--no-pathology-models` to disable optional
 biomedical model downloads. Web/LLM enrichment is off unless you opt in through
 [report settings](llm_reports.md).
 
-## Read results or resume
+## 4. Read the summary
 
-Start with `results/06_workflow_summary/workflow_summary.txt`, then the sample
-plots and `03_cna_codification/cna_events.tsv`. [Output guide](outputs.md).
+For the Illumina example:
 
-To resume, repeat the same `run` command, **not** `auto`. Existing generated
-files are protected from overwrite. Edit the YAML to change settings; use new
-configuration and result folders for a different analysis. `run --dry-run`
-previews analysis steps; `auto --dry-run` only previews configuration generation.
+```bash
+cat "$PWD/project/results/06_workflow_summary/workflow_summary.txt"
+```
+
+For the ONT example:
+
+```bash
+cat "$PWD/ont-project/results/06_workflow_summary/workflow_summary.txt"
+```
+
+The summary points to sample results. See [outputs](outputs.md) for plots and tables.
+
+## 5. Continue an interrupted run
+
+Repeat the `oncotracer run` command from step 3 for your platform. Completed work
+is reused. You do not need to create the sample table or settings again.
+
+For changing settings or previewing a run, see [running details](running_details.md).

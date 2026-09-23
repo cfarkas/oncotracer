@@ -14,6 +14,18 @@ one of the **Terminal only** alternatives below. `--no-browser` keeps the web
 interface running; `--non-interactive` creates a configuration without a web
 server or questions. Replace `/data` and `/resources` examples with your paths.
 
+## Choose where to start
+
+| Your inputs | Start here |
+| --- | --- |
+| Illumina or ONT FASTQs | [Add variants during CNA setup](#add-calling-during-setup). |
+| Existing aligned BAMs | [Use the standalone BAM route](#call-from-existing-bams-without-rerunning-cna). |
+| A tumor and its matched normal | [Strelka2 somatic example](variants_reference.md#fastqs-configure-a-somatic-pair). |
+| Completed VCFs to inspect | [Read the results](#read-the-results). |
+
+Choose one route per project. Fresh/FFPE is the specimen's preservation;
+Normal/Cancer is the sample's biological role. These are separate settings.
+
 ## Add calling during setup
 
 ```bash
@@ -120,7 +132,10 @@ requires separately obtained software and matching databases.
 Normal/Cancer labels do not create tumor–normal pairs. **Strelka2 somatic**
 requires you to select the corresponding normal for each study sample; use a
 biologically matched normal, not an unrelated cohort control. Other callers keep
-their existing independent or tumor-only behavior. Caller outputs remain separate.
+their existing independent or tumor-only behavior. Samples labeled Normal are
+skipped by tumor-only/somatic callers (Mutect2, ClairS-TO and Strelka2 somatic);
+select a germline caller as well if you need their independent variant calls.
+Caller outputs remain separate.
 See [Strelka2 setup and terminal examples](variants_reference.md#strelka2-germline-and-somatic-calling).
 
 **Fresh/FFPE describes preservation, not sequencing platform.** Use one preservation
@@ -260,5 +275,7 @@ separates **zero calls**, **skipped annotation**, **partial failure** and **fail
 
 For example, insufficient FFPE depth can leave FFPERASE `not_assessed` while
 retaining completed caller, Varlociraptor and ANNOVAR outputs. Read the recorded
-reason and available evidence. [Output paths and status details](variants_reference.md#read-the-outputs)
-explain what was produced.
+reason and available evidence. A nonzero terminal exit code can mean partial
+failure or failure; inspect `workflow_status` and the per-caller status rather
+than treating every nonzero return as loss of all results. [Output paths and
+status details](variants_reference.md#read-the-outputs) explain what was produced.

@@ -27,10 +27,13 @@ Start with the exact command, backend, YAML, `outdir`, and source identity. Avoi
 ```bash
 oncotracer --version
 oncotracer provenance --json
-oncotracer doctor --backend conda
+oncotracer doctor --backend conda --json
 ```
 
-The JSON records the executable version and source identity, backend, all five configured prefixes or image, semantic command/package checks, and whether Nextflow is required (`false`). A failed check returns a nonzero status.
+The provenance JSON identifies the executable and source. The doctor JSON adds
+the backend, all five configured prefixes or image, semantic command/package
+checks, and whether Nextflow is required (`false`). A failed check returns a
+nonzero status.
 
 Use the backend that actually runs the analysis:
 
@@ -89,13 +92,18 @@ Many programs write progress to standard error; inspect content and exit status 
 
 ## 4. Resume safely
 
-Repeat the same `oncotracer run` or QuickStart command. The native ledger reuses a stage only when its signature and expected outputs remain valid.
+After fixing the reported problem, continue the saved project:
 
 ```bash
 oncotracer run \
   --backend conda \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
+
+Completed steps are reused. See [resume details](running_details.md#resume-behavior).
+
+<details markdown="1">
+<summary>Advanced: rerun completed steps or resolve an output-ownership error</summary>
 
 Use `--force` only to deliberately invalidate reusable stages:
 
@@ -107,6 +115,8 @@ oncotracer run \
 ```
 
 OncoTracer now rejects a second writer while the first process holds the exact `outdir` run lock. A new run may claim only an absent or empty output directory. Resume and `--force` require the existing `.oncotracer-native/output-owner.json` to match the same exact OncoTracer runtime and canonical location; they never adopt or delete a nonempty unowned directory. Preserve an unowned or mismatched tree and choose a new `outdir`.
+
+</details>
 
 ## 5. Public QuickStart download problems
 
@@ -158,10 +168,14 @@ source-identity failures occur before managed targets are changed.
 
 ## 7. Docker errors
 
+Use the exact image selected for your analysis. These commands match the current
+installation guide; replace both image values if your project uses another tag
+or digest. A bare `install --docker` selects the older default CNA image.
+
 ```bash
 docker info
-oncotracer install --docker
-oncotracer doctor --backend docker
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
 ```
 
 Common causes:
@@ -223,10 +237,12 @@ Common failures include duplicate sample IDs, missing mates, mixed single/paired
 
 The generated/manual samplesheet preserves each submitted `normal` status, but
 normal rows are not reference inputs. Confirm that each expected normal has its
-own qDNAseq status and result files:
+own qDNAseq status and result files. This path is for browser-generated setup;
+`auto` writes `config/illumina.samplesheet.csv`, and explicit input sheets can
+remain elsewhere. Use the `illumina_samplesheet` path recorded in your YAML:
 
 ```bash
-SHEET="$PWD/project/config/illumina.samplesheet.csv"
+SHEET="$PWD/project/config/samplesheet.csv"
 QDNA="$PWD/project/results/01_samurai_illumina/qdnaseq"
 
 sed -n '1,40p' "$SHEET"
@@ -260,18 +276,26 @@ Review used/skipped/warning logs beneath `01_samurai_ont/logs/`.
 
 ## 12. Reference or indexing failures
 
-The first Illumina run creates a BWA hg38 index in the OncoTracer-owned cache and can require at least 80 GiB of addressable memory. Check free storage, memory, and the two possible reference locations:
+New setup projects download prepared hg38 indexes by default; they do not build
+BWA indexes. A deliberately selected local build (`--build_reference`) can need
+at least 80 GiB of addressable memory. See [reference choices](reference_indexes.md).
+
+Inspect the `lpwgs_root` recorded in your YAML. For default browser/terminal setup
+it is `PROJECT/reference`; `auto` or custom configurations may use another root.
+Replace `REFERENCE_ROOT` below with that exact directory:
 
 ```bash
+REFERENCE_ROOT="$PWD/project/reference"
 free -h
 df -h "$PWD/project"
-find "$PWD/project/references" -maxdepth 3 -type f -ls 2>/dev/null | head -50
-find "$PWD/project/.oncotracer/reference-cache" -maxdepth 3 -type f -ls 2>/dev/null | head -50
+find "$REFERENCE_ROOT/references" -maxdepth 3 -type f -ls 2>/dev/null | head -50
+find "$REFERENCE_ROOT/.oncotracer/reference-cache" -maxdepth 3 -type f -ls 2>/dev/null | head -50
 ```
 
-An existing `project/references/samurai_hg38` or `project/references/samurai_ichorcna_hg38_500kb` is external and read-only. A checksum, manifest, physical-lock, tool-identity, layout, or symlink error there stops the run without repair. This includes an otherwise usable FASTA/index directory created by another tool but lacking OncoTracer's exact `.oncotracer` manifests and locks. Do not manufacture or copy those records. Coordinate shared-reference maintenance outside OncoTracer, or use a new project root so OncoTracer can create its own content-addressed cache. Never delete a valid shared reference during another active run.
+An existing `REFERENCE_ROOT/references/samurai_hg38` or
+`REFERENCE_ROOT/references/samurai_ichorcna_hg38_500kb` is external and read-only. A checksum, manifest, physical-lock, tool-identity, layout, or symlink error there stops the run without repair. This includes an otherwise usable FASTA/index directory created by another tool but lacking OncoTracer's exact `.oncotracer` manifests and locks. Do not manufacture or copy those records. Coordinate shared-reference maintenance outside OncoTracer, or use a new project root so OncoTracer can create its own content-addressed cache. Never delete a valid shared reference during another active run.
 
-qDNAseq annotations are published under `project/.oncotracer/reference-cache/qdnaseq-hg38-<binsize>kb-*/generations/`. A failed build leaves no current-generation pointer and is safe to rerun. A changed published generation fails closed rather than being repaired in place. OncoTracer deliberately ignores and preserves the older `project/.oncotracer/qdnaseq-bin-data` location.
+qDNAseq annotations are published under `REFERENCE_ROOT/.oncotracer/reference-cache/qdnaseq-hg38-<binsize>kb-*/generations/`. A failed build leaves no current-generation pointer and is safe to rerun. A changed published generation fails closed rather than being repaired in place. OncoTracer deliberately ignores and preserves the older `REFERENCE_ROOT/.oncotracer/qdnaseq-bin-data` location.
 
 ## 13. Classifier or GISTIC2 failures
 

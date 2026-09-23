@@ -18,6 +18,20 @@ and SSH access, see [terminal and headless servers](headless.md).
 
 The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`. Variant-enabled images also include isolated `variants` and `ffperase` environments; the updated image adds the legacy `strelka2` runtime.
 
+## Which analyses does each backend support?
+
+| Analysis | Conda / host / Poetry | Updated Docker image | Singularity / Apptainer backend |
+| --- | --- | --- | --- |
+| CNA and optional CNA reports | Yes | Yes | Yes |
+| CNA plus small variants | With the requested optional tools | Yes, use the dated variant image below | Not supported |
+| ONT methylation | With separate compatible tools/models | Not supported | Not supported |
+| Existing BAMs, variants only | Direct `oncotracer variants` command | Explicit container command in the [variant reference](variants_reference.md#conda-and-docker) | No integrated route |
+
+An existing caller-specific SIF can supply ClairS-TO or FFPERASE on the host.
+That is different from selecting Singularity for the complete OncoTracer pipeline.
+A core `doctor` pass checks the CNA toolchain; variant callers and resources
+have their own preflight when variants are selected.
+
 ## Conda
 
 ```bash
@@ -90,7 +104,7 @@ oncotracer run --backend docker \
 Choose either setup route for a new project. For fully unattended FASTQ setup,
 use the [explicit sample commands](headless.md) with `--non-interactive`.
 
-This dated image includes the synthetic FASTQ integration checks described in
+This dated image was tested with the synthetic FASTQ integration checks described in
 [small-variant calling](variants.md#run-cna-and-variants-with-docker). The stable
 release below predates this optional variant branch.
 
@@ -140,7 +154,7 @@ a container preflight checks them before alignment. Docker does not nest
 ClairS-TO or FFPERASE SIF execution. External source/model folders and existing
 ANNOVAR databases remain host resources and are mounted read-only. Browser setup
 hides host prefix and SIF fields when Docker is selected. Docker methylation and
-Singularity with small variants remain unsupported.
+the full Singularity backend with small variants remain unsupported.
 
 For direct Compose inspection:
 
@@ -229,6 +243,20 @@ Keep all configured files under storage visible to the backend. Avoid symlinks w
 oncotracer provenance --json
 oncotracer doctor --backend docker
 ```
+
+For the dated variant image, inspect that exact image as well; the host launcher
+and container can come from different commits:
+
+```bash
+docker run --rm carlosfarkas/oncotracer:fastq-variants-20260922 provenance --json
+oncotracer doctor --backend docker \
+  --image carlosfarkas/oncotracer:fastq-variants-20260922
+docker image inspect --format '{{json .RepoDigests}}' \
+  carlosfarkas/oncotracer:fastq-variants-20260922
+```
+
+Record the digest you used with the study. `doctor` here checks core tools;
+variant setup/preflight checks the requested caller resources separately.
 
 Stable release records contain the exact source commit, deterministic source-tree SHA-256, copied-executable SHA-256, container digest, and successful native-CI and parity workflow identities. Prefer the immutable digest from `release-provenance.json` when recording a formal analysis.
 

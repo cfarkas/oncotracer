@@ -42,11 +42,11 @@ If you saved the configuration without running, use:
 
 ```bash
 oncotracer check --config "$PWD/my-study/config/run.yml"
-oncotracer run --config "$PWD/my-study/config/run.yml"
+oncotracer setup --project "$PWD/my-study" --run
 ```
 
-The `run` command uses the most recently installed backend unless you pass
-`--backend`. See [run, stop and resume](running.md) for continuing an interrupted analysis.
+This starts the saved project with its selected backend and settings.
+See [run, stop and resume](running.md) for more options.
 
 ## Choose a tutorial
 

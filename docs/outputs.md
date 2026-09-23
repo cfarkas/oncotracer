@@ -1,19 +1,20 @@
 # Output files
 
-Results go to the `outdir` saved in your YAML. Open `index.html` for the dashboard
-and `06_workflow_summary/final_report.html` for the combined report. Check which
-samples completed, then inspect their copy-number tables and plots.
-Use a new results directory for a different analysis; OncoTracer will not adopt
-an unrelated nonempty directory. See [resume and output safety](running_details.md#output-ownership-and-container-mounts).
+## Start here
 
-Set one shell variable so the commands below are easy to reuse:
+1. Click **Open results** in the setup browser, or open `results/index.html`.
+2. Read the run status to see which samples completed.
+3. Open the result tables and plots for those samples.
+
+For a terminal review, set `OUT` to the `outdir` in your YAML:
 
 ```bash
-OUT="/absolute/path/my-study/results" # replace with the outdir from your YAML
+OUT="/absolute/path/my-study/results"
 cat "$OUT/06_workflow_summary/workflow_summary.txt"
 ```
 
-If `cat` says the file does not exist, either the run has not finished or `OUT` does not match the YAML.
+If the file is missing, check the path and whether the run has finished.
+To continue an interrupted run, follow [Resume](running.md#resume-behavior).
 
 Stage indexes use four sections: **Primary results**, **Quality control**,
 **Supporting files**, and **Diagnostics**. Open the primary tables/reports first;
@@ -32,8 +33,9 @@ requested. To add it later, see [reports for a completed run](llm_reports.md#add
 | `05_cna_classifier/` | Where are classifier, clinician and knowledge/LLM reports? | Optional research interpretation and its supporting evidence |
 | `06_workflow_summary/` | What completed, and how do the saved findings compare? | Combined report, completion status and provenance; source results retain their own status |
 | `07_methylation/` | What optional ONT modified-base/classifier result and provenance were produced? | Independent optional research result; review its status before predictions |
+| `08_variants/` | Which SNV/indel candidates and annotations were produced? | Optional caller-specific VCFs and evidence; review calling, filtering and annotation status separately |
 
-Do not report temporary alignment/caller intermediates or `.oncotracer-native/` ledger files as scientific results. Preserve the ledger and trace for audit, but use the numbered stage-02/03 outputs for exact scientific values.
+Do not report temporary alignment/caller intermediates or `.oncotracer-native/` ledger files as scientific results. Preserve the ledger and trace for audit, but use stage 02/03 for CNA values and stage 08 for variant calls.
 
 ## Stage 01: alignment and initial caller
 
@@ -74,7 +76,7 @@ The samplesheet preserves whether each input was submitted as `tumor` or
 sample-derived panel is created. Audit independent completion as follows:
 
 ```bash
-SHEET="$PWD/project/config/illumina.samplesheet.csv"
+SHEET="/absolute/path/to/samplesheet.csv" # use illumina_samplesheet from your YAML
 QDNA="$OUT/01_samurai_illumina/qdnaseq"
 
 cat "$SHEET"
@@ -234,7 +236,22 @@ With `methylation_only: true`, `cna_status` is `not_requested`; absence of CNA o
 
 Methylation and CNA are independent branches: stage 07 remains valid when CNA fails, and stages 01–06 may remain valid when methylation is incomplete. In either partial case, the final command exits nonzero and `workflow_summary.json` records `cna_status`, `methylation_status`, and the relevant sample lists. Do not present a missing classifier output as a negative classification.
 
+## Stage 08: optional variants
+
+Open **08 · Small variants** in the dashboard. Start with the status file:
+
+```bash
+python3 -m json.tool "$OUT/08_variants/variant_status.json"
+```
+
+Each sample/caller has its own VCF and evidence table under
+`08_variants/samples/`. Successful calling, zero calls, skipped annotation and
+failed calling are different outcomes. See the [variant output table](variants_reference.md#read-the-outputs)
+for filenames and meanings.
+
 ## Confirm a run before sharing it
+
+For a CNA run, inspect these files. They are not expected for a variants-only or methylation-only run. File existence alone does not establish success; check the summary first.
 
 ```bash
 test -s "$OUT/06_workflow_summary/workflow_summary.txt"                # summary exists
@@ -244,4 +261,4 @@ test -s "$OUT/04_cna_custom_plots/cna_per_sample_pages.pdf"           # plots ex
 find "$OUT" -type f -name '*.command.err' -size +0c -print             # review any non-empty task stderr files
 ```
 
-Non-empty standard error is not automatically a failure--many tools write progress there--but it must be reviewed. Preserve the YAML, samplesheet, `oncotracer provenance --json`, input/reference checksums, container digest or five Conda explicit specifications, and workflow summary with any released result.
+Non-empty standard error is not automatically a failure--many tools write progress there--but it must be reviewed. Preserve the YAML, samplesheet, `oncotracer provenance --json`, input/reference checksums, container digest or explicit package specifications for every environment used, and workflow summary with any released result.

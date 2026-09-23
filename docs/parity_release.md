@@ -2,6 +2,15 @@
 
 A v2 tag is not created from file-existence smoke tests. Two full public-data workflows run both the frozen v1.1 implementation and the candidate native v2 implementation from the same inputs and shared reference cache.
 
+## Scope of this gate
+
+These public-data gates compare **CNA outputs** with frozen v1.1. They do not
+benchmark small-variant sensitivity, FFPERASE accuracy, ONT variant models or
+methylation classification. The dated Docker integration image has additional
+caller/startup and synthetic-workflow checks; those do not replace the stable
+release's complete CNA parity audits. A successful check on an earlier commit
+is not evidence that every later source commit passed the same gate.
+
 ## QuickStart 1 gate
 
 The gate completes both the Illumina ERR12341627 and ONT DRR165691 analyses.
@@ -35,7 +44,7 @@ release; an ordinary main update does not replace an existing release.
 
 ## Hosted-runner capacity limits
 
-The full parity gates and five-environment container build are intentionally
+The full parity gates and container build are intentionally
 fail-closed before they download public reads, install scientific environments,
 pull pinned images, or publish anything. GitHub's documented standard public
 `ubuntu-24.04` runner provides 4 CPUs, 16 GB RAM, and 14 GB SSD storage.
@@ -57,7 +66,9 @@ and (for QuickStart 1) `ichorcna` from the committed definitions, records
 explicit exports and executable probes, and deletes only its run-ID-owned Conda
 package cache. Native execution uses those exact prefixes with the host backend.
 
-The measured shared reference is 15,852,699,648 bytes (rounded to 16 GiB).
+The following measurements describe the original **core CNA parity workload**,
+not the expanded variant-enabled image. The measured shared reference is
+15,852,699,648 bytes (rounded to 16 GiB).
 QuickStart 1 pinned image virtual sizes total 14,850,685,496 bytes (14 GiB),
 and its frozen outputs and inputs each round to 1 GiB. QuickStart 2 images total
 8,188,638,552 bytes (8 GiB), frozen output rounds to 6 GiB, and inputs round to
@@ -80,11 +91,19 @@ passwordless noninteractive sudo is available; otherwise it stops with the
 exact missing-command list. Thus an ample-memory preconfigured runner requires
 neither sudo package mutation nor sudo swap operations.
 
-The Native v2 CI Docker job and permanent release publisher each require 40 GiB
-free and 15 GiB physical RAM: 14 GiB for the final five scientific environments,
-18 GiB for transient solves, package downloads, and image export, plus an 8 GiB
-reserve. Their preflight runs before the Docker build, and the publisher runs it
-before any registry or release mutation.
+The current Native v2 CI Docker job builds **eight environments**: five core
+CNA environments plus `variants`, `ffperase` and `strelka2`, with additional
+native ONT caller runtimes. Its configured preflight requires **72 GiB free and
+15 GiB physical RAM** before building. This extends the original 40 GiB CNA
+budget by 20 GiB for variant/ONT runtimes and 12 GiB for ONT pull/export work.
+These are configured capacity allowances, not new measured peak-usage claims.
+
+The stable `release-v2.yml` publisher uses the same **72 GiB free / 15 GiB RAM**
+guard for this expanded Dockerfile before any registry/release mutation. The
+original 40 GiB component is 14 GiB for the five core environments, 18 GiB for
+transient solve/export, and an 8 GiB reserve. The dated integration image does
+not change the existing stable release or convert its earlier core-capacity
+measurements into expanded-image measurements.
 
 These requirements exceed the standard runner's guaranteed storage. A
 repository administrator may explicitly set `ONCOTRACER_HEAVY_RUNNER` to the
@@ -120,7 +139,7 @@ scripts/validate_v2_release.sh \
 
 The driver is CPU-only (`CUDA_VISIBLE_DEVICES` is empty and `NVIDIA_VISIBLE_DEVICES=void`) and never queries, resets, configures, or loads NVIDIA devices. This keeps release validation isolated from GPU-backed sequencing services.
 
-The driver refuses an empty path, `/`, the repository checkout or any path inside it, a validation/reference path overlap, a dirty checkout, or a non-empty validation directory without its release-driver sentinel and `--resume`. Its content-derived stage signatures include the exact source, command, inputs, tool identity, and explicit Conda specifications; complete output manifests are regenerated and compared before a completed stage is reused. The five-environment probe uses exact prefix executables; in particular, GISTIC derives the one usable `share/mcr-*/v*` runtime exclusively from its exact prefix and must return the real `gp_gistic2_from_seg` usage signature with exit status zero. It downloads the official self-contained Nextflow 26.04.6 distribution and verifies SHA-256 `182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c`; that executable runs only the immutable v1.1 comparator at commit `032c1268fa7fdcadc48087055066d7a9fc59bd89`. Before any baseline starts, the nested SAMURAI v1.4.0 source must resolve to commit `6a901940288b008237703c6b181d447e7dee4fcf`. The copied v2 executable runs every native operation from outside the checkout with Python path injection disabled, and any scientific parity failure stops the script.
+The driver refuses an empty path, `/`, the repository checkout or any path inside it, a validation/reference path overlap, a dirty checkout, or a non-empty validation directory without its release-driver sentinel and `--resume`. Its content-derived stage signatures include the exact source, command, inputs, tool identity, and explicit Conda specifications; complete output manifests are regenerated and compared before a completed stage is reused. The driver's five-core-environment probe uses exact prefix executables; in particular, GISTIC derives the one usable `share/mcr-*/v*` runtime exclusively from its exact prefix and must return the real `gp_gistic2_from_seg` usage signature with exit status zero. It downloads the official self-contained Nextflow 26.04.6 distribution and verifies SHA-256 `182a63c74074e2dc7956ffa3c8cd59de952ed2c44394e21faf5e1736b945444c`; that executable runs only the immutable v1.1 comparator at commit `032c1268fa7fdcadc48087055066d7a9fc59bd89`. Before any baseline starts, the nested SAMURAI v1.4.0 source must resolve to commit `6a901940288b008237703c6b181d447e7dee4fcf`. The copied v2 executable runs every native operation from outside the checkout with Python path injection disabled, and any scientific parity failure stops the script.
 
 The final `bundles/` directory contains separate QuickStart audit archives, a deterministic combined `oncotracer-v2.1.0-parity-audit.tar.gz`, and `SHA256SUMS`. The audits retain input and output manifests, exact Conda specifications, qDNAseq annotation provenance, native traces, frozen-comparator traces/reports, stage logs, source identities, and the stage-ledger snapshot. The driver creates evidence only; it does not merge, tag, or publish a release.
 

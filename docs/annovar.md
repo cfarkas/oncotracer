@@ -33,6 +33,18 @@ Autodetect. You can also choose **Skip ANNOVAR annotation** and retain variant
 calling. Software discovery cannot determine the reference build from your
 intent: choose databases matching the actual alignment/reference.
 
+## Resolve common discovery results
+
+| Reported result | What to check |
+| --- | --- |
+| Installation found, database missing | Select the database folder separately and confirm the complete TXT/FASTA pair for hg38 or hg19. |
+| Database found, installation missing | Supply the directory containing all four executable Perl helpers below. |
+| Explicit path unavailable | Correct that path; discovery preserves it instead of replacing your choice. |
+| RefSeq available, no ClinVar | Gene annotation can run. Add matching-build ClinVar separately only if needed. |
+
+A folder full of `.gz` archives is not an unpacked database installation. Obtain
+and unpack the matching files outside OncoTracer, then repeat the check.
+
 ## What must already be available?
 
 | Resource | Required locally |

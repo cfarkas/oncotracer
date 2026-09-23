@@ -188,8 +188,7 @@ oncotracer run --backend conda \
 ```
 
 Keep the terminal open. Success ends with `OncoTracer native analysis completed:`.
-To resume an interrupted analysis, repeat this **same run command**. Do not
-repeat `auto` or add `--force` for an ordinary resume.
+To continue an interrupted run, repeat the command above. Completed steps are reused.
 
 ## 6. Review the results
 

@@ -42,6 +42,8 @@ and remote browser access.
 | `outdir` | Where analysis results go |
 | `lpwgs_root` | Where reusable reference files go |
 | `threads` | CPU worker threads to request |
+| `variant_specimen_type` | `fresh` or `ffpe` for optional variant analysis |
+| `variant_callers` | Platform-compatible variant callers; see the variant guide |
 | `methylation` | Add ONT methylation analysis |
 | `methylation_only` | Skip copy-number analysis when `true` |
 | `methylation_classifier` | `marlin` for leukemia or `sturgeon` for CNS research |
@@ -53,8 +55,9 @@ Keep the generated caller and bin-size settings for your first run. Leave `force
 ## Other configuration routes
 
 - For many FASTQ files and a sample table, use [batch setup](auto_params.md).
+- For variant callers, Fresh/FFPE processing and matched normals, use the [variant guide](variants.md).
 - For methylation tools, model files, and CPU options, use the [methylation guide](configuration/methylation.md).
 - To edit YAML yourself, see [YAML basics](configuration/yaml_basics.md), [Illumina settings](configuration/illumina.md), or [ONT settings](configuration/ont.md).
 - For an individual advanced field, use the [parameter reference](configuration/parameter_reference.md).
 
-Tumor and normal samples are analyzed independently. Normal rows are not pooled into a reference for the tumor rows.
+For CNA analysis, tumor and normal samples are analyzed independently; normal rows are not pooled into a reference. Somatic Strelka2 variant calling requires an explicit [tumor-to-normal pairing](variants_reference.md#strelka2-germline-and-somatic-calling).

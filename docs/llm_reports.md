@@ -1,8 +1,9 @@
 # LLM-assisted reports
 
-The report LLM writes short, source-linked **literature drafts** about detected
-CNA features. It does not assign the tumor type, change CNA calls, or interpret
-the methylation classifier. Those results remain separate.
+The report LLM can draft text from retrieved literature or the local CNA catalog.
+This page covers **literature drafts**; see [offline catalog drafts](models_pathology.md#optional-offline-catalog-drafts)
+for the other route. It does not assign tumor type, change CNA calls, or interpret
+methylation predictions. Those results remain separate.
 
 ## Add reports to a completed run
 
@@ -59,8 +60,9 @@ Standard Transformers encoder–decoder and causal language models are supported
 model repositories requiring custom Python code are not executed.
 
 Alternatively, use a Hugging Face model ID, optionally pinned as
-`organization/model@commit`. With `local_files_only: true`, it must already be
-cached. Set that field to `false` only to allow model downloads. A comma-separated
+`organization/model@commit`. With
+`knowledge_literature_llm_local_files_only: true`, it must already be cached.
+Set that exact field to `false` only to allow model downloads. A comma-separated
 model list supplies fallbacks, in order. Model size and draft quality vary; a
 small model may fail the required response format and use a labeled retrieved-text
 or catalog fallback.

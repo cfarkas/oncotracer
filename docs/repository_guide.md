@@ -2,7 +2,7 @@
 
 ## For your first analysis
 
-Start with the [README](https://github.com/cfarkas/oncotracer#readme),
+Start with the [README](https://github.com/cfarkas/oncotracer/blob/main/README.md),
 [install OncoTracer](installation.md), then use the [browser setup](setup.md).
 Run analyses in your own project folders. The source checkout supplies the
 software and should stay in place after an editable installation.

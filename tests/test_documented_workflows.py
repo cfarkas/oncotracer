@@ -258,7 +258,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 if relative == "docs/public_cohort.md":
                     # These alternatives create the same project. Exercise the
                     # scripted cohort here; browser mapping has separate coverage.
-                    workflow_text = workflow_text.split("## Alternative:", 1)[1]
+                    workflow_text = workflow_text.split("## Alternative:", 1)[1].split("## Resume", 1)[0]
                 configs = self.steps(workflow_text, base, samples)
                 self.assertTrue(all(config["hg38_auto_download"] for config in configs))
                 for config in configs:
@@ -345,7 +345,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
             ]
         self.assertTrue(setup.non_interactive)
         self.assertEqual((setup.mode, setup.analysis, setup.backend, run.backend), ("illumina", "cna", "docker", "docker"))
-        self.assertEqual(setup.image, "carlosfarkas/oncotracer:fastq-variants-20260921")
+        self.assertEqual(setup.image, "carlosfarkas/oncotracer:fastq-variants-20260922")
         self.assertEqual(run.image, setup.image)
         self.assertEqual(Path(check.config), Path(setup.project) / "config/run.yml")
         self.assertEqual(run.config, check.config)

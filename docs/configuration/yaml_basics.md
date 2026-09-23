@@ -3,7 +3,8 @@
 [Guided setup](../setup.md) creates a commented YAML for you. Edit that file when you need to change settings; the examples below are for writing one by hand.
 
 Change an existing key's value instead of adding the same key again. The blocks
-below are alternatives, not sections to concatenate into one file. Create the
+with complete configurations are alternatives. For small settings fragments,
+update the matching keys in your chosen file rather than appending duplicates. Create the
 [Illumina samplesheet](illumina.md#manual-samplesheet) or
 [ONT barcode inputs](ont.md#arrange-barcode-fastqs) before using the matching YAML.
 
@@ -21,7 +22,16 @@ run_cna_classifier: false
 force: false
 ```
 
-Nested mappings and lists are rejected. Use comma-separated values where a parameter accepts multiple names.
+Indented YAML mappings and block lists are rejected. Use comma-separated values
+where a parameter accepts multiple names. A field that explicitly requires a
+mapping uses an inline JSON object, for example Strelka2's confirmed sample pairs:
+
+```yaml
+variant_matched_normals: {"TUMOR01": "NORMAL01"}
+```
+
+This pairing field applies only when `strelka2_somatic` is selected; see the
+[complete paired example](../variants_reference.md#strelka2-germline-and-somatic-calling).
 
 Incorrect:
 
@@ -59,10 +69,10 @@ mkdir -p "$PROJECT_DIR/config"
 
 cat > "$PROJECT_DIR/config/illumina.manual.yml" <<YAML
 mode: illumina
-lpwgs_root: $PROJECT_DIR/reference
+lpwgs_root: "$PROJECT_DIR/reference"
 hg38_auto_download: true
-outdir: $PROJECT_DIR/results/illumina
-illumina_samplesheet: $PROJECT_DIR/config/illumina.samplesheet.csv
+outdir: "$PROJECT_DIR/results/illumina"
+illumina_samplesheet: "$PROJECT_DIR/config/illumina.samplesheet.csv"
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -83,10 +93,10 @@ mkdir -p "$PROJECT_DIR/config"
 
 cat > "$PROJECT_DIR/config/ont.manual.yml" <<YAML
 mode: ont
-lpwgs_root: $PROJECT_DIR/reference
+lpwgs_root: "$PROJECT_DIR/reference"
 hg38_auto_download: true
-outdir: $PROJECT_DIR/results/ont
-ont_folder: $PROJECT_DIR/input/fastq_pass
+outdir: "$PROJECT_DIR/results/ont"
+ont_folder: "$PROJECT_DIR/input/fastq_pass"
 ont_barcodes: barcode01,barcode02
 ont_sample_names: Patient_A,Patient_B
 ont_analysis_type: liquid_biopsy
@@ -143,7 +153,9 @@ oncotracer run --backend conda \
 
 ## Precedence
 
-The YAML supplies analysis settings. CLI options control the execution wrapper:
+The YAML supplies analysis settings. Supported CLI overrides include backend,
+threads, force, and methylation options. For example, this run uses Docker and
+eight threads regardless of the installed default backend or YAML thread value:
 
 ```bash
 oncotracer run \

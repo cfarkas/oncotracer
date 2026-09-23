@@ -1,0 +1,4 @@
+sample,fastq_1,fastq_2,status
+TUMOR01,"/data/illumina_multiple_libraries/fastq/TUMOR01_R1.fastq.gz","/data/illumina_multiple_libraries/fastq/TUMOR01_R2.fastq.gz",tumor
+TUMOR02,"/data/illumina_multiple_libraries/fastq/TUMOR02_R1.fastq.gz","/data/illumina_multiple_libraries/fastq/TUMOR02_R2.fastq.gz",tumor
+NORMAL01,"/data/illumina_multiple_libraries/fastq/NORMAL01_R1.fastq.gz","/data/illumina_multiple_libraries/fastq/NORMAL01_R2.fastq.gz",normal
