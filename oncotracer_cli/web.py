@@ -250,7 +250,10 @@ class WebState:
                 # dictionaries are invalid rather than silently truthy defaults.
                 if key in data and data[key] not in (None, ""):
                     from .setup import VARIANT_BOOLEAN_FIELDS
-                    if key in VARIANT_BOOLEAN_FIELDS:
+                    if key == "variant_matched_normals":
+                        from .strelka2 import parse_matched_normals
+                        setattr(args, key, parse_matched_normals(data[key]))
+                    elif key in VARIANT_BOOLEAN_FIELDS:
                         if type(data[key]) is not bool:
                             raise OncoTracerError(f"{key} must be true or false.")
                         setattr(args, key, data[key])

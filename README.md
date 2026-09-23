@@ -71,13 +71,13 @@ For your own data, start the local server using the backend command above, or pr
 oncotracer setup --project "$PWD/my-study" --mode illumina --input-folder /data/illumina
 ```
 
-1. **Choose Illumina or ONT**, browse to FASTQs, and assign samples to Normal or Cancer. Unassigned samples are excluded; controls are analyzed independently.
+1. **Choose Illumina or ONT, then Fresh or FFPE**, before selecting input files. Assign samples to Normal or Cancer; unassigned samples are excluded. Preservation comes from specimen records, not platform.
 2. **Choose settings**, including threads, reference, reports and optional variant callers. Use separate projects for Fresh and FFPE specimens.
 3. **Save configuration and check**, review the configuration, then **Run analysis**. Follow progress and open results when complete.
 
 The server opens **127.0.0.1:8888**. Keep its terminal open; if necessary, copy the complete printed URL including the session code after `#`. See the [browser walkthrough](docs/browser_demo.md) or [full setup guide](docs/setup.md).
 
-**Terminal-only new project:** `oncotracer setup --terminal --project "$PWD/my-study" --backend conda --run`. Add `--terminal --run` to the Conda/Docker examples above for terminal questions followed by execution. To run saved settings later, choose the matching backend:
+**Terminal-only version of this example:** `oncotracer setup --terminal --project "$PWD/my-study" --mode illumina --input-folder /data/illumina --backend conda --run`. Add `--terminal --run` to the Conda/Docker examples above for terminal questions followed by execution. To run saved settings later, choose the matching backend:
 
 ```bash
 oncotracer check --config "$PWD/my-study/config/run.yml"

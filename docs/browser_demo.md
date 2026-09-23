@@ -11,13 +11,15 @@ analysis.
 
 ## What to try
 
-1. Load an **Illumina** or **ONT** example. The inventory has one row per sample;
-   expand its file count to inspect FASTQ paths. ONT also shows POD5/BAM inputs.
-2. Assign samples to **Cancer** or **Normal**, using drag-and-drop or dropdowns.
-   Leave a sample unassigned to exclude it.
-3. Choose **Conda** or **Docker** and enable small variants. Compare **Fresh** and
-   **FFPE** settings and the callers available for each sequencing platform.
-4. Choose preservation to reveal caller tools/models, filtering and annotation.
+1. Choose **Illumina** or **ONT**, then explicitly choose **Fresh** or **FFPE**
+   before selecting inputs. Either platform supports either preservation choice;
+   the demo does not assign preservation from the platform.
+2. Discover inputs: each sample has one inventory row with expandable FASTQ paths;
+   ONT also shows POD5/BAM inputs. Assign samples to **Cancer** or **Normal**,
+   using drag-and-drop or dropdowns. Unassigned samples are excluded.
+3. Choose **Conda** or **Docker** and enable small variants. Explore the callers
+   available for the selected platform and preservation.
+4. Review caller tools/models, filtering and annotation.
    Try the readable ONT profile choices, automatic model preparation, FFPE
    license control and optional Varlociraptor presence filter. Open paths and try
    **Autodetect resources** or a path's **Autodetect** button. Resource results
@@ -55,6 +57,9 @@ oncotracer setup --terminal --project "$PWD/my-study" --backend conda --run
 oncotracer setup --terminal --project "$PWD/my-study" --backend docker \
   --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants --run
 ```
+
+To record the same preservation in terminal setup, add `--variant-specimen-type fresh`
+or `--variant-specimen-type ffpe` according to your specimen records.
 
 The [headless guide](headless.md) includes fully scripted Illumina/ONT runs,
 remote-browser SSH commands, logs and resuming. The public QuickStarts include

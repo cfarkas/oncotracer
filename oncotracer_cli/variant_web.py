@@ -11,7 +11,7 @@ from .variant_model_assets import is_auto_resource, resource_download_plan
 
 
 PATH_FIELDS = (
-    'variant_targets_bed', 'variant_tool_prefix', 'variant_clair3_model',
+    'variant_targets_bed', 'variant_tool_prefix', 'variant_strelka_prefix', 'variant_clair3_model',
     'variant_clairsto_sif', 'variant_annovar_dir', 'variant_annovar_db',
     'variant_ffperase_root', 'variant_ffperase_models', 'variant_ffperase_sif',
     'variant_ffperase_prefix', 'variant_varlociraptor_scenario',
@@ -51,7 +51,7 @@ def resource_paths(config):
         paths.append(path)
         if not path.is_dir():
             continue
-        if key in ('variant_tool_prefix', 'variant_ffperase_prefix'):
+        if key in ('variant_tool_prefix', 'variant_ffperase_prefix', 'variant_strelka_prefix'):
             for directory in ('bin', 'conda-meta'):
                 parent = path / directory
                 if parent.is_dir():
@@ -147,6 +147,9 @@ def prepare_for_browser(state, data):
             if key in data:
                 if data[key] == '':
                     config.pop(key, None)
+                elif key == "variant_matched_normals":
+                    from .strelka2 import parse_matched_normals
+                    config[key] = parse_matched_normals(data[key])
                 elif key in VARIANT_BOOLEAN_FIELDS:
                     if type(data[key]) is not bool:
                         raise OncoTracerError(f"{key} must be true or false.")
@@ -157,6 +160,8 @@ def prepare_for_browser(state, data):
             if config.get(key) and not is_auto_resource(key, config[key]):
                 config[key] = str(_path(config[key], Path(loaded['config_path']).parent, key).resolve())
         request = resolve_variant_request(config, mode=config['mode'])
+        from .strelka2 import validate_samples
+        validate_samples(request, [s['sample'] for s in loaded['samples']], {s['sample']: s['status'] for s in loaded['samples']})
         threads = data.get('threads')
         maximum = state.system()['hardware']['cpu_workers_available']
         if type(threads) is not int or not 1 <= threads <= maximum:

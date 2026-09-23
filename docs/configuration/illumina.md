@@ -4,6 +4,9 @@ Use this page for Illumina settings. For a first run, follow [batch setup](../au
 or [explicit FASTQ paths](../setup.md#illumina-multiple-libraries). Each library
 gets its own copy-number analysis and outputs.
 
+**Terminal / headless versions:** both the automatic and manual examples below
+include runnable commands; neither opens browser setup.
+
 ## Recommended: Automatic Setup
 
 ### Arrange the FASTQs

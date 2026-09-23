@@ -77,6 +77,7 @@ def container_variant_config(config: Mapping[str, object]) -> dict[str, object]:
         result["_docker_skip_host_tools"] = True
     elif os.environ.get("ONCOTRACER_CONTAINER_RUNTIME") == "docker":
         result["variant_tool_prefix"] = os.environ.get("ONCOTRACER_VARIANTS_PREFIX", "/opt/oncotracer-envs/variants")
+        result["variant_strelka_prefix"] = os.environ.get("ONCOTRACER_STRELKA_PREFIX", "/opt/oncotracer-envs/strelka2")
         result["variant_ffperase_prefix"] = os.environ.get("ONCOTRACER_FFPERASE_PREFIX", "/opt/oncotracer-envs/ffperase")
     return result
 

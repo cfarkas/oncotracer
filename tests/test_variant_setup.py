@@ -56,7 +56,6 @@ class VariantSetupTests(unittest.TestCase):
         for flags, message in [
             (("--variants",), "variant-specimen-type"),
             (("--variants", "--variant-specimen-type", "fresh", "--variant-callers", "clair3"), "Variant callers for illumina"),
-            (("--variant-specimen-type", "ffpe"), "require --variants"),
             (("--variants", "--variant-specimen-type", "fresh", "--variant-callers", "bcftools,bcftools"), "only once"),
             (("--variants", "--variant-specimen-type", "fresh", "--backend", "singularity"), "backend"),
         ]:
@@ -65,6 +64,13 @@ class VariantSetupTests(unittest.TestCase):
                 self.assertEqual(code, 2, output)
                 self.assertIn(message, output)
                 self.assertFalse(self.project.exists())
+
+    def test_preservation_metadata_is_retained_without_variants(self):
+        code, output = self.cli("--variant-specimen-type", "ffpe")
+        self.assertEqual(code, 0, output)
+        config = load_flat_yaml(self.project / "config/run.yml")
+        self.assertFalse(config["run_variants"])
+        self.assertEqual(config["variant_specimen_type"], "ffpe")
 
     def state(self):
         state = WebState(self.root)

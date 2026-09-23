@@ -39,7 +39,7 @@ def render() -> str:
     page = replace_once(page, '<title>OncoTracer · Analysis setup</title>', '<title>OncoTracer · Interactive setup demo</title>')
     page = replace_once(page, '</style></head>', (ASSETS / 'demo.css').read_text() + '\n</style></head>')
     page = replace_once(page, 'Local analysis workspace', 'Synthetic setup demo')
-    page = replace_once(page, '<main>', (ASSETS / 'guide.html').read_text() + '\n<main>')
+    page = replace_once(page, '<div id="error" role="alert" class="error" hidden></div>', (ASSETS / 'guide.html').read_text() + '\n<div id="error" role="alert" class="error" hidden></div>')
     page = replace_once(page, '<h1>Configure and run an analysis</h1>', '<h2>Configure a synthetic analysis</h2>')
     page = replace_once(page, 'token=location.hash.slice(1)', "token='synthetic-demo-only'")
     page = replace_once(page, '<script>', '<script>\n' + mock + '\n</script>\n<script>')

@@ -63,6 +63,7 @@ oncotracer setup --project "$PWD/oncotracer-quickstart2/analysis" \
 ```
 
 Keep the terminal open; use its complete printed URL if the browser does not open.
+Choose preservation from the specimen records before input discovery.
 
 1. Move all three detected paired-end samples into **Cancer**, including DMSO.
 2. Review names and threads. Keep CNA, QDNAseq, **100 kb** bins and reference download.
@@ -81,11 +82,11 @@ Start with `06_workflow_summary/workflow_summary.txt`, then inspect plots and
 
 ## Alternative: scripted setup and terminal run
 
-**Skip this section if you used the browser above.** It creates the same project
-without questions. Use only one setup method per project.
-
-<details markdown="1">
-<summary>Show samplesheet, setup, check and run commands</summary>
+**Terminal / headless version:** after the downloads above, run these blocks
+instead of browser setup. They create the same three-library project without
+questions. Use only one setup method per project. Append
+`--variant-specimen-type fresh` or `--variant-specimen-type ffpe` to setup to
+record the same preservation selected in the browser, using specimen records.
 
 Create the samplesheet with absolute paths. Paste the final `CSV` line too.
 `cat >` replaces the CSV if it already exists.
@@ -107,7 +108,7 @@ cd /path/to/my/analyses_dir/
 oncotracer setup --non-interactive \
   --project "$PWD/oncotracer-quickstart2/analysis" \
   --hg38_build \
-  --mode illumina --analysis cna \
+  --mode illumina --analysis cna --backend conda \
   --samplesheet "$PWD/oncotracer-quickstart2/input/samplesheet.csv" \
   --threads 4
 ```
@@ -122,8 +123,6 @@ oncotracer run --backend conda \
 ```
 
 Use the corresponding [backend](containers.md) for Docker or Apptainer.
-
-</details>
 
 ## Optional: reuse a reference
 

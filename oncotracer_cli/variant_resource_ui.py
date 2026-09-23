@@ -16,7 +16,7 @@ STYLE = '''
 
 SCRIPT = r'''
 let variantDetectionApplying=false,variantResourceLastResult=null,variantResourceLastScope='all';
-const variantPathKeys=['variant_tool_prefix','variant_clair3_model','variant_clairsto_sif','variant_ffperase_root','variant_ffperase_models','variant_ffperase_prefix','variant_ffperase_sif','variant_annovar_dir','variant_annovar_db'];
+const variantPathKeys=['variant_tool_prefix','variant_strelka_prefix','variant_clair3_model','variant_clairsto_sif','variant_ffperase_root','variant_ffperase_models','variant_ffperase_prefix','variant_ffperase_sif','variant_annovar_dir','variant_annovar_db'];
 function variantScopeFields(scope){
   if(scope==='all')return variantPathKeys;
   if(scope==='ffperase')return variantPathKeys.filter(key=>key.startsWith('variant_ffperase'));
@@ -24,8 +24,50 @@ function variantScopeFields(scope){
   return [scope];
 }
 function variantFieldLabel(key){return document.querySelector('label[for="'+key+'"]')?.textContent||key.replace(/^variant_/,'').replaceAll('_',' ');}
+let variantPairSamples=[],variantPairSelections=new Map(),variantPairDefaults={};
+function resetVariantPairing(){variantPairSamples=[];variantPairSelections.clear();variantPairDefaults={};}
+function activeVariantCallers(){return [...document.querySelectorAll('#variant-callers input:checked,#callers input:checked')].map(field=>field.value);}
+function setVariantPairSamples(samples){
+  variantPairSamples=samples;
+  for(const [tumorName,normalName] of Object.entries(variantPairDefaults)){
+    const tumor=samples.find(row=>row.name===tumorName&&row.role==='tumor'),normal=samples.find(row=>row.name===normalName&&row.role==='normal');
+    if(tumor&&normal){variantPairSelections.set(tumor.id,normal.id);delete variantPairDefaults[tumorName];}
+  }
+  const ids=new Set(samples.map(row=>row.id));
+  for(const [tumor,normal] of variantPairSelections)if(!ids.has(tumor)||!ids.has(normal))variantPairSelections.delete(tumor);
+  renderVariantPairing();
+}
+function renderVariantPairing(){
+  const selected=activeVariantCallers(),enabled=selected.includes('strelka2_somatic');
+  show('variant-strelka-pairing',enabled);
+  show('variant-strelka-fields',selected.some(caller=>caller.startsWith('strelka2_'))&&document.getElementById('backend')?.value!=='docker');
+  const rows=document.getElementById('variant-pair-rows');rows.replaceChildren();
+  if(!enabled)return;
+  const normals=variantPairSamples.filter(row=>row.role==='normal'),tumors=variantPairSamples.filter(row=>row.role==='tumor');
+  document.getElementById('variant-pair-note').textContent=!tumors.length?'Assign or load at least one tumor sample.':!normals.length?'Add and assign a matched normal, or select Strelka2 germline / a tumor-only caller.':'Every tumor selected for Strelka2 somatic needs a confirmed match. Germline calling does not use these pairings.';
+  for(const tumor of tumors){
+    const field=document.createElement('div'),label=document.createElement('label'),select=document.createElement('select');
+    field.className='field';label.textContent='Matched normal for '+tumor.name;select.setAttribute('aria-label',label.textContent);select.dataset.variantTumor=tumor.id;
+    const blank=document.createElement('option');blank.value='';blank.textContent='Choose a confirmed matched normal…';select.append(blank);
+    for(const normal of normals){const option=document.createElement('option');option.value=normal.id;option.textContent=normal.name;select.append(option);}
+    const stored=variantPairSelections.get(tumor.id);select.value=normals.some(row=>row.id===stored)?stored:'';
+    select.onchange=()=>{if(select.value)variantPairSelections.set(tumor.id,select.value);else variantPairSelections.delete(tumor.id);invalidate();};
+    label.append(select);field.append(label);rows.append(field);
+  }
+}
+function variantPairPayload(){
+  if(!activeVariantCallers().includes('strelka2_somatic'))return {};
+  const tumors=variantPairSamples.filter(row=>row.role==='tumor');
+  if(!tumors.length)throw Error('Strelka2 somatic needs an assigned tumor and its matched normal.');
+  return Object.fromEntries(tumors.map(tumor=>{
+    const normal=variantPairSamples.find(row=>row.id===variantPairSelections.get(tumor.id)&&row.role==='normal');
+    if(!normal)throw Error('Choose the confirmed matched normal for '+tumor.name+' under Strelka2 somatic.');
+    return [tumor.name,normal.name];
+  }));
+}
 function configureVariantModelControls(config={}){
   const get=id=>document.getElementById(id);
+  if(config.variant_matched_normals)variantPairDefaults={...config.variant_matched_normals};
   const model=String(config.variant_clair3_model??get('variant_clair3_model').value??'');
   get('variant_clair3_model').value=model||'auto';
   if(config.variant_ont_profile)get('variant_ont_profile').value=config.variant_ont_profile;
@@ -66,6 +108,7 @@ function guidedVariantPayload(data){
   if(String(data.variant_callers||'').split(',').includes('clair3')&&get('variant-clair3-source').value==='auto'){
     data.variant_clair3_model='auto';data.variant_ont_profile=get('variant_ont_profile').value;
   }else data.variant_ont_profile='';
+  data.variant_matched_normals=variantPairPayload();
   const ffpe=data.variant_ffperase==='required';
   data.variant_download_resources=ffpe&&get('variant_download_resources').checked;
   data.variant_accept_ffperase_license=ffpe&&get('variant_accept_ffperase_license').checked;
@@ -92,7 +135,7 @@ configureVariantModelControls();
 function syncVariantLayout(){
   const docker=document.getElementById('backend')?.value==='docker',runtime=document.getElementById('variant-ffperase-runtime');
   if(!runtime)return;
-  syncVariantModelControls();
+  syncVariantModelControls();renderVariantPairing();
   if(!runtime.dataset.chosen)runtime.value=document.getElementById('variant_ffperase_sif').value.trim()?'sif':'native';
   show('variant-tool-prefix-fields',!docker);show('variant-clairsto-sif-fields',!docker);show('variant-ffperase-runtime-fields',!docker);
   show('variant-ffperase-prefix-fields',!docker&&runtime.value==='native');show('variant-ffperase-sif-fields',!docker&&runtime.value==='sif');
@@ -131,13 +174,13 @@ function variantResourceField(resource){
   if(resource.id==='ffperase_runtime')return 'variant_ffperase_prefix';
   if(resource.field==='docker_image'||resource.id==='docker_runtime')return 'variant_tool_prefix';
   if(resource.field)return resource.field;
-  const aliases={variant_tools:'variant_tool_prefix',samtools:'variant_tool_prefix',bcftools:'variant_tool_prefix',gatk:'variant_tool_prefix',mutect2:'variant_tool_prefix',freebayes:'variant_tool_prefix',varlociraptor:'variant_tool_prefix',clair3:'variant_tool_prefix',clairs_to:'variant_tool_prefix',docker_image:'variant_tool_prefix',clair3_model:'variant_clair3_model',clairsto_model:'variant_clairsto_platform',clairsto_sif:'variant_clairsto_sif',ffperase_root:'variant_ffperase_root',ffperase_source:'variant_ffperase_root',ffperase_models:'variant_ffperase_models',ffperase_prefix:'variant_ffperase_prefix',ffperase_runtime:'variant_ffperase_prefix',ffperase_sif:'variant_ffperase_sif',annovar_dir:'variant_annovar_dir',annovar_db:'variant_annovar_db'};
+  const aliases={variant_tools:'variant_tool_prefix',strelka2:'variant_strelka_prefix',strelka2_runtime:'variant_strelka_prefix',samtools:'variant_tool_prefix',bcftools:'variant_tool_prefix',gatk:'variant_tool_prefix',mutect2:'variant_tool_prefix',freebayes:'variant_tool_prefix',varlociraptor:'variant_tool_prefix',clair3:'variant_tool_prefix',clairs_to:'variant_tool_prefix',docker_image:'variant_tool_prefix',clair3_model:'variant_clair3_model',clairsto_model:'variant_clairsto_platform',clairsto_sif:'variant_clairsto_sif',ffperase_root:'variant_ffperase_root',ffperase_source:'variant_ffperase_root',ffperase_models:'variant_ffperase_models',ffperase_prefix:'variant_ffperase_prefix',ffperase_runtime:'variant_ffperase_prefix',ffperase_sif:'variant_ffperase_sif',annovar_dir:'variant_annovar_dir',annovar_db:'variant_annovar_db'};
   return aliases[resource.id]||'';
 }
 function variantGuideMatches(guide,scope){
   if(scope==='all')return true;
   const fields=variantScopeFields(scope);
-  const map={variant_tools:['variant_tool_prefix'],docker_image:['variant_tool_prefix','variant_ffperase_prefix','variant_ffperase_sif','variant_clairsto_sif'],clair3_caller:['variant_tool_prefix'],clair3_model:['variant_clair3_model'],clairsto_caller:['variant_tool_prefix','variant_clairsto_sif'],clairsto_model:['variant_clairsto_platform'],ffperase_source:['variant_ffperase_root'],ffperase_models:['variant_ffperase_models'],ffperase_runtime:['variant_ffperase_prefix','variant_ffperase_sif'],annovar:['variant_annovar_dir','variant_annovar_db'],container_runtime:['variant_ffperase_sif','variant_clairsto_sif']};
+  const map={variant_tools:['variant_tool_prefix'],strelka2_runtime:['variant_strelka_prefix'],docker_image:['variant_tool_prefix','variant_ffperase_prefix','variant_ffperase_sif','variant_clairsto_sif'],clair3_caller:['variant_tool_prefix'],clair3_model:['variant_clair3_model'],clairsto_caller:['variant_tool_prefix','variant_clairsto_sif'],clairsto_model:['variant_clairsto_platform'],ffperase_source:['variant_ffperase_root'],ffperase_models:['variant_ffperase_models'],ffperase_runtime:['variant_ffperase_prefix','variant_ffperase_sif'],annovar:['variant_annovar_dir','variant_annovar_db'],container_runtime:['variant_ffperase_sif','variant_clairsto_sif']};
   return (map[guide.id]||[]).some(field=>fields.includes(field));
 }
 function variantApplyPath(key,value,replace=false){

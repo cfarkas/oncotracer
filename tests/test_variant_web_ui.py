@@ -67,7 +67,7 @@ assert.equal(nodes.logs.textContent,originalLog);
                 elements = Elements(page).elements
                 ids = Counter(attrs["id"] for _, attrs in elements if "id" in attrs)
                 self.assertEqual([key for key, count in ids.items() if count > 1], [])
-                paths = ["variant_tool_prefix", "variant_clair3_model", "variant_clairsto_sif",
+                paths = ["variant_strelka_prefix", "variant_tool_prefix", "variant_clair3_model", "variant_clairsto_sif",
                          "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_prefix",
                          "variant_ffperase_sif", "variant_annovar_dir", "variant_annovar_db"]
                 discovery = {attrs["data-variant-detect"] for _, attrs in elements if "data-variant-detect" in attrs}
@@ -126,6 +126,7 @@ const nodes={
   variant_varlociraptor_scenario:{value:'/kept/advanced.yml'}
 };
 const document={getElementById:key=>nodes[key]};
+function variantPairPayload(){return {};}
 """ + "function guidedVariantPayload(data){" + function + r"""
 let value=guidedVariantPayload({variant_callers:'clair3',variant_clair3_model:'/previous/model',
   variant_varlociraptor:'required',variant_varlociraptor_scenario:'/previous/scenario.yml',

@@ -150,6 +150,8 @@ def command_variants(args) -> int:
     manifest = require_file(_path(config.get("variant_bam_manifest"), config_path.parent, "variant_bam_manifest"), "Variant BAM manifest").resolve()
     manifest_digest = sha256_file(manifest)
     bams, statuses = read_bam_manifest(manifest)
+    from .strelka2 import validate_samples
+    validate_samples(request, bams, statuses)
     if sha256_file(manifest) != manifest_digest:
         raise OncoTracerError("Variant BAM manifest changed while being read")
     reference = require_file(_path(config.get("variant_reference"), config_path.parent, "variant_reference"), "Variant reference FASTA").resolve()
@@ -169,7 +171,7 @@ def command_variants(args) -> int:
         files.append(require_file(fai, "Reference FASTA index"))
     if request.targets_bed:
         files.append(request.targets_bed)
-    _check_overlap(outdir, files, (request.clair3_model, request.tool_prefix, request.annovar_dir, request.annovar_db, request.ffperase_root, request.ffperase_models, request.ffperase_prefix))
+    _check_overlap(outdir, files, (request.clair3_model, request.tool_prefix, request.strelka_prefix, request.annovar_dir, request.annovar_db, request.ffperase_root, request.ffperase_models, request.ffperase_prefix))
     if request.varlociraptor_scenario:
         files.append(request.varlociraptor_scenario)
     input_snapshot = _snapshot(files)

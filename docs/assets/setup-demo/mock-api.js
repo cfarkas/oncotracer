@@ -48,6 +48,7 @@ function demoYaml(payload){
     Object.assign(cfg,{cna_classifier_sample_set:payload.report_context||'broad_cancer',cna_classifier_samples:selected.map(sample=>sample.name).join(','),knowledge_web:online,knowledge_literature_llm:online,knowledge_deep_literature:online,knowledge_deep_enable_llm_ranker:online,pathology_use_biomed_models:false,knowledge_catalog_llm:payload.report_detail==='models',run_gistic:Boolean(payload.gistic),gistic_required:Boolean(payload.gistic),knowledge_llm_threads:Math.min(payload.threads,4)});
   }
   cfg.run_variants=Boolean(payload.variants);
+  if(payload.variant_specimen_type)cfg.variant_specimen_type=payload.variant_specimen_type;
   if(payload.variants)for(const [key,value]of Object.entries(payload))if(key.startsWith('variant_')&&value!==undefined&&value!=='')cfg[key]=value;
   cfg.execution_backend=payload.backend;
   if(payload.backend==='docker'&&payload.docker_image)cfg.docker_image=payload.docker_image;
@@ -71,7 +72,7 @@ function demoYaml(payload){
   }
   lines.push('','# Illustrative companion config/sample_metadata.csv (not written):','# sample,sample_type,analysis_role,fastq_files');
   for(const sample of selected)lines.push('# '+[sample.name,sample.type==='custom'?sample.label:sample.type,sample.analysis_role,JSON.stringify(sample.source.files)].map(csv).join(','));
-  lines.push('# Controls are independent samples; this configuration does not create matched tumor-normal pairs.');
+  lines.push('# CNA samples are independent; only explicit variant_matched_normals entries define Strelka2 somatic pairs.');
   return lines.join('\n')+'\n';
 }
 function demoCheck(payload){
@@ -126,6 +127,7 @@ function demoVariantResources(payload){
   if(docker)resources.push({id:'variant_tools',label:'Caller tools in Docker',status:'unverified',path:payload.docker_image,detail:'The real app checks container tools during preflight. This demo does not run Docker.'});
   else found('variant_tools','Variant tool environment','variant_tool_prefix','/demo/tools/oncotracer-variants');
   if(payload.mode==='ont'&&payload.callers.includes('clair3')){if(values.variant_clair3_model==='auto')resources.push({id:'clair3_model',label:'Clair3 model',status:'download_pending',path:'',detail:'The selected model will be verified and prepared at run time. This demo does not download files.'});else found('clair3_model','Clair3 model','variant_clair3_model','/demo/resources/clair3-model','candidate','Check sequencing chemistry and basecaller compatibility; a folder name alone cannot verify a model.');}
+  if(!docker&&payload.callers.some(caller=>caller.startsWith('strelka2_')))found('strelka2_runtime','Strelka2 runtime','variant_strelka_prefix','/demo/tools/strelka2');
   if(payload.mode==='illumina'&&payload.specimen_type==='ffpe'&&values.variant_ffperase==='required'){
     found('ffperase_source','FFPERASE source','variant_ffperase_root','/demo/resources/ffperase');
     found('ffperase_models','FFPERASE models','variant_ffperase_models','/demo/resources/ffperase/models','candidate');

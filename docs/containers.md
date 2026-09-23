@@ -16,7 +16,7 @@ and SSH access, see [terminal and headless servers](headless.md).
 | Singularity/Apptainer | `oncotracer install --singularity` | HPC execution with a reusable SIF |
 | Poetry | `./oncotracer install --poetry` | Launcher development; scientific programs remain in five Conda prefixes |
 
-The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`. Variant-enabled images also include isolated `variants` and `ffperase` environments.
+The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`. Variant-enabled images also include isolated `variants` and `ffperase` environments; the updated image adds the legacy `strelka2` runtime.
 
 ## Conda
 

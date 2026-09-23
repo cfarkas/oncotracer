@@ -1,10 +1,9 @@
 # ONT methylation: leukemia or CNS classification
 
-Choose **MARLIN** for leukemia research or **Sturgeon** for CNS-tumor research. You must select the appropriate classifier; OncoTracer does not decide the disease family for you. Predictions need review alongside the other laboratory findings.
+Choose **MARLIN** for leukemia or **Sturgeon** for CNS-tumor research. Select the classifier explicitly; review predictions alongside other laboratory findings.
 
-Start with [installation](../installation.md). Tool and model details are in the
-[resource reference](methylation_reference.md). Both browser and terminal routes
-are below; see [headless servers](../headless.md) for SSH and unattended operation.
+[Install first](../installation.md). Browser and terminal routes are below; see
+[resources](methylation_reference.md) and [SSH/headless](../headless.md) for details.
 
 ## What you need
 
@@ -17,19 +16,20 @@ You need matching FASTQs, methylation input, and an installed classifier:
 | Dorado, Modkit, and samtools | Align reads and extract methylation |
 | MARLIN or Sturgeon tools and model files | Compare the methylation pattern with known classes |
 
-A **modified-base BAM** is a BAM containing methylation calls in its `MM` and `ML` tags. If MinKNOW saved these, reuse them: this avoids basecalling the signal again. An ordinary BAM without these tags, or FASTQ alone, is insufficient. POD5 is raw signal and needs compatible Dorado basecalling and modification models.
+**Modified-base BAMs** contain `MM`/`ML` tags; reusing them avoids basecalling. Ordinary BAMs or FASTQs alone are insufficient. Raw POD5 needs compatible Dorado basecalling and modification models.
 
-Use completed files from a stopped run, or a separate snapshot of completed batches. Do not use files MinKNOW is still writing, duplicate batches, or different basecalls of the same reads. Select barcodes explicitly. Include `unclassified` only when you can justify assigning those reads to a sample; do not pool it across patients.
+Use completed files or a snapshot. Exclude files MinKNOW is still writing, duplicates and alternate basecalls of the same reads. Select barcodes explicitly; include `unclassified` only with a justified sample assignment, never pooled across patients.
 
 ## 1. Prepare the tools once
 
-Use the Conda backend for OncoTracer. Optional methylation tools and classifier assets are installed separately; `oncotracer install --conda` does not install them. Their links and expected filenames are in [local resources](methylation_reference.md#obtain-the-optional-resources).
+Use Conda. Methylation tools and classifier assets are separate from `oncotracer install --conda`; see [local resources](methylation_reference.md#obtain-the-optional-resources).
 
-Have the paths to the classifier model, probe BED, and executables ready. For MARLIN, also locate its feature-order `.RData` and class-annotation `.xlsx` files. A **probe** is a genomic site the classifier knows how to use. Setup records file checksums automatically, so you do not need to type hashes into YAML.
+Locate executables, model and probe BED; MARLIN also needs feature-order `.RData` and class-annotation `.xlsx` files. Setup records checksums. Probes are genomic sites recognized by the classifier.
 
 ## 2. Link inputs in the browser
 
-Run `oncotracer setup` and choose **Oxford Nanopore**. **Browse run** fills matching
+Run `oncotracer setup`, choose **Oxford Nanopore**, then **Fresh or FFPE** from
+specimen records. **Browse run** fills matching
 `fastq_pass`, POD5 and `bam_pass` paths. You can also browse each path separately,
 including a single barcode folder or a nonbarcoded ligation FASTQ folder.
 Assign and name the samples, then choose **Methylation classification** or **CNA and methylation**.
@@ -55,12 +55,11 @@ oncotracer setup --terminal \
   --cpu --threads 8
 ```
 
-This runs entirely in the terminal and asks for remaining tool and model paths.
-It saves `/work/leukemia-study/config/run.yml`; use the check/run commands below.
-`--no-browser` would still start a web server, so use `--terminal` here.
+This asks for remaining tool/model paths in the terminal. Check/run the saved
+`/work/leukemia-study/config/run.yml` below. `--no-browser` still starts a server.
 
-For unattended reuse, add `--non-interactive --resources /work/previous-study/config/run.yml`
-to this command and choose a new project path. The resource YAML must contain
+For unattended reuse, replace `--terminal` with
+`--non-interactive --resources /work/previous-study/config/run.yml` and choose a new project. The resource YAML must contain
 all tools and assets for the selected classifier; missing settings stop setup.
 The explicit FASTQ, barcode and methylation input flags select the new sample.
 
@@ -74,13 +73,43 @@ The explicit FASTQ, barcode and methylation input flags select the new sample.
 | `--cpu` | Keep methylation tools on CPU, including MARLIN |
 | `--threads 8` | Request eight CPU worker threads |
 
-For CNS research, select `--classifier sturgeon` and provide its resources. Setup asks you to confirm that you obtained and accepted the applicable Sturgeon license.
+For CNS, the explicit terminal counterpart is below. Confirm the applicable
+Sturgeon license when prompted; setup does not grant a license.
+
+### Terminal / headless: CNS using existing BAMs
+
+```bash
+oncotracer setup --terminal --run --project /work/cns-study \
+  --backend conda --mode ont --analysis methylation \
+  --reads-folder /data/run/fastq_pass --barcodes barcode01 --sample-names sampleA \
+  --classifier sturgeon --modbam /data/run/bam_pass --cpu --threads 8
+```
 
 ## If you only have raw POD5
 
-Use `--pod5-dir /data/run/pod5_pass` in place of `--modbam`. Setup will also ask for the Dorado basecalling and matching 5mCG/5hmCG model directories. Keep the matching FASTQ input to define sample membership.
+These complete terminal alternatives ask for the classifier resources plus
+matching Dorado basecalling/5mCG/5hmCG models, then check and run. FASTQs still
+define sample membership. Use a new project for each alternative.
 
-CPU basecalling can take days even for a small number of long raw signals. Use existing modified-base BAMs when available. `--gpu` allows GPU basecalling and MARLIN inference; choose `--cpu` if that GPU is busy with live sequencing. Modkit and Sturgeon use CPU.
+### Terminal / headless: leukemia using POD5
+
+```bash
+oncotracer setup --terminal --run --project /work/leukemia-pod5-study \
+  --backend conda --mode ont --analysis methylation \
+  --reads-folder /data/run/fastq_pass --barcodes barcode01 --sample-names sampleA \
+  --classifier marlin --pod5-dir /data/run/pod5_pass --cpu --threads 8
+```
+
+### Terminal / headless: CNS using POD5
+
+```bash
+oncotracer setup --terminal --run --project /work/cns-pod5-study \
+  --backend conda --mode ont --analysis methylation \
+  --reads-folder /data/run/fastq_pass --barcodes barcode01 --sample-names sampleA \
+  --classifier sturgeon --pod5-dir /data/run/pod5_pass --cpu --threads 8
+```
+
+CPU basecalling can take days. `--gpu` enables GPU basecalling/MARLIN; keep `--cpu` when the GPU is busy. Modkit and Sturgeon use CPU.
 
 ## 3. Check and run
 
@@ -90,9 +119,9 @@ oncotracer run --backend conda \
   --config /work/leukemia-study/config/run.yml --cpu
 ```
 
-`check` reports missing paths or settings without starting analysis. It does not test the biological quality of the data. During the run, MARLIN's R/Python dependencies are checked before read processing. The first analysis may download the hg38 reference into your project's reference cache.
+`check` verifies paths/settings, not biological quality. Run checks MARLIN dependencies before processing and may download hg38 into the project reference cache.
 
-You can reuse tool and model settings for another project with `setup --resources /work/leukemia-study/config/run.yml`; supply the new sample paths separately. For all explicit resource flags, use `oncotracer setup --help`.
+Reuse tool/model settings with `setup --resources /work/leukemia-study/config/run.yml`; supply new sample paths. See `oncotracer setup --help` for resource flags.
 
 ## Read the result
 

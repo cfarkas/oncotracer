@@ -6,6 +6,21 @@ The images below are rendered from OncoTracer output files. A plot demonstrates 
 
 **Provenance:** ENA run `ERR12341627`, processed by the public Illumina branch in QuickStart Example 1 with qDNAseq at 100 kb. See [QuickStart Example 1](quick_start.md) for the reproducible command and generated YAML.
 
+**Terminal / headless reproduction:** after the [QuickStart 1 download/checks](quick_start.md#1-download-and-verify-the-reads), configure a new project and run:
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --non-interactive \
+  --project "$PWD/oncotracer-quickstart1/illumina" --mode illumina --analysis cna \
+  --sample-name ERR12341627 --status tumor \
+  --fastq-1 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz" \
+  --fastq-2 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz" \
+  --backend conda --threads 4
+oncotracer check --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
+```
+
 [Open the original qDNAseq fitted-segment plot PDF](assets/gallery/illumina_samurai_qdnaseq_segment_plot.pdf).
 
 ![Public Illumina ERR12341627 SAMURAI qDNAseq profile with fitted copy-number segments](assets/gallery/illumina_samurai_qdnaseq_segment_plot.png)
@@ -17,6 +32,19 @@ The images below are rendered from OncoTracer output files. A plot demonstrates 
 **Provenance:** public ONT run `DRR165691`, processed by the ONT branch in QuickStart Example 1 with ichorCNA-derived 500 kb inputs.
 
 The run produces ichorCNA depth and segment tables. OncoTracer renders the profile from those tables even when an upstream plotting helper encounters missing depth values.
+
+**Terminal / headless reproduction**, using the verified ONT download from QuickStart 1:
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer setup --non-interactive \
+  --project "$PWD/oncotracer-quickstart1/ont" --mode ont --analysis cna \
+  --reads-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
+  --barcodes barcode01 --sample-names DRR165691 --backend conda --threads 4
+oncotracer check --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
+```
 
 [Open the original ichorCNA-derived profile PDF](assets/gallery/ont_ichorcna_derived_profile.pdf).
 
@@ -63,12 +91,36 @@ The example contains three paired-end LP-WGS libraries (six physical FASTQ files
 | Download validation | Exact ENA byte count, ENA MD5, and `gzip -t`; values stored in `examples/hcc1143_lpwgs/manifest.tsv` |
 | Complete reproduction guide | [QuickStart Example 2](public_cohort.md) |
 | Analysis command | Follow the download, samplesheet, setup and check steps in [QuickStart 2](public_cohort.md), then run `oncotracer run --backend conda --config /absolute/path/oncotracer-quickstart2/analysis/config/run.yml` |
-| Expected result source | `/path/to/my/analyses_dir/oncotracer-quickstart2/runs/hcc1143_lpwgs/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf` |
+| Expected result source | `/path/to/my/analyses_dir/oncotracer-quickstart2/analysis/results/04_cna_custom_plots/cna_log2_ratio_profiles_all_samples.pdf` |
 | OncoTracer commit | _to be recorded after verified run_ |
 | Container digest | _to be recorded after verified run_ |
 | Reference/caller/bin size | _to be recorded after verified run_ |
 | Run completion and checks | _to be recorded after verified run_ |
 | Biological interpretation | _not reported before QC and verified tables are available_ |
+
+**Terminal / headless reproduction:** after the [six downloads and checksum checks](public_cohort.md#1-download-and-verify-the-reads), run from your analysis directory:
+
+```bash
+cd /path/to/my/analyses_dir/
+mkdir -p "$PWD/oncotracer-quickstart2/input"
+cat > "$PWD/oncotracer-quickstart2/input/samplesheet.csv" <<CSV
+sample,fastq_1,fastq_2,status
+HCC1143_DMSO,"$PWD/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz",tumor
+HCC1143_BEZ235,"$PWD/oncotracer-quickstart2/input/HCC1143_BEZ235_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_BEZ235_R2.fastq.gz",tumor
+HCC1143_TRAMETINIB,"$PWD/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R2.fastq.gz",tumor
+CSV
+oncotracer setup --non-interactive \
+  --project "$PWD/oncotracer-quickstart2/analysis" \
+  --mode illumina --analysis cna --backend conda \
+  --samplesheet "$PWD/oncotracer-quickstart2/input/samplesheet.csv" \
+  --hg38_build --threads 4
+oncotracer check --config "$PWD/oncotracer-quickstart2/analysis/config/run.yml"
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart2/analysis/config/run.yml"
+```
+
+These are execution instructions, not a claim that the pending gallery artifacts
+have been validated. Skip setup when resuming an already configured project.
 
 When populated, this gallery entry must distinguish observed signal from inference: report sample names, caller/bin size, QC warnings, number of CNA events, broad profile similarities/differences, and important limitations. Treatment-associated causality must not be inferred from this three-library demonstration alone.
 

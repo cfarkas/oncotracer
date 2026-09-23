@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from oncotracer_cli.runtime import OncoTracerError
+from oncotracer_cli.variant_install_help import installation_guides
 from oncotracer_cli.variant_resources import MAX_CHILDREN, MAX_SEARCHED, discover_variant_resources
 
 
@@ -63,12 +65,14 @@ class VariantResourceTests(unittest.TestCase):
             self.file(path / f"model.{kind}.joblib")
         return path
 
-    def annovar(self, path, build="hg38"):
-        self.file(self.bin / "perl", "#!/bin/sh\nexit 99\n", executable=True)
+    def annovar(self, path, build="hg38", *, perl=True, databases=True):
+        if perl:
+            self.file(self.bin / "perl", "#!/bin/sh\nexit 99\n", executable=True)
         for name in ("table_annovar.pl", "annotate_variation.pl", "convert2annovar.pl", "coding_change.pl"):
             self.file(path / name, "#!/usr/bin/env perl\n# $Revision: fixture $\n", executable=True)
-        self.file(path / "humandb" / f"{build}_refGene.txt")
-        self.file(path / "humandb" / f"{build}_refGeneMrna.fa")
+        if databases:
+            self.file(path / "humandb" / f"{build}_refGene.txt")
+            self.file(path / "humandb" / f"{build}_refGeneMrna.fa")
         return path
 
     def test_missing_resources_return_guides_and_json_without_side_effects(self):
@@ -96,17 +100,19 @@ class VariantResourceTests(unittest.TestCase):
     def test_saved_managed_environment_and_recipe_locations_are_discovered(self):
         for mechanism in ("saved", "managed", "optional"):
             with self.subTest(mechanism=mechanism):
-                prefix = self.tools(self.home / ".local/share/oncotracer" /
+                case_home = self.root / mechanism / "home"
+                case_project = self.root / mechanism / "project"
+                case_project.mkdir(parents=True)
+                prefix = self.tools(case_home / ".local/share/oncotracer" /
                                     ("optional-tools/variants" if mechanism == "optional" else "2.1.0/envs/core"),
                                     "samtools", "bcftools", "freebayes")
                 if mechanism == "saved":
-                    config = self.file(self.home / ".config/oncotracer/config.json", json.dumps({"core_prefix": str(prefix)}))
-                result = self.detect()
+                    self.file(case_home / ".config/oncotracer/config.json", json.dumps({"core_prefix": str(prefix)}))
+                result = discover_variant_resources(
+                    self.default, roots=(case_project,),
+                    environment={"HOME": str(case_home), "PATH": str(case_home / "bin")},
+                )
                 self.assertEqual(result["fields"]["variant_tool_prefix"], str(prefix))
-                if mechanism == "saved":
-                    config.unlink()
-                for tool in (prefix / "bin").iterdir():
-                    tool.unlink()
 
     def test_direct_project_tools_prefix_is_detected(self):
         prefix = self.tools(self.project / "tools/oncotracer-variants-env", "samtools", "bcftools", "gatk", "varlociraptor")
@@ -265,8 +271,7 @@ class VariantResourceTests(unittest.TestCase):
         self.assertEqual(self.resources(result)["annovar"]["status"], "unverified")
 
     def test_docker_annovar_does_not_require_host_perl(self):
-        install = self.annovar(self.home / "annovar")
-        (self.bin / "perl").unlink()
+        install = self.annovar(self.home / "annovar", perl=False)
         result = self.detect(backend="docker", docker_image="synthetic/image:test", values={})
         self.assertEqual(result["fields"]["variant_annovar_dir"], str(install))
         self.assertEqual(self.resources(result)["annovar"]["status"], "candidate")
@@ -339,9 +344,7 @@ class VariantResourceTests(unittest.TestCase):
         self.assertIn(str(prefix), [c["path"] for c in result["candidates"] if c["field"] == "variant_ffperase_prefix"])
 
     def test_annovar_install_can_be_found_without_databases(self):
-        install = self.annovar(self.project / "tools/annovar")
-        for file in (install / "humandb").iterdir():
-            file.unlink()
+        install = self.annovar(self.project / "tools/annovar", databases=False)
         result = self.detect(values={})
         rows = self.resources(result)
         self.assertEqual(result["fields"]["variant_annovar_dir"], str(install))
@@ -396,6 +399,153 @@ class VariantResourceTests(unittest.TestCase):
             self.assertNotIn(field, result["fields"])
             self.assertFalse([c for c in result["candidates"] if c["field"] == field])
         self.assertIn("Clinical target BEDs", " ".join(result["notes"]))
+
+    def strelka(self, path):
+        return self.tools(path, "python2.7", "configureStrelkaGermlineWorkflow.py",
+                          "configureStrelkaSomaticWorkflow.py")
+
+    def test_strelka_uses_separate_registered_environment_without_execution(self):
+        common = self.tools(self.project / "envs/variants", "samtools", "bcftools")
+        strelka = self.strelka(self.root / "registered-strelka")
+        self.file(self.home / ".conda/environments.txt", str(strelka) + "\n")
+        with patch("subprocess.run", side_effect=AssertionError("Executed Strelka")), \
+             patch("subprocess.Popen", side_effect=AssertionError("Executed Strelka")):
+            result = self.detect(callers=["strelka2_germline", "strelka2_somatic"])
+        self.assertEqual(result["fields"]["variant_tool_prefix"], str(common))
+        self.assertEqual(result["fields"]["variant_strelka_prefix"], str(strelka))
+        self.assertEqual(self.resources(result)["strelka_prefix"]["status"], "candidate")
+        self.assertIn("same patient", " ".join(result["notes"]))
+        self.assertFalse(result["install_guides"])
+
+    def test_strelka_incomplete_or_python3_environment_is_not_selected(self):
+        self.tools(self.home, "samtools", "bcftools")
+        prefix = self.tools(self.project / "envs/strelka2", "python",
+                            "configureStrelkaGermlineWorkflow.py", "configureStrelkaSomaticWorkflow.py")
+        result = self.detect(callers=["strelka2_germline"])
+        self.assertNotIn("variant_strelka_prefix", result["fields"])
+        self.assertIn("strelka2_runtime", [g["id"] for g in result["install_guides"]])
+        self.tools(self.project / "envs/strelka2-incomplete", "python2.7",
+                   "configureStrelkaGermlineWorkflow.py")
+        result = self.detect(callers=["strelka2_somatic"])
+        self.assertEqual(self.resources(result)["strelka_prefix"]["status"], "missing")
+
+    def test_strelka_broken_conda_build_is_not_offered_for_somatic(self):
+        self.tools(self.home, "samtools", "bcftools")
+        bad = self.strelka(self.project / "envs/strelka2")
+        self.file(bad / "conda-meta/strelka-2.9.10-hdfd78af_2.json", json.dumps({
+            "name": "strelka", "version": "2.9.10", "build": "hdfd78af_2"}))
+        with patch("subprocess.run", side_effect=AssertionError("Executed runtime")):
+            result = self.detect(callers=["strelka2_somatic"])
+        self.assertNotIn("variant_strelka_prefix", result["fields"])
+        self.assertFalse([c for c in result["candidates"] if c["field"] == "variant_strelka_prefix"])
+        self.assertEqual(self.resources(result)["strelka_prefix"]["status"], "missing")
+        self.assertIn("h9ee0642_1", self.resources(result)["strelka_prefix"]["detail"])
+        self.assertIn("strelka2_runtime", [g["id"] for g in result["install_guides"]])
+        good = self.strelka(self.project / "envs/strelka2-compatible")
+        result = self.detect(callers=["strelka2_somatic"])
+        self.assertEqual(result["fields"]["variant_strelka_prefix"], str(good))
+        result = self.detect(callers=["strelka2_somatic"], values={
+            "variant_strelka_prefix": str(bad), "variant_annovar": "off"})
+        self.assertEqual(result["fields"]["variant_strelka_prefix"], str(bad))
+        self.assertEqual(self.resources(result)["strelka_prefix"]["status"], "missing")
+        result = self.detect(callers=["strelka2_germline"], values={
+            "variant_strelka_prefix": str(bad), "variant_annovar": "off"})
+        self.assertEqual(self.resources(result)["strelka_prefix"]["status"], "candidate")
+
+    def test_strelka_targets_require_bgzip_and_tabix_in_shared_environment(self):
+        common = self.tools(self.project / "envs/variants", "samtools", "bcftools")
+        self.strelka(self.project / "envs/strelka2")
+        bed = self.file(self.project / "regions.bed", "chr1\t0\t100\n")
+        values = {"variant_annovar": "off", "variant_tool_prefix": str(common), "variant_targets_bed": str(bed)}
+        result = self.detect(callers=["strelka2_germline"], values=values)
+        for name in ("bgzip", "tabix"):
+            self.assertEqual(self.resources(result)[name]["status"], "missing")
+        self.tools(common, "bgzip", "tabix")
+        result = self.detect(callers=["strelka2_germline"], values=values)
+        self.assertFalse(result["install_guides"])
+        for name in ("bgzip", "tabix"):
+            self.assertEqual(self.resources(result)[name]["status"], "found")
+        values.pop("variant_targets_bed")
+        result = self.detect(callers=["strelka2_germline"], values=values)
+        self.assertNotIn("bgzip", self.resources(result))
+
+    def test_strelka_python2_alias_without_required_python27_is_not_accepted(self):
+        self.tools(self.project / "envs/strelka2", "python2",
+                   "configureStrelkaGermlineWorkflow.py", "configureStrelkaSomaticWorkflow.py")
+        result = self.detect(callers=["strelka2_germline"])
+        self.assertEqual(self.resources(result)["strelka_prefix"]["status"], "missing")
+
+    def test_strelka_explicit_override_is_preserved_and_not_replaced(self):
+        self.strelka(self.project / "envs/good")
+        bad = str(self.root / "missing-strelka")
+        for mechanism in ("form", "environment"):
+            with self.subTest(mechanism=mechanism):
+                values = {"variant_annovar": "off"}
+                if mechanism == "form":
+                    values["variant_strelka_prefix"] = bad
+                else:
+                    self.env["ONCOTRACER_STRELKA_PREFIX"] = bad
+                result = self.detect(callers=["strelka2_germline"], values=values)
+                self.assertEqual(result["fields"]["variant_strelka_prefix"], bad)
+                self.assertEqual(self.resources(result)["strelka_prefix"]["status"], "missing")
+                self.assertFalse([c for c in result["candidates"] if c["field"] == "variant_strelka_prefix"])
+
+    def test_multiple_strelka_environments_require_explicit_choice(self):
+        prefixes = [self.strelka(self.project / f"envs/{name}") for name in ("first", "second")]
+        result = self.detect(callers=["strelka2_germline"])
+        self.assertNotIn("variant_strelka_prefix", result["fields"])
+        choices = [c["path"] for c in result["candidates"] if c["field"] == "variant_strelka_prefix"]
+        self.assertEqual(set(choices), set(map(str, prefixes)))
+        self.assertNotIn("strelka2_runtime", [g["id"] for g in result["install_guides"]])
+
+    def test_strelka_wrapper_symlinks_preserve_environment_prefix(self):
+        prefix = self.tools(self.project / "tools/strelka-env", "python2.7")
+        for name in ("configureStrelkaGermlineWorkflow.py", "configureStrelkaSomaticWorkflow.py"):
+            script = self.file(prefix / "share/strelka-2.9.10-2/bin" / name, executable=True)
+            (prefix / "bin" / name).symlink_to(script)
+        self.env["ONCOTRACER_STRELKA_PREFIX"] = str(prefix)
+        result = self.detect(callers=["strelka2_germline"])
+        self.assertEqual(result["fields"]["variant_strelka_prefix"], str(prefix))
+        self.assertEqual(self.resources(result)["strelka_prefix"]["status"], "candidate")
+
+    def test_strelka_docker_uses_image_runtime_and_ignores_host_prefix(self):
+        prefix = self.strelka(self.project / "envs/strelka2")
+        self.tools(self.home, "docker")
+        result = self.detect(callers=["strelka2_somatic"], backend="docker", docker_image="synthetic/image:test",
+                             values={"variant_strelka_prefix": str(prefix), "variant_annovar": "off"})
+        self.assertNotIn("variant_strelka_prefix", result["fields"])
+        row = self.resources(result)["strelka2_runtime"]
+        self.assertEqual(row["status"], "unverified")
+        self.assertEqual(row["field"], "docker_image")
+        self.assertFalse(result["install_guides"])
+
+    def test_all_five_illumina_callers_are_allowed_but_ont_strelka_is_rejected(self):
+        result = self.detect(callers=["mutect2", "freebayes", "bcftools", "strelka2_germline", "strelka2_somatic"])
+        self.assertIn("strelka2_runtime", [g["id"] for g in result["install_guides"]])
+        for caller in ("strelka2_germline", "strelka2_somatic"):
+            with self.subTest(caller=caller), self.assertRaises(OncoTracerError):
+                self.detect(mode="ont", callers=[caller])
+        result = self.detect()
+        self.assertNotIn("strelka_prefix", self.resources(result))
+
+    def test_strelka_install_help_uses_local_spec_or_pinned_packages(self):
+        spec = self.file(self.project / "environments/native-strelka2.yml")
+        for root in (self.project, None):
+            with self.subTest(root=root):
+                guide = installation_guides(["strelka2_runtime"], backend="host", mode="illumina", root=root)[0]
+                self.assertEqual(guide["id"], "strelka2_runtime")
+                self.assertIn("ONCOTRACER_STRELKA_PREFIX", guide["commands"])
+                self.assertIn('if [ -e "$ONCOTRACER_ENV" ]', guide["commands"])
+                if root is not None:
+                    self.assertIn(str(spec), guide["commands"])
+                else:
+                    self.assertIn('"python=2.7.15=h5a48372_1011_cpython" "strelka=2.9.10=h9ee0642_1"', guide["commands"])
+                    self.assertNotIn("curl", guide["commands"])
+                checked = subprocess.run(["bash", "-n"], input=guide["commands"], text=True, capture_output=True)
+                self.assertEqual(checked.returncode, 0, checked.stderr)
+                self.assertTrue(all("v2.9.10" in link["url"] for link in guide["links"]))
+        docker = installation_guides(["strelka2_runtime", "variant_tools"], backend="docker", mode="illumina")
+        self.assertEqual([g["id"] for g in docker], ["docker_image"])
 
     def test_invalid_payloads_fail_predictably(self):
         for changes in ({"mode": "unknown"}, {"backend": "shell"}, {"callers": ["clair3"]},

@@ -2,9 +2,9 @@
 
 # QuickStart 1: Illumina and ONT
 
-Run a complete native analysis using one public Illumina library and one ONT
-library. Reads total approximately 225 MB, plus tools, references and results.
-This example assesses copy number; FASTQs do not contain methylation calls.
+Run a complete native analysis of one Illumina and one ONT public library:
+approximately 225 MB of reads, plus tools, references and results. This CNA
+example cannot assess methylation from FASTQs.
 
 [Install OncoTracer once](installation.md). Then **download → configure in the
 browser → run → inspect results**, or use the [terminal-only alternative](#alternative-scripted-setup-and-terminal-run). Choose either platform. For SSH, see [headless servers](headless.md).
@@ -36,13 +36,13 @@ md5sum -c <<'MD5'
 MD5
 ```
 
-Continue only when all three checksum lines say `OK`. Repeat an interrupted
-`curl` command to resume its download. The ONT library uses `barcode01` as its folder.
+Require three checksum `OK` lines. Repeat interrupted `curl` commands to resume.
+The ONT folder is `barcode01`.
 
 ## 2. Open setup and run
 
-Each command opens prefilled browser setup. Keep its terminal open. Finish one
-example, then stop its server with Ctrl+C before starting the other.
+Each command opens prefilled browser setup. Keep its terminal open. Finish and
+stop one server with Ctrl+C before starting another.
 
 ### Illumina
 
@@ -66,6 +66,8 @@ Move `barcode01` to **Cancer**, rename it `DRR165691`, and keep CNA,
 ichorCNA and **500 kb** bins. All files in the barcode form one sample.
 
 ### In either browser window
+
+Choose **Fresh or FFPE** from specimen metadata before input discovery.
 
 1. Choose threads, for example **4**, and your installed backend.
 2. Keep reference download. Optional reports work for one sample; GISTIC requires two.
@@ -92,9 +94,10 @@ Next: [your own samples](setup.md) or [three-library QuickStart 2](public_cohort
 
 ## Alternative: scripted setup and terminal run
 
-After downloading, use these **instead of browser setup**. They create, check
-and run the same projects without prompts. For Docker, use `--backend docker`
-in setup/run, plus your installed `--image`.
+After downloading, these **replace browser setup**. For Docker, use
+`--backend docker` in setup/run plus your installed `--image`.
+To match browser preservation metadata, append `--variant-specimen-type fresh`
+or `--variant-specimen-type ffpe` to setup, according to specimen records.
 
 ### Illumina — terminal only
 
@@ -154,9 +157,9 @@ oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
   --hg38_build /data/shared-reference
 ```
 
-### Same reference examples — terminal questions and run
+### Same reference examples — Terminal / headless
 
-Use step 2's sample names/settings. Each command configures, validates and runs:
+Use step 2's names/settings; these terminal commands configure, check and run:
 
 ```bash
 cd /path/to/my/analyses_dir/
@@ -182,8 +185,7 @@ choice. A bare `--hg38_build` selects automatic download. See [genome indexes](r
 
 ## Optional: run or resume from the terminal
 
-**Skip this if you already clicked Run analysis.** These commands use the settings
-saved by step 2. Repeat only `run` to resume after fixing an error; omit `--force`.
+**Skip if already running.** These use saved settings. Resume with `run`; omit `--force`.
 
 <details markdown="1">
 <summary>Show Illumina and ONT commands</summary>

@@ -1,8 +1,7 @@
 # Set up your own data
 
-[Install once](installation.md), then configure and run from your browser.
-Try the [demo](browser_demo.md), or use terminal examples below.
-[Headless servers](headless.md) covers scripted runs and remote browsers through SSH.
+[Install once](installation.md), then use browser or terminal setup.
+Explore the [demo](browser_demo.md) or [SSH/headless guide](headless.md).
 
 ## 1. Configure interactively (recommended)
 
@@ -10,38 +9,40 @@ Try the [demo](browser_demo.md), or use terminal examples below.
 oncotracer setup
 ```
 
-Keep the terminal open. Open the complete printed **127.0.0.1:8888** URL,
-including its `#` session code, if the browser does not open automatically.
+Keep the terminal open. If needed, open the printed **127.0.0.1:8888** URL
+including its `#` session code.
 **Browse folders** shows files on the computer running OncoTracer.
 
-1. **Choose Illumina or ONT**, then browse to FASTQs. Illumina detects R1/R2
-   pairs; consolidate lanes first. Each ONT barcode includes all its batches;
+1. **Choose Illumina or ONT, then Fresh or FFPE** from your specimen records.
+   Inputs then appear. Illumina detects R1/R2 pairs; consolidate lanes first. Each ONT barcode includes all its batches;
    a nonbarcoded ligation folder is one sample.
 2. **Assign samples** to Normal or Cancer using cards or dropdowns. Rename them
-   if needed. Unassigned samples are excluded. Controls are analyzed independently,
+   if needed. Unassigned samples are excluded. CNA controls are analyzed independently,
    without pooling or subtraction; custom tags require a study/control role.
 3. **Review settings.** Choose threads and a caller. QDNAseq defaults to **100 kb**;
    ONT ichorCNA uses **500 kb**. ONT controls require QDNAseq and a study sample.
    GISTIC needs at least two assigned samples. CNA uses CPU.
 4. **Select tools and a project folder.** Choose your installed Conda or Docker
-   backend. Keep automatic reference download for your first run.
+   backend. Keep automatic reference download.
 5. Click **Save configuration and check**, resolve any check errors, then
-   **Run analysis**. Follow progress and open results from the same page.
+   **Run analysis**. Follow progress and open results here.
 
 Settings are saved in `PROJECT/config/run.yml`; Illumina also gets
 `config/samplesheet.csv`. Existing configurations are protected.
 **Stop analysis** offers to keep the project or remove its folder after path confirmation.
 
-**Terminal equivalent:** ask the same setup questions without a browser, then
-validate and run:
+**Terminal alternative:** configure without a browser, then validate and run:
 
 ```bash
 oncotracer setup --terminal --backend conda --run
 ```
 
+In terminal setup, add `--variant-specimen-type fresh` or `ffpe` to record preservation,
+including for CNA-only projects. Older CNA commands without this metadata remain valid.
+
 ### Optional analyses
 
-Enable [variants](variants.md) to choose Fresh/FFPE and compatible callers.
+Enable [variants](variants.md) to choose compatible callers for the selected preservation.
 ONT [methylation](configuration/methylation.md) requires modBAMs or raw POD5 and
 classifier resources; FASTQs alone lack methylation calls. Docker methylation
 is unavailable. Reports and [paper panels](paper_report.md) are optional.
@@ -224,7 +225,7 @@ This terminal example saves the supplied sample settings, then checks/runs.
 Use existing paths; leave `fastq_2` empty for single-end libraries:
 
 ```bash
-oncotracer setup --project /work/illumina-batch --mode illumina --analysis cna \
+oncotracer setup --non-interactive --project /work/illumina-batch --mode illumina --analysis cna \
   --samplesheet /data/illumina/samplesheet.csv --threads 4 --backend conda
 oncotracer check --config /work/illumina-batch/config/run.yml
 oncotracer run --backend conda --config /work/illumina-batch/config/run.yml

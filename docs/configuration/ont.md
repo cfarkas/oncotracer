@@ -7,6 +7,9 @@ combined without mixing different samples.
 
 The liquid-biopsy caller uses the version-selected upstream HD_ULP ichorCNA reference object as a static scientific asset. That caller resource is not created from the cohort, and no submitted `NORMAL` sample is pooled into it.
 
+**Terminal / headless versions:** automatic, manual and solid-biopsy examples
+below run through the CLI.
+
 ## Recommended: Automatic Setup
 
 ### Arrange barcode FASTQs
@@ -151,6 +154,13 @@ ont_binsize_kb: 100
 ont_min_age_minutes: 0
 run_cna_classifier: false
 force: false
+```
+
+Save that YAML as `project/config/ont.solid.yml`, then run from your analysis directory:
+
+```bash
+oncotracer check --config "$PWD/project/config/ont.solid.yml"
+oncotracer run --backend conda --config "$PWD/project/config/ont.solid.yml"
 ```
 
 This route reuses the native qDNAseq implementation and its existing scientific settings, passes the long-read BAMs as unpaired data, and writes initial caller output under `01_samurai_ont/qdnaseq/`. It does not combine or overwrite `01_samurai_ont/results/ichorcna/`; retaining a distinct `outdir` also keeps the downstream stage-02 through stage-06 products separate. `ont_caller: qdnaseq` is rejected unless `ont_analysis_type: solid_biopsy` is present.
