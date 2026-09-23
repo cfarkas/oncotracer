@@ -12,22 +12,73 @@ The classifier does not read FASTQs directly. Core analysis first creates:
 
 The classifier derives CNA burden, recurrent regions, cytobands, gene-region overlaps, and context-associated patterns from those final event/refined-bin products. A pathology CSV is joined by exact sample identifier.
 
+<a id="study-contexts"></a>
+
 ## Choose the context before analysis
 
-`cna_classifier_sample_set` limits labels and knowledge resources used during interpretation. Select the narrowest context justified by inclusion criteria, not by the result you prefer.
+In the browser, enable **Add CNA interpretation reports**, then enter one exact
+value below in **Study context for reports**. The same value is stored as
+`cna_classifier_sample_set` in YAML. One context applies to all selected samples
+in that project; use `broad_cancer` for a mixed cohort or separate projects for
+different established contexts.
 
-| Example context | Appropriate use |
-| --- | --- |
-| `broad_cancer` | Exploratory pan-cancer cohort |
-| `lymphoma` | Cohort already established as lymphoma-focused |
-| `brain_cns` | CNS tumor cohort defined independently of the CNA result |
-| `breast` | Breast-tumor/cell-line study |
-| `colorectal` | Colorectal study |
-| `sarcoma` | Sarcoma-focused study |
-| `leukemia` | Hematologic study for which CNA profiling is appropriate |
-| `pediatric_solid` | Pediatric solid-tumor cohort |
+This is context **you supply**, used to guide report labels, catalog interpretation
+and literature searches when enabled. It does not select a separately validated
+tumor classifier or establish a diagnosis. Choose from your study inclusion
+criteria and existing pathology, independently of the CNA result.
 
-The full context list is in [Native YAML configuration](configuration_v2.md).
+### All supported study contexts
+
+| Exact value | Meaning | When to choose it |
+| --- | --- | --- |
+| `broad_cancer` | Broad cancer context; default | Mixed cancer cohorts, exploratory studies, or an unknown tumor context. Summarizes CNA patterns without assigning tissue of origin. |
+| `lymphoma` | Lymphoma | A study already defined as lymphoma-focused. |
+| `brain_cns` | Brain and central nervous system tumors | A CNS tumor cohort, including glioma or meningioma studies. |
+| `breast` | Breast cancer | Breast-tumor or breast-cancer cell-line studies. |
+| `pancreas` | Pancreatic and biliary cancers | Pancreatic, pancreatobiliary or cholangiocarcinoma studies. |
+| `colorectal` | Colon and rectal cancer | A colorectal tumor cohort. |
+| `leukemia` | Leukemia and myelodysplastic syndromes | Leukemia, MDS or related myeloid-neoplasm studies. Use this exact value for ALL; the shorthand `all` means broad cancer in the launcher. |
+| `lung` | Lung cancer | Lung-tumor cohorts, including NSCLC or SCLC. |
+| `prostate` | Prostate cancer | A prostate-tumor cohort. |
+| `ovarian` | Ovarian, fallopian-tube and peritoneal carcinoma | Studies focused on these carcinoma groups. |
+| `endometrial` | Endometrial and uterine carcinoma | An endometrial or uterine-carcinoma cohort; use `sarcoma` for uterine sarcoma. |
+| `gastric_esophageal` | Gastric and esophageal cancer | Stomach, esophageal or gastroesophageal-junction carcinoma studies. |
+| `sarcoma` | Sarcoma and gastrointestinal stromal tumors | Soft-tissue sarcoma, bone sarcoma or GIST studies. |
+| `renal` | Renal-cell carcinoma | A kidney-cancer cohort focused on renal-cell carcinoma. |
+| `urothelial` | Urothelial carcinoma | Bladder or other urinary-tract urothelial carcinoma studies. |
+| `thyroid` | Thyroid carcinoma | A thyroid-carcinoma cohort. |
+| `melanoma` | Melanoma | A melanoma cohort. |
+| `liver` | Liver cancer, including hepatocellular carcinoma | A liver-cancer cohort; the pancreatic/biliary context above includes cholangiocarcinoma. |
+| `head_neck` | Head-and-neck carcinoma | Oral, oropharyngeal, laryngeal or related carcinoma studies. |
+| `germ_cell` | Germ-cell tumors | Germ-cell tumor studies, including seminoma and nonseminoma. |
+| `myeloma` | Myeloma and plasma-cell neoplasms | A myeloma or plasma-cell-neoplasm cohort. |
+| `neuroblastoma` | Neuroblastoma | A neuroblastoma cohort. |
+| `neuroendocrine` | Neuroendocrine neoplasms | Neuroendocrine tumor or carcinoma studies. |
+| `pediatric_solid` | Pediatric solid tumors | A broad childhood solid-tumor cohort; use a more specific context above when the study supports it. |
+
+An empty value uses `broad_cancer`. Some aliases are accepted, but the exact values
+above avoid ambiguous abbreviations. Unrecognized text is retained as a custom
+context and uses generic report handling where no dedicated context rules exist;
+it does **not** create new classifier support or automatically select broad mode.
+Use `broad_cancer` when the biological context is unknown. Context-specific feature
+catalogs differ in coverage; selecting a context does not guarantee a subtype call.
+
+### Terminal / headless equivalent
+
+For the same browser choice, set `cna_classifier_sample_set` in your saved YAML
+(as in the complete example below), then check and run that configuration:
+
+```bash
+CONFIG="$PWD/project/config/illumina.auto.yml"
+oncotracer check --config "$CONFIG"
+oncotracer run --backend conda --config "$CONFIG"
+```
+
+When generating a project from the terminal, the equivalent option is
+`--run-cna-classifier --cna-classifier-sample-set broad_cancer` on
+`oncotracer setup --non-interactive`; replace `broad_cancer` with the chosen value.
+See the [complete terminal setup example](configuration/pathology.md#3-generate-the-configuration)
+for input and pathology settings.
 
 ## Deterministic initial mode
 
