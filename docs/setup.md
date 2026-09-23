@@ -1,7 +1,6 @@
 # Set up your own data
 
-[Install once](installation.md), then use browser or terminal setup.
-Explore the [demo](browser_demo.md) or [SSH/headless guide](headless.md).
+[Install once](installation.md). Explore the [demo](browser_demo.md) or [SSH/headless guide](headless.md).
 
 ## 1. Configure interactively (recommended)
 
@@ -104,18 +103,20 @@ These examples use Conda. Docker projects keep their saved image; use
 
 ## 3. Review results and resume
 
-Open the results dashboard from the browser. Start with
-`results/06_workflow_summary/workflow_summary.txt` for completion status,
-then review plots and event tables. See [outputs](outputs.md).
+Open results from the browser, or read the run status:
 
-To resume a saved project:
+```bash
+sed -n '1,100p' /absolute/path/to/my-study/results/06_workflow_summary/workflow_summary.txt
+```
+
+To continue an interrupted project:
 
 ```bash
 oncotracer setup --project /absolute/path/to/my-study --run
 ```
 
-Matching alignment and CNA results are reused. Do not add `--force` for a normal
-resume. See [running and resuming](running.md) for details.
+OncoTracer reuses completed steps. See [output files](outputs.md) or
+[resume details](running.md).
 
 ## Optional: reuse prepared genome indexes
 
@@ -204,13 +205,14 @@ Check and run the saved `config/run.yml`.
 
 </details>
 
+<a name="illumina-multiple-libraries"></a>
+
 ## Illumina: multiple libraries
 
-<details markdown="1">
-<summary>Use an explicit samplesheet for filenames the browser cannot pair</summary>
+[Open the mock example: two tumors and one normal](https://github.com/cfarkas/oncotracer/tree/main/examples/illumina_multiple_libraries).
+It includes a directory tree, sample table, CSV template, and browser/terminal commands.
 
-
-Each row is one library. Replace the paths; `cat >` overwrites its CSV.
+The original two-library example follows. Replace paths; `cat >` overwrites its CSV.
 
 ```bash
 mkdir -p "/data/illumina"
@@ -221,8 +223,7 @@ sampleB,"/data/illumina/sampleB_R1.fastq.gz","/data/illumina/sampleB_R2.fastq.gz
 CSV
 ```
 
-This terminal example saves the supplied sample settings, then checks/runs.
-Use existing paths; leave `fastq_2` empty for single-end libraries:
+Each row is one library; leave `fastq_2` empty for single-end reads:
 
 ```bash
 oncotracer setup --non-interactive --project /work/illumina-batch --mode illumina --analysis cna \
@@ -234,5 +235,3 @@ oncotracer run --backend conda --config /work/illumina-batch/config/run.yml
 Results stay separate per sample.
 [Batch setup](auto_params.md) can generate CSVs from filenames and configure ONT
 tumor/normal groups.
-
-</details>

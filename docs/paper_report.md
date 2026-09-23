@@ -86,13 +86,19 @@ Supported panel types are `bar`, `distribution`, `scatter`, `line` and `matrix`.
 | 3. Variant evaluation | Measured depth, verified paired specimens, callable regions and compared callsets | Illumina–ONT agreement is concordance; independent truth is needed for accuracy. |
 | 4. LLM report evaluation | Saved outputs, evidence citations and a defined reviewer evaluation | Report generation alone does not establish factual or diagnostic accuracy. |
 
-Use `evidence_status` to distinguish `descriptive`, `concordance` and `independent_validation`. This label records the study design; the renderer cannot certify the underlying evidence. Include only figures with real input data. Unfinished analyses should not be replaced by invented results.
+Use `evidence_status` to distinguish `descriptive`, `concordance`,
+`independent_validation` and `illustrative`. The last value is available for
+clearly labeled synthetic demonstrations. Each `independent_validation` figure
+also requires a nonempty `truth_source` string describing its independent
+reference evidence; otherwise rendering stops. These fields record the study
+design, but the renderer cannot certify the evidence. Include only figures with
+actual input tables. Unfinished analyses should not be replaced by invented results.
 
 ## Output
 
 The report directory contains:
 
-- Figure exports in PDF, SVG and 600-dpi PNG.
+- Figure exports in PDF, SVG and PNG (600 dpi by default).
 - Individual panel crops under `panels/`.
 - Captions under `legends/`.
 - Copies of the input plotting tables under `source_data/`.

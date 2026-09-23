@@ -11,6 +11,7 @@ A minimal run still performs refinement:
 ```yaml
 mode: illumina
 lpwgs_root: /absolute/path/project
+hg38_auto_download: true
 outdir: /absolute/path/project/results/default
 illumina_samplesheet: /absolute/path/project/config/illumina.samplesheet.csv
 force: false

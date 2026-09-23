@@ -69,7 +69,7 @@ For the same browser choice, set `cna_classifier_sample_set` in your saved YAML
 (as in the complete example below), then check and run that configuration:
 
 ```bash
-CONFIG="$PWD/project/config/illumina.auto.yml"
+CONFIG="/absolute/path/to/my-study/config/run.yml" # use your saved YAML
 oncotracer check --config "$CONFIG"
 oncotracer run --backend conda --config "$CONFIG"
 ```
@@ -167,7 +167,7 @@ LP-WGS read-depth CNA analysis does not reliably determine:
 ## Read the outputs
 
 ```bash
-OUT="$PWD/project/results/illumina_pathology/05_cna_classifier"
+OUT="/absolute/path/to/my-study/results/05_cna_classifier" # use your outdir
 
 sed -n '1,12p' "$OUT/diagnostics/prepared/sample_cna_summary.tsv"
 sed -n '1,12p' "$OUT/tables/classification/cna_patient_classification.tsv"

@@ -1,17 +1,19 @@
 # OncoTracer Illumina example configuration.
-# Recommended first choice: let --auto_params generate this file for you.
+# Recommended first choice: let `oncotracer auto` generate this file for you.
 # Manual use: cp params/illumina.example.yml params/my_illumina.yml
 #
 # YAML uses `setting: value`, one setting per line. Use spaces, never tabs.
 # Replace /home/student/oncotracer with the absolute path printed by `pwd`.
-# Keep the samplesheet and output directory below lpwgs_root.
+# Use absolute paths for the samplesheet and output directory.
 
 mode: illumina
 
-# Absolute common parent mounted into Docker or Singularity.
+# Reference/cache root; hg38 assets go under references/samurai_hg38/.
 lpwgs_root: /home/student/oncotracer
+# Import prebuilt hg38 assets on the first run, as in automatic setup.
+hg38_auto_download: true
 
-# Results are written here. OncoTracer creates 01_ through 06_ subdirectories.
+# Results are written here in numbered stage directories.
 outdir: /home/student/oncotracer/project/runs/illumina_example
 
 # CSV columns: sample,fastq_1,fastq_2,status

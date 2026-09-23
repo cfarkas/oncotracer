@@ -77,7 +77,20 @@ oncotracer setup --project "$PWD/my-study" --mode illumina --input-folder /data/
 
 The server opens **127.0.0.1:8888**. Keep its terminal open; if necessary, copy the complete printed URL including the session code after `#`. See the [browser walkthrough](docs/browser_demo.md) or [full setup guide](docs/setup.md).
 
-**Terminal-only version of this example:** `oncotracer setup --terminal --project "$PWD/my-study" --mode illumina --input-folder /data/illumina --backend conda --run`. Add `--terminal --run` to the Conda/Docker examples above for terminal questions followed by execution. To run saved settings later, choose the matching backend:
+### Terminal-only setup
+
+For the same example, answer questions in the terminal and start the run:
+
+```bash
+oncotracer setup --terminal --project "$PWD/my-study" \
+  --mode illumina --input-folder /data/illumina --backend conda --run
+```
+
+For Docker, use the Docker setup command above with `--terminal --run` added.
+
+### Run saved settings
+
+For a Conda project:
 
 ```bash
 oncotracer check --config "$PWD/my-study/config/run.yml"

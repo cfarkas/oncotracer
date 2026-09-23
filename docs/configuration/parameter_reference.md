@@ -24,11 +24,11 @@ Run `oncotracer <subcommand> --help` to inspect the executable installed on the 
 
 ## `oncotracer install`
 
-Exactly one backend flag is required.
+Choose one command below. Conda/Poetry install the core CNA tools; optional variant environments are covered in the [variant installation guide](../variants.md). Docker below explicitly selects the current variant-capable image.
 
 ```bash
 oncotracer install --conda
-oncotracer install --docker
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
 oncotracer install --singularity
 ./oncotracer install --poetry
 ```
@@ -142,7 +142,8 @@ Supplied references are validated before use; shared references are not overwrit
 The wizard saves `config/sample_metadata.csv` and its `sample_metadata` YAML path.
 This records each sample's type label, explicit tumor/normal analysis role and
 selected FASTQ files. `other` labels require an explicit study/control mapping.
-Controls are analyzed independently; ONT controls require solid-biopsy qDNAseq.
+CNA controls are analyzed independently; ONT controls require solid-biopsy qDNAseq.
+Somatic Strelka2 additionally requires explicit tumor-to-normal pairing.
 
 `oncotracer check --config FILE` reports missing paths/settings and the planned
 samples without running analysis. See [setup examples](../setup.md),
@@ -165,7 +166,7 @@ oncotracer run --backend conda --config "$PWD/project/config/illumina.auto.yml"
 
 | Option | Required | Meaning |
 | --- | --- | --- |
-| `--mode illumina|ont` | yes | Select input discovery and YAML route |
+| `--mode MODE` | yes | `illumina` or `ont`; select input discovery and YAML route |
 | `--reads-folder PATH` | yes | Illumina FASTQ folder or ONT barcode parent |
 | `--sample-table FILE` | yes | Illumina `sample_name,status` or ONT `barcode,sample_name,status` CSV |
 | `--config-dir PATH` | no | Generated YAML/manifest/samplesheet destination |
@@ -236,13 +237,13 @@ Optional methylation is ONT-only and supports the `host`, `conda`, and `poetry` 
 | Field | Typical/default | Meaning |
 | --- | --- | --- |
 | `illumina_samplesheet` | required path | Four columns: `sample,fastq_1,fastq_2,status` |
-| `illumina_analysis_type` | `solid_biopsy` | Analysis preset |
+| `illumina_analysis_type` | `solid_biopsy` | Compatibility metadata; native Illumina always uses qDNAseq |
 | `illumina_caller` | `qdnaseq` | Native Illumina CNA caller |
 | `illumina_binsize_kb` | `100` | Coarse qDNAseq bin width |
 
 The samplesheet `status` column preserves `tumor` or `normal` metadata. Every
-row is analyzed independently; normal rows are not used to construct or apply a
-local sample-derived reference.
+row is analyzed independently by qDNAseq; normal rows do not create a CNA reference.
+For somatic variants, [Strelka2 requires explicit pairs](../variants_reference.md#strelka2-germline-and-somatic-calling).
 
 ## ONT YAML fields
 
@@ -257,9 +258,11 @@ local sample-derived reference.
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
 | `ont_caller` | `ichorcna` | `ichorcna`, or `qdnaseq` only with explicit `ont_analysis_type: solid_biopsy` |
 | `ont_binsize_kb` | `500` | Coarse caller bin width; set explicitly for qDNAseq solid-biopsy runs |
-| `ont_ref` | optional FASTA | Custom reference |
 | `ont_min_age_minutes` | `0` | Exclude very new FASTQs in active run folders |
-| `ont_force_realign` | `false` | Deliberately recreate supported ONT alignments |
+
+Older `ont_ref` and `ont_force_realign` keys are ignored by the native engine.
+Use the [reference setup options](../reference_indexes.md) for hg38 assets.
+Use `run --force` only to deliberately rerun all analysis stages, not just alignment.
 
 `ont_barcodes` and `ont_sample_names` must have equal lengths and order. The corresponding NORMAL lists must also match, sample names and resolved barcode directories must be unique across both groups, and a mixed TUMOR/NORMAL run uses native qDNAseq rather than the frozen Nextflow comparator.
 

@@ -135,20 +135,23 @@ jobs:
           MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
         run: |
           set -Eeuo pipefail
-          # The release rebuilds the same five-environment image as Native v2
-          # CI: 14 GiB final environments + 18 GiB transient solve/export
-          # space + 8 GiB reserve = 40 GiB free before any publication step.
+          # Match Native v2 CI's expanded eight-environment and ONT-caller
+          # image budget: the original 40 GiB plus 20 GiB variant/ONT runtimes
+          # and 12 GiB ONT pull/export = 72 GiB before any publication step.
           FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=14
           TRANSIENT_SOLVE_AND_EXPORT_GIB=18
+          VARIANT_AND_ONT_RUNTIME_GIB=20
+          ONT_PULL_AND_EXPORT_GIB=12
           RUNNER_RESERVE_GIB=8
           MIN_PHYSICAL_GIB=15
           MIN_FREE_GIB=$((
             FINAL_SCIENTIFIC_ENVIRONMENTS_GIB +
-            TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB
+            TRANSIENT_SOLVE_AND_EXPORT_GIB + RUNNER_RESERVE_GIB +
+            VARIANT_AND_ONT_RUNTIME_GIB + ONT_PULL_AND_EXPORT_GIB
           ))
           DOCKER_ROOT_DIR="$(docker info --format '{{.DockerRootDir}}')"
           bash scripts/ci_resource_preflight.sh \
-            --purpose 'OncoTracer stable five-environment container publication' \
+            --purpose 'OncoTracer eight-environment and ONT-caller container publication' \
             --min-free-gib "$MIN_FREE_GIB" \
             --min-physical-gib "$MIN_PHYSICAL_GIB" \
             --min-addressable-gib "$MIN_PHYSICAL_GIB" \

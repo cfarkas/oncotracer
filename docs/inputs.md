@@ -74,6 +74,8 @@ oncotracer auto \
   --sample-table "$PWD/project/input/illumina_samples.csv" \
   --config-dir "$PWD/project/config/illumina" \
   --outdir "$PWD/project/results/illumina"
+oncotracer check --config "$PWD/project/config/illumina/illumina.auto.yml"
+oncotracer run --backend conda --config "$PWD/project/config/illumina/illumina.auto.yml"
 ```
 
 ### Supported layouts
@@ -113,7 +115,7 @@ CSV
 
 | Column | Required content |
 | --- | --- |
-| `sample` | Unique sample ID using letters, digits, `.`, `_`, or `-` |
+| `sample` | Unique ID starting with a letter or digit, followed by letters, digits, `.`, `_`, or `-` |
 | `fastq_1` | Absolute single-end or R1 FASTQ path |
 | `fastq_2` | Absolute R2 path, or empty for every row in a single-end run |
 | `status` | `tumor` or `normal` |
@@ -122,18 +124,20 @@ Use this file with ordinary setup; no manual YAML is needed:
 
 ```bash
 oncotracer setup --non-interactive \
-  --mode illumina --analysis cna \
+  --mode illumina --analysis cna --backend conda \
   --project "$PWD/project/manual-analysis" \
   --samplesheet "$PWD/project/config/illumina.samplesheet.csv"
 oncotracer check --config "$PWD/project/manual-analysis/config/run.yml"
+oncotracer run --backend conda --config "$PWD/project/manual-analysis/config/run.yml"
 ```
 
 ## Illumina normal rows
 
 Every samplesheet row is an analysis sample. The `normal` value records the
-submitted sample status, but does not make that row a reference input. Native
+submitted sample status, but does not make that row a CNA reference input. Native
 qDNAseq analyzes normal and tumor rows independently and writes per-sample
 outputs for both. OncoTracer does not create a local panel from the normal rows.
+The optional [Strelka2 somatic variant route](variants_reference.md#strelka2-germline-and-somatic-calling) uses a normal only through an explicit tumor-to-normal assignment.
 
 ## ONT input
 
@@ -166,6 +170,8 @@ oncotracer auto \
   --sample-table "$PWD/project/input/ont_samples.csv" \
   --config-dir "$PWD/project/config/ont" \
   --outdir "$PWD/project/results/ont"
+oncotracer check --config "$PWD/project/config/ont/ont.auto.yml"
+oncotracer run --backend conda --config "$PWD/project/config/ont/ont.auto.yml"
 ```
 
 Manual YAML lists are positional:
@@ -205,6 +211,9 @@ pathology_use_biomed_models: false
 The sample identifier must match the sequencing sample exactly. Do not commit identifiable clinical data to a public repository.
 
 ## Pre-run validation
+
+For the automatic Illumina example, inspect the input and generated files before
+its `run` command. Use the corresponding saved paths for other routes.
 
 ```bash
 gzip -t "$PWD/project/input/illumina_fastq/Patient_A_R1.fastq.gz"

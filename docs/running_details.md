@@ -19,6 +19,12 @@ Optional ONT methylation uses separately installed tools and licensed models.
 Use host, Conda or Poetry for that branch; the published Docker and Singularity
 images do not include it.
 
+For variants from existing alignments, use `oncotracer variants --config FILE`
+with a [BAM manifest](variants_reference.md#call-from-existing-bams-without-rerunning-cna).
+That command uses configured local tools and does not accept `--backend` or repeat
+CNA. The [explicit Docker alternative](variants_reference.md#conda-and-docker)
+handles container execution of that standalone route.
+
 ## Native stage graph
 
 For Illumina:
@@ -55,6 +61,22 @@ barcode FASTQ discovery and merge
 
 When `run_cna_classifier: true`, stage `05_cna_classifier` creates prepared matrices, cancer-context classifications, optional GISTIC2 results, knowledge/pathology concordance, HTML/PDF reports, and clinician summaries.
 
+With `run_variants: true`, aligned BAMs also feed stage `08_variants`:
+
+```text
+aligned BAM + reference
+  -> requested platform-compatible caller(s)
+  -> caller-native filters -> normalization
+  -> optional FFPERASE / Varlociraptor assessment
+  -> optional local ANNOVAR annotation
+  -> per-caller VCFs, evidence tables and status
+```
+
+The stage retains each caller's results separately. Fresh/FFPE, ONT profiles and
+explicit Strelka2 matched-normal assignments come from the saved configuration.
+See [variant setup](variants.md); variant resources are prepared only on Run
+when requested, while missing caller programs must be installed beforehand.
+
 ## Choose a backend
 
 ### Conda
@@ -76,6 +98,10 @@ oncotracer doctor --backend docker
 oncotracer run --backend docker \
   --config "$PWD/project/config/illumina.auto.yml"
 ```
+
+The default Docker install above selects the stable CNA image. For a YAML with
+variants enabled, use the [dated variant image and matching run command](containers.md#fastq-to-cna-and-variants).
+A core `doctor` pass does not verify every optional caller/model.
 
 ### Singularity or Apptainer
 
@@ -108,7 +134,10 @@ When `--backend` is omitted, OncoTracer uses the backend saved by the most recen
 oncotracer run --config "$PWD/project/config/illumina.auto.yml"
 ```
 
-For auditable production commands, specifying `--backend` explicitly is recommended.
+For auditable production commands, specify `--backend` explicitly. Direct `run`
+does not automatically adopt the YAML's `execution_backend`; the browser and
+`setup --project PROJECT --run` pass that saved selection when launching. If no
+backend has been installed/saved, direct `run` falls back to host tools.
 
 ## Threads
 
@@ -133,7 +162,7 @@ oncotracer run \
 ```
 
 The dry-run validates paths and shows planned analysis commands without starting
-them. It does not download references or test biological data quality.
+them. It does not download references or variant models, run callers, or test biological data quality.
 
 ## Resume behavior
 
@@ -178,6 +207,8 @@ Open these first:
 <outdir>/05_cna_classifier/native_classifier_summary.json  # when enabled
 <outdir>/07_methylation/methylation_status.json             # when enabled
 <outdir>/07_methylation/methylation_provenance.json         # when enabled
+<outdir>/08_variants/variant_status.json                   # when enabled
+<outdir>/08_variants/variant_provenance.json               # when enabled
 ```
 
 The trace is generated from argument arrays rather than shell strings. The engine checks the final trace and fails if a Nextflow invocation appears.
@@ -199,6 +230,24 @@ Expected native identity:
 engine=native
 nextflow_used=false
 ```
+
+## Completion and partial failures
+
+Use `workflow_status` in `06_workflow_summary/workflow_summary.json` and the
+branch-specific status files above to decide what completed.
+
+| Status | Meaning |
+| --- | --- |
+| `complete` | All requested applicable steps completed. A caller may legitimately return zero records. |
+| `partial_failure` | Some requested work completed and was retained; inspect the incomplete branch and reason. |
+| `failed` | The current run did not produce a successful applicable analysis branch. |
+
+For example, FFPERASE can report `not_assessed` at insufficient depth while
+caller VCFs, Varlociraptor and annotation remain available. ANNOVAR skipped for
+missing optional resources is also distinct from calling failure. Both partial
+and failed runs can exit with code `2`; a scheduler exit code alone cannot tell
+these outcomes apart. Correct the recorded cause and resume as appropriate;
+`--force` does not resolve unsuitable depth, models or specimen choices.
 
 ## Output ownership and container mounts
 

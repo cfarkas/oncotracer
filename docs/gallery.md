@@ -1,6 +1,8 @@
 # Results gallery
 
-The images below are rendered from OncoTracer output files. A plot demonstrates that a workflow completed and shows the CNA profile produced under that configuration; it does not validate a diagnosis.
+The images below show saved OncoTracer output. A plot can exist before the whole
+workflow finishes; use the run summary to confirm completion. These examples
+show CNA profiles, not validated diagnoses.
 
 ## One-sample Illumina public test
 

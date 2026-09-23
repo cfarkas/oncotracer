@@ -1,17 +1,19 @@
 # OncoTracer ONT example configuration.
-# Recommended first choice: let --auto_params generate this file for you.
+# Recommended first choice: let `oncotracer auto` generate this file for you.
 # Manual use: cp params/ont.example.yml params/my_ont.yml
 #
 # YAML uses `setting: value`, one setting per line. Use spaces, never tabs.
 # Replace /home/student/oncotracer with the absolute path printed by `pwd`.
-# Keep every input, reference, and output below lpwgs_root.
+# Use absolute paths for inputs, references, and outputs.
 
 mode: ont
 
-# Absolute common parent mounted into Docker or Singularity.
+# Reference/cache root; hg38 assets go under references/samurai_hg38/.
 lpwgs_root: /home/student/oncotracer
+# Import prebuilt hg38 assets on the first run, as in automatic setup.
+hg38_auto_download: true
 
-# Results are written here. OncoTracer creates 01_ through 06_ subdirectories.
+# Results are written here in numbered stage directories.
 outdir: /home/student/oncotracer/project/runs/ont_example
 
 # Parent directory containing one subdirectory per barcode.
@@ -34,18 +36,14 @@ ont_normal_folder: null
 ont_normal_barcodes: null
 ont_normal_sample_names: null
 
-# Optional advanced ONT reference input.
-ont_ref: null
-ont_force_realign: false
-
 # Optional ONT POD5 methylation is disabled by default. When enabled, always
 # pass an explicit non-empty directory on the command line:
 #   --methylation --sturgeon --pod5-dir /absolute/path/to/pod5 --gpu
 # or:
 #   --methylation --marlin --pod5-dir /absolute/path/to/pod5 --gpu
 # Add the checksum-pinned external resource fields documented at
-# docs/configuration/methylation.md. OncoTracer never discovers POD5, models,
-# or classifier installations automatically.
+# docs/configuration/methylation.md. Browser setup can find matching POD5/BAM
+# folders; review the selected paths. Classifier tools/models need explicit setup.
 methylation: false
 
 run_cna_classifier: false

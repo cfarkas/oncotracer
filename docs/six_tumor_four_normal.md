@@ -3,7 +3,9 @@
 This example runs ten paired-end Illumina samples in one analysis. Every sample
 is aligned, normalized, segmented, called, and reported independently by qDNAseq.
 OncoTracer does **not** pool the four `CTRL` samples or subtract them from tumors.
-`NORMAL` records a sample's role, not a reference-building instruction.
+`NORMAL` records a sample's role, not a reference-building instruction. These
+example controls are not asserted to be patient-matched normals for somatic
+variant calling; this workflow requests CNA only.
 
 These **20 FASTQs are not bundled**. Use your own de-identified data, changing
 the names below to match. For checksum-validated public-data examples, choose

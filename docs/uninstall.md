@@ -5,7 +5,8 @@ Use `oncotracer uninstall` to preview your saved backend, or select tools explic
 rejects the flag, use the `uninstall` subcommand; if it also rejects that, update
 OncoTracer using the [installation instructions](installation.md).
 
-**Removal needs `--yes`. Reclaiming disk space also needs `--purge`.**
+**With `oncotracer uninstall`, removal needs `--yes`; reclaiming disk space also
+needs `--purge`.**
 Integrity checks show progress and can take several minutes for large environments.
 **No command below removes project data or results.**
 
@@ -27,8 +28,9 @@ oncotracer uninstall --conda --prefix /data/oncotracer-tools --dry-run
 
 This directory contains `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`.
 Include the same `--prefix` in your removal command below.
-Separately created `variants` and `ffperase` environments are not part of this
-managed installation; remove those separately with Conda if no other analyses use them.
+Separately created `variants`, `ffperase` and `strelka2` environments are not part
+of this managed installation; remove those separately with Conda if no other
+analyses use them.
 
 Choose one removal method:
 

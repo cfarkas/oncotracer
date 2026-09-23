@@ -98,8 +98,9 @@ open. Select FASTQs, assign samples to Normal or Cancer, review settings and
 choose a project folder. Click **Save configuration and check**, then **Run analysis**.
 See the [setup guide](setup.md) or [QuickStart 1](quick_start.md).
 
-The terminal alternatives ask the same configuration questions; finish with
-**run**, or **save** to run later. For scripts and SSH, see
+The terminal alternatives collect settings through prompts; finish with **run**,
+or **save** to run later. Add `--variant-specimen-type fresh` or `ffpe` to record
+preservation for CNA-only setup. For scripts and SSH, see
 [terminal and headless servers](headless.md). Resume a saved project with:
 
 ```bash

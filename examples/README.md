@@ -9,6 +9,7 @@ source folder.
 | Example | Guide | Files here |
 | --- | --- | --- |
 | **First run: small Illumina + ONT examples** | [QuickStart 1](../docs/quick_start.md) | `quickstart/`: output verifier |
+| Mock Illumina sample assignments: two tumors + one normal | [Browser and terminal walkthrough](illumina_multiple_libraries/README.md) | `illumina_multiple_libraries/`: fictional three-library CSV template |
 | Three Illumina libraries | [QuickStart 2](../docs/public_cohort.md) · [Terminal commands here](hcc1143_lpwgs/README.md#terminal--headless-version) | `hcc1143_lpwgs/`: manifest, checksums, sample labels and verifier |
 | Larger public Illumina cohort | [Full tutorial](../docs/full_tutorial.md) · [Terminal commands here](prjna754199/README.md#terminal--headless-version) | `prjna754199/`: archive inputs, provenance and verifier |
 | Six tumors and four independent normals | [Mock-cohort tutorial](../docs/six_tumor_four_normal.md) | Synthetic cohort recipe in the guide |

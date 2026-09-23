@@ -136,6 +136,12 @@ and time. See [genome indexes](reference_indexes.md).
 
 ## Resume
 
-Repeat the same `run` command after fixing an error. Keep the samplesheet, YAML
-and output directory unchanged; omit setup and `--force` for a normal resume.
-See [running and resuming](running.md).
+After fixing a reported problem, continue the saved project:
+
+```bash
+cd /path/to/my/analyses_dir/
+oncotracer run --backend conda \
+  --config "$PWD/oncotracer-quickstart2/analysis/config/run.yml"
+```
+
+Completed steps are reused. See [resume details](running.md).

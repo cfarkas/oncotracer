@@ -23,6 +23,9 @@ Nanopore (ONT) workflow uses minimap2, HMMcopy, and ichorCNA. See the
 
 ## What is optional?
 
+- [Variant calling](variants.md) detects SNV/indel candidates from aligned reads,
+  with platform-specific callers and Fresh/FFPE processing.
+
 - The [optional CNA classifier](configuration/pathology.md) adds research
   predictions and expanded reports.
   [LLM-assisted report text](llm_reports.md) has separate settings.

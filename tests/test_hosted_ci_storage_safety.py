@@ -3363,6 +3363,19 @@ run_native_environment_probe ichorcna readcounter 255 \\
         self.assertIn("MAIN_SHA: ${{ steps.gate.outputs.main_sha }}", capacity_step)
         self.assertIn('--candidate-sha "$MAIN_SHA"', capacity_step)
         self.assertIn("verify_ci_resource_preflight.py", capacity_step)
+        # Evaluate the actual budget arithmetic without invoking Docker or the
+        # preflight. Both image publishers must allow for all optional runtimes.
+        for label, text in (("native CI", workflow), ("stable publisher", release)):
+            with self.subTest(capacity_model=label):
+                budget = "FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=" + text.split(
+                    "FINAL_SCIENTIFIC_ENVIRONMENTS_GIB=", 1
+                )[1].split("DOCKER_ROOT_DIR=", 1)[0]
+                result = subprocess.run(
+                    ["bash", "-eu", "-c", budget +
+                     '\nprintf "%s %s\\n" "$MIN_FREE_GIB" "$MIN_PHYSICAL_GIB"'],
+                    capture_output=True, text=True, check=True,
+                )
+                self.assertEqual(result.stdout.strip(), "72 15")
 
     def test_parity_artifact_upload_is_exact_and_fail_closed(self) -> None:
         driver = (ROOT / "scripts" / "ci_native_parity.sh").read_text(encoding="utf-8")

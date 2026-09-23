@@ -101,7 +101,8 @@ expected tumor and normal completed.
 
 ## Manual samplesheet
 
-Use a manual samplesheet for unusual filenames:
+This is an alternative to automatic setup. Use it for unusual filenames; retain
+the exact existing FASTQ paths in the table:
 
 ```bash
 PROJECT_DIR="$PWD/project"
@@ -120,14 +121,20 @@ For single-end data, retain the four-column header and leave `fastq_2` empty for
 
 ## Manual YAML
 
+After creating the manual samplesheet above, save this configuration. It explicitly
+selects prebuilt hg38 download at run time, matching the automatic route. To build
+indexes locally instead, set `hg38_auto_download: false`; see [reference choices](../reference_indexes.md).
+
 ```bash
 PROJECT_DIR="$PWD/project"
+mkdir -p "$PROJECT_DIR/config"
 
 cat > "$PROJECT_DIR/config/illumina.manual.yml" <<YAML
 mode: illumina
-lpwgs_root: $PROJECT_DIR
-outdir: $PROJECT_DIR/results/manual_illumina
-illumina_samplesheet: $PROJECT_DIR/config/illumina.samplesheet.csv
+lpwgs_root: "$PROJECT_DIR/reference"
+hg38_auto_download: true
+outdir: "$PROJECT_DIR/results/manual_illumina"
+illumina_samplesheet: "$PROJECT_DIR/config/illumina.samplesheet.csv"
 illumina_analysis_type: solid_biopsy
 illumina_caller: qdnaseq
 illumina_binsize_kb: 100
@@ -135,6 +142,7 @@ run_cna_classifier: false
 force: false
 YAML
 
+oncotracer check --config "$PROJECT_DIR/config/illumina.manual.yml"
 oncotracer run \
   --backend conda \
   --config "$PROJECT_DIR/config/illumina.manual.yml" \
@@ -150,13 +158,16 @@ oncotracer run \
 | Setting | Typical value | Purpose |
 | --- | --- | --- |
 | `illumina_samplesheet` | absolute CSV path | Exact list of FASTQ files, sample names, and tumor/normal status |
-| `illumina_analysis_type` | `solid_biopsy` | Analysis preset |
+| `illumina_analysis_type` | `solid_biopsy` | Compatibility metadata; native Illumina analysis uses qDNAseq |
 | `illumina_caller` | `qdnaseq` | Illumina CNA caller |
 | `illumina_binsize_kb` | `100` | Initial qDNAseq bin width |
 | `run_cna_classifier` | `false` | Add native cancer-context reports |
 | `force` | `false` | Preserve reusable stages |
 
 ## Pre-run checks
+
+This block inspects the automatically generated samplesheet. For the manual
+route, set `SHEET="$PROJECT_DIR/config/illumina.samplesheet.csv"` instead.
 
 ```bash
 PROJECT_DIR="$PWD/project"

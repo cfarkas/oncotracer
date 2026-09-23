@@ -5,11 +5,25 @@ builds, alternative backends, ownership checks and recovery behavior.
 
 OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.13 is required by the portable zipapp. The selected backend supplies BWA, samtools, Picard, R, qDNAseq, HMMcopy, ichorCNA, the optional classifier, and GISTIC2.
 
+## Choose the installation route
+
+| Goal | Use |
+| --- | --- |
+| First CNA analysis | [Standard installation](installation.md), then the Conda section below. |
+| CNA and small variants | Current launcher plus [optional environments](variants_reference.md#conda-and-docker), or the [dated Docker image](containers.md#fastq-to-cna-and-variants). |
+| HPC CNA analysis | The Singularity/Apptainer section below. |
+| Develop the launcher | The Poetry section below. |
+| Move a project to a remote server | [Headless setup and SSH](headless.md). |
+
+Choose one backend per run. The five core CNA environments do not install the
+optional small-variant callers or their models. Installing tools, downloading
+reference/model data, and starting an analysis are separate steps.
+
 ## Requirements
 
 Before installation, provide:
 
-- a 64-bit Linux host;
+- a Linux x86-64 host for the supplied scientific environments and container images;
 - Python 3.10–3.13;
 - enough storage for FASTQs, hg38, BAMs, environments, temporary files, and results;
 - sufficient **available RAM**, not just installed RAM; see the planning check below;
@@ -85,6 +99,12 @@ oncotracer install --conda \
 oncotracer doctor --backend conda
 ```
 
+The optional `variants`, `ffperase` and `strelka2` environments are created
+separately; see [variant installation commands](variants_reference.md#conda-and-docker).
+Existing ANNOVAR software and databases are also separate. Setup resource
+autodetection inspects these installations without installing them. Approved
+public model/resource downloads occur only when Run starts.
+
 Use `--force` only when deliberately rebuilding all five prefixes.
 
 The prefix parent must be absent, empty, or already owned by this OncoTracer
@@ -113,7 +133,7 @@ oncotracer install --docker
 oncotracer doctor --backend docker
 ```
 
-The installer pulls `ghcr.io/cfarkas/oncotracer:2.1.0`, validates the native tools inside it, and saves the image reference. It does not install Docker, alter daemon settings, or request administrator privileges silently.
+The default installer pulls the stable CNA image `ghcr.io/cfarkas/oncotracer:2.1.0`, validates the native tools inside it, and saves the image reference. It does not install Docker, alter daemon settings, or request administrator privileges silently.
 
 Run an analysis with:
 
@@ -123,6 +143,21 @@ oncotracer run --backend docker \
 ```
 
 All paths in the YAML should be absolute. OncoTracer derives the required project mounts from the configuration.
+
+For the optional variant workflow, choose the newer image explicitly and retain
+that selection when running:
+
+```bash
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer run --backend docker \
+  --image carlosfarkas/oncotracer:fastq-variants-20260922 \
+  --config /absolute/path/project/config/run.yml
+```
+
+Create that variant-enabled YAML with the [browser or terminal variant guide](variants.md).
+Installing an image alone does not enable variants. Automatic model preparation
+also requires the profile/license choices documented there.
 
 ### Singularity or Apptainer
 

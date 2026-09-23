@@ -16,6 +16,7 @@ trace record, and resume signature. The Python engine coordinates:
 - qDNAseq in its pinned R 4.1 environment;
 - HMMcopy and ichorCNA 0.5.1 in their pinned R 4.4 environment;
 - the existing BAM boundary-refinement, CNA notation, and plotting implementations;
+- the optional variant callers, FFPE processing, evidence filtering and ANNOVAR annotation;
 - the optional CNA classifier, GISTIC2, knowledge enrichment, pathology concordance, HTML/PDF reports, and clinician summaries.
 
 The optional classifier is a direct native stage graph over its versioned Python

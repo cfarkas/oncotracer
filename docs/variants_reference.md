@@ -4,6 +4,21 @@ Start with the [browser variant guide](variants.md) or [ANNOVAR setup](annovar.m
 
 OncoTracer can run optional SNV/indel callers alongside CNA analysis, or from an explicit manifest of existing BAMs. Each caller keeps its own VCF and evidence table. This research feature does not establish clinical sensitivity, reliable germline genotypes at low coverage, or a validated somatic diagnosis.
 
+## Find the relevant example
+
+- [Illumina FFPE FASTQs](#terminal-only-the-same-illumina-ffpe-project)
+- [ONT FASTQs with an existing model](#terminal-only-ont-fastqs) or [automatic model preparation](#automatic-ont-model-preparation)
+- [Existing BAMs](#call-from-existing-bams-without-rerunning-cna)
+- [Strelka2 germline and matched somatic calling](#strelka2-germline-and-somatic-calling)
+- [FFPERASE and Varlociraptor filtering](#additional-assessments-ffperase-and-varlociraptor)
+- [Caller environment installation](#conda-and-docker)
+
+Examples are alternatives, not a sequence to execute from top to bottom. The
+YAML blocks labeled “additional fields” extend a complete configuration; they
+cannot run on their own. A **tool prefix** contains programs in `bin/`; a **model
+folder** contains trained caller assets; an **annotation database** describes
+called variants. These paths are not interchangeable.
+
 ## Browser, terminal or remote server
 
 Each browser example below has a terminal-only alternative. Use **one route**
@@ -35,7 +50,7 @@ relying on the most recently installed backend.
 
 See the developers’ [Clair3](https://github.com/HKU-BAL/Clair3) and [ClairS-TO](https://github.com/HKU-BAL/ClairS-TO) documentation for model compatibility and caller scope.
 
-Preservation is a separate choice: `fresh` or `ffpe`. Use one preservation type per project. A normal sample can use germline-style callers; it also supplies paired evidence for Strelka2 somatic only when explicitly assigned to a study sample. Normal labels alone never create a pair. Other callers remain independent or tumor-only. Multiple callers remain separate; their agreement is not converted into a synthetic consensus genotype.
+Preservation is a separate choice: `fresh` or `ffpe`. Use one preservation type per project. A normal sample can use germline-style callers; it also supplies paired evidence for Strelka2 somatic only when explicitly assigned to a study sample. Normal labels alone never create a pair. Mutect2, ClairS-TO and Strelka2 somatic skip samples labeled `normal`; independent normal calls require a germline caller. Other callers remain independent or tumor-only. Multiple callers remain separate; their agreement is not converted into a synthetic consensus genotype.
 
 ## Add calling during setup
 
@@ -99,7 +114,7 @@ explain these separate choices.
 
 Choose **Docker** under analysis tools in the browser and enter the **Docker image
 tag or digest**. The following retained integration example uses the
-20260921 image with existing resources. For new automatic model preparation use
+20260921 image with existing resources and the earlier caller set; it does not include Strelka2. For Strelka2 and automatic model preparation use
 `carlosfarkas/oncotracer:fastq-variants-20260922` consistently in setup and run,
 as shown in the [current Docker guide](variants.md#run-cna-and-variants-with-docker).
 The same selection can prefill the form:
@@ -426,7 +441,10 @@ oncotracer run --backend conda --config "$PWD/strelka-fastq-study/config/run.yml
 ```
 
 For **Strelka2 germline**, use `--variant-callers strelka2_germline` and omit the
-matched-normal flag; each selected library is called independently. For FFPE,
+matched-normal flag; each selected library is called independently. When both
+callers are selected, a matched normal's preservation is recorded as not supplied
+and FFPERASE is disabled for its independent call; tumor FFPE settings do not
+automatically label the normal specimen. For FFPE,
 change preservation and choose the [FFPERASE resources](#ffperase-for-illumina-ffpe)
 explicitly. Neither change establishes performance at low coverage.
 
@@ -539,7 +557,7 @@ VCFs are normalized against the reference, split at multiallelic records, sorted
 
 `variant_annovar: auto` inspects the configured paths, ANNOVAR environment variables, executable search path and `~/annovar`. Detection requires executable helper scripts, Perl, and unpacked databases for the exact requested build. Automatic annotation selects a complete RefSeq gene database and the newest compatible dated ClinVar database if available. It never downloads, decompresses or licenses ANNOVAR/databases.
 
-The inspected development installation provides **hg38 RefSeq (`refGene`) only**, while **hg19 provides `refGeneWithVer` plus `clinvar_20240917`**. This describes that installation, not a bundled resource guarantee. An hg19 ClinVar file is never used for hg38 calls. The saved detection record identifies the actual resources, script revision, hashes for scripts/small assets and explicitly labeled file-size/time provenance for large databases. [Official ANNOVAR command and output guide](https://annovar.openbioinformatics.org/en/latest/user-guide/startup/).
+A RefSeq-only installation can annotate genes without ClinVar. For example, an installation with hg38 RefSeq and hg19 ClinVar still cannot supply ClinVar annotation for hg38 calls. An hg19 ClinVar file is never used for hg38 calls. The saved detection record identifies the actual resources, script revision, hashes for scripts/small assets and explicitly labeled file-size/time provenance for large databases. [Official ANNOVAR command and output guide](https://annovar.openbioinformatics.org/en/latest/user-guide/startup/).
 
 Missing optional resources produce a recorded annotation skip. A runtime annotation error is recorded separately from retained caller output. The installed ANNOVAR scripts construct internal shell commands, so unsupported path characters, including spaces, are rejected; annotation also refuses an occupied output prefix. Read the recorded reason instead of treating an unannotated VCF as an empty callset.
 
@@ -568,6 +586,12 @@ For a FASTQ project, use `PROJECT/results` instead of `/data/variant-results`.
 A file is available only if its corresponding step produced it.
 
 If preflight or output ownership fails before stage 08 can be written, the workflow summary points to `.oncotracer-native/variant_failure.json`. The dashboard follows that current status and excludes earlier stage-08 files from the current result listing.
+
+For scripts and job schedulers, both partial failure and an unsuccessful run can
+return exit code `2`. Read `workflow_status` in the workflow summary and the
+per-caller reasons in `variant_status.json`; the exit code alone does not
+identify which outputs completed. Do not discard completed results or rerun
+with `--force` merely because an optional assessment was unavailable.
 
 A completed call with zero records, an inapplicable tumor-only caller, a failed call and skipped annotation are distinct outcomes. When a successful caller emits zero variant records, ANNOVAR is `not_applicable`; this does not turn the successful call into a failure. Low-pass CNA success does not establish small-variant accuracy: benchmark depth, allele fraction, preservation and the selected platform/caller before making sensitivity claims.
 
@@ -696,17 +720,25 @@ conda env create -p "$ONCOTRACER_VARIANTS_PREFIX" -f environments/native-variant
 conda env create -p "$ONCOTRACER_FFPERASE_PREFIX" -f environments/native-ffperase.yml
 ```
 
-The `/envs/...` paths in the illustrative local-resource YAML above must be replaced
-with your actual prefixes when running on the host; those paths are used inside
-the supplied Docker image. ONT caller installation commands are available from
+The `/envs/...` paths in the illustrative local-resource YAML above are placeholders;
+replace them with your actual host prefixes. The Docker image instead uses
+`/opt/oncotracer-envs/variants`, `/opt/oncotracer-envs/ffperase` and
+`/opt/oncotracer-envs/strelka2` internally. Let the Docker runner select these;
+do not copy host prefixes into container settings. ONT caller installation commands are available from
 **Autodetect resources → Copy commands**.
 
-For either Strelka2 caller, additionally create its isolated legacy runtime:
+For a Fresh study, the FFPERASE environment is unnecessary; omit its export and creation command above. For either Strelka2 caller, additionally create its isolated legacy runtime:
 
 ```bash
 export ONCOTRACER_STRELKA_PREFIX="$HOME/.local/share/oncotracer/optional-tools/strelka2"
 conda env create -p "$ONCOTRACER_STRELKA_PREFIX" -f environments/native-strelka2.yml
 ```
+
+The supplied specification pins Python 2.7.15 and the working Linux Strelka
+build `2.9.10=h9ee0642_1`. Keep these pins: the later noarch build
+`2.9.10=hdfd78af_2` has a broken somatic binary in the tested environments, even
+though its configuration-script help works. Detection rejects that exact build
+for somatic calling and explains the replacement environment to create.
 
 Set `variant_strelka_prefix` to this prefix, or use the exported variable when
 starting setup/run. Keep shared utilities in `variant_tool_prefix`. The supported
@@ -719,7 +751,7 @@ The updated Dockerfile builds the variant, FFPERASE and Strelka2 environments an
 
 ```bash
 docker build -t oncotracer:variant-filters .
-docker run --rm -v /data/project:/project \
+docker run --rm --user "$(id -u):$(id -g)" -v /data/project:/project \
   -v /data/resources:/resources:ro \
   oncotracer:variant-filters variants --config /project/variants.yml
 ```
