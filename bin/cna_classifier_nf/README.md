@@ -11,3 +11,6 @@ See [classifier settings](../../docs/configuration/pathology.md),
 [report LLM settings](../../docs/llm_reports.md) and
 [result files](../../docs/outputs.md). Methylation classifiers are configured
 separately in the [methylation guide](../../docs/configuration/methylation.md).
+
+Dependencies are maintained in [native-classifier.yml](../../environments/native-classifier.yml)
+and [native-gistic2.yml](../../environments/native-gistic2.yml).

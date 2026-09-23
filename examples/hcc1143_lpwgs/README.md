@@ -11,15 +11,15 @@ DMSO is a treatment control, not a normal genome.
 
 ## Terminal / headless version
 
-Install the launcher and Conda tools first. Start in the source checkout, set
-your writable analysis directory, and run these blocks in order. This downloads
+Install the launcher and Conda tools first. Set the source checkout and writable
+analysis directory paths below, then run these blocks in order. This downloads
 all six files from the bundled manifest, checks each MD5 and gzip stream, then
 uses the same three-library settings as QuickStart 2. No browser is started.
 
 ```bash
-set -euo pipefail
-ONCOTRACER_EXAMPLES="$PWD/examples"
 cd /path/to/my/analyses_dir/
+set -euo pipefail
+ONCOTRACER_EXAMPLES="/path/to/my/oncotracer_source/examples"
 mkdir -p "$PWD/oncotracer-quickstart2/input"
 
 while IFS=$'\t' read -r sample treatment accession mate filename bytes checksum url; do
@@ -34,6 +34,7 @@ done < "$ONCOTRACER_EXAMPLES/hcc1143_lpwgs/manifest.tsv"
 Continue only if every checksum reports `OK` and gzip reports no errors.
 
 ```bash
+cd /path/to/my/analyses_dir/
 cat > "$PWD/oncotracer-quickstart2/input/samplesheet.csv" <<CSV
 sample,fastq_1,fastq_2,status
 HCC1143_DMSO,"$PWD/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz",tumor
