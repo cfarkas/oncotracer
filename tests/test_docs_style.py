@@ -56,7 +56,7 @@ REQUIRED_TEXT = {
     "docs/index.md": (
         "oncotracer setup --project",
         "oncotracer check --config",
-        "oncotracer run --config",
+        'oncotracer setup --project "$PWD/my-study" --run',
         "native_architecture.md",
         "parity_release.md",
     ),
