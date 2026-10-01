@@ -6,6 +6,7 @@ import http.client
 import io
 import json
 import os
+import shutil
 import subprocess
 import signal
 import sys
@@ -283,6 +284,48 @@ class WebTests(unittest.TestCase):
         self.assertEqual(listing["path"], str(self.root))
         self.assertEqual({f["name"] for f in listing["files"]}, {"model.zip", "dorado", "batch.pod5", "calls.bam"})
         self.assertEqual((listing["pod5_files"], listing["bam_files"]), (1, 1))
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for demo folder checks")
+    def test_demo_folder_selection_does_not_invent_samples_or_read_local_files(self):
+        assets = Path(__file__).resolve().parents[1] / 'docs/assets/setup-demo'
+        script = """
+const assert=require('node:assert/strict');
+const window={},document={addEventListener(){}},location={href:'https://example.test/'};
+"""
+        script += (assets / 'computer-browser.js').read_text()
+        script += (assets / 'mock-api.js').read_text().replace('__VARIANT_INSTALL_GUIDES__', '{}')
+        script += r"""
+(async()=>{
+  for(const folder of ['/demo/projects','/demo/resources','/demo/nanopore/pod5_pass']){
+    assert.throws(()=>demoApi('/api/scan',{mode:'illumina',folder}),/No sequencing files found\. Check your paths\./);
+  }
+  assert.throws(()=>demoBrowse('/demo/does-not-exist'),/does not exist/);
+  const sample=demoApi('/api/scan',{mode:'ont',folder:'/demo/nanopore/fastq_pass/barcode02'});
+  assert.deepEqual(sample.samples.map(sample=>sample.barcode),['barcode02']);
+  assert.equal(sample.samples[0].files.length,3);
+  assert.equal(sample.root,'/demo/nanopore/fastq_pass');
+  assert.equal(demoBrowse('/demo/nanopore/pod5_pass').files.length,3);
+  assert.equal(demoBrowse('/demo/nanopore/bam_pass').bam_files,1);
+  assert.throws(()=>demoApi('/api/ont-inputs',{folder:'/demo/projects'}),/No sequencing files found/);
+  const folder=demoComputerRoot+'/selected';
+  const empty={name:'empty',kind:'directory',async *values(){}};
+  const handle={async *values(){
+    for(const name of ['R1.FASTQ.GZ','R2.fq','reads.pod5','calls.BAM','notes.txt'])
+      yield {name,kind:'file',getFile(){throw Error('Must not read file contents');}};
+    yield empty;
+  }};
+  demoComputerDirectory(demoComputerFolders,folder,handle);
+  const listing=await demoBrowseComputerPath(folder);
+  assert.deepEqual([listing.fastq_files,listing.pod5_files,listing.bam_files],[2,1,1]);
+  assert.equal(listing.local_preview,true);
+  assert.equal((await demoBrowseComputerPath(folder+'/empty')).fastq_files,0);
+  await assert.rejects(demoBrowseComputerPath(folder+'/missing'),/not available/);
+  assert.throws(()=>demoApi('/api/scan',{mode:'illumina',folder}),/fictional \/demo folders/);
+  assert.throws(()=>demoApi('/api/prepare',{project:folder}),/fictional \/demo folders/);
+})().catch(error=>{console.error(error);process.exitCode=1;});
+"""
+        result = subprocess.run([shutil.which('node'), '-e', script], text=True, capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_methylation_form_paths_save_real_checked_config_for_both_classifiers(self):
         from tests.test_native_methylation import Fixture

@@ -292,10 +292,12 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(len(found.samples), 1)
 
     def test_empty_folder_and_invalid_platform_have_actionable_errors(self):
-        with self.assertRaisesRegex(OncoTracerError, "No FASTQ"):
+        with self.assertRaisesRegex(OncoTracerError, r"No FASTQ.*Check your paths\."):
             detect_fastq_mode(self.reads)
-        with self.assertRaisesRegex(OncoTracerError, "No FASTQ"):
+        with self.assertRaisesRegex(OncoTracerError, r"No FASTQ.*Check your paths\."):
             discover_fastqs(self.reads, "illumina")
+        with self.assertRaisesRegex(OncoTracerError, r"No FASTQ.*Check your paths\."):
+            discover_fastqs(self.reads, "ont")
         with self.assertRaisesRegex(OncoTracerError, "must be illumina or ont"):
             discover_fastqs(self.reads, "unknown")
 
