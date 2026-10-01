@@ -93,7 +93,7 @@ def detect_fastq_mode(folder: str | Path) -> str | None:
             pass
     paths = _fastqs(scan_root)
     if not paths:
-        raise OncoTracerError(f"No FASTQ files found in {scan_root}")
+        raise OncoTracerError(f"No FASTQ files found in {scan_root}. Check your paths.")
     if _barcode(scan_root.name) or any(
         _barcode(part) for path in paths for part in path.relative_to(scan_root).parts[:-1]
     ):
@@ -113,7 +113,7 @@ def _sample_id(stem: str, warnings: list[str]) -> str:
 def _illumina(root: Path) -> FastqDiscovery:
     paths = _fastqs(root)
     if not paths:
-        raise OncoTracerError(f"No FASTQ files found in {root}")
+        raise OncoTracerError(f"No FASTQ files found in {root}. Check your paths.")
     warnings: list[str] = []
     pairs: dict[tuple[Path, str], dict[str, list[tuple[Path, str]]]] = {}
     singles: list[tuple[str, Path]] = []
@@ -183,7 +183,7 @@ def _ont(folder: Path) -> FastqDiscovery:
         raise OncoTracerError(f"The selected barcode folder must be directly below the FASTQ parent: {folder}")
     paths = _fastqs(folder if selected else root)
     if not paths:
-        raise OncoTracerError(f"No FASTQ files found in {folder}")
+        raise OncoTracerError(f"No FASTQ files found in {folder}. Check your paths.")
     if not any(_barcode(part) for path in paths for part in path.relative_to(root).parts[:-1]):
         _single_ont_sample_folder(root)
         warnings: list[str] = []

@@ -2,7 +2,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<meta name="description" content="Try the OncoTracer setup interface with synthetic examples. Browser-only simulation; no files accessed or analysis run.">
+<meta name="description" content="Try the OncoTracer setup interface with synthetic examples, or preview sequencing filenames in a folder you choose. No files uploaded or analysis run.">
 <title>OncoTracer · Interactive setup demo</title>
 <style>
 :root{color-scheme:light;--ink:#192c3b;--muted:#5b6d78;--line:#dce4e6;--paper:#fff;--accent:#116f68;--wash:#edf5f3}*{box-sizing:border-box}body{margin:0;background:#f3f5f3;color:var(--ink);font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{border-bottom:1px solid var(--line);background:var(--paper);padding:18px max(24px,calc((100vw - 1100px)/2));display:flex;align-items:center;justify-content:space-between;gap:24px}.brand{font-size:21px;font-weight:750;letter-spacing:-.6px}.brand span{color:var(--accent)}.local{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}main{max-width:1100px;margin:40px auto 80px;padding:0 24px}h1{font-size:36px;line-height:1.2;letter-spacing:-1px;margin:12px 0}h2{font-size:23px;letter-spacing:-.4px;margin:0}h3{font-size:17px}p{margin:8px 0 18px}.muted,.hint{color:var(--muted)}.hint{font-size:13px}.eyebrow{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);font-weight:700}.intro{max-width:710px;margin-bottom:30px}.card{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:28px;margin:20px 0;box-shadow:0 3px 8px #192c3b04}.sectionhead{display:flex;align-items:center;gap:14px;margin-bottom:18px}.step{background:var(--wash);color:var(--accent);width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:750;flex:none}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.platform{background:#fff;border:1px solid var(--line);text-align:left;white-space:normal;padding:23px;color:var(--ink);min-height:130px;cursor:pointer;border-radius:10px}.platform strong{font-size:22px;display:block;margin:0 0 8px}.platform span{font-size:14px;color:var(--muted);display:block}.platform[aria-pressed=true]{border:2px solid var(--accent);background:var(--wash);padding:22px}.platform:hover{border-color:var(--accent)}label{display:block;font-size:14px;font-weight:600;margin:0 0 7px}input,select,button{font:inherit}input:not([type=checkbox]),select{width:100%;border:1px solid #c4d1d5;border-radius:6px;padding:10px 11px;background:white;color:var(--ink);min-width:0}input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);vertical-align:middle}button{border:1px solid #c4d1d5;border-radius:6px;padding:10px 16px;cursor:pointer;background:#fff;color:var(--ink);font-weight:650;white-space:nowrap}button:hover{background:var(--wash)}button.primary{background:var(--accent);color:white;border-color:var(--accent)}button.primary:hover{background:#085b55}a.result-link{display:inline-block;border-radius:6px;padding:10px 16px;background:var(--accent);color:white;font-weight:650;text-decoration:none}a.result-link:hover{background:#085b55}button:disabled{opacity:.5;cursor:wait}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #65bcb2;outline-offset:2px}.row{display:flex;gap:10px;align-items:center}.row input{flex:1}.actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:22px}.hardware{display:flex;gap:24px;flex-wrap:wrap;background:#f6f8f7;border-radius:8px;padding:16px;margin:15px 0 24px}.hardware strong{display:block;font-size:20px}.hardware span{font-size:12px;color:var(--muted)}.notice{background:var(--wash);border-left:3px solid var(--accent);padding:12px 16px;font-size:14px;margin:16px 0}.error{background:#fff0ee;color:#8b2922;border:1px solid #edc5bf;border-radius:8px;padding:14px 18px;margin:16px 0;white-space:pre-wrap;overflow-wrap:anywhere}.samplewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.6px;padding:10px 8px;border-bottom:1px solid var(--line)}td{vertical-align:top;padding:14px 8px;border-bottom:1px solid var(--line)}td:first-child{width:32px}td.name{min-width:185px}td.type{min-width:180px}td small{display:block;color:var(--muted);margin-top:5px}summary{cursor:pointer;font-size:13px;color:var(--accent)}details{margin:12px 0}details pre{font-size:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;background:#f5f7f8;border-radius:6px;padding:16px;max-height:420px;overflow:auto}.logs{background:#14242d;color:#dce9e5;min-height:180px;max-height:540px}.badge{display:inline-block;border-radius:30px;padding:4px 12px;background:var(--wash);color:var(--accent);font-size:13px;font-weight:650}.field{margin-bottom:18px}.check{font-weight:400;margin:14px 0}.check input{margin-right:8px}dialog{width:min(700px,calc(100vw - 28px));border:1px solid var(--line);border-radius:12px;padding:26px;color:var(--ink);box-shadow:0 20px 80px #0003}dialog::backdrop{background:#12283188}.folders{height:310px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:12px}.folder{display:block;width:100%;border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;font-weight:400;overflow-wrap:anywhere;white-space:normal}.folder:before{content:'▸';margin-right:12px;color:var(--accent)}.folderpath{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere;margin:12px 0}[hidden]{display:none!important}footer{font-size:13px;color:var(--muted);margin-top:26px}.progress{margin-left:auto;color:var(--muted);font-size:13px}@media(max-width:720px){main{padding:0 14px;margin-top:24px}.card{padding:20px}.grid{grid-template-columns:1fr}.row{flex-wrap:wrap}.row input{flex-basis:100%}h1{font-size:29px}header{padding:16px}.local{font-size:10px}}
@@ -22,7 +22,7 @@
 <main><div class="intro"><h2>Configure a synthetic analysis</h2><p class="muted">Choose Illumina or Oxford Nanopore, then Fresh or FFPE. Select input files, assign samples and choose analysis settings. Save the configuration, start or stop analysis, follow its progress, and open the results here.</p><a id="existing-bam-link" href="/variants" style="color:var(--accent)">Call variants from existing BAMs →</a></div>
 <aside class="demo-guide" aria-label="Synthetic demonstration">
   <span class="demo-chip">Interactive demo · synthetic data</span>
-  <p>Choose a platform below, then Fresh or FFPE. Files, checks and progress are simulated; no data is processed.</p>
+  <p>Choose a platform below, then Fresh or FFPE. Try synthetic files, or use Browse computer to preview your sequencing filenames. Checks and progress are simulated; no files are uploaded or analyzed.</p>
   <div id="demo-stage-controls" hidden>
     <nav class="demo-steps" aria-label="Explore demo stages">
       <button data-demo-stage="platform-card">1 · Platform</button>
@@ -44,7 +44,7 @@
 <button class="platform" id="choose-illumina" aria-pressed="false"><strong>Illumina</strong><span>Paired-end or single-end FASTQs. Sample names and read pairs are discovered for you.</span></button></div></section>
 <section class="card" id="specimen-card" hidden><div class="sectionhead"><span class="step">2</span><h2>Choose sample preservation</h2></div><p id="specimen-platform-note" class="muted">Choose how these specimens were preserved.</p><div class="grid" role="group" aria-label="Sample preservation"><button type="button" class="platform" id="variant-fresh" aria-pressed="false"><strong>Fresh</strong><span>Fresh or frozen material</span></button><button type="button" class="platform" id="variant-ffpe" aria-pressed="false"><strong>FFPE</strong><span>Formalin-fixed, paraffin-embedded tissue</span></button></div><p class="hint">Use one preservation type for the study specimens in each project. Both platforms support either choice.</p></section>
 <div id="workflow" hidden>
-<section class="card" id="input-card"><div class="sectionhead"><span class="step">3</span><h2>Find your FASTQ folder</h2></div><p class="muted">Browse the fictional /demo folders. These listings are built into this page; they do not show your computer.</p><div id="ont-inputs" hidden><label for="ont-run-folder">ONT run folder (optional)</label><div class="row"><input id="ont-run-folder" placeholder="Select the MinKNOW run containing fastq_pass and POD5/BAM folders"><button data-browse="ont-run-folder">Browse run</button><button id="link-ont-run">Find matching folders</button></div><p class="hint">Select a run to fill its matching folders, or browse each path below. Review the paths before saving.</p></div><label for="input-folder" id="input-folder-label">FASTQ folder</label><div class="row"><input id="input-folder" autocomplete="off" spellcheck="false"><button data-browse="input-folder">Browse folders</button><button class="primary" id="scan">Discover samples</button></div><p class="hint" id="layout-hint"></p><div id="ont-signal-inputs" hidden><div class="grid"><div><label for="ont-pod5">Raw POD5 folder</label><div class="row"><input id="ont-pod5"><button data-browse="ont-pod5">Browse POD5</button></div><p id="ont-pod5-status" class="hint" role="status">Not checked — discover FASTQs or browse to your POD5 folder.</p></div><div><label for="ont-modbam">Modified-base BAM file or bam_pass folder</label><div class="row"><input id="ont-modbam"><button data-browse="ont-modbam" data-kind="bam">Browse BAMs</button></div><p id="ont-modbam-status" class="hint" role="status">Not checked — discover FASTQs or browse to your modified-base BAMs.</p></div></div><p id="ont-links-note" class="hint">Link completed POD5 or modified-base BAMs from this run for methylation. Use files MinKNOW has finished writing. FASTQs define each barcode's read IDs; only matching reads enter its methylation profile. A ligation FASTQ folder defines one sample. Choose which signal source to use in analysis settings.</p></div><div id="scan-warnings"></div><div id="fastq-preview" hidden><h3>Samples in the selected folder</h3><p id="fastq-summary" class="hint" role="status"></p><label for="fastq-filter">Find a FASTQ or sample</label><input id="fastq-filter" type="search" placeholder="Filter by filename, sample, or barcode"><p id="fastq-matches" class="hint" role="status"></p><div class="fastq-inventory" tabindex="0" aria-label="Detected samples and their FASTQ files"><table><thead><tr><th>Detected sample / barcode</th><th>FASTQ files</th></tr></thead><tbody id="fastq-rows"></tbody></table></div><p class="hint">Assign samples in the columns below. Illumina read pairs stay together; ONT batches stay grouped by barcode. Filtering this list does not exclude samples.</p></div></section>
+<section class="card" id="input-card"><div class="sectionhead"><span class="step">3</span><h2>Find your FASTQ folder</h2></div><p class="muted">Browse the synthetic examples, or use Browse computer to preview sequencing filenames in a folder you choose. Run OncoTracer locally to analyze your files.</p><div id="ont-inputs" hidden><label for="ont-run-folder">ONT run folder (optional)</label><div class="row"><input id="ont-run-folder" placeholder="Select the MinKNOW run containing fastq_pass and POD5/BAM folders"><button data-browse="ont-run-folder">Browse run</button><button id="link-ont-run">Find matching folders</button></div><p class="hint">Select a run to fill its matching folders, or browse each path below. Review the paths before saving.</p></div><label for="input-folder" id="input-folder-label">FASTQ folder</label><div class="row"><input id="input-folder" autocomplete="off" spellcheck="false"><button data-browse="input-folder">Browse folders</button><button class="primary" id="scan">Discover samples</button></div><p class="hint" id="layout-hint"></p><div id="ont-signal-inputs" hidden><div class="grid"><div><label for="ont-pod5">Raw POD5 folder</label><div class="row"><input id="ont-pod5"><button data-browse="ont-pod5">Browse POD5</button></div><p id="ont-pod5-status" class="hint" role="status">Not checked — discover FASTQs or browse to your POD5 folder.</p></div><div><label for="ont-modbam">Modified-base BAM file or bam_pass folder</label><div class="row"><input id="ont-modbam"><button data-browse="ont-modbam" data-kind="bam">Browse BAMs</button></div><p id="ont-modbam-status" class="hint" role="status">Not checked — discover FASTQs or browse to your modified-base BAMs.</p></div></div><p id="ont-links-note" class="hint">Link completed POD5 or modified-base BAMs from this run for methylation. Use files MinKNOW has finished writing. FASTQs define each barcode's read IDs; only matching reads enter its methylation profile. A ligation FASTQ folder defines one sample. Choose which signal source to use in analysis settings.</p></div><div id="scan-warnings"></div><div id="fastq-preview" hidden><h3>Samples in the selected folder</h3><p id="fastq-summary" class="hint" role="status"></p><label for="fastq-filter">Find a FASTQ or sample</label><input id="fastq-filter" type="search" placeholder="Filter by filename, sample, or barcode"><p id="fastq-matches" class="hint" role="status"></p><div class="fastq-inventory" tabindex="0" aria-label="Detected samples and their FASTQ files"><table><thead><tr><th>Detected sample / barcode</th><th>FASTQ files</th></tr></thead><tbody id="fastq-rows"></tbody></table></div><p class="hint">Assign samples in the columns below. Illumina read pairs stay together; ONT batches stay grouped by barcode. Filtering this list does not exclude samples.</p></div></section>
 <section class="card" id="samples-card" hidden><div class="sectionhead"><span class="step">4</span><h2>Assign and name your samples</h2><span id="sample-count" class="progress" role="status" aria-live="polite"></span></div><p class="muted">Drag detected samples into <strong>Normal</strong> or <strong>Cancer</strong>, or use the type dropdown on each card. Drag between columns to correct a type, or back to Unassigned to exclude a sample. Edit the detected names as needed.</p><p class="hint">Normal samples are analyzed independently for CNA. Matched somatic calling requires explicit pairing in variant settings. A custom tag also needs a study or control role.</p><button id="select-none">Clear assignments</button><div id="samples" class="sample-board">
 <div class="sample-column" data-group=""><h3>Detected · unassigned</h3><div id="available-samples" class="sample-list" data-empty="All detected samples have been assigned."></div></div>
 <div class="sample-column" data-group="normal"><h3>Normal</h3><div id="normal-samples" class="sample-list" data-empty="Drop normal samples here."></div></div>
@@ -133,11 +133,11 @@
 </section></div></div>
 <h3>Save to a new project</h3><div class="grid"><div><label for="project-parent">Parent folder</label><div class="row"><input id="project-parent"><button data-browse="project-parent">Browse</button></div></div><div><label for="project-name">New project folder name</label><input id="project-name" value="oncotracer-analysis" spellcheck="false"></div></div><p class="hint">The demo shows where a real run would save files. Nothing is written to disk here.</p><div class="actions"><button class="primary" id="prepare">Preview configuration and simulate checks</button><span class="hint">Analysis starts only when you choose Run below.</span></div></section>
 <section class="card" id="review-card" hidden><div class="sectionhead"><span class="step">6</span><h2>Review and run</h2><span class="badge" id="check-badge"></span></div><p id="saved-path" class="folderpath"></p><div id="check-messages"></div><details><summary>View the simulated configuration</summary><pre id="config-preview"></pre></details><p class="notice">Simulate Run plays an illustrative progress animation. It does not validate resources, install tools, download references, process reads or produce scientific results.</p><div class="actions"><button id="run" class="primary">Simulate Run</button><button id="stop" hidden>Stop simulation</button><span id="job-status" role="status"></span><a id="open-results" class="result-link" target="_blank" rel="noopener noreferrer" hidden>Open simulated results</a><button id="new-analysis" hidden>Set up another analysis</button></div><div id="run-progress" hidden><div class="hardware"><div><strong id="run-elapsed">0s</strong><span>Elapsed</span></div><div><strong id="run-step-eta">Waiting for progress</strong><span>Current step ETA</span></div><div><strong id="run-overall-eta">Not yet known</strong><span>Overall analysis ETA</span></div></div><p id="run-stage"></p><p id="run-eta-note" class="hint"></p></div><p id="log-path" class="folderpath"></p><pre id="logs" class="logs" hidden></pre></section>
-</div><section id="demo-results" class="card demo-result-card" hidden><span class="demo-chip">Illustrative results</span><h2 id="demo-results-heading" tabindex="-1">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id="demo-result-summary"></dl><p class="notice">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href="../../installation/">Install OncoTracer →</a></section><footer class="demo-footer">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>3a8386955d83</code>.</footer></main>
+</div><section id="demo-results" class="card demo-result-card" hidden><span class="demo-chip">Illustrative results</span><h2 id="demo-results-heading" tabindex="-1">Your simulated workflow</h2><p>These are the settings you explored. No alignment, CNA call, variant, probability, genotype or clinical interpretation was generated.</p><dl id="demo-result-summary"></dl><p class="notice">A real analysis produces caller VCFs, evidence tables, quality-control summaries and reports. Download and run OncoTracer to process your own data.</p><a href="../../installation/">Install OncoTracer →</a></section><footer class="demo-footer">Built from the actual OncoTracer setup interface. Browser-only synthetic simulation. UI source SHA-256: <code>7692bb92bc9f</code>.</footer></main>
 <dialog id="variant-resource-dialog" aria-labelledby="variant-resource-title">
 <div class="variant-dialog-heading"><div><span class="eyebrow">Tools, models and annotation</span><h2 id="variant-resource-title">Detected resources</h2></div><button id="variant-resource-close" type="button" autofocus>Close</button></div>
 <p id="variant-resource-dialog-status" class="hint" role="status" aria-live="polite"></p><div id="variant-detection-results" hidden></div></dialog>
-<dialog id="browser"><div class="sectionhead"><h2>Select a folder</h2><button id="close-browser" style="margin-left:auto" aria-label="Close folder navigator">Close</button></div><p class="hint">Browse the synthetic example folders. No local filesystem is connected.</p><nav id="browser-shortcuts" class="browser-shortcuts" aria-label="Computer locations"></nav><div id="browser-error" class="error" role="alert" hidden></div><div class="row"><input id="browser-location" aria-label="Folder path"><button id="browser-go">Go</button><button id="browser-up">Up</button></div><nav id="browser-breadcrumbs" class="breadcrumbs" aria-label="Folder breadcrumbs"></nav><p id="browser-path" class="folderpath"></p><div id="folders" class="folders"></div><p id="folder-summary" class="hint"></p><div class="actions"><button id="use-folder" class="primary">Use this folder</button></div></dialog>
+<dialog id="browser"><div class="sectionhead"><h2>Select a folder</h2><button id="close-browser" style="margin-left:auto" aria-label="Close folder navigator">Close</button></div><p class="hint">Browse computer opens your folder picker. Only filenames are inspected; nothing is uploaded. Local folders appear under /computer for preview only. Use the synthetic folders to try the workflow.</p><nav id="browser-shortcuts" class="browser-shortcuts" aria-label="Computer locations"></nav><div id="browser-error" class="error" role="alert" hidden></div><div class="row"><button id="browser-computer">Browse computer</button><input id="browser-location" aria-label="Folder path"><button id="browser-go">Go</button><button id="browser-up">Up</button></div><nav id="browser-breadcrumbs" class="breadcrumbs" aria-label="Folder breadcrumbs"></nav><p id="browser-path" class="folderpath"></p><div id="folders" class="folders"></div><p id="folder-summary" class="hint"></p><div class="actions"><button id="use-folder" class="primary">Use this folder</button></div></dialog>
 <dialog id="cleanup"><h2>Simulation stopped</h2><p>Keep the project to resume later, or remove its folder?</p><p id="cleanup-path" class="folderpath"></p><p class="hint">Removal deletes this project's configuration, logs, reference folder and results. Original input files and shared download caches remain.</p><p id="cleanup-note" class="hint"></p><div id="remove-confirmation" hidden><label for="confirm-path">To permanently remove this folder, enter its complete path</label><input id="confirm-path" autocomplete="off" spellcheck="false"><div class="actions"><button id="confirm-remove" disabled>Permanently remove project folder</button></div></div><div class="actions"><button id="keep-project" class="primary" autofocus>Keep project</button><button id="remove-project">Remove project folder…</button></div></dialog>
 <script>
 /* Browser-only synthetic service. This replaces fetch; it never forwards requests. */
@@ -250,17 +250,20 @@ function demoBrowse(path){
   if(path==='/')path='/demo';
   demoAssertPath(path);
   const tree={
-    '/demo':['illumina','nanopore','projects','resources'],
+    '/demo':['illumina','nanopore','projects','resources','tools'],
     '/demo/illumina':['fastq'],
     '/demo/nanopore':['fastq_pass','pod5_pass','bam_pass'],
     '/demo/nanopore/fastq_pass':['barcode01','barcode02','barcode03'],
-    '/demo/resources':['hg38','clair3-model','ffperase','annovar'],
+    '/demo/resources':['hg38','clair3-model','clair3-alternative','ffperase','annovar'],
+    '/demo/tools':['oncotracer-variants','oncotracer-ffperase','strelka2'],
     '/demo/resources/ffperase':['models'],
     '/demo/resources/annovar':['humandb']
   };
   const fastqs=[...demoFixture('illumina'),...demoFixture('ont')].flatMap(s=>s.files).filter(f=>f.slice(0,f.lastIndexOf('/'))===path);
-  const files=path==='/demo/nanopore/bam_pass'?[{name:'SYNTHETIC_RUN.mod.bam',path:path+'/SYNTHETIC_RUN.mod.bam'}]:[];
-  return {path,parent:path==='/demo'?'/demo':path.slice(0,path.lastIndexOf('/'))||'/demo',directories:(tree[path]||[]).map(name=>({name,path:path+'/'+name})),files,fastq_entries:fastqs.map(path=>({name:path.split('/').pop(),path})),fastq_files:fastqs.length,pod5_files:path.endsWith('/pod5_pass')?3:0,bam_files:files.length,truncated:false};
+  const known=new Set([...Object.keys(tree),...Object.entries(tree).flatMap(([parent,names])=>names.map(name=>parent+'/'+name))]);
+  if(!known.has(path))throw Error('Folder does not exist. Check your paths.');
+  const files=path==='/demo/nanopore/bam_pass'?[{name:'SYNTHETIC_RUN.mod.bam',path:path+'/SYNTHETIC_RUN.mod.bam'}]:path==='/demo/nanopore/pod5_pass'?[1,2,3].map(n=>({name:'SYNTHETIC_BATCH_'+n+'.pod5',path:path+'/SYNTHETIC_BATCH_'+n+'.pod5'})):[];
+  return {path,parent:path==='/demo'?'/demo':path.slice(0,path.lastIndexOf('/'))||'/demo',directories:(tree[path]||[]).map(name=>({name,path:path+'/'+name})),files,fastq_entries:fastqs.map(path=>({name:path.split('/').pop(),path})),fastq_files:fastqs.length,pod5_files:files.filter(file=>file.name.endsWith('.pod5')).length,bam_files:files.filter(file=>file.name.endsWith('.bam')).length,truncated:false};
 }
 const demoInstallGuides={"host": [{"id": "annovar", "title": "Set up optional licensed ANNOVAR resources", "reason": "Obtain ANNOVAR through its registration page and obtain/unpack the matching hg38 or hg19 RefSeq TXT plus Mrna FASTA databases. Optional ClinVar must use that same build. No software, license or database is bundled or downloaded by Autodetect. Follow the official resource instructions, then enter the existing folders below or choose Skip ANNOVAR annotation.", "commands": "# Register/download using the official ANNOVAR links below first.\n# Paths must not contain spaces or shell metacharacters.\nread -r -p \"Absolute path to your ANNOVAR installation: \" ANNOVAR_HOME\nread -r -p \"Absolute path to its matching database folder: \" ANNOVAR_DB\nexport ANNOVAR_HOME ANNOVAR_DB\nprintf 'ANNOVAR installation: %s\\nDatabase folder: %s\\n' \"$ANNOVAR_HOME\" \"$ANNOVAR_DB\"\n# Paste both paths into the browser fields and rerun Autodetect.\n# If using these exports instead, restart setup from this terminal.", "links": [{"label": "ANNOVAR registration and downloads", "url": "https://annovar.openbioinformatics.org/en/latest/user-guide/download/"}, {"label": "Official database setup", "url": "https://annovar.openbioinformatics.org/en/latest/user-guide/startup/"}, {"label": "OncoTracer ANNOVAR requirements", "url": "https://cfarkas.github.io/oncotracer/annovar/"}]}], "docker": [{"id": "annovar", "title": "Set up optional licensed ANNOVAR resources", "reason": "Obtain ANNOVAR through its registration page and obtain/unpack the matching hg38 or hg19 RefSeq TXT plus Mrna FASTA databases. Optional ClinVar must use that same build. No software, license or database is bundled or downloaded by Autodetect. Follow the official resource instructions, then enter the existing folders below or choose Skip ANNOVAR annotation.", "commands": "# Register/download using the official ANNOVAR links below first.\n# Paths must not contain spaces or shell metacharacters.\nread -r -p \"Absolute path to your ANNOVAR installation: \" ANNOVAR_HOME\nread -r -p \"Absolute path to its matching database folder: \" ANNOVAR_DB\nexport ANNOVAR_HOME ANNOVAR_DB\nprintf 'ANNOVAR installation: %s\\nDatabase folder: %s\\n' \"$ANNOVAR_HOME\" \"$ANNOVAR_DB\"\n# Paste both paths into the browser fields and rerun Autodetect.\n# If using these exports instead, restart setup from this terminal.", "links": [{"label": "ANNOVAR registration and downloads", "url": "https://annovar.openbioinformatics.org/en/latest/user-guide/download/"}, {"label": "Official database setup", "url": "https://annovar.openbioinformatics.org/en/latest/user-guide/startup/"}, {"label": "OncoTracer ANNOVAR requirements", "url": "https://cfarkas.github.io/oncotracer/annovar/"}]}]};
 function demoVariantResources(payload){
@@ -288,15 +291,24 @@ function demoApi(path,payload){
   switch(url.pathname){
     case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:fastq-variants-20260922'}};
     case '/api/variant-resources':return demoVariantResources(payload);
-    case '/api/browse':return demoBrowse(url.searchParams.get('path'));
+    case '/api/browse':{
+      const folder=url.searchParams.get('path')||'/demo';
+      return folder===demoComputerRoot||folder.startsWith(demoComputerRoot+'/')?demoBrowseComputerPath(folder.replace(/\/$/,'')):demoBrowse(folder);
+    }
     case '/api/scan':{
       demoAssertPath(payload.folder);
       if(!['ont','illumina'].includes(payload.mode))throw Error('Choose Illumina or Oxford Nanopore.');
-      const fixture=demoFixture(payload.mode);
-      demoState.scan={scan_id:'synthetic-scan-'+(++demoState.revision),mode:payload.mode,root:demoPaths[payload.mode],warnings:['Synthetic FASTQ inventory — no real folders were scanned.'],samples:fixture};
+      const folder=demoBrowse(payload.folder).path;
+      const fixture=demoFixture(payload.mode).filter(sample=>sample.files.some(file=>file.startsWith(folder+'/')));
+      if(!fixture.length)throw Error('No sequencing files found. Check your paths. Select a folder containing FASTQ files for the chosen platform.');
+      demoState.scan={scan_id:'synthetic-scan-'+(++demoState.revision),mode:payload.mode,root:payload.mode==='ont'?demoPaths.ont:folder,warnings:['Synthetic FASTQ inventory — no real folders were scanned.'],samples:fixture};
       return demoState.scan;
     }
-    case '/api/ont-inputs':return {run:'/demo/nanopore',fastq:demoPaths.ont,pod5:'/demo/nanopore/pod5_pass',modbam:'/demo/nanopore/bam_pass'};
+    case '/api/ont-inputs':{
+      const folder=demoBrowse(payload.folder).path;
+      if(folder!=='/demo/nanopore'&&!folder.startsWith(demoPaths.ont))throw Error('No sequencing files found. Check your paths. Select the Nanopore run or its FASTQ folder.');
+      return {run:'/demo/nanopore',fastq:folder.startsWith(demoPaths.ont)?folder:demoPaths.ont,pod5:'/demo/nanopore/pod5_pass',modbam:'/demo/nanopore/bam_pass'};
+    }
     case '/api/prepare':{
       const check=demoCheck(payload);demoState.lastPayload=structuredClone(payload);demoState.job=null;
       demoState.prepared={id:'synthetic-project-'+(++demoState.revision),project:payload.project,config_path:payload.project+'/config/run.yml (preview only)',config:demoYaml(payload),backend:payload.backend,valid:check.errors.length===0,check,outdir:payload.project+'/results'};
@@ -314,7 +326,7 @@ function demoApi(path,payload){
 window.fetch=async function demoFetch(input,options={}){
   const path=typeof input==='string'?input:input.url;
   demoState.requests.push(new URL(path,location.href).pathname);
-  try{return new Response(JSON.stringify(demoApi(path,options.body?JSON.parse(options.body):{})),{status:200,headers:{'Content-Type':'application/json'}});}
+  try{return new Response(JSON.stringify(await demoApi(path,options.body?JSON.parse(options.body):{})),{status:200,headers:{'Content-Type':'application/json'}});}
   catch(error){return new Response(JSON.stringify({error:error.message}),{status:400,headers:{'Content-Type':'application/json'}});}
 };
 
@@ -332,14 +344,37 @@ function node(tag,text,cls){const element=document.createElement(tag);if(text!==
 function invalidate(){prepared=null;show('review-card',false);show('open-results',false);$('open-results').removeAttribute('href');}
 function choose(platform){if(operationBusy)return;resetVariantPairing();mode=platform;binsizeCaller=null;variantMode=null;variantSpecimen=null;variantSettings();invalidate();scan=null;show('specimen-card',true);show('workflow',false);$('specimen-platform-note').textContent=(mode==='illumina'?'Illumina':'Oxford Nanopore')+' selected. Choose Fresh or FFPE from your specimen records.';show('ont-inputs',mode==='ont');show('ont-signal-inputs',mode==='ont');$('input-folder-label').textContent=mode==='ont'?'FASTQ input · fastq_pass, barcode folder, or ligation folder':'FASTQ folder';show('samples-card',false);show('settings-card',false);show('fastq-preview',false);for(const name of ['ont','illumina'])$('choose-'+name).setAttribute('aria-pressed',String(name===mode));$('analysis').value='cna';for(const option of $('analysis').options)option.disabled=mode==='illumina'&&option.value!=='cna';$('layout-hint').textContent=mode==='ont'?'Each barcode folder is one sample, even with many FASTQs. A nonbarcoded ligation folder is one sample containing all its FASTQs.':'Illumina pairs are matched by their R1/R2 or _1/_2 filenames. Choose one library layout per project.';$('specimen-card').scrollIntoView({behavior:'smooth',block:'start'});$('variant-fresh').focus({preventScroll:true});}
 $('choose-ont').onclick=()=>choose('ont');$('choose-illumina').onclick=()=>choose('illumina');
-function renderBreadcrumbs(path){
-  $('browser-breadcrumbs').replaceChildren();let current='';
-  const root=node('button','This computer');root.onclick=()=>browse('/');$('browser-breadcrumbs').append(root);
-  for(const part of path.split('/').filter(Boolean)){current+='/'+part;const target=current,button=node('button',part);button.title=target;button.onclick=()=>browse(target);$('browser-breadcrumbs').append(button);}
+function renderBreadcrumbs(path,rootPath=''){
+  $('browser-breadcrumbs').replaceChildren();let current=rootPath;
+  const root=node('button','This computer');root.onclick=()=>browse(rootPath||'/');$('browser-breadcrumbs').append(root);
+  for(const part of path.slice(rootPath.length).split('/').filter(Boolean)){current+='/'+part;const target=current,button=node('button',part);button.title=target;button.onclick=()=>browse(target);$('browser-breadcrumbs').append(button);}
 }
-async function browse(path){const sequence=++browseSequence;show('browser-error',false);$('use-folder').disabled=true;try{const result=await api('/api/browse?path='+encodeURIComponent(path||'')+'&kind='+encodeURIComponent(browseKind));if(sequence!==browseSequence)return;currentFolder=result.path;parentFolder=result.parent;$('browser-location').value=result.path;$('browser-path').textContent=result.path;renderBreadcrumbs(result.path);$('folders').replaceChildren();for(const dir of result.directories){const button=node('button',dir.name,'folder');button.onclick=()=>browse(dir.path);$('folders').append(button);}if(browseKind!=='folder')for(const file of result.files||[]){if(browseKind==='file'&&!/\.ya?ml$/i.test(file.name))continue;if(browseKind==='bam'&&!/\.bam$/i.test(file.name))continue;const button=node('button','File · '+file.name,'folder');button.onclick=()=>{$(folderTarget).value=file.path;$(folderTarget).dispatchEvent(new Event('change'));$('browser').close();};$('folders').append(button);}if(browseKind==='folder')for(const file of result.files||[]){const item=node('div',file.name,'fastq-file');item.style.setProperty('--file-label','"File · "');item.title=file.path;$('folders').append(item);}if(browseKind==='folder')for(const file of result.fastq_entries||[]){const item=node('div',file.name,'fastq-file');item.title=file.path;$('folders').append(item);}if(!result.directories.length&&!$('folders').children.length)$('folders').append(node('p','No folders or matching files here.','hint'));$('folder-summary').textContent=result.fastq_files+' FASTQ, '+result.pod5_files+' POD5, '+result.bam_files+' BAM files in this folder'+(result.truncated?' · Listing limited to 1,000 entries of each type; select this folder to scan all FASTQs.':'');$('use-folder').disabled=['file','asset'].includes(browseKind);}catch(error){if(sequence!==browseSequence)return;failure(error,'browser-error');$('use-folder').disabled=true;}}
+async function browse(path){
+  const sequence=++browseSequence;show('browser-error',false);$('use-folder').disabled=true;currentFolder=null;parentFolder=null;
+  $('folders').replaceChildren();$('folder-summary').textContent='Opening folder…';$('browser-path').textContent='';$('browser-breadcrumbs').replaceChildren();
+  try{
+    const result=await api('/api/browse?path='+encodeURIComponent(path||'')+'&kind='+encodeURIComponent(browseKind));if(sequence!==browseSequence)return;
+    currentFolder=result.path;parentFolder=result.parent;$('browser-location').value=result.path;$('browser-path').textContent=result.path;renderBreadcrumbs(result.path,result.breadcrumb_root||'');
+    for(const dir of result.directories){const button=node('button',dir.name,'folder');button.onclick=()=>browse(dir.path);$('folders').append(button);}
+    if(browseKind!=='folder'&&!result.local_preview)for(const file of result.files||[]){
+      if(browseKind==='file'&&!/\.ya?ml$/i.test(file.name))continue;if(browseKind==='bam'&&!/\.bam$/i.test(file.name))continue;
+      const button=node('button','File · '+file.name,'folder');button.onclick=()=>{$(folderTarget).value=file.path;$(folderTarget).dispatchEvent(new Event('change'));$('browser').close();};$('folders').append(button);
+    }
+    if(browseKind==='folder'||result.local_preview){
+      for(const file of result.files||[]){const item=node('div',file.name,'fastq-file');item.style.setProperty('--file-label','"File · "');item.title=file.path;$('folders').append(item);}
+      for(const file of result.fastq_entries||[]){const item=node('div',file.name,'fastq-file');item.title=file.path;$('folders').append(item);}
+    }
+    if(!result.directories.length&&!$('folders').children.length)$('folders').append(node('p','No folders or matching files here.','hint'));
+    $('folder-summary').textContent=result.fastq_files+' FASTQ, '+result.pod5_files+' POD5, '+result.bam_files+' BAM files in this folder'+(result.truncated?' · Listing limited to 1,000 entries of each type.':'')+(result.local_preview?' · Local preview only. Open OncoTracer on your computer to use these files for an analysis.':'');
+    const sequencingTarget=result.local_preview||['input-folder','ont-run-folder','ont-pod5','ont-modbam'].includes(folderTarget);
+    const noSequencing=sequencingTarget&&!result.fastq_files&&!result.pod5_files&&!result.bam_files&&!result.truncated;
+    if(noSequencing)failure('No sequencing files found. Check your paths.'+(result.directories.length?' Open a subfolder to look for FASTQ, POD5 or BAM files.':''),'browser-error');
+    $('use-folder').disabled=Boolean(result.local_preview)||['file','asset'].includes(browseKind)||(noSequencing&&!result.directories.length);
+  }catch(error){if(sequence!==browseSequence)return;failure(error,'browser-error');$('folder-summary').textContent='';$('use-folder').disabled=true;}
+}
+$('browser-computer').onclick=()=>browse('/');
 for(const button of document.querySelectorAll('[data-browse]'))button.onclick=()=>{folderTarget=button.dataset.browse;browseKind=button.dataset.kind||'folder';$('browser').showModal();let path=$(folderTarget).value||$('project-parent').value;browse(path);};
-$('browser').addEventListener('close',()=>{browseSequence++;});$('close-browser').onclick=()=>$('browser').close();$('browser-go').onclick=()=>browse($('browser-location').value);$('browser-up').onclick=()=>browse(parentFolder);$('browser-location').oninput=()=>{$('use-folder').disabled=true;$('folder-summary').textContent='Press Enter or Go to open the path you typed.';};$('browser-location').onkeydown=event=>{if(event.key==='Enter')browse(event.target.value);};$('use-folder').onclick=()=>{$(folderTarget).value=currentFolder;$(folderTarget).dispatchEvent(new Event('change'));$('browser').close();};
+$('browser').addEventListener('close',()=>{browseSequence++;});$('close-browser').onclick=()=>$('browser').close();$('browser-go').onclick=()=>browse($('browser-location').value);$('browser-up').onclick=()=>{if(parentFolder)browse(parentFolder);};$('browser-location').oninput=()=>{browseSequence++;$('use-folder').disabled=true;$('folder-summary').textContent='Press Enter or Go to open the path you typed.';};$('browser-location').onkeydown=event=>{if(event.key==='Enter')browse(event.target.value);};$('use-folder').onclick=()=>{if($('use-folder').disabled||!currentFolder)return;$(folderTarget).value=currentFolder;$(folderTarget).dispatchEvent(new Event('change'));$('browser').close();};
 function sampleRows(){return [...$('samples').querySelectorAll('.sample')].sort((a,b)=>Number(a.dataset.id)-Number(b.dataset.id));}
 function selectedRows(){return sampleRows().filter(row=>row.querySelector('.include').checked);}
 function moveSample(row,kind){
@@ -833,6 +868,92 @@ syncVariantLayout();
 
 </script>
 <script>
+/* User-selected folder metadata only. No file contents are read or uploaded. */
+const demoComputerRoot='/computer';
+let demoComputerFolders=new Map();
+function demoComputerListing(path){
+  return {path,parent:path===demoComputerRoot?demoComputerRoot:path.slice(0,path.lastIndexOf('/')),
+    breadcrumb_root:demoComputerRoot,local_preview:true,directories:[],files:[],fastq_entries:[],
+    fastq_files:0,pod5_files:0,bam_files:0,truncated:false};
+}
+function demoComputerFile(listing,name){
+  let entries;
+  if(/\.(fastq|fq)(\.gz)?$/i.test(name)){listing.fastq_files++;entries=listing.fastq_entries;}
+  else if(/\.pod5$/i.test(name)){listing.pod5_files++;entries=listing.files;}
+  else if(/\.bam$/i.test(name)){listing.bam_files++;entries=listing.files;}
+  else return;
+  if(entries.length<1000)entries.push({name,path:listing.path+'/'+name});else listing.truncated=true;
+}
+function demoComputerDirectory(folders,path,handle=null){
+  if(folders.has(path))return folders.get(path);
+  const listing=demoComputerListing(path);folders.set(path,{listing,handle});
+  if(path!==demoComputerRoot){
+    const parent=demoComputerDirectory(folders,listing.parent).listing;
+    if(parent.directories.length<1000)parent.directories.push({name:path.slice(path.lastIndexOf('/')+1),path});
+    else parent.truncated=true;
+  }
+  return folders.get(path);
+}
+async function demoBrowseComputerPath(path){
+  const folders=demoComputerFolders,entry=folders.get(path);
+  if(!entry)throw Error('Folder is not available. Choose Browse computer and select it again.');
+  if(entry.handle){
+    // Enumerate only the opened directory, so large runs remain navigable.
+    const listing=demoComputerListing(path);
+    for await(const child of entry.handle.values()){
+      if(child.kind==='directory'){
+        if(listing.directories.length<1000){
+          const childPath=path+'/'+child.name;
+          listing.directories.push({name:child.name,path:childPath});
+          folders.set(childPath,{listing:demoComputerListing(childPath),handle:child});
+        }else listing.truncated=true;
+      }else demoComputerFile(listing,child.name);
+    }
+    entry.listing=listing;
+  }
+  for(const key of ['directories','files','fastq_entries'])entry.listing[key].sort((a,b)=>a.name.localeCompare(b.name));
+  return entry.listing;
+}
+async function demoComputerFiles(files){
+  // Copy names only; do not retain File objects or pretend these are absolute paths.
+  const folders=new Map();let selected=null;
+  for(const file of files){
+    const parts=file.webkitRelativePath.split('/');
+    if(parts.length<2||parts.some(part=>!part||part==='.'||part==='..'))continue;
+    selected=selected||demoComputerRoot+'/'+parts[0];
+    const name=parts.pop(),path=demoComputerRoot+'/'+parts.join('/');
+    demoComputerFile(demoComputerDirectory(folders,path).listing,name);
+  }
+  if(!selected){
+    // An empty FileList exposes no folder name; never reuse a previous listing.
+    browseSequence++;currentFolder=null;parentFolder=null;demoComputerFolders.clear();
+    $('folders').replaceChildren();$('browser-breadcrumbs').replaceChildren();$('browser-path').textContent='';$('browser-location').value='';
+    $('folder-summary').textContent='0 sequencing files in the selected folder';$('use-folder').disabled=true;
+    failure('No sequencing files found. Check your paths.','browser-error');return;
+  }
+  demoComputerFolders=folders;await browse(selected);
+}
+function demoInstallComputerBrowser(){
+  const input=node('input');input.type='file';input.id='browser-computer-input';input.hidden=true;
+  input.setAttribute('webkitdirectory','');input.multiple=true;$('browser').append(input);
+  input.onchange=async()=>{try{await demoComputerFiles(input.files);}catch(error){failure(error,'browser-error');}finally{input.value='';}};
+  $('browser-computer').onclick=async()=>{
+    if(!window.showDirectoryPicker){input.value='';input.click();return;}
+    const sequence=++browseSequence;
+    try{
+      const handle=await window.showDirectoryPicker({mode:'read'});
+      if(sequence!==browseSequence||!$('browser').open)return;
+      const folders=new Map(),path=demoComputerRoot+'/'+handle.name;
+      demoComputerDirectory(folders,path,handle);demoComputerFolders=folders;await browse(path);
+    }catch(error){
+      if(sequence!==browseSequence||error.name==='AbortError')return;
+      if(error.name==='SecurityError'){input.value='';input.click();return;}
+      failure('Cannot open this folder. Check your paths and folder permissions.','browser-error');
+    }
+  };
+}
+document.addEventListener('DOMContentLoaded',demoInstallComputerBrowser);
+
 /* Guided controls around the actual local-app interface. All values are fictional. */
 function demoMessage(message){document.getElementById('demo-status').textContent=message;}
 function demoJump(id){const section=document.getElementById(id);if(section&&!section.hidden)section.scrollIntoView({behavior:'smooth',block:'start'});}
@@ -877,7 +998,7 @@ function demoRenderResults(){
 document.addEventListener('DOMContentLoaded',()=>{
   $('choose-illumina').onclick=()=>demoLoad('illumina');$('choose-ont').onclick=()=>demoLoad('ont');
   for(const type of ['fresh','ffpe'])$('variant-'+type).addEventListener('click',()=>{$('project-name').value='synthetic-'+mode+'-'+type;demoMessage('Preservation: '+(type==='ffpe'?'FFPE':'Fresh')+'. Review the example input paths and choose Discover samples.');});
-  $('demo-reset').onclick=()=>{demoRestoreControls();demoState.scan=null;demoState.prepared=null;demoState.lastPayload=null;$('new-analysis').onclick();show('demo-stage-controls',false);demoMessage('Demo reset. Choose a platform to begin.');demoJump('platform-card');};
+  $('demo-reset').onclick=()=>{demoRestoreControls();demoComputerFolders.clear();demoState.scan=null;demoState.prepared=null;demoState.lastPayload=null;$('new-analysis').onclick();show('demo-stage-controls',false);demoMessage('Demo reset. Choose a platform to begin.');demoJump('platform-card');};
   $('demo-assign').onclick=()=>{demoAssign();demoJump('samples-card');};
   for(const button of document.querySelectorAll('[data-demo-stage]'))button.onclick=()=>{if(button.dataset.demoStage==='specimen-card'&&!mode){demoMessage('Choose a platform first.');return;}if(['input-card','samples-card','settings-card'].includes(button.dataset.demoStage)&&!variantSpecimen){demoMessage('Choose Fresh or FFPE first.');return;}if(['samples-card','settings-card'].includes(button.dataset.demoStage)&&!scan){demoMessage('Choose Discover samples in step 3 first.');return;}demoJump(button.dataset.demoStage);};
   $('demo-review').onclick=async()=>{if(!scan){demoMessage('Choose a platform and preservation, then discover samples in step 3.');return;}if(!selectedRows().length)demoAssign();await $('prepare').onclick();if(prepared?.valid){$('config-preview').closest('details').open=true;demoMessage('Configuration preview ready. The checks and Run button are simulated.');}};

@@ -108,17 +108,20 @@ function demoBrowse(path){
   if(path==='/')path='/demo';
   demoAssertPath(path);
   const tree={
-    '/demo':['illumina','nanopore','projects','resources'],
+    '/demo':['illumina','nanopore','projects','resources','tools'],
     '/demo/illumina':['fastq'],
     '/demo/nanopore':['fastq_pass','pod5_pass','bam_pass'],
     '/demo/nanopore/fastq_pass':['barcode01','barcode02','barcode03'],
-    '/demo/resources':['hg38','clair3-model','ffperase','annovar'],
+    '/demo/resources':['hg38','clair3-model','clair3-alternative','ffperase','annovar'],
+    '/demo/tools':['oncotracer-variants','oncotracer-ffperase','strelka2'],
     '/demo/resources/ffperase':['models'],
     '/demo/resources/annovar':['humandb']
   };
   const fastqs=[...demoFixture('illumina'),...demoFixture('ont')].flatMap(s=>s.files).filter(f=>f.slice(0,f.lastIndexOf('/'))===path);
-  const files=path==='/demo/nanopore/bam_pass'?[{name:'SYNTHETIC_RUN.mod.bam',path:path+'/SYNTHETIC_RUN.mod.bam'}]:[];
-  return {path,parent:path==='/demo'?'/demo':path.slice(0,path.lastIndexOf('/'))||'/demo',directories:(tree[path]||[]).map(name=>({name,path:path+'/'+name})),files,fastq_entries:fastqs.map(path=>({name:path.split('/').pop(),path})),fastq_files:fastqs.length,pod5_files:path.endsWith('/pod5_pass')?3:0,bam_files:files.length,truncated:false};
+  const known=new Set([...Object.keys(tree),...Object.entries(tree).flatMap(([parent,names])=>names.map(name=>parent+'/'+name))]);
+  if(!known.has(path))throw Error('Folder does not exist. Check your paths.');
+  const files=path==='/demo/nanopore/bam_pass'?[{name:'SYNTHETIC_RUN.mod.bam',path:path+'/SYNTHETIC_RUN.mod.bam'}]:path==='/demo/nanopore/pod5_pass'?[1,2,3].map(n=>({name:'SYNTHETIC_BATCH_'+n+'.pod5',path:path+'/SYNTHETIC_BATCH_'+n+'.pod5'})):[];
+  return {path,parent:path==='/demo'?'/demo':path.slice(0,path.lastIndexOf('/'))||'/demo',directories:(tree[path]||[]).map(name=>({name,path:path+'/'+name})),files,fastq_entries:fastqs.map(path=>({name:path.split('/').pop(),path})),fastq_files:fastqs.length,pod5_files:files.filter(file=>file.name.endsWith('.pod5')).length,bam_files:files.filter(file=>file.name.endsWith('.bam')).length,truncated:false};
 }
 const demoInstallGuides=__VARIANT_INSTALL_GUIDES__;
 function demoVariantResources(payload){
@@ -146,15 +149,24 @@ function demoApi(path,payload){
   switch(url.pathname){
     case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:fastq-variants-20260922'}};
     case '/api/variant-resources':return demoVariantResources(payload);
-    case '/api/browse':return demoBrowse(url.searchParams.get('path'));
+    case '/api/browse':{
+      const folder=url.searchParams.get('path')||'/demo';
+      return folder===demoComputerRoot||folder.startsWith(demoComputerRoot+'/')?demoBrowseComputerPath(folder.replace(/\/$/,'')):demoBrowse(folder);
+    }
     case '/api/scan':{
       demoAssertPath(payload.folder);
       if(!['ont','illumina'].includes(payload.mode))throw Error('Choose Illumina or Oxford Nanopore.');
-      const fixture=demoFixture(payload.mode);
-      demoState.scan={scan_id:'synthetic-scan-'+(++demoState.revision),mode:payload.mode,root:demoPaths[payload.mode],warnings:['Synthetic FASTQ inventory — no real folders were scanned.'],samples:fixture};
+      const folder=demoBrowse(payload.folder).path;
+      const fixture=demoFixture(payload.mode).filter(sample=>sample.files.some(file=>file.startsWith(folder+'/')));
+      if(!fixture.length)throw Error('No sequencing files found. Check your paths. Select a folder containing FASTQ files for the chosen platform.');
+      demoState.scan={scan_id:'synthetic-scan-'+(++demoState.revision),mode:payload.mode,root:payload.mode==='ont'?demoPaths.ont:folder,warnings:['Synthetic FASTQ inventory — no real folders were scanned.'],samples:fixture};
       return demoState.scan;
     }
-    case '/api/ont-inputs':return {run:'/demo/nanopore',fastq:demoPaths.ont,pod5:'/demo/nanopore/pod5_pass',modbam:'/demo/nanopore/bam_pass'};
+    case '/api/ont-inputs':{
+      const folder=demoBrowse(payload.folder).path;
+      if(folder!=='/demo/nanopore'&&!folder.startsWith(demoPaths.ont))throw Error('No sequencing files found. Check your paths. Select the Nanopore run or its FASTQ folder.');
+      return {run:'/demo/nanopore',fastq:folder.startsWith(demoPaths.ont)?folder:demoPaths.ont,pod5:'/demo/nanopore/pod5_pass',modbam:'/demo/nanopore/bam_pass'};
+    }
     case '/api/prepare':{
       const check=demoCheck(payload);demoState.lastPayload=structuredClone(payload);demoState.job=null;
       demoState.prepared={id:'synthetic-project-'+(++demoState.revision),project:payload.project,config_path:payload.project+'/config/run.yml (preview only)',config:demoYaml(payload),backend:payload.backend,valid:check.errors.length===0,check,outdir:payload.project+'/results'};
@@ -172,6 +184,6 @@ function demoApi(path,payload){
 window.fetch=async function demoFetch(input,options={}){
   const path=typeof input==='string'?input:input.url;
   demoState.requests.push(new URL(path,location.href).pathname);
-  try{return new Response(JSON.stringify(demoApi(path,options.body?JSON.parse(options.body):{})),{status:200,headers:{'Content-Type':'application/json'}});}
+  try{return new Response(JSON.stringify(await demoApi(path,options.body?JSON.parse(options.body):{})),{status:200,headers:{'Content-Type':'application/json'}});}
   catch(error){return new Response(JSON.stringify({error:error.message}),{status:400,headers:{'Content-Type':'application/json'}});}
 };

@@ -143,5 +143,11 @@ The [interactive demo](browser_demo.md) reuses `oncotracer_cli/web_ui.py` with a
 synthetic API adapter. After changing the setup interface or demo assets, run
 `python scripts/build_setup_demo.py` and commit the generated page.
 `python scripts/build_setup_demo.py --check` verifies that it is current.
-The demo assets live in `docs/assets/setup-demo/`; no real server or patient
-inputs are used.
+The demo assets live in `docs/assets/setup-demo/`. Its optional computer picker
+previews names from a user-selected folder without reading file contents or
+uploading files. Local previews cannot enter the synthetic analysis workflow.
+
+To exercise both folder pickers with temporary synthetic files in Chromium and
+Firefox, install Playwright and its browsers, then run
+`python tests/browser_folder_picker_smoke.py --output /tmp/oncotracer-folder-check`.
+Use a new output directory for each run. No analysis is started.

@@ -3,9 +3,17 @@
 **[Open the interactive demo](assets/setup-demo/index.html)**
 
 Try the same setup interface used by `oncotracer setup`, with synthetic Illumina
-and ONT examples. The demo runs in your browser: folder contents, configuration
-checks, progress and results are simulated. It does not access your files or run
-analysis.
+and ONT examples. The demo runs in your browser: configuration checks, progress
+and results are simulated. **Browse folders → Browse computer** also opens your
+computer's folder picker to preview FASTQ (`.fastq`, `.fq`, and gzipped versions),
+POD5 and BAM filenames. Files are not uploaded, read for sequence data or analyzed.
+
+You can navigate subfolders in the selected folder. If no sequencing files are
+present, the picker shows **No sequencing files found. Check your paths.**
+Local previews appear under `/computer`; browsers do not expose an absolute
+filesystem path. Use the installed OncoTracer interface below to select these
+files for analysis. The hosted demo's **Use this folder** applies to synthetic
+folders only.
 
 [![Preview of the interactive OncoTracer setup demo](assets/setup-demo-preview.png)](assets/setup-demo/index.html)
 
