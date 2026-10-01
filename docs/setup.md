@@ -10,7 +10,9 @@ oncotracer setup
 
 Keep the terminal open. If needed, open the printed **127.0.0.1:8888** URL
 including its `#` session code.
-**Browse folders** shows files on the computer running OncoTracer.
+**Browse computer** opens the system folder chooser and discovers selected inputs.
+Folders without FASTQ, POD5 or BAM files (including subfolders) display
+**No sequencing files found. Check your paths.**
 
 1. **Choose Illumina or ONT, then Fresh or FFPE** from your specimen records.
    Inputs then appear. Illumina detects R1/R2 pairs; consolidate lanes first. Each ONT barcode includes all its batches;

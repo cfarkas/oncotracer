@@ -10,6 +10,9 @@ The Conda route also needs [Conda/Miniforge](https://github.com/conda-forge/mini
 The Docker route needs a running Docker engine accessible to your user; host
 Conda is unnecessary. OncoTracer does not install either backend itself.
 
+Desktop browsing needs Zenity (Ubuntu/GNOME) or KDialog (KDE). Install either,
+or enter paths. Remote sessions use server paths.
+
 For a small low-pass genome run with 2–4 threads, plan for:
 
 | Analysis | Available RAM to plan for |

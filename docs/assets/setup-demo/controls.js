@@ -40,6 +40,9 @@ function demoRenderResults(){
   show('demo-results',true);
 }
 document.addEventListener('DOMContentLoaded',()=>{
+  // Synthetic navigation belongs to this hosted demo; the installed app opens
+  // the system dialog directly through its authenticated local server.
+  for(const button of document.querySelectorAll('[data-browse]'))button.onclick=()=>{folderTarget=button.dataset.browse;browseKind=button.dataset.kind||'folder';$('browser').showModal();return browse($(folderTarget).value||$('project-parent').value);};
   $('choose-illumina').onclick=()=>demoLoad('illumina');$('choose-ont').onclick=()=>demoLoad('ont');
   for(const type of ['fresh','ffpe'])$('variant-'+type).addEventListener('click',()=>{$('project-name').value='synthetic-'+mode+'-'+type;demoMessage('Preservation: '+(type==='ffpe'?'FFPE':'Fresh')+'. Review the example input paths and choose Discover samples.');});
   $('demo-reset').onclick=()=>{demoRestoreControls();demoComputerFolders.clear();demoState.scan=null;demoState.prepared=null;demoState.lastPayload=null;$('new-analysis').onclick();show('demo-stage-controls',false);demoMessage('Demo reset. Choose a platform to begin.');demoJump('platform-card');};

@@ -130,6 +130,19 @@ else:
             wd("POST", "/element/" + identity + "/click", {})
         def fill(selector, value):
             js("const e=document.querySelector(arguments[0]);e.value=arguments[1];e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));", selector, value)
+        def pick(selector, path):
+            # Stub the desktop selection only; discovery still uses the real server.
+            js("""const selected=arguments[0], original=window.fetch;
+                window.fetch=(url,options)=>{
+                    if(new URL(url,location.href).pathname==='/api/pick-path'){
+                        window.fetch=original;
+                        return Promise.resolve(new Response(JSON.stringify({cancelled:selected===null,path:selected,warning:''}),{status:200,headers:{'Content-Type':'application/json'}}));
+                    }
+                    return original(url,options);
+                };""", str(path) if path is not None else None)
+            click(selector)
+            wait(lambda: js("return !document.querySelector('main').inert"), 'system chooser result')
+            assert not js("return document.querySelector('#browser').open")
         def drag(selector, target):
             js("document.querySelector('#samples-card').scrollIntoView()")
             time.sleep(.5)
@@ -303,10 +316,9 @@ else:
                 if key in allowed:
                     fill('#' + key, str(value))
             if classifier == 'sturgeon':click('#license')
-            # Native file navigation must include extensionless executables.
-            click('[data-browse="methylation_modkit_executable"]')
-            wait(lambda: js("return document.querySelector('#folders').textContent.includes('File · modkit')"), 'executable file picker')
-            js("[...document.querySelectorAll('#folders button')].find(b=>b.textContent==='File · modkit').click()")
+            # System file selection must accept extensionless executables.
+            pick('[data-browse="methylation_modkit_executable"]', resources.executables['modkit'])
+            assert js("return document.querySelector('#methylation_modkit_executable').value") == str(resources.executables['modkit'])
             prepare(classifier + '-methylation-project')
             from oncotracer_cli.runtime import load_flat_yaml
             config = load_flat_yaml(root / (classifier + '-methylation-project/config/run.yml'))
@@ -335,29 +347,19 @@ else:
         assert metadata[0]['sample_type'] == 'research tag'
         assert len(json.loads(metadata[0]['fastq_files'])) == 3
         report["checks"].append("nonbarcoded ligation files stay in one sample; custom tag preserved")
-        # Check the real folder navigator and automatic discovery after selection.
-        click('#choose-illumina');click('#variant-fresh');click('[data-browse="input-folder"]')
-        fill('#browser-location', str(fixture / 'illumina'));click('#browser-go')
-        wait(lambda: js("return document.querySelector('#browser-path').textContent===arguments[0] && !document.querySelector('#use-folder').disabled", str(fixture / 'illumina')), 'folder navigator')
-        assert js("return document.querySelectorAll('#folders .fastq-file').length") == 4
-        assert 'Home' in js("return document.querySelector('#browser-shortcuts').textContent")
-        assert 'Mounted drives' in js("return document.querySelector('#browser-shortcuts').textContent")
-        # Unsaved text must not select the previous directory.
-        fill('#browser-location', str(fixture / 'ont'))
-        assert js("return document.querySelector('#use-folder').disabled")
-        # Clicking a breadcrumb returns to that folder without typing a path.
-        js("[...document.querySelectorAll('#browser-breadcrumbs button')].at(-1).click()")
-        wait(lambda: js("return !document.querySelector('#use-folder').disabled"), 'breadcrumb navigation')
-        (root / 'folder-file-picker.png').write_bytes(base64.b64decode(wd('GET', '/screenshot')))
-        click('#use-folder');sample_count(2)
-        report["checks"].append("folder navigator selection automatically discovers Illumina pairs")
+        # A native chooser result triggers automatic discovery without a web modal.
+        click('#choose-illumina');click('#variant-fresh')
+        pick('[data-browse="input-folder"]', fixture / 'illumina');sample_count(2)
+        pick('[data-browse="input-folder"]', None);sample_count(2)
+        assert js("return document.querySelector('#input-folder').value") == str(fixture / 'illumina')
+        report["checks"].append("system chooser selection automatically discovers Illumina pairs; cancellation preserves the selected folder")
         js("document.querySelector('#fastq-preview').scrollIntoView()")
         (root / 'visible-fastqs.png').write_bytes(base64.b64decode(wd('GET', '/screenshot')))
         fill('#input-folder', str(fixture / 'missing-folder'))
         wait(lambda: js("return !document.querySelector('main').inert && !document.querySelector('#error').hidden"), 'failed discovery')
         assert js("return document.querySelector('#fastq-preview').hidden && document.querySelector('#samples-card').hidden")
         fill('#input-folder', str(fixture / 'illumina'));sample_count(2)
-        report['checks'].append('folder picker lists FASTQs, has Home/mount/breadcrumb navigation, blocks stale selection; failed discovery clears inventory')
+        report['checks'].append('failed discovery clears stale FASTQ inventory; entering a valid path restores it')
         assert before == {str(path): path.read_bytes() for path in fixture.rglob('*.gz')}
         report["checks"].append("input FASTQs unchanged; no analysis or reference downloads started")
         if options.test_stop:
@@ -396,10 +398,10 @@ else:
         # A stopped local server must give actionable recovery instructions.
         processes[0].terminate(); processes[0].wait(timeout=10)
         click('[data-browse="input-folder"]')
-        wait(lambda: js("return !document.querySelector('#browser-error').hidden"), 'disconnect instructions')
-        message = js("return document.querySelector('#browser-error').textContent")
+        wait(lambda: js("return !document.querySelector('#error').hidden"), 'disconnect instructions')
+        message = js("return document.querySelector('#error').textContent")
         assert 'Cannot reach OncoTracer' in message and 'NEW complete URL' in message
-        report["checks"].append("stopped server shows reconnect instructions in the folder navigator")
+        report["checks"].append("stopped server shows reconnect instructions when Browse is clicked")
         report["passed"] = True
     finally:
         if session:

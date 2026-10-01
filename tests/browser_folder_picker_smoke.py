@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 import sys
 import threading
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -46,6 +47,10 @@ def main():
     (documents / 'notes.txt').write_text('No sequencing files here.')
     empty = output / 'empty'
     empty.mkdir()
+    paired = output / 'paired'
+    paired.mkdir()
+    for mate in (1, 2):
+        (paired / f'case_R{mate}.fastq').write_text('@read\nACGT\n+\nIIII\n')
     state = WebState(output)
     app = WebServer(0, state)
     demo = ThreadingHTTPServer(('127.0.0.1', 0), partial(QuietHandler, directory=str(ROOT / 'docs')))
@@ -73,28 +78,34 @@ def main():
                         page.locator('#browser-go').click()
                         expect(page.locator('#browser-path')).to_have_text(str(path))
 
-                    # Real server: file types, empty folders, nested paths and recovery.
+                    # Real server: Browse goes directly to the native picker API.
                     page.goto(app.origin + '/#' + state.token)
-                    open_inputs()
-                    navigate(empty)
-                    expect(page.locator('#browser-error')).to_have_text('No sequencing files found. Check your paths.')
-                    expect(page.locator('#use-folder')).to_be_disabled()
-                    navigate(documents)
-                    expect(page.locator('#browser-error')).to_be_visible()
-                    navigate(reads)
-                    expect(page.locator('#browser-error')).to_be_hidden()
-                    expect(page.locator('#folder-summary')).to_contain_text('2 FASTQ, 1 POD5, 1 BAM')
-                    expect(page.locator('#use-folder')).to_be_enabled()
-                    page.locator('#browser-computer').click()
-                    expect(page.locator('#browser-path')).to_have_text('/')
-                    navigate(output)
-                    expect(page.locator('#use-folder')).to_be_enabled()  # Recursive discovery is allowed.
-                    navigate(reads)
-                    page.locator('#browser-location').fill(str(output / 'missing'))
-                    page.locator('#browser-go').click()
-                    expect(page.locator('#browser-error')).to_contain_text('does not exist')
-                    expect(page.locator('#folders .fastq-file')).to_have_count(0)
-                    expect(page.locator('#use-folder')).to_be_disabled()
+                    page.locator('#choose-illumina').click()
+                    page.locator('#variant-fresh').click()
+                    for folder in (empty, documents):
+                        with patch('oncotracer_cli.web.choose_path', return_value=folder) as chooser:
+                            page.locator('[data-browse="input-folder"]').click()
+                            expect(page.locator('#input-folder')).to_have_value(str(folder))
+                            expect(page.locator('#error')).to_have_text('No sequencing files found. Check your paths.')
+                            expect(page.locator('#browser')).to_be_hidden()
+                            chooser.assert_called_once()
+                    with patch('oncotracer_cli.web.choose_path', return_value=paired):
+                        page.locator('[data-browse="input-folder"]').click()
+                        expect(page.locator('#fastq-summary')).to_contain_text('1 sample · 2 FASTQ files')
+                        expect(page.locator('#error')).to_be_hidden()
+                    with patch('oncotracer_cli.web.choose_path', return_value=None):
+                        page.locator('[data-browse="input-folder"]').click()
+                        expect(page.locator('[data-browse="input-folder"]')).to_be_enabled()
+                        expect(page.locator('#input-folder')).to_have_value(str(paired))
+                        expect(page.locator('#fastq-preview')).to_be_visible()
+                    with patch('oncotracer_cli.web.choose_path', return_value=empty):
+                        page.locator('[data-browse="project-parent"]').click()
+                        expect(page.locator('#project-parent')).to_have_value(str(empty))
+                        expect(page.locator('#error')).to_be_hidden()
+                        page.locator('[data-browse="input-folder"]').click()
+                        expect(page.locator('#error')).to_have_text('No sequencing files found. Check your paths.')
+                        expect(page.locator('#samples-card')).to_be_hidden()
+                        expect(page.locator('#fastq-preview')).to_be_hidden()
 
                     page.goto(f'http://127.0.0.1:{demo.server_port}/assets/setup-demo/index.html')
                     requests = []
