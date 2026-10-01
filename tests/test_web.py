@@ -411,6 +411,38 @@ const window={},document={addEventListener(){}},location={href:'https://example.
         self.assertEqual(self.state.projects, {})
         self.assertIsNone(self.state.job)
 
+    def test_native_picker_is_authenticated_and_preserves_cancelled_selection(self):
+        server = self.start_server()
+        payload = {'path': str(self.root), 'kind': 'folder', 'sequencing': True}
+        with patch('oncotracer_cli.web.choose_path', return_value=None) as chooser:
+            for changes in ({'X-OncoTracer-Token': ''}, {'Origin': 'https://example.com'}, {'Host': 'example.com'}):
+                self.assertEqual(self.request(server, 'POST', '/api/pick-path', payload, **changes)[0], 403)
+            self.assertEqual(self.request(server, 'GET', '/api/pick-path')[0], 404)
+            chooser.assert_not_called()
+            code, body, _ = self.request(server, 'POST', '/api/pick-path', payload)
+            self.assertEqual(code, 200)
+            self.assertEqual(json.loads(body), {'cancelled': True, 'path': None})
+            chooser.assert_called_once_with(self.root, 'folder')
+        self.assertFalse(self.state.picker_lock.locked())
+        self.assertIsNone(self.state.job)
+
+    def test_native_picker_checks_subfolders_and_rejects_concurrent_dialogs(self):
+        payload = {'path': str(self.root), 'kind': 'folder', 'sequencing': True}
+        with patch('oncotracer_cli.web.choose_path', return_value=self.root) as chooser:
+            result = self.state.pick_path(payload)
+            self.assertEqual(result['path'], str(self.root))
+            self.assertEqual(result['warning'], 'No sequencing files found. Check your paths.')
+            self.fastq('reads/barcode01/read.fastq.gz')
+            self.assertEqual(self.state.pick_path(payload)['warning'], '')
+            # An empty output/resource folder is always selectable.
+            self.assertEqual(self.state.pick_path({**payload, 'sequencing': False})['warning'], '')
+            self.state.picker_lock.acquire()
+            self.addCleanup(self.state.picker_lock.release)
+            count = chooser.call_count
+            with self.assertRaisesRegex(OncoTracerError, 'already open'):
+                self.state.pick_path(payload)
+            self.assertEqual(chooser.call_count, count)
+
     def test_browse_escaped_names_and_permission_errors(self):
         folder = self.root / '<img src=x onerror=alert(1)>'
         folder.mkdir()

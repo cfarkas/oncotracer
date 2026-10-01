@@ -89,6 +89,7 @@ jobs:
             tests/test_discovery.py \
             tests/test_wizard.py \
             tests/test_web.py \
+            tests/test_native_picker.py \
             tests/test_results.py \
             tests/test_final_report.py \
             tests/test_report_command.py \

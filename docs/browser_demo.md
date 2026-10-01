@@ -78,8 +78,15 @@ itself produces no reads or executable analysis.
 
 The real interface opens at **127.0.0.1:8888**. Keep the terminal open and use its
 complete printed URL, including the session code after `#`, if the browser does
-not open automatically. Folder browsing reads files on the computer running
-OncoTracer. Saving and checking prepares the project; **Run analysis** starts the
+not open automatically. In the installed app, **Browse computer** opens the
+desktop's native folder chooser directly and fills the selected absolute path.
+Other Browse buttons open the system file or folder chooser as appropriate.
+Cancel keeps the previous selection. A folder with no FASTQ, POD5 or BAM files,
+including its subfolders, displays **No sequencing files found. Check your paths.**
+The chooser uses the desktop on the computer running OncoTracer; remote users
+can enter a server path directly. The hosted demo keeps its synthetic navigator
+and browser-provided local filename preview.
+Saving and checking prepares the project; **Run analysis** starts the
 work. The [setup guide](setup.md) explains references, resource selection,
 stopping and resuming.
 

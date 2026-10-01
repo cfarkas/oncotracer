@@ -21,6 +21,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 from .discovery import discover_fastqs, discover_ont_inputs
+from .native_picker import choose_path, has_sequencing_files, KINDS, NO_SEQUENCING
 from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
 from .runtime import OncoTracerError, load_flat_yaml
 from .system_check import inspect_hardware, resource_report
@@ -76,6 +77,7 @@ class WebState:
         self.setup_args = setup_args
         self.token = secrets.token_urlsafe(32)
         self.lock = threading.RLock()
+        self.picker_lock = threading.Lock()
         self.scans = {}
         self.variant_loads = {}
         self.projects = {}
@@ -108,6 +110,23 @@ class WebState:
         return {"hardware": self.hardware, "defaults": defaults, "locations": locations,
                 "suggested_threads": resource_report(hardware=self.hardware, path=self.start_dir)["suggested_threads"],
                 "start_dir": str(self.start_dir), "qdnaseq_binsizes": sorted(QDNASEQ_HG38_SOURCE_SHA256)}
+
+    def pick_path(self, data):
+        kind = _choice(data, "kind", KINDS, "folder")
+        start = _text(data, "path", default=str(self.start_dir))
+        sequencing = data.get("sequencing", False)
+        if type(sequencing) is not bool:
+            raise OncoTracerError("sequencing must be true or false.")
+        if not self.picker_lock.acquire(blocking=False):
+            raise OncoTracerError("A system file chooser is already open. Finish or cancel that selection first.")
+        try:
+            selected = choose_path(Path(start), kind)
+            if selected is None:
+                return {"cancelled": True, "path": None}
+            warning = NO_SEQUENCING if sequencing and not has_sequencing_files(selected) else ""
+            return {"cancelled": False, "path": str(selected), "warning": warning}
+        finally:
+            self.picker_lock.release()
 
     def browse(self, value, kind="folder"):
         path = Path(value or self.start_dir).expanduser().resolve()
@@ -755,7 +774,8 @@ class WebHandler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             if not isinstance(data, dict):
                 raise OncoTracerError("Expected a JSON object.")
-            methods = {"/api/ont-inputs": self.server.state.ont_inputs, "/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
+            methods = {"/api/pick-path": self.server.state.pick_path,
+                       "/api/ont-inputs": self.server.state.ont_inputs, "/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
                        '/api/variant-resources': self.server.state.variant_resources,
                        '/api/variant-load': self.server.state.variant_load, '/api/variant-prepare': self.server.state.variant_prepare,
                        "/api/run": self.server.state.run, "/api/stop": self.server.state.stop,
