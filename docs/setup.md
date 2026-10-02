@@ -15,7 +15,7 @@ Folders without FASTQ, POD5 or BAM files (including subfolders) display
 **No sequencing files found. Check your paths.**
 
 1. **Choose Illumina or ONT, then Fresh or FFPE** from your specimen records.
-   Inputs then appear. Illumina detects R1/R2 pairs; consolidate lanes first. Each ONT barcode includes all its batches;
+   Illumina accepts immediate sample subfolders containing matched lane pairs. Each ONT barcode includes all its batches;
    a nonbarcoded ligation folder is one sample.
 2. **Assign samples** to Normal or Cancer using cards or dropdowns. Rename them
    if needed. Unassigned samples are excluded. CNA controls are analyzed independently,

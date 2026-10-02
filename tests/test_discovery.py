@@ -7,6 +7,7 @@ from pathlib import Path
 
 from oncotracer_cli.discovery import detect_fastq_mode, discover_fastqs, discover_ont_inputs
 from oncotracer_cli.engine import parse_illumina_samplesheet, parse_ont_samples
+from oncotracer_cli.fastq_inputs import encode_fastq_field, fastq_paths
 from oncotracer_cli.runtime import OncoTracerError
 
 
@@ -50,8 +51,8 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(before, {path: path.read_bytes() for path in self.reads.rglob("*") if path.is_file()})
 
     def test_plain_single_end_needs_platform_choice_and_suggests_valid_names(self):
-        first = self.fastq("subfolder/sample one.fastq")
-        second = self.fastq("other/patient-B.fq.gz")
+        first = self.fastq("sample one.fastq")
+        second = self.fastq("patient-B.fq.gz")
         self.assertIsNone(detect_fastq_mode(self.reads))
         found = discover_fastqs(self.reads, "illumina")
         self.assertEqual([(sample.sample, sample.fastq_1, sample.fastq_2) for sample in found.samples], [("patient-B", second, None), ("sample_one", first, None)])
@@ -89,10 +90,54 @@ class DiscoveryTests(unittest.TestCase):
             discover_fastqs(self.reads, "illumina")
 
     def test_duplicate_sample_stems_across_directories_are_ambiguous(self):
-        self.fastq("first/sample.fastq")
-        self.fastq("second/sample.fastq")
+        # Deeper mixed layouts still need explicit, unique library identities.
+        self.fastq("first/deeper/sample.fastq")
+        self.fastq("second/deeper/sample.fastq")
         with self.assertRaisesRegex(OncoTracerError, "Ambiguous sample name"):
             discover_fastqs(self.reads, "illumina")
+
+    def test_immediate_sample_folders_keep_all_lane_pairs_in_one_sample(self):
+        expected = {}
+        for folder, prefix, lanes in (("CTRL004.1", "CFDNA1", ("23N7GLLT4_L5", "23NHGYLT4_L3")),
+                                      ("ONCO002", "ONCO002", ("23N2MWLT4_L3", "23N7GKLT4_L2", "23NC3WLT4_L4"))):
+            expected[folder] = tuple(self.fastq(f'{folder}/{prefix}_FKDN260371234-1A_{lane}_{mate}.fq.gz')
+                                     for lane in lanes for mate in (1, 2))
+            (self.reads / folder / 'MD5.txt').write_text('not sequencing')
+        (self.reads / 'empty').mkdir()
+        before = {path: path.read_bytes() for files in expected.values() for path in files}
+        found = discover_fastqs(self.reads, 'illumina')
+        self.assertEqual([sample.sample for sample in found.samples], ['CTRL004.1', 'ONCO002'])
+        sheet = self.root / 'samples.csv'
+        with sheet.open('w', newline='') as handle:
+            writer = csv.writer(handle)
+            writer.writerow(['sample', 'fastq_1', 'fastq_2', 'status'])
+            for sample in found.samples:
+                self.assertEqual(set(sample.files), set(expected[sample.sample]))
+                for first, second in zip(fastq_paths(sample.fastq_1), fastq_paths(sample.fastq_2)):
+                    self.assertEqual(first.name.replace('_1.fq.gz', ''), second.name.replace('_2.fq.gz', ''))
+                writer.writerow([sample.sample, encode_fastq_field(sample.fastq_1), encode_fastq_field(sample.fastq_2), 'tumor'])
+        parsed = parse_illumina_samplesheet(sheet)
+        self.assertEqual([(s.sample, s.fastq_1, s.fastq_2) for s in parsed],
+                         [(s.sample, s.fastq_1, s.fastq_2) for s in found.samples])
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
+    def test_sample_folders_reject_missing_mates_duplicates_and_mixed_layout(self):
+        for index, names in enumerate((('sample_R1.fastq',),
+                                      ('sample_R1.fastq', 'sample_R1.fq', 'sample_R2.fastq'),
+                                      ('sample_L1_R1.fastq', 'sample_L2_R2.fastq'),
+                                      ('sample_R1.fastq', 'sample_R2.fastq', 'unknown.fastq'))):
+            with self.subTest(names=names):
+                for name in names:
+                    self.fastq(f'{index}/sample/{name}')
+                with self.assertRaisesRegex(OncoTracerError, 'pair|unpaired'):
+                    discover_fastqs(self.reads / str(index), 'illumina')
+
+    def test_immediate_single_end_sample_folders_have_distinct_folder_names(self):
+        first = self.fastq('first/sample.fastq')
+        second = self.fastq('second/sample.fastq')
+        found = discover_fastqs(self.reads, 'illumina')
+        self.assertEqual([(s.sample, s.fastq_1, s.fastq_2) for s in found.samples],
+                         [('first', first, None), ('second', second, None)])
 
     def test_name_sanitizing_collision_cannot_overwrite_sample_identity(self):
         self.fastq("sample one.fastq")

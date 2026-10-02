@@ -8,6 +8,7 @@ import shlex
 from pathlib import Path
 
 from .discovery import discover_fastqs
+from .fastq_inputs import encode_fastq_field
 from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
 from .runtime import OncoTracerError, load_flat_yaml
 from .system_check import GIB, inspect_hardware, resource_report
@@ -163,8 +164,8 @@ def command_wizard(original_args) -> int:
     values = {"ont_single_sample": True} if discovered.single_sample else {}
     if args.mode == "illumina":
         args.reads_folder = None
-        args._wizard_rows = [[row["sample"], str(row["source"].fastq_1),
-                              str(row["source"].fastq_2) if row["source"].fastq_2 else "", row["analysis_role"]]
+        args._wizard_rows = [[row["sample"], encode_fastq_field(row["source"].fastq_1),
+                              encode_fastq_field(row["source"].fastq_2), row["analysis_role"]]
                              for row in entries]
     else:
         study = [row for row in entries if row["analysis_role"] == "tumor"]

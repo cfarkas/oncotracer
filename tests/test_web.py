@@ -19,6 +19,7 @@ from unittest.mock import patch
 
 from oncotracer_cli.cli import build_parser, _legacy_to_modern
 from oncotracer_cli.engine import parse_illumina_samplesheet, parse_ont_samples
+from oncotracer_cli.fastq_inputs import fastq_paths
 from oncotracer_cli.runtime import OncoTracerError, load_flat_yaml
 from oncotracer_cli.web import WebServer, WebState
 
@@ -77,6 +78,23 @@ class WebTests(unittest.TestCase):
         self.assertEqual(before, {path: path.read_bytes() for path in paths})
         self.assertFalse((self.root / "project/results").exists())
         self.assertFalse((self.root / "project/reference").exists())
+
+    def test_sample_subfolders_prepare_all_lanes_without_writing_input_files(self):
+        paths = [self.fastq(f'reads/{sample}/{sample}_flowcell_L{lane}_{mate}.fq.gz')
+                 for sample in ('case', 'control') for lane in (2, 4) for mate in (1, 2)]
+        before = {path: path.read_bytes() for path in paths}
+        scan = self.state.scan({'mode': 'illumina', 'folder': str(self.root / 'reads')})
+        self.assertEqual([(s['name'], s['file_count']) for s in scan['samples']], [('case', 4), ('control', 4)])
+        prepared = self.prepare()
+        self.assertTrue(prepared['valid'], prepared['check'])
+        config = load_flat_yaml(Path(prepared['config_path']))
+        samples = parse_illumina_samplesheet(Path(config['illumina_samplesheet']))
+        self.assertEqual({path for sample in samples for path in fastq_paths(sample.fastq_1) + fastq_paths(sample.fastq_2)}, set(paths))
+        with Path(config['sample_metadata']).open() as handle:
+            metadata = list(csv.DictReader(handle))
+        self.assertEqual([len(json.loads(row['fastq_files'])) for row in metadata], [4, 4])
+        self.assertEqual(before, {path: path.read_bytes() for path in paths})
+        self.assertFalse((self.root / 'project/results').exists())
 
     def test_ont_batches_with_control_use_correct_workflow(self):
         for barcode in ("barcode01", "barcode02", "unclassified"):
