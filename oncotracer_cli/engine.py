@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Iterable, Iterator, Mapping, Sequence
 
 from . import __version__
+from .fastq_inputs import FastqInput, fastq_paths, parse_fastq_field
 from .variants import resolve_variant_request, variant_plan, preflight_variant_tools, run_variants
 from .classifier import run_native_classifier
 from .methylation import (
@@ -112,8 +113,8 @@ QDNASEQ_CACHE_POINTER_SCHEMA = "oncotracer-qdnaseq-cache-pointer-v1"
 @dataclass(frozen=True)
 class IlluminaSample:
     sample: str
-    fastq_1: Path
-    fastq_2: Path | None
+    fastq_1: FastqInput
+    fastq_2: FastqInput | None
     status: str
 
 
@@ -378,13 +379,17 @@ def parse_illumina_samplesheet(path: Path) -> list[IlluminaSample]:
             if sample in seen:
                 raise OncoTracerError(f"duplicate sample ID: {sample}")
             seen.add(sample)
-            fq1 = require_file(Path(raw.get("fastq_1", "")), f"FASTQ 1 for {sample}")
+            fq1 = parse_fastq_field(raw.get("fastq_1", ""), f"FASTQ 1 for {sample}")
             fq2_text = (raw.get("fastq_2") or "").strip()
             fq2 = (
-                require_file(Path(fq2_text), f"FASTQ 2 for {sample}")
+                parse_fastq_field(fq2_text, f"FASTQ 2 for {sample}")
                 if fq2_text
                 else None
             )
+            if fq2 is not None and len(fastq_paths(fq1)) != len(fastq_paths(fq2)):
+                raise OncoTracerError(f"FASTQ lane counts for {sample} differ between R1 and R2.")
+            if len(fastq_paths(fq1)) > 1 and set(fastq_paths(fq1)).intersection(fastq_paths(fq2)):
+                raise OncoTracerError(f"The same FASTQ is used for both R1 and R2 in {sample}.")
             status = (raw.get("status") or "tumor").strip().lower()
             if status not in {"tumor", "normal"}:
                 raise OncoTracerError(f"status for {sample} must be tumor or normal")
@@ -2212,48 +2217,45 @@ def _align_illumina_locked(
         markdup = markduplicates / f"{sample.sample}_markdup.bam"
         markdup_bai = Path(str(markdup) + ".bai")
         metrics = markduplicates / f"{sample.sample}_markdup.metrics.txt"
-        reads = [sample.fastq_1] + ([sample.fastq_2] if sample.fastq_2 else [])
-        rg = (
-            f"@RG\\tID:{sample.sample}\\tPU:1\\tSM:{sample.sample}"
-            f"\\tLB:{sample.sample}\\tPL:Illumina"
-        )
-        bwa = [
-            toolchain.executable("core", "bwa"),
-            "mem",
-            "-t",
-            str(threads),
-            "-R",
-            rg,
-            str(reference["bwa_prefix"]),
-            *[str(path) for path in reads],
-        ]
-        sort = [
-            toolchain.executable("core", "samtools"),
-            "sort",
-            "-@",
-            str(max(1, threads // 2)),
-            "-o",
-            str(bam),
-            "-",
-        ]
-        signature = ledger.signature(
-            f"illumina-align-{sample.sample}", bwa + ["|"] + sort, reads
-        )
-        if force or not ledger.reusable(
-            f"illumina-align-{sample.sample}", signature, [bam, bai]
-        ):
-            runner.pipeline(f"illumina-align-{sample.sample}", bwa, sort)
-            runner.run(
-                f"illumina-index-{sample.sample}",
-                [
-                    toolchain.executable("core", "samtools"),
-                    "index",
-                    "-@",
-                    str(max(1, threads // 2)),
-                    bam,
-                ],
+        first, second = fastq_paths(sample.fastq_1), fastq_paths(sample.fastq_2)
+        if not first or (second and len(first) != len(second)):
+            raise OncoTracerError(f"Incomplete FASTQ lane pairs for {sample.sample}.")
+        lane_bams = []
+        for index, read_1 in enumerate(first):
+            multiple = len(first) > 1
+            lane = f"{sample.sample}.lane{index + 1:04d}" if multiple else sample.sample
+            lane_bam = alignment / "lanes" / sample.sample / f"{index + 1:04d}.bam" if multiple else bam
+            lane_bam.parent.mkdir(parents=True, exist_ok=True)
+            lane_bai = Path(str(lane_bam) + ".bai")
+            lane_bams.append(lane_bam)
+            reads = [read_1] + ([second[index]] if second else [])
+            rg = (
+                f"@RG\\tID:{lane}\\tPU:{index + 1}\\tSM:{sample.sample}"
+                f"\\tLB:{sample.sample}\\tPL:Illumina"
             )
-            ledger.complete(f"illumina-align-{sample.sample}", signature, [bam, bai])
+            bwa = [toolchain.executable("core", "bwa"), "mem", "-t", str(threads),
+                   "-R", rg, str(reference["bwa_prefix"]), *[str(path) for path in reads]]
+            sort = [toolchain.executable("core", "samtools"), "sort", "-@",
+                    str(max(1, threads // 2)), "-o", str(lane_bam), "-"]
+            stage = f"illumina-align-{lane}"
+            signature = ledger.signature(stage, bwa + ["|"] + sort, reads)
+            if force or not ledger.reusable(stage, signature, [lane_bam, lane_bai]):
+                runner.pipeline(stage, bwa, sort)
+                runner.run(f"illumina-index-{lane}",
+                           [toolchain.executable("core", "samtools"), "index", "-@",
+                            str(max(1, threads // 2)), lane_bam])
+                ledger.complete(stage, signature, [lane_bam, lane_bai])
+        if len(lane_bams) > 1:
+            merge = [toolchain.executable("core", "samtools"), "merge", "-f", "-@",
+                     str(max(1, threads // 2)), "-o", str(bam), *[str(path) for path in lane_bams]]
+            stage = f"illumina-align-{sample.sample}"
+            signature = ledger.signature(stage, merge, lane_bams)
+            if force or not ledger.reusable(stage, signature, [bam, bai]):
+                runner.run(f"illumina-merge-{sample.sample}", merge)
+                runner.run(f"illumina-index-{sample.sample}",
+                           [toolchain.executable("core", "samtools"), "index", "-@",
+                            str(max(1, threads // 2)), bam])
+                ledger.complete(stage, signature, [bam, bai])
 
         picard = toolchain.executable("core", "picard")
         if picard:

@@ -51,6 +51,13 @@ def main():
     paired.mkdir()
     for mate in (1, 2):
         (paired / f'case_R{mate}.fastq').write_text('@read\nACGT\n+\nIIII\n')
+    sample_parent = output / 'sample-folders'
+    for sample, lanes in (('case', 2), ('control', 1)):
+        folder = sample_parent / sample
+        folder.mkdir(parents=True)
+        for lane in range(lanes):
+            for mate in (1, 2):
+                (folder / f'{sample}_flowcell_L{lane}_{mate}.fq').write_text('@read\nACGT\n+\nIIII\n')
     state = WebState(output)
     app = WebServer(0, state)
     demo = ThreadingHTTPServer(('127.0.0.1', 0), partial(QuietHandler, directory=str(ROOT / 'docs')))
@@ -78,8 +85,18 @@ def main():
                         page.locator('#browser-go').click()
                         expect(page.locator('#browser-path')).to_have_text(str(path))
 
-                    # Real server: Browse goes directly to the native picker API.
+                    # Slow startup must finish applying defaults before folder selection.
+                    startup = []
+                    page.route('**/api/system', lambda route: startup.append(route))
                     page.goto(app.origin + '/#' + state.token)
+                    expect(page.locator('main')).to_have_attribute('aria-busy', 'true')
+                    expect(page.locator('#setup-loading')).to_be_visible()
+                    assert page.locator('#choose-illumina').evaluate("button => button.closest('main').inert")
+                    assert len(startup) == 1
+                    startup[0].fulfill(json=state.system())
+                    page.unroute('**/api/system')
+                    expect(page.locator('main')).to_have_attribute('aria-busy', 'false')
+                    # Real server: Browse goes directly to the native picker API.
                     page.locator('#choose-illumina').click()
                     page.locator('#variant-fresh').click()
                     for folder in (empty, documents):
@@ -98,6 +115,14 @@ def main():
                         expect(page.locator('[data-browse="input-folder"]')).to_be_enabled()
                         expect(page.locator('#input-folder')).to_have_value(str(paired))
                         expect(page.locator('#fastq-preview')).to_be_visible()
+                    with patch('oncotracer_cli.web.choose_path', return_value=sample_parent):
+                        page.locator('[data-browse="input-folder"]').click()
+                        expect(page.locator('#input-folder')).to_have_value(str(sample_parent))
+                        expect(page.locator('#fastq-summary')).to_contain_text('2 samples · 6 FASTQ files')
+                        expect(page.locator('#scan-warnings')).to_contain_text('Each immediate subfolder is one sample')
+                        expect(page.locator('.sample')).to_have_count(2)
+                        expect(page.locator('#error')).to_be_hidden()
+                        page.screenshot(path=str(output / f'{name}-sample-subfolders.png'))
                     with patch('oncotracer_cli.web.choose_path', return_value=empty):
                         page.locator('[data-browse="project-parent"]').click()
                         expect(page.locator('#project-parent')).to_have_value(str(empty))

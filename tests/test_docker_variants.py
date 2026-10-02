@@ -1,5 +1,6 @@
 """Integrated Docker caller isolation and FASTQ/resource binding contracts."""
 import os
+import csv
 import io
 import json
 import contextlib
@@ -45,6 +46,24 @@ class DockerVariantTests(unittest.TestCase):
 
     def args(self, *extra):
         return cli.build_parser().parse_args(['run','--config',str(self.config_path),'--backend','docker',*extra])
+
+    def test_all_sample_folder_lanes_and_symlink_targets_are_bound(self):
+        from oncotracer_cli.fastq_inputs import encode_fastq_field
+        other = self.external / 'another lane.fastq.gz'
+        other.write_bytes(b'FASTQ path fixture')
+        with self.sheet.open('w', newline='') as handle:
+            writer = csv.writer(handle)
+            writer.writerow(['sample', 'fastq_1', 'fastq_2', 'status'])
+            writer.writerow(['SAMPLE', encode_fastq_field((self.link, other)), '', 'tumor'])
+        mounts = dict(docker_runtime.docker_mounts(self.config_path, environment={}))
+        for path in (self.link, self.fastq, other):
+            self.assertEqual(mounts[path], 'ro')
+        with self.sheet.open('w', newline='') as handle:
+            writer = csv.writer(handle)
+            writer.writerow(['sample', 'fastq_1', 'fastq_2', 'status'])
+            writer.writerow(['SAMPLE', json.dumps([str(self.link), '~/other.fastq']), '', 'tumor'])
+        with self.assertRaisesRegex(OncoTracerError, 'fastq_1 in samplesheet row 2'):
+            docker_runtime.validate_docker_variants(self.config)
 
     def test_preview_preserves_yaml_and_never_requires_host_tools(self):
         original = self.config_path.read_bytes()

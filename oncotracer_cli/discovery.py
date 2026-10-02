@@ -1,8 +1,8 @@
 """Read-only FASTQ discovery for the guided setup.
 
-Discovery proposes technical sample IDs, never clinical roles. Illumina inputs
-must already fit the runner's one-file-per-mate samplesheet contract; discovery
-does not merge lanes or guess how unrelated files belong together.
+Discovery proposes technical sample IDs, never clinical roles. An Illumina
+parent containing immediate sample folders keeps each folder's matched lane
+pairs together. Discovery never modifies or combines input files.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 
 from .engine import _resolve_fastq_pass, _single_ont_sample_folder
+from .fastq_inputs import FastqInput
 from .runtime import OncoTracerError, require_directory
 
 
@@ -28,8 +29,8 @@ _LANE = re.compile(r"[._-]L\d{3}$", re.IGNORECASE)
 class DiscoveredSample:
     sample: str
     files: tuple[Path, ...]
-    fastq_1: Path | None = None
-    fastq_2: Path | None = None
+    fastq_1: FastqInput | None = None
+    fastq_2: FastqInput | None = None
     barcode: str | None = None
     fastq_dir: Path | None = None
 
@@ -110,10 +111,55 @@ def _sample_id(stem: str, warnings: list[str]) -> str:
     return name
 
 
+def _illumina_sample_folders(root: Path, paths: tuple[Path, ...]) -> FastqDiscovery:
+    """One immediate subfolder is one sample; match mates within each lane first."""
+    folders: dict[Path, list[Path]] = {}
+    for path in paths:
+        folders.setdefault(path.parent, []).append(path)
+    warnings = ["Each immediate subfolder is one sample. All matched FASTQ pairs in that folder belong to it; lane alignments are combined when you run analysis."]
+    samples, names = [], set()
+    for folder, files in sorted(folders.items()):
+        pairs: dict[str, dict[str, list[Path]]] = {}
+        singles = []
+        for path in files:
+            stem = _fastq_stem(path)
+            match = _MATE.fullmatch(stem or "")
+            bare = _BARE_MATE.fullmatch(stem or "") if match is None else None
+            if match:
+                identity = match["stem"] + match["separator"] + match["label"] + "{mate}" + match["chunk"]
+            elif bare:
+                identity = "R{mate}" + bare["chunk"]
+            else:
+                singles.append(path)
+                continue
+            mate = (match or bare)["mate"]
+            pairs.setdefault(identity, {"1": [], "2": []})[mate].append(path)
+        if singles and pairs:
+            raise OncoTracerError(f"Sample folder {folder} mixes paired and unpaired FASTQs. Put each library in its own sample folder.")
+        first, second = [], []
+        for identity, mates in sorted(pairs.items()):
+            if len(mates["1"]) != 1 or len(mates["2"]) != 1:
+                raise OncoTracerError(f"Incomplete or duplicate R1/R2 pair in {folder}: {identity}. Each lane needs exactly one matching file per mate.")
+            first.append(mates["1"][0])
+            second.append(mates["2"][0])
+        if singles:
+            first = singles
+        name = _sample_id(folder.name, warnings)
+        if name in names:
+            raise OncoTracerError(f"Ambiguous sample name {name!r} from sample folders; rename the folders to unique names.")
+        names.add(name)
+        samples.append(DiscoveredSample(name, tuple(files),
+                       fastq_1=first[0] if len(first) == 1 else tuple(first),
+                       fastq_2=(second[0] if len(second) == 1 else tuple(second)) if second else None))
+    return FastqDiscovery("illumina", root, tuple(sorted(samples, key=lambda sample: sample.sample)), tuple(warnings))
+
+
 def _illumina(root: Path) -> FastqDiscovery:
     paths = _fastqs(root)
     if not paths:
         raise OncoTracerError(f"No FASTQ files found in {root}. Check your paths.")
+    if all(len(path.relative_to(root).parts) == 2 for path in paths):
+        return _illumina_sample_folders(root, paths)
     warnings: list[str] = []
     pairs: dict[tuple[Path, str], dict[str, list[tuple[Path, str]]]] = {}
     singles: list[tuple[str, Path]] = []

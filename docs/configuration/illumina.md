@@ -9,6 +9,34 @@ include runnable commands; neither opens browser setup.
 
 ## Recommended: Automatic Setup
 
+### Browser setup with sample folders
+
+`oncotracer setup` also accepts a parent directory with FASTQs inside immediate
+sample subfolders:
+
+```text
+01.RawData/
+├── SAMPLE_A/
+│   ├── SAMPLE_A_flowcell1_L1_1.fq.gz
+│   ├── SAMPLE_A_flowcell1_L1_2.fq.gz
+│   ├── SAMPLE_A_flowcell2_L4_1.fq.gz
+│   └── SAMPLE_A_flowcell2_L4_2.fq.gz
+└── SAMPLE_B/
+    ├── SAMPLE_B_R1.fastq.gz
+    └── SAMPLE_B_R2.fastq.gz
+```
+
+Select **01.RawData** and confirm with **OK** in the system chooser. Setup
+shows two samples, named after their folders, with all six FASTQs. Keep one
+library per folder. Each lane must have a matching R1/R2 pair; missing or duplicate
+mates require correction. Assign Normal/Cancer roles yourself.
+
+Discovery and configuration leave the original files unchanged. The generated
+samplesheet stores multiple paths as ordered JSON arrays in its `fastq_1` and
+`fastq_2` cells. Analysis aligns each lane separately, combines that sample's
+alignments, and runs its usual QC and downstream analysis once. Single-path
+samplesheets continue to work.
+
 ### Arrange the FASTQs
 
 Paired-end example:

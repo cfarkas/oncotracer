@@ -21,6 +21,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 from .discovery import discover_fastqs, discover_ont_inputs
+from .fastq_inputs import encode_fastq_field
 from .native_picker import choose_path, has_sequencing_files, KINDS, NO_SEQUENCING
 from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
 from .runtime import OncoTracerError, load_flat_yaml
@@ -280,8 +281,8 @@ class WebState:
                         setattr(args, key, _text(data, key))
             values = {}
             if discovered.mode == "illumina":
-                args._wizard_rows = [[row["sample"], str(row["source"].fastq_1),
-                                      str(row["source"].fastq_2 or ""), row["analysis_role"]] for row in entries]
+                args._wizard_rows = [[row["sample"], encode_fastq_field(row["source"].fastq_1),
+                                      encode_fastq_field(row["source"].fastq_2), row["analysis_role"]] for row in entries]
                 caller = "qdnaseq"
             else:
                 study = [row for row in entries if row["analysis_role"] == "tumor"]

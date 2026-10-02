@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .runtime import OncoTracerError, load_flat_yaml
+from .fastq_inputs import fastq_paths, fastq_field_values
 from .variant_model_assets import is_auto_resource
 
 
@@ -55,7 +56,8 @@ def validate_docker_variants(config: Mapping[str, object]) -> None:
         with Path(str(sheet)).open(newline="") as handle:
             for number, row in enumerate(csv.DictReader(handle), start=2):
                 for key in ("fastq_1", "fastq_2"):
-                    reject_home(row.get(key), f"{key} in samplesheet row {number}")
+                    for value in fastq_field_values(row.get(key) or ""):
+                        reject_home(value, f"{key} in samplesheet row {number}")
     for key in ("variant_clairsto_sif", "variant_ffperase_sif"):
         if config.get(key):
             raise OncoTracerError(
@@ -167,11 +169,11 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
             for row in csv.DictReader(handle):
                 for key in ("fastq_1", "fastq_2"):
                     if row.get(key):
-                        add(row[key], resource=True)
+                        for value in fastq_field_values(row[key]):
+                            add(value, resource=True)
         for sample in parse_illumina_samplesheet(Path(str(config.get("illumina_samplesheet", "")))):
-            add(sample.fastq_1, resource=True)
-            if sample.fastq_2:
-                add(sample.fastq_2, resource=True)
+            for path in fastq_paths(sample.fastq_1) + fastq_paths(sample.fastq_2):
+                add(path, resource=True)
     elif mode == "ont":
         for sample in parse_ont_samples(config):
             add(sample.fastq_dir, resource=True)

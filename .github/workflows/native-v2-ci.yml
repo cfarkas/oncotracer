@@ -87,6 +87,7 @@ jobs:
             tests/test_beginner_runtime.py \
             tests/test_setup.py \
             tests/test_discovery.py \
+            tests/test_sample_folder_lanes.py \
             tests/test_wizard.py \
             tests/test_web.py \
             tests/test_native_picker.py \
