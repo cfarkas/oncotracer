@@ -8,7 +8,8 @@ curl() {
     for arg in "$@"; do
         case "$arg" in
             https://bioconductor.org/packages/3.14/*)
-                arg="https://bioconductor.statistik.tu-dortmund.de/${arg#https://bioconductor.org/}"
+                # GWDG retains the 3.14 archive, including GenomeInfoDbData 1.2.7.
+                arg="https://ftp.gwdg.de/pub/misc/bioconductor/${arg#https://bioconductor.org/}"
                 ;;
             https://bioconductor.org/packages/*)
                 arg="https://bioconductor.posit.co/${arg#https://bioconductor.org/}"
