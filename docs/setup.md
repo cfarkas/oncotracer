@@ -30,7 +30,8 @@ Folders without FASTQ, POD5 or BAM files (including subfolders) display
 
 Settings are saved in `PROJECT/config/run.yml`; Illumina also gets
 `config/samplesheet.csv`. Existing configurations are protected.
-**Stop analysis** offers to keep the project or remove its folder after path confirmation.
+**Stop analysis** asks **Delete incomplete run?** **Yes** deletes the new project;
+**No** keeps it. Both close the dialog and return to setup.
 
 **Terminal alternative:** configure without a browser, then validate and run:
 

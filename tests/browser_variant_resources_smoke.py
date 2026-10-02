@@ -17,6 +17,7 @@ from tests.browser_setup_smoke import free_port, http, wait
 from tests.test_web import HARDWARE
 from oncotracer_cli.runtime import render_flat_yaml
 from oncotracer_cli.variant_model_assets import FFPERASE_LICENSE
+from oncotracer_cli.variant_install_help import official_resource_help
 from oncotracer_cli.web import WebServer, WebState
 
 
@@ -60,7 +61,11 @@ def main():
                        **({} if docker else {'variant_tool_prefix': '/synthetic/variant-env'})},
             'candidates': [{'field':'variant_annovar_db','path':'/synthetic/hg38-db-a','label':'Database A','status':'candidate','detail':'Review reference build'}, {'field':'variant_annovar_db','path':'/synthetic/hg38-db-b','label':'Database B','status':'candidate','detail':'Review reference build'}],
             'resources': [{'id':'annovar_db','field':'variant_annovar_db','label': '<img src=x onerror="window.injected=true">', 'status': 'missing',
-                           'detail': 'Synthetic missing resource', 'path': '/synthetic/<path>'}],
+                           'detail': 'Synthetic missing resource', 'path': '/synthetic/<path>'},
+                          {'id':'annovar_dir','field':'variant_annovar_dir','label':'ANNOVAR installation','status':'missing',
+                           **official_resource_help('annovar_dir')},
+                          {'id':'mutect2','label':'Mutect2','status':'missing','links':[{'label':'Unsafe link','url':'javascript:window.injected=true'},
+                           *official_resource_help('mutect2')['links']]}],
             'install_guides': [{'id': 'annovar', 'title': 'Install example', 'reason': 'Synthetic installation guidance',
                 'commands': 'printf \'example only\\n\'\n# <script>window.injected=true</script>',
                 'links': [{'label': 'Invalid scheme', 'url': 'javascript:window.injected=true'}]}],
@@ -189,6 +194,16 @@ def main():
             if form == 'main':
                 js("for(const row of sampleRows()){const field=row.querySelector('.type-select');field.value=row.querySelector('.sample-name').value==='SYNTHETIC'?'cancer':'normal';field.dispatchEvent(new Event('change',{bubbles:true}));}")
             container='#variant-callers' if form=='main' else '#callers'
+            assert visible(container+' [data-caller-group=tumor-only]')
+            assert visible(container+' [data-caller-group=matched]')
+            assert visible(container+' [data-caller-group=germline]')
+            js("for(const field of document.querySelectorAll(arguments[0]+' input'))field.checked=field.value==='mutect2';",container)
+            js('variantSettings()' if form=='main' else 'updateSettings()')
+            assert saved(form)['variant_callers']=='mutect2'
+            assert saved(form)['variant_matched_normals']=={}
+            assert not visible('#variant-strelka-pairing')
+            screenshot(form+'-tumor-only.png')
+            checks.append(form+': visible Tumor-only (unpaired) choice saves Mutect2 without any matched-normal assignment')
             js("for(const field of document.querySelectorAll(arguments[0]+' input'))field.checked=field.value==='strelka2_germline';",container)
             js('variantSettings()' if form=='main' else 'updateSettings()')
             assert not visible('#variant-strelka-pairing')
@@ -239,7 +254,13 @@ def main():
         assert js("return document.querySelector('#variant_annovar_db').value") == '/synthetic/humandb'
         assert js("return document.querySelector('#variant_tool_prefix').value") == '/synthetic/variant-env'
         assert requests[-1]['specimen_type'] == 'ffpe' and requests[-1]['backend'] == 'conda'
-        assert not js("return !!window.injected || !!document.querySelector('#variant-detection-results img,#variant-detection-results script,#variant-detection-results a')")
+        assert not js("return !!window.injected || !!document.querySelector('#variant-detection-results img,#variant-detection-results script,#variant-detection-results a[href^=\"javascript:\"]')")
+        assert visible('[data-resource-id=annovar_dir] .resource-links a')
+        assert js("return document.querySelector('[data-resource-id=annovar_dir] .resource-access').textContent.includes('Registration required')")
+        assert js("return document.querySelector('[data-resource-id=annovar_dir] a').href") == 'https://annovar.openbioinformatics.org/en/latest/user-guide/download/'
+        assert js("return document.querySelector('[data-resource-id=mutect2] a').href") == 'https://github.com/broadinstitute/gatk/releases'
+        assert js("return [...document.querySelectorAll('.resource-list a')].every(a=>a.target==='_blank'&&a.rel.includes('noopener'))")
+        checks.append('Missing tools show official download and ANNOVAR registration links without expanding installation commands; unsafe link schemes are discarded')
         assert 'printf' in js("return document.querySelector('.resource-install pre').textContent")
         # Exercise the copy fallback, which is also available without clipboard permission.
         js("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('clipboard unavailable')}}})")

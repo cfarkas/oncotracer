@@ -124,6 +124,7 @@ function demoBrowse(path){
   return {path,parent:path==='/demo'?'/demo':path.slice(0,path.lastIndexOf('/'))||'/demo',directories:(tree[path]||[]).map(name=>({name,path:path+'/'+name})),files,fastq_entries:fastqs.map(path=>({name:path.split('/').pop(),path})),fastq_files:fastqs.length,pod5_files:files.filter(file=>file.name.endsWith('.pod5')).length,bam_files:files.filter(file=>file.name.endsWith('.bam')).length,truncated:false};
 }
 const demoInstallGuides=__VARIANT_INSTALL_GUIDES__;
+const demoAnnovarHelp=__ANNOVAR_RESOURCE_HELP__;
 function demoVariantResources(payload){
   const docker=payload.backend==='docker',values=payload.values||{},fields={},resources=[],candidates=[];
   const found=(id,label,key,path,status='found',detail='Synthetic example path; no files were inspected.')=>{fields[key]=values[key]||path;resources.push({id,label,status,path:fields[key],detail});};
@@ -138,7 +139,7 @@ function demoVariantResources(payload){
   }
   const guides=[];
   if(values.variant_annovar!=='off'){
-    resources.push({id:'annovar',label:'ANNOVAR and local databases',status:'missing',detail:'This example deliberately leaves optional ANNOVAR unavailable so you can explore the installation codebox. Manually entered paths are kept.'});
+    resources.push({id:'annovar',label:'ANNOVAR and local databases',status:'missing',...demoAnnovarHelp,detail:'This example deliberately leaves optional ANNOVAR unavailable so you can explore official registration links and installation commands. Manually entered paths are kept.'});
     guides.push(...demoInstallGuides[docker?'docker':'host']);
   }
   if(payload.mode==='ont'&&payload.callers.includes('clair3')&&values.variant_clair3_model!=='auto')for(const path of ['/demo/resources/clair3-model','/demo/resources/clair3-alternative'])candidates.push({field:'variant_clair3_model',path,label:'Synthetic Clair3 model',status:'candidate',detail:'Fictional candidate: confirm chemistry and basecaller before choosing a real model.'});

@@ -226,7 +226,7 @@ else:
             from oncotracer_cli.runtime import load_flat_yaml
             click('#variants');click('#variant-ffpe')
             assert js("return document.querySelector('#variant-ffpe').getAttribute('aria-pressed')") == 'true'
-            assert js("return [...document.querySelectorAll('[data-variant-caller]')].map(e=>e.value)") == ['mutect2','freebayes','bcftools','strelka2_germline','strelka2_somatic']
+            assert set(js("return [...document.querySelectorAll('[data-variant-caller]')].map(e=>e.value)")) == {'mutect2','freebayes','bcftools','strelka2_germline','strelka2_somatic'}
             assert not js("return document.querySelector('#variant-ffperase-fields').hidden")
             fill('#variant_varlociraptor','required');fill('#variant_varlociraptor_fdr','0.05')
             click('[data-variant-caller="freebayes"]');fill('#variant_annovar','off')
@@ -276,7 +276,7 @@ else:
         if options.test_variants:
             model = root / 'clair3-fixture-model';model.mkdir();(model / 'fixture.txt').write_text('model-path fixture; never executed')
             click('#variants');click('#variant-fresh')
-            assert js("return [...document.querySelectorAll('[data-variant-caller]')].map(e=>e.value)") == ['clair3','clairs_to']
+            assert set(js("return [...document.querySelectorAll('[data-variant-caller]')].map(e=>e.value)")) == {'clair3','clairs_to'}
             assert not js("return document.querySelector('#variant-clair3-field').hidden")
             fill('#variant_clair3_model', str(model));click('[data-variant-caller="clairs_to"]')
             fill('#backend', 'docker');fill('#docker_image', 'oncotracer:browser-fixture')
@@ -284,7 +284,7 @@ else:
             fill('#variant_clairsto_platform', 'ont_fixture')
             prepare('ont-variants-project')
             config = load_flat_yaml(root / 'ont-variants-project/config/run.yml')
-            assert config['variant_callers'] == 'clair3,clairs_to' and config['variant_specimen_type'] == 'fresh'
+            assert set(config['variant_callers'].split(',')) == {'clair3','clairs_to'} and config['variant_specimen_type'] == 'fresh'
             assert config['variant_clair3_model'] == str(model) and config['variant_clairsto_platform'] == 'ont_fixture'
             fill('#backend', 'conda');click('#variants')
             report['checks'].append('ONT exposes only Clair3/ClairS-TO with explicit model/preset fields; config check starts no tools')
@@ -366,7 +366,7 @@ else:
             assert js("return document.querySelector('h1').textContent") == 'Configure and run an analysis'
             for remove in (False, True):
                 if remove:
-                    click('#new-analysis');click('#choose-illumina');click('#variant-fresh')
+                    click('#choose-illumina');click('#variant-fresh')
                     fill('#input-folder', str(fixture / 'illumina'));sample_count(2)
                 fill('.sample[data-id="0"] .type-select', 'cancer')
                 name = 'stop-remove-project' if remove else 'stop-keep-project'
@@ -383,18 +383,25 @@ else:
                 click('#stop')
                 wait(lambda: js("return document.querySelector('#cleanup').open"), 'cleanup choice after Stop')
                 assert js("return document.activeElement.id") == 'keep-project'
+                assert js("return document.querySelector('#cleanup-title').textContent") == 'Delete incomplete run?'
+                assert js("return [...document.querySelectorAll('#cleanup button')].map(e=>e.textContent)") == ['No', 'Yes']
                 assert (root / name).is_dir()
                 if not remove:
                     click('#keep-project');assert (root / name / 'config/run.yml').is_file()
                 else:
-                    click('#remove-project');assert js("return document.querySelector('#confirm-remove').disabled")
-                    fill('#confirm-path',str(root));assert js("return document.querySelector('#confirm-remove').disabled")
-                    fill('#confirm-path',str(root / name));click('#confirm-remove')
+                    click('#remove-project')
                     wait(lambda: js("return !document.querySelector('#cleanup').open"), 'confirmed removal')
                     assert not (root / name).exists()
-                report['checks'].append('Stop button with ' + ('confirmed folder removal' if remove else 'default Keep project'))
+                assert not js("return document.querySelector('#cleanup').open")
+                assert js("return document.querySelector('#workflow').hidden && !document.querySelector('#choose-illumina').disabled")
+                # A delayed status response for this stopped job cannot reopen
+                # the dismissed dialog or disable the next setup.
+                wd('POST', '/execute/async', {'script': 'const done=arguments[0];poll().then(()=>done(true));', 'args': []})
+                assert not js("return document.querySelector('#cleanup').open")
+                assert not js("return document.querySelector('#choose-illumina').disabled")
+                report['checks'].append('Stop: ' + ('Yes deletes only the incomplete project' if remove else 'No retains the project') + '; dialog closes and setup stays usable after polling')
             assert before == {str(path): path.read_bytes() for path in fixture.rglob('*.gz')}
-            click('#new-analysis');click('#choose-illumina');click('#variant-fresh')
+            click('#choose-illumina');click('#variant-fresh')
         # A stopped local server must give actionable recovery instructions.
         processes[0].terminate(); processes[0].wait(timeout=10)
         click('[data-browse="input-folder"]')

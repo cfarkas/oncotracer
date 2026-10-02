@@ -103,8 +103,11 @@ every ONT model against your actual chemistry/basecaller; a detected directory
 does not establish compatibility.
 
 The compact resource summary opens detailed results and installation help.
-Missing resources include **Copy commands** boxes and official setup links in
-that dialog. Review and run the commands yourself in a terminal, then check
+Missing tools show official download or installation links beside their status.
+Missing ANNOVAR software includes a **Register and download ANNOVAR** link and a
+registration notice. FFPERASE source and models link to their upstream license.
+Expandable installation recipes include **Copy commands** boxes.
+Review and run the commands yourself in a terminal, then check
 again. Discovery does not install tools, download models, accept licenses or run
 analysis. If a command exports environment variables, either paste its printed
 paths into the browser or restart setup from that terminal before checking again.
@@ -119,6 +122,14 @@ are verified when the analysis starts. [ANNOVAR](annovar.md) remains optional an
 requires separately obtained software and matching databases.
 
 ## Choose a platform and specimen type
+
+Caller choices are grouped as **Tumor-only (unpaired)**, **Matched tumor–normal**
+(Illumina), and **Germline / independent samples** in both FASTQ and existing-BAM
+setup. With no matched normal, select **Mutect2** for Illumina or **ClairS-TO** for
+ONT. Strelka2 somatic has no tumor-only mode; leave it deselected for unpaired
+analysis. Strelka2 germline runs without a matched normal but produces
+germline-style calls. Tumor–normal matching is separate from paired-end R1/R2
+sequencing reads.
 
 | Platform | Caller | What it produces |
 | --- | --- | --- |

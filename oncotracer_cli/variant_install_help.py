@@ -23,6 +23,45 @@ ANNOVAR = "https://annovar.openbioinformatics.org/en/latest/user-guide/"
 TOOLS = '"$HOME/.local/share/oncotracer/optional-tools"'
 
 
+def official_resource_help(identifier: str) -> dict:
+    """Direct upstream links displayed beside a missing resource, outside recipes."""
+    hts = ("Official SAMtools / BCFtools / HTSlib downloads", "https://www.htslib.org/download/")
+    gatk = ("Official GATK / Mutect2 downloads", "https://github.com/broadinstitute/gatk/releases")
+    strelka = ("Official Strelka2 installation", STRELKA2.replace("README.md", "installation.md"))
+    ffperase = ("Official FFPERASE source", FFPERASE + "/tree/" + FFPERASE_REVISION)
+    license_link = ("Review FFPERASE license", FFPERASE + "/blob/" + FFPERASE_REVISION + "/LICENSE")
+    annovar = ("Register and download ANNOVAR", ANNOVAR + "download/")
+    databases = ("Official ANNOVAR database setup", ANNOVAR + "startup/")
+    links = {
+        "samtools": [hts], "bcftools": [hts], "bgzip": [hts], "tabix": [hts],
+        "mutect2": [gatk], "gatk": [gatk],
+        "freebayes": [("Official FreeBayes installation", "https://github.com/freebayes/freebayes#installation")],
+        "varlociraptor": [("Official Varlociraptor installation", "https://varlociraptor.github.io/docs/installation/")],
+        "variant_tools": [("OncoTracer environment setup", DOCS + "variants_reference/#conda-and-docker")],
+        "strelka_prefix": [strelka], "strelka2_runtime": [strelka],
+        "clair3": [("Official Clair3 installation", CLAIR3 + "#installation")],
+        "clair3_model": [("Official Clair3 models", CLAIR3 + "#pre-trained-models")],
+        "clairs_to": [("Official ClairS-TO installation", CLAIRSTO + "#installation")],
+        "clairsto_sif": [("Official ClairS-TO containers", CLAIRSTO + "#installation")],
+        "clairsto_model": [("Official ClairS-TO model presets", CLAIRSTO + "#pre-trained-models")],
+        "ffperase_root": [ffperase, license_link],
+        "ffperase_models": [("Official FFPERASE models", MODELS + "/tree/" + FFPERASE_MODEL_REVISION), license_link],
+        "ffperase_prefix": [ffperase], "ffperase_runtime": [ffperase], "ffperase_sif": [ffperase],
+        "annovar_dir": [annovar], "annovar_db": [databases], "annovar": [annovar, databases],
+        "docker_runtime": [("Official Docker installation", "https://docs.docker.com/engine/install/")],
+        "docker_image": [("OncoTracer Docker image", "https://hub.docker.com/r/carlosfarkas/oncotracer")],
+        "container_runtime": [("Official Apptainer installation", "https://apptainer.org/docs/admin/main/installation.html")],
+    }.get(identifier, [])
+    note = ""
+    if identifier == "annovar_dir":
+        note = "Registration required for the ANNOVAR software download. Follow the official registration page."
+    elif identifier == "annovar":
+        note = "If the software is missing, register at the official ANNOVAR page. Databases are obtained separately."
+    elif identifier in {"ffperase_root", "ffperase_models"}:
+        note = "Review the upstream license before downloading or using FFPERASE resources."
+    return {"links": [{"label": label, "url": url} for label, url in links], "access_note": note}
+
+
 def _guide(identifier: str, title: str, reason: str, commands: str, *links: tuple[str, str]) -> dict:
     return {"id": identifier, "title": title, "reason": reason,
             "commands": commands.strip(),

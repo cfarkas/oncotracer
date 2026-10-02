@@ -14,6 +14,10 @@ STYLE = '''
 @media(max-width:720px){.variant-section{padding:16px}.variant-path-row{flex-wrap:wrap}.variant-path-row>input,.variant-path-row>select{flex-basis:100%}.variant-path-actions{width:100%}.variant-path-actions button{flex:1}.variant-nav button{border:0;font-size:11px}.variant-caller-list{grid-template-columns:1fr}.variant-specimen{gap:8px}.variant-specimen .platform{padding:10px}.variant-specimen .platform[aria-pressed=true]{padding:9px}#variant-resource-dialog{padding:16px}.variant-dialog-heading h2{font-size:19px}.variant-section-heading h3{font-size:17px}.variant-block-heading>button{max-width:100%;white-space:normal}}
 '''
 
+STYLE += '''
+.variant-caller-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));align-items:start}.variant-caller-group{min-width:0;margin:0;padding:12px;border:1px solid var(--line);border-radius:8px}.variant-caller-group legend{font-size:14px;font-weight:700;padding:0 5px}.variant-caller-group>.hint{margin:0 0 12px}.variant-caller-group label+label{margin-top:8px}.resource-links{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0}.resource-links a{font-size:13px;color:var(--accent)}.resource-access{font-size:13px;font-weight:600;margin:8px 0}
+'''
+
 SCRIPT = r'''
 let variantDetectionApplying=false,variantResourceLastResult=null,variantResourceLastScope='all';
 const variantPathKeys=['variant_tool_prefix','variant_strelka_prefix','variant_clair3_model','variant_clairsto_sif','variant_ffperase_root','variant_ffperase_models','variant_ffperase_prefix','variant_ffperase_sif','variant_annovar_dir','variant_annovar_db'];
@@ -27,6 +31,23 @@ function variantFieldLabel(key){return document.querySelector('label[for="'+key+
 let variantPairSamples=[],variantPairSelections=new Map(),variantPairDefaults={};
 function resetVariantPairing(){variantPairSamples=[];variantPairSelections.clear();variantPairDefaults={};}
 function activeVariantCallers(){return [...document.querySelectorAll('#variant-callers input:checked,#callers input:checked')].map(field=>field.value);}
+function renderVariantCallers(containerId,options,selected,onchange){
+  const container=document.getElementById(containerId);container.replaceChildren();
+  const groups=[
+    ['tumor-only','Tumor-only (unpaired)','No matched normal needed. These callers produce candidate somatic variants.',['mutect2','clairs_to']],
+    ['matched','Matched tumor–normal','Strelka2 somatic requires a normal specimen from the same patient.',['strelka2_somatic']],
+    ['germline','Germline / independent samples','No matched normal needed. These callers produce germline-style calls.',['strelka2_germline','freebayes','bcftools','clair3']]
+  ];
+  for(const [key,title,hint,values] of groups){
+    const choices=options.filter(([value])=>values.includes(value));if(!choices.length)continue;
+    const group=node('fieldset',undefined,'variant-caller-group');group.dataset.callerGroup=key;group.append(node('legend',title),node('p',hint,'hint'));
+    for(const [value,label] of choices){
+      const wrapper=node('label',undefined,'check'),field=node('input');field.type='checkbox';field.value=value;field.id='caller-'+value;field.dataset.variantCaller=value;field.checked=selected.has(value);field.onchange=onchange;
+      wrapper.append(field,document.createTextNode(label));group.append(wrapper);
+    }
+    container.append(group);
+  }
+}
 function setVariantPairSamples(samples){
   variantPairSamples=samples;
   for(const [tumorName,normalName] of Object.entries(variantPairDefaults)){
@@ -44,7 +65,7 @@ function renderVariantPairing(){
   const rows=document.getElementById('variant-pair-rows');rows.replaceChildren();
   if(!enabled)return;
   const normals=variantPairSamples.filter(row=>row.role==='normal'),tumors=variantPairSamples.filter(row=>row.role==='tumor');
-  document.getElementById('variant-pair-note').textContent=!tumors.length?'Assign or load at least one tumor sample.':!normals.length?'Add and assign a matched normal, or select Strelka2 germline / a tumor-only caller.':'Every tumor selected for Strelka2 somatic needs a confirmed match. Germline calling does not use these pairings.';
+  document.getElementById('variant-pair-note').textContent=!tumors.length?'Assign or load at least one tumor sample.':!normals.length?'For unpaired somatic analysis, deselect Strelka2 somatic and select Mutect2 under Tumor-only (unpaired). Otherwise, add and assign the matched normal.':'Every tumor selected for Strelka2 somatic needs a confirmed match. Germline calling does not use these pairings.';
   for(const tumor of tumors){
     const field=document.createElement('div'),label=document.createElement('label'),select=document.createElement('select');
     field.className='field';label.textContent='Matched normal for '+tumor.name;select.setAttribute('aria-label',label.textContent);select.dataset.variantTumor=tumor.id;
@@ -194,6 +215,11 @@ function variantApplyPath(key,value,replace=false){
   }finally{variantDetectionApplying=false;}
   return true;
 }
+function appendVariantResourceLinks(container,links){
+  const list=node('div',undefined,'resource-links');
+  for(const link of links||[]){try{const url=new URL(link.url);if(!['http:','https:'].includes(url.protocol))continue;const anchor=node('a',link.label||'Official documentation');anchor.href=url.href;anchor.target='_blank';anchor.rel='noopener noreferrer';list.append(anchor);}catch(error){}}
+  if(list.childElementCount)container.append(list);
+}
 function renderVariantResources(result,scope='all'){
   const container=document.getElementById('variant-detection-results');container.replaceChildren();
   const fields=variantScopeFields(scope),matches=resource=>scope==='all'||fields.includes(variantResourceField(resource))||(resource.id==='annovar'&&fields.some(field=>field.startsWith('variant_annovar')));
@@ -201,9 +227,11 @@ function renderVariantResources(result,scope='all'){
   const list=node('ul',undefined,'resource-list');
   const labels={found:'Found',missing:'Not found',candidate:'Review candidate',unverified:'Not verified',not_needed:'Not needed',download_pending:'Prepared at run time',prepare_at_run:'Prepared at run time'};
   for(const resource of resources){
-    const item=node('li'),badge=node('span',labels[resource.status]||resource.status,'badge');badge.dataset.state=resource.status;item.append(node('strong',resource.label),badge);
+    const item=node('li'),badge=node('span',labels[resource.status]||resource.status,'badge');item.dataset.resourceId=resource.id;badge.dataset.state=resource.status;item.append(node('strong',resource.label),badge);
     if(resource.path)item.append(node('code',resource.path,'resource-path'));
     if(resource.detail)item.append(node('p',resource.detail,'resource-detail'));
+    if(resource.access_note)item.append(node('p',resource.access_note,'resource-access'));
+    appendVariantResourceLinks(item,resource.links);
     list.append(item);
     const key=variantResourceField(resource),status=document.getElementById(key+'-status');
     if(status){status.textContent=(labels[resource.status]||resource.status)+(resource.detail?' · '+resource.detail:'');status.dataset.state=resource.status;}
@@ -227,7 +255,7 @@ function renderVariantResources(result,scope='all'){
     const actions=node('div',undefined,'actions'),copy=node('button','Copy commands'),status=node('span','','hint');copy.type='button';status.setAttribute('role','status');
     copy.onclick=async()=>{try{await navigator.clipboard.writeText(command);status.textContent='Copied';}catch(error){const range=document.createRange();range.selectNodeContents(code);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);status.textContent='Commands selected. Press Ctrl+C or Command+C to copy.';}};
     actions.append(copy,status);detail.append(actions);
-    for(const link of guide.links||[]){try{const url=new URL(link.url);if(!['http:','https:'].includes(url.protocol))continue;const anchor=node('a',link.label||'Installation documentation');anchor.href=url.href;anchor.target='_blank';anchor.rel='noopener noreferrer';detail.append(anchor);}catch(error){}}
+    appendVariantResourceLinks(detail,guide.links);
     container.append(detail);
   }
   if(guides.length)container.append(node('p','Run the commands you need in a terminal, then Autodetect again. This check never installs software.','hint'));
@@ -248,7 +276,7 @@ async function detectVariantResources(payload,scope='all'){
     for(const [key,value]of Object.entries(result.fields||{}))if(fields.includes(key)&&variantApplyPath(key,value))filled++;
     variantResourceLastResult=result;variantResourceLastScope=scope;renderVariantResources(result,scope);
     const missing=(result.resources||[]).filter(resource=>resource.status==='missing'&&(scope==='all'||fields.includes(variantResourceField(resource)))).length;
-    status.textContent='Check complete · '+filled+' empty path'+(filled===1?'':'s')+' filled'+(missing?' · missing resources have setup help':'')+'.';
+    status.textContent='Check complete · '+filled+' empty path'+(filled===1?'':'s')+' filled'+(missing?' · see official download and registration links for missing resources':'')+'.';
     document.getElementById('variant-resource-title').textContent=scope==='all'?'Detected resources':scope==='annotation'?'ANNOVAR resources':scope==='ffperase'?'FFPERASE resources':variantFieldLabel(scope);
     document.getElementById('variant-resource-dialog-status').textContent='Only empty fields were filled. Choose a candidate explicitly to change an entered path.';
     document.getElementById('variant-resource-review').hidden=false;openVariantResourceDialog();
