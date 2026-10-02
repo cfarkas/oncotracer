@@ -311,7 +311,7 @@ const assert=require('node:assert/strict');
 const window={},document={addEventListener(){}},location={href:'https://example.test/'};
 """
         script += (assets / 'computer-browser.js').read_text()
-        script += (assets / 'mock-api.js').read_text().replace('__VARIANT_INSTALL_GUIDES__', '{}')
+        script += (assets / 'mock-api.js').read_text().replace('__VARIANT_INSTALL_GUIDES__', '{}').replace('__ANNOVAR_RESOURCE_HELP__', '{}')
         script += r"""
 (async()=>{
   for(const folder of ['/demo/projects','/demo/resources','/demo/nanopore/pod5_pass']){

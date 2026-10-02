@@ -75,10 +75,9 @@ class NativePickerTests(unittest.TestCase):
         (self.root / 'empty/loop').symlink_to(self.root, target_is_directory=True)
         self.assertFalse(has_sequencing_files(self.root))
         for name in ('reads.FASTQ.GZ', 'reads.fq', 'signal.POD5', 'calls.bam'):
-            with self.subTest(name=name):
-                path = self.root / 'empty' / name
+            with self.subTest(name=name), tempfile.TemporaryDirectory(dir=self.root / 'empty') as fixture:
+                path = Path(fixture) / name
                 path.write_bytes(b'filename fixture')
                 self.assertTrue(has_sequencing_files(self.root))
-                path.unlink()
         (self.root / 'empty/broken.fastq').symlink_to(self.root / 'missing')
         self.assertFalse(has_sequencing_files(self.root))
