@@ -52,5 +52,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('existing-bam-link').textContent='Learn about calling variants from existing BAMs →';$('existing-bam-link').href='../../variants/';
   $('open-results').removeAttribute('target');$('open-results').onclick=event=>{event.preventDefault();demoRenderResults();demoJump('demo-results');$('demo-results-heading').focus({preventScroll:true});};
   $('remove-project').hidden=true;
+  $('cleanup-title').textContent='Return to setup?';$('keep-project').textContent='Return to setup';
+  $('cleanup-title').nextElementSibling.textContent='Simulation stopped. No project folder was created.';
   const simulated=new MutationObserver(()=>{if(demoState.job?.status==='complete')demoRenderResults();});simulated.observe($('job-status'),{childList:true,characterData:true,subtree:true});
 });

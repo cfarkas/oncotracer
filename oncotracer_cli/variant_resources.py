@@ -574,7 +574,10 @@ def discover_variant_resources(data, *, roots=(), environment=None):
                               + FFPERASE_LICENSE)
             deferred_ids.add('ffperase_source' if field == 'variant_ffperase_root' else 'ffperase_models')
     missing = [identifier for identifier in missing if identifier not in deferred_ids]
-    from .variant_install_help import installation_guides
+    from .variant_install_help import installation_guides, official_resource_help
+    for item in resources:
+        if item['status'] == 'missing':
+            item.update(official_resource_help(item['id']))
     guides = installation_guides(missing, backend=backend, mode=mode, root=recipe_root)
     return {"backend": backend, "fields": fields, "resources": resources, "candidates": candidates, "install_guides": guides,
             "searched": search.searched, "notes": ["Read-only discovery: no executable, model, installer, download or analysis was run. Review suggestions before saving.",

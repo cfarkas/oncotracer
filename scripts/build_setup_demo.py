@@ -28,8 +28,9 @@ def render() -> str:
     sys.path.insert(0, str(ROOT))
     from oncotracer_cli.web_ui import PAGE
     page = PAGE
-    from oncotracer_cli.variant_install_help import installation_guides
+    from oncotracer_cli.variant_install_help import installation_guides, official_resource_help
     mock = (ASSETS / 'mock-api.js').read_text().replace('__VARIANT_INSTALL_GUIDES__', json.dumps({backend: installation_guides(['annovar'], backend=backend, mode='illumina') for backend in ('host', 'docker')}))
+    mock = mock.replace('__ANNOVAR_RESOURCE_HELP__', json.dumps(official_resource_help('annovar')))
     component = (ROOT / "oncotracer_cli/variant_resource_ui.py").read_text(encoding="utf-8")
     form = (ROOT / "oncotracer_cli/variant_form_ui.py").read_text(encoding="utf-8")
     models = (ROOT / "oncotracer_cli/variant_model_assets.py").read_text(encoding="utf-8")

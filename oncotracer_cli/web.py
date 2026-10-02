@@ -548,7 +548,7 @@ class WebState:
                 raise OncoTracerError("This folder existed before browser setup; automatic removal is unavailable.")
             path = Path(prepared["project"])
             if data.get("confirm_remove") is not True or data.get("confirm_path") != str(path):
-                raise OncoTracerError("Confirm removal by entering the exact project folder path.")
+                raise OncoTracerError("Confirm deletion of this exact incomplete project folder.")
             if self._group_running(self.job["pid"]):
                 raise OncoTracerError("Analysis processes are still active; removal is blocked.")
             if path.is_symlink() or path.resolve() != path:
