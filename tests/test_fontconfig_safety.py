@@ -112,7 +112,8 @@ class FontconfigSafetyTests(unittest.TestCase):
             runtime_parent.mkdir(parents=True)
             runtime = FontconfigRuntime(runtime_parent / "invocation-test", {"core": prefix})
             environment = runtime.environment("core")
-            guard = Path(str(environment["FONTCONFIG_PATH"]).split(os.pathsep)[0])
+            guard = runtime_parent / "invocation-test/fontconfig-include-guards/core"
+            self.assertEqual(Path(str(environment["FONTCONFIG_PATH"]).split(os.pathsep)[0]), guard)
             self.assertEqual(stat.S_IMODE(guard.stat().st_mode), 0o500)
             self.assertEqual(stat.S_IMODE((guard / "local.conf").stat().st_mode), 0o400)
             if os.getuid() != 0:
