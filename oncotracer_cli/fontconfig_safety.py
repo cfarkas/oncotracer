@@ -7,6 +7,7 @@ import os
 import stat
 import xml.etree.ElementTree as ET
 import xml.parsers.expat as expat
+from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
@@ -18,6 +19,69 @@ _MAX_TOTAL_BYTES = 8 * 1024 * 1024
 _MAX_FILES = 512
 _MAX_DEPTH = 32
 _ALLOWED_INCLUDE_PREFIXES = {None, "default", "xdg"}
+
+
+def prepare_project_runtime_removal(project: Path) -> None:
+    """Unseal generated include guards before deleting a stopped project.
+
+    Fontconfig guards are deliberately mode 0500 while tools are running.
+    Unlinking their local.conf files requires write permission on the parent,
+    even though those files themselves remain read-only. Only change owned
+    guard directories at the generated runtime location, using directory
+    descriptors throughout so input/reference symlinks are never followed.
+    The caller must first authorize deletion and verify that the job stopped.
+    """
+    flags = (
+        os.O_RDONLY
+        | os.O_CLOEXEC
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    with ExitStack() as opened:
+        def directory(
+            name: str | Path, parent: int | None = None, *, stack: ExitStack = opened
+        ) -> int | None:
+            try:
+                before = os.stat(name, dir_fd=parent, follow_symlinks=False)
+            except FileNotFoundError:
+                return None
+            if not stat.S_ISDIR(before.st_mode):
+                return None
+            descriptor = os.open(name, flags, dir_fd=parent)
+            stack.callback(os.close, descriptor)
+            current = os.fstat(descriptor)
+            if (before.st_dev, before.st_ino) != (current.st_dev, current.st_ino):
+                raise OncoTracerError("Project runtime directory changed during removal.")
+            return descriptor
+
+        root = directory(project)
+        if root is None:
+            return
+        for component in ("results", ".oncotracer-native", "runtime-cache"):
+            root = directory(component, root)
+            if root is None:
+                return
+        for name in os.listdir(root):
+            if not name.startswith("invocation-"):
+                continue
+            with ExitStack() as invocation_opened:
+                invocation = directory(name, root, stack=invocation_opened)
+                if invocation is None:
+                    continue
+                guards = directory("fontconfig-include-guards", invocation, stack=invocation_opened)
+                if guards is None:
+                    continue
+                for group in os.listdir(guards):
+                    with ExitStack() as guard_opened:
+                        guard = directory(group, guards, stack=guard_opened)
+                        if guard is None:
+                            continue
+                        metadata = os.fstat(guard)
+                        if (
+                            metadata.st_uid == os.getuid()
+                            and stat.S_IMODE(metadata.st_mode) == 0o500
+                        ):
+                            os.fchmod(guard, 0o700)
 
 
 def _safe_relative_include(text: str, label: str) -> Path:

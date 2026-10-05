@@ -648,6 +648,11 @@ except KeyboardInterrupt:
         cache = self.root / "shared-download.part"
         cache.write_text("keep verified cache")
         (self.root / "project/input-link").symlink_to(self.root / "reads", target_is_directory=True)
+        guard = self.root / "project/results/.oncotracer-native/runtime-cache/invocation-test/fontconfig-include-guards/core"
+        guard.mkdir(parents=True)
+        (guard / "local.conf").write_text("<fontconfig/>\n")
+        (guard / "local.conf").chmod(0o400)
+        guard.chmod(0o500)
         server = self.start_server()
         for endpoint in ("/api/stop", "/api/remove-project"):
             self.assertEqual(self.request(server, "POST", endpoint, {"project_id": prepared["id"]}, **{"X-OncoTracer-Token": ""})[0], 403)

@@ -15,7 +15,11 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from oncotracer_cli.engine import Toolchain
-from oncotracer_cli.fontconfig_safety import FontconfigRuntime, _include_path
+from oncotracer_cli.fontconfig_safety import (
+    FontconfigRuntime,
+    _include_path,
+    prepare_project_runtime_removal,
+)
 from oncotracer_cli.runtime import CommandRunner, OncoTracerError
 
 
@@ -97,6 +101,53 @@ def _subprocess_environment(values: dict[str, str | None]) -> dict[str, str]:
 
 
 class FontconfigSafetyTests(unittest.TestCase):
+    def test_stopped_project_cleanup_removes_sealed_guards_without_changing_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prefix = root / "tools"
+            _write_graph(prefix)
+            before = _snapshot(prefix)
+            project = root / "project"
+            runtime_parent = project / "results/.oncotracer-native/runtime-cache"
+            runtime_parent.mkdir(parents=True)
+            runtime = FontconfigRuntime(runtime_parent / "invocation-test", {"core": prefix})
+            environment = runtime.environment("core")
+            guard = Path(str(environment["FONTCONFIG_PATH"]).split(os.pathsep)[0])
+            self.assertEqual(stat.S_IMODE(guard.stat().st_mode), 0o500)
+            self.assertEqual(stat.S_IMODE((guard / "local.conf").stat().st_mode), 0o400)
+            if os.getuid() != 0:
+                with self.assertRaisesRegex(PermissionError, "local.conf"):
+                    shutil.rmtree(guard)
+            prepare_project_runtime_removal(project)
+            self.assertEqual(stat.S_IMODE(guard.stat().st_mode), 0o700)
+            self.assertEqual(stat.S_IMODE((guard / "local.conf").stat().st_mode), 0o400)
+            shutil.rmtree(project)
+            self.assertFalse(project.exists())
+            self.assertEqual(_snapshot(prefix), before)
+
+    def test_project_cleanup_never_unseals_symlink_targets(self) -> None:
+        components = (
+            "results", ".oncotracer-native", "runtime-cache", "invocation-test",
+            "fontconfig-include-guards", "core",
+        )
+        for depth in range(1, len(components) + 1):
+            with self.subTest(depth=depth), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                external = root / "external"
+                guard = external.joinpath(*components)
+                guard.mkdir(parents=True)
+                (guard / "local.conf").write_text("<fontconfig/>\n")
+                (guard / "local.conf").chmod(0o400)
+                guard.chmod(0o500)
+                before = _snapshot(external)
+                project = root / "project"
+                redirected = project.joinpath(*components[:depth])
+                redirected.parent.mkdir(parents=True)
+                redirected.symlink_to(external.joinpath(*components[:depth]), target_is_directory=True)
+                prepare_project_runtime_removal(project)
+                shutil.rmtree(project)
+                self.assertEqual(_snapshot(external), before)
+
     def test_realistic_recursive_graph_publishes_one_private_cache(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
