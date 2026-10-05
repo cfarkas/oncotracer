@@ -22,6 +22,7 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 from .discovery import discover_fastqs, discover_ont_inputs
 from .fastq_inputs import encode_fastq_field
+from .fontconfig_safety import prepare_project_runtime_removal
 from .native_picker import choose_path, has_sequencing_files, KINDS, NO_SEQUENCING
 from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
 from .runtime import OncoTracerError, load_flat_yaml
@@ -559,6 +560,7 @@ class WebState:
             # Never follow directory symlinks into inputs, shared references or tools.
             if not shutil.rmtree.avoids_symlink_attacks:
                 raise OncoTracerError("Safe folder removal is unavailable on this platform.")
+            prepare_project_runtime_removal(path)
             shutil.rmtree(path)
             self.job["status"] = "removed"
             self.job.pop("results_url", None)
