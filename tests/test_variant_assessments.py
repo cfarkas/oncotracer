@@ -14,6 +14,38 @@ DATA = ['chr1\t10\t.\tC\tT\t30\tstrand_bias\t.\tGT:AD:AF\t1|0:10,3:0.23\n',
         'chr1\t20\t.\tA\tG\t60\t.\t.\tGT:AD:AF\t./.:1,1:0.5\n',
         'chr1\t30\t.\tC\tA\t60\tPASS\t.\tGT:AD:AF\t0/1:8,9:0.53\n']
 
+
+def assess_fixture(directory, candidates, assessed, selected):
+    """Exercise the assessment join with synthetic external-tool output."""
+    source = directory / 'input.vcf'
+    source.write_text(HEADER + ''.join(candidates))
+    reference = directory / 'reference.fa'
+    bases = list('A' * 1000)
+    for line in candidates:
+        fields = line.split('\t')
+        start = int(fields[1]) - 1
+        bases[start:start + len(fields[3])] = fields[3].upper()
+    reference.write_text('>chr1\n' + ''.join(bases) + '\n')
+    Path(str(reference) + '.fai').write_text('chr1\t1000\t6\t1000\t1001\n')
+
+    def run(label, command, **kwargs):
+        if label == 'varlociraptor-estimate':
+            kwargs['stdout'].write('{}')
+        elif label == 'varlociraptor-view':
+            output = Path(command[command.index('-o') + 1])
+            rows = selected if 'selected' in output.name else assessed
+            output.write_text(HEADER + ''.join(rows))
+        else:
+            kwargs['stdout'].write(b'fixture-bcf')
+
+    destination = directory / 'result.vcf'
+    result = varlociraptor.assess(
+        source, destination, bam=directory / 'input.bam', reference=reference,
+        directory=directory, run=run,
+        tools={'varlociraptor': 'varlociraptor', 'bcftools': 'bcftools'})
+    return source, destination, result
+
+
 class AssessmentTests(unittest.TestCase):
     def test_join_retains_genotypes_all_alleles_and_prior_failure(self):
         with tempfile.TemporaryDirectory() as d:
@@ -82,6 +114,131 @@ class AssessmentTests(unittest.TestCase):
                 varlociraptor.assess(source,d/'result.vcf',bam=d/'bam',reference=d/'ref',directory=d,
                                     run=run,tools={'varlociraptor':'binary'})
             self.assertFalse((d/'result.vcf').exists())
+
+    def test_varlociraptor_joins_uppercased_alleles_without_rewriting_caller_evidence(self):
+        candidates = [
+            'chr1\t10\t.\tc\tt\t30\tstrand_bias\t.\tGT:AD:AF\t1|0:10,3:0.23\n',
+            'chr1\t60\t.\tacgt\ta\t60\tPASS\t.\tGT:AD:AF\t0/1:8,9:0.53\n',
+            'chr1\t80\t.\ta\taT\t60\t.\t.\tGT:AD:AF\t./.:1,1:0.5\n',
+        ]
+        assessed = [
+            'chr1\t10\t.\tC\tT\t.\tPASS\tPROB_ARTIFACT=30\n',
+            'chr1\t60\t.\tACGT\tA\t.\tPASS\tPROB_ARTIFACT=2\n',
+            'chr1\t80\t.\tA\tAT\t.\tPASS\tPROB_ARTIFACT=40\n',
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            source, destination, result = assess_fixture(
+                Path(d), candidates, assessed, [assessed[0], assessed[2]])
+            self.assertEqual(result['counts'], {'REAL': 2, 'REJECTED': 1})
+            self.assertEqual(evidence_identity(source), evidence_identity(destination))
+            output = [fields for _, fields in records(destination) if fields]
+            self.assertEqual([fields[6] for fields in output],
+                             ['strand_bias', 'VARLOCIRAPTOR_REJECTED', '.'])
+
+    def test_varlociraptor_joins_symbolic_deletions_by_length_and_retains_dropped_candidates(self):
+        candidates = [
+            f'chr1\t100\t.\tA{"C" * length}\tA\t50\tPASS\t.\tGT:AD\t0/1:12,7\n'
+            for length in (55, 60)
+        ] + ['chr1\t300\t.\tA\t<DUP>\t40\tPASS\tEND=350;SVTYPE=DUP\tGT:AD\t0/1:9,4\n']
+        assessed = [
+            f'chr1\t100\t.\tA\t<DEL>\t.\tPASS\tSVLEN=-{length};SVTYPE=DEL;PROB_ARTIFACT={score}\n'
+            for length, score in ((55, 30), (60, 2))
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            source, destination, result = assess_fixture(
+                Path(d), candidates, assessed, assessed[:1])
+            self.assertEqual(result['counts'], {'REAL': 1, 'REJECTED': 1, 'NOT_EVALUATED': 1})
+            self.assertEqual(result['unassessed_records'], 1)
+            self.assertEqual(evidence_identity(source), evidence_identity(destination))
+            output = [fields for _, fields in records(destination) if fields]
+            self.assertEqual([fields[6] for fields in output],
+                             ['PASS', 'VARLOCIRAPTOR_REJECTED', 'VARLOCIRAPTOR_NOT_EVALUATED'])
+            with (Path(d) / 'varlociraptor.evidence.tsv').open() as handle:
+                rows = list(csv.DictReader(handle, delimiter='\t'))
+            self.assertEqual([(row['ref'], row['alt'], row['decision']) for row in rows],
+                             [('A' + 'C' * 55, 'A', 'REAL'),
+                              ('A' + 'C' * 60, 'A', 'REJECTED'), ('A', '<DUP>', 'NOT_EVALUATED')])
+            self.assertEqual([row['score'] for row in rows], ['30.0', '2.0', '.'])
+
+    def test_varlociraptor_unmatched_or_duplicate_alleles_are_errors(self):
+        assessed = 'chr1\t10\t.\tC\tT\t.\tPASS\tPROB_ARTIFACT=30\n'
+        unexpected = 'chr1\t10\t.\tC\tG\t.\tPASS\tPROB_ARTIFACT=30\n'
+        for label, output in [('unexpected', [unexpected]), ('duplicate', [assessed, assessed])]:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as d:
+                with self.assertRaises(OncoTracerError):
+                    assess_fixture(Path(d), DATA[:1], output, [])
+                self.assertFalse((Path(d) / 'result.vcf').exists())
+
+    def test_varlociraptor_symbolic_deletion_cannot_match_wrong_length(self):
+        candidate = f'chr1\t100\t.\tA{"C" * 55}\tA\t50\tPASS\t.\tGT:AD\t0/1:12,7\n'
+        unexpected = 'chr1\t100\t.\tA\t<DEL>\t.\tPASS\tSVLEN=-54;SVTYPE=DEL\n'
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(OncoTracerError):
+                assess_fixture(Path(d), [candidate], [unexpected], [unexpected])
+            self.assertFalse((Path(d) / 'result.vcf').exists())
+
+    def test_varlociraptor_multiallelic_candidates_or_assessments_are_errors(self):
+        multiallelic = 'chr1\t10\t.\tC\tT,G\t30\tPASS\t.\tGT:AD\t1/2:1,3,4\n'
+        for candidates, assessed in [([multiallelic], DATA[:1]), (DATA[:1], [multiallelic])]:
+            with self.subTest(candidates=candidates), tempfile.TemporaryDirectory() as d:
+                with self.assertRaises(OncoTracerError):
+                    assess_fixture(Path(d), candidates, assessed, [])
+                self.assertFalse((Path(d) / 'result.vcf').exists())
+
+    def test_varlociraptor_case_colliding_candidates_are_ambiguous(self):
+        candidates = [DATA[0], DATA[0].replace('\tC\tT\t', '\tc\tt\t')]
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(OncoTracerError):
+                assess_fixture(Path(d), candidates, DATA[:1], DATA[:1])
+            self.assertFalse((Path(d) / 'result.vcf').exists())
+
+    def test_varlociraptor_duplicate_selection_is_not_silently_deduplicated(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(OncoTracerError):
+                assess_fixture(Path(d), DATA[:1], DATA[:1], [DATA[0], DATA[0]])
+            self.assertFalse((Path(d) / 'result.vcf').exists())
+
+    def test_varlociraptor_duplicate_deletion_representations_are_errors(self):
+        candidate = f'chr1\t100\t.\tA{"C" * 55}\tA\t50\tPASS\t.\tGT:AD\t0/1:12,7\n'
+        symbolic = 'chr1\t100\t.\tA\t<DEL>\t.\tPASS\tSVLEN=-55;SVTYPE=DEL\n'
+        for assessed, selected in [([candidate, symbolic], []), ([candidate], [candidate, symbolic])]:
+            with self.subTest(assessed=assessed), tempfile.TemporaryDirectory() as d:
+                with self.assertRaises(OncoTracerError):
+                    assess_fixture(Path(d), [candidate], assessed, selected)
+                self.assertFalse((Path(d) / 'result.vcf').exists())
+
+    def test_varlociraptor_literal_deletions_still_require_matching_sequence(self):
+        candidate = f'chr1\t100\t.\tA{"C" * 55}\tA\t50\tPASS\t.\tGT:AD\t0/1:12,7\n'
+        wrong_sequence = f'chr1\t100\t.\tA{"G" * 55}\tA\t.\tPASS\tPROB_ARTIFACT=30\n'
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(OncoTracerError):
+                assess_fixture(Path(d), [candidate], [wrong_sequence], [wrong_sequence])
+            self.assertFalse((Path(d) / 'result.vcf').exists())
+
+    def test_varlociraptor_symbolic_deletion_metadata_must_be_valid_and_consistent(self):
+        candidate = f'chr1\t100\t.\tA{"C" * 55}\tA\t50\tPASS\t.\tGT:AD\t0/1:12,7\n'
+        for info in ['SVTYPE=DEL', 'SVLEN=55;SVTYPE=DEL', 'SVLEN=0;SVTYPE=DEL',
+                     'SVLEN=-55.0;SVTYPE=DEL', 'SVLEN=-55,-60;SVTYPE=DEL',
+                     'SVLEN=-55;SVTYPE=INS', 'SVLEN=-55;END=154;SVTYPE=DEL']:
+            with self.subTest(info=info), tempfile.TemporaryDirectory() as d:
+                symbolic = f'chr1\t100\t.\tA\t<DEL>\t.\tPASS\t{info}\n'
+                with self.assertRaises(OncoTracerError):
+                    assess_fixture(Path(d), [candidate], [symbolic], [symbolic])
+                self.assertFalse((Path(d) / 'result.vcf').exists())
+
+    def test_varlociraptor_selection_cannot_introduce_an_unassessed_allele(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(OncoTracerError):
+                assess_fixture(Path(d), DATA[:2], DATA[:1], DATA[:2])
+            self.assertFalse((Path(d) / 'result.vcf').exists())
+
+    def test_varlociraptor_breakend_contig_case_is_not_folded(self):
+        candidate = 'chr1\t100\t.\tA\tA]chrX:200]\t50\tPASS\t.\tGT\t0/1\n'
+        wrong_contig = candidate.replace('chrX:200', 'CHRX:200')
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(OncoTracerError):
+                assess_fixture(Path(d), [candidate], [wrong_contig], [wrong_contig])
+            self.assertFalse((Path(d) / 'result.vcf').exists())
 
 class AssessmentSetupTests(VariantSetupTests):
     def test_new_assessment_controls_roundtrip(self):
