@@ -12,6 +12,7 @@ permissions:
 
 env:
   CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  PYTHONDONTWRITEBYTECODE: "1"
 
 concurrency:
   group: native-v2-ci-${{ github.event.pull_request.number || github.ref }}
@@ -60,6 +61,7 @@ jobs:
       - name: Run native unit and audit tests
         run: |
           python3 -m unittest -v \
+            tests/test_bootstrap.py \
             tests/test_native_cli.py \
             tests/test_native_engine.py \
             tests/test_native_variants.py \
