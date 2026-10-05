@@ -112,6 +112,15 @@ managed child inventory and ownership identity after analysis or doctor use.
 These rules cover commands launched by OncoTracer; invoking a managed prefix's
 binaries directly is outside that runtime containment boundary.
 
+Validation must also preserve managed environments. Run Python tests with
+`python -B -m unittest`; the test package disables bytecode writes in the test
+process and ordinary Python subprocesses, and native CI applies the same
+setting to standalone checks. This prevents imports from regenerating sealed
+NumPy or SciPy caches. Installer inventory checks still reject altered files,
+including bytecode. If a cache was already changed, restore an original copy
+only after its bytes match the existing inventory; do not rewrite the inventory
+to accept the changed file.
+
 ### Singularity/Apptainer images
 
 A managed SIF has an adjacent strict sidecar binding its canonical path, image
