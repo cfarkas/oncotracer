@@ -15,6 +15,73 @@ from .runtime import OncoTracerError, atomic_write_json, sha256_file
 from .variant_filters import add_assessment, key, records
 
 
+def _comparison_key(fields):
+    """Match Varlociraptor's serialization without changing caller evidence.
+
+    Varlociraptor uppercases DNA and writes deletions longer than 50 bases as
+    <DEL>/SVLEN. Contig identifiers and breakend ALT strings are case-sensitive.
+    """
+    chrom, pos, ref, alt = key(fields)
+    ref = ref.upper() if ref and set(ref.upper()) <= set('ACGTN') else ref
+    alt = alt.upper() if alt and set(alt.upper()) <= set('ACGTN') else alt
+    if alt != '<DEL>':
+        return chrom, pos, ref, alt
+    info = dict(part.split('=', 1) for part in fields[7].split(';') if '=' in part)
+    try:
+        length = -int(info['SVLEN'])
+        valid = (length > 0 and len(ref) == 1 and ref in 'ACGTN'
+                 and info.get('SVTYPE', 'DEL') == 'DEL'
+                 and ('END' not in info or int(info['END']) == pos + length))
+    except (KeyError, ValueError):
+        valid = False
+    if not valid:
+        raise OncoTracerError('Varlociraptor symbolic deletion has missing or inconsistent length metadata')
+    return chrom, pos, ref, alt, length
+
+
+def _deletion_alias(k):
+    if len(k) == 5:  # A validated symbolic deletion.
+        return k
+    chrom, pos, ref, alt = k
+    if len(ref) > 1 and len(alt) == 1 and ref.startswith(alt) and set(ref) <= set('ACGTN'):
+        return chrom, pos, alt, '<DEL>', len(ref) - 1
+    return None
+
+
+def _candidate_index(source):
+    candidates, deletions, symbolic = {}, {}, set()
+    for _, fields in records(source):
+        if fields is None:
+            continue
+        original, comparison = key(fields), _comparison_key(fields)
+        if comparison in candidates or (len(comparison) == 5 and original in symbolic):
+            raise OncoTracerError('Ambiguous or duplicate candidate allele for Varlociraptor')
+        candidates[comparison] = original
+        if len(comparison) == 5:
+            symbolic.add(original)
+        deletion = _deletion_alias(comparison)
+        if deletion is not None:
+            if deletion in deletions:
+                raise OncoTracerError('Ambiguous candidate deletion for Varlociraptor')
+            deletions[deletion] = original
+    return candidates, deletions
+
+
+def _original_allele(fields, candidates, deletions):
+    comparison = _comparison_key(fields)
+    original = candidates.get(comparison)
+    if original is None:
+        deletion = _deletion_alias(comparison)
+        candidate = deletions.get(deletion)
+        # Length equivalence is sufficient only when one side is symbolic.
+        # Literal deletions must still match their full reference sequence.
+        if candidate is not None and (len(comparison) == 5 or candidate[3] == '<DEL>'):
+            original = candidate
+    if original is None:
+        raise OncoTracerError('Varlociraptor emitted an unexpected allele')
+    return original
+
+
 def discover(prefix=None):
     path = Path(prefix) / 'bin/varlociraptor' if prefix else None
     found = str(path) if path and path.is_file() else shutil.which('varlociraptor') if not prefix else None
@@ -39,7 +106,8 @@ def assess(source, destination, *, bam, reference, directory, run, tools,
               'interpretation': 'Presence assessment; no somatic/germline claim' if not scenario else 'User-supplied scenario',
               'score_scale': 'PHRED posterior probability of ARTIFACT; not raw probability'}
     table = directory / 'varlociraptor.evidence.tsv'
-    if not any(fields for _, fields in records(source)):
+    candidates, deletions = _candidate_index(source)
+    if not candidates:
         result.update(status='not_applicable', reason='Empty candidate set')
         result['counts'] = add_assessment(source, destination, {}, tag='VARLOCIRAPTOR', description='Varlociraptor local FDR assessment', table=table)
         return result
@@ -64,15 +132,21 @@ def assess(source, destination, *, bam, reference, directory, run, tools,
     all_vcf, selected_vcf = directory / 'varlociraptor.calls.vcf', directory / 'varlociraptor.selected.vcf'
     for bcf, vcf in ((calls, all_vcf), (selected, selected_vcf)):
         run('varlociraptor-view', [tools['bcftools'], 'view', '-Ov', '-o', vcf, bcf])
-    kept = {key(fields) for _, fields in records(selected_vcf) if fields}
-    candidates = {key(fields) for _, fields in records(source) if fields}
+    kept = set()
+    for _, fields in records(selected_vcf):
+        if fields is None:
+            continue
+        k = _original_allele(fields, candidates, deletions)
+        if k in kept:
+            raise OncoTracerError('Varlociraptor selected a duplicate allele')
+        kept.add(k)
     assessed = {}
     for _, fields in records(all_vcf):
         if not fields:
             continue
-        k = key(fields)
-        if k not in candidates or k in assessed:
-            raise OncoTracerError('Varlociraptor emitted an unexpected or duplicate allele')
+        k = _original_allele(fields, candidates, deletions)
+        if k in assessed:
+            raise OncoTracerError('Varlociraptor emitted a duplicate allele')
         info = dict(part.split('=', 1) for part in fields[7].split(';') if '=' in part)
         score = float(info['PROB_ARTIFACT']) if info.get('PROB_ARTIFACT', '.') != '.' else None
         if score is not None and (not math.isfinite(score) or score < 0):

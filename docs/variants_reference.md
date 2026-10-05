@@ -709,6 +709,13 @@ is not a patient identifier, barcode or manifest sample name. The adapter curren
 
 The original caller genotypes remain in the final annotated VCF. Varlociraptor's own BCF/VCF outputs are saved separately; its estimated allele fraction is not substituted for `GT`. `VARLOCIRAPTOR_SCORE` reports the **PHRED-scaled ARTIFACT posterior** (lower means more probable), whereas `FFPERASE_SCORE` is the **raw artifact model score** (higher means more likely). They are different quantities. Per-allele evidence TSVs and stage summary JSON files document decisions and missing assessments. Stages also appear in the results dashboard.
 
+Assessment matching accepts Varlociraptor's uppercase DNA alleles and symbolic
+`<DEL>` representation of long deletions. Symbolic deletions must match the
+candidate's chromosome, position, anchor base and deletion length; conflicting
+length metadata, ambiguous matches and duplicate assessments remain errors.
+Original allele spelling, genotypes and caller filters are preserved. Candidates
+without an assessment remain `NOT_EVALUATED`.
+
 ### Conda and Docker
 
 The pinned variant environment supplies Mutect2, FreeBayes, bcftools, samtools and **Varlociraptor 8.9.5**. FFPERASE uses a separate legacy environment to match its model dependencies. From your `oncotracer-src` checkout, create these user-owned prefixes once (skip creation for an existing compatible environment):
