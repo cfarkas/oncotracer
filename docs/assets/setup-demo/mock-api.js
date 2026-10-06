@@ -150,6 +150,8 @@ function demoApi(path,payload){
   switch(url.pathname){
     case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:fastq-variants-20260922'}};
     case '/api/variant-resources':return demoVariantResources(payload);
+    case '/api/variant-install/status':return {status:'idle'};
+    case '/api/variant-install/plan':return {id:'demo-only',method:payload.method==='conda'?'conda':'docker',available:false,reason:'Installation is available in the local OncoTracer app. This browser demo does not download or install software.',options:[{method:'conda',label:'Conda / Mamba',available:true},{method:'docker',label:'Docker',available:true}],steps:[],fields:{}};
     case '/api/browse':{
       const folder=url.searchParams.get('path')||'/demo';
       return folder===demoComputerRoot||folder.startsWith(demoComputerRoot+'/')?demoBrowseComputerPath(folder.replace(/\/$/,'')):demoBrowse(folder);

@@ -76,6 +76,7 @@ jobs:
             tests/test_variant_web.py \
             tests/test_variant_web_ui.py \
             tests/test_variant_resources.py \
+            tests/test_variant_installer.py \
             tests/test_variant_model_assets.py \
             tests/test_strelka2.py \
             tests/test_web_progress.py \
@@ -183,6 +184,8 @@ jobs:
               'oncotracer_cli/docker_runtime.py',
               'oncotracer_cli/variant_command.py',
               'oncotracer_cli/variant_web.py',
+              'oncotracer_cli/variant_installer.py',
+              'oncotracer_cli/variant_install_ui.py',
               'oncotracer_cli/annovar.py',
               'oncotracer_cli/ffperase.py',
               'oncotracer_cli/varlociraptor.py',

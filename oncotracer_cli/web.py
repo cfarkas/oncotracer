@@ -28,6 +28,7 @@ from .engine import QDNASEQ_HG38_SOURCE_SHA256, _safe_sample
 from .runtime import OncoTracerError, load_flat_yaml
 from .system_check import inspect_hardware, resource_report
 from .variant_resources import discover_variant_resources
+from .variant_installer import VariantInstaller, tools_roots
 from .web_ui import PAGE
 from .web_progress import progress_for_job
 
@@ -86,6 +87,7 @@ class WebState:
         self.result_roots = {}
         self.job = None
         self.hardware = None
+        self.variant_installer = VariantInstaller(self.start_dir)
 
     def system(self):
         if self.hardware is None:
@@ -188,6 +190,7 @@ class WebState:
         return result
 
     def prepare(self, data):
+        self.variant_installer.require_idle()
         from .cli import build_parser
         from .setup import _command_setup
 
@@ -384,17 +387,19 @@ class WebState:
                     if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot", "project_created", "project_identity"}}
 
     def variant_resources(self, data):
-        return discover_variant_resources(data, roots=(self.start_dir,))
+        return discover_variant_resources(data, roots=tools_roots(self.start_dir, data))
 
     def variant_load(self, data):
         from .variant_web import load_for_browser
         return load_for_browser(self, data)
 
     def variant_prepare(self, data):
+        self.variant_installer.require_idle()
         from .variant_web import prepare_for_browser
         return prepare_for_browser(self, data)
 
     def run(self, data):
+        self.variant_installer.require_idle()
         with self.lock:
             prepared = self.projects.get(_text(data, "project_id"))
             if not prepared or not prepared["valid"]:
@@ -758,6 +763,8 @@ class WebHandler(BaseHTTPRequestHandler):
                 value = self.server.state.browse(query.get("path", [None])[0], query.get("kind", ["folder"])[0])
             elif url.path == "/api/status":
                 value = self.server.state.status()
+            elif url.path == "/api/variant-install/status":
+                value = self.server.state.variant_installer.status()
             else:
                 self._reply(404, {"error": "Unknown endpoint."})
                 return
@@ -780,6 +787,9 @@ class WebHandler(BaseHTTPRequestHandler):
             methods = {"/api/pick-path": self.server.state.pick_path,
                        "/api/ont-inputs": self.server.state.ont_inputs, "/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
                        '/api/variant-resources': self.server.state.variant_resources,
+                       '/api/variant-install/plan': self.server.state.variant_installer.plan,
+                       '/api/variant-install/start': self.server.state.variant_installer.start,
+                       '/api/variant-install/stop': self.server.state.variant_installer.stop,
                        '/api/variant-load': self.server.state.variant_load, '/api/variant-prepare': self.server.state.variant_prepare,
                        "/api/run": self.server.state.run, "/api/stop": self.server.state.stop,
                        "/api/remove-project": self.server.state.remove_project}
@@ -823,6 +833,7 @@ def command_web(args):
         if state.job and state.job["status"] == "running":
             print(f"Analysis continues (PID {state.job['pid']}). Log: {state.job['log_path']}", flush=True)
     finally:
+        state.variant_installer.close()
         server.server_close()
     return 0
 

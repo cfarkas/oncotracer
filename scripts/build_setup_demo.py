@@ -32,6 +32,7 @@ def render() -> str:
     mock = (ASSETS / 'mock-api.js').read_text().replace('__VARIANT_INSTALL_GUIDES__', json.dumps({backend: installation_guides(['annovar'], backend=backend, mode='illumina') for backend in ('host', 'docker')}))
     mock = mock.replace('__ANNOVAR_RESOURCE_HELP__', json.dumps(official_resource_help('annovar')))
     component = (ROOT / "oncotracer_cli/variant_resource_ui.py").read_text(encoding="utf-8")
+    component += (ROOT / "oncotracer_cli/variant_install_ui.py").read_text(encoding="utf-8")
     form = (ROOT / "oncotracer_cli/variant_form_ui.py").read_text(encoding="utf-8")
     models = (ROOT / "oncotracer_cli/variant_model_assets.py").read_text(encoding="utf-8")
     digest = hashlib.sha256((source + component + form + models).encode()).hexdigest()

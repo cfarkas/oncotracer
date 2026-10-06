@@ -95,7 +95,7 @@ change an installation.
 
 ### Find resources
 
-Click **Autodetect resources** to check resources for your selected settings, or
+Click **Detect tools** to check resources for your selected settings, or
 use **Autodetect** beside an individual path. Discovery checks the computer
 running the setup server, fills empty paths and preserves paths you entered.
 If several candidates are found, review them and choose the one to use. Review
@@ -106,11 +106,26 @@ The compact resource summary opens detailed results and installation help.
 Missing tools show official download or installation links beside their status.
 Missing ANNOVAR software includes a **Register and download ANNOVAR** link and a
 registration notice. FFPERASE source and models link to their upstream license.
-Expandable installation recipes include **Copy commands** boxes.
-Review and run the commands yourself in a terminal, then check
-again. Discovery does not install tools, download models, accept licenses or run
-analysis. If a command exports environment variables, either paste its printed
-paths into the browser or restart setup from that terminal before checking again.
+Use **Choose tools folder** to search a particular installation directory.
+Click **Install missing tools**, choose Conda/Mamba or Docker, review the steps,
+then click **Install with Conda / Mamba** or **Install with Docker**. A live log
+and step counter follow installation while the setup server stays open. Conda
+creates fresh optional environments; Docker pulls and checks the selected image.
+When installation succeeds, the form selects the installed paths if your settings
+have not changed. Otherwise, review them and click **Use installed tools**.
+Save and check your configuration after installation finishes.
+
+Conda/Mamba/Micromamba or Docker must already be available on the host. The
+existing-BAM form supports native installation; Docker is offered in FASTQ CNA
+setup. ClairS-TO's native route needs Apptainer/Singularity for its tested SIF.
+Models, FFPERASE license acknowledgment, and registered ANNOVAR resources remain
+separate choices. Discovery itself stays read-only. The expandable **Copy commands**
+guides remain available for other installation routes.
+
+Failed or stopped installations retain their log and partial files. Retry creates
+a new environment. Only completed installations are suggested by discovery.
+Keep the terminal open during installation; closing the setup server stops its
+installer. An independently running analysis uses its existing tools.
 
 A target BED and a custom Varlociraptor scenario describe your intended analysis.
 Select these files explicitly; resource discovery does not choose them.
