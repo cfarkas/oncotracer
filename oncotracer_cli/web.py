@@ -357,7 +357,7 @@ class WebState:
             _command_setup(args)
             project_stat = project.stat()
             config_path = project / "config/run.yml"
-            command = _launcher() + ["check", "--json", "--config", str(config_path)]
+            command = _launcher() + ["check", "--variant-tools", "--json", "--config", str(config_path)]
             try:
                 checked = subprocess.run(command, capture_output=True, text=True, timeout=120, check=False,
                                          env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})

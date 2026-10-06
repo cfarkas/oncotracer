@@ -333,6 +333,11 @@ class VariantModelAssetsTests(unittest.TestCase):
     def test_browser_roundtrip_preserves_auto_and_boolean_options_without_fetch(self):
         from oncotracer_cli.web import WebState
         from tests.test_wizard import HARDWARE
+        prefix = self.root / 'clair3-tool-fixtures'
+        (prefix / 'bin').mkdir(parents=True)
+        for name in ('samtools', 'bcftools', 'run_clair3.sh'):
+            tool = prefix / 'bin' / name
+            tool.write_text('#!/bin/sh\nexit 99\n'); tool.chmod(0o755)
         reads = self.root / 'reads/barcode01/read.fastq.gz'
         reads.parent.mkdir(parents=True)
         with gzip.open(reads, 'wt') as handle:
@@ -344,6 +349,7 @@ class VariantModelAssetsTests(unittest.TestCase):
                 'backend': 'conda', 'threads': 1, 'samples': [{'id': scan['samples'][0]['id'], 'name': 'SYNTHETIC', 'type': 'cancer'}],
                 'variants': True, 'variant_specimen_type': 'fresh', 'variant_callers': 'clair3',
                 'variant_clair3_model': 'auto', 'variant_ont_profile': PROFILE, 'variant_annovar': 'off',
+                'variant_tool_prefix': str(prefix),
                 'variant_download_resources': False, 'variant_accept_ffperase_license': False}
         with patch.object(assets, '_download', side_effect=AssertionError('browser preparation downloaded')), \
              contextlib.redirect_stdout(io.StringIO()):

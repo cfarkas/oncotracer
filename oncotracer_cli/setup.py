@@ -254,7 +254,7 @@ def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
     if args.threads is not None and args.threads < 1:
         raise OncoTracerError("--threads must be positive")
     parser = cli.build_parser()
-    check = parser.parse_args(["check", "--config", str(config_path)])
+    check = parser.parse_args(["check", "--variant-tools", "--config", str(config_path)])
     check_output = io.StringIO()
     with contextlib.redirect_stdout(check_output):
         check_code = command_check(check)
@@ -511,6 +511,8 @@ def _command_setup(args: argparse.Namespace) -> int:
         "threads": args.threads,
         "force": False,
         "run_cna_classifier": False,
+        "run_gistic": False,
+        "gistic_required": False,
         "knowledge_web": False,
     }
     if args.threads < 1:
@@ -899,7 +901,7 @@ def command_check(args: argparse.Namespace) -> int:
                     path, dry_run=True, root=Path(args.root) if args.root else None
                 )
             plan = json.loads(output.getvalue())
-            if plan.get("variants"):
+            if plan.get("variants") and getattr(args, "variant_tools", False):
                 if config.get("execution_backend") == "docker":
                     warnings.append("Variant tools in the selected Docker image will be checked when Run starts.")
                 else:
@@ -1156,5 +1158,7 @@ def add_setup_commands(subparsers) -> None:
     )
     check.add_argument("--config", required=True, help="YAML file to check")
     check.add_argument("--json", action="store_true", help="machine-readable report")
+    check.add_argument("--variant-tools", action="store_true",
+                       help="also check native variant executables without running them (automatic in browser setup and setup --run)")
     check.add_argument("--root", help=argparse.SUPPRESS)
     check.set_defaults(func=command_check)

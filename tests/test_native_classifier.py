@@ -58,6 +58,31 @@ class NativeClassifierTests(unittest.TestCase):
             sample_set_key({"cna_classifier_sample_set": "breast:S1,S2"}), "breast"
         )
 
+    def test_gistic_is_opt_in_and_single_sample_skips_without_launching_tools(self) -> None:
+        cases = [
+            (1, {}, "--run_gistic false"),
+            (2, {}, "--run_gistic false"),
+            (1, {"run_gistic": True}, "not_enough_samples_for_gistic_n=1_min=2"),
+        ]
+        for count, config, reason in cases:
+            with self.subTest(samples=count, config=config), tempfile.TemporaryDirectory() as directory:
+                base = Path(directory)
+                prepared = base / "prepared"
+                prepared.mkdir()
+                for name in ("gistic_full.seg", "gistic_events.seg", "gistic_markers.tsv"):
+                    (prepared / name).write_text("fixture\n")
+                (prepared / "prepare_metrics.json").write_text(json.dumps({"samples_total": count}))
+                runner = Mock()
+                toolchain = Mock()
+                with patch("oncotracer_cli.classifier.shutil.which", side_effect=AssertionError("GISTIC tool lookup")):
+                    _output, status, _command = _run_gistic(
+                        ROOT, config, base / "lpwgs", prepared, base / "output",
+                        runner, Mock(), toolchain, force=False,
+                    )
+                self.assertIn(f"skipped\t{reason}", status.read_text())
+                runner.run.assert_not_called()
+                toolchain.environment.assert_not_called()
+
     def test_gistic_runtime_receives_exact_prefix_mcr_environment(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
