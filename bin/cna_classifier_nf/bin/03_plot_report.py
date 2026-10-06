@@ -992,7 +992,7 @@ ul {{ line-height: 1.6; }}
 """
     (outdir / "index.html").write_text(index_html)
 
-def make_report(figures: list[str], classification: pd.DataFrame, recurrent: pd.DataFrame, gistic_status: pd.DataFrame, gistic_summary: pd.DataFrame, pathology_concordance: pd.DataFrame | None = None, *, knowledge_reports_href: str = "pdf_reports/index.html") -> None:
+def make_report(figures: list[str], classification: pd.DataFrame, recurrent: pd.DataFrame, gistic_status: pd.DataFrame, gistic_summary: pd.DataFrame, pathology_concordance: pd.DataFrame | None = None, *, knowledge_reports_href: str = "pdf_reports/index.html", gistic_matrix: pd.DataFrame | None = None) -> None:
     fig_html = "\n".join(figure_card(fig) for fig in figures)
     if classification.empty:
         class_summary = "<p>No classification table produced.</p>"
@@ -1003,6 +1003,12 @@ def make_report(figures: list[str], classification: pd.DataFrame, recurrent: pd.
         class_counts = classification["rule_based_cna_class"].value_counts().rename_axis("class").reset_index(name="n_samples")
         class_summary = html_table_preview(class_counts, n=50)
         single_note = "" if n_samples != 1 else "<div class='note'><strong>Single-sample mode:</strong> recurrence, GISTIC2 significance, PCA, and unsupervised clustering are limited with one sample. Rule-based CNA burden and driver-region annotations remain available.</div>"
+    gistic_note = ""
+    if (gistic_summary.empty and gistic_matrix is not None
+            and gistic_matrix.shape[0] > 0 and gistic_matrix.shape[1] == 0
+            and not gistic_status.empty
+            and str(gistic_status.iloc[-1].get("status", "")) == "completed"):
+        gistic_note = "<p class='note'>GISTIC2 completed. No significant focal lesions were reported at the configured thresholds.</p>"
     pathology_summary = ""
     if pathology_concordance is not None and not pathology_concordance.empty and "agreement_call" in pathology_concordance.columns:
         path_counts = pathology_concordance["agreement_call"].value_counts(dropna=False).rename_axis("agreement_call").reset_index(name="n_samples")
@@ -1053,7 +1059,7 @@ ul {{ line-height: 1.65; }}
 <h2>Technical classification table preview</h2><p class="muted">The rule_based_cna_class field records a cross-context catalog pattern, not a diagnosis; the context-aware assessment is shown above when available.</p><div class="table-wrap">{html_table_preview(classification, n=30)}</div>
 <h2>Top recurrent CNA events from SAMURAI codification</h2><div class="table-wrap">{html_table_preview(recurrent, n=20)}</div>
 <h2>GISTIC2 status</h2><div class="table-wrap">{html_table_preview(gistic_status, n=10)}</div>
-<h2>Top GISTIC2 lesions</h2><div class="table-wrap">{html_table_preview(gistic_summary, n=25)}</div>
+<h2>Top GISTIC2 lesions</h2>{gistic_note}<div class="table-wrap">{html_table_preview(gistic_summary, n=25)}</div>
 <h2>Single-sample reports</h2><p>Open <a href="sample_reports/index.html">sample_reports/index.html</a> for one HTML report per sample with per-sample interpretation, context-specific driver-region calls, probable CNA classification, pathology agreement when provided, and the full CNA event table. If PDF/HTML knowledge reports were enabled, open <a href="{html.escape(knowledge_reports_href)}">knowledge HTML/PDF reports</a> for matched report-style HTML and PDF files generated from the same source tables. If clinician reports were enabled, open <a href="clinician_reports/index.html">clinician_reports/index.html</a> for concise driver/probable-classification summaries.</p>
 <h2>Figures</h2><div class="fig-grid">{fig_html}</div>
 <h2>Key output tables</h2>
@@ -1141,7 +1147,7 @@ def main() -> None:
         Path(args.pca_coordinates),
     ] + ([Path(args.pathology_concordance)] if args.pathology_concordance else []) + ([Path(args.pathology_records)] if args.pathology_records else []), tdir)
     make_sample_reports(classification, summary, clean_events, driver_hits, driver_matrix, gistic_matrix, gistic_long, pathology_concordance)
-    make_report(figures, classification, recurrent, gistic_status, gistic_summary, pathology_concordance, knowledge_reports_href=args.knowledge_reports_href)
+    make_report(figures, classification, recurrent, gistic_status, gistic_summary, pathology_concordance, knowledge_reports_href=args.knowledge_reports_href, gistic_matrix=gistic_matrix)
 
 
 if __name__ == "__main__":

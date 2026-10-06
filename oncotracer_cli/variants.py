@@ -194,7 +194,10 @@ def preflight_variant_tools(request: VariantRequest, toolchain=None) -> dict[str
                 if p.is_file() and os.access(p, os.X_OK):
                     return str(p)
             else:
-                if candidate in {'samtools', 'bcftools'} and toolchain is not None:
+                # Only samtools belongs to the core environment. bcftools is
+                # an optional variant dependency, so a configured CNA prefix
+                # must not mask a valid executable on PATH.
+                if candidate == 'samtools' and toolchain is not None:
                     try:
                         return toolchain.executable('core', candidate)
                     except OncoTracerError:

@@ -88,14 +88,36 @@ class VariantSetupTests(unittest.TestCase):
 
     def test_web_fresh_bcftools_real_check_keeps_reads_and_does_not_start_analysis(self):
         before = self.fastq.read_bytes()
+        prefix = self.root / "variant-tools"
+        (prefix / "bin").mkdir(parents=True)
+        for name in ("samtools", "bcftools"):
+            tool = prefix / "bin" / name
+            tool.write_text("#!/bin/sh\nexit 99\n")
+            tool.chmod(0o755)
         result = self.prepare(self.state(), variants=True, variant_specimen_type="fresh",
-                              variant_callers="bcftools", variant_annovar="auto")
+                              variant_callers="bcftools", variant_annovar="auto",
+                              variant_tool_prefix=str(prefix))
         self.assertTrue(result["valid"], result["check"])
+        self.assertEqual(result["check"]["variant_tools"]["bcftools"], str(prefix / "bin/bcftools"))
         config = load_flat_yaml(Path(result["config_path"]))
         self.assertEqual(config["variant_specimen_type"], "fresh")
         self.assertEqual(config["variant_callers"], "bcftools")
         self.assertEqual(config["variant_annovar"], "auto")
         self.assertEqual(self.fastq.read_bytes(), before)
+        self.assertFalse((self.project / "results").exists())
+        self.assertFalse((self.project / "reference").exists())
+
+    def test_web_missing_variant_tools_save_invalid_configuration_and_block_run(self):
+        prefix = self.root / "incomplete-tools"
+        (prefix / "bin").mkdir(parents=True)
+        state = self.state()
+        result = self.prepare(state, variants=True, variant_specimen_type="fresh",
+                              variant_callers="bcftools", variant_tool_prefix=str(prefix))
+        self.assertFalse(result["valid"])
+        self.assertIn("Variant tool samtools is unavailable", result["check"]["errors"][0])
+        self.assertTrue(Path(result["config_path"]).is_file())
+        with self.assertRaisesRegex(OncoTracerError, "validat"):
+            state.run({"project_id": result["id"]})
         self.assertFalse((self.project / "results").exists())
         self.assertFalse((self.project / "reference").exists())
 

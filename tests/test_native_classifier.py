@@ -222,6 +222,26 @@ class NativeClassifierTests(unittest.TestCase):
             self.assertEqual(list(long["sample"]), ["S1"])
             self.assertEqual(int(summary.iloc[0]["n_samples"]), 1)
 
+    def test_gistic_no_significant_lesions_retains_analyzed_samples(self) -> None:
+        script = ROOT / "bin/cna_classifier_nf/bin/04_parse_gistic_results.py"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "all_lesions.conf_90.txt").write_text(
+                "Unique Name\tDescriptor\tWide Peak Limits\tPeak Limits\tRegion Limits\tq values\tResidual q values\tBroad or Focal\tAmplitude Threshold\tS1\tS2\t\n"
+            )
+            status = root / "status.tsv"
+            status.write_text("status\treason\ncompleted\tNA\n")
+            result = subprocess.run([sys.executable, "-B", str(script), "--gistic-dir", str(root),
+                                     "--gistic-status", str(status), "--gistic-command", "unused.txt"],
+                                    cwd=root, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            metrics = json.loads((root / "gistic_parse_metrics.json").read_text())
+            self.assertEqual(metrics["parser_status"], "completed")
+            self.assertEqual(metrics["n_samples"], 2)
+            self.assertEqual(metrics["n_lesions"], 0)
+            self.assertEqual((root / "gistic_lesions_matrix.tsv").read_text().splitlines(), ["sample", "S1", "S2"])
+            self.assertIn("gistic_feature", (root / "gistic_lesions_summary.tsv").read_text())
+
     def test_optional_failed_gistic_is_visible_in_workflow_status(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)

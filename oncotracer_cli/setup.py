@@ -810,6 +810,7 @@ def command_check(args: argparse.Namespace) -> int:
     errors: list[str] = []
     warnings: list[str] = []
     plan = None
+    variant_tools = None
     config = {}
     path = Path(args.config).expanduser().resolve()
     try:
@@ -898,6 +899,21 @@ def command_check(args: argparse.Namespace) -> int:
                     path, dry_run=True, root=Path(args.root) if args.root else None
                 )
             plan = json.loads(output.getvalue())
+            if plan.get("variants"):
+                if config.get("execution_backend") == "docker":
+                    warnings.append("Variant tools in the selected Docker image will be checked when Run starts.")
+                else:
+                    from .cli import _load_install_config, _native_environment
+                    from .engine import Toolchain
+                    from .variants import preflight_variant_tools, resolve_variant_request
+
+                    # Match the native run's core routing without executing any
+                    # caller or changing the check process's environment.
+                    environment = _native_environment(_load_install_config())
+                    core = environment.get("ONCOTRACER_CORE_PREFIX")
+                    toolchain = Toolchain(core_prefix=Path(core) if core else None)
+                    request = resolve_variant_request(config, mode=mode)
+                    variant_tools = preflight_variant_tools(request, toolchain)
     except (OncoTracerError, OSError, ValueError) as error:
         errors.append(str(error))
     resources = resource_report(config)
@@ -909,6 +925,7 @@ def command_check(args: argparse.Namespace) -> int:
         "warnings": warnings,
         "plan": plan,
         "resources": resources,
+        "variant_tools": variant_tools,
     }
     if args.json:
         print(json.dumps(result, indent=2))
