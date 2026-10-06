@@ -58,7 +58,10 @@ class SetupTests(unittest.TestCase):
             self.assertEqual(report["plan"]["threads"], 3)
             self.assertEqual(report["plan"]["samples"], ["tumor1"])
             self.assertFalse((project / "reference").exists())
-            self.assertEqual(load_flat_yaml(config)["outdir"], str(project / "results"))
+            saved = load_flat_yaml(config)
+            self.assertEqual(saved["outdir"], str(project / "results"))
+            self.assertFalse(saved["run_gistic"])
+            self.assertFalse(saved["gistic_required"])
             original = config.read_bytes()
             code, _ = self.cli(
                 "setup",

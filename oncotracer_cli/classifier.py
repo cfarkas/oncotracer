@@ -87,7 +87,7 @@ DEFAULTS: dict[str, object] = {
     "clinician_max_drivers": 14,
     "pdf_include_full_events": True,
     "pdf_max_events": 0,
-    "run_gistic": True,
+    "run_gistic": False,
     "gistic_required": False,
     "gistic_min_samples": 2,
     "gistic_seg_type": "full",

@@ -2,6 +2,7 @@
 import contextlib
 import gzip
 import io
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -227,6 +228,12 @@ class VariantSetupTests(unittest.TestCase):
             self.assertEqual(defaults[field], getattr(args, field))
 
     def test_web_ont_clairsto_existing_sif_roundtrip_and_prefill(self):
+        prefix = self.root / "sif-tool-fixtures"
+        (prefix / "bin").mkdir(parents=True)
+        for name in ("samtools", "bcftools", "apptainer"):
+            tool = prefix / "bin" / name
+            tool.write_text("#!/bin/sh\nexit 99\n")
+            tool.chmod(0o755)
         image = self.root / "caller.sif"
         image.write_bytes(b"fixture-container-not-executed")
         args = build_parser().parse_args(["setup", "--mode", "ont", "--variants",
@@ -236,9 +243,10 @@ class VariantSetupTests(unittest.TestCase):
         state.hardware = HARDWARE
         self.assertEqual(state.system()["defaults"]["variant_clairsto_sif"], str(image))
         self.assertIn(str(image), [row["path"] for row in state.browse(self.root, "asset")["files"]])
-        result = self.prepare(state, mode="ont", variants=True, variant_specimen_type="fresh",
-            variant_callers="clairs_to", variant_clairsto_platform="ont_r10_fixture",
-            variant_clairsto_sif=str(image), variant_annovar="off")
+        with patch.dict(os.environ, {"PATH": str(prefix / "bin") + os.pathsep + os.environ.get("PATH", "")}):
+            result = self.prepare(state, mode="ont", variants=True, variant_specimen_type="fresh",
+                variant_callers="clairs_to", variant_clairsto_platform="ont_r10_fixture",
+                variant_tool_prefix=str(prefix), variant_clairsto_sif=str(image), variant_annovar="off")
         self.assertTrue(result["valid"], result["check"])
         config = load_flat_yaml(Path(result["config_path"]))
         self.assertEqual(config["variant_clairsto_sif"], str(image))

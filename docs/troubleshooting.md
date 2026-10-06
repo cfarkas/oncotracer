@@ -323,9 +323,16 @@ a valid result. Check `diagnostics/gistic/gistic2_status.tsv` and
 `diagnostics/gistic_parsed/gistic_parse_metrics.json` under the classifier folder;
 the parser retains the analyzed sample count even when `n_lesions` is zero.
 
-For a failed variant branch, run `oncotracer check --config /path/to/run.yml`.
-Native configuration checks verify that the selected caller executables exist
-without running them. The CNA core environment supplies `samtools`; `bcftools`
+GISTIC2 is off by default. Browser setup disables it for fewer than two assigned
+samples, and terminal setup saves `run_gistic: false` for a single sample. Native
+YAML runs also require explicit opt-in and skip cohorts below `gistic_min_samples`
+(default: `2`) before looking for GISTIC2 or downloading its reference.
+
+For a failed variant branch, run `oncotracer check --variant-tools --config /path/to/run.yml`.
+The browser and `setup --run` perform this executable check automatically.
+Ordinary `check` still validates configuration on machines without caller tools.
+The executable check verifies the selected tools without running them. The CNA
+core environment supplies `samtools`; `bcftools`
 and other callers come from `variant_tool_prefix` or `PATH`. Set
 `variant_strelka_prefix` for a separate Strelka2 environment. An explicit variant
 prefix must contain all requested shared tools and callers. See the
