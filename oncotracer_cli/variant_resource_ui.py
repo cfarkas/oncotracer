@@ -224,6 +224,9 @@ function renderVariantResources(result,scope='all'){
   const container=document.getElementById('variant-detection-results');container.replaceChildren();
   const fields=variantScopeFields(scope),matches=resource=>scope==='all'||fields.includes(variantResourceField(resource))||(resource.id==='annovar'&&fields.some(field=>field.startsWith('variant_annovar')));
   const resources=(result.resources||[]).filter(resource=>(resource.status!=='not_needed'||scope!=='all')&&matches(resource));
+  if(resources.some(resource=>resource.status==='missing'&&['variant_tool_prefix','variant_strelka_prefix','variant_ffperase_prefix','variant_clairsto_sif'].includes(variantResourceField(resource)))){
+    const install=node('button','Install missing tools','primary');install.type='button';install.dataset.variantInstallMissing='true';install.onclick=()=>planVariantInstall();container.append(install);
+  }
   const list=node('ul',undefined,'resource-list');
   const labels={found:'Found',missing:'Not found',candidate:'Review candidate',unverified:'Not verified',not_needed:'Not needed',download_pending:'Prepared at run time',prepare_at_run:'Prepared at run time'};
   for(const resource of resources){
@@ -258,7 +261,7 @@ function renderVariantResources(result,scope='all'){
     appendVariantResourceLinks(detail,guide.links);
     container.append(detail);
   }
-  if(guides.length)container.append(node('p','Run the commands you need in a terminal, then Autodetect again. This check never installs software.','hint'));
+  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then Detect tools again. Resource detection itself never installs software.','hint'));
   if(!resources.length&&!candidates.length&&!guides.length)container.append(node('p','No matching resource was returned for this field. Use Browse to select an existing path.','hint'));
   const audit=node('details');audit.append(node('summary','Search details and limitations'));
   for(const note of result.notes||[])audit.append(node('p',note,'hint'));
@@ -292,21 +295,29 @@ document.getElementById('variant-resource-review').onclick=()=>{if(variantResour
 
 
 def add_resource_ui(page: str, *, existing_bam: bool = False) -> str:
+    from . import variant_install_ui as installer
     if page.count('<!-- VARIANT_RESOURCE_PANEL -->') != 1:
         raise ValueError('Variant resource panel anchor changed')
-    page = page.replace('<!-- VARIANT_RESOURCE_PANEL -->', PANEL, 1)
-    page = page.replace('<dialog id="browser">', DIALOG + '\n<dialog id="browser">', 1)
+    page = page.replace('<!-- VARIANT_RESOURCE_PANEL -->', installer.PANEL, 1)
+    dialog = DIALOG.replace('<div id="variant-detection-results"', installer.DIALOG + '<div id="variant-detection-results"', 1)
+    page = page.replace('<dialog id="browser">', dialog + '\n<dialog id="browser">', 1)
     if not existing_bam:
-        page = page.replace('</style>', STYLE + '</style>', 1)
+        page = page.replace('</style>', STYLE + installer.STYLE + '</style>', 1)
     callback = r'''
-function runVariantDetection(button,scope){return busy(async()=>{
+function variantResourcePayload(){
   if(!loaded)throw Error('Load aligned samples first.');
-  await detectVariantResources({mode,backend:'host',callers:callers(),specimen_type:specimen||'',values:{...variantResourceValues(),variant_reference_build:loaded.config.variant_reference_build||'hg38'}},scope);
+  return {mode,backend:'host',flow:'bam',tools_folder:$('variant-tools-folder').value.trim(),callers:callers(),specimen_type:specimen||'',values:{...variantResourceValues(),variant_reference_build:loaded.config.variant_reference_build||'hg38'}};
+}
+function runVariantDetection(button,scope){return busy(async()=>{
+  await detectVariantResources(variantResourcePayload(),scope);
 });}
 ''' if existing_bam else r'''
-function runVariantDetection(button,scope){return busy(button,async()=>{
+function variantResourcePayload(){
   if(!mode)throw Error('Choose a sequencing platform first.');
-  await detectVariantResources({mode,backend:$('backend').value,docker_image:$('docker_image').value.trim(),callers:selectedVariantCallers(),specimen_type:variantSpecimen||'',values:variantResourceValues()},scope);
+  return {mode,backend:$('backend').value,flow:'fastq',analysis:$('analysis').value,tools_folder:$('variant-tools-folder').value.trim(),docker_image:$('docker_image').value.trim(),callers:selectedVariantCallers(),specimen_type:variantSpecimen||'',values:variantResourceValues()};
+}
+function runVariantDetection(button,scope){return busy(button,async()=>{
+  await detectVariantResources(variantResourcePayload(),scope);
 });}
 '''
     callback += r'''
@@ -316,6 +327,6 @@ syncVariantLayout();
 '''
     # Functions above are hoisted; state used by early page initialization must
     # exist before the page's async bootstrap and default-setting calls.
-    page = page.replace("'use strict';", "'use strict';\nlet variantDetectionApplying=false,variantResourceLastResult=null,variantResourceLastScope='all';", 1)
+    page = page.replace("'use strict';", "'use strict';\nlet variantDetectionApplying=false,variantResourceLastResult=null,variantResourceLastScope='all';" + installer.STATE, 1)
     script = SCRIPT.replace("let variantDetectionApplying=false,variantResourceLastResult=null,variantResourceLastScope='all';", '', 1)
-    return page.replace('</script>', script + callback + '\n</script>', 1)
+    return page.replace('</script>', script + callback + installer.SCRIPT + '\n</script>', 1)

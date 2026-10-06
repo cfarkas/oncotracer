@@ -236,6 +236,11 @@ class _Search:
         bases += list(SYSTEM_PREFIXES)
         env_dirs = [base / "envs" for base in bases] + [self.home / ".conda/envs"]
         for root in self.roots:
+            # A tools-folder choice may itself be a prefix or directly contain
+            # several environments. Keep this search shallow and bounded too.
+            if (root / "bin").is_dir():
+                choices.append(root)
+            choices += [p for p in self.children(root) if (p / "bin").is_dir()]
             env_dirs += [root / "environments", root / "envs", root / "tools/environments", root / "tools/envs"]
             # User-created prefixes commonly live directly under project/tools.
             choices += [p for p in self.children(root / "tools") if (p / "bin").is_dir()]
@@ -246,16 +251,34 @@ class _Search:
         optional = self.home / ".local/share/oncotracer/optional-tools"
         choices += [optional / name for name in ("variants", "strelka2", "ffperase", "clair3")]
         env_dirs.append(data_home / "oncotracer/optional-tools")
+        for job in self.completed_installs():
+            choices += [job / name for name in ("variants", "strelka2", "ffperase", "clair3")]
         choices += bases
         for folder in self.unique(env_dirs):
             choices += [p for p in self.children(folder) if p.is_dir()]
         choices = self.unique(choices)
         if len(choices) > MAX_PREFIXES:
             self.note(f"Only the first {MAX_PREFIXES} environment candidates were inspected.")
-        return choices[:MAX_PREFIXES]
+        ready = []
+        for prefix in choices[:MAX_PREFIXES]:
+            status = self.read_json(prefix.parent / "status.json")
+            if status.get("installer") == "oncotracer-optional-tools-v1" and status.get("status") != "complete":
+                continue
+            ready.append(prefix)
+        return ready
+
+    def completed_installs(self):
+        data_home = self.path(self.env.get("XDG_DATA_HOME") or str(self.home / ".local/share"))
+        completed = []
+        for job in self.children(data_home / "oncotracer/optional-tools/installs", limit=16):
+            status = self.read_json(job / "status.json")
+            if status.get("installer") == "oncotracer-optional-tools-v1" and status.get("status") == "complete":
+                completed.append(job)
+        return completed
 
     def resource_locations(self):
         locations = list(self.roots)
+        locations += [job / "clairs-to_v0.4.4.sif" for job in self.completed_installs()]
         for root in self.roots:
             for suffix in ("tools", "resources", "models", "containers"):
                 folder = root / suffix

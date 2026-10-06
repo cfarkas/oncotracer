@@ -718,6 +718,12 @@ without an assessment remain `NOT_EVALUATED`.
 
 ### Conda and Docker
 
+In the browser, **Install missing tools** offers background Conda/Mamba
+installation or Docker image preparation, with a live log and tool checks.
+Use **Choose tools folder** and **Detect tools** to reuse an existing environment.
+After installation, save and check your settings before starting analysis. See
+the [resource workflow](variants.md#find-resources) for supported routes and retries.
+
 The pinned variant environment supplies Mutect2, FreeBayes, bcftools, samtools and **Varlociraptor 8.9.5**. FFPERASE uses a separate legacy environment to match its model dependencies. From your `oncotracer-src` checkout, create these user-owned prefixes once (skip creation for an existing compatible environment):
 
 ```bash
@@ -732,7 +738,7 @@ replace them with your actual host prefixes. The Docker image instead uses
 `/opt/oncotracer-envs/variants`, `/opt/oncotracer-envs/ffperase` and
 `/opt/oncotracer-envs/strelka2` internally. Let the Docker runner select these;
 do not copy host prefixes into container settings. ONT caller installation commands are available from
-**Autodetect resources → Copy commands**.
+**Detect tools → Copy commands**.
 
 For a Fresh study, the FFPERASE environment is unnecessary; omit its export and creation command above. For either Strelka2 caller, additionally create its isolated legacy runtime:
 

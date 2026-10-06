@@ -429,6 +429,28 @@ const window={},document={addEventListener(){}},location={href:'https://example.
         self.assertEqual(self.state.projects, {})
         self.assertIsNone(self.state.job)
 
+    def test_tool_install_endpoints_require_session_and_explicit_plan(self):
+        before = set(self.root.iterdir())
+        server = self.start_server()
+        installer = self.state.variant_installer
+        endpoints = [("POST", "/api/variant-install/plan", "plan", {"mode": "illumina"}),
+                     ("POST", "/api/variant-install/start", "start", {"plan_id": "selected"}),
+                     ("POST", "/api/variant-install/stop", "stop", {"job_id": "selected"}),
+                     ("GET", "/api/variant-install/status", "status", None)]
+        for method, endpoint, name, payload in endpoints:
+            with self.subTest(endpoint=endpoint), patch.object(installer, name, return_value={"status": "fixture"}) as action:
+                for changes in ({"X-OncoTracer-Token": ""}, {"Origin": "https://example.com"}, {"Host": "example.com"}):
+                    self.assertEqual(self.request(server, method, endpoint, payload, **changes)[0], 403)
+                action.assert_not_called()
+                code, content, _ = self.request(server, method, endpoint, payload)
+                self.assertEqual(code, 200)
+                self.assertEqual(json.loads(content)["status"], "fixture")
+                action.assert_called_once()
+        self.assertFalse(installer.install_root.exists() and installer.job)
+        self.assertEqual(set(self.root.iterdir()), before)
+        self.assertEqual(self.state.projects, {})
+        self.assertIsNone(self.state.job)
+
     def test_native_picker_is_authenticated_and_preserves_cancelled_selection(self):
         server = self.start_server()
         payload = {'path': str(self.root), 'kind': 'folder', 'sequencing': True}
