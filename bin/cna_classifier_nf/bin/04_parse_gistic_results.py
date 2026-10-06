@@ -139,7 +139,9 @@ def parse_all_lesions(path: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFr
         rows.append(fields[:len(header)])
 
     if not rows:
-        return pd.DataFrame(index=pd.Index([], name="sample")), pd.DataFrame(), pd.DataFrame()
+        # A header-only result is a successful run with no significant lesions.
+        # Retain the analyzed samples even though there are no feature columns.
+        return pd.DataFrame(index=pd.Index(sample_cols, name="sample")), pd.DataFrame(), pd.DataFrame()
 
     raw = pd.DataFrame(rows, columns=header)
     rename = {

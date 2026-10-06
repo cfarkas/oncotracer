@@ -515,6 +515,18 @@ class ReportPresentationTests(unittest.TestCase):
         cls.clinician = load_script("report_clinician_tests", "08_clinician_driver_reports.py")
         cls.cohort = load_script("report_cohort_tests", "03_plot_report.py")
 
+    def test_gistic_no_lesions_note_requires_successfully_parsed_sample_matrix(self):
+        empty = pd.DataFrame()
+        samples = pd.DataFrame(index=pd.Index(["S1", "S2"], name="sample"))
+        for state, matrix, expected in (("completed", samples, True),
+                                         ("completed", empty, False),
+                                         ("failed", samples, False)):
+            with self.subTest(state=state, expected=expected), tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+                self.cohort.make_report([], empty, empty, pd.DataFrame([{"status": state}]), empty,
+                                        gistic_matrix=matrix)
+                report = Path("cna_classifier_report.html").read_text()
+                self.assertEqual("No significant focal lesions" in report, expected)
+
     def fixture(self, context=True):
         row = pd.Series({"sample": "synthetic", "rule_based_cna_class": "MYCN_neuroblastoma_pattern",
                          "cna_burden_class": "CNA-high_complex", "n_cna_events": 3, "altered_mb": 5.4})

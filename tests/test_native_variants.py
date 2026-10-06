@@ -130,6 +130,34 @@ class VariantRequestTests(unittest.TestCase):
         with patch.object(shutil, "which", return_value=None), self.assertRaises(OncoTracerError):
             variants.preflight_variant_tools(request)
 
+    def test_core_prefix_does_not_mask_bcftools_on_path(self):
+        from oncotracer_cli.engine import Toolchain
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            core = root / 'core'
+            (core / 'bin').mkdir(parents=True)
+            samtools = core / 'bin/samtools'
+            samtools.write_text('#!/bin/sh\nexit 0\n')
+            samtools.chmod(0o755)
+            bcftools = root / 'bcftools'
+            bcftools.write_text('#!/bin/sh\nexit 0\n')
+            bcftools.chmod(0o755)
+            request = variants.VariantRequest('illumina', 'fresh', ('bcftools',))
+            with patch.object(shutil, 'which', side_effect=lambda name: str(bcftools) if name == 'bcftools' else None):
+                tools = variants.preflight_variant_tools(request, Toolchain(core_prefix=core))
+            self.assertEqual(tools, {'samtools': str(samtools), 'bcftools': str(bcftools)})
+
+    def test_explicit_variant_prefix_never_falls_back_to_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory)
+            (prefix / 'bin').mkdir()
+            samtools = prefix / 'bin/samtools'
+            samtools.write_text('#!/bin/sh\nexit 0\n')
+            samtools.chmod(0o755)
+            request = variants.VariantRequest('illumina', 'fresh', ('bcftools',), tool_prefix=prefix)
+            with patch.object(shutil, 'which', return_value='/unrelated/bcftools'), self.assertRaisesRegex(OncoTracerError, 'Variant tool bcftools'):
+                variants.preflight_variant_tools(request)
+
 
 class NativeCallerCommandTests(unittest.TestCase):
     def exercise(self, caller: str, *, specimen="fresh"):

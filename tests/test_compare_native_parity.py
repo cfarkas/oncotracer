@@ -435,6 +435,42 @@ class ParityComparatorTests(unittest.TestCase):
             self.assertEqual(payload["profiles"]["shared_bins"], 4)
             self.assertAlmostEqual(payload["profiles"]["pearson"], 1.0)
 
+    def test_frozen_ichorcna_profile_uses_explicit_one_based_conversion(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            v1, v2, report = root / "v1", root / "v2", root / "report"
+            write_run(v1, native=False)
+            write_run(v2, native=True)
+            path = v1 / PROFILE_RELATIVE
+            with gzip.open(path, "rt") as handle:
+                reader = csv.DictReader(handle, delimiter="\t")
+                fields, rows = reader.fieldnames, list(reader)
+            for row in rows:
+                row["start"] = str(int(row["start"]) + 1)
+            with gzip.open(path, "wt") as handle:
+                writer = csv.DictWriter(handle, fields, delimiter="\t")
+                writer.writeheader()
+                writer.writerows(rows)
+            before = path.read_bytes()
+            # No inferred offset or relaxed overlap matching is allowed.
+            failed = run_comparator(v1, v2, report)
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertIn("no exact shared genomic bins", failed.stderr)
+            command = comparator_command(v1, v2, report)
+            command += ["--v1-profile-coordinate-system", "one-based-closed"]
+            completed = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            payload = report_payload(report)
+            self.assertTrue(payload["passed"])
+            self.assertEqual(payload["profiles"]["shared_bins"], 4)
+            self.assertEqual(payload["profile_inputs"]["v1"]["coordinate_system"], "one-based-closed")
+            self.assertEqual(path.read_bytes(), before)
+            # Applying the conversion to already-zero-based data is an error.
+            command[command.index("--v1") + 1] = v2
+            failed = subprocess.run(command, capture_output=True, text=True)
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertIn("start below 1", failed.stderr)
+
     def test_exact_qdnaseq_zero_floor_does_not_poison_pearson(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

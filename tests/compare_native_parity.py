@@ -298,7 +298,7 @@ def locate_profile(root: Path, summary: dict[str, str]) -> Path:
     raise ParityError(f"refined bin profile not found below: {root}")
 
 
-def profile_rows(path: Path) -> list[ProfileRow]:
+def profile_rows(path: Path, *, coordinate_system: str = "zero-based-half-open") -> list[ProfileRow]:
     rows: list[ProfileRow] = []
     for row in read_tsv(path):
         sample = text(row, ("sample", "ID", "samplename"))
@@ -309,6 +309,10 @@ def profile_rows(path: Path) -> list[ProfileRow]:
         # independently validate the final segmentation.
         start = number(row, ("original_bin_start", "start", "bin_start", "START"))
         end = number(row, ("original_bin_end", "end", "bin_end", "END"))
+        if start is not None and coordinate_system == "one-based-closed":
+            if start < 1:
+                raise ParityError(f"one-based profile contains a start below 1: {path}")
+            start -= 1
         value = number(
             row,
             (
@@ -448,6 +452,11 @@ def main() -> int:
     parser.add_argument("--outdir", type=Path, required=True)
     parser.add_argument("--label", required=True)
     parser.add_argument(
+        "--v1-profile-coordinate-system", choices=("zero-based-half-open", "one-based-closed"),
+        default="zero-based-half-open",
+        help="explicit coordinate convention of the frozen v1.1 input bins; ichorCNA used one-based closed starts",
+    )
+    parser.add_argument(
         "--expected-samples",
         type=expected_samples_csv,
         required=True,
@@ -488,14 +497,17 @@ def main() -> int:
             "path": str(v1_profile_path),
             "bytes": v1_profile_path.stat().st_size,
             "sha256": sha256(v1_profile_path),
+            "coordinate_system": args.v1_profile_coordinate_system,
+            "comparison_coordinate_system": "zero-based-half-open",
         },
         "v2": {
             "path": str(v2_profile_path),
             "bytes": v2_profile_path.stat().st_size,
             "sha256": sha256(v2_profile_path),
+            "coordinate_system": "zero-based-half-open",
         },
     }
-    v1_profile_rows = profile_rows(v1_profile_path)
+    v1_profile_rows = profile_rows(v1_profile_path, coordinate_system=args.v1_profile_coordinate_system)
     v2_profile_rows = profile_rows(v2_profile_path)
     profiles, profile_floor_exclusions = compare_profiles(
         v1_profile_rows,

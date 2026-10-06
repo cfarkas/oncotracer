@@ -1134,9 +1134,12 @@ if [[ "$SUITE" == quickstart1 ]]; then
     --v1 "$TEST_ROOT/v1/illumina" --v2 "$TEST_ROOT/v2/illumina" \
     --outdir "$AUDIT_ROOT/illumina" --label "QuickStart 1 / Illumina" \
     --expected-samples ERR12341627
+  # Frozen v1.1 keeps ichorCNA correctedDepth starts one-based; native v2
+  # explicitly converts them to BED coordinates. Compare the same intervals.
   python3 "$REPO/tests/compare_native_parity.py" \
     --v1 "$TEST_ROOT/v1/ont" --v2 "$TEST_ROOT/v2/ont" \
     --outdir "$AUDIT_ROOT/ont" --label "QuickStart 1 / ONT" \
+    --v1-profile-coordinate-system one-based-closed \
     --expected-samples DRR165691
   python3 - "$AUDIT_ROOT" <<'PY'
 import json

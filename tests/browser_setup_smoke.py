@@ -165,11 +165,11 @@ else:
             assert not js("return document.querySelector('#ont-signal-inputs').hidden")
             fill("#input-folder", str(folder))
             sample_count(count)
-        def prepare(name):
+        def prepare(name, valid=True):
             fill("#project-parent", str(root)); fill("#project-name", name)
             click("#prepare")
             wait(lambda: js("return !document.querySelector('#review-card').hidden && !document.querySelector('main').inert"), "saved configuration")
-            assert not js("return document.querySelector('#run').disabled"), js("return document.querySelector('#check-messages').textContent")
+            assert js("return document.querySelector('#run').disabled") is not valid, js("return document.querySelector('#check-messages').textContent")
             assert not (root / name / "results").exists()
             with (root / name / "config/sample_metadata.csv").open() as handle:
                 return list(csv.DictReader(handle))
@@ -230,6 +230,13 @@ else:
             assert not js("return document.querySelector('#variant-ffperase-fields').hidden")
             fill('#variant_varlociraptor','required');fill('#variant_varlociraptor_fdr','0.05')
             click('[data-variant-caller="freebayes"]');fill('#variant_annovar','off')
+            prefix = root / 'variant-tool-fixtures';(prefix / 'bin').mkdir(parents=True)
+            fill('#variant_tool_prefix', str(prefix))
+            prepare('missing-variant-tools-project', valid=False)
+            assert 'Variant tool samtools is unavailable' in js("return document.querySelector('#check-messages').textContent")
+            for name in ('samtools', 'bcftools', 'gatk', 'freebayes', 'varlociraptor'):
+                tool = prefix / 'bin' / name
+                tool.write_text('#!/bin/sh\nexit 99\n');tool.chmod(0o755)
             prepare('illumina-variants-project')
             config = load_flat_yaml(root / 'illumina-variants-project/config/run.yml')
             assert config['run_variants'] is True and config['variant_specimen_type'] == 'ffpe'
