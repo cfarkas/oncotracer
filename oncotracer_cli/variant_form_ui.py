@@ -35,7 +35,7 @@ def variant_form(*, existing_bam=False):
 <div id="variant-strelka-pairing" hidden><h4>Matched normals for Strelka2 somatic</h4><p class="hint">Select the normal specimen from the same patient for each tumor. Normal/control group membership alone does not establish a match. The matched normal does not inherit the tumor’s FFPE setting.</p><div id="variant-pair-rows"></div><p id="variant-pair-note" class="hint" role="status"></p></div><details class="variant-explainer"><summary>How caller results are used</summary><p class="hint">Mutect2 and ClairS-TO produce tumor-only candidates. Strelka2 somatic uses your explicitly matched tumor–normal pairs. Strelka2 germline, FreeBayes, bcftools and Clair3 run independently per sample. Group assignments never create matched pairs automatically.</p></details></div>
 </section>
 <section class="variant-section" hidden id="variant-tools-section" aria-labelledby="variant-tools-title">
-<div class="variant-section-heading"><span class="variant-step">2</span><div><h3 id="variant-tools-title">Caller tools and models</h3><p class="hint">Start with Autodetect. Open paths only to review or change them.</p></div></div>
+<div class="variant-section-heading"><span class="variant-step">2</span><div><h3 id="variant-tools-title">Caller tools and models</h3><p class="hint">Start with detect_tools. Open paths only to review or change them.</p></div></div>
 <!-- VARIANT_RESOURCE_PANEL -->
 <p id="variant-tool-note" class="hint"></p>{threads}
 <div id="variant-tool-prefix-fields"><details class="variant-path-details"><summary>Caller environment <span class="variant-path-summary" data-path-summary="variant_tool_prefix"></span></summary>

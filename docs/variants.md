@@ -95,7 +95,7 @@ change an installation.
 
 ### Find resources
 
-Click **Detect tools** to check resources for your selected settings, or
+Click the glowing **detect_tools** button to check resources for your selected settings, or
 use **Autodetect** beside an individual path. Discovery checks the computer
 running the setup server, fills empty paths and preserves paths you entered.
 If several candidates are found, review them and choose the one to use. Review
@@ -107,8 +107,10 @@ Missing tools show official download or installation links beside their status.
 Missing ANNOVAR software includes a **Register and download ANNOVAR** link and a
 registration notice. FFPERASE source and models link to their upstream license.
 Use **Choose tools folder** to search a particular installation directory.
-Click **Install missing tools**, choose Conda/Mamba or Docker, review the steps,
-then click **Install with Conda / Mamba** or **Install with Docker**. A live log
+When detection finds missing caller tools, **Install with Conda** and
+**Install with Docker** appear. Choose either button, review the steps,
+then start that installation. The choices disappear when all selected tools are
+found, or when you change resource settings and need to detect again. A live log
 and step counter follow installation while the setup server stays open. Conda
 creates fresh optional environments; Docker pulls and checks the selected image.
 When installation succeeds, the form selects the installed paths if your settings

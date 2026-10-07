@@ -397,7 +397,7 @@ The adapter uses WGS settings; a target BED restricts calling regions and does
 not enable exome-specific calibration.
 
 A separate `variant_strelka_prefix` supplies the Strelka/Python 2.7 runtime;
-`variant_tool_prefix` still supplies shared utilities. Use **Autodetect resources**
+`variant_tool_prefix` still supplies shared utilities. Use **detect_tools**
 to locate these installations or obtain their installation commands. A current
 Strelka-enabled Docker image supplies both runtimes.
 
@@ -718,9 +718,10 @@ without an assessment remain `NOT_EVALUATED`.
 
 ### Conda and Docker
 
-In the browser, **Install missing tools** offers background Conda/Mamba
-installation or Docker image preparation, with a live log and tool checks.
-Use **Choose tools folder** and **Detect tools** to reuse an existing environment.
+In the browser, the glowing **detect_tools** button checks your selected tools.
+If caller tools are missing, choose **Install with Conda** or **Install with Docker**
+for background installation with a live log and tool checks.
+Use **Choose tools folder** before detection to search an existing environment.
 After installation, save and check your settings before starting analysis. See
 the [resource workflow](variants.md#find-resources) for supported routes and retries.
 
@@ -738,7 +739,7 @@ replace them with your actual host prefixes. The Docker image instead uses
 `/opt/oncotracer-envs/variants`, `/opt/oncotracer-envs/ffperase` and
 `/opt/oncotracer-envs/strelka2` internally. Let the Docker runner select these;
 do not copy host prefixes into container settings. ONT caller installation commands are available from
-**Detect tools → Copy commands**.
+**detect_tools → Copy commands**.
 
 For a Fresh study, the FFPERASE environment is unnecessary; omit its export and creation command above. For either Strelka2 caller, additionally create its isolated legacy runtime:
 

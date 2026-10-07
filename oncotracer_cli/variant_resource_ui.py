@@ -1,10 +1,5 @@
 """Focused resource discovery and a compact shared variant setup layout."""
 
-PANEL = '''<div class="variant-detection">
-<div class="variant-block-heading"><div><strong>Find installed resources</strong><p class="hint">Fill empty paths for the selected callers. Paths you entered are kept.</p></div><button id="variant-autodetect" type="button" class="primary">Autodetect resources</button></div>
-<p id="variant-detection-status" class="hint" role="status" aria-live="polite">Check common installation folders on the computer running OncoTracer.</p>
-<button id="variant-resource-review" type="button" hidden>Review resource details</button></div>'''
-
 DIALOG = '''<dialog id="variant-resource-dialog" aria-labelledby="variant-resource-title">
 <div class="variant-dialog-heading"><div><span class="eyebrow">Tools, models and annotation</span><h2 id="variant-resource-title">Detected resources</h2></div><button id="variant-resource-close" type="button" autofocus>Close</button></div>
 <p id="variant-resource-dialog-status" class="hint" role="status" aria-live="polite"></p><div id="variant-detection-results" hidden></div></dialog>'''
@@ -177,8 +172,9 @@ function filterVariantRuntime(data,blank=false){
 }
 function resetVariantResourceResults(){
   if(variantDetectionApplying)return;
+  variantResourceLastResult=null;syncVariantInstallChoices();
   const result=document.getElementById('variant-detection-results');
-  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Autodetect again to refresh the resource list.';}
+  if(result&&!result.hidden){result.hidden=true;document.getElementById('variant-detection-status').textContent='Settings changed. Use detect_tools again to refresh the resource list.';}
   const review=document.getElementById('variant-resource-review');if(review)review.hidden=true;
   for(const status of document.querySelectorAll('.variant-path-status')){status.textContent='';delete status.dataset.state;}
 }
@@ -224,8 +220,14 @@ function renderVariantResources(result,scope='all'){
   const container=document.getElementById('variant-detection-results');container.replaceChildren();
   const fields=variantScopeFields(scope),matches=resource=>scope==='all'||fields.includes(variantResourceField(resource))||(resource.id==='annovar'&&fields.some(field=>field.startsWith('variant_annovar')));
   const resources=(result.resources||[]).filter(resource=>(resource.status!=='not_needed'||scope!=='all')&&matches(resource));
-  if(resources.some(resource=>resource.status==='missing'&&['variant_tool_prefix','variant_strelka_prefix','variant_ffperase_prefix','variant_clairsto_sif'].includes(variantResourceField(resource)))){
-    const install=node('button','Install missing tools','primary');install.type='button';install.dataset.variantInstallMissing='true';install.onclick=()=>planVariantInstall();container.append(install);
+  syncVariantInstallChoices(result.resources||[]);
+  if(hasMissingVariantTools(resources)){
+    const choices=node('div',undefined,'variant-install-choices'),actions=node('div',undefined,'actions');
+    choices.append(node('p','Missing tools detected. Choose how to install them.','hint'));
+    for(const [method,label] of [['conda','Install with Conda'],['docker','Install with Docker']]){
+      const install=node('button',label,'primary');install.type='button';install.dataset.variantInstall=method;install.disabled=variantInstallActive;install.onclick=()=>openVariantInstall(method);actions.append(install);
+    }
+    choices.append(actions);container.append(choices);
   }
   const list=node('ul',undefined,'resource-list');
   const labels={found:'Found',missing:'Not found',candidate:'Review candidate',unverified:'Not verified',not_needed:'Not needed',download_pending:'Prepared at run time',prepare_at_run:'Prepared at run time'};
@@ -261,7 +263,7 @@ function renderVariantResources(result,scope='all'){
     appendVariantResourceLinks(detail,guide.links);
     container.append(detail);
   }
-  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then Detect tools again. Resource detection itself never installs software.','hint'));
+  if(guides.length)container.append(node('p','For manual installation, run the commands you need in a terminal, then use detect_tools again. Resource detection itself never installs software.','hint'));
   if(!resources.length&&!candidates.length&&!guides.length)container.append(node('p','No matching resource was returned for this field. Use Browse to select an existing path.','hint'));
   const audit=node('details');audit.append(node('summary','Search details and limitations'));
   for(const note of result.notes||[])audit.append(node('p',note,'hint'));
@@ -273,6 +275,7 @@ function openVariantResourceDialog(){
 }
 async function detectVariantResources(payload,scope='all'){
   const status=document.getElementById('variant-detection-status');document.getElementById('variant-resource-review').hidden=true;
+  syncVariantInstallChoices();if(!variantInstallActive)$('variant-install-panel').hidden=true;
   status.textContent='Checking '+(scope==='all'?'selected resources':scope==='annotation'?'ANNOVAR':scope==='ffperase'?'FFPERASE':variantFieldLabel(scope))+'…';
   try{
     const result=await api('/api/variant-resources',payload),fields=variantScopeFields(scope);let filled=0;
