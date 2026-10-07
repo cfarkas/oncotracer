@@ -23,15 +23,15 @@ Folders without FASTQ, POD5 or BAM files (including subfolders) display
 3. **Review settings.** Choose threads and a caller. QDNAseq defaults to **100 kb**;
    ONT ichorCNA uses **500 kb**. ONT controls require QDNAseq and a study sample.
    GISTIC needs at least two assigned samples. CNA uses CPU.
-4. **Select tools and a project folder.** Choose your installed Conda or Docker
+4. **Select tools and a new or existing project folder.** Choose your installed Conda or Docker
    backend. Keep automatic reference download.
 5. Click **Save configuration and check**, resolve any check errors, then
    **Run analysis**. Follow progress and open results here.
 
 Settings use `PROJECT/config/run.yml`; Illumina also gets `config/samplesheet.csv`.
 Saving again overwrites settings and assignments, backing them up in `config/backups/`.
-After installing tools, save/check again to record their paths. Results and references stay.
-**Stop analysis** asks **Delete incomplete run?** **Yes** deletes the new project;
+Save/check detects tools and records their paths. Results and references stay.
+**Stop analysis** asks **Delete incomplete run?** **Yes** deletes the selected project;
 **No** keeps it. Both close the dialog and return to setup.
 
 **Terminal alternative:**

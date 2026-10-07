@@ -18,6 +18,7 @@ from tests.browser_setup_smoke import free_port, http, wait
 from tests.test_web import HARDWARE
 from oncotracer_cli.runtime import load_flat_yaml, render_flat_yaml
 from oncotracer_cli.variant_installer import VariantInstaller
+from oncotracer_cli.variant_resources import discover_variant_resources, ENV_FIELDS
 from oncotracer_cli.web import WebState, WebServer
 
 
@@ -148,6 +149,48 @@ print('Fixture installation complete', flush=True)
         assert not js("return document.querySelector('#check-messages').textContent.includes('Variant tool gatk is unavailable')")
         screenshot('resaved-gatk-ready.png')
         checks.append('Same-project save replaces stale GATK settings, retains a backup and existing logs, clears the error and enables Run')
+        installed = value('#variant_tool_prefix')
+        environment = {key: None for keys in ENV_FIELDS.values() for key in keys}
+        environment.update(HOME=str(root / 'isolated-home'), PATH='', CONDA_PREFIX=None,
+                           XDG_CONFIG_HOME=str(root / 'isolated-home/config'), XDG_DATA_HOME=str(root / 'isolated-home/data'))
+        def isolated_detection(data, *, roots):
+            return discover_variant_resources(data, roots=roots, environment=environment)
+        with patch('oncotracer_cli.web.discover_variant_resources', side_effect=isolated_detection), \
+             patch('oncotracer_cli.variant_resources.SYSTEM_PREFIXES', ()):
+            fill('#variant-tools-folder',installed);fill('#variant_tool_prefix','');fill('#project-name','first-save-autodetect')
+            click('#prepare')
+            wait(lambda: js("return !document.querySelector('main').inert&&!document.querySelector('#review-card').hidden"),'first save autodetection')
+            assert js("return document.querySelector('#check-badge').textContent==='Configuration checked'&&!document.querySelector('#run').disabled&&!document.querySelector('#variant-resource-dialog').open")
+            assert value('#variant_tool_prefix')==installed
+            assert load_flat_yaml(root / 'first-save-autodetect/config/run.yml')['variant_tool_prefix']==installed
+            screenshot('first-save-tools-ready.png')
+            checks.append('First Save finds installed GATK and records its prefix without a Detect click or extra dialog')
+            old_config = saved_config.read_bytes()
+            fill('#project-mode','existing')
+            with patch('oncotracer_cli.web.choose_path', return_value=saved_config.parent.parent):
+                click('[data-browse="existing-project"]')
+                wait(lambda: value('#existing-project')==str(saved_config.parent.parent),'existing project chooser')
+            fill('#variant_tool_prefix','');fill('#threads','2');click('#prepare')
+            wait(lambda: js("return !document.querySelector('main').inert&&!document.querySelector('#review-card').hidden"),'existing project overwrite')
+            assert js("return document.querySelector('#check-badge').textContent==='Configuration checked'&&!document.querySelector('#run').disabled")
+            assert js("return document.querySelector('#saved-path').textContent")=='Saved: '+str(saved_config)
+            assert load_flat_yaml(saved_config)['variant_tool_prefix']==installed
+            assert any(path.read_bytes()==old_config for path in (saved_config.parent / 'backups').glob('*/run.yml'))
+            assert not (saved_config.parent.parent / 'first-save-autodetect').exists()
+            assert previous_log.read_text()=='Existing logs retained'
+            screenshot('existing-project-overwritten.png')
+            checks.append('Existing project chooser saves directly into the selected folder, retains a backup and preserves logs')
+            second = root / 'another-tools/bin'; second.mkdir(parents=True)
+            for name in ('samtools','bcftools','gatk','freebayes'):
+                tool = second / name; tool.write_text('#!/bin/sh\nexit 0\n'); tool.chmod(0o755)
+            fill('#project-mode','new');fill('#project-name','ambiguous-tools');fill('#variant_tool_prefix','')
+            click('#prepare')
+            wait(lambda: js("return !document.querySelector('main').inert&&!document.querySelector('#error').hidden"),'ambiguous environment choice')
+            assert js("return document.querySelector('#error').textContent.includes('Multiple caller environments')&&document.querySelector('#variant-resource-dialog').open")
+            assert not (root / 'ambiguous-tools').exists()
+            assert value('#variant_tool_prefix')==''
+            checks.append('Multiple installed caller environments require an explicit choice before writing configuration')
+            click('#variant-resource-close')
         fill('#variant_tool_prefix',str(root / 'cancelled-missing')); (root / 'wait').touch()
         install_start(); click('#variant-install-stop');finish('cancelled');(root / 'wait').unlink()
         assert value('#variant_tool_prefix')==str(root / 'cancelled-missing')

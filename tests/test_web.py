@@ -707,7 +707,41 @@ except KeyboardInterrupt:
         self.assertEqual(self.state.job["exit_code"], -signal.SIGKILL)
         self.assertTrue((self.root / "project").is_dir())
 
-    def test_remove_rejects_preexisting_or_replaced_project_folders(self):
+    def test_existing_destination_must_exist(self):
+        self.fastq("reads/library.fastq.gz")
+        with self.assertRaisesRegex(OncoTracerError, "Choose an existing project"):
+            self.prepare(project_mode="existing")
+        self.assertFalse((self.root / "project").exists())
+
+    def test_existing_project_can_be_stopped_and_removed_after_a_new_browser_session(self):
+        self.fastq("reads/library.fastq.gz")
+        self.prepare()
+        self.state = WebState(self.root); self.state.hardware = HARDWARE
+        prepared = self.start_dummy_analysis()
+        self.assertFalse(self.state.projects[prepared["id"]]["project_created"])
+        self.assertFalse(self.state.status()["can_remove"])
+        self.state.stop({"project_id": prepared["id"]})
+        self.wait_stopped()
+        self.assertTrue(self.state.status()["can_remove"])
+        result = self.state.remove_project({"project_id": prepared["id"], "confirm_remove": True,
+                                            "confirm_path": prepared["project"]})
+        self.assertEqual(result["status"], "removed")
+        self.assertFalse((self.root / "project").exists())
+        self.assertTrue((self.root / "reads/library.fastq.gz").is_file())
+
+    def test_remove_preserves_a_project_containing_a_source_or_shared_resource(self):
+        self.fastq("reads/library.fastq.gz")
+        prepared = self.prepare()
+        source = self.root / "project/shared-tools/keep"
+        source.parent.mkdir(); source.write_text("shared resource")
+        self.state.projects[prepared["id"]]["protected_paths"] = [str(source.parent)]
+        self.state.job = {"project_id": prepared["id"], "status": "stopped", "pid": 99999999}
+        with self.assertRaisesRegex(OncoTracerError, "input or shared resource"):
+            self.state.remove_project({"project_id": prepared["id"], "confirm_remove": True,
+                                        "confirm_path": prepared["project"]})
+        self.assertEqual(source.read_text(), "shared resource")
+
+    def test_remove_rejects_unrelated_existing_or_replaced_project_folders(self):
         for existing in (True, False):
             with self.subTest(existing=existing), tempfile.TemporaryDirectory() as directory:
                 previous_root, previous_state = self.root, self.state
@@ -722,7 +756,7 @@ except KeyboardInterrupt:
                     if not existing:
                         (self.root / "project").rename(self.root / "original")
                         (self.root / "project").symlink_to(self.root / "reads", target_is_directory=True)
-                    with self.assertRaisesRegex(OncoTracerError, "existed|redirected"):
+                    with self.assertRaisesRegex(OncoTracerError, "dedicated|redirected"):
                         self.state.remove_project({"project_id": prepared["id"], "confirm_remove": True, "confirm_path": prepared["project"]})
                     self.assertTrue((self.root / "reads/library.fastq.gz").is_file())
                 finally:

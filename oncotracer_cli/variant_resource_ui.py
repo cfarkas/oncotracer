@@ -273,7 +273,7 @@ function renderVariantResources(result,scope='all'){
 function openVariantResourceDialog(){
   const dialog=document.getElementById('variant-resource-dialog');if(!dialog.open)dialog.showModal();dialog.scrollTop=0;
 }
-async function detectVariantResources(payload,scope='all'){
+async function detectVariantResources(payload,scope='all',openDialog=true){
   const status=document.getElementById('variant-detection-status');document.getElementById('variant-resource-review').hidden=true;
   syncVariantInstallChoices();if(!variantInstallActive)$('variant-install-panel').hidden=true;
   status.textContent='Checking '+(scope==='all'?'selected resources':scope==='annotation'?'ANNOVAR':scope==='ffperase'?'FFPERASE':variantFieldLabel(scope))+'…';
@@ -285,8 +285,15 @@ async function detectVariantResources(payload,scope='all'){
     status.textContent='Check complete · '+filled+' empty path'+(filled===1?'':'s')+' filled'+(missing?' · see official download and registration links for missing resources':'')+'.';
     document.getElementById('variant-resource-title').textContent=scope==='all'?'Detected resources':scope==='annotation'?'ANNOVAR resources':scope==='ffperase'?'FFPERASE resources':variantFieldLabel(scope);
     document.getElementById('variant-resource-dialog-status').textContent='Only empty fields were filled. Choose a candidate explicitly to change an entered path.';
-    document.getElementById('variant-resource-review').hidden=false;openVariantResourceDialog();
+    document.getElementById('variant-resource-review').hidden=false;if(openDialog)openVariantResourceDialog();
+    return result;
   }catch(error){status.textContent='Resource check could not finish. Your entered paths were kept.';throw error;}
+}
+async function detectVariantResourcesBeforeSave(){
+  const result=await detectVariantResources(variantResourcePayload(),'all',false);
+  if((result.resources||[]).some(resource=>resource.id==='variant_tools'&&resource.status==='candidate')&&!$('variant_tool_prefix').value.trim()){
+    openVariantResourceDialog();throw Error('Multiple caller environments found. Choose a candidate in Detected resources, then save again.');
+  }
 }
 for(const field of document.querySelectorAll('[id^="variant_"],#backend,#docker_image'))for(const event of ['input','change'])field.addEventListener(event,()=>{resetVariantResourceResults();syncVariantLayout();});
 document.getElementById('variant-ffperase-runtime').addEventListener('input',()=>{document.getElementById('variant-ffperase-runtime').dataset.chosen='user';},true);
