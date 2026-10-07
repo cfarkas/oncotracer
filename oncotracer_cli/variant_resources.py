@@ -604,7 +604,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
     guides = installation_guides(missing, backend=backend, mode=mode, root=recipe_root)
     return {"backend": backend, "fields": fields, "resources": resources, "candidates": candidates, "install_guides": guides,
             "searched": search.searched, "notes": ["Read-only discovery: no executable, model, installer, download or analysis was run. Review suggestions before saving.",
-            "Only common installation folders and a bounded set of their children were checked. For resources elsewhere, enter the exact path and select Autodetect resources again.",
+            "Only common installation folders and a bounded set of their children were checked. For resources elsewhere, enter the exact path and select detect_tools again.",
             "Clinical target BEDs, Varlociraptor scenarios and reference genomes are never selected from filenames; supply the intended files explicitly.", *search.notes]}
 
 
