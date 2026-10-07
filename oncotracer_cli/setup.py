@@ -10,6 +10,8 @@ import json
 import os
 import shlex
 import shutil
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .engine import (
@@ -387,6 +389,65 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
     return values
 
 
+def _validate_setup_destination(project: Path) -> None:
+    directory = project / "config"
+    for path in (directory, directory / "backups"):
+        if path.is_symlink() or (path.exists() and not path.is_dir()):
+            raise OncoTracerError(f"Setup needs a regular configuration directory: {path}")
+    for name in ("run.yml", "samplesheet.csv", "sample_metadata.csv"):
+        path = directory / name
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise OncoTracerError(f"Setup cannot replace a symlink or non-file: {path}")
+
+
+def _save_setup_files(project: Path, files: dict[str, str]) -> Path | None:
+    """Replace validated setup files, retaining the previous settings together."""
+    if set(files) - {"run.yml", "samplesheet.csv", "sample_metadata.csv"}:
+        raise OncoTracerError("Unsupported setup configuration file.")
+    _validate_setup_destination(project)
+    directory = project / "config"
+    original = {name: (directory / name).read_bytes() if (directory / name).exists() else None for name in files}
+    changed = {name: text.encode("utf-8") for name, text in files.items() if text.encode("utf-8") != original[name]}
+    if not changed:
+        return None
+    directory.mkdir(parents=True, exist_ok=True)
+    backup = None
+    with tempfile.TemporaryDirectory(prefix=".setup-save-", dir=directory) as temporary:
+        staging = Path(temporary)
+        for name, content in changed.items():
+            (staging / name).write_bytes(content)
+        if any(content is not None for content in original.values()):
+            backups = directory / "backups"
+            backups.mkdir(exist_ok=True)
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-")
+            backup = Path(tempfile.mkdtemp(prefix=stamp, dir=backups))
+            for name, content in original.items():
+                if content is not None:
+                    (backup / name).write_bytes(content)
+        committed = []
+        try:
+            # Publish the YAML last, after its generated sample files are ready.
+            for name in sorted(changed, key=lambda name: name == "run.yml"):
+                _validate_setup_destination(project)
+                target = directory / name
+                current = target.read_bytes() if target.exists() else None
+                if current != original[name]:
+                    raise OncoTracerError(f"Configuration changed while saving: {target}. Save again with your intended settings.")
+                os.replace(staging / name, target)
+                committed.append(name)
+        except Exception:
+            for name in reversed(committed):
+                target = directory / name
+                if original[name] is None:
+                    target.unlink()
+                else:
+                    restore = staging / ("restore-" + name)
+                    restore.write_bytes(original[name])
+                    os.replace(restore, target)
+            raise
+    return backup
+
+
 def _command_setup(args: argparse.Namespace) -> int:
     from .cli import _load_install_config
 
@@ -479,14 +540,7 @@ def _command_setup(args: argparse.Namespace) -> int:
     config_path = project / "config" / "run.yml"
     sheet = project / "config" / "samplesheet.csv"
     metadata_path = project / "config" / "sample_metadata.csv"
-    protected = [config_path, sheet]
-    if getattr(args, "_wizard_metadata", None):
-        protected.append(metadata_path)
-    for path in protected:
-        if path.exists() or path.is_symlink():
-            raise OncoTracerError(
-                f"setup will not overwrite {path}; choose a new --project or edit the existing YAML"
-            )
+    _validate_setup_destination(project)
     supplied_reference = args.hg38_build or args.reference_root
     reference_root = (
         Path(supplied_reference).expanduser().resolve()
@@ -762,23 +816,27 @@ def _command_setup(args: argparse.Namespace) -> int:
 
         resolve_methylation_request(values, mode=mode)
 
-    project.joinpath("config").mkdir(parents=True, exist_ok=True)
+    files = {}
     if sample_rows is not None:
-        with sheet.open("x", newline="", encoding="utf-8") as handle:
-            writer = csv.writer(handle)
-            writer.writerow(["sample", "fastq_1", "fastq_2", "status"])
-            writer.writerows(sample_rows)
+        handle = io.StringIO(newline="")
+        writer = csv.writer(handle)
+        writer.writerow(["sample", "fastq_1", "fastq_2", "status"])
+        writer.writerows(sample_rows)
+        files[sheet.name] = handle.getvalue()
     if getattr(args, "_wizard_metadata", None):
-        with metadata_path.open("x", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=["sample", "sample_type", "analysis_role", "fastq_files"])
-            writer.writeheader()
-            writer.writerows(args._wizard_metadata)
+        handle = io.StringIO(newline="")
+        writer = csv.DictWriter(handle, fieldnames=["sample", "sample_type", "analysis_role", "fastq_files"])
+        writer.writeheader()
+        writer.writerows(args._wizard_metadata)
+        files[metadata_path.name] = handle.getvalue()
         values["sample_metadata"] = str(metadata_path)
-    with config_path.open("x", encoding="utf-8") as handle:
-        handle.write(_render_config(values))
+    files[config_path.name] = _render_config(values)
+    args._setup_backup = _save_setup_files(project, files)
     print(
         f"\nConfiguration saved: {config_path}\nInputs stay in their existing folders. Results will be written to: {values['outdir']}"
     )
+    if args._setup_backup:
+        print(f"Previous configuration saved in: {args._setup_backup}")
     if getattr(args, "_wizard_metadata", None):
         return 0
     if getattr(args, "run", False):

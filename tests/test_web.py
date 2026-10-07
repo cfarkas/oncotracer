@@ -162,11 +162,17 @@ class WebTests(unittest.TestCase):
                 self.prepare(threads=count)
         with self.assertRaisesRegex(OncoTracerError, "outside"):
             self.prepare(project=str(self.root / "reads/project"))
-        self.prepare()
+        first = self.prepare()
         before = (self.root / "project/config/run.yml").read_bytes()
-        with self.assertRaisesRegex(OncoTracerError, "will not overwrite"):
-            self.prepare()
-        self.assertEqual(before, (self.root / "project/config/run.yml").read_bytes())
+        result = self.root / "project/logs/keep.txt"
+        result.parent.mkdir(); result.write_text("existing analysis log")
+        updated = self.prepare(threads=3)
+        self.assertTrue(updated["valid"], updated["check"])
+        self.assertEqual(load_flat_yaml(Path(updated["config_path"]))["threads"], 3)
+        self.assertEqual((Path(updated["config_backup"]) / "run.yml").read_bytes(), before)
+        self.assertEqual(result.read_text(), "existing analysis log")
+        with self.assertRaisesRegex(OncoTracerError, "Saved configuration changed"):
+            self.state.run({"project_id": first["id"]})
 
     def test_run_explicit_argv_idempotency_status_and_logs(self):
         self.fastq("reads/library.fastq.gz")

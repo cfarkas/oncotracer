@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 from oncotracer_cli.cli import build_parser, main
 from oncotracer_cli.engine import run_native
 from oncotracer_cli.runtime import load_flat_yaml, render_flat_yaml
+from oncotracer_cli.setup import _save_setup_files
 from tests.test_native_methylation import Fixture
 
 
@@ -26,6 +27,49 @@ class SetupTests(unittest.TestCase):
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
             code = main(list(args))
         return code, output.getvalue()
+
+    def test_setup_resave_backs_up_previous_files_and_preserves_other_contents(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            files = {"run.yml":"threads: 1\n", "samplesheet.csv":"old sample\n", "sample_metadata.csv":"old metadata\n"}
+            self.assertIsNone(_save_setup_files(project, files))
+            result = project / "results/keep"; result.parent.mkdir(); result.write_bytes(b"existing result")
+            backup = _save_setup_files(project, {**files, "run.yml":"threads: 2\n", "samplesheet.csv":"new sample\n"})
+            self.assertEqual({p.name:p.read_text() for p in backup.iterdir()}, files)
+            self.assertEqual((project / "config/run.yml").read_text(), "threads: 2\n")
+            self.assertEqual(result.read_bytes(), b"existing result")
+            self.assertIsNone(_save_setup_files(project, {"run.yml":"threads: 2\n"}))
+
+    def test_setup_resave_rolls_back_if_publishing_the_yaml_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            original = {"run.yml":"old config\n", "samplesheet.csv":"old samples\n"}
+            _save_setup_files(project, original)
+            replace = os.replace
+            def fail_yaml(source, destination):
+                if Path(source).name == "run.yml":
+                    raise OSError("fixture: cannot publish YAML")
+                return replace(source, destination)
+            with patch("oncotracer_cli.setup.os.replace", side_effect=fail_yaml), self.assertRaisesRegex(OSError, "cannot publish"):
+                _save_setup_files(project, {"run.yml":"new config\n", "samplesheet.csv":"new samples\n"})
+            for name, content in original.items():
+                self.assertEqual((project / "config" / name).read_text(), content)
+            self.assertEqual(next((project / "config/backups").glob("*/run.yml")).read_text(), original["run.yml"])
+
+    def test_setup_resave_refuses_redirected_files_and_directories(self):
+        from oncotracer_cli.runtime import OncoTracerError
+        for name in ("config", "config/run.yml", "config/backups"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); project = root / "project"; external = root / "external"
+                if name.endswith("run.yml"):
+                    external.write_text("keep me")
+                else:
+                    external.mkdir(); (external / "keep").write_text("keep me")
+                target = project / name; target.parent.mkdir(parents=True, exist_ok=True)
+                target.symlink_to(external)
+                with self.assertRaises(OncoTracerError):
+                    _save_setup_files(project, {"run.yml":"new settings\n"})
+                self.assertEqual((external if external.is_file() else external / "keep").read_text(), "keep me")
 
     def test_single_illumina_library_with_spaces_hash_and_quotes_in_paths(self):
         with tempfile.TemporaryDirectory() as temporary:

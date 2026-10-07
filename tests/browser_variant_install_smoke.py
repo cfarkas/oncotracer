@@ -16,7 +16,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tests.browser_setup_smoke import free_port, http, wait
 from tests.test_web import HARDWARE
-from oncotracer_cli.runtime import render_flat_yaml
+from oncotracer_cli.runtime import load_flat_yaml, render_flat_yaml
 from oncotracer_cli.variant_installer import VariantInstaller
 from oncotracer_cli.web import WebState, WebServer
 
@@ -46,6 +46,9 @@ if '--prefix' in sys.argv:
 print('Fixture installation complete', flush=True)
 ''')
     manager.chmod(0o755)
+    incomplete = root / 'missing/bin'; incomplete.mkdir(parents=True)
+    for name in ('samtools','bcftools'):
+        tool = incomplete / name; tool.write_text('#!/bin/sh\nexit 0\n'); tool.chmod(0o755)
     (root / 'reference.fa').write_text('>chr1\nACGT\n')
     (root / 'sample.bam').write_text('Synthetic placeholder, never processed')
     (root / 'samples.tsv').write_text('sample\tbam\tstatus\nSYNTHETIC\tsample.bam\ttumor\n')
@@ -94,8 +97,17 @@ print('Fixture installation complete', flush=True)
         click('#choose-illumina'); click('#variant-fresh'); fill('#input-folder',str(reads))
         wait(lambda: js("return !document.querySelector('#settings-card').hidden&&!document.querySelector('main').inert"),'samples')
         click('#variants'); fill('#backend','conda'); fill('#variant_annovar','off')
-        js("for(const field of document.querySelectorAll('[data-variant-caller]'))field.checked=field.value==='freebayes';variantSettings();")
+        js("for(const field of document.querySelectorAll('[data-variant-caller]'))field.checked=['mutect2','freebayes'].includes(field.value);variantSettings();")
         fill('#variant_tool_prefix',str(root / 'missing'))
+        js("for(const row of sampleRows()){const field=row.querySelector('.type-select');field.value='cancer';field.dispatchEvent(new Event('change',{bubbles:true}));}")
+        fill('#project-parent',str(root));fill('#project-name','saved-after-install');click('#prepare')
+        wait(lambda: js("return !document.querySelector('#review-card').hidden&&document.querySelector('#check-badge').textContent==='Needs attention'&&!document.querySelector('main').inert"),'missing GATK check')
+        assert js("return document.querySelector('#check-messages').textContent.includes('Variant tool gatk is unavailable')&&document.querySelector('#run').disabled")
+        saved_config = root / 'saved-after-install/config/run.yml'; before_install = saved_config.read_bytes()
+        previous_log = root / 'saved-after-install/logs/keep.txt'
+        previous_log.parent.mkdir();previous_log.write_text('Existing logs retained')
+        screenshot('missing-gatk-check.png')
+        checks.append('Missing GATK saves a failed check and keeps Run disabled before installation')
         click('#variant-tools-browse'); wait(lambda: value('#variant-tools-folder')==str(reads),'tools folder chooser')
         assert js("return document.querySelector('#variant-autodetect').textContent==='detect_tools'&&getComputedStyle(document.querySelector('#variant-autodetect')).boxShadow!=='none'")
         assert js("return document.querySelector('#variant-install-choices').hidden")
@@ -128,10 +140,14 @@ print('Fixture installation complete', flush=True)
         assert value('#threads')=='3'
         checks.append('Background progress and logs remain live; successful installation selects paths and preserves unrelated edits')
         screenshot('installation-complete.png'); click('#variant-resource-close')
-        js("for(const row of sampleRows()){const field=row.querySelector('.type-select');field.value='cancer';field.dispatchEvent(new Event('change',{bubbles:true}));}")
-        fill('#project-parent',str(root));fill('#project-name','saved-after-install');click('#prepare')
+        click('#prepare')
         wait(lambda: js("return document.querySelector('#check-badge').textContent==='Configuration checked'&&!document.querySelector('#run').disabled"),'save/check using installed tools')
-        checks.append('Save/check succeeds with installed paths and enables Run without starting analysis')
+        assert load_flat_yaml(saved_config)['variant_tool_prefix']==value('#variant_tool_prefix')
+        assert next((saved_config.parent / 'backups').glob('*/run.yml')).read_bytes()==before_install
+        assert previous_log.read_text()=='Existing logs retained'
+        assert not js("return document.querySelector('#check-messages').textContent.includes('Variant tool gatk is unavailable')")
+        screenshot('resaved-gatk-ready.png')
+        checks.append('Same-project save replaces stale GATK settings, retains a backup and existing logs, clears the error and enables Run')
         fill('#variant_tool_prefix',str(root / 'cancelled-missing')); (root / 'wait').touch()
         install_start(); click('#variant-install-stop');finish('cancelled');(root / 'wait').unlink()
         assert value('#variant_tool_prefix')==str(root / 'cancelled-missing')

@@ -28,12 +28,13 @@ Folders without FASTQ, POD5 or BAM files (including subfolders) display
 5. Click **Save configuration and check**, resolve any check errors, then
    **Run analysis**. Follow progress and open results here.
 
-Settings are saved in `PROJECT/config/run.yml`; Illumina also gets
-`config/samplesheet.csv`. Existing configurations are protected.
+Settings use `PROJECT/config/run.yml`; Illumina also gets `config/samplesheet.csv`.
+Saving again overwrites settings and assignments, backing them up in `config/backups/`.
+After installing tools, save/check again to record their paths. Results and references stay.
 **Stop analysis** asks **Delete incomplete run?** **Yes** deletes the new project;
 **No** keeps it. Both close the dialog and return to setup.
 
-**Terminal alternative:** configure without a browser, then validate and run:
+**Terminal alternative:**
 
 ```bash
 oncotracer setup --terminal --backend conda --run
@@ -53,7 +54,7 @@ is unavailable. Reports and [paper panels](paper_report.md) are optional.
 <summary>Prefer terminal questions?</summary>
 
 Add `--terminal`; Enter accepts the displayed default. Finish with `save` or `run`.
-For example, Enter chooses 100 kb here:
+Example:
 
 ```text
 CNA bin size (kb) (1/5/10/15/30/50/100/500/1000) [100]:
@@ -79,8 +80,8 @@ oncotracer setup --terminal --project /work/ont-study --mode ont \
 
 ## 2. Check and run your platform
 
-**Already clicked Run analysis? Skip these commands.** They are alternatives for
-running a saved project from a terminal. Resolve check errors before running.
+**Already clicked Run analysis? Skip these commands.** Otherwise, check and run
+your saved project below. Resolve check errors first.
 
 <details markdown="1">
 <summary>Show terminal check/run commands</summary>

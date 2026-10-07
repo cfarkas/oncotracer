@@ -115,7 +115,9 @@ and step counter follow installation while the setup server stays open. Conda
 creates fresh optional environments; Docker pulls and checks the selected image.
 When installation succeeds, the form selects the installed paths if your settings
 have not changed. Otherwise, review them and click **Use installed tools**.
-Save and check your configuration after installation finishes.
+Save and check your configuration after installation finishes. You can save to
+the same project: previous settings are backed up under `config/backups/`, and
+the new configuration records the selected caller environment for Run.
 
 Conda/Mamba/Micromamba or Docker must already be available on the host. The
 existing-BAM form supports native installation; Docker is offered in FASTQ CNA

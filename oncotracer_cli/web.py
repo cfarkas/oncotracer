@@ -194,7 +194,7 @@ class WebState:
         from .cli import build_parser
         from .setup import _command_setup
 
-        # Serialize creation and prevent a second request racing exclusive writes.
+        # Serialize saves so concurrent requests cannot mix configuration files.
         with self.lock:
             if self.job and self.job["status"] in {"running", "stopping"}:
                 raise OncoTracerError("An analysis is running. Wait for it to finish before preparing another project.")
@@ -376,6 +376,7 @@ class WebState:
             if discovered.mode == "illumina":
                 paths.append(project / "config/samplesheet.csv")
             prepared = {"id": project_id, "project": str(project), "config_path": str(config_path),
+                        "config_backup": str(args._setup_backup) if args._setup_backup else None,
                         "config": config_path.read_text(), "backend": backend, "valid": valid,
                         "check": report, "fingerprint": _fingerprint(paths),
                         "discovered": discovered, "selected_sources": selected_sources,
@@ -409,7 +410,7 @@ class WebState:
             if self.job and self.job["status"] in {"running", "stopping"}:
                 raise OncoTracerError("An analysis is already running in this browser session.")
             if _fingerprint([Path(path) for path in prepared["fingerprint"]]) != prepared["fingerprint"]:
-                raise OncoTracerError("Saved configuration changed after review. Check and run it with the CLI, or prepare a new project.")
+                raise OncoTracerError("Saved configuration changed after review. Save and check settings again before running.")
             if prepared.get('kind') == 'existing_bam_variants':
                 from .variant_web import assert_snapshot
                 assert_snapshot(prepared['input_snapshot'], prepared['input_digests'])
@@ -426,7 +427,7 @@ class WebState:
                     if _input_snapshot(prepared["selected_sources"]) != prepared["input_snapshot"]:
                         raise OncoTracerError("A selected FASTQ file changed.")
                 except (OncoTracerError, OSError) as error:
-                    raise OncoTracerError("FASTQ inputs changed after review. Rescan and review the samples in a new project before running.") from error
+                    raise OncoTracerError("FASTQ inputs changed after review. Rescan and review the samples, then save and check before running.") from error
             project = Path(prepared["project"])
             if project.is_symlink() or project.resolve() != project:
                 raise OncoTracerError('The reviewed project folder was redirected. Prepare a new project.')

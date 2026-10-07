@@ -122,6 +122,36 @@ class VariantSetupTests(unittest.TestCase):
         self.assertFalse((self.project / "results").exists())
         self.assertFalse((self.project / "reference").exists())
 
+    def test_detected_gatk_can_be_saved_over_a_failed_check_and_used_by_run(self):
+        incomplete = self.root / "incomplete-tools"
+        installed = self.root / "installed-tools"
+        for prefix, names in ((incomplete, ("samtools", "bcftools")),
+                              (installed, ("samtools", "bcftools", "gatk"))):
+            (prefix / "bin").mkdir(parents=True)
+            for name in names:
+                tool = prefix / "bin" / name
+                tool.write_text("#!/bin/sh\nexit 99\n"); tool.chmod(0o755)
+        state = self.state()
+        options = dict(variants=True, variant_specimen_type="fresh", variant_callers="mutect2", variant_annovar="off")
+        failed = self.prepare(state, **options, variant_tool_prefix=str(incomplete))
+        self.assertFalse(failed["valid"])
+        self.assertIn("Variant tool gatk is unavailable", failed["check"]["errors"][0])
+        previous = Path(failed["config_path"]).read_bytes()
+        detected = state.variant_resources({"mode":"illumina", "backend":"host", "specimen_type":"fresh",
+            "callers":["mutect2"], "values":{"variant_tool_prefix":str(installed), "variant_annovar":"off"}})
+        self.assertEqual(next(row for row in detected["resources"] if row["id"] == "mutect2")["status"], "found")
+        updated = self.prepare(state, **options, **detected["fields"])
+        self.assertTrue(updated["valid"], updated["check"])
+        self.assertEqual(updated["check"]["variant_tools"]["gatk"], str(installed / "bin/gatk"))
+        self.assertEqual(load_flat_yaml(Path(updated["config_path"]))["variant_tool_prefix"], str(installed))
+        self.assertEqual((Path(updated["config_backup"]) / "run.yml").read_bytes(), previous)
+        with patch("oncotracer_cli.web.subprocess.Popen") as launch, patch("oncotracer_cli.web.threading.Thread"):
+            launch.return_value.pid = 123
+            job = state.run({"project_id": updated["id"]})
+            self.assertEqual(job["status"], "running")
+            self.assertIn(str(self.project), launch.call_args.args[0])
+            self.assertIn("--run", launch.call_args.args[0])
+
     def test_docker_browser_config_checks_without_host_tool_prefix_and_retains_image(self):
         result = self.prepare(self.state(), backend="docker", docker_image="oncotracer:local-test",
                               variants=True, variant_specimen_type="fresh", variant_callers="bcftools",
