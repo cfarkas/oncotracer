@@ -72,6 +72,48 @@ def _input_snapshot(samples):
     return result
 
 
+def _existing_setup_project(project: Path) -> bool:
+    """Recognize an empty destination or a dedicated saved OncoTracer project."""
+    try:
+        if project.is_symlink() or not project.is_dir() or project.is_mount() or project == Path.home():
+            return False
+        contents = {path.name for path in project.iterdir()}
+        if not contents:
+            return True
+        if contents - {"config", "logs", "reference", "results"}:
+            return False
+        config_path = project / "config/run.yml"
+        if config_path.parent.is_symlink() or config_path.is_symlink():
+            return False
+        config = load_flat_yaml(config_path)
+        outdir = Path(str(config.get("outdir", ""))).expanduser()
+        if not outdir.is_absolute():
+            outdir = config_path.parent / outdir
+        return config.get("mode") in {"illumina", "ont"} and outdir.resolve() == project / "results"
+    except (OSError, ValueError, OncoTracerError):
+        return False
+
+
+def _project_removal_error(prepared):
+    if not prepared.get("project_removable", prepared.get("project_created", False)):
+        return "This existing folder is not a dedicated OncoTracer project; automatic removal is unavailable."
+    path = Path(prepared["project"])
+    try:
+        if path.is_symlink() or path.resolve() != path:
+            return "The project folder was replaced or redirected; removal is blocked."
+        current = path.stat()
+        if (current.st_dev, current.st_ino) != prepared["project_identity"]:
+            return "The project folder was replaced; removal is blocked."
+        if path.is_mount() or path == Path.home():
+            return "A home folder or filesystem root cannot be removed here."
+        for source in (*prepared["input_snapshot"], *prepared.get("protected_paths", ())):
+            if Path(source).expanduser().resolve().is_relative_to(path):
+                return "This project contains an input or shared resource; keep the folder to preserve it."
+    except OSError:
+        return "The project folder or its inputs could not be checked; removal is blocked."
+    return None
+
+
 class WebState:
     """Server-owned discoveries, prepared configs and one explicitly started job."""
 
@@ -243,6 +285,8 @@ class WebState:
                 if current.get(key) != sample:
                     raise OncoTracerError("FASTQ files changed since discovery. Scan the folder and review samples again.")
             project = Path(_text(data, "project")).expanduser().resolve()
+            if _choice(data, "project_mode", ("new", "existing"), "new") == "existing" and not project.is_dir():
+                raise OncoTracerError("Choose an existing project folder, or select Create a project.")
             if project == discovered.root or project in discovered.root.parents or discovered.root in project.parents:
                 raise OncoTracerError("Choose a project directory outside the input FASTQ folder.")
             analysis = _choice(data, "analysis", ("cna",) if discovered.mode == "illumina" else ("cna", "methylation", "both"), "cna")
@@ -357,7 +401,14 @@ class WebState:
             selected_sources = tuple(row["source"] for row in entries)
             inputs = _input_snapshot(selected_sources)
             project_created = not project.exists()
+            project_removable = project_created or _existing_setup_project(project)
             _command_setup(args)
+            from .setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
+            from .variant_resources import PATH_FIELDS
+            protected_paths = [str(value) for key in ("pod5_dir", "modbam", "reference_cache", "resources",
+                                *EXECUTABLES, *RESOURCE_FLAGS, *RESOURCE_FILES["marlin"], *RESOURCE_FILES["sturgeon"], *PATH_FIELDS)
+                               if isinstance(value := getattr(args, key, None), str) and value
+                               and Path(value).expanduser().exists()]
             project_stat = project.stat()
             config_path = project / "config/run.yml"
             command = _launcher() + ["check", "--variant-tools", "--json", "--config", str(config_path)]
@@ -382,10 +433,11 @@ class WebState:
                         "discovered": discovered, "selected_sources": selected_sources,
                         "input_snapshot": inputs, "outdir": str(project / "results"),
                         "project_created": project_created,
+                        "project_removable": project_removable, "protected_paths": protected_paths,
                         "project_identity": (project_stat.st_dev, project_stat.st_ino)}
             self.projects[project_id] = prepared
             return {key: value for key, value in prepared.items()
-                    if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot", "project_created", "project_identity"}}
+                    if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot", "project_created", "project_removable", "protected_paths", "project_identity"}}
 
     def variant_resources(self, data):
         return discover_variant_resources(data, roots=tools_roots(self.start_dir, data))
@@ -545,24 +597,20 @@ class WebState:
                 job["stop_error"] = f"Could not stop the analysis: {error}"
 
     def remove_project(self, data):
-        """Remove a newly created project only after stop and explicit confirmation."""
+        """Remove a dedicated project only after stop and exact confirmation."""
         with self.lock:
             project_id = _text(data, "project_id")
             if not self.job or self.job["project_id"] != project_id or self.job["status"] != "stopped":
                 raise OncoTracerError("Stop this analysis completely before removing its project folder.")
             prepared = self.projects[project_id]
-            if not prepared.get("project_created"):
-                raise OncoTracerError("This folder existed before browser setup; automatic removal is unavailable.")
             path = Path(prepared["project"])
             if data.get("confirm_remove") is not True or data.get("confirm_path") != str(path):
                 raise OncoTracerError("Confirm deletion of this exact incomplete project folder.")
             if self._group_running(self.job["pid"]):
                 raise OncoTracerError("Analysis processes are still active; removal is blocked.")
-            if path.is_symlink() or path.resolve() != path:
-                raise OncoTracerError("The project folder was replaced or redirected; removal is blocked.")
-            current = path.stat()
-            if (current.st_dev, current.st_ino) != prepared["project_identity"]:
-                raise OncoTracerError("The project folder was replaced; removal is blocked.")
+            reason = _project_removal_error(prepared)
+            if reason:
+                raise OncoTracerError(reason)
             # Never follow directory symlinks into inputs, shared references or tools.
             if not shutil.rmtree.avoids_symlink_attacks:
                 raise OncoTracerError("Safe folder removal is unavailable on this platform.")
@@ -601,7 +649,8 @@ class WebState:
             result = {key: value for key, value in self.job.items() if key != "process" and not key.startswith("_")}
             prepared = self.projects[result["project_id"]]
             result["project_path"] = prepared["project"]
-            result["can_remove"] = result["status"] == "stopped" and prepared.get("project_created", False)
+            result["remove_block_reason"] = _project_removal_error(prepared) if result["status"] == "stopped" else None
+            result["can_remove"] = result["status"] == "stopped" and not result["remove_block_reason"]
             if result["status"] == "removed":
                 result.update(log="Project folder removed by confirmation. Input files and shared download caches were kept.", log_truncated=False)
                 result["progress"] = progress_for_job(self.job, result["log"])

@@ -40,7 +40,7 @@ oncotracer setup --variants
    then choose matching ONT profiles or review FFPE resources.
 4. Optionally enable **Varlociraptor** and local **ANNOVAR annotation**.
 5. Review any missing resources or model candidates before continuing.
-6. Choose a new project folder, click **Save configuration and check**, then
+6. Choose a new or existing project folder, click **Save configuration and check**, then
    **Run analysis**. Review CNA and variant results from the same page.
 
 <details markdown="1">

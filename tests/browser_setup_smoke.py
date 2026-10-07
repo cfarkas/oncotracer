@@ -88,7 +88,7 @@ def main():
             # Use real HTTP/configuration paths with a harmless job instead of
             # executing an analysis. Other commands still call the actual CLI.
             launcher = root / "dummy_analysis.py"
-            launcher.write_text("""import subprocess,sys
+            launcher.write_text("import sys\nsys.path.insert(0, " + repr(str(Path(__file__).resolve().parents[1])) + ")\n" + """import subprocess,sys
 if 'setup' in sys.argv and '--run' in sys.argv:
     child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(600)'])
     print('Dummy analysis ready',flush=True)
@@ -371,12 +371,16 @@ else:
         report["checks"].append("input FASTQs unchanged; no analysis or reference downloads started")
         if options.test_stop:
             assert js("return document.querySelector('h1').textContent") == 'Configure and run an analysis'
-            for remove in (False, True):
+            for remove, existing in ((False, False), (True, False), (True, True)):
                 if remove:
                     click('#choose-illumina');click('#variant-fresh')
                     fill('#input-folder', str(fixture / 'illumina'));sample_count(2)
                 fill('.sample[data-id="0"] .type-select', 'cancer')
-                name = 'stop-remove-project' if remove else 'stop-keep-project'
+                name = 'stop-existing-project' if existing else 'stop-remove-project' if remove else 'stop-keep-project'
+                if existing:
+                    prepare(name)
+                    fill('#project-mode','existing')
+                    pick('[data-browse="existing-project"]', root / name)
                 prepare(name);click('#run')
                 wait(lambda: js("return !document.querySelector('#stop').hidden && !document.querySelector('#stop').disabled"), 'enabled Stop button')
                 wait(lambda: js("return document.querySelector('#logs').textContent.includes('Dummy analysis ready')"), 'dummy process readiness')
@@ -392,6 +396,7 @@ else:
                 assert js("return document.activeElement.id") == 'keep-project'
                 assert js("return document.querySelector('#cleanup-title').textContent") == 'Delete incomplete run?'
                 assert js("return [...document.querySelectorAll('#cleanup button')].map(e=>e.textContent)") == ['No', 'Yes']
+                assert not js("return document.querySelector('#remove-project').disabled")
                 assert (root / name).is_dir()
                 if not remove:
                     click('#keep-project');assert (root / name / 'config/run.yml').is_file()
@@ -399,6 +404,7 @@ else:
                     click('#remove-project')
                     wait(lambda: js("return !document.querySelector('#cleanup').open"), 'confirmed removal')
                     assert not (root / name).exists()
+                    assert js("return document.querySelector('#project-mode').value==='new'&&document.querySelector('#existing-project').value===''")
                 assert not js("return document.querySelector('#cleanup').open")
                 assert js("return document.querySelector('#workflow').hidden && !document.querySelector('#choose-illumina').disabled")
                 # A delayed status response for this stopped job cannot reopen
@@ -406,7 +412,7 @@ else:
                 wd('POST', '/execute/async', {'script': 'const done=arguments[0];poll().then(()=>done(true));', 'args': []})
                 assert not js("return document.querySelector('#cleanup').open")
                 assert not js("return document.querySelector('#choose-illumina').disabled")
-                report['checks'].append('Stop: ' + ('Yes deletes only the incomplete project' if remove else 'No retains the project') + '; dialog closes and setup stays usable after polling')
+                report['checks'].append('Stop: ' + ('Yes deletes the existing project after re-saving' if existing else 'Yes deletes only the incomplete project' if remove else 'No retains the project') + '; dialog closes and setup stays usable after polling')
             assert before == {str(path): path.read_bytes() for path in fixture.rglob('*.gz')}
             click('#choose-illumina');click('#variant-fresh')
         # A stopped local server must give actionable recovery instructions.
