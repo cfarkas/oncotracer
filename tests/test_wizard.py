@@ -304,13 +304,13 @@ class WizardTests(unittest.TestCase):
                     self.assertTrue(config["gistic_required"])
                 run.assert_not_called()
 
-    def test_existing_config_and_conflicting_flags_do_not_prompt_or_change_files(self):
+    def test_conflicting_flags_do_not_prompt_or_change_existing_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = root / "project/config/run.yml"
             config.parent.mkdir(parents=True)
             config.write_text("existing configuration\n")
-            for extra in ([], ["--input-folder", str(root), "--non-interactive"],
+            for extra in (["--input-folder", str(root), "--non-interactive"],
                           ["--input-folder", str(root), "--manual"],
                           ["--input-folder", str(root), "--fastq-2", "mate.fastq.gz"],
                           ["--input-folder", str(root), "--status", "normal"],
@@ -320,6 +320,20 @@ class WizardTests(unittest.TestCase):
                 self.assertEqual(prompts, [])
                 self.assertEqual(config.read_text(), "existing configuration\n")
                 run.assert_not_called()
+
+    def test_terminal_wizard_replaces_existing_configuration_with_a_backup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reads = root / "reads"; self.fastq(reads / "case.fastq.gz")
+            config = root / "project/config/run.yml"
+            config.parent.mkdir(parents=True); config.write_text("previous settings\n")
+            code, output, prompts, run = self.invoke(
+                "setup", "--terminal", "--project", str(root / "project"), "--input-folder", str(reads),
+                answers={"Sequencing platform":"illumina", "Type for case":"cancer", "CPU threads":"2"})
+            self.assertEqual(code, 0, output)
+            self.assertEqual(load_flat_yaml(config)["threads"], 2)
+            self.assertEqual(next((config.parent / "backups").glob("*/run.yml")).read_text(), "previous settings\n")
+            run.assert_not_called()
 
     def test_reference_choices_remain_deferred_and_preserve_prepared_files(self):
         from tests.test_hg38_setup import Hg38SetupTests

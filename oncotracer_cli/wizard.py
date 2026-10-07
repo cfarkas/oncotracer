@@ -90,23 +90,20 @@ def _show_hardware(hardware, suggested):
 
 def command_wizard(original_args) -> int:
     from . import cli
-    from .setup import _command_setup, _existing_hg38_parent, _run_setup, _variant_values, command_check
+    from .setup import _command_setup, _existing_hg38_parent, _run_setup, _validate_setup_destination, _variant_values, command_check
 
     args = copy.copy(original_args)
     run_requested = args.run
     args.run = False
     print("OncoTracer setup: select FASTQs, assign sample types, choose settings, then save or run.")
-    def new_project(path):
-        for name in ("run.yml", "samplesheet.csv", "sample_metadata.csv"):
-            target = path / "config" / name
-            if target.exists() or target.is_symlink():
-                raise OncoTracerError(f"setup will not overwrite {target}; choose a new --project or edit the existing YAML")
+    def project_destination(path):
+        _validate_setup_destination(path)
         return path
 
-    project = new_project(Path(args.project).expanduser().resolve()) if args.project else None
+    project = project_destination(Path(args.project).expanduser().resolve()) if args.project else None
     args.mode = _ask(args.mode, "Sequencing platform (--mode)", choices=("ont", "illumina"))
     if project is None:
-        project = new_project(Path(_ask(None, "Project directory (--project)")).expanduser().resolve())
+        project = project_destination(Path(_ask(None, "Project directory (--project)")).expanduser().resolve())
     args.project = str(project)
     folder = Path(_ask(args.input_folder or args.reads_folder, "FASTQ folder (--input-folder)")).expanduser()
     discovered = discover_fastqs(folder, args.mode)

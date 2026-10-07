@@ -461,7 +461,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         absent = []
         for identity, names in required.items():
             found = search.which(names, selected_prefix)
-            detail = "Executable file found; it was not run." if found else "Missing in the selected prefix." if selected_prefix else "No executable found on PATH or in a complete candidate environment."
+            detail = "Executable available. Save and check settings to use this environment; detection does not execute tools." if found else "Missing in the selected prefix." if selected_prefix else "No executable found on PATH or in a complete candidate environment."
             if choice_needed:
                 detail = "Available in multiple complete environments. Select the caller environment path first."
             row(identity, "/".join(names), "candidate" if choice_needed else "found" if found else "missing", found,
@@ -474,7 +474,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
             need("variant_tools")
         row("variant_tools", "Caller environment", "candidate" if choice_needed else "missing" if absent else "found", selected_prefix,
             "Multiple complete environments exist; choose the intended prefix." if choice_needed else
-            ("Missing: " + ", ".join(absent)) if absent else "Requested executable files are present. Dependencies and versions need run preflight.")
+            ("Missing: " + ", ".join(absent)) if absent else "Requested executable files are present. Save and check settings to record these tools for analysis.")
 
     if STRELKA_CALLERS.intersection(callers):
         if backend == "docker":

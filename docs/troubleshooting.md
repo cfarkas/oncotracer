@@ -8,7 +8,8 @@ Run `oncotracer check --config /absolute/path/to/run.yml`. It lists missing path
 | --- | --- |
 | `setup` or `check` is not recognized | Activate the environment created during [installation](installation.md); use `command -v oncotracer` to check which command your terminal is using |
 | A path does not exist | Use the actual absolute path; `/data/...` and `/work/...` in examples must be replaced |
-| Setup refuses to overwrite a YAML | Edit that existing file, or choose a new `--project` |
+| Updating an existing project | Save and check again; setup replaces the configuration by default and retains previous settings under `config/backups/` |
+| GATK is found but the saved configuration says it is unavailable | Save and check after detection or installation so `variant_tool_prefix` is recorded in `run.yml`; the **Found** badge reports discovery, not a saved configuration change |
 | `auto` will not overwrite a file | To resume, repeat `run`; for a different analysis choose a new `--config-dir` and `--outdir` |
 | `expected CSV header` | Use the exact header for your command; a four-column Illumina table belongs to `setup --samplesheet`, not `auto --sample-table` |
 | Terminal shows `>` and waits | Paste the closing `CSV` line on its own, or cancel with Ctrl+C; see [command basics](command_basics.md) |
