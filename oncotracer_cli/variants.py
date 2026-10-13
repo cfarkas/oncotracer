@@ -62,6 +62,8 @@ class VariantRequest:
     accept_ffperase_license: bool = False
     strelka_prefix: Path | None = None
     matched_normals: tuple[tuple[str, str], ...] = ()
+    engine: str = 'native'
+    glimpse_config: dict | None = None
 
     def as_dict(self):
         result = {k: str(v) if isinstance(v, Path) else list(v) if isinstance(v, tuple) else v
@@ -83,6 +85,16 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
     specimen = str(config.get('variant_specimen_type') or '').strip().lower()
     if specimen not in {'fresh', 'ffpe'}:
         raise OncoTracerError('Select variant_specimen_type: fresh or ffpe')
+    if mode == 'illumina':
+        if config.get('variant_engine', 'glimpse2') != 'glimpse2':
+            raise OncoTracerError('Illumina short variants now requires the complete GLIMPSE2 workflow')
+        supplied=config.get('variant_callers')
+        if supplied:
+            chosen=tuple(x.strip().lower() for x in supplied.split(',')) if isinstance(supplied,str) else tuple(supplied)
+            if len(set(chosen))!=len(chosen) or any(x not in SUPPORTED_CALLERS[mode] for x in chosen):
+                raise OncoTracerError('Unsupported or duplicate Illumina caller selection; the complete GLIMPSE2 workflow uses bcftools and Mutect2')
+        config=dict(config)
+        config.update(variant_callers='bcftools,mutect2',variant_varlociraptor='off',variant_varlociraptor_events='PRESENT',variant_varlociraptor_sample='sample',variant_varlociraptor_scenario=None,variant_ffperase='required' if specimen=='ffpe' else 'off')
     raw = config.get('variant_callers') or DEFAULT_CALLERS[mode]
     callers = tuple(x.strip().lower() for x in raw.split(',')) if isinstance(raw, str) else tuple(raw)
     if not callers or len(set(callers)) != len(callers) or any(c not in SUPPORTED_CALLERS[mode] for c in callers):
@@ -156,7 +168,7 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
     matched_normals = parse_matched_normals(config.get('variant_matched_normals'))
     if 'strelka2_somatic' in callers and not matched_normals:
         raise OncoTracerError('Strelka2 somatic requires variant_matched_normals: an explicit tumor-to-matched-normal sample mapping')
-    if matched_normals and 'strelka2_somatic' not in callers:
+    if matched_normals and 'strelka2_somatic' not in callers and mode != 'illumina':
         raise OncoTracerError('variant_matched_normals requires selecting strelka2_somatic')
     strelka_prefix = path('variant_strelka_prefix') or (Path(os.environ['ONCOTRACER_STRELKA_PREFIX']).expanduser().resolve() if os.environ.get('ONCOTRACER_STRELKA_PREFIX') else None)
     if strelka_prefix and any(c.startswith('strelka2_') for c in callers) and not config.get('_docker_skip_host_tools') and not (strelka_prefix / 'bin').is_dir():
@@ -168,6 +180,9 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
                           vl_mode, fdr, scenario, events, vl_sample, profile, auto_model, download_resources, accept_license, strelka_prefix, tuple(sorted(matched_normals.items())))
     from .variant_model_assets import resource_download_plan
     resource_download_plan(request)
+    if mode == 'illumina':
+        from .glimpse_pipeline import validate_options
+        request=replace(request,engine='glimpse2',glimpse_config=validate_options(config))
     return request
 
 
@@ -176,6 +191,9 @@ def call_semantics(caller):
 
 
 def variant_plan(request: VariantRequest) -> dict:
+    if request.engine == 'glimpse2':
+        from .glimpse_pipeline import plan
+        return plan(request)
     from .variant_model_assets import resource_download_plan
     return {**request.as_dict(), 'engine': 'native', 'nextflow_used': False,
             'resource_downloads': resource_download_plan(request),
@@ -187,6 +205,9 @@ def variant_plan(request: VariantRequest) -> dict:
 
 
 def preflight_variant_tools(request: VariantRequest, toolchain=None) -> dict[str, str]:
+    if request.engine == 'glimpse2':
+        from .glimpse_pipeline import preflight
+        return preflight(request,toolchain)
     def find(name, alternatives=()):
         for candidate in (name, *alternatives):
             if request.tool_prefix:
@@ -499,7 +520,10 @@ def _call(request, caller, sample, bam, ref, directory, tools, runner, threads, 
 
 def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, outdir: Path, runner, ledger,
                  *, threads=1, force=False, sample_statuses=None, toolchain=None) -> dict:
-    """Run selected callers independently. Persist per-sample failures and results."""
+    """Run the complete imputation workflow for Illumina; retain the ONT branch."""
+    if request.engine == 'glimpse2':
+        from .glimpse_pipeline import run
+        return run(request,bams,reference,outdir,runner,ledger,threads=threads,force=force,sample_statuses=sample_statuses,toolchain=toolchain)
     if threads < 1 or not bams:
         raise OncoTracerError('Variants require BAM inputs and positive threads')
     if any(not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', s) for s in bams):

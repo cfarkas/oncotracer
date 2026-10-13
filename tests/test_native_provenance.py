@@ -209,7 +209,8 @@ class NativeProvenanceTests(unittest.TestCase):
                 name
                 for name in names
                 if "__pycache__" in PurePosixPath(name).parts
-                or PurePosixPath(name).suffix in {".pyc", ".pyo", ".nf"}
+                or PurePosixPath(name).suffix in {".pyc", ".pyo"}
+                or (PurePosixPath(name).suffix == ".nf" and name != "payload/oncotracer_cli/lpwgs/main.nf")
             ]
             self.assertEqual(forbidden, [])
             self.assertTrue(names)

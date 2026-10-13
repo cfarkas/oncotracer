@@ -11,6 +11,7 @@ from .variant_model_assets import is_auto_resource, resource_download_plan
 
 
 PATH_FIELDS = (
+    'variant_glimpse_reference_dir', 'variant_glimpse_bin', 'variant_resource_dir', 'variant_patients', 'variant_reuse_from',
     'variant_targets_bed', 'variant_tool_prefix', 'variant_strelka_prefix', 'variant_clair3_model',
     'variant_clairsto_sif', 'variant_annovar_dir', 'variant_annovar_db',
     'variant_ffperase_root', 'variant_ffperase_models', 'variant_ffperase_sif',
@@ -49,7 +50,7 @@ def resource_paths(config):
             # Optional annotation discovery reports absent paths at execution.
             continue
         paths.append(path)
-        if not path.is_dir():
+        if not path.is_dir() or key in ('variant_glimpse_reference_dir', 'variant_resource_dir', 'variant_reuse_from'):
             continue
         if key in ('variant_tool_prefix', 'variant_ffperase_prefix', 'variant_strelka_prefix'):
             for directory in ('bin', 'conda-meta'):

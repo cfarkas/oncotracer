@@ -210,7 +210,9 @@ def command_wizard(original_args) -> int:
                         choices=("conda", "docker", "singularity", "poetry", "host"))
     if not getattr(args, "variants", False):
         args.variants = _ask(None, "Add small-variant calling?", default="no", choices=("yes", "no")) == "yes"
-    if args.variants:
+    if args.variants and args.mode == "illumina":
+        print("GLIMPSE2 is included in the complete short-variant workflow; completed compatible outputs are reused. FFPE specimens require FFPERASE assessment.")
+    elif args.variants:
         print("Choose one preservation type per project. Mutect2 and ClairS-TO make tumor-only candidate calls; other callers use germline-style models. Normal labels do not define matched tumor/normal pairs.")
         print("FFPE damage, low coverage, and tumor copy-number changes require artifact review; calls do not establish somatic origin.")
     values.update(_variant_values(args, args.mode, interactive=True))
@@ -253,7 +255,7 @@ def command_wizard(original_args) -> int:
     if args.analysis != "cna":
         print(f"Methylation classifier: {config['methylation_classifier']}; GPU allowed: {config['methylation_gpu']}")
     if config.get("run_variants"):
-        print(f"Small variants: {config['variant_callers']}; preservation: {config['variant_specimen_type']}; ANNOVAR: {config['variant_annovar']}")
+        print(f"Small variants: {config.get('variant_engine', 'legacy')} / {config['variant_callers']}; preservation: {config['variant_specimen_type']}; ANNOVAR: {config['variant_annovar']}")
     reference = "download prebuilt indexes when needed" if config["hg38_auto_download"] else ("build missing indexes locally" if args.build_reference else "reuse prepared reference")
     print(f"Reference: {reference}\nReference folder: {config['lpwgs_root']}\nSample types: {config['sample_metadata']}")
     print("Analysis may download reference files and prepare missing tools when it starts.")

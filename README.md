@@ -1,5 +1,8 @@
 # OncoTracer
 
+
+**Illumina short variants:** the complete GLIMPSE2 workflow and browser entry are now available through `nextflow run main.nf --interactive`. See the [migration and reuse guide](docs/GLIMPSE_MIGRATION.md). Existing published Docker images predate this backend; use the current local checkout or a published repository revision with the required host tools.
+
 [![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
 Analyze Illumina and Oxford Nanopore (ONT) reads for DNA copy-number changes and optional small variants. Configure samples in your browser and follow analysis progress through to tables, plots and reports. ONT methylation supports MARLIN leukemia and Sturgeon CNS-tumor research classifiers. For research use.
