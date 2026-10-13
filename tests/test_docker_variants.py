@@ -218,14 +218,14 @@ class DockerVariantTests(unittest.TestCase):
             self.assertIn('custom/image:new',call.args[0])
             self.assertNotIn('local/image:tested',call.args[0])
 
-    def test_docker_dispatch_runs_with_validated_preview_context(self):
+    def test_docker_dispatch_rejects_unsupported_complete_glimpse_before_running(self):
         def host(config_path, args):
             return resolve_variant_request(self.config,mode='illumina')
         with patch.object(cli,'_prepare_configured_hg38'), patch.object(cli,'_run_host',side_effect=host), \
              patch.object(cli,'_run_docker') as run:
-            result=cli.execute_run(self.config_path,self.args('--dry-run'))
-        self.assertEqual(result.callers,('bcftools',))
-        run.assert_called_once()
+            with self.assertRaisesRegex(OncoTracerError,'GLIMPSE2 workflow requires'):
+                cli.execute_run(self.config_path,self.args('--dry-run'))
+        run.assert_not_called()
 
     def publish_partial(self):
         from oncotracer_cli.output_safety import claim_output_run

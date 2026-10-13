@@ -432,8 +432,10 @@ class DocumentedWorkflowTests(unittest.TestCase):
             self.assertFalse(invalid_project.exists())
 
     def test_retired_entrypoints_are_absent_from_the_working_tree(self):
+        self.assertIn("oncotracer_cli.nextflow_gateway", (ROOT / "main.nf").read_text())
+        self.assertIn("mainScript", (ROOT / "nextflow.config").read_text())
         for relative in (
-            "main.nf", "nextflow.config", "run_test.sh", "environment.yml",
+            "run_test.sh", "environment.yml",
             "docs/legacy_v1.md", "docs/migration_v1_to_v2.md",
             ".github/templates/runtime-smoke-v1.1.yml",
             "bin/cna_classifier_nf/main.nf", "bin/cna_classifier_nf/nextflow.config",
