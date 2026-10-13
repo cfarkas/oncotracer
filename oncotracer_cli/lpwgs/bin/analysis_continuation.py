@@ -121,7 +121,7 @@ def collect(config,root,outputs_roots,core,imputation):
 
 def trait_inputs(config,root,output_roots,core,imputation):
     if set(config.get('glimpse_chromosomes',[]))-set(imputation.get('ligated',{})):return []
-    if f'merge:{config['sample']}' not in core:return []
+    if f"merge:{config['sample']}" not in core:return []
     for output in reversed(output_roots):
         for script in sorted((Path(output)/'work').glob('*/*/.command.sh'),key=lambda p:p.stat().st_mtime,reverse=True):
             try:
