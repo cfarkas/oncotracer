@@ -179,7 +179,7 @@ def command_variants(args) -> int:
     # no embedded reference/scripts payload needs extraction, even in a zipapp.
     inspect_output_target(outdir)
     _standalone_target(outdir)
-    plan = {"schema": COMMAND_SCHEMA, "engine": "native", "nextflow_used": False,
+    plan = {"schema": COMMAND_SCHEMA, "engine": request.engine, "nextflow_used": request.engine == "glimpse2",
             "analysis": "variants", "mode": mode, "config": str(config_path), "outdir": str(outdir),
             "threads": threads, "force": force, "reference": str(reference), "bam_manifest": str(manifest),
             "samples": [{"sample": sample, "bam": str(bam), "status": statuses[sample]} for sample, bam in bams.items()],
@@ -204,7 +204,7 @@ def command_variants(args) -> int:
         atomic_write_json(outdir / MARKER, {"schema": COMMAND_SCHEMA, "output_id": lease.owner["output_id"]})
         atomic_write_json(native / "variant-inputs.json", {**plan, "config_sha256": digest, "manifest_sha256": manifest_digest,
                                                           "input_metadata": input_snapshot})
-        atomic_write_text(native / "engine.txt", f"engine=native\nnextflow_used=false\nversion={__version__}\nanalysis=variants\n")
+        atomic_write_text(native / "engine.txt", f"engine={request.engine}\nnextflow_used={str(request.engine == 'glimpse2').lower()}\nversion={__version__}\nanalysis=variants\n")
         cache = native / "runtime-cache"
         cache.mkdir(exist_ok=True)
         trace = native / "trace.tsv"
@@ -226,7 +226,7 @@ def command_variants(args) -> int:
                 atomic_write_json(Path(status["status_file"]), status)
         validate_inputs()
         lease.validate()
-        summary = {"oncotracer_version": __version__, "engine": "native", "nextflow_used": False,
+        summary = {"oncotracer_version": __version__, "engine": request.engine, "nextflow_used": request.engine == "glimpse2",
                    "analysis": "variants", "mode": mode, "outdir": str(outdir), "completed_at": utc_now(),
                    "workflow_status": status["overall_status"], "cna_status": "not_requested",
                    "methylation_status": "not_requested", "cna_classifier_status": "not_requested",

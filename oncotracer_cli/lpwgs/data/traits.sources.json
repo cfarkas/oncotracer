@@ -1,0 +1,11 @@
+{
+  "assembly": "GRCh38",
+  "allele_orientation": "genomic forward strand",
+  "checked_date_local": "2026-10-07",
+  "coordinates": {
+    "rs12913832": {"url": "https://rest.ensembl.org/variation/human/rs12913832?content-type=application/json", "chrom": "15", "pos": 28120472, "ensembl_alleles": "A/C/G", "modeled_alleles": "A/G", "pubmed": "18252222"},
+    "rs4988235": {"url": "https://rest.ensembl.org/variation/human/rs4988235?content-type=application/json", "chrom": "2", "pos": 135851076, "ensembl_alleles": "G/A/C/T", "modeled_alleles": "G/A", "pubmed": "29063188"},
+    "rs17822931": {"url": "https://rest.ensembl.org/variation/human/rs17822931?content-type=application/json", "chrom": "16", "pos": 48224287, "ensembl_alleles": "C/G/T", "modeled_alleles": "C/T", "pubmed": "16444273"}
+  },
+  "note": "Publication alleles can use transcript/reverse orientation. The bundled TSV uses genomic forward alleles; unmodeled alternate alleles are withheld. Every run checks the TSV reference base against its FASTA."
+}

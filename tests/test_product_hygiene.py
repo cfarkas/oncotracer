@@ -81,6 +81,9 @@ INTENTIONAL_PYTHON_NEXTFLOW_AUDIT_LINES = {
     "oncotracer_cli/engine.py": {
         'if "nextflow" in trace_text.lower():',
     },
+    "oncotracer_cli/setup.py": {
+        "for field in ('glimpse-reference-dir','glimpse-bin','resource-dir','patients','reuse-from','nextflow','workflow-source'):",
+    },
 }
 PYTHON_SOURCE_SUFFIXES = frozenset({".py", ".pyw"})
 SHIPPED_SOURCE_SUFFIXES = frozenset(
@@ -91,6 +94,32 @@ SHIPPED_SOURCE_SUFFIXES = frozenset(
         ".r",
     }
 )
+
+
+# This migration intentionally adds one complete GLIMPSE2 Nextflow workflow.
+# These narrowly scoped exceptions affect the retired-runtime audit only;
+# all local-path, credentials and source-integrity checks still apply.
+GLIMPSE_WORKFLOW_FILES = frozenset({
+    'main.nf', 'nextflow.config',
+    'oncotracer_cli/lpwgs/main.nf', 'oncotracer_cli/lpwgs/nextflow.config',
+})
+GLIMPSE_COMMAND_MODULES = frozenset({
+    'oncotracer_cli/glimpse_pipeline.py', 'oncotracer_cli/nextflow_gateway.py',
+})
+GZIP_MAGIC_MODULES = frozenset({
+    'oncotracer_cli/lpwgs/bin/glimpse_download.py',
+    'oncotracer_cli/lpwgs/bin/launch.py',
+    'oncotracer_cli/lpwgs/bin/pipeline.py',
+})
+
+
+def source_relative(relative: str) -> str:
+    return relative.removeprefix('payload/')
+
+
+def intentional_glimpse_commands(relative: str) -> bool:
+    source = source_relative(relative)
+    return source in GLIMPSE_COMMAND_MODULES or source.startswith('oncotracer_cli/lpwgs/')
 
 
 def tracked_paths() -> list[Path]:
@@ -160,13 +189,15 @@ def python_nextflow_command_violations(relative: str, text: str) -> list[str]:
     except SyntaxError as error:
         return [f"{relative}:{error.lineno or 0}: Python payload does not parse"]
     lines = text.splitlines()
-    allowed = INTENTIONAL_PYTHON_NEXTFLOW_AUDIT_LINES.get(relative, set())
+    allowed = INTENTIONAL_PYTHON_NEXTFLOW_AUDIT_LINES.get(source_relative(relative), set())
     violations: set[str] = set()
     for node in ast.walk(syntax):
         static_value = static_python_text(node)
         if static_value is None or not hasattr(node, "lineno"):
             continue
         if isinstance(static_value, bytes):
+            if source_relative(relative) in GZIP_MAGIC_MODULES and static_value == bytes((0x1f, 0x8b)):
+                continue
             # subprocess accepts bytes argv. Undecodable literals cannot be
             # classified safely, so never normalize them with lossy decoding.
             try:
@@ -186,7 +217,7 @@ def python_nextflow_command_violations(relative: str, text: str) -> list[str]:
         if not standalone and not contains_nextflow_run_tokens(value):
             continue
         line = lines[node.lineno - 1].strip()
-        if standalone and line in allowed:
+        if intentional_glimpse_commands(relative) or (standalone and line in allowed):
             continue
         violations.add(
             f"{relative}:{node.lineno}: forbidden static Nextflow command token: {line}"
@@ -202,7 +233,8 @@ def materialized_tree_violations(staging: Path) -> list[str]:
         name = PurePosixPath(relative)
         suffix = name.suffix.casefold()
         if suffix == ".nf" or name.name.casefold() == "nextflow.config":
-            violations.append(f"legacy workflow file leaked by {relative}")
+            if source_relative(relative) not in GLIMPSE_WORKFLOW_FILES:
+                violations.append(f"legacy workflow file leaked by {relative}")
         text = readable_text(path)
         if text is None:
             if suffix in SHIPPED_SOURCE_SUFFIXES:
@@ -220,7 +252,7 @@ def materialized_tree_violations(staging: Path) -> list[str]:
                 )
         folded = text.casefold()
         for command in NEXTFLOW_COMMAND_PATTERNS:
-            if command in folded:
+            if command in folded and not intentional_glimpse_commands(relative):
                 violations.append(
                     f"legacy workflow command leaked by {relative}: {command}"
                 )
@@ -469,6 +501,22 @@ class ProductHygieneTests(unittest.TestCase):
             ),
             [],
         )
+
+    def test_glimpse_exceptions_preserve_private_data_and_runtime_guards(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            staging = Path(directory)
+            module = staging/'payload/oncotracer_cli/lpwgs/bin/pipeline.py'
+            module.parent.mkdir(parents=True)
+            module.write_text("import subprocess\nsubprocess.run(['nextflow', 'run', 'main.nf'])\n")
+            self.assertEqual(materialized_tree_violations(staging), [])
+            module.write_text(module.read_text() + '# ' + FORBIDDEN_LOCAL_TEXT[0] + '\n')
+            self.assertTrue(any('local path leaked' in value for value in materialized_tree_violations(staging)))
+            module.write_text("import subprocess\nsubprocess.run([b'\\xff\\xfe'])\n")
+            self.assertTrue(any('non-UTF-8 static bytes' in value for value in materialized_tree_violations(staging)))
+            module.unlink()
+            unexpected = staging/'payload/oncotracer_cli/lpwgs/retired.nf'
+            unexpected.write_text('workflow {}\n')
+            self.assertTrue(any('legacy workflow file' in value for value in materialized_tree_violations(staging)))
 
     def test_every_nonlegacy_svg_is_native(self) -> None:
         for path in sorted((ROOT / "docs" / "assets").rglob("*.svg")):

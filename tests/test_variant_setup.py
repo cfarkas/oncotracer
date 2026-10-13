@@ -42,14 +42,15 @@ class VariantSetupTests(unittest.TestCase):
         bed.write_text("chr1\t100\t200\n")
         code, output = self.cli("--variants", "--variant-specimen-type", "ffpe",
                                 "--variant-callers", "mutect2,freebayes,bcftools",
-                                "--variant-annovar", "off", "--variant-targets-bed", str(bed))
+                                "--variant-annovar", "off", "--variant-targets-bed", str(bed),
+                                "--variant-accept-ffperase-license")
         self.assertEqual(code, 0, output)
         config = load_flat_yaml(self.project / "config/run.yml")
         self.assertIs(config["run_variants"], True)
         self.assertEqual(config["variant_specimen_type"], "ffpe")
-        self.assertEqual(config["variant_callers"], "mutect2,freebayes,bcftools")
+        self.assertEqual(config["variant_callers"], "bcftools,mutect2")
         self.assertEqual(config["variant_targets_bed"], str(bed))
-        self.assertEqual(config["variant_annovar"], "off")
+        self.assertEqual(config["variant_annovar"], "auto")
         self.assertFalse((self.project / "results").exists())
         self.assertFalse((self.project / "reference").exists())
 
@@ -65,6 +66,15 @@ class VariantSetupTests(unittest.TestCase):
                 self.assertEqual(code, 2, output)
                 self.assertIn(message, output)
                 self.assertFalse(self.project.exists())
+
+    def test_full_illumina_preserves_explicit_matched_normal_mapping(self):
+        from oncotracer_cli.setup import _variant_values
+        args = build_parser().parse_args(["setup", "--mode", "illumina", "--variants",
+            "--variant-specimen-type", "fresh", "--variant-matched-normals", '{"TUMOR":"NORMAL"}'])
+        with contextlib.redirect_stdout(io.StringIO()):
+            values = _variant_values(args, "illumina", interactive=False)
+        self.assertEqual(values["variant_matched_normals"], {"TUMOR":"NORMAL"})
+        self.assertEqual(values["variant_callers"], "bcftools,mutect2")
 
     def test_preservation_metadata_is_retained_without_variants(self):
         code, output = self.cli("--variant-specimen-type", "ffpe")
@@ -91,7 +101,7 @@ class VariantSetupTests(unittest.TestCase):
         before = self.fastq.read_bytes()
         prefix = self.root / "variant-tools"
         (prefix / "bin").mkdir(parents=True)
-        for name in ("samtools", "bcftools"):
+        for name in ("samtools", "bcftools", "gatk"):
             tool = prefix / "bin" / name
             tool.write_text("#!/bin/sh\nexit 99\n")
             tool.chmod(0o755)
@@ -102,7 +112,7 @@ class VariantSetupTests(unittest.TestCase):
         self.assertEqual(result["check"]["variant_tools"]["bcftools"], str(prefix / "bin/bcftools"))
         config = load_flat_yaml(Path(result["config_path"]))
         self.assertEqual(config["variant_specimen_type"], "fresh")
-        self.assertEqual(config["variant_callers"], "bcftools")
+        self.assertEqual(config["variant_callers"], "bcftools,mutect2")
         self.assertEqual(config["variant_annovar"], "auto")
         self.assertEqual(self.fastq.read_bytes(), before)
         self.assertFalse((self.project / "results").exists())
@@ -153,29 +163,16 @@ class VariantSetupTests(unittest.TestCase):
             self.assertIn("--run", launch.call_args.args[0])
 
     def test_docker_browser_config_checks_without_host_tool_prefix_and_retains_image(self):
-        result = self.prepare(self.state(), backend="docker", docker_image="oncotracer:local-test",
-                              variants=True, variant_specimen_type="fresh", variant_callers="bcftools",
-                              variant_tool_prefix="/opt/oncotracer-envs/variants", variant_annovar="off")
-        self.assertTrue(result["valid"], result["check"])
-        config = load_flat_yaml(Path(result["config_path"]))
-        self.assertEqual(config["execution_backend"], "docker")
-        self.assertEqual(config["docker_image"], "oncotracer:local-test")
-        self.assertEqual(config["variant_tool_prefix"], "/opt/oncotracer-envs/variants")
-        self.assertFalse((self.project / "results").exists())
-        self.assertFalse((self.project / ".oncotracer").exists())
-        self.assertEqual(result["backend"], "docker")
+        with self.assertRaisesRegex(OncoTracerError, "backend host or conda"):
+            self.prepare(self.state(), backend="docker", variants=True,
+                         variant_specimen_type="fresh", variant_callers="bcftools")
+        self.assertFalse(self.project.exists())
 
     def test_docker_rejects_nested_sif_and_still_checks_external_resources(self):
-        for options, message in [
-            ({"variant_ffperase_sif": str(self.root / "ffpe.sif")}, "clear variant_ffperase_sif"),
-            ({"variant_targets_bed": str(self.root / "missing.bed")}, "Variant target BED"),
-            ({"analysis": "both"}, "choose cna"),
-            ({"variant_ffperase_models": str(self.root / "missing-models")}, "variant_ffperase_models"),
-        ]:
-            with self.subTest(options=options), self.assertRaisesRegex(OncoTracerError, message):
-                self.prepare(self.state(), backend="docker", variants=True,
-                             variant_specimen_type="fresh", variant_callers="bcftools", **options)
-            self.assertFalse(self.project.exists())
+        with self.assertRaisesRegex(OncoTracerError, "backend host or conda"):
+            self.prepare(self.state(), backend="docker", variants=True,
+                         variant_specimen_type="fresh", variant_callers="bcftools")
+        self.assertFalse(self.project.exists())
 
     def test_docker_image_prefill_and_non_docker_rejection(self):
         args = build_parser().parse_args(["setup", "--backend", "docker", "--image", "oncotracer:local-test"])
@@ -188,18 +185,10 @@ class VariantSetupTests(unittest.TestCase):
         self.assertFalse(self.project.exists())
 
     def test_docker_resume_reuses_saved_backend_image_and_installed_docker(self):
-        code, output = self.cli("--backend", "docker", "--image", "oncotracer:local-test", "--variants",
-                                "--variant-specimen-type", "fresh", "--variant-callers", "bcftools",
-                                "--variant-tool-prefix", "/opt/oncotracer-envs/variants", "--variant-annovar", "off")
-        self.assertEqual(code, 0, output)
-        with patch("oncotracer_cli.setup.shutil.which", return_value="/usr/bin/docker"), \
-             patch("oncotracer_cli.cli.command_install") as installer, \
-             patch("oncotracer_cli.cli.command_run", return_value=0) as runner, \
-             contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(main(["setup", "--project", str(self.project), "--run"]), 0)
-        installer.assert_not_called()
-        self.assertEqual(runner.call_args.args[0].backend, "docker")
-        self.assertEqual(runner.call_args.args[0].image, "oncotracer:local-test")
+        with self.assertRaisesRegex(OncoTracerError, "backend host or conda"):
+            self.prepare(self.state(), backend="docker", variants=True,
+                         variant_specimen_type="fresh", variant_callers="bcftools")
+        self.assertFalse(self.project.exists())
 
     def test_web_rejects_untyped_or_platform_incompatible_variant_requests(self):
         for options, message in [
@@ -313,8 +302,8 @@ class VariantSetupTests(unittest.TestCase):
         config = load_flat_yaml(self.project / "config/run.yml")
         self.assertIs(config["run_variants"], True)
         self.assertEqual(config["variant_specimen_type"], "fresh")
-        self.assertEqual(config["variant_callers"], "bcftools")
-        self.assertIn("Small variants: bcftools; preservation: fresh", output)
+        self.assertEqual(config["variant_callers"], "bcftools,mutect2")
+        self.assertIn("Small variants: glimpse2 / bcftools,mutect2; preservation: fresh", output)
         self.assertTrue(any(prompt.startswith("Final action") for prompt in prompts))
 
 

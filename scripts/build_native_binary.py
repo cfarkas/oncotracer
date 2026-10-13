@@ -199,7 +199,16 @@ def _payload_member_target(staging: Path, member_name: str) -> Path | None:
             part == "__pycache__" or part.endswith((".pyc", ".pyo"))
             for part in relative.parts
         )
-        return None if forbidden else staging.joinpath(*relative.parts)
+        if forbidden:
+            return None
+        # Nextflow and its helper subprocesses need real filesystem paths. Only
+        # the vendored complete GLIMPSE2 bundle enters the verified payload;
+        # ordinary CLI modules remain directly importable from the zipapp.
+        if relative.parts[:2] == ("oncotracer_cli", "lpwgs"):
+            if any(part == "work" or part.startswith(".nextflow") for part in relative.parts):
+                return None
+            return (staging / "payload").joinpath(*relative.parts)
+        return staging.joinpath(*relative.parts)
     if first not in PAYLOAD_ROOTS:
         return None
     if relative.as_posix() in NATIVE_PAYLOAD_EXCLUDED_PATHS:
@@ -347,7 +356,8 @@ def write_build_metadata(
 
 def validate_python_sources(staging: Path) -> None:
     """Compile native sources in memory without creating cleanup artifacts."""
-    for source in sorted((staging / "oncotracer_cli").rglob("*.py")):
+    roots = (staging / "oncotracer_cli", staging / "payload/oncotracer_cli/lpwgs")
+    for source in sorted(path for root in roots for path in root.rglob("*.py")):
         try:
             compile(source.read_bytes(), str(source), "exec")
         except (SyntaxError, ValueError) as error:

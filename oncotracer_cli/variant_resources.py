@@ -29,11 +29,12 @@ CALLERS = {"illumina": ("mutect2", "freebayes", "bcftools", "strelka2_germline",
 TOOLS = {"mutect2": ("gatk",), "freebayes": ("freebayes",), "bcftools": ("bcftools",),
          "clair3": ("run_clair3.sh", "run_clair3.py"), "clairs_to": ("run_clairs_to",)}
 PATH_FIELDS = {
+    "variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir", "variant_patients", "variant_reuse_from",
     "variant_tool_prefix", "variant_strelka_prefix", "variant_targets_bed", "variant_clair3_model", "variant_clairsto_sif",
     "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_prefix", "variant_ffperase_sif",
     "variant_annovar_dir", "variant_annovar_db", "variant_varlociraptor_scenario",
 }
-SETTING_FIELDS = {"variant_ffperase", "variant_varlociraptor", "variant_annovar", "variant_reference_build",
+SETTING_FIELDS = {"variant_engine", "variant_ffperase", "variant_varlociraptor", "variant_annovar", "variant_reference_build",
                   "variant_clairsto_platform", "variant_specimen_type", "variant_callers", "variant_varlociraptor_fdr",
                   "variant_varlociraptor_events", "variant_varlociraptor_sample", "variant_ont_profile",
                   "variant_download_resources", "variant_accept_ffperase_license"}

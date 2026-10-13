@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "genome_build": "GRCh38",
+  "reviewed_utc": "2026-10-11",
+  "variants": {
+    "chr9:22003368:G:A": {
+      "allele_id": "800881",
+      "variation_id": "812639",
+      "rsid": "rs1063192",
+      "gene": "CDKN2B / CDKN2B-AS1",
+      "reviewed_utc": "2026-10-11",
+      "evidence_scope": "Exact variant; condition-specific public assertions and primary association study.",
+      "text": "This common noncoding allele lies in the CDKN2B/CDKN2B-AS1 region. ClinVar separates a protective assertion for three-vessel coronary disease from a likely pathogenic assertion for breast cancer. Both lack assertion criteria; the submitter observations describe somatic origin, which cannot establish the origin of this sample allele. A separate benign oncogenicity assessment concerns tumor biology. None of these assertions establishes an inherited cancer syndrome or cardiomyopathy. An association study investigated this marker in three-vessel coronary disease; its population associations do not supply a personal risk estimate.",
+      "sources": [
+        "https://www.ncbi.nlm.nih.gov/clinvar/variation/812639/",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC7161109/"
+      ],
+      "inheritance": "Complex-trait association context; Mendelian inheritance is not established for these assertions.",
+      "clinical_message": "Do not combine classifications for different conditions into a single disease interpretation."
+    },
+    "chr12:47906043:T:C": {
+      "allele_id": "3495322",
+      "variation_id": "3336650",
+      "rsid": "rs4516035",
+      "gene": "VDR",
+      "reviewed_utc": "2026-10-11",
+      "evidence_scope": "Exact variant; current public ClinVar status. No variant-specific COPD article is cited in the ClinVar record reviewed.",
+      "text": "The older local snapshot labels this VDR-region allele likely pathogenic for chronic obstructive pulmonary disease. The public ClinVar record reviewed on 2026-10-11 instead excludes the flagged submission from its aggregate classification. ClinGen flags the common frequency and the use of Mendelian pathogenicity terminology for a complex condition. No primary COPD publication is linked to that submission in the reviewed record. The report therefore records an evidence gap and does not equate this allele with COPD, vitamin D deficiency, or a treatment indication.",
+      "sources": [
+        "https://www.ncbi.nlm.nih.gov/clinvar/variation/3336650/"
+      ],
+      "inheritance": "Complex respiratory disease association; no Mendelian disease mechanism established here.",
+      "clinical_message": "The older likely pathogenic label is superseded for interpretation by the flagged public status, without altering the original annotation files."
+    },
+    "chr17:35879999:A:G": {
+      "allele_id": "27779",
+      "variation_id": "12740",
+      "rsid": "rs2280789",
+      "gene": "CCL5 / RANTES",
+      "reviewed_utc": "2026-10-11",
+      "evidence_scope": "Exact variant; primary functional/association study and public ClinVar update.",
+      "text": "An et al. studied regulatory CCL5/RANTES variants, including the intronic In1.1T/C marker, and reported associations with HIV-related outcomes and altered transcription. The paper uses gene-strand alleles; GRCh38 forward-strand A>G corresponds to T>C. This is a context-dependent modifier studied with other variants, population background and infection status. Current ClinVar excludes the flagged pathogenic submission because this is not a monogenic disease assertion. The genotype cannot diagnose HIV infection, predict progression for this sample, or establish cardiomyopathy.",
+      "sources": [
+        "https://www.ncbi.nlm.nih.gov/clinvar/variation/12740/",
+        "https://pubmed.ncbi.nlm.nih.gov/12114533/"
+      ],
+      "pmids": [
+        "12114533"
+      ],
+      "inheritance": "Complex infectious-disease modifier; interpretation depends on infection and haplotype context.",
+      "clinical_message": "HIV status and prognosis cannot be inferred from this genetic marker."
+    },
+    "chr5:1212338:G:A": {
+      "allele_id": "17058",
+      "variation_id": "2019",
+      "rsid": "rs121434346",
+      "gene": "SLC6A19",
+      "reviewed_utc": "2026-10-11",
+      "evidence_scope": "Exact GRCh38 allele; public ClinVar assessment and the primary gene-discovery report.",
+      "text": "SLC6A19 c.517G>A (p.Asp173Asn) is a missense allele associated with Hartnup disorder, a recessive neutral-amino-acid transport disorder. ClinVar aggregates pathogenic and likely pathogenic submissions with criteria and no classification conflicts. Seow et al. identified SLC6A19 variants in Hartnup disorder. This gene-level mechanism and the allele classification do not establish disease in a sample. If an isolated heterozygous genotype is confirmed, the result is consistent with possible carrier status; low-pass data do not exclude an undetected second allele.",
+      "sources": [
+        "https://www.ncbi.nlm.nih.gov/clinvar/variation/2019/",
+        "https://pubmed.ncbi.nlm.nih.gov/15286788/"
+      ],
+      "pmids": [
+        "15286788"
+      ],
+      "inheritance": "Autosomal recessive Hartnup disorder. A heterozygous allele alone does not establish affected status.",
+      "clinical_message": "Confirm the exact genotype before assigning carrier status or using the result clinically; rare imputation is not independent confirmation."
+    }
+  },
+  "traits": {
+    "Eye pigmentation": {
+      "text": "HERC2/OCA2 regulation contributes to iris pigmentation. This panel provides a marker-level association; eye colour also depends on other loci and population background.",
+      "pmids": [
+        "18252222"
+      ]
+    },
+    "Adult lactase persistence": {
+      "text": "The MCM6/LCT regulatory marker is informative in some populations. Other persistence alleles exist, and a genotype does not establish digestive symptoms or lactose tolerance.",
+      "pmids": [
+        "29063188"
+      ]
+    },
+    "Earwax type": {
+      "text": "ABCC11 variation has a strong association with wet or dry earwax. The inheritance rule in this panel is applied only to a resolved genotype.",
+      "pmids": [
+        "16444273"
+      ]
+    },
+    "Pigmentation (HIrisPlex-S marker)": {
+      "text": "These markers belong to a published joint pigmentation system. A marker can contribute information without determining a phenotype alone. The pipeline has not run the calibrated HIrisPlex-S prediction model, so it does not turn these marker genotypes into eye, hair or skin colour probabilities.",
+      "pmids": [
+        "29753263"
+      ]
+    },
+    "ACTN3 muscle function": {
+      "text": "ACTN3 R577X affects a muscle protein and has been investigated in athletic cohorts. One marker cannot determine athletic ability or a training prescription.",
+      "pmids": [
+        "12879365"
+      ]
+    },
+    "Bitter taste (TAS2R38 haplotype marker)": {
+      "text": "TAS2R38 taste associations depend on combinations of coding markers. Single-marker calls and unverified phase do not establish a taste haplotype or perceived bitterness.",
+      "pmids": [
+        "12595690"
+      ]
+    },
+    "Caffeine metabolism": {
+      "text": "CYP1A2 variation was studied using caffeine metabolism. Smoking, exposure and other factors affect enzyme activity; this marker is not a personal safe-caffeine-dose calculation.",
+      "pmids": [
+        "10233211"
+      ]
+    },
+    "Alcohol metabolism (ADH1B)": {
+      "text": "ADH1B variants have been studied in alcohol-consumption and dependence cohorts. Association and enzyme context do not justify a personal safe alcohol intake or a diagnosis of dependence.",
+      "pmids": [
+        "30482948"
+      ]
+    },
+    "Alcohol metabolism (ALDH2)": {
+      "text": "ALDH2 is part of acetaldehyde metabolism. This row reports the selected marker; no drinking recommendation or individual disease-risk estimate is inferred.",
+      "sources": [
+        "https://www.ncbi.nlm.nih.gov/gene/217"
+      ]
+    },
+    "Body mass association (FTO)": {
+      "text": "The FTO locus is associated with BMI in population studies. Its effect is probabilistic and cannot determine an individual weight, BMI, or obesity diagnosis.",
+      "pmids": [
+        "17434869"
+      ]
+    }
+  },
+  "policy": "Curated paragraphs apply only to the exact GRCh38 allele and verified AlleleID. Additional variants receive record-based explanations with explicit literature gaps. PubMed metadata retrieval does not constitute full-text review."
+}

@@ -1,5 +1,6 @@
 """Existing-BAM CLI ownership, validation, real calling and failure recovery."""
 import contextlib
+from dataclasses import replace
 import io
 import json
 import os
@@ -65,7 +66,10 @@ class VariantCommandTests(unittest.TestCase):
         self.assertEqual(plan['outdir'],str(self.outdir))
         self.assertEqual(plan['reference'],str(self.reference))
         self.assertEqual(plan['threads'],2)
-        self.assertFalse(plan['nextflow_used'])
+        self.assertTrue(plan['nextflow_used'])
+        self.assertEqual(plan['engine'], 'glimpse2')
+        self.assertTrue(plan['variants']['glimpse2_required'])
+        self.assertEqual(plan['variants']['callers'], ['bcftools', 'mutect2'])
         self.assertFalse(self.outdir.exists())
         self.assertEqual(before,{str(p.relative_to(self.root)):p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
 
@@ -115,7 +119,16 @@ class VariantCommandTests(unittest.TestCase):
         self.assertFalse(self.outdir.exists())
 
     @unittest.skipUnless(shutil.which('samtools') and shutil.which('bcftools'), 'samtools and bcftools required')
-    def test_real_bcftools_exports_resume_failure_recovery_and_preserves_sources(self):
+    def test_internal_native_bcftools_exports_resume_failure_recovery_and_preserves_sources(self):
+        # Native execution remains an internal backend contract (also used by
+        # ONT). Override only this synthetic test; public Illumina requests
+        # above retain the complete mandatory GLIMPSE2 plan.
+        resolve = variant_command.resolve_variant_request
+        def native_request(*args, **kwargs):
+            return replace(resolve(*args, **kwargs), engine='native', callers=('bcftools',), ffperase='off')
+        resolver = patch.object(variant_command, 'resolve_variant_request', side_effect=native_request)
+        resolver.start()
+        self.addCleanup(resolver.stop)
         fixture_root=self.root/'synthetic';fixture_root.mkdir()
         fixture=SyntheticInput(fixture_root)
         self.manifest.write_text(f'sample\tbam\tstatus\nFIXTURE\t{fixture.bam}\ttumor\n')
