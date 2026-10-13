@@ -15,6 +15,7 @@ import hashlib
 import sqlite3
 import subprocess
 from collections import Counter
+from importlib import resources
 from pathlib import Path
 from urllib.parse import quote
 from .runtime import OncoTracerError, atomic_write_json, sha256_file
@@ -28,6 +29,11 @@ SOURCES = ['https://www.nature.com/articles/s41588-023-01438-3',
            'https://odelaneau.github.io/GLIMPSE/docs/documentation/phase/',
            'https://www.nature.com/articles/s41467-025-65654-7',
            'https://github.com/papaemmelab/nf-ffperase']
+
+
+def _implementation_sha256(filename):
+    """Hash shipped source bytes, including when loaded from an immutable zipapp."""
+    return hashlib.sha256(resources.files('oncotracer_cli').joinpath(filename).read_bytes()).hexdigest()
 
 
 def _number(value):
@@ -336,8 +342,8 @@ def assess_and_vote(input_vcf, output_dir, sample, imputed_paths=(), *, bam,
                 'reference_index': _file_signature(str(reference) + '.fai', digest=True),
                 'imputed': [_file_signature(p) for p in imputed_paths],
                 'detection': detection, 'tools': tools,
-                'implementation': sha256_file(Path(__file__)),
-                'ffperase_implementation': sha256_file(Path(ffperase.__file__))}
+                'implementation': _implementation_sha256('glimpse_ffpe.py'),
+                'ffperase_implementation': _implementation_sha256('ffperase.py')}
     signature = hashlib.sha256(json.dumps(identity, sort_keys=True, default=str).encode()).hexdigest()
     manifest = output / f'{sample}.ffpe_glimpse.resume.json'
     if manifest.exists():

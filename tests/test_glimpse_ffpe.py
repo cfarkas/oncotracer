@@ -1,5 +1,10 @@
 """Missing imputation never establishes artifact or somatic origin."""
 import gzip
+import hashlib
+import json
+import subprocess
+import sys
+import zipfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -215,3 +220,23 @@ class FFPEExecutionAdapterTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class PackagedSourceDigestTests(unittest.TestCase):
+    def test_digest_reads_packaged_sources_from_zip(self):
+        package = Path(__file__).resolve().parents[1] / 'oncotracer_cli'
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / 'runtime.pyz'
+            with zipfile.ZipFile(archive, 'w') as output:
+                for source in package.glob('*.py'):
+                    output.write(source, 'oncotracer_cli/' + source.name)
+            code = ("import sys,json;sys.path.insert(0,sys.argv[1]);"
+                    "from oncotracer_cli import glimpse_ffpe as m;"
+                    "assert m.__file__.startswith(sys.argv[1]);"
+                    "print(json.dumps([m._implementation_sha256(n) for n in "
+                    "('glimpse_ffpe.py','ffperase.py')]))")
+            result = subprocess.run([sys.executable, '-c', code, str(archive)],
+                                    cwd=directory, capture_output=True, text=True, check=True)
+            self.assertEqual(json.loads(result.stdout), [
+                hashlib.sha256((package / name).read_bytes()).hexdigest()
+                for name in ('glimpse_ffpe.py', 'ffperase.py')])
