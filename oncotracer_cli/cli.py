@@ -679,7 +679,11 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
         return _run_host(config_path, args)
     if backend == "docker":
         from .docker_runtime import docker_host_preview, validate_docker_variants
-        validate_docker_variants(load_flat_yaml(config_path))
+        selected=load_flat_yaml(config_path)
+        validate_docker_variants(selected)
+        if (selected.get('mode')=='illumina' and
+                str(selected.get('run_variants',False)).strip().lower() in {'true','1','yes','on'}):
+            raise OncoTracerError('The complete Illumina GLIMPSE2 workflow requires host, conda or poetry; existing container images do not include this backend')
         with docker_host_preview():
             _prepare_configured_hg38(config_path, args)
             outdir = _run_host(config_path, args) if args.dry_run else None

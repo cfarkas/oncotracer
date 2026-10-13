@@ -96,6 +96,11 @@ class NativeDocumentationTests(unittest.TestCase):
         for path in ACTIVE:
             text = path.read_text(encoding="utf-8")
             self.assertIn("oncotracer", text.lower(), path)
+            # CNA docs remain native; README now advertises the explicitly
+            # requested complete short-variant Nextflow entry.
+            if path.name == "README.md":
+                self.assertIn("docs/GLIMPSE_MIGRATION.md", text)
+                text = "\n".join(line for line in text.splitlines() if line.startswith("**Illumina short variants:**") is False)
             self.assertNotIn("nextflow run", text.lower(), path)
 
     def test_architecture_overview_keeps_implementation_details_separate(self) -> None:
