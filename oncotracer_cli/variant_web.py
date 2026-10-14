@@ -151,6 +151,10 @@ def prepare_for_browser(state, data):
                 elif key == "variant_matched_normals":
                     from .strelka2 import parse_matched_normals
                     config[key] = parse_matched_normals(data[key])
+                elif key == "variant_parallel_samples":
+                    if type(data[key]) is not int or data[key] < 1:
+                        raise OncoTracerError("Parallel samples must be a positive integer.")
+                    config[key] = data[key]
                 elif key in VARIANT_BOOLEAN_FIELDS:
                     if type(data[key]) is not bool:
                         raise OncoTracerError(f"{key} must be true or false.")

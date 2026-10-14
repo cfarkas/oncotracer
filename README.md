@@ -1,7 +1,7 @@
 # OncoTracer
 
 
-**Illumina short variants:** the complete GLIMPSE2 workflow and browser entry are now available through `nextflow run main.nf --interactive`. See the [migration and reuse guide](docs/GLIMPSE_MIGRATION.md). Existing published Docker images predate this backend; use the current local checkout or a published repository revision with the required host tools.
+**Illumina short variants:** the complete GLIMPSE2 workflow and browser entry are now available through `nextflow run main.nf --interactive`. See the [migration and reuse guide](docs/GLIMPSE_MIGRATION.md) and [parallel-sample quickstart with parity checks](docs/MULTISAMPLE_QUICKSTART.md). Existing published Docker images predate this backend; use the current local checkout or a published repository revision with the required host tools.
 
 [![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 

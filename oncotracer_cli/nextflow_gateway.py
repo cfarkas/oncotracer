@@ -24,7 +24,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--port', type=int, default=8888, help='local browser port (default: 8888)')
     p.add_argument('--start_dir', '--start-dir', help='initial browser folder; defaults to the Nextflow launch directory')
     p.add_argument('--backend', choices=('host', 'conda', 'poetry', 'docker', 'singularity'))
-    p.add_argument('--threads', type=int, help='optional CPU override')
+    p.add_argument('--threads', type=int, help='total CPU budget shared across concurrent samples')
+    p.add_argument('--parallel_samples', '--parallel-samples', type=int,
+                   help='maximum concurrent Illumina sample workflows (default: config, otherwise 1)')
     p.add_argument('--dry_run', '--dry-run', action='store_true', help='validate and show the configured analysis without executing it')
     return p
 
@@ -44,6 +46,8 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         raise ValueError(f'Nextflow launch directory does not exist: {launch}')
     if args.threads is not None and args.threads < 1:
         raise ValueError('--threads must be positive')
+    if args.parallel_samples is not None and args.parallel_samples < 1:
+        raise ValueError('--parallel_samples must be a positive integer')
     if not 1 <= args.port <= 65535:
         raise ValueError('--port must be between 1 and 65535')
     config = resolve_path(args.config, launch) if args.config else None
@@ -79,6 +83,8 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
             argv.append('--dry-run')
     if args.threads is not None:
         argv += ['--threads', str(args.threads)]
+    if args.parallel_samples is not None:
+        argv += ['--parallel-samples', str(args.parallel_samples)]
     env = os.environ.copy()
     old = env.get('PYTHONPATH', '')
     env['PYTHONPATH'] = str(source) + (os.pathsep + old if old else '')

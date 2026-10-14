@@ -132,6 +132,9 @@ function guidedVariantPayload(data){
     data.variant_engine='glimpse2';data.variant_callers='bcftools,mutect2';data.variant_annovar='auto';data.variant_varlociraptor='off';
     data.variant_ffperase=data.variant_specimen_type==='ffpe'?'required':'off';
     data.variant_confidence_gwas=get('variant_confidence_gwas').value||'medium';
+    const parallel=Number(get('variant_parallel_samples').value);
+    if(!Number.isInteger(parallel)||parallel<1)throw Error('Samples running at once must be a positive integer.');
+    data.variant_parallel_samples=parallel;data.variant_memory=get('variant_memory').value.trim()||'32GB';
     for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])data[key]=get(key).value.trim();
   }else data.variant_engine='legacy';
   if(String(data.variant_callers||'').split(',').includes('clair3')&&get('variant-clair3-source').value==='auto'){

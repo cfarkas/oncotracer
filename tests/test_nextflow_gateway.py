@@ -52,8 +52,20 @@ class NextflowGatewayTests(unittest.TestCase):
             self.assertEqual(build_parser().parse_args(argv[3:]).threads, 3)
         self.assertFalse((self.root / 'SHOULD_NOT_EXIST').exists())
 
+    def test_parallel_sample_override_reaches_visual_variants_and_full_cli(self):
+        for flags in [('--interactive',), ('--analysis','variants','--config',self.config.name),
+                      ('--analysis','full','--config',self.config.name)]:
+            argv, _, _ = gateway.command(self.args(*flags, '--parallel_samples', '4', '--threads', '32'))
+            parsed = build_parser().parse_args(argv[3:])
+            self.assertEqual(parsed.threads, 32)
+            field = 'variant_parallel_samples' if parsed.command == 'setup' else 'parallel_samples'
+            self.assertEqual(getattr(parsed, field), 4)
+            if parsed.command == 'setup':
+                self.assertFalse(parsed.terminal)
+                self.assertFalse(parsed.non_interactive)
+
     def test_missing_config_and_invalid_runtime_inputs_are_rejected(self):
-        for values in [[], ['--interactive', '--port', '0'], ['--interactive', '--threads', '0'],
+        for values in [[], ['--interactive', '--port', '0'], ['--interactive', '--threads', '0'], ['--interactive', '--parallel_samples', '0'],
                        ['--interactive', '--start_dir', 'missing'], ['--interactive', '--dry_run']]:
             with self.subTest(values=values), self.assertRaises(ValueError):
                 gateway.command(self.args(*values))
@@ -84,11 +96,11 @@ class NextflowGatewayTests(unittest.TestCase):
         stub.chmod(0o755)
         env = {**os.environ, 'NXF_OFFLINE': 'true'}
         argv = [shutil.which('nextflow'), 'run', str(ROOT / 'main.nf'), '--python', str(stub)]
-        visual = subprocess.run([*argv, '--interactive', '--port', '8877', '--start_dir', str(self.root)],
+        visual = subprocess.run([*argv, '--interactive', '--port', '8877', '--start_dir', str(self.root), '--parallel_samples', '3'],
                                 cwd=self.root, env=env, text=True, capture_output=True, timeout=90)
         self.assertEqual(visual.returncode, 0, visual.stdout + visual.stderr)
         payload = json.loads(record.read_text())
-        self.assertEqual(payload['argv'][3:], ['setup', '--port', '8877', '--mode', 'illumina', '--variants'])
+        self.assertEqual(payload['argv'][3:], ['setup', '--port', '8877', '--mode', 'illumina', '--variants', '--parallel-samples', '3'])
         self.assertEqual(payload['cwd'], str(self.root))
         self.assertEqual(payload['source'].split(os.pathsep)[0], str(ROOT))
         failed = subprocess.run([*argv, '--analysis', 'full', '--config', self.config.name],

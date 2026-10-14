@@ -11,6 +11,7 @@ from collections import Counter
 from html.parser import HTMLParser
 from unittest.mock import patch
 
+from oncotracer_cli.runtime import OncoTracerError
 from oncotracer_cli.variant_web_ui import PAGE
 from oncotracer_cli.web_ui import PAGE as FASTQ_PAGE
 from oncotracer_cli.setup import VARIANT_FIELDS, _variant_values
@@ -34,7 +35,7 @@ class GlimpseUiTests(unittest.TestCase):
             self.assertFalse([key for key, count in ids.items() if count > 1])
             for field in ('variant_patients', 'variant_confidence_gwas', 'variant_glimpse_reference_dir',
                           'variant_glimpse_bin', 'variant_resource_dir', 'variant_reuse_from',
-                          'variant_nextflow', 'variant_workflow_source'):
+                          'variant_nextflow', 'variant_workflow_source', 'variant_parallel_samples', 'variant_memory'):
                 self.assertEqual(ids[field], 1)
                 self.assertIn(field, VARIANT_FIELDS)
             self.assertFalse(any(attrs.get('id') == 'variant_engine' for _, attrs in items))
@@ -55,7 +56,7 @@ class GlimpseUiTests(unittest.TestCase):
             "for(const id of ['variant-clair3-source'", 1)[0]
         script = r'''
 const assert=require('node:assert/strict');let mode='illumina';
-const nodes={variant_confidence_gwas:{value:'medium'},'variant-clair3-source':{value:'auto'},
+const nodes={variant_parallel_samples:{value:'4'},variant_memory:{value:'128GB'},variant_confidence_gwas:{value:'medium'},'variant-clair3-source':{value:'auto'},
 variant_ont_profile:{value:'r1041_e82_400bps_sup_v500'},variant_download_resources:{checked:true},
 variant_accept_ffperase_license:{checked:true},'variant-scenario-mode':{value:'standard'}};
 for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])nodes[key]={value:'/fixture/'+key};
@@ -66,6 +67,9 @@ assert.equal(value.variant_engine,'glimpse2');assert.equal(value.variant_callers
 assert.equal(value.variant_ffperase,'required');assert.equal(value.variant_annovar,'auto');assert.equal(value.variant_varlociraptor,'off');
 assert.equal(value.variant_confidence_gwas,'medium');assert.equal(value.variant_download_resources,true);
 assert.equal(value.variant_patients,'/fixture/variant_patients');
+assert.equal(value.variant_parallel_samples,4);assert.equal(value.variant_memory,'128GB');
+for(const bad of ['0','-1','1.5','', 'true']){nodes.variant_parallel_samples.value=bad;assert.throws(()=>guidedVariantPayload({}),/positive integer/);}
+nodes.variant_parallel_samples.value='4';
 value=guidedVariantPayload({variant_specimen_type:'fresh',variant_callers:'bcftools'});
 assert.equal(value.variant_ffperase,'off');assert.equal(value.variant_download_resources,false);
 mode='ont';value=guidedVariantPayload({variant_callers:'clair3',variant_ffperase:'off'});
@@ -106,10 +110,31 @@ syncVariantChoices('illumina',null);assert.equal(nodes['variant-glimpse-settings
         self.assertEqual(values['variant_callers'], 'bcftools,mutect2')
         self.assertEqual(values['variant_confidence_gwas'], 'medium')
         self.assertEqual(values['variant_annovar'], 'auto')
+        self.assertEqual(values['variant_parallel_samples'], 1)
+        self.assertEqual(values['variant_memory'], '32GB')
         self.assertEqual(len(prompts), 3)
         self.assertFalse(any('callers' in p or 'Varlociraptor' in p for p in prompts))
         self.assertNotIn('variant_patients', values)
         validate.assert_called_once_with(values, mode='illumina')
+
+    def test_terminal_parallel_settings_validate_and_preserve_integer(self):
+        for value in (0, -1, True, 1.5, "4"):
+            args = Namespace(variants=True, analysis='cna', backend='host', variant_specimen_type='fresh',
+                             variant_parallel_samples=value)
+            with contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(OncoTracerError, "positive integer"):
+                _variant_values(args, 'illumina', interactive=False)
+        args = Namespace(variants=True, analysis='cna', backend='host', variant_specimen_type='fresh',
+                         variant_parallel_samples=4, variant_memory='128GB')
+        with patch('oncotracer_cli.variants.resolve_variant_request'), contextlib.redirect_stdout(io.StringIO()):
+            result = _variant_values(args, 'illumina', interactive=False)
+        self.assertEqual(result['variant_parallel_samples'], 4)
+        self.assertEqual(result['variant_memory'], '128GB')
+
+    def test_ont_setup_rejects_parallel_sample_override(self):
+        args = Namespace(variants=True, analysis='cna', backend='host', variant_specimen_type='fresh',
+                         variant_parallel_samples=2)
+        with self.assertRaisesRegex(OncoTracerError, 'requires the Illumina GLIMPSE2'):
+            _variant_values(args, 'ont', interactive=False)
 
     def test_terminal_ffpe_keeps_requirement_and_explicit_existing_license(self):
         args = Namespace(variants=True, analysis='cna', backend='host', variant_specimen_type='ffpe',

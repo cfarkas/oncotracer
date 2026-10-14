@@ -19,9 +19,9 @@ from glimpse_download import INTEGRITY_VERSION, PANEL_EXPECTATIONS
 
 def analysis_config(config):
     # These new downstream-only settings cannot alter GLIMPSE reference/phase/ligation.
-    downstream={'imputed_clinvar','polygenic','pgs_manifest','pgs_cache','pgs_ids','pgs_source_files','pgs_min_coverage','pgs_min_weight_coverage','explain_findings','explanation_evidence','literature_cache','literature_release','literature_offline','confidence_gwas','ancestry_explorer','ancestry_explorer_manifest','ancestry_explorer_cache'}
-    data={k:v for k,v in config.items() if k not in downstream | REPORT_KEYS | {'pipeline_source_sha256','root','output'}}
-    data['resources']=[r for r in config.get('resources',[]) if r['path'] not in {config.get('pgs_manifest'),config.get('explanation_evidence'),config.get('ancestry_explorer_manifest')}]
+    downstream={'traits_panel','gwas_catalog','gwas','trait_mode','trait_min_depth','trait_min_gq','imputed_clinvar','polygenic','pgs_manifest','pgs_cache','pgs_ids','pgs_source_files','pgs_min_coverage','pgs_min_weight_coverage','explain_findings','explanation_evidence','literature_cache','literature_release','literature_offline','confidence_gwas','ancestry_explorer','ancestry_explorer_manifest','ancestry_explorer_cache'}
+    data={k:v for k,v in config.items() if k not in downstream | REPORT_KEYS | {'pipeline_source_sha256','root','output','threads','memory','memory_gb'}}
+    data['resources']=[r for r in config.get('resources',[]) if r['path'] not in {config.get('traits_panel'),config.get('gwas_catalog'),config.get('pgs_manifest'),config.get('explanation_evidence'),config.get('ancestry_explorer_manifest')}]
     return data
 
 
@@ -106,6 +106,12 @@ def task_description(work, config, code):
     previous = json.loads(raw)
     if analysis_config(previous) != analysis_config(config):
         return None
+    # Global scheduler budgets may change while a completed task is retained.
+    # GLIMPSE itself keeps the same thread count; do not silently mix stochastic
+    # phase runs when a smaller budget changes their actual execution threads.
+    expected_threads = 1 if stage == 'reference' else min(4, int(config.get('threads', 4)))
+    if int(options['--threads']) != expected_threads:
+        return None
     begin = (work/'.command.begin').stat().st_mtime_ns
     # Native staging does not record every external index/tool; reject anything
     # newer than this task rather than assume an unrecorded input is unchanged.
@@ -159,7 +165,10 @@ def reference_outputs(work, chrom, config, begin):
     return [str(work/name) for name in names]
 
 
-def collect(config, root, output, core_reused, work_dir=None):
+def collect(config, root, output, core_reused, work_dir=None, *, reference_reused=None):
+    # Only reference sets from collect_shared_references may seed this mapping.
+    # Phase reuse still requires this sample, identical staged BAM/index/reference
+    # files, unchanged analysis code, completed task receipts and input metadata.
     result = {'references': {}, 'phases': {}, 'ligated': {}}
     if not config.get('glimpse2'):
         return result
@@ -171,6 +180,7 @@ def collect(config, root, output, core_reused, work_dir=None):
                 return result
         except OSError:
             return result
+    result['references'].update(reference_reused or {})
     work_root = Path(work_dir or Path(output)/'work').resolve()
     code = (Path(root)/'bin/glimpse2.py').read_bytes()
     candidates = []

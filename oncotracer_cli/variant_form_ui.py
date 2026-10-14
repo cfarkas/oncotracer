@@ -23,7 +23,7 @@ def variant_form(*, existing_bam=False):
     varlo = 'varlociraptor-fields' if existing_bam else 'variant-varlociraptor-fields'
     annovar = 'annovar-fields' if existing_bam else 'variant-annovar-fields'
     note = 'caller-note' if existing_bam else 'variant-preservation-note'
-    threads = '<div class="field variant-short"><label for="threads">CPU threads</label><input id="threads" type="number" min="1" step="1" value="4"></div>' if existing_bam else ''
+    threads = '<div class="field variant-short"><label for="threads">Total CPU threads</label><input id="threads" type="number" min="1" step="1" value="4"></div>' if existing_bam else ''
     preservation_controls = (f'<div class="variant-specimen" role="group" aria-label="Sample preservation"><button type="button" class="platform" id="{specimen}-fresh" aria-pressed="false"><strong>Fresh</strong><span>Fresh or frozen material</span></button><button type="button" class="platform" id="{specimen}-ffpe" aria-pressed="false"><strong>FFPE</strong><span>Formalin-fixed tissue</span></button></div>' if existing_bam else '<p>Preservation: <strong id="variant-preservation-value">Choose in step 2</strong> <button type="button" id="change-preservation">Change</button></p>')
     return f'''<div class="variant-form">
 <nav class="variant-nav" aria-label="Variant settings"><button type="button" data-variant-section="variant-specimen-section">1 · Specimen &amp; callers</button><button type="button" data-variant-section="variant-tools-section">2 · Tools &amp; models</button><button type="button" data-variant-section="variant-filter-section">3 · Filtering</button><button type="button" data-variant-section="variant-annotation-section">4 · Annotation</button></nav>
@@ -46,6 +46,7 @@ def variant_form(*, existing_bam=False):
 <!-- VARIANT_RESOURCE_PANEL -->
 <p id="variant-tool-note" class="hint"></p>{threads}
 <div id="variant-glimpse-resources" hidden>
+<h4>Parallel sample resources</h4><div class="grid"><div><label for="variant_parallel_samples">Samples running at once</label><input id="variant_parallel_samples" type="number" min="1" step="1" value="1"></div><div><label for="variant_memory">Total analysis memory</label><input id="variant_memory" value="32GB" placeholder="32GB"></div></div><p class="hint">CPU threads and memory are total budgets shared across concurrent samples. For example, 32 threads and 128GB with 4 samples allocate at most 8 threads and 32GB per sample. The complete workflow reserves at least 32GB per simultaneous sample for its local report model; lower total budgets reduce the number of active samples. The default is one sample at a time. GLIMPSE2 stays enabled for every sample.</p>
 {path_field('variant_glimpse_reference_dir', 'GLIMPSE2 reference cache', detect=False, placeholder='Automatic project cache', hint='Existing GRCh38 panels are reused. Missing public resources download at run time with resumable transfers and integrity checks.')}
 {path_field('variant_glimpse_bin', 'GLIMPSE2 binaries folder', detect=False, placeholder='Autodetect installed GLIMPSE2 binaries')}
 {path_field('variant_resource_dir', 'Shared analysis resources', detect=False, placeholder='Automatic project resource folder')}

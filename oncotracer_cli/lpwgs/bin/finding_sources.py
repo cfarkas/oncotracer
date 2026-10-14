@@ -18,6 +18,19 @@ def now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
+def fetch_public(folder, request):
+    """Bound aggregate NCBI traffic across all samples sharing this cache."""
+    with open(Path(folder)/'.eutils-rate.lock', 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                return response.read().decode('utf-8')
+        finally:
+            # Keep the inter-request interval inside the cross-process lock,
+            # including failed requests. Cached responses bypass this entirely.
+            time.sleep(.36)
+
+
 def get_public(cache, endpoint, params, offline=False, release='2026-10'):
     """Pin responses per release. An unavailable source is explicit, not fabricated."""
     global _NETWORK_FAILURES
@@ -40,8 +53,7 @@ def get_public(cache, endpoint, params, offline=False, release='2026-10'):
         for attempt in range(3):
             try:
                 request = urllib.request.Request(url, headers={'User-Agent':'LPWGS-evidence-report/1.0'})
-                with urllib.request.urlopen(request, timeout=20) as response:
-                    body = response.read().decode('utf-8')
+                body = fetch_public(folder, request)
                 if params.get('retmode') == 'json':
                     data = json.loads(body)
                     if 'error' in data: raise ValueError(str(data['error']))
@@ -54,7 +66,6 @@ def get_public(cache, endpoint, params, offline=False, release='2026-10'):
                          'sha256':hashlib.sha256(body.encode()).hexdigest(),'body':body}
                 temporary = path.with_suffix('.tmp'); temporary.write_text(json.dumps(value)); temporary.replace(path)
                 _NETWORK_FAILURES = 0
-                time.sleep(.36)
                 return value
             except (OSError, ValueError, ET.ParseError) as exc:
                 error = type(exc).__name__+': '+str(exc)

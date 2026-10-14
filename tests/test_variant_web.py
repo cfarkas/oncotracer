@@ -73,6 +73,16 @@ class VariantBrowserTests(unittest.TestCase):
         self.assertFalse(Path(config['outdir']).exists())
         self.assertFalse(config['force'])
 
+    def test_parallel_resources_roundtrip_and_invalid_values(self):
+        for value in (0, -1, True, 1.5, '3'):
+            with self.subTest(value=value), self.assertRaisesRegex(OncoTracerError, 'positive integer'):
+                self.prepare(variant_parallel_samples=value)
+            self.assertFalse((self.root / 'new-project').exists())
+        prepared = self.prepare(variant_parallel_samples=2, variant_memory='64GB')
+        config = load_flat_yaml(Path(prepared['config_path']))
+        self.assertEqual(config['variant_parallel_samples'], 2)
+        self.assertEqual(config['variant_memory'], '64GB')
+
     def test_empty_override_clears_loaded_optional_fields(self):
         scenario = self.root / 'scenario.yml'; scenario.write_text('scenario fixture')
         self.values['variant_varlociraptor_scenario'] = str(scenario)

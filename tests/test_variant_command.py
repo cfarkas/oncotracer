@@ -73,6 +73,19 @@ class VariantCommandTests(unittest.TestCase):
         self.assertFalse(self.outdir.exists())
         self.assertEqual(before,{str(p.relative_to(self.root)):p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
 
+    def test_parallel_cli_override_reaches_request_without_rewriting_config(self):
+        saved = self.config.read_bytes()
+        original = variant_command.resolve_variant_request
+        with patch.object(variant_command, 'resolve_variant_request', wraps=original) as resolve:
+            code, output = self.cli('--dry-run', '--threads', '8', '--parallel-samples', '2')
+        self.assertEqual(code, 0, output)
+        self.assertEqual(resolve.call_args.args[0]['variant_parallel_samples'], 2)
+        self.assertEqual(self.config.read_bytes(), saved)
+        self.assertFalse(self.outdir.exists())
+        code, output = self.cli('--dry-run', '--parallel-samples', '0')
+        self.assertEqual(code, 2)
+        self.assertIn('positive integer', output)
+
     def test_bad_manifest_and_sample_duplicates_fail_before_writes(self):
         for data,message in [
             ('sample\tbam\nFIXTURE\tsample.bam\n','columns'),

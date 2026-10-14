@@ -142,8 +142,15 @@ def command_variants(args) -> int:
     config = load_flat_yaml(config_path)
     if sha256_file(config_path) != digest:
         raise OncoTracerError("Variant configuration changed while being read")
+    parallel_samples = getattr(args, "parallel_samples", None)
+    if parallel_samples is not None:
+        if type(parallel_samples) is not int or parallel_samples < 1:
+            raise OncoTracerError("parallel_samples must be a positive integer")
+        config["variant_parallel_samples"] = parallel_samples
     mode = str(config.get("mode") or "").strip().lower()
     request = resolve_variant_request(config, mode=mode)
+    if parallel_samples is not None and parallel_samples > 1 and (request is None or request.engine != "glimpse2"):
+        raise OncoTracerError("--parallel-samples > 1 requires the Illumina GLIMPSE2 short-variant workflow")
     if request is None:
         raise OncoTracerError("Set run_variants: true in the variant configuration")
     outdir = Path(os.path.abspath(_path(config.get("outdir"), config_path.parent, "outdir")))
@@ -254,7 +261,8 @@ def command_variants(args) -> int:
 def add_variants_command(subparsers) -> None:
     parser = subparsers.add_parser("variants", help="Call small variants from existing BAMs without repeating CNA/alignment")
     parser.add_argument("--config", required=True, help="flat YAML with mode, outdir, variant_bam_manifest, variant_reference and variant options")
-    parser.add_argument("--threads", type=int, help="override CPU threads from the configuration")
+    parser.add_argument("--threads", type=int, help="total CPU budget shared across concurrent samples")
+    parser.add_argument("--parallel-samples", type=int, help="maximum concurrent Illumina sample workflows (default: config, otherwise 1)")
     parser.add_argument("--force", action="store_true", default=None, help="rerun owned variant outputs; never permits overwriting foreign files")
     parser.add_argument("--dry-run", action="store_true", help="validate paths/config and print a plan without writing files or running tools")
     parser.set_defaults(func=command_variants)
