@@ -436,6 +436,48 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
             os.environ.update(old)
 
 
+def _preflight_host_runtime(config_path: Path, args: argparse.Namespace) -> None:
+    """Check installed tools before reference transfers or genomic analysis.
+
+    Execution still authenticates the environment again in ``_run_host``.
+    Dry-runs remain configuration-only and require no installed tools.
+    """
+    if args.dry_run:
+        return
+    install = _load_install_config()
+    managed_backend = _managed_install_backend(install, _backend_from(args))
+    lock = contextlib.nullcontext()
+    if managed_backend is not None:
+        require_poetry = managed_backend == "poetry"
+        base = _managed_conda_base(install, require_poetry=require_poetry)
+        lock = managed_conda_runtime_lock(
+            base, require_poetry=require_poetry, semantic=True
+        )
+    print("Checking environment readiness before reference preparation and analysis…", flush=True)
+    with lock:
+        old = os.environ.copy()
+        try:
+            os.environ.update(_native_environment(install))
+            from .variants import resolve_variant_request, preflight_variant_tools
+
+            config = load_flat_yaml(config_path)
+            toolchain = Toolchain.from_environment()
+            mode = str(config.get("mode", ""))
+            core_tools = {"samtools", "pigz"}
+            core_tools.update({"bwa", "picard"} if mode == "illumina" else {"minimap2"})
+            core = _probe_core(toolchain.core_prefix, toolchain, names=core_tools)
+            if not core["success"]:
+                failed = [name for name, probe in core["probes"].items() if not probe["success"]]
+                raise OncoTracerError("Environment readiness failed for core tool(s): " + ", ".join(failed))
+            request = resolve_variant_request(config, mode=mode)
+            if request is not None:
+                preflight_variant_tools(request, toolchain)
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
+    print("Environment readiness checks passed. Preparing reference and analysis…", flush=True)
+
+
 def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
     docker = shutil.which("docker") or (
         "docker" if args.dry_run else require_command("docker")
@@ -680,6 +722,7 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
                     f"'oncotracer install --{backend}' "
                     f"(missing: {', '.join(missing)})"
                 )
+        _preflight_host_runtime(config_path, args)
         _prepare_configured_hg38(config_path, args)
         return _run_host(config_path, args)
     if backend == "docker":
@@ -1080,7 +1123,7 @@ def _prefix_environment(
     return _contained_environment(environment, containment)
 
 
-def _probe_core(prefix: Path | None, toolchain: Toolchain) -> dict[str, object]:
+def _probe_core(prefix: Path | None, toolchain: Toolchain, *, names: set[str] | None = None) -> dict[str, object]:
     definitions: dict[str, tuple[list[str], frozenset[int], str]] = {
         "bwa": ([], frozenset({1}), r"Program:\s*bwa"),
         "samtools": (["--version"], frozenset({0}), r"\bsamtools\b"),
@@ -1091,6 +1134,8 @@ def _probe_core(prefix: Path | None, toolchain: Toolchain) -> dict[str, object]:
     probes: dict[str, dict[str, object]] = {}
     containment = toolchain.environment("core")
     for name, (arguments, accepted, expected) in definitions.items():
+        if names is not None and name not in names:
+            continue
         if prefix is not None:
             result = _probe_executable(
                 prefix,

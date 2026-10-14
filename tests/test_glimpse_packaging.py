@@ -38,7 +38,7 @@ from oncotracer_cli import glimpse_pipeline as pipeline
 from oncotracer_cli.glimpse_joint import _implementation_digest
 from oncotracer_cli.variants import resolve_variant_request
 request = resolve_variant_request({'run_variants':True,'variant_specimen_type':'fresh'}, mode='illumina')
-with patch('oncotracer_cli.variants.preflight_variant_tools', return_value={'bcftools':'/fixture/bcftools'}), patch.object(pipeline.shutil, 'which', side_effect=lambda name:'/fixture/'+name):
+with patch('oncotracer_cli.variants.preflight_variant_tools', return_value={'bcftools':'/fixture/bcftools'}), patch.object(pipeline.shutil, 'which', side_effect=lambda name:'/fixture/'+name), patch('oncotracer_cli.glimpse_readiness.check', side_effect=lambda request,tools,toolchain,bundle:tools):
     tools = pipeline.preflight(request)
 bundle = pipeline.workflow_bundle()
 print(json.dumps({'bundle':str(bundle), 'main_exists':(bundle/'main.nf').is_file(), 'launch_exists':(bundle/'bin/launch.py').is_file(), 'digest':_implementation_digest(), 'nextflow':tools['nextflow']}))

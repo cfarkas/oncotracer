@@ -16,6 +16,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 import uuid
 import venv
@@ -697,6 +698,169 @@ def _write_child_inventory(destination: Path) -> str:
     return sha256_file(path)
 
 
+_BYTECODE_CACHE_PATH = re.compile(
+    r"lib/python(?P<major>[0-9]+)\.(?P<minor>[0-9]+)/site-packages/"
+    r"(?:[^/]+/)*__pycache__/(?P<module>[^/]+)\.cpython-(?P<tag>[0-9]+)"
+    r"(?:\.opt-(?P<optimization>[12]))?\.pyc"
+)
+_BYTECODE_EQUIVALENCE_PROBE = r"""
+import importlib.util, json, marshal, os, struct, sys
+request = json.load(sys.stdin)
+assert os.path.realpath(sys.prefix) == os.path.realpath(request['prefix'])
+for item in request['files']:
+    assert sys.implementation.cache_tag == item['cache_tag']
+    source, cache = bytes.fromhex(item['source']), bytes.fromhex(item['cache'])
+    assert len(cache) >= 16 and cache[:4] == importlib.util.MAGIC_NUMBER
+    flags = struct.unpack('<I', cache[4:8])[0]
+    if flags == 0:
+        assert cache[8:16] == struct.pack('<II', item['mtime'] & 0xffffffff, len(source) & 0xffffffff)
+    else:
+        assert flags in (1, 3) and cache[8:16] == importlib.util.source_hash(source)
+    # Compile only; never load or execute the changed cache or package source.
+    code = compile(source, item['filename'], 'exec', dont_inherit=True, optimize=item['optimization'])
+    assert cache[16:] == marshal.dumps(code)
+print('VERIFIED_BYTECODE_EQUIVALENT')
+"""
+
+
+def _read_inventory_file(
+    storage: Path, relative: str, entry: Mapping[str, object]
+) -> tuple[bytes, int]:
+    """Read a bounded, still-inventoried regular file without following links."""
+    if entry.get("type") != "file" or int(entry.get("size", 0)) > 8 * 1024 * 1024:
+        raise OncoTracerError("bytecode verification requires a bounded regular file")
+    parts = tuple(relative.split("/"))
+    parent = _open_managed_probe_directory(storage, parts[:-1], "bytecode verification")
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_dev != os.fstat(parent).st_dev
+            or stat.S_IMODE(before.st_mode) != entry["mode"]
+            or before.st_size != entry["size"]
+        ):
+            raise OncoTracerError("bytecode verification file identity changed")
+        with os.fdopen(os.dup(descriptor), "rb") as handle:
+            contents = handle.read(8 * 1024 * 1024 + 1)
+        after = os.fstat(descriptor)
+        if (
+            len(contents) != entry["size"]
+            or hashlib.sha256(contents).hexdigest() != entry["sha256"]
+            or (before.st_size, before.st_mtime_ns, before.st_ctime_ns)
+            != (after.st_size, after.st_mtime_ns, after.st_ctime_ns)
+        ):
+            raise OncoTracerError("bytecode verification file contents changed")
+        return contents, int(before.st_mtime)
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        os.close(parent)
+
+
+def _equivalent_regenerated_bytecode(
+    storage: Path,
+    expected: Mapping[str, Mapping[str, object]],
+    observed: Mapping[str, Mapping[str, object]],
+    changed: Sequence[str],
+) -> bool:
+    """Recognize reproducible caches of intact source without changing any seal.
+
+    The caller first establishes there are no added/missing entries and these are
+    the only changed files. An isolated environment interpreter checks its own
+    version-specific marshal format; the application interpreter may differ.
+    """
+    if not changed or len(changed) > 64:
+        return False
+    files: list[dict[str, object]] = []
+    total_bytes = 0
+    descriptor: int | None = None
+    try:
+        for relative in changed:
+            match = _BYTECODE_CACHE_PATH.fullmatch(relative)
+            if (
+                match is None
+                or match["tag"] != match["major"] + match["minor"]
+                or expected[relative].get("type") != "file"
+                or observed[relative].get("type") != "file"
+                or expected[relative]["mode"] != observed[relative]["mode"]
+            ):
+                return False
+            source = (Path(relative).parent.parent / (match["module"] + ".py")).as_posix()
+            if source not in expected or expected[source] != observed.get(source):
+                return False
+            for parent in Path(relative).parents:
+                if parent == Path("."):
+                    continue
+                key = parent.as_posix()
+                if (
+                    expected.get(key, {}).get("type") != "directory"
+                    or expected[key] != observed.get(key)
+                ):
+                    return False
+            source_bytes, mtime = _read_inventory_file(storage, source, expected[source])
+            cache_bytes, _ = _read_inventory_file(storage, relative, observed[relative])
+            total_bytes += len(source_bytes) + len(cache_bytes)
+            if total_bytes > 16 * 1024 * 1024:
+                return False
+            files.append({
+                "filename": str(storage / source), "source": source_bytes.hex(),
+                "cache": cache_bytes.hex(), "mtime": mtime,
+                "cache_tag": "cpython-" + match["tag"],
+                "optimization": int(match["optimization"] or 0),
+            })
+
+        # The interpreter, its link chain and standard library are all unchanged.
+        executable = storage / "bin" / "python"
+        descriptor, resolved = _open_managed_probe(storage, executable, "bytecode verifier")
+        resolved_entry = expected.get(resolved.relative_to(storage).as_posix(), {})
+        if resolved_entry.get("type") != "file":
+            return False
+        digest = hashlib.sha256()
+        with os.fdopen(os.dup(descriptor), "rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != resolved_entry.get("sha256"):
+            return False
+        environment = _managed_conda_probe_environment(storage, "bytecode-verifier")
+        for variable in ("LD_PRELOAD", "LD_LIBRARY_PATH", "PYTHONPYCACHEPREFIX"):
+            environment.pop(variable, None)
+        with tempfile.TemporaryFile() as output:
+            completed = subprocess.run(
+                [str(resolved), "-I", "-S", "-B", "-c", _BYTECODE_EQUIVALENCE_PROBE],
+                input=json.dumps({"prefix": str(storage), "files": files}).encode(),
+                stdout=output, stderr=subprocess.DEVNULL, env=environment,
+                cwd=storage, timeout=30, check=False,
+            )
+            output.seek(0)
+            accepted = (
+                completed.returncode == 0
+                and output.read(128) == b"VERIFIED_BYTECODE_EQUIVALENT\n"
+            )
+        if not accepted:
+            return False
+        reopened, reopened_path = _open_managed_probe(storage, executable, "bytecode verifier")
+        try:
+            before, after = os.fstat(descriptor), os.fstat(reopened)
+            if reopened_path != resolved or (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+                return False
+        finally:
+            os.close(reopened)
+        for relative in changed:
+            match = _BYTECODE_CACHE_PATH.fullmatch(relative)
+            assert match is not None
+            source = (Path(relative).parent.parent / (match["module"] + ".py")).as_posix()
+            _read_inventory_file(storage, source, expected[source])
+            _read_inventory_file(storage, relative, observed[relative])
+        return True
+    except (OSError, OncoTracerError, ValueError, subprocess.SubprocessError):
+        return False
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
 def _verify_child_inventory(storage: Path, marker: Mapping[str, object]) -> None:
     status(f"Checking {storage.name} file integrity")
     inventory_path = storage / CHILD_INVENTORY
@@ -722,6 +886,14 @@ def _verify_child_inventory(storage: Path, marker: Mapping[str, object]) -> None
             for path in expected_by_path.keys() & observed_by_path.keys()
             if expected_by_path[path] != observed_by_path[path]
         )
+        if not added and not missing and _equivalent_regenerated_bytecode(
+            storage, expected_by_path, observed_by_path, changed
+        ):
+            detail(
+                f"Verified {len(changed)} regenerated Python caches against unchanged "
+                f"source in {storage.name}; inventory retained"
+            )
+            return
         differences = "; ".join(
             f"{kind}={paths[:5]!r} ({len(paths)} total)"
             for kind, paths in (

@@ -266,7 +266,7 @@ def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
     if check_code:
         print(check_output.getvalue(), end="")
         raise OncoTracerError("setup saved the configuration, but validation failed; correct it before running")
-    print("Configuration OK. Preparing to run…", flush=True)
+    print("Configuration OK. Checking the tools required before starting…", flush=True)
     # Installation is explicit through --run; reuse configured tools when present.
     install = cli._load_install_config()
     backend = args.backend
