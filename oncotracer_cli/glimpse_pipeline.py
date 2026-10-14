@@ -80,8 +80,9 @@ def preflight(request,toolchain=None):
     if not resolved:raise OncoTracerError('Nextflow is required for the complete GLIMPSE2 workflow: '+nf)
     tools['nextflow']=str(Path(resolved).resolve())
     if not shutil.which('java'):raise OncoTracerError('Nextflow requires Java on PATH')
-    workflow_bundle((request.glimpse_config or {}).get('workflow_source'))
-    return tools
+    bundle=workflow_bundle((request.glimpse_config or {}).get('workflow_source'))
+    from .glimpse_readiness import check
+    return check(request,tools,toolchain,bundle)
 
 
 def _source_folder(path):
@@ -165,12 +166,12 @@ def ensure_resources(params,runner,bundle=None):
     flags=[]
     if not (resources/'gwas/associations.GRCh38.tsv.gz').is_file():flags.append('--gwas')
     if not (resources/'ancestry/reference/complete.json').is_file():flags.append('--ancestry')
-    if flags:runner.run('glimpse-public-resources',[sys.executable,bundle/'bin/prepare_resources.py','--directory',resources,*flags])
+    if flags:runner.run('glimpse-public-resources',[params.get('python',sys.executable),bundle/'bin/prepare_resources.py','--directory',resources,*flags])
     clinical=Path(params['clinvar'])
     if not clinical.is_file():
         # Reuse the resumable, integrity-checking downloader, never patient uploads.
         script="import sys;sys.path.insert(0,sys.argv[1]);from glimpse_download import download;from pathlib import Path;download(sys.argv[2],Path(sys.argv[3]))"
-        runner.run('glimpse-clinvar-resource',[sys.executable,'-c',script,str(bundle/'bin'),'https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz',clinical])
+        runner.run('glimpse-clinvar-resource',[params.get('python',sys.executable),'-c',script,str(bundle/'bin'),'https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz',clinical])
 
 
 def _page(root,status):
@@ -355,7 +356,7 @@ def _prepare_ffpe_resources(request,root,runner,stop):
 
 
 def _ffpe_command(resolved,vcf,sample_root,sample,paths,bam,reference,tools):
-    command=[*python_module('oncotracer_cli.glimpse_ffpe'),'--run-ffperase','--vcf',vcf,
+    command=[tools.get('python',sys.executable),*python_module('oncotracer_cli.glimpse_ffpe')[1:],'--run-ffperase','--vcf',vcf,
              '--outdir',sample_root/'ffpe_review','--sample',sample,'--bam',bam,'--reference',reference,
              '--samtools',tools['samtools'],'--gatk',tools['gatk']]
     for name in ('root','models','prefix','sif'):
@@ -382,7 +383,7 @@ def _cohort(request,exports,root,tools,reference,threads,imputed,sample_statuses
           'atomic_write_json(Path(sys.argv[2]),r)')
     environment={'PYTHONPATH':os.pathsep.join(filter(None,[str(Path(__file__).parent.parent),os.environ.get('PYTHONPATH','')]))}
     with (root/'cohort.log').open('a') as log:
-        _sample_runner(runner,root/'cohort_commands.tsv',stop).run('glimpse-cohort',[*python_code(code),spec,result],
+        _sample_runner(runner,root/'cohort_commands.tsv',stop).run('glimpse-cohort',[tools.get('python',sys.executable),*python_code(code)[1:],spec,result],
             env=environment,stdout=log,stderr=log)
     return json.loads(result.read_text())
 
@@ -417,6 +418,8 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
              'reused_calls':audit,'callers':[],'threads':allocation['threads_per_sample'],'memory':allocation['memory_per_sample']}
         status['samples'].append(row)
         launch=root/'launch'/sample;launch.mkdir(parents=True,exist_ok=True)
+        for key in ('python','llm_python','llm_model'):
+            if key in tools:params[key]=tools[key]
         jobs.append((sample,bam,sample_root,launch,params,row))
 
     def publish():

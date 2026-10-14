@@ -509,7 +509,8 @@ class NativeCliTests(unittest.TestCase):
                 sif.resolve(), executable="/usr/bin/apptainer"
             )
 
-    def test_conda_analysis_holds_managed_consumer_lock(self) -> None:
+    @patch("oncotracer_cli.cli._probe_core", return_value={"success": True})
+    def test_conda_analysis_holds_managed_consumer_lock(self, _core) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config_path = root / "analysis.yml"
@@ -548,11 +549,11 @@ class NativeCliTests(unittest.TestCase):
             ):
                 result = execute_run(config_path, arguments)
             self.assertEqual(result, root / "results")
-            managed_lock.assert_called_once_with(
-                base, require_poetry=False, semantic=False
-            )
-            lock.__enter__.assert_called_once_with()
-            lock.__exit__.assert_called_once()
+            self.assertEqual(managed_lock.call_count, 2)
+            self.assertEqual([call.kwargs["semantic"] for call in managed_lock.call_args_list], [True, False])
+            managed_lock.assert_called_with(base, require_poetry=False, semantic=False)
+            self.assertEqual(lock.__enter__.call_count, 2)
+            self.assertEqual(lock.__exit__.call_count, 2)
             native.assert_called_once()
 
     def test_quickstart_configuration_generation(self) -> None:
@@ -624,7 +625,8 @@ class NativeCliTests(unittest.TestCase):
             self.assertEqual(record["managed_install"]["provisioning"], "external")
             self.assertFalse(record["managed_install"]["required"])
 
-    def test_host_external_prefixes_do_not_claim_installer_consumer_lock(self) -> None:
+    @patch("oncotracer_cli.cli._probe_core", return_value={"success": True})
+    def test_host_external_prefixes_do_not_claim_installer_consumer_lock(self, _core) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config_path = root / "analysis.yml"

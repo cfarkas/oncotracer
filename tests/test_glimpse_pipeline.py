@@ -196,8 +196,10 @@ class GlimpsePipelineTests(unittest.TestCase):
 
     def test_preflight_checks_native_dependencies_and_nextflow_without_recursion(self):
         with patch('oncotracer_cli.variants.preflight_variant_tools', return_value={'bcftools': '/fixture/bcftools'}) as native, \
-             patch.object(pipeline.shutil, 'which', side_effect=lambda name: '/fixture/'+name):
+             patch.object(pipeline.shutil, 'which', side_effect=lambda name: '/fixture/'+name), \
+             patch('oncotracer_cli.glimpse_readiness.check', side_effect=lambda request, tools, toolchain, bundle: tools) as ready:
             tools = pipeline.preflight(self.request)
+        ready.assert_called_once()
         self.assertEqual(native.call_args.args[0].engine, 'native')
         self.assertEqual(tools['nextflow'], '/fixture/nextflow')
         with patch('oncotracer_cli.variants.preflight_variant_tools', return_value={}), \

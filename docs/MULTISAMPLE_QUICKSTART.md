@@ -23,7 +23,15 @@ nextflow run cfarkas/oncotracer \
 
 The complete workflow reserves at least **32GB per active sample**, including its local report model. The default total memory is `32GB`, so requesting four simultaneous samples without increasing memory still runs one at a time. Active slots are capped by the requested concurrency, sample count, CPU budget and memory budget. These are task scheduling budgets; controller and filesystem-cache overhead are additional. GLIMPSE2 remains enabled.
 
-`--python` is optional: the default is `python3` from the active environment. Add `--python /path/to/env/bin/python` when you need a particular installed interpreter. It must have OncoTracer's Python dependencies. Required external tools, local report weights and optional licensed annotation databases are described in the [migration guide](GLIMPSE_MIGRATION.md).
+`--python` is optional: the controller defaults to `python3` from the active environment. Add `--python /path/to/env/bin/python` to select a different controller. Before analysis, OncoTracer tests scientific Python imports and can select the installed managed core interpreter when the lightweight CLI environment lacks those packages. The selected interpreter is passed to sample tasks, resource preparation, FFPE review and cohort export. Required external tools, local report weights and optional licensed annotation databases are described in the [migration guide](GLIMPSE_MIGRATION.md).
+
+## Environment readiness before starting
+
+Each real host, Conda or Poetry full run checks the runtime before preparing hg38 references or starting alignment. This applies to browser runs and both local and GitHub Nextflow commands. Managed installations undergo inventory validation and tool/library import probes; selected caller executables are tested before sequencing work. GLIMPSE2 startup also checks Nextflow/Java, scientific Python imports, the report interpreter and the local model configuration/tokenizer. Model checks stay offline and do not generate a report or load all model weights. Public analysis resources are still prepared by their workflow stages.
+
+A broken executable, missing Python package or unavailable local report model stops startup with an environment error. Configuration validation and `--dry_run` remain separate, lightweight checks; a successful configuration check does not certify installed tools. Runtime checks cannot guarantee future network transfers or sample-specific analysis success.
+
+Regenerated Python bytecode is accepted only when the existing cache compiles exactly from an unchanged inventoried source file using the verified interpreter. Source or binary changes, added/missing files, changed permissions and unverifiable caches still fail. No environment inventory is rewritten, and runtime Python processes disable bytecode writes.
 
 ## Run existing BAMs from a configuration
 
@@ -128,7 +136,9 @@ Reproduce the focused checks:
 
 ```bash
 python3 -m unittest \
-  tests.test_nextflow_gateway tests.test_glimpse_parallel \
+  tests.test_nextflow_gateway tests.test_run_readiness \
+  tests.test_runtime_bytecode_integrity tests.test_glimpse_readiness \
+  tests.test_glimpse_parallel \
   tests.test_glimpse_multisample_reuse tests.test_glimpse_pipeline \
   tests.test_glimpse_ui tests.test_glimpse_ffpe tests.test_glimpse_joint
 ```

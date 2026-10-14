@@ -33,6 +33,7 @@ class ReportResourceTests(unittest.TestCase):
                     test.assertEqual(stage,'complete-glimpse2-SAMPLE')
                     with patch.dict('os.environ',{'HOME':str(root/'isolated home')}):
                         params=json.loads(Path(command[command.index('-params-file')+1]).read_text())
+                        test.assertEqual(params['python'],'/scientific/environment/bin/python')
                         test.assertEqual(params['llm_python'],str(home/'environment/bin/python3'))
                         test.assertEqual(params['llm_model'],str(home/'cache/local-model'))
                         test.assertTrue(Path(params['llm_python']).is_absolute())
@@ -45,7 +46,7 @@ class ReportResourceTests(unittest.TestCase):
                         seen.append(params)
             with patch.dict('os.environ',{'HOME':str(home)}), \
                  patch.object(pipeline,'workflow_bundle',return_value=bundle), \
-                 patch.object(pipeline,'preflight',return_value={'nextflow':'nextflow','bcftools':'bcftools'}), \
+                 patch.object(pipeline,'preflight',return_value={'nextflow':'nextflow','bcftools':'bcftools','python':'/scientific/environment/bin/python'}), \
                  patch('oncotracer_cli.glimpse_joint.merge_cohort',return_value={'outputs':{}}):
                 result=pipeline.run(request,{'SAMPLE':bam},ref,root/'output',Runner(),None)
             self.assertEqual(result['overall_status'],'complete')

@@ -40,8 +40,13 @@ def prepare(config):
     if config.get('report_llm'):modules+=['torch','transformers']
     for candidate in candidates:
         if not Path(candidate).is_file():continue
-        code='import importlib.util,sys;sys.exit(0 if all(importlib.util.find_spec(x) for x in '+repr(modules)+') else 1)'
-        result=subprocess.run([candidate,'-c',code],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
+        code='import importlib;[importlib.import_module(x) for x in '+repr(modules)+']'
+        environment={**os.environ,'PYTHONDONTWRITEBYTECODE':'1','HF_HUB_OFFLINE':'1','TRANSFORMERS_OFFLINE':'1',
+                     'OMP_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1','MKL_NUM_THREADS':'1'}
+        try:
+            result=subprocess.run([candidate,'-I','-B','-c',code],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=60,env=environment)
+        except (OSError,subprocess.TimeoutExpired):
+            continue
         if result.returncode==0:config['llm_python']=str(Path(candidate).absolute());break
     else:raise ValueError('No report Python environment has '+', '.join(modules)+'. Use --llm-python /path/to/python.')
     if config.get('report_llm'):

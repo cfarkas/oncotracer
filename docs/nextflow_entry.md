@@ -38,7 +38,7 @@ nextflow run main.nf --analysis full --config /path/to/run.yml
 nextflow run main.nf --analysis variants --config /path/to/variants.yml --dry_run
 ```
 
-`--analysis variants` is the default. Paths are resolved relative to the directory where the command is launched. `--threads N` overrides the total configured CPU budget. `--parallel_samples N` selects the maximum number of Illumina sample workflows running at once (default: `variant_parallel_samples` from YAML, otherwise 1). CPU threads and `variant_memory` are total budgets divided among concurrent samples; they are not multiplied by the sample count. The complete workflow needs at least 32GB per simultaneous sample for the mandatory local report model. The active sample count is capped by the requested count, available sample count, CPU budget and this memory minimum; for example, requesting four samples with 32GB total runs one at a time. `--python /path/to/python3` selects the Python interpreter used by the controller; it must contain OncoTracer's Python dependencies. The full-analysis route also accepts `--backend` with the backends supported by OncoTracer. Existing-BAM analysis uses the local Nextflow runtime; omit `--backend` or use `host`.
+`--analysis variants` is the default. Paths are resolved relative to the directory where the command is launched. `--threads N` overrides the total configured CPU budget. `--parallel_samples N` selects the maximum number of Illumina sample workflows running at once (default: `variant_parallel_samples` from YAML, otherwise 1). CPU threads and `variant_memory` are total budgets divided among concurrent samples; they are not multiplied by the sample count. The complete workflow needs at least 32GB per simultaneous sample for the mandatory local report model. The active sample count is capped by the requested count, available sample count, CPU budget and this memory minimum; for example, requesting four samples with 32GB total runs one at a time. `--python /path/to/python3` selects the Python interpreter used by the controller; the scientific task interpreter is checked separately and can be selected automatically from the installed managed core environment. The full-analysis route also accepts `--backend` with the backends supported by OncoTracer. Existing-BAM analysis uses the local Nextflow runtime; omit `--backend` or use `host`.
 
 The controller remains in the foreground and propagates analysis failures as a failed Nextflow run. It launches up to the configured number of sample workflows concurrently; each bundled workflow schedules its individual tasks within its assigned share of CPU and memory. This gateway does not provide an additional cluster scheduler. The visual setup includes “Samples running at once” and the total memory budget under resources, including when invoked with `--interactive`.
 
@@ -62,9 +62,13 @@ nextflow run cfarkas/oncotracer -r feat/glimpse2-complete-short-variants --inter
 nextflow run cfarkas/oncotracer -r feat/glimpse2-complete-short-variants --analysis variants --config /absolute/path/to/variants.yml
 ```
 
-The launcher loads the selected revision even when the current directory contains an older OncoTracer checkout. There is no need to reinstall OncoTracer or change Python for this; `--python` remains an optional interpreter override. Use `-latest` after a branch update to fetch the fix.
+The launcher loads the selected revision even when the current directory contains an older OncoTracer checkout. There is no need to reinstall OncoTracer or change Python for this import-order fix; `--python` remains an optional interpreter override. Use `-latest` after a branch update to fetch the fix.
 
 For reproducibility, replace the branch with its commit SHA. Remote invocation fetches the code and executes locally with the same dependency and resource requirements. It does not upload sequencing data to a hosted analysis service. The published main branch changes only after the migration is merged.
+
+## Startup validation
+
+Every real host/Conda/Poetry full run validates environment integrity and tool availability before reference preparation. GLIMPSE2 runs also test scientific Python imports and offline local report resources before sample computation. See [environment readiness](MULTISAMPLE_QUICKSTART.md#environment-readiness-before-starting). Dry-runs validate configuration without these runtime probes.
 
 ## Report options
 
