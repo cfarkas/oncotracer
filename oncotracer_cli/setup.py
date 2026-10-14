@@ -215,6 +215,9 @@ def _existing_hg38_parent(path: Path, mode: str) -> Path:
 
 def command_setup(args: argparse.Namespace) -> int:
     try:
+        parallel = getattr(args, "variant_parallel_samples", None)
+        if parallel is not None and (type(parallel) is not int or parallel < 1):
+            raise OncoTracerError("variant_parallel_samples must be a positive integer")
         explicit_samples = any((args.samplesheet, args.fastq_1, args.fastq_2, args.sample_name,
                                 args.barcodes, args.sample_names, args.status))
         if getattr(args, "variant_config", None):
@@ -293,6 +296,8 @@ def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
         run.image = str(image)
     if args.threads is not None:
         run.threads = args.threads
+    if getattr(args, "variant_parallel_samples", None) is not None:
+        run.parallel_samples = args.variant_parallel_samples
     return cli.command_run(run)
 
 
@@ -310,7 +315,7 @@ VARIANT_ASSESSMENT_FIELDS = ("variant_ffperase", "variant_varlociraptor", "varia
 VARIANT_BOOLEAN_FIELDS = ("variant_download_resources", "variant_accept_ffperase_license")
 VARIANT_GLIMPSE_FIELDS = (
     "variant_engine", "variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir",
-    "variant_confidence_gwas", "variant_patients", "variant_reuse_from", "variant_nextflow", "variant_workflow_source",
+    "variant_parallel_samples", "variant_memory", "variant_confidence_gwas", "variant_patients", "variant_reuse_from", "variant_nextflow", "variant_workflow_source",
 )
 VARIANT_FIELDS = (*VARIANT_GLIMPSE_FIELDS, "variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", "variant_matched_normals", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
 
@@ -328,6 +333,13 @@ def _glimpse_variant_values(args, specimen: str, *, interactive: bool) -> dict[s
     values = {"run_variants": True, "variant_engine": "glimpse2", "variant_specimen_type": specimen,
               "variant_callers": "bcftools,mutect2", "variant_annovar": "auto", "variant_varlociraptor": "off",
               "variant_ffperase": "required" if specimen == "ffpe" else "off"}
+    parallel = getattr(args, "variant_parallel_samples", None)
+    if parallel is None:
+        parallel = 1
+    if type(parallel) is not int or parallel < 1:
+        raise OncoTracerError("variant_parallel_samples must be a positive integer")
+    values["variant_parallel_samples"] = parallel
+    values["variant_memory"] = getattr(args, "variant_memory", None) or "32GB"
     pairs = getattr(args, "variant_matched_normals", None)
     if pairs:
         from .strelka2 import parse_matched_normals
@@ -400,6 +412,11 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
                     choices=("fresh", "ffpe"), interactive=interactive)
     if mode == "illumina":
         return _glimpse_variant_values(args, specimen, interactive=interactive)
+    parallel = getattr(args, "variant_parallel_samples", None)
+    if parallel is not None and (type(parallel) is not int or parallel < 1):
+        raise OncoTracerError("variant_parallel_samples must be a positive integer")
+    if parallel is not None and parallel > 1:
+        raise OncoTracerError("--parallel-samples > 1 requires the Illumina GLIMPSE2 short-variant workflow")
     callers = _ask(getattr(args, "variant_callers", None),
                    "Variant callers (--variant-callers; comma-separated: " + ", ".join(VARIANT_CALLERS_BY_MODE[mode]) + ")",
                    default=VARIANT_DEFAULT_CALLER[mode], interactive=interactive)
@@ -1163,7 +1180,7 @@ def add_setup_commands(subparsers) -> None:
         "--reference-cache", help="shared verified download cache (default: a sibling of the project)"
     )
     parser.add_argument(
-        "--threads", type=int, help="CPU worker threads (wizard suggests from hardware; manual/scripted default: 8)"
+        "--threads", type=int, help="total CPU budget, shared across concurrent GLIMPSE2 samples (manual/scripted default: 8)"
     )
     parser.add_argument(
         "--non-interactive",
@@ -1200,6 +1217,8 @@ def add_setup_commands(subparsers) -> None:
         help="single Illumina library status (default: tumor)",
     )
     variant = parser.add_argument_group("Optional native small-variant calling")
+    variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=int, help="maximum simultaneous Illumina samples; CPU/memory budgets are shared (default: 1)")
+    variant.add_argument("--variant-memory", help="total memory budget across concurrent Illumina samples (default: 32GB)")
     variant.add_argument("--variants", action="store_true", help="add native small-variant calling to the selected analysis")
     variant.add_argument('--variant-engine', choices=('glimpse2',), help='Complete Illumina short-variant workflow (required)')
     variant.add_argument('--variant-confidence-gwas', choices=('strict','medium','exploratory'), help='Trait evidence preset; default medium')

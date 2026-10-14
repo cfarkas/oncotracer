@@ -552,17 +552,20 @@ def prepare(a):
     reused = {**source_reused, **(continuation.collect(runtime,previous,ROOT,output,a.work_dir) if a.continue_run else {})}
     reuse_outputs.annotation_outputs(reused,sample)
     import glimpse_continuation
-    imputation_reused = (glimpse_continuation.collect(runtime,ROOT,output,reused,a.work_dir)
+    # Validate shared panels before collecting phases: a source sample may have
+    # borrowed every reference, leaving no reference tasks in its own work tree.
+    shared={'references':{}}
+    if a.continue_run and a.glimpse2:
+        from shared_reference import collect_shared_references
+        donors=list(dict.fromkeys([p for p in [a.reference_reuse_from,source_output,output] if p]))
+        shared=collect_shared_references(runtime,ROOT,donors)
+        (info/'shared_reference_reuse.json').write_text(json.dumps(shared,indent=2)+'\n')
+    imputation_reused = (glimpse_continuation.collect(runtime,ROOT,output,reused,a.work_dir,reference_reused=shared['references'])
                          if a.continue_run and a.glimpse2 else {'references':{},'phases':{},'ligated':{}})
     if a.continue_run and a.glimpse2 and source_output != output:
-        source_imputation = glimpse_continuation.collect(runtime,ROOT,source_output,reused)
+        source_imputation = glimpse_continuation.collect(runtime,ROOT,source_output,reused,reference_reused=shared['references'])
         for kind, values in source_imputation.items():
             imputation_reused[kind] = {**values, **imputation_reused[kind]}
-    if a.reference_reuse_from and a.continue_run and a.glimpse2:
-        from shared_reference import collect_shared_references
-        shared=collect_shared_references(runtime,ROOT,[a.reference_reuse_from])
-        imputation_reused['references']={**shared['references'],**imputation_reused['references']}
-        (info/'shared_reference_reuse.json').write_text(json.dumps(shared,indent=2)+'\n')
     reuse_outputs.publish_reused(output,sample,reused,imputation_reused)
     import analysis_continuation
     analysis_reused=analysis_continuation.collect(runtime,ROOT,list(dict.fromkeys([source_output,output])),reused,imputation_reused) if a.continue_run else {k:{} for k in analysis_continuation.CODE}

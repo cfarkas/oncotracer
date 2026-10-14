@@ -34,7 +34,8 @@ Model inference is local and uses only supplied evidence. Rejected generated par
 mode: illumina
 run_variants: true
 outdir: /data/new_results
-threads: 16
+threads: 64
+variant_parallel_samples: 4
 variant_specimen_type: fresh
 variant_bam_manifest: /data/samples.bam.tsv
 variant_reference: /data/GRCh38/genome.fa
@@ -43,7 +44,7 @@ variant_resource_dir: /data/public_resources
 variant_reuse_from: /data/previous_oncotracer_run
 variant_reference_reuse_from: /data/completed_glimpse_sample
 variant_confidence_gwas: medium
-variant_memory: 64GB
+variant_memory: 256GB
 variant_annovar_dir: /tools/annovar
 variant_annovar_db: /tools/annovar/humandb
 variant_patients: /data/patients.tsv
@@ -53,7 +54,7 @@ Manifest columns are `sample`, `bam`, `status`; status is `normal`, `tumor`, or 
 
 `variant_reuse_from` imports completed direct-call VCFs only when their receipt hashes, indexes and BAM identity match. Input BAMs and donor callsets remain unchanged. Existing original filters remain available in the evidence trail. An explicit tumor/normal pairing recomputes somatic calling using that normal instead of importing tumor-only calls.
 
-`variant_reference_reuse_from` shares only verified prepared GLIMPSE reference panels: code, reference, panel checksums, target-sample exclusion and outputs must agree. No other individual's phased or imputed genotypes are reused. Normal continuation independently verifies each sample's own work. Do not use `--force` for an ordinary restart.
+`variant_reference_reuse_from` shares only verified prepared GLIMPSE reference panels: code, reference, panel checksums, target-sample exclusion and outputs must agree. No other individual's phased or imputed genotypes are reused. `variant_analysis_reuse_from: /data/previous_glimpse_results` also imports each sample's own verified completed tasks into a new output directory after a code upgrade. Source sample identities, inputs, methods and output receipts must match; resource allocation changes alone do not invalidate scientific results. The previous output directory must remain available. Normal continuation independently verifies each sample's own work. Do not use `--force` for an ordinary restart.
 
 ## Analysis and output
 
@@ -61,7 +62,7 @@ Each sample runs direct calling/imports, GLIMPSE2 phase/ligate, ClinVar and func
 
 Main entry: `OUTDIR/08_variants/glimpse2/START_HERE.html`. Sample reports are below `samples/SAMPLE/START_HERE.html`, task logs below `launch/SAMPLE/`, and cohort VCFs below `cohort/`. FFPE samples add `samples/SAMPLE/ffpe_review/START_HERE.html`, the final FFPE decision view. Earlier narrative reports are explicitly identified as preceding that adjudication.
 
-Samples execute sequentially, with parallel tasks within the configured CPU/memory budget. The repository gateway is a foreground local controller; it is not a cloud scheduler. Nested Nextflow owns work reuse rather than caching the entire controller invocation.
+Samples can execute concurrently with `variant_parallel_samples` (default 1), also available as `nextflow run main.nf --parallel_samples 4` or native `oncotracer variants --parallel-samples 4`. `threads` and `variant_memory` are total analysis budgets, divided between concurrent samples; 64 threads and 256 GB with four samples allocate 16 threads and 64 GB to each. The complete workflow reserves at least 32 GB per concurrent sample for local report inference; requested concurrency is reduced when the total CPU or memory budget cannot support it. These are task scheduling budgets, with additional controller and filesystem cache overhead. Each sample retains its own Nextflow cache and reports. The cohort VCF is created only after all requested samples finish successfully. The repository gateway is a foreground local controller; it is not a cloud scheduler. Nested Nextflow owns work reuse rather than caching the entire controller invocation.
 
 ## FFPE decisions
 

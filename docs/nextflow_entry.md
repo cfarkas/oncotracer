@@ -38,11 +38,20 @@ nextflow run main.nf --analysis full --config /path/to/run.yml
 nextflow run main.nf --analysis variants --config /path/to/variants.yml --dry_run
 ```
 
-`--analysis variants` is the default. Paths are resolved relative to the directory where the command is launched. `--threads N` overrides the configured CPU budget. `--python /path/to/python3` selects the Python interpreter used by the controller; it must contain OncoTracer's Python dependencies. The full-analysis route also accepts `--backend` with the backends supported by OncoTracer. Existing-BAM analysis uses the local Nextflow runtime; omit `--backend` or use `host`.
+`--analysis variants` is the default. Paths are resolved relative to the directory where the command is launched. `--threads N` overrides the total configured CPU budget. `--parallel_samples N` selects the maximum number of Illumina sample workflows running at once (default: `variant_parallel_samples` from YAML, otherwise 1). CPU threads and `variant_memory` are total budgets divided among concurrent samples; they are not multiplied by the sample count. The complete workflow needs at least 32GB per simultaneous sample for the mandatory local report model. The active sample count is capped by the requested count, available sample count, CPU budget and this memory minimum; for example, requesting four samples with 32GB total runs one at a time. `--python /path/to/python3` selects the Python interpreter used by the controller; it must contain OncoTracer's Python dependencies. The full-analysis route also accepts `--backend` with the backends supported by OncoTracer. Existing-BAM analysis uses the local Nextflow runtime; omit `--backend` or use `host`.
 
-The controller remains in the foreground and propagates analysis failures as a failed Nextflow run. It launches sample workflows sequentially; the bundled workflow schedules the individual analysis tasks. This gateway does not provide an additional cluster scheduler or multiply per-sample resource budgets.
+The controller remains in the foreground and propagates analysis failures as a failed Nextflow run. It launches up to the configured number of sample workflows concurrently; each bundled workflow schedules its individual tasks within its assigned share of CPU and memory. This gateway does not provide an additional cluster scheduler. The visual setup includes “Samples running at once” and the total memory budget under resources, including when invoked with `--interactive`.
 
 Completed analysis outputs are verified and reused by the bundled workflow's continuation mechanism. The gateway is deliberately not a cached Nextflow process: restarting it must reconnect to the analysis state, not skip the entire run because a previous controller invocation completed.
+
+For example, process up to four samples at once with 32 total CPU threads:
+
+```bash
+nextflow run main.nf --analysis variants --config /path/to/variants.yml \
+  --threads 32 --parallel_samples 4
+```
+
+Set `variant_memory: 128GB` in the YAML for a 128GB total analysis memory budget. In this example each sample receives at most 8 threads and 32GB. The native CLI equivalent uses `--parallel-samples 4`, for both `oncotracer variants` and `oncotracer run`. The concurrency setting applies to the Illumina short-variant stage; values above 1 are rejected for ONT or a full analysis without this stage.
 
 ## Remote repository entry
 

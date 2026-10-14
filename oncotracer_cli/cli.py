@@ -419,6 +419,7 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
                 config_path,
                 root=Path(args.root).expanduser().resolve() if args.root else None,
                 threads=args.threads,
+                parallel_samples=getattr(args, "parallel_samples", None),
                 force=args.force if args.force else None,
                 dry_run=args.dry_run,
                 methylation=args.methylation,
@@ -476,6 +477,8 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
     )
     if args.threads:
         command.extend(["--threads", str(args.threads)])
+    if getattr(args, "parallel_samples", None) is not None:
+        command.extend(["--parallel-samples", str(args.parallel_samples)])
     if args.force:
         command.append("--force")
     if args.methylation:
@@ -543,6 +546,8 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
     )
     if args.threads:
         command.extend(["--threads", str(args.threads)])
+    if getattr(args, "parallel_samples", None) is not None:
+        command.extend(["--parallel-samples", str(args.parallel_samples)])
     if args.force:
         command.append("--force")
     if args.methylation:
@@ -700,6 +705,9 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
 
 
 def command_run(args: argparse.Namespace) -> int:
+    parallel = getattr(args, "parallel_samples", None)
+    if parallel is not None and (type(parallel) is not int or parallel < 1):
+        raise OncoTracerError("parallel_samples must be a positive integer")
     outdir = execute_run(Path(args.config), args)
     if args.dry_run:
         target = (
@@ -1495,7 +1503,8 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
     )
-    parser.add_argument("--threads", type=int)
+    parser.add_argument("--threads", type=int, help="total CPU budget; shared across concurrent GLIMPSE2 samples")
+    parser.add_argument("--parallel-samples", type=int, help="maximum concurrent Illumina sample workflows (default: config, otherwise 1)")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--root", help="Repository or extracted payload root")
