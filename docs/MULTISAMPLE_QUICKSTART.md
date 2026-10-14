@@ -29,10 +29,13 @@ The complete workflow reserves at least **32GB per active sample**, including it
 
 Create `/data/analysis/samples.bam.tsv` with literal tab separators:
 
-```tsv
+```bash
+mkdir -p /data/analysis
+cat > /data/analysis/samples.bam.tsv <<'EOF'
 sample	bam	status
 SAMPLE_A	/data/alignments/SAMPLE_A.bam	normal
 SAMPLE_B	/data/alignments/SAMPLE_B.bam	tumor
+EOF
 ```
 
 The BAMs must be coordinate sorted and their read-group sample names must match the manifest. Roles do not imply tumor–normal pairing: configure a matched normal only when the specimens are known to come from the same individual. Add further rows to use more sample slots.

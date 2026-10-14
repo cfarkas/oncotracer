@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -21,6 +22,10 @@ class NextflowGatewayTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+        # Reproduce launching from a stale checkout which shadows PYTHONPATH.
+        shadow = self.root / 'oncotracer_cli'
+        shadow.mkdir()
+        (shadow / '__init__.py').write_text("raise RuntimeError('OLD_CHECKOUT_IMPORTED')\n")
         self.config = self.root / 'sample $(touch SHOULD_NOT_EXIST).yml'
         self.config.write_text('mode: illumina\n')
 
@@ -79,6 +84,26 @@ class NextflowGatewayTests(unittest.TestCase):
         self.assertIsInstance(run.call_args.args[0], list)
         self.assertEqual(run.call_args.kwargs['cwd'], self.root)
 
+    def test_real_cli_child_ignores_old_checkout_and_keeps_visual_options(self):
+        argv, cwd, env = gateway.command(self.args('--interactive', '--parallel_samples', '4', '--threads', '64'))
+        # argparse help exits before the setup can open a browser or start work.
+        result = subprocess.run([*argv, '--help'], cwd=cwd, env=env,
+                                text=True, capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('--parallel-samples', result.stdout)
+        self.assertIn('--variant-config', result.stdout)
+        self.assertNotIn('OLD_CHECKOUT_IMPORTED', result.stdout + result.stderr)
+
+    @unittest.skipUnless(shutil.which('nextflow'), 'Nextflow required for native entry test')
+    def test_real_nextflow_help_ignores_old_checkout(self):
+        result = subprocess.run(
+            [shutil.which('nextflow'), 'run', str(ROOT / 'main.nf'), '--python', sys.executable, '--help'],
+            cwd=self.root, env={**os.environ, 'NXF_OFFLINE': 'true'},
+            text=True, capture_output=True, timeout=90)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('--parallel_samples', result.stdout)
+        self.assertNotIn('OLD_CHECKOUT_IMPORTED', result.stdout + result.stderr)
+
     @unittest.skipUnless(shutil.which('nextflow'), 'Nextflow required for native entry test')
     def test_real_nextflow_visual_routing_and_failed_analysis_propagation(self):
         # Only the CLI child is replaced. Real Nextflow compiles main.nf and runs
@@ -87,12 +112,13 @@ class NextflowGatewayTests(unittest.TestCase):
         stub = self.root / 'python stub'
         stub.write_text("#!/usr/bin/python3\n"
             "import json,sys\nfrom pathlib import Path\nfrom unittest.mock import patch\n"
-            "from subprocess import CompletedProcess\nfrom oncotracer_cli.nextflow_gateway import main\n"
+            "from subprocess import CompletedProcess\n"
             "def run(argv, **kwargs):\n"
             f" Path({str(record)!r}).write_text(json.dumps({{'argv':argv,'cwd':str(kwargs['cwd']),'source':kwargs['env']['PYTHONPATH']}}))\n"
             " return CompletedProcess(argv, 0 if 'setup' in argv else 7)\n"
-            "with patch('oncotracer_cli.nextflow_gateway.subprocess.run', side_effect=run):\n"
-            " raise SystemExit(main(sys.argv[3:]))\n")
+            "code = sys.argv[2]\nsys.argv = ['-c', *sys.argv[3:]]\n"
+            "with patch('subprocess.run', side_effect=run):\n"
+            " exec(code, {'__name__': '__main__'})\n")
         stub.chmod(0o755)
         env = {**os.environ, 'NXF_OFFLINE': 'true'}
         argv = [shutil.which('nextflow'), 'run', str(ROOT / 'main.nf'), '--python', str(stub)]

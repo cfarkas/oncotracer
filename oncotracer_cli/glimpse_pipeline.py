@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 from typing import Mapping
+from .source_runtime import python_code, python_module
 from .runtime import CommandRunner, CommandResult, OncoTracerError, atomic_write_json, require_file, runtime_root, sha256_file, utc_now
 
 SCHEMA='oncotracer-glimpse2-v1'
@@ -349,12 +350,12 @@ def _prepare_ffpe_resources(request,root,runner,stop):
     env={'PYTHONPATH':os.pathsep.join(filter(None,[str(Path(__file__).parent.parent),os.environ.get('PYTHONPATH','')]))}
     with (root/'ffperase_resources.log').open('a') as log:
         _sample_runner(runner,root/'ffperase_resource_commands.tsv',stop).run('ffperase-public-resources',
-            [sys.executable,'-c',code,spec,result],env=env,stdout=log,stderr=log)
+            [*python_code(code),spec,result],env=env,stdout=log,stderr=log)
     return replace(request,**{k:Path(v) if v else None for k,v in json.loads(result.read_text()).items()})
 
 
 def _ffpe_command(resolved,vcf,sample_root,sample,paths,bam,reference,tools):
-    command=[sys.executable,'-m','oncotracer_cli.glimpse_ffpe','--run-ffperase','--vcf',vcf,
+    command=[*python_module('oncotracer_cli.glimpse_ffpe'),'--run-ffperase','--vcf',vcf,
              '--outdir',sample_root/'ffpe_review','--sample',sample,'--bam',bam,'--reference',reference,
              '--samtools',tools['samtools'],'--gatk',tools['gatk']]
     for name in ('root','models','prefix','sif'):
@@ -381,7 +382,7 @@ def _cohort(request,exports,root,tools,reference,threads,imputed,sample_statuses
           'atomic_write_json(Path(sys.argv[2]),r)')
     environment={'PYTHONPATH':os.pathsep.join(filter(None,[str(Path(__file__).parent.parent),os.environ.get('PYTHONPATH','')]))}
     with (root/'cohort.log').open('a') as log:
-        _sample_runner(runner,root/'cohort_commands.tsv',stop).run('glimpse-cohort',[sys.executable,'-c',code,spec,result],
+        _sample_runner(runner,root/'cohort_commands.tsv',stop).run('glimpse-cohort',[*python_code(code),spec,result],
             env=environment,stdout=log,stderr=log)
     return json.loads(result.read_text())
 
