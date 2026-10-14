@@ -12,6 +12,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+from .source_runtime import python_module
+
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__)
@@ -53,7 +55,7 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
     config = resolve_path(args.config, launch) if args.config else None
     if config is not None and not config.is_file():
         raise ValueError(f'Configuration file does not exist: {config}')
-    argv = [sys.executable, '-m', 'oncotracer_cli.cli']
+    argv = python_module('oncotracer_cli.cli', source=source)
     cwd = launch
     if args.interactive:
         if args.dry_run:

@@ -31,6 +31,7 @@ from .variant_resources import discover_variant_resources
 from .variant_installer import VariantInstaller, tools_roots
 from .web_ui import PAGE
 from .web_progress import progress_for_job
+from .source_runtime import python_module
 
 
 def _launcher() -> list[str]:
@@ -42,7 +43,7 @@ def _launcher() -> list[str]:
     entry = Path(__file__).resolve().parents[1] / "oncotracer"
     if entry.is_file():
         return [sys.executable, str(entry)]
-    return [sys.executable, "-c", "from oncotracer_cli.cli import main; raise SystemExit(main())"]
+    return python_module('oncotracer_cli.cli')
 
 
 def _text(data, key, *, default=None):

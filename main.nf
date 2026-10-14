@@ -12,7 +12,11 @@ def selectedFlag(value, name) {
 }
 
 workflow {
-    def argv = [params.python.toString(), '-m', 'oncotracer_cli.nextflow_gateway',
+    // -m puts launchDir ahead of PYTHONPATH. Pin the selected revision before
+    // importing OncoTracer, even when launched inside an older source checkout.
+    def bootstrap = 'import sys,runpy; sys.path.insert(0,sys.argv.pop(1)); ' +
+                    'runpy.run_module("oncotracer_cli.nextflow_gateway",run_name="__main__",alter_sys=True)'
+    def argv = [params.python.toString(), '-c', bootstrap, projectDir.toString(),
                 '--project-dir', projectDir.toString(), '--launch-dir', launchDir.toString()]
     if (selectedFlag(params.help, 'help')) {
         argv.add('--help')

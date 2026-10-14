@@ -62,6 +62,8 @@ nextflow run cfarkas/oncotracer -r feat/glimpse2-complete-short-variants --inter
 nextflow run cfarkas/oncotracer -r feat/glimpse2-complete-short-variants --analysis variants --config /absolute/path/to/variants.yml
 ```
 
+The launcher loads the selected revision even when the current directory contains an older OncoTracer checkout. There is no need to reinstall OncoTracer or change Python for this; `--python` remains an optional interpreter override. Use `-latest` after a branch update to fetch the fix.
+
 For reproducibility, replace the branch with its commit SHA. Remote invocation fetches the code and executes locally with the same dependency and resource requirements. It does not upload sequencing data to a hosted analysis service. The published main branch changes only after the migration is merged.
 
 ## Report options
