@@ -1004,11 +1004,22 @@ def _open_managed_probe(
                     f"{label} symlink is absolute or external: {candidate}"
                 )
             target_parts = tuple(target.split("/"))
-            if any(part in {"", ".", ".."} for part in target_parts):
-                raise OncoTracerError(
-                    f"{label} symlink escapes its managed prefix: {candidate}"
-                )
-            current = (*current[:-1], *target_parts)
+            normalized = list(current[:-1])
+            descended = False
+            for part in target_parts:
+                # Ascend only the link's already-pinned physical parents. Do
+                # not erase an uninspected directory followed by '..': that
+                # directory could itself be an external symlink.
+                if part in {"", "."} or (part == ".." and (descended or not normalized)):
+                    raise OncoTracerError(
+                        f"{label} symlink escapes its managed prefix or has an unsafe parent traversal: {candidate}"
+                    )
+                if part == "..":
+                    normalized.pop()
+                else:
+                    normalized.append(part)
+                    descended = True
+            current = tuple(normalized)
             continue
         assert descriptor is not None
         return descriptor, candidate
