@@ -3,6 +3,8 @@ import contextlib
 import gzip
 import io
 import os
+import sys
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -29,6 +31,37 @@ class VariantSetupTests(unittest.TestCase):
         self.project = self.root / "project"
         self.addCleanup(patch.stopall)
         patch("oncotracer_cli.cli._load_install_config", return_value={}).start()
+
+    @contextlib.contextmanager
+    def glimpse_readiness_fixture(self):
+        """Exercise discovery/setup while isolating the scientific runtime boundary.
+
+        Run the browser's check command in-process so its expensive readiness
+        boundary can be stubbed; tool discovery and config validation stay real.
+        Binary/import/model readiness has its own test_glimpse_readiness suite.
+        """
+        directory = self.root / "workflow-tools"
+        directory.mkdir(exist_ok=True)
+        for name in ("nextflow", "java"):
+            tool = directory / name
+            tool.write_text("#!/bin/sh\nexit 99\n")
+            tool.chmod(0o755)
+        def checked(request, tools, toolchain, bundle):
+            self.assertEqual(tools["nextflow"], str(directory / "nextflow"))
+            return {**tools, "python": sys.executable, "llm_python": sys.executable,
+                    "llm_model": str(self.root / "report-model-fixture")}
+        run = subprocess.run
+        def check_command(command, **kwargs):
+            if "check" in command and "--variant-tools" in command and "--json" in command:
+                output, error = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+                    code = main(command[command.index("check"):])
+                return subprocess.CompletedProcess(command, code, output.getvalue(), error.getvalue())
+            return run(command, **kwargs)
+        with patch.dict(os.environ, {"PATH": str(directory) + os.pathsep + os.environ.get("PATH", "")}), \
+             patch("oncotracer_cli.glimpse_readiness.check", side_effect=checked) as readiness, \
+             patch("oncotracer_cli.web.subprocess.run", side_effect=check_command):
+            yield readiness
 
     def cli(self, *flags):
         output = io.StringIO()
@@ -97,7 +130,7 @@ class VariantSetupTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             return state.prepare(data)
 
-    def test_web_fresh_bcftools_real_check_keeps_reads_and_does_not_start_analysis(self):
+    def test_web_fresh_bcftools_discovery_keeps_reads_and_does_not_start_analysis(self):
         before = self.fastq.read_bytes()
         prefix = self.root / "variant-tools"
         (prefix / "bin").mkdir(parents=True)
@@ -105,9 +138,11 @@ class VariantSetupTests(unittest.TestCase):
             tool = prefix / "bin" / name
             tool.write_text("#!/bin/sh\nif [ \"$1\" = --version ]; then echo fixture-version; exit 0; fi\nexit 99\n")
             tool.chmod(0o755)
-        result = self.prepare(self.state(), variants=True, variant_specimen_type="fresh",
-                              variant_callers="bcftools", variant_annovar="auto",
-                              variant_tool_prefix=str(prefix))
+        with self.glimpse_readiness_fixture() as readiness:
+            result = self.prepare(self.state(), variants=True, variant_specimen_type="fresh",
+                                  variant_callers="bcftools", variant_annovar="auto",
+                                  variant_tool_prefix=str(prefix))
+        readiness.assert_called_once()
         self.assertTrue(result["valid"], result["check"])
         self.assertEqual(result["check"]["variant_tools"]["bcftools"], str(prefix / "bin/bcftools"))
         config = load_flat_yaml(Path(result["config_path"]))
@@ -115,6 +150,26 @@ class VariantSetupTests(unittest.TestCase):
         self.assertEqual(config["variant_callers"], "bcftools,mutect2")
         self.assertEqual(config["variant_annovar"], "auto")
         self.assertEqual(self.fastq.read_bytes(), before)
+        self.assertFalse((self.project / "results").exists())
+        self.assertFalse((self.project / "reference").exists())
+
+    def test_web_failed_glimpse_readiness_blocks_run(self):
+        prefix = self.root / "variant-tools"
+        (prefix / "bin").mkdir(parents=True)
+        for name in ("samtools", "bcftools", "gatk"):
+            tool = prefix / "bin" / name
+            tool.write_text("#!/bin/sh\nexit 99\n")
+            tool.chmod(0o755)
+        state = self.state()
+        with self.glimpse_readiness_fixture() as readiness:
+            readiness.side_effect = OncoTracerError("Local report resources are not ready: model missing")
+            result = self.prepare(state, variants=True, variant_specimen_type="fresh",
+                                  variant_tool_prefix=str(prefix))
+        readiness.assert_called_once()
+        self.assertFalse(result["valid"])
+        self.assertIn("model missing", result["check"]["errors"][0])
+        with self.assertRaisesRegex(OncoTracerError, "validat"):
+            state.run({"project_id": result["id"]})
         self.assertFalse((self.project / "results").exists())
         self.assertFalse((self.project / "reference").exists())
 
@@ -150,7 +205,9 @@ class VariantSetupTests(unittest.TestCase):
         detected = state.variant_resources({"mode":"illumina", "backend":"host", "specimen_type":"fresh",
             "callers":["mutect2"], "values":{"variant_tool_prefix":str(installed), "variant_annovar":"off"}})
         self.assertEqual(next(row for row in detected["resources"] if row["id"] == "mutect2")["status"], "found")
-        updated = self.prepare(state, **options, **detected["fields"])
+        with self.glimpse_readiness_fixture() as readiness:
+            updated = self.prepare(state, **options, **detected["fields"])
+        readiness.assert_called_once()
         self.assertTrue(updated["valid"], updated["check"])
         self.assertEqual(updated["check"]["variant_tools"]["gatk"], str(installed / "bin/gatk"))
         self.assertEqual(load_flat_yaml(Path(updated["config_path"]))["variant_tool_prefix"], str(installed))

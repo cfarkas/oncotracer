@@ -35,8 +35,9 @@ oncotracer doctor --backend conda --json
 
 The provenance JSON identifies the executable and source. The doctor JSON adds
 the backend, all five configured prefixes or image, semantic command/package
-checks, and whether Nextflow is required (`false`). A failed check returns a
-nonzero status.
+checks, and whether Nextflow is required for the native CNA runtime (`false`).
+The complete Illumina variant branch has a separate Nextflow/resource preflight.
+A failed check returns a nonzero status.
 
 Use the backend that actually runs the analysis:
 

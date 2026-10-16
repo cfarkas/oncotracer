@@ -81,6 +81,12 @@ INTENTIONAL_PYTHON_NEXTFLOW_AUDIT_LINES = {
     "oncotracer_cli/engine.py": {
         'if "nextflow" in trace_text.lower():',
     },
+    "oncotracer_cli/docker_runtime.py": {
+        "result['variant_nextflow'] = '/usr/local/bin/nextflow'",
+    },
+    "oncotracer_cli/glimpse_readiness.py": {
+        "probe([tools['nextflow'], '-version'], 'Nextflow')",
+    },
     "oncotracer_cli/setup.py": {
         "for field in ('glimpse-reference-dir','glimpse-bin','resource-dir','patients','reuse-from','nextflow','workflow-source'):",
     },
@@ -107,6 +113,7 @@ GLIMPSE_COMMAND_MODULES = frozenset({
     'oncotracer_cli/glimpse_pipeline.py', 'oncotracer_cli/nextflow_gateway.py',
 })
 GZIP_MAGIC_MODULES = frozenset({
+    'oncotracer_cli/lpwgs/bin/clinvar_resource.py',
     'oncotracer_cli/lpwgs/bin/glimpse_download.py',
     'oncotracer_cli/lpwgs/bin/launch.py',
     'oncotracer_cli/lpwgs/bin/pipeline.py',
@@ -501,6 +508,32 @@ class ProductHygieneTests(unittest.TestCase):
             ),
             [],
         )
+
+    def test_glimpse_runtime_audit_exceptions_are_exact(self) -> None:
+        cases = {
+            "oncotracer_cli/docker_runtime.py": "result['variant_nextflow'] = '/usr/local/bin/nextflow'",
+            "oncotracer_cli/glimpse_readiness.py": "probe([tools['nextflow'], '-version'], 'Nextflow')",
+        }
+        for relative, line in cases.items():
+            for prefix in ("", "payload/"):
+                with self.subTest(path=prefix + relative):
+                    self.assertEqual(python_nextflow_command_violations(prefix + relative, line), [])
+                    self.assertTrue(python_nextflow_command_violations(prefix + relative, line + "; run('nextflow')"))
+                    self.assertTrue(python_nextflow_command_violations(prefix + relative, "run(['nextflow', 'run', 'main.nf'])"))
+                    self.assertTrue(python_nextflow_command_violations("oncotracer_cli/unexpected.py", line))
+
+    def test_clinvar_gzip_exception_is_exact_and_keeps_other_audits(self) -> None:
+        relative = "payload/oncotracer_cli/lpwgs/bin/clinvar_resource.py"
+        magic = "compressed = handle.read(2) == b'\\x1f\\x8b'\n"
+        self.assertEqual(python_nextflow_command_violations(relative, magic), [])
+        self.assertTrue(python_nextflow_command_violations(relative, magic.replace("x8b", "x8c")))
+        self.assertTrue(python_nextflow_command_violations("oncotracer_cli/unexpected.py", magic))
+        with tempfile.TemporaryDirectory() as directory:
+            staging = Path(directory)
+            module = staging / relative
+            module.parent.mkdir(parents=True)
+            module.write_text(magic + "# " + FORBIDDEN_LOCAL_TEXT[0] + "\n")
+            self.assertTrue(any("local path leaked" in value for value in materialized_tree_violations(staging)))
 
     def test_glimpse_exceptions_preserve_private_data_and_runtime_guards(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

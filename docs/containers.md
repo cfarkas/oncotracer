@@ -23,7 +23,7 @@ The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and 
 | Analysis | Conda / host / Poetry | Updated Docker image | Singularity / Apptainer backend |
 | --- | --- | --- | --- |
 | CNA and optional CNA reports | Yes | Yes | Yes |
-| CNA plus small variants | With the requested optional tools | Yes, use the dated variant image below | Not supported |
+| CNA plus small variants | With the requested optional tools | Yes, build the current variant image below | Not supported |
 | ONT methylation | With separate compatible tools/models | Not supported | Not supported |
 | Existing BAMs, variants only | Direct `oncotracer variants` command | Explicit container command in the [variant reference](variants_reference.md#conda-and-docker) | No integrated route |
 
@@ -67,27 +67,30 @@ oncotracer install --conda \
 
 ### FASTQ to CNA and variants
 
-Use the current source checkout and this published integration image for the
-combined workflow (Linux x86-64):
+Build the current source checkout for the complete Illumina GLIMPSE2 workflow
+and integrated ONT callers (Linux x86-64). Older published image tags do not gain
+these changes when the source branch is updated:
 
 ```bash
-docker pull carlosfarkas/oncotracer:fastq-variants-20260922
+docker build --build-arg SOURCE_COMMIT="$(git rev-parse HEAD)" \
+  -t oncotracer:glimpse2-repair .
 oncotracer setup --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants
+  --image oncotracer:glimpse2-repair --variants
 ```
 
 Select Illumina or ONT, Fresh or FFPE, and the compatible callers. **Save and
 check**, then **Run analysis**, starts alignment, CNA analysis and the selected
 variant stages in one project. ANNOVAR uses an existing licensed installation
-and databases. With the 20260922 image, Run can prepare the selected Clair3
-model and missing FFPERASE source/models after explicit license acceptance.
+and databases. Run can prepare the selected Clair3 model and missing FFPERASE
+source/models after explicit license acceptance. The image includes pinned
+Nextflow with a writable runtime cache for arbitrary container UIDs.
 Checks and dry runs download no variant resources; existing paths remain supported.
 
 Terminal equivalent, using the same image and variant branch:
 
 ```bash
 oncotracer setup --terminal --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants --run
+  --image oncotracer:glimpse2-repair --variants --run
 ```
 
 Answer the platform, input, preservation, caller and resource questions. `--run`
@@ -97,16 +100,16 @@ then use the project path you selected:
 ```bash
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922 \
+  --image oncotracer:glimpse2-repair \
   --config /absolute/path/to/my-study/config/run.yml
 ```
 
 Choose either setup route for a new project. For fully unattended FASTQ setup,
 use the [explicit sample commands](headless.md) with `--non-interactive`.
 
-This dated image was tested with the synthetic FASTQ integration checks described in
-[small-variant calling](variants.md#run-cna-and-variants-with-docker). The stable
-release below predates this optional variant branch.
+See the [resume and FFPE repair notes](glimpse2_repair.txt) for validation scope,
+compatible resource requirements and the existing-output ownership boundary.
+The stable release below predates the complete GLIMPSE2 branch.
 
 ### Stable CNA release
 
@@ -244,15 +247,15 @@ oncotracer provenance --json
 oncotracer doctor --backend docker
 ```
 
-For the dated variant image, inspect that exact image as well; the host launcher
+For a locally built variant image, inspect that exact image as well; the host launcher
 and container can come from different commits:
 
 ```bash
-docker run --rm carlosfarkas/oncotracer:fastq-variants-20260922 provenance --json
+docker run --rm oncotracer:glimpse2-repair provenance --json
 oncotracer doctor --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922
+  --image oncotracer:glimpse2-repair
 docker image inspect --format '{{json .RepoDigests}}' \
-  carlosfarkas/oncotracer:fastq-variants-20260922
+  oncotracer:glimpse2-repair
 ```
 
 Record the digest you used with the study. `doctor` here checks core tools;

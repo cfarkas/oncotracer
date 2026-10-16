@@ -483,7 +483,7 @@ jobs:
             --build-arg SOURCE_COMMIT='${{ steps.source.outputs.source_commit }}' \
             --build-arg SOURCE_SHA256='${{ steps.source.outputs.source_sha256 }}' \
             --tag oncotracer:v2-ci .
-      - name: Verify image provenance, eight environments, ONT callers, and absent Nextflow
+      - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
           docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.1.0'
           docker run --rm oncotracer:v2-ci provenance --json \
