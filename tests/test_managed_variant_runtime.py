@@ -84,6 +84,72 @@ class ManagedVariantRuntimeTests(unittest.TestCase):
                                        self.root / "out", self.root / "resources", 2)
         self.assertEqual(parameters["tool_prefix"], str(self.prefix))
 
+    def test_configured_managed_variants_ignore_inherited_prefix(self):
+        for backend in ("conda", "poetry"):
+            with self.subTest(backend=backend):
+                install = dict(self.install, backend=backend)
+                self.assertEqual(cli._configured_native_prefixes(install)["variants"], self.prefix)
+                install.pop("variants_prefix")
+                self.assertIsNone(cli._configured_native_prefixes(install)["variants"])
+
+    def test_external_configured_variants_keep_environment_selection(self):
+        for backend in ("host", "docker"):
+            with self.subTest(backend=backend):
+                install = dict(self.install, backend=backend)
+                self.assertEqual(cli._configured_native_prefixes(install)["variants"], self.stale)
+
+    def test_complete_managed_run_supersedes_saved_and_inherited_prefixes(self):
+        base = self.root / "science"
+        self.install.update({f"{name}_prefix": str(base / name)
+                             for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")})
+        config = self.root / "run.yml"
+        config.write_text(render_flat_yaml(self.config))
+        original = config.read_bytes()
+        args = cli.build_parser().parse_args(["run", "--config", str(config), "--backend", "conda"])
+        active = set()
+        semantic_checks = []
+
+        @contextlib.contextmanager
+        def core_lock(selected, **_kwargs):
+            self.assertEqual(selected, base)
+            active.add("core")
+            try:
+                yield {}
+            finally:
+                active.remove("core")
+
+        @contextlib.contextmanager
+        def variants_lock(selected, *, semantic=False):
+            self.assertEqual(selected, self.prefix)
+            semantic_checks.append(semantic)
+            active.add("variants")
+            try:
+                yield self.prefix
+            finally:
+                active.remove("variants")
+
+        def native_dispatch(selected, **_kwargs):
+            self.assertEqual(active, {"core", "variants"})
+            request = resolve_variant_request(load_flat_yaml(selected), mode="illumina")
+            self.assertEqual(request.tool_prefix, self.prefix)
+            return self.root / "results"
+
+        with patch.object(cli, "managed_conda_runtime_lock", side_effect=core_lock), \
+             patch("oncotracer_cli.install_safety.managed_variants_runtime_lock", side_effect=variants_lock), \
+             patch.object(cli, "_probe_core", return_value={"success": True}), \
+             patch("oncotracer_cli.variants.preflight_variant_tools", return_value={}) as probe, \
+             patch.object(cli, "_prepare_configured_hg38"), \
+             patch.object(cli, "run_native", side_effect=native_dispatch) as dispatch, \
+             contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(cli.execute_run(config, args), self.root / "results")
+        probe.assert_called_once()
+        self.assertEqual(probe.call_args.args[0].tool_prefix, self.prefix)
+        dispatch.assert_called_once()
+        self.assertEqual(semantic_checks, [True, False])
+        self.assertEqual(config.read_bytes(), original)
+        self.assertEqual(os.environ["ONCOTRACER_VARIANTS_PREFIX"], str(self.stale))
+        self.assertFalse((self.root / "results").exists())
+
     def test_missing_managed_prefix_fails_without_discovering_or_dispatching(self):
         self.install.pop("variants_prefix")
         with patch("shutil.which", side_effect=AssertionError("unexpected PATH fallback")):

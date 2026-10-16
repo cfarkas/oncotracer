@@ -1101,7 +1101,11 @@ def _configured_native_prefixes(install: dict[str, object]) -> dict[str, Path | 
     }
     prefixes: dict[str, Path | None] = {}
     for group, (config_key, environment_key) in definitions.items():
-        value = os.environ.get(environment_key) or install.get(config_key)
+        if group == "variants" and install.get("backend") in {"conda", "poetry"}:
+            # An inherited environment cannot replace the authenticated managed caller.
+            value = install.get(config_key)
+        else:
+            value = os.environ.get(environment_key) or install.get(config_key)
         prefixes[group] = Path(str(value)).expanduser().resolve() if value else None
     return prefixes
 

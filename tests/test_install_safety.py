@@ -1335,6 +1335,25 @@ else:
                     (binaries / "gistic2").symlink_to("gistic2.bin")
                 install_safety._verify_conda_runtime(destination, name)
 
+    def test_variant_probe_accepts_packaged_gatk_relative_share_symlink(self) -> None:
+        destination = self.scratch / "packaged-variant-tools"
+        binaries = destination / "bin"
+        binaries.mkdir(parents=True)
+        for name in ("bcftools", "samtools", "freebayes", "varlociraptor"):
+            _write_executable(binaries / name, _FAKE_VARIANT_PROGRAM)
+        share = destination / "share/gatk4-4.6.2.0-1"
+        share.mkdir(parents=True)
+        target = _write_executable(share / "gatk", _FAKE_VARIANT_PROGRAM)
+        logical = binaries / "gatk"
+        logical.symlink_to("../share/gatk4-4.6.2.0-1/gatk")
+        descriptor, resolved = install_safety._open_managed_probe(destination, logical, "packaged GATK")
+        try:
+            self.assertEqual(resolved, target)
+            self.assertEqual(os.fstat(descriptor).st_ino, target.stat().st_ino)
+        finally:
+            os.close(descriptor)
+        install_safety._verify_conda_runtime(destination, "variants")
+
     def test_named_physical_python_preserves_real_prefix_discovery(self) -> None:
         destination = self.scratch / "real-prefix-probe"
         venv.EnvBuilder(with_pip=False, symlinks=False).create(destination)
@@ -1440,7 +1459,21 @@ else:
                 (runtimes / "current").symlink_to(outside, target_is_directory=True)
                 probe.symlink_to("runtimes/current/python")
             elif attack == "dotdot":
-                probe.symlink_to("../outside-python")
+                probe.symlink_to("../../external-probe")
+            elif attack == "nested-dotdot":
+                outside = self.scratch / "unverified-nested-runtime"
+                outside.mkdir()
+                (binaries / "unverified").symlink_to(outside, target_is_directory=True)
+                _write_executable(binaries / "python3.11", "#!/bin/sh\necho CORE_OK\n")
+                probe.symlink_to("unverified/../python3.11")
+            elif attack == "share-parent":
+                outside = self.scratch / "unverified-share-runtime"
+                outside.mkdir()
+                _write_executable(outside / "python", "#!/bin/sh\necho EXTERNAL\n")
+                (destination / "share").symlink_to(outside, target_is_directory=True)
+                probe.symlink_to("../share/python")
+            elif attack == "parent-loop":
+                probe.symlink_to("../bin/python")
             elif attack == "loop":
                 probe.symlink_to("python3")
                 (binaries / "python3").symlink_to("python")
@@ -1464,6 +1497,9 @@ else:
             "absolute",
             "parent",
             "dotdot",
+            "nested-dotdot",
+            "share-parent",
+            "parent-loop",
             "loop",
             "special",
             "hardlinked-symlink",

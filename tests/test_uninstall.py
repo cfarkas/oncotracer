@@ -46,7 +46,7 @@ class UninstallTests(unittest.TestCase):
             )
         return base
 
-    def sibling_fixture(self, base, family="variants"):
+    def sibling_fixture(self, base, family="variants", *, owned=True):
         suffix = "poetry" if family == "poetry-runtime" else "variants"
         domain = base.with_name(f"{base.name}-{suffix}")
         domain.mkdir()
@@ -54,7 +54,8 @@ class UninstallTests(unittest.TestCase):
         source = {**SOURCE, "source_commit": "f" * 40}
         marker = safety._base_marker(domain, install_id, source)
         marker["managed_children"] = [family]
-        (domain / safety.BASE_MARKER).write_text(json.dumps(marker))
+        if owned:
+            (domain / safety.BASE_MARKER).write_text(json.dumps(marker))
         child = domain / family
         child.mkdir()
         if family == "poetry-runtime":
@@ -117,10 +118,8 @@ class UninstallTests(unittest.TestCase):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 base = self.fixture(root)
-                sibling = self.sibling_fixture(base)
-                if defect == "unowned":
-                    (sibling / safety.BASE_MARKER).unlink()
-                elif defect == "wrong-family":
+                sibling = self.sibling_fixture(base, owned=defect != "unowned")
+                if defect == "wrong-family":
                     marker_path = sibling / safety.BASE_MARKER
                     marker = json.loads(marker_path.read_text())
                     marker["managed_children"] = list(safety.MANAGED_CHILDREN)
@@ -131,7 +130,7 @@ class UninstallTests(unittest.TestCase):
                     real = sibling.with_name("unrelated-environment")
                     sibling.rename(real)
                     sibling.symlink_to(real, target_is_directory=True)
-                else:
+                elif defect == "pending":
                     safety._journal_path(sibling, "conda").write_text("{}")
                 with patch.object(safety, "_active_processes", return_value=[]):
                     with self.assertRaises(OncoTracerError):
