@@ -1,10 +1,23 @@
 GLIMPSE2 continuation, caller compatibility, Docker and FFPE repair
 
-The feature branch provides capability-tested trait calling for both older
-bcftools (including 1.17) and newer versions (including 1.23.1). Unsupported
-symbolic-allele flags are omitted. Depth and genotype-quality gates remain:
-missing or low-confidence reference evidence is never promoted to a call.
-ClinVar contig headers are repaired in a separate cached resource before jobs.
+Complete Illumina runs require bcftools 1.23.1 linked to HTSlib 1.24 in both
+Conda and Docker. environments/native-variants.yml pins that pair and samtools
+1.23.1. Both controller and workflow preflight report the selected executable
+and linked-library version and reject mismatched or unreported versions before
+analysis. An existing older variant_tool_prefix is not silently replaced.
+Create/update a separate environment from that file and select its directory as
+variant_tool_prefix; Docker users rebuild/select the current image.
+
+The low-level traits helper still detects supported flags for compatibility
+testing, but that does not authorize older callers for complete workflow runs.
+Depth and genotype-quality gates remain: missing or low-confidence reference
+evidence is never promoted to a call. ClinVar contig headers are repaired in a
+separate cached resource before jobs.
+
+Version/library changes invalidate incompatible variant tasks, including shared
+reference preparation. The runtime records the linked bcftools HTSlib version;
+a previous task without that information cannot certify the same runtime.
+Existing outputs remain intact and each stage is checked again for reuse.
 
 From a source checkout, open visual setup explicitly:
 
@@ -49,7 +62,9 @@ including its framework jar for offline startup. Existing registry tags are not
 changed by publishing this source repair. Build a new image and select its tag
 in browser setup (or --image for a configured Python run):
 
-  docker build --build-arg SOURCE_COMMIT="$(git rev-parse HEAD)" -t oncotracer:glimpse2-repair .
+  oncotracer_commit="$(git rev-parse HEAD)"
+  oncotracer_source_sha256="$(git -c tar.umask=0002 archive --format=tar "$oncotracer_commit" | sha256sum | awk '{print $1}')"
+  docker build --build-arg SOURCE_COMMIT="$oncotracer_commit" --build-arg SOURCE_SHA256="$oncotracer_source_sha256" -t oncotracer:glimpse2-repair .
   python3 -m oncotracer_cli.nextflow_gateway --interactive --backend docker
   nextflow run ./main.nf --interactive --backend docker
 
