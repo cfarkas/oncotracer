@@ -21,7 +21,7 @@ Existing outputs remain intact and each stage is checked again for reuse.
 
 From a source checkout, open visual setup explicitly:
 
-  python3 -m oncotracer_cli.nextflow_gateway --interactive --backend conda
+  python3 ./oncotracer --interactive --backend conda
   nextflow run ./main.nf --interactive --backend conda
 
 Choose a project and review the saved settings before pressing Run analysis.
@@ -65,7 +65,7 @@ in browser setup (or --image for a configured Python run):
   oncotracer_commit="$(git rev-parse HEAD)"
   oncotracer_source_sha256="$(git -c tar.umask=0002 archive --format=tar "$oncotracer_commit" | sha256sum | awk '{print $1}')"
   docker build --build-arg SOURCE_COMMIT="$oncotracer_commit" --build-arg SOURCE_SHA256="$oncotracer_source_sha256" -t oncotracer:glimpse2-repair .
-  python3 -m oncotracer_cli.nextflow_gateway --interactive --backend docker
+  python3 ./oncotracer --interactive --backend docker
   nextflow run ./main.nf --interactive --backend docker
 
 The image preflight checks its own scientific tools, local reporting model and
@@ -76,6 +76,23 @@ A host Conda project must not switch runtime into the same owned output tree.
 Use a separate Docker project/output and review compatible imports explicitly.
 
 FFPE
+
+Use the same native or Nextflow entry point with the FFPE preset:
+
+  oncotracer --interactive --ffpe --backend conda
+  python3 ./oncotracer --interactive --ffpe --backend conda
+  nextflow run ./main.nf --interactive --ffpe --backend conda
+
+Use --backend docker for Docker. These commands open browser setup; they do not
+start analysis. The preset selects Illumina, variants, FFPE preservation and
+required FFPErase assessment. It does not accept model licenses or start resource
+downloads. Choose inputs, a new project and resources, then Save and check before
+Run analysis. No separate FFPE launcher is needed.
+
+The native command accepts --project, --input-folder, --image and the existing
+--variant-ffperase-root/models/sif/prefix and --variant-tool-prefix options.
+Nextflow accepts their underscore forms, such as --input_folder and
+--variant_ffperase_models. Supplied values prefill the same browser form.
 
 Choose FFPE specimen preservation and required FFPErase assessment in a new
 project. Provide the pinned upstream source and both licensed model files.

@@ -5,12 +5,13 @@
 ## 1. Configure interactively (recommended)
 
 ```bash
-oncotracer setup
+oncotracer --interactive
 ```
 
-Keep the terminal open. If needed, open the printed **127.0.0.1:8888** URL
-including its `#` session code.
-**Browse computer** opens the system folder chooser and discovers selected inputs.
+FFPE preset: `oncotracer --interactive --ffpe` or `nextflow run main.nf --interactive --ffpe`.
+
+Keep the terminal open; use the **127.0.0.1:8888** URL with `#` session code.
+**Browse computer** selects inputs.
 Folders without FASTQ, POD5 or BAM files (including subfolders) display
 **No sequencing files found. Check your paths.**
 

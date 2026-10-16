@@ -1614,8 +1614,14 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="oncotracer",
-        description="Native LP-WGS CNA analysis.",
+        description="Native LP-WGS CNA and variant analysis.",
+        epilog=("Browser setup: oncotracer --interactive [--ffpe] [setup options]. "
+                "Use oncotracer setup --help for project, input, backend and resource options."),
     )
+    parser.add_argument("--interactive", action="store_true",
+                        help="open browser setup; accepts setup options and starts no analysis")
+    parser.add_argument("--ffpe", action="store_true",
+                        help="with --interactive, preselect Illumina FFPE variants and FFPErase")
     parser.add_argument(
         "--version", action="version", version=f"OncoTracer {__version__}"
     )
@@ -1759,14 +1765,56 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
     raise OncoTracerError("use an OncoTracer v2 subcommand; run 'oncotracer --help'")
 
 
+def parse_arguments(values: Sequence[str], parser: argparse.ArgumentParser | None = None) -> argparse.Namespace:
+    """Resolve the public browser alias without weakening setup/run boundaries."""
+    parser = parser or build_parser()
+    values = list(values)
+    top_level = bool(values) and values[0].startswith("-")
+    interactive = top_level and "--interactive" in values
+    ffpe = top_level and "--ffpe" in values
+    if ffpe and not interactive:
+        raise OncoTracerError("--ffpe is a browser setup preset; use --interactive --ffpe")
+    if interactive:
+        values = ["setup", *(value for value in values if value not in {"--interactive", "--ffpe"})]
+    args = parser.parse_args(_legacy_to_modern(values))
+    if interactive:
+        args.interactive = True
+        args.ffpe = ffpe
+        disallowed = ("run", "terminal", "manual", "non_interactive", "samplesheet",
+                      "fastq_1", "fastq_2", "sample_name", "barcodes", "sample_names", "status")
+        selected = ["--" + name.replace("_", "-") for name in disallowed if getattr(args, name, None)]
+        if selected:
+            raise OncoTracerError(
+                "--interactive opens browser setup without starting analysis; omit " + ", ".join(selected)
+            )
+        if args.threads is not None and args.threads < 1:
+            raise OncoTracerError("--threads must be positive")
+        if ffpe:
+            if args.variant_config:
+                raise OncoTracerError("--ffpe presets a new FASTQ setup; omit --variant-config and review existing configurations separately")
+            if args.backend == "singularity":
+                raise OncoTracerError("--ffpe enables variants; the integrated Singularity backend supports CNA only. Choose conda or docker")
+            defaults = {"mode": "illumina", "analysis": "cna", "variant_engine": "glimpse2",
+                        "variant_specimen_type": "ffpe", "variant_ffperase": "required"}
+            for name, value in defaults.items():
+                current = getattr(args, name, None)
+                if current not in (None, value):
+                    raise OncoTracerError(f"--ffpe conflicts with --{name.replace('_', '-')} {current}")
+                setattr(args, name, value)
+            if args.reads_folder or args.modbam or args.pod5_dir:
+                raise OncoTracerError("--ffpe selects Illumina FASTQ setup; use --input-folder for its reads")
+            args.variants = True
+    return args
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     try:
-        values = _legacy_to_modern(list(sys.argv[1:] if argv is None else argv))
+        values = list(sys.argv[1:] if argv is None else argv)
         if not values:
             parser.print_help()
             return 0
-        args = parser.parse_args(values)
+        args = parse_arguments(values, parser)
         if not hasattr(args, "func"):
             parser.print_help()
             return 2

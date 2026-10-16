@@ -63,6 +63,7 @@ jobs:
           python3 -m unittest -v \
             tests/test_bootstrap.py \
             tests/test_native_cli.py \
+            tests/test_nextflow_gateway.py \
             tests/test_native_engine.py \
             tests/test_native_variants.py \
             tests/test_variant_command.py \

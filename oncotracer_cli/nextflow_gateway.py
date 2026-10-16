@@ -20,6 +20,14 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--project-dir', default=str(Path(__file__).resolve().parents[1]), help=argparse.SUPPRESS)
     p.add_argument('--launch-dir', default=str(Path.cwd()), help=argparse.SUPPRESS)
     p.add_argument('--interactive', action='store_true', help='open the local OncoTracer visual browser setup')
+    p.add_argument('--ffpe', action='store_true', help='with --interactive, preselect Illumina FFPE variants and FFPErase')
+    p.add_argument('--no_browser', '--no-browser', action='store_true', help='print the browser URL without opening it automatically')
+    p.add_argument('--project', help='project folder to prefill in browser setup')
+    p.add_argument('--input_folder', '--input-folder', help='FASTQ folder to prefill in browser setup')
+    p.add_argument('--image', help='Docker image to prefill in browser setup')
+    for name in ('variant_tool_prefix', 'variant_ffperase_root', 'variant_ffperase_models',
+                 'variant_ffperase_sif', 'variant_ffperase_prefix'):
+        p.add_argument('--' + name, '--' + name.replace('_', '-'), help='existing local setup resource path')
     p.add_argument('--analysis', choices=('variants', 'full'), default='variants',
                    help='variants reuses aligned BAMs; full runs the configured OncoTracer analysis')
     p.add_argument('--config', help='OncoTracer YAML configuration; required without --interactive')
@@ -55,6 +63,13 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
     config = resolve_path(args.config, launch) if args.config else None
     if config is not None and not config.is_file():
         raise ValueError(f'Configuration file does not exist: {config}')
+    setup_paths = ('project', 'input_folder', 'variant_tool_prefix', 'variant_ffperase_root',
+                   'variant_ffperase_models', 'variant_ffperase_sif', 'variant_ffperase_prefix')
+    if not args.interactive and (args.ffpe or args.no_browser or args.image or
+                                 any(getattr(args, key) for key in setup_paths)):
+        raise ValueError('--ffpe and browser setup options require --interactive; no analysis was started')
+    if args.ffpe and config is not None:
+        raise ValueError('--ffpe presets a new FASTQ setup; omit --config and review existing configurations separately')
     argv = python_module('oncotracer_cli.cli', source=source)
     cwd = launch
     if args.interactive:
@@ -65,7 +80,16 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         cwd = resolve_path(args.start_dir, launch) if args.start_dir else launch
         if not cwd.is_dir():
             raise ValueError(f'Browser start directory does not exist: {cwd}')
-        argv += ['setup', '--port', str(args.port)]
+        argv += ['--interactive', '--port', str(args.port)]
+        if args.ffpe:
+            argv.append('--ffpe')
+        if args.no_browser:
+            argv.append('--no-browser')
+        for key in setup_paths:
+            if getattr(args, key):
+                argv += ['--' + key.replace('_', '-'), str(resolve_path(getattr(args, key), launch))]
+        if args.image:
+            argv += ['--image', args.image]
         if config:
             argv += ['--variant-config', str(config)]
         else:

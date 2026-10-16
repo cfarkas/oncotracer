@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import patch
 
 from oncotracer_cli import nextflow_gateway as gateway
-from oncotracer_cli.cli import build_parser
+from oncotracer_cli.cli import parse_arguments
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,8 +34,8 @@ class NextflowGatewayTests(unittest.TestCase):
 
     def test_visual_entry_routes_to_browser_setup_with_glimpse_selected(self):
         argv, cwd, env = gateway.command(self.args('--interactive', '--port', '8765'))
-        self.assertEqual(argv[3:], ['setup', '--port', '8765', '--mode', 'illumina', '--variants'])
-        args = build_parser().parse_args(argv[3:])
+        self.assertEqual(argv[3:], ['--interactive', '--port', '8765', '--mode', 'illumina', '--variants'])
+        args = parse_arguments(argv[3:])
         self.assertFalse(args.terminal)
         self.assertFalse(args.non_interactive)
         self.assertTrue(args.variants)
@@ -44,7 +44,7 @@ class NextflowGatewayTests(unittest.TestCase):
 
     def test_existing_bam_interactive_entry_uses_review_screen(self):
         argv, _, _ = gateway.command(self.args('--interactive', '--config', self.config.name))
-        parsed = build_parser().parse_args(argv[3:])
+        parsed = parse_arguments(argv[3:])
         self.assertEqual(parsed.variant_config, str(self.config))
         self.assertFalse(parsed.terminal)
 
@@ -54,20 +54,64 @@ class NextflowGatewayTests(unittest.TestCase):
                                                    '--threads', '3', '--dry_run'))
             self.assertEqual(argv[3:6], [expected, '--config', str(self.config)])
             self.assertIn('--dry-run', argv)
-            self.assertEqual(build_parser().parse_args(argv[3:]).threads, 3)
+            self.assertEqual(parse_arguments(argv[3:]).threads, 3)
         self.assertFalse((self.root / 'SHOULD_NOT_EXIST').exists())
 
     def test_parallel_sample_override_reaches_visual_variants_and_full_cli(self):
         for flags in [('--interactive',), ('--analysis','variants','--config',self.config.name),
                       ('--analysis','full','--config',self.config.name)]:
             argv, _, _ = gateway.command(self.args(*flags, '--parallel_samples', '4', '--threads', '32'))
-            parsed = build_parser().parse_args(argv[3:])
+            parsed = parse_arguments(argv[3:])
             self.assertEqual(parsed.threads, 32)
             field = 'variant_parallel_samples' if parsed.command == 'setup' else 'parallel_samples'
             self.assertEqual(getattr(parsed, field), 4)
             if parsed.command == 'setup':
                 self.assertFalse(parsed.terminal)
                 self.assertFalse(parsed.non_interactive)
+
+    def test_ffpe_browser_forwards_the_same_native_setup_options(self):
+        for backend in ('conda', 'docker'):
+            with self.subTest(backend=backend):
+                argv, cwd, _ = gateway.command(self.args(
+                    '--interactive', '--ffpe', '--backend', backend, '--no_browser',
+                    '--project', 'new project', '--input_folder', 'reads $(touch SHOULD_NOT_EXIST)',
+                    '--variant_tool_prefix', 'variants', '--variant_ffperase_root', 'ffperase',
+                    '--variant_ffperase_models', 'models', '--variant_ffperase_sif', 'ffpe.sif',
+                    '--variant_ffperase_prefix', 'ffpe-env',
+                    *(['--image', 'oncotracer:local'] if backend == 'docker' else [])))
+                args = parse_arguments(argv[3:])
+                self.assertEqual(args.command, 'setup')
+                self.assertEqual(args.backend, backend)
+                self.assertEqual(args.project, str(self.root / 'new project'))
+                self.assertEqual(args.input_folder, str(self.root / 'reads $(touch SHOULD_NOT_EXIST)'))
+                self.assertEqual(args.variant_tool_prefix, str(self.root / 'variants'))
+                self.assertEqual(args.variant_ffperase_root, str(self.root / 'ffperase'))
+                self.assertEqual(args.variant_ffperase_models, str(self.root / 'models'))
+                self.assertEqual(args.variant_ffperase_sif, str(self.root / 'ffpe.sif'))
+                self.assertEqual(args.variant_ffperase_prefix, str(self.root / 'ffpe-env'))
+                self.assertEqual(args.variant_specimen_type, 'ffpe')
+                self.assertEqual(args.variant_ffperase, 'required')
+                self.assertTrue(args.variants)
+                self.assertTrue(args.no_browser)
+                self.assertFalse(args.run)
+                self.assertIsNone(args.variant_accept_ffperase_license)
+                self.assertEqual(cwd, self.root)
+                self.assertFalse((self.root / 'new project').exists())
+                self.assertFalse((self.root / 'SHOULD_NOT_EXIST').exists())
+
+    def test_setup_only_options_never_dispatch_an_analysis(self):
+        for flags in (['--ffpe'], ['--project', 'project'], ['--input_folder', 'reads'],
+                      ['--image', 'local:image'], ['--no_browser'],
+                      ['--variant_ffperase_models', 'models'], ['--variant_tool_prefix', 'tools']):
+            with self.subTest(flags=flags), patch.object(gateway.subprocess, 'run') as run, \
+                 contextlib.redirect_stderr(io.StringIO()) as error:
+                code = gateway.main(['--project-dir', str(ROOT), '--launch-dir', str(self.root),
+                                     '--config', str(self.config), *flags])
+                self.assertEqual(code, 2)
+                self.assertIn('require --interactive', error.getvalue())
+                run.assert_not_called()
+        with self.assertRaisesRegex(ValueError, 'new FASTQ setup'):
+            gateway.command(self.args('--interactive', '--ffpe', '--config', str(self.config)))
 
     def test_missing_config_and_invalid_runtime_inputs_are_rejected(self):
         for values in [[], ['--interactive', '--port', '0'], ['--interactive', '--threads', '0'], ['--interactive', '--parallel_samples', '0'],
@@ -115,7 +159,7 @@ class NextflowGatewayTests(unittest.TestCase):
             "from subprocess import CompletedProcess\n"
             "def run(argv, **kwargs):\n"
             f" Path({str(record)!r}).write_text(json.dumps({{'argv':argv,'cwd':str(kwargs['cwd']),'source':kwargs['env']['PYTHONPATH']}}))\n"
-            " return CompletedProcess(argv, 0 if 'setup' in argv else 7)\n"
+            " return CompletedProcess(argv, 0 if '--interactive' in argv else 7)\n"
             "code = sys.argv[2]\nsys.argv = ['-c', *sys.argv[3:]]\n"
             "with patch('subprocess.run', side_effect=run):\n"
             " exec(code, {'__name__': '__main__'})\n")
@@ -126,9 +170,43 @@ class NextflowGatewayTests(unittest.TestCase):
                                 cwd=self.root, env=env, text=True, capture_output=True, timeout=90)
         self.assertEqual(visual.returncode, 0, visual.stdout + visual.stderr)
         payload = json.loads(record.read_text())
-        self.assertEqual(payload['argv'][3:], ['setup', '--port', '8877', '--mode', 'illumina', '--variants', '--parallel-samples', '3'])
+        self.assertEqual(payload['argv'][3:], ['--interactive', '--port', '8877', '--mode', 'illumina', '--variants', '--parallel-samples', '3'])
         self.assertEqual(payload['cwd'], str(self.root))
         self.assertEqual(payload['source'].split(os.pathsep)[0], str(ROOT))
+        ffpe = subprocess.run([*argv, '--interactive', '--ffpe', '--backend', 'docker',
+                               '--project', 'FFPE project', '--input_folder', 'FFPE reads',
+                               '--image', 'oncotracer:local', '--no_browser',
+                               '--variant_tool_prefix', 'variant tools',
+                               '--variant_ffperase_root', 'ffperase', '--variant_ffperase_models', 'models',
+                               '--variant_ffperase_sif', 'ffpe.sif', '--variant_ffperase_prefix', 'ffpe-env'],
+                              cwd=self.root, env=env, text=True, capture_output=True, timeout=90)
+        self.assertEqual(ffpe.returncode, 0, ffpe.stdout + ffpe.stderr)
+        parsed = parse_arguments(json.loads(record.read_text())['argv'][3:])
+        self.assertEqual(parsed.variant_specimen_type, 'ffpe')
+        self.assertEqual(parsed.variant_ffperase, 'required')
+        self.assertEqual(parsed.backend, 'docker')
+        self.assertEqual(parsed.image, 'oncotracer:local')
+        self.assertEqual(parsed.project, str(self.root / 'FFPE project'))
+        self.assertEqual(parsed.input_folder, str(self.root / 'FFPE reads'))
+        self.assertEqual(parsed.variant_tool_prefix, str(self.root / 'variant tools'))
+        self.assertEqual(parsed.variant_ffperase_root, str(self.root / 'ffperase'))
+        self.assertEqual(parsed.variant_ffperase_models, str(self.root / 'models'))
+        self.assertEqual(parsed.variant_ffperase_sif, str(self.root / 'ffpe.sif'))
+        self.assertEqual(parsed.variant_ffperase_prefix, str(self.root / 'ffpe-env'))
+        self.assertTrue(parsed.no_browser)
+        self.assertFalse(parsed.run)
+        self.assertFalse((self.root / 'FFPE project').exists())
+        before = record.read_bytes()
+        no_arguments = subprocess.run(argv, cwd=self.root, env=env,
+                                      text=True, capture_output=True, timeout=90)
+        self.assertNotEqual(no_arguments.returncode, 0)
+        self.assertIn('Provide --config', no_arguments.stdout + no_arguments.stderr)
+        self.assertEqual(record.read_bytes(), before)
+        no_interactive = subprocess.run([*argv, '--ffpe', '--config', self.config.name],
+                                       cwd=self.root, env=env, text=True, capture_output=True, timeout=90)
+        self.assertNotEqual(no_interactive.returncode, 0)
+        self.assertIn('require --interactive', no_interactive.stdout + no_interactive.stderr)
+        self.assertEqual(record.read_bytes(), before)
         failed = subprocess.run([*argv, '--analysis', 'full', '--config', self.config.name],
                                 cwd=self.root, env=env, text=True, capture_output=True, timeout=90)
         self.assertNotEqual(failed.returncode, 0)
