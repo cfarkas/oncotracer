@@ -117,15 +117,20 @@ def sif_read_mounts(config_path: Path) -> list[tuple[Path, str]]:
                     add(child)
                     if child.is_dir():
                         pending.append(child.resolve())
+    writable = []
     if config.get("outdir"):
-        output = Path(str(config["outdir"])).absolute()
+        writable.append(("output", Path(str(config["outdir"])).absolute(),
+                         "choose a separate output directory"))
+    if config.get("lpwgs_root"):
+        writable.append(("reference cache", Path(str(config["lpwgs_root"])).absolute() / ".oncotracer",
+                         "choose separate input and lpwgs_root directories"))
+    for label, directory, remedy in writable:
         for source in paths:
             if any(candidate == source or candidate in source.parents
                    or (source.is_dir() and source in candidate.parents)
-                   for candidate in (output, output.resolve())):
+                   for candidate in (directory, directory.resolve())):
                 raise OncoTracerError(
-                    f"Singularity output overlaps a read-only input: {source}; "
-                    "choose a separate output directory"
+                    f"Singularity {label} overlaps a read-only input: {source}; {remedy}"
                 )
     return [(path, "ro") for path in sorted(paths, key=lambda item: (len(item.parts), str(item)))]
 

@@ -834,6 +834,21 @@ class SingularityIsolationTests(unittest.TestCase):
         with self.assertRaisesRegex(OncoTracerError, "choose a separate output directory"):
             sif_read_mounts(self.config)
 
+    def test_reference_cache_under_ont_reads_is_rejected(self):
+        from oncotracer_cli.sif_runtime import sif_read_mounts
+        self.values.update(mode="ont", ont_folder=str(self.project), ont_single_sample=True,
+                           ont_barcodes=".", ont_sample_names="MOCK",
+                           outdir=str(self.root / "separate results"))
+        self.values.pop("illumina_samplesheet")
+        alias = self.home / "project alias"
+        alias.symlink_to(self.project, target_is_directory=True)
+        for project in (self.project, alias):
+            with self.subTest(project=project):
+                self.values["lpwgs_root"] = str(project)
+                self.config.write_text(render_flat_yaml(self.values))
+                with self.assertRaisesRegex(OncoTracerError, "reference cache overlaps.*lpwgs_root"):
+                    sif_read_mounts(self.config)
+
     def test_project_directory_alias_keeps_lexical_parent(self):
         from oncotracer_cli.sif_runtime import sif_project_alias_mounts
         alias_parent = self.home / "aliases"
