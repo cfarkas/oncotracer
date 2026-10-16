@@ -523,7 +523,23 @@ class WebState:
             return self.status()
 
     def _wait(self, job):
-        result = job["process"].wait()
+        # Keep the foreground terminal and browser on the same persistent log.
+        def mirror():
+            try:
+                with Path(job['log_path']).open(errors='replace') as reader:
+                    while True:
+                        chunk=reader.read()
+                        if chunk:print(chunk,end='',flush=True)
+                        if job['process'].poll() is not None:
+                            print(reader.read(),end='',flush=True)
+                            return
+                        time.sleep(.2)
+            except (OSError,KeyError):
+                return
+        thread=threading.Thread(target=mirror,daemon=True)
+        thread.start()
+        try:result = job["process"].wait()
+        finally:thread.join(timeout=2)
         with self.lock:
             job["exit_code"] = result
             if job.get("stop_requested"):

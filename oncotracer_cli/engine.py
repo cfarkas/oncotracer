@@ -3629,9 +3629,13 @@ def _run_variant_branch(request, bams, reference, outdir, runner, ledger, toolch
     """Preserve successful CNA work when an optional caller fails."""
     try:
         with _validated_fasta_reader(reference, runner):
-            return run_variants(request, bams, reference, outdir, runner, ledger,
-                                threads=threads, force=force, toolchain=toolchain,
-                                sample_statuses={s.sample: s.status for s in samples})
+            status = run_variants(request, bams, reference, outdir, runner, ledger,
+                                  threads=threads, force=force, toolchain=toolchain,
+                                  sample_statuses={s.sample: s.status for s in samples})
+            if status.get('overall_status') == 'interrupted':
+                # Cancellation applies to the whole run, including later CNA work.
+                raise KeyboardInterrupt('OncoTracer analysis stopped')
+            return status
     except (OSError, OncoTracerError, ValueError) as error:
         status = {"overall_status": "failed", "completed_samples": [], "failed_samples": list(bams),
                   "error": _sanitize_sample_error(error)}

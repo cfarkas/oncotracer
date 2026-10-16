@@ -124,7 +124,10 @@ jobs:
             tests/test_hosted_ci_storage_safety.py \
             tests/test_ci_parity_resource_guards.py \
             tests/test_ichor_asset_identity.py \
+            tests/test_reuse_validation.py \
+            tests/test_clinvar_resource.py \
             tests/test_release_workflow.py
+          python3 -m unittest discover -s tests -p 'test_glimpse*.py'
       - name: Run shell and standalone documentation regression tests
         run: |
           set -Eeuo pipefail
@@ -205,7 +208,8 @@ jobs:
           }
           assert not (required - names), sorted(required - names)
           assert not any(
-              name.endswith('.nf') or PurePosixPath(name).name == 'nextflow.config'
+              (name.endswith('.nf') or PurePosixPath(name).name == 'nextflow.config')
+              and not name.startswith('payload/oncotracer_cli/lpwgs/')
               for name in names
           )
           PY
@@ -493,9 +497,12 @@ jobs:
           docker run --rm oncotracer:v2-ci doctor --backend host --json \
             | tee "$RUNNER_TEMP/docker-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/docker-doctor.json"
+          docker run --rm --network none --user 1000:1000 --workdir /tmp --env HOME=/tmp \
+            --entrypoint /usr/local/bin/nextflow oncotracer:v2-ci \
+            run /opt/oncotracer/oncotracer_cli/lpwgs/main.nf --help -ansi-log false
           docker run --rm --entrypoint bash oncotracer:v2-ci -c '
             set -Eeuo pipefail
-            ! command -v nextflow
+            nextflow -version
             test -x "$ONCOTRACER_CORE_PREFIX/bin/bwa"
             test -x "$ONCOTRACER_CORE_PREFIX/bin/samtools"
             test -x "$ONCOTRACER_CORE_PREFIX/bin/minimap2"

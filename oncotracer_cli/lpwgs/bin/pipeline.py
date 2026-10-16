@@ -296,7 +296,10 @@ def somatic(a,c):
 
 def prepare_clinvar(a,c):
     bc=tool(c,'bcftools')
-    header=capture([bc,'view','-h',c['clinvar']])
+    import clinvar_resource
+    source=clinvar_resource.prepare(c['clinvar'],c['reference'],bc,Path('clinvar_header_cache'),
+                                    allow_test_reference=c.get('allow_test_reference',False))
+    header=capture([bc,'view','-h',source])
     if not c.get('allow_test_reference') and not re.search(r'GRCh38|hg38',header,re.I): raise ValueError('ClinVar header does not identify GRCh38/hg38')
     names=re.findall(r'##contig=<ID=([^,>]+)',header)
     mapping={name:chrom_name(c,name) for name in names}
@@ -304,7 +307,7 @@ def prepare_clinvar(a,c):
     if not usable: raise ValueError('ClinVar and FASTA have no matching contigs')
     Path('rename.tsv').write_text(''.join(f'{k}\t{v}\n' for k,v in usable.items()))
     # Keep only contigs present in the reference, rename, then normalize exact alleles.
-    run([bc,'view','-t',','.join(usable),'-Ob','-o','cv.subset.bcf',c['clinvar']])
+    run([bc,'view','-t',','.join(usable),'-Ob','-o','cv.subset.bcf',source])
     run([bc,'annotate','--rename-chrs','rename.tsv','-Ob','-o','cv.renamed.bcf','cv.subset.bcf'])
     run([bc,'norm','-m','-any','--multi-overlaps','.','--check-ref','e','-f',c['reference'],'-Ob','-o','cv.norm.bcf','cv.renamed.bcf'])
     run([bc,'sort','-Oz','-o','clinvar.norm.vcf.gz','cv.norm.bcf'])

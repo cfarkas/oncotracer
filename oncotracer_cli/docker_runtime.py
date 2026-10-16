@@ -16,6 +16,12 @@ from .runtime import OncoTracerError, load_flat_yaml
 from .fastq_inputs import fastq_paths, fastq_field_values
 from .variant_model_assets import is_auto_resource
 
+GLIMPSE_INPUTS = ('variant_workflow_source', 'variant_glimpse_reference_dir', 'variant_glimpse_bin',
+                  'variant_analysis_reuse_from', 'variant_reuse_from', 'variant_reference_reuse_from',
+                  'variant_patients', 'variant_patient_database', 'variant_clinvar',
+                  'variant_germline_resource', 'variant_panel_of_normals', 'variant_contamination_sites')
+GLIMPSE_CACHES = ('variant_resource_dir', 'variant_pgs_cache', 'variant_ancestry_explorer_cache', 'variant_literature_cache')
+
 
 _HOST_PREVIEW = ContextVar("oncotracer_docker_host_preview", default=False)
 
@@ -49,7 +55,7 @@ def validate_docker_variants(config: Mapping[str, object]) -> None:
     for key in ("lpwgs_root", "outdir", "illumina_samplesheet", "ont_folder", "ont_normal_folder",
                 "pathology_csv", "variant_targets_bed", "variant_clair3_model",
                 "variant_annovar_dir", "variant_annovar_db", "variant_ffperase_root",
-                "variant_ffperase_models", "variant_varlociraptor_scenario"):
+                "variant_ffperase_models", "variant_varlociraptor_scenario", *GLIMPSE_INPUTS, *GLIMPSE_CACHES):
         reject_home(config.get(key), key)
     sheet = config.get("illumina_samplesheet")
     if str(config.get("mode", "")).lower() == "illumina" and sheet and Path(str(sheet)).is_file():
@@ -81,6 +87,10 @@ def container_variant_config(config: Mapping[str, object]) -> dict[str, object]:
         result["variant_tool_prefix"] = os.environ.get("ONCOTRACER_VARIANTS_PREFIX", "/opt/oncotracer-envs/variants")
         result["variant_strelka_prefix"] = os.environ.get("ONCOTRACER_STRELKA_PREFIX", "/opt/oncotracer-envs/strelka2")
         result["variant_ffperase_prefix"] = os.environ.get("ONCOTRACER_FFPERASE_PREFIX", "/opt/oncotracer-envs/ffperase")
+        result['variant_nextflow'] = '/usr/local/bin/nextflow'
+        result['variant_llm_python'] = str(Path(os.environ.get('ONCOTRACER_CLASSIFIER_PREFIX', '/opt/oncotracer-envs/classifier'))/'bin/python')
+        if os.environ.get('ONCOTRACER_LLM_MODEL'):
+            result['variant_llm_model'] = os.environ['ONCOTRACER_LLM_MODEL']
     return result
 
 
@@ -89,6 +99,17 @@ def docker_resource_environment(config: Mapping[str, object]) -> dict[str, str]:
     result = {"ONCOTRACER_CONTAINER_RUNTIME": "docker"}
     if not variants_enabled(config):
         return result
+    if str(config.get('mode','')).lower() == 'illumina':
+        import importlib.util
+        from .glimpse_pipeline import workflow_bundle
+        module_path = workflow_bundle(config.get('variant_workflow_source'))/'bin/llm_reporting.py'
+        spec = importlib.util.spec_from_file_location('_oncotracer_docker_report_model', module_path)
+        reporting = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(reporting)
+        try:
+            result['ONCOTRACER_LLM_MODEL'] = str(reporting.resolve_model(config.get('variant_llm_model') or reporting.DEFAULT_MODEL))
+        except ValueError as error:
+            raise OncoTracerError(str(error)) from error
     for key in ("ONCOTRACER_FFPERASE_ROOT", "ONCOTRACER_FFPERASE_MODELS"):
         if os.environ.get(key):
             result[key] = str(Path(os.environ[key]).expanduser().resolve())
@@ -150,12 +171,32 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
     add(outdir, "rw")
     cache = project / ".oncotracer"
     add(cache, "rw")
+    for key in GLIMPSE_INPUTS:
+        if config.get(key):
+            value = absolute(config[key])
+            # A stopped sample and prepared clinical resources may already be
+            # inside this authenticated output tree. Its existing rw mount
+            # makes them visible without hiding a live output subdirectory.
+            if value.is_relative_to(outdir) and value != outdir:
+                continue
+            add(value, resource=True)
+            if value.is_file():
+                for extension in ('.tbi', '.csi', '.bai'):
+                    index = Path(str(value)+extension)
+                    if index.is_file(): add(index, resource=True)
+    writable_caches = []
+    for key in GLIMPSE_CACHES:
+        if config.get(key):
+            value = absolute(config[key])
+            if value.is_symlink():raise OncoTracerError(f'Docker writable cache must not be a symlink: {value}')
+            add(value, 'rw')
+            writable_caches.append(value)
     for key in ("illumina_samplesheet", "ont_folder", "ont_normal_folder", "pathology_csv",
                 "variant_targets_bed", "variant_clair3_model", "variant_annovar_dir", "variant_annovar_db",
                 "variant_ffperase_root", "variant_ffperase_models", "variant_varlociraptor_scenario"):
         if config.get(key) and not is_auto_resource(key, config[key]):
             add(config[key], resource=True)
-    for key in ("ANNOVAR_HOME", "ANNOVAR_DB", "ONCOTRACER_FFPERASE_ROOT", "ONCOTRACER_FFPERASE_MODELS"):
+    for key in ("ANNOVAR_HOME", "ANNOVAR_DB", "ONCOTRACER_FFPERASE_ROOT", "ONCOTRACER_FFPERASE_MODELS", "ONCOTRACER_LLM_MODEL"):
         if environment.get(key):
             add(environment[key], resource=True)
     reference = project / "references" / "samurai_hg38"
@@ -198,10 +239,13 @@ def docker_mounts(config_path: Path, *, environment: Mapping[str, str], create: 
     for source in inputs:
         if outdir == source or outdir in source.parents or (source.is_dir() and source in outdir.parents):
             raise OncoTracerError(f"Docker output directory overlaps a read-only input/resource: {source}")
+        for writable in writable_caches:
+            if writable == source or writable in source.parents or (source.is_dir() and source in writable.parents):
+                raise OncoTracerError(f'Docker writable cache overlaps a read-only input/resource: {source}')
     if create:
         from .output_safety import inspect_output_target
         inspect_output_target(outdir)
-        for directory in (project, outdir, cache):
+        for directory in (project, outdir, cache, *writable_caches):
             if directory.is_symlink():
                 raise OncoTracerError(f"Docker writable directory must not be a symlink: {directory}")
             directory.mkdir(parents=True, exist_ok=True)

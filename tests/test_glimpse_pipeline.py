@@ -116,6 +116,7 @@ class GlimpsePipelineTests(unittest.TestCase):
                 chromosome = sample_output/'imputation/ONE.chr1.imputed.bcf'
                 chromosome.parent.mkdir(parents=True, exist_ok=True); chromosome.write_bytes(b'imputation fixture')
         with patch.object(pipeline, 'preflight', return_value={'nextflow':'nextflow','bcftools':'bcftools'}), \
+                patch.object(pipeline, 'preflight_jobs', return_value=[]), \
                 patch.object(pipeline, 'ensure_resources'), \
                 patch('oncotracer_cli.glimpse_joint.merge_cohort', return_value={'outputs':{}}):
             for _ in range(2):
@@ -188,6 +189,7 @@ class GlimpsePipelineTests(unittest.TestCase):
         (root/'existing').write_text('preserve')
         ref = self.root/'ref.fa'; ref.write_text('>chr1\nA\n')
         with patch.object(pipeline, 'preflight', return_value={'nextflow':'nextflow'}), \
+                patch.object(pipeline, 'preflight_jobs', return_value=[]), \
                 patch.object(pipeline, 'ensure_resources') as resources, \
                 self.assertRaisesRegex(OncoTracerError, 'nonempty, unowned'):
             pipeline.run(self.request, {'ONE':self.root/'one.bam'}, ref, output, None, None)

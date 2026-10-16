@@ -139,10 +139,12 @@ def run(a,c):
             for r in p.vcf_records(target):add_imputed_record(imputed,r)
         print('Reused completed read genotypes and imputed target extractions; updating confidence and annotations.',flush=True)
     elif positions:
+        from bcftools_compat import trait_call_command
+        dest=f'{a.sample}.target_genotypes.vcf.gz'
+        call_command=trait_call_command(bc,dest,'target.pileup.bcf')
         p.run([bc,'mpileup','-f',c['reference'],'-q',c['min_mapping_quality'],'-Q',c['min_base_quality'],
                '-d','10000','-R',str(bed),'-a','FORMAT/DP,FORMAT/AD','-Ob','-o','target.pileup.bcf',a.bam])
-        dest=f'{a.sample}.target_genotypes.vcf.gz'
-        p.run([bc,'call','-m','-A','--keep-unseen-allele','-a','GQ','--ploidy','2','-Oz','-o',dest,'target.pileup.bcf'])
+        p.run(call_command)
         p.index_vcf(c,dest);direct={(r['chrom'],r['pos']):r for r in p.vcf_records(dest)};Path('target.pileup.bcf').unlink()
         for i,vcf in enumerate(getattr(a,'imputed_vcfs',[]) or []):
             target=f'imputed_targets.{i}.vcf.gz'

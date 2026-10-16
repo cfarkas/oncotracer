@@ -103,7 +103,7 @@ class VariantSetupTests(unittest.TestCase):
         (prefix / "bin").mkdir(parents=True)
         for name in ("samtools", "bcftools", "gatk"):
             tool = prefix / "bin" / name
-            tool.write_text("#!/bin/sh\nexit 99\n")
+            tool.write_text("#!/bin/sh\nif [ \"$1\" = --version ]; then echo fixture-version; exit 0; fi\nexit 99\n")
             tool.chmod(0o755)
         result = self.prepare(self.state(), variants=True, variant_specimen_type="fresh",
                               variant_callers="bcftools", variant_annovar="auto",
@@ -140,7 +140,7 @@ class VariantSetupTests(unittest.TestCase):
             (prefix / "bin").mkdir(parents=True)
             for name in names:
                 tool = prefix / "bin" / name
-                tool.write_text("#!/bin/sh\nexit 99\n"); tool.chmod(0o755)
+                tool.write_text("#!/bin/sh\nif [ \"$1\" = --version ]; then echo fixture-version; exit 0; fi\nexit 99\n"); tool.chmod(0o755)
         state = self.state()
         options = dict(variants=True, variant_specimen_type="fresh", variant_callers="mutect2", variant_annovar="off")
         failed = self.prepare(state, **options, variant_tool_prefix=str(incomplete))
@@ -163,16 +163,20 @@ class VariantSetupTests(unittest.TestCase):
             self.assertIn("--run", launch.call_args.args[0])
 
     def test_docker_browser_config_checks_without_host_tool_prefix_and_retains_image(self):
-        with self.assertRaisesRegex(OncoTracerError, "backend host or conda"):
-            self.prepare(self.state(), backend="docker", variants=True,
-                         variant_specimen_type="fresh", variant_callers="bcftools")
-        self.assertFalse(self.project.exists())
+        result=self.prepare(self.state(),backend='docker',variants=True,variant_specimen_type='fresh',
+                            docker_image='oncotracer:local-test')
+        self.assertTrue(result['valid'],result['check'])
+        config=load_flat_yaml(Path(result['config_path']))
+        self.assertEqual(config['docker_image'],'oncotracer:local-test')
+        self.assertEqual(config['execution_backend'],'docker')
+        self.assertFalse((self.project/'results').exists())
 
     def test_docker_rejects_nested_sif_and_still_checks_external_resources(self):
-        with self.assertRaisesRegex(OncoTracerError, "backend host or conda"):
-            self.prepare(self.state(), backend="docker", variants=True,
-                         variant_specimen_type="fresh", variant_callers="bcftools")
-        self.assertFalse(self.project.exists())
+        from oncotracer_cli.docker_runtime import validate_docker_variants
+        with self.assertRaisesRegex(OncoTracerError,'clear variant_ffperase_sif'):
+            validate_docker_variants({'mode':'illumina','run_variants':True,'variant_ffperase_sif':'/host/runtime.sif'})
+        with self.assertRaisesRegex(OncoTracerError,'existing host directory'):
+            validate_docker_variants({'mode':'illumina','run_variants':True,'variant_ffperase_models':str(self.root/'missing')})
 
     def test_docker_image_prefill_and_non_docker_rejection(self):
         args = build_parser().parse_args(["setup", "--backend", "docker", "--image", "oncotracer:local-test"])
@@ -182,12 +186,6 @@ class VariantSetupTests(unittest.TestCase):
         code, output = self.cli("--backend", "host", "--image", "oncotracer:local-test")
         self.assertEqual(code, 2, output)
         self.assertIn("requires --backend docker", output)
-        self.assertFalse(self.project.exists())
-
-    def test_docker_resume_reuses_saved_backend_image_and_installed_docker(self):
-        with self.assertRaisesRegex(OncoTracerError, "backend host or conda"):
-            self.prepare(self.state(), backend="docker", variants=True,
-                         variant_specimen_type="fresh", variant_callers="bcftools")
         self.assertFalse(self.project.exists())
 
     def test_web_rejects_untyped_or_platform_incompatible_variant_requests(self):
@@ -251,7 +249,7 @@ class VariantSetupTests(unittest.TestCase):
         (prefix / "bin").mkdir(parents=True)
         for name in ("samtools", "bcftools", "apptainer"):
             tool = prefix / "bin" / name
-            tool.write_text("#!/bin/sh\nexit 99\n")
+            tool.write_text("#!/bin/sh\nif [ \"$1\" = --version ]; then echo fixture-version; exit 0; fi\nexit 99\n")
             tool.chmod(0o755)
         image = self.root / "caller.sif"
         image.write_bytes(b"fixture-container-not-executed")

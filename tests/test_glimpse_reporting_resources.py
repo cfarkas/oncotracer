@@ -30,6 +30,10 @@ class ReportResourceTests(unittest.TestCase):
             class Runner:
                 def run(self,stage,command,**kwargs):
                     # Any resource downloader or upload call would fail this test.
+                    if stage == 'glimpse-clinvar-preflight':
+                        Path(command[command.index('--result')+1]).write_text(
+                            json.dumps({'clinvar':str(resources/'clinvar.vcf.gz')}))
+                        return
                     test.assertEqual(stage,'complete-glimpse2-SAMPLE')
                     with patch.dict('os.environ',{'HOME':str(root/'isolated home')}):
                         params=json.loads(Path(command[command.index('-params-file')+1]).read_text())
@@ -45,6 +49,7 @@ class ReportResourceTests(unittest.TestCase):
                         imputed.parent.mkdir();imputed.write_bytes(b'fixture completed imputation')
                         seen.append(params)
             with patch.dict('os.environ',{'HOME':str(home)}), \
+                 patch.object(pipeline,'preflight_jobs',return_value=[]), \
                  patch.object(pipeline,'workflow_bundle',return_value=bundle), \
                  patch.object(pipeline,'preflight',return_value={'nextflow':'nextflow','bcftools':'bcftools','python':'/scientific/environment/bin/python'}), \
                  patch('oncotracer_cli.glimpse_joint.merge_cohort',return_value={'outputs':{}}):

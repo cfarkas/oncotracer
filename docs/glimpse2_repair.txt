@@ -1,0 +1,85 @@
+GLIMPSE2 continuation, caller compatibility, Docker and FFPE repair
+
+The feature branch provides capability-tested trait calling for both older
+bcftools (including 1.17) and newer versions (including 1.23.1). Unsupported
+symbolic-allele flags are omitted. Depth and genotype-quality gates remain:
+missing or low-confidence reference evidence is never promoted to a call.
+ClinVar contig headers are repaired in a separate cached resource before jobs.
+
+From a source checkout, open visual setup explicitly:
+
+  python3 -m oncotracer_cli.nextflow_gateway --interactive --backend conda
+  nextflow run ./main.nf --interactive --backend conda
+
+Choose a project and review the saved settings before pressing Run analysis.
+These entry points require an explicit interactive or configured run request.
+For a saved configuration, run only after reviewing it:
+
+  python3 ./oncotracer run --backend conda --config /path/to/project/config/run.yml
+  nextflow run ./main.nf --analysis full --backend conda --config /path/to/project/config/run.yml
+
+Add --dry-run to the Python command or --dry_run to the Nextflow command for
+configuration validation. Complete variant execution additionally checks every
+sample's continuation candidates before scheduling sample workflows, printing
+the summary in the foreground terminal and browser job log.
+
+Keep force: false. Retain work directories, completion receipts, runtime/code
+snapshots and native state. Reuse requires compatible inputs, settings and code,
+completed tasks and unchanged output metadata. Candidates also receive BAM/BCF/
+VCF header, sample, BGZF-end and index checks, JSON parsing, and full gzip-report
+CRC validation. Native ledger outputs check recorded hashes where available.
+The BAM/BCF checks are structural checks, not a full byte-by-byte read of every
+alignment or genotype. Failed, interrupted, incompatible and rejected tasks run
+again. Some aggregate reports and conservatively gated downstream preparations
+also run again. The summary lists retained task counts and rejected candidates;
+zero rejected candidates does not mean every historical output was retained.
+
+The bundled workflow treats --continue and native -resume as validated
+continuation. Nextflow's existence-only task cache is disabled so it cannot
+restore an output rejected by this gate. No old completion/ownership receipt is
+rewritten to force acceptance. Changed native runtime identity still requires a
+new output directory. An existing project may retain its authenticated native
+runtime and select the repaired variant_workflow_source; native FFPE and other
+controller repairs require the new runtime in a separate project.
+
+Docker
+
+The Dockerfile now includes the bundled workflow and pinned Nextflow 26.04.2,
+including its framework jar for offline startup. Existing registry tags are not
+changed by publishing this source repair. Build a new image and select its tag
+in browser setup (or --image for a configured Python run):
+
+  docker build --build-arg SOURCE_COMMIT="$(git rev-parse HEAD)" -t oncotracer:glimpse2-repair .
+  python3 -m oncotracer_cli.nextflow_gateway --interactive --backend docker
+  nextflow run ./main.nf --interactive --backend docker
+
+The image preflight checks its own scientific tools, local reporting model and
+FFPE runtime when selected before alignment. Explicit workflow/resources and
+model paths are mounted read-only; output and selected resource caches are
+writable. Host tool prefixes are replaced by image tool prefixes in memory.
+A host Conda project must not switch runtime into the same owned output tree.
+Use a separate Docker project/output and review compatible imports explicitly.
+
+FFPE
+
+Choose FFPE specimen preservation and required FFPErase assessment in a new
+project. Provide the pinned upstream source and both licensed model files.
+For Conda/host use a compatible FFPErase environment prefix or a supported SIF
+plus Apptainer. Docker uses its own FFPErase environment: clear any host SIF
+selection and mount the source and models read-only. Model download still needs
+the user's explicit license acknowledgement; locally supplied models need no
+new download. Fresh samples retain fresh handling.
+
+Preflight loads both models and predicts artificial feature rows. The actual
+adapter keeps work directories writable even when input BAMs are beside them.
+It computes measured depth without inflation: when the upstream log-depth
+feature is undefined, assessment returns not_assessed and preserves the calls
+with explicit NOT_EVALUATED evidence instead of assigning artifact certainty.
+
+Validation included artificial paired reads through real SNP and indel pileup,
+feature extraction and both random-forest models, with SIF on the Conda backend
+and native environments in Docker. The 9x fixture completed; the 0.15x fixture
+remained not_assessed. These smoke checks do not establish clinical accuracy or
+constitute a patient FFPE cohort run. Reproduce with tests/run_ffpe_smoke.py and
+user-supplied source/models/runtime, or tests/run_traits_compat_smoke.py with the
+selected real bcftools and samtools. Standard regression tests run in native CI.
