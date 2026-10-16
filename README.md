@@ -11,7 +11,7 @@ Analyze Illumina and Oxford Nanopore (ONT) reads for DNA copy-number changes and
 
 ## Install
 
-Use Linux, Python 3.10–3.13 and Git, with **Conda or Docker** for analysis tools. The commands below install the stable CNA launcher in a directory where you keep software.
+Use Linux, Python 3.10–3.13 and Git, with **Conda or Docker** for analysis tools. Install the stable CNA launcher in your software directory.
 
 **For complete GLIMPSE2 and the resume/FFPE repairs in [PR #53](https://github.com/cfarkas/oncotracer/pull/53):** until merged, replace `--branch main` below with `--branch feat/glimpse2-complete-short-variants`. Build Docker from that branch using the [source image guide](docs/containers.md#fastq-to-cna-and-variants). Published tags are unchanged.
 
@@ -22,7 +22,7 @@ oncotracer-env/bin/python -m pip install -e ./oncotracer-src
 source oncotracer-env/bin/activate
 ```
 
-Keep both folders and activate `oncotracer-env` in new terminals. Then choose **one** backend. See [requirements and installation details](docs/installation.md).
+Keep both folders; activate `oncotracer-env` in new terminals. Then choose **one** backend. See [requirements and installation details](docs/installation.md).
 
 ### Conda
 
@@ -34,7 +34,7 @@ oncotracer doctor --backend conda
 oncotracer setup --backend conda
 ```
 
-Small-variant calling and FFPERASE need [additional Conda environments and resources](docs/variants.md). Installation shows progress and saves a diagnostic log.
+Installation verifies bcftools 1.23.1 with HTSlib 1.24; setup and runs select its managed environment automatically. FFPERASE, ONT callers and annotation need [additional resources](docs/variants.md). Logs are saved.
 
 ### Docker
 
@@ -58,7 +58,7 @@ oncotracer uninstall --conda --dry-run
 oncotracer uninstall --conda --yes
 ```
 
-For permanent removal instead, add `--purge` to the second command. Separately created variant environments need separate removal. To remove the Docker image:
+For permanent removal instead, add `--purge` to the second command. Separately created FFPE/ONT environments need separate removal. To remove the Docker image:
 
 ```bash
 docker image rm carlosfarkas/oncotracer:fastq-variants-20260922

@@ -28,9 +28,10 @@ oncotracer uninstall --conda --prefix /data/oncotracer-tools --dry-run
 
 This directory contains `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`.
 Include the same `--prefix` in your removal command below.
-Separately created `variants`, `ffperase` and `strelka2` environments are not part
-of this managed installation; remove those separately with Conda if no other
-analyses use them.
+The separately owned, installation-managed variant environment is included in
+removal after its own ownership checks. Independently created `variants`,
+`ffperase`, `strelka2` and ONT environments remain untouched; remove those
+separately with Conda if no other analyses use them.
 
 Choose one removal method:
 

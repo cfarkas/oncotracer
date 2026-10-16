@@ -14,9 +14,9 @@ and SSH access, see [terminal and headless servers](headless.md).
 | Conda | `oncotracer install --conda` | Native workstation/server execution |
 | Docker | `oncotracer install --docker` | Reproducible container execution |
 | Singularity/Apptainer | `oncotracer install --singularity` | HPC execution with a reusable SIF |
-| Poetry | `./oncotracer install --poetry` | Launcher development; scientific programs remain in five Conda prefixes |
+| Poetry | `./oncotracer install --poetry` | Launcher development; scientific programs use isolated Conda prefixes, including verified variant tools |
 
-The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`. Variant-enabled images also include isolated `variants` and `ffperase` environments; the updated image adds the legacy `strelka2` runtime.
+The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`. Conda and Poetry installation also create and verify one managed Illumina `variants` environment. Variant-enabled images include isolated `variants` and `ffperase` environments plus the legacy `strelka2` runtime.
 
 ## Which analyses does each backend support?
 
@@ -29,8 +29,8 @@ The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and 
 
 An existing caller-specific SIF can supply ClairS-TO or FFPERASE on the host.
 That is different from selecting Singularity for the complete OncoTracer pipeline.
-A core `doctor` pass checks the CNA toolchain; variant callers and resources
-have their own preflight when variants are selected.
+Installation and `doctor` verify the shared variant toolchain as well as CNA tools.
+Selected caller-specific resources and models also have their own preflight.
 
 ## Conda
 
@@ -231,7 +231,7 @@ oncotracer run \
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
 
-ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer
 "$ONCOTRACER_DEV" doctor --backend poetry
 "$ONCOTRACER_DEV" check --config "$PWD/project/config/illumina.auto.yml"
 "$ONCOTRACER_DEV" run \

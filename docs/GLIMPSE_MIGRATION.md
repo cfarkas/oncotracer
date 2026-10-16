@@ -39,7 +39,6 @@ variant_parallel_samples: 4
 variant_specimen_type: fresh
 variant_bam_manifest: /data/samples.bam.tsv
 variant_reference: /data/GRCh38/genome.fa
-variant_tool_prefix: /tools/variants
 variant_resource_dir: /data/public_resources
 variant_reuse_from: /data/previous_oncotracer_run
 variant_reference_reuse_from: /data/completed_glimpse_sample

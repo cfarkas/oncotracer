@@ -1,6 +1,6 @@
 # Poetry Launcher
 
-Poetry provides a managed Python launcher for OncoTracer's native v2 engine. It does not replace the scientific software runtime: installation also creates the same five isolated Conda environments used by the global executable.
+Poetry provides a managed Python launcher for OncoTracer's native v2 engine. It does not replace the scientific software runtime: installation also creates the same five CNA environments and verified Illumina variant environment used by the global executable.
 
 Poetry is intended for source development. For analyses, follow [installation](installation.md) and choose Conda, Docker, or Singularity/Apptainer.
 
@@ -15,9 +15,14 @@ cd /path/to/my/oncotracer_source/
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
 
-ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer"
 "$ONCOTRACER_DEV" --help
 ```
+
+For a scientific prefix root `B`, the verified variant tools live at
+`B-variants/variants` and the managed launcher at `B-poetry/poetry-runtime`.
+Keeping their ownership separate allows application updates to retain compatible
+scientific environments. Existing legacy launcher installations remain readable.
 
 The explicit prefix is a dedicated OncoTracer installation root, not a Conda
 base installation or a shared Poetry environment. It must be absent, empty, or
@@ -39,7 +44,7 @@ is for returning to an unfinished installation at the same prefix.
 ```bash
 cd /path/to/my/oncotracer_source/
 
-ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer"
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
 
@@ -55,7 +60,7 @@ commands create the same Illumina and ONT configurations without browser setup.
 Replace both directory placeholders with your actual paths:
 
 ```bash
-ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer"
 ONCOTRACER_ANALYSES="/path/to/my/analyses_dir"
 
 "$ONCOTRACER_DEV" setup --non-interactive \
@@ -83,7 +88,7 @@ configuration files. Run them with the installed Poetry launcher:
 ```bash
 cd /path/to/my/oncotracer_source/
 
-ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer"
 "$ONCOTRACER_DEV" run --backend poetry \
   --config /path/to/my/analyses_dir/oncotracer-quickstart1/illumina/config/run.yml
 "$ONCOTRACER_DEV" run --backend poetry \
@@ -100,7 +105,7 @@ placeholders. The `cat` block writes the samplesheet and replaces that CSV if it
 already exists; include the final `CSV` line:
 
 ```bash
-ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer"
 ONCOTRACER_ANALYSES="/path/to/my/analyses_dir"
 
 mkdir -p "$ONCOTRACER_ANALYSES/oncotracer-quickstart2/input"
@@ -126,7 +131,7 @@ checking that all three libraries are selected, run:
 ```bash
 cd /path/to/my/oncotracer_source/
 
-ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer"
+ONCOTRACER_DEV="/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer"
 "$ONCOTRACER_DEV" run --backend poetry \
   --config /path/to/my/analyses_dir/oncotracer-quickstart2/analysis/config/run.yml
 ```

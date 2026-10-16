@@ -46,6 +46,162 @@ class UninstallTests(unittest.TestCase):
             )
         return base
 
+    def sibling_fixture(self, base, family="variants"):
+        suffix = "poetry" if family == "poetry-runtime" else "variants"
+        domain = base.with_name(f"{base.name}-{suffix}")
+        domain.mkdir()
+        install_id = "e" * 32
+        source = {**SOURCE, "source_commit": "f" * 40}
+        marker = safety._base_marker(domain, install_id, source)
+        marker["managed_children"] = [family]
+        (domain / safety.BASE_MARKER).write_text(json.dumps(marker))
+        child = domain / family
+        child.mkdir()
+        if family == "poetry-runtime":
+            (child / "bin").mkdir()
+            for name in ("python", "oncotracer"):
+                executable = child / "bin" / name
+                executable.write_text("#!/bin/sh\nexit 0\n")
+                executable.chmod(0o700)
+            digest = safety._write_child_inventory(child)
+            child_marker = safety._poetry_marker(
+                child, install_id, "d" * 64, "e" * 64,
+                sha256_file(child / "bin/oncotracer"), source, digest,
+            )
+            marker_name = safety.POETRY_MARKER
+        else:
+            (child / "installed-file").write_text("synthetic variants")
+            digest = safety._write_child_inventory(child)
+            child_marker = safety._environment_marker(
+                child, install_id, family, "d" * 64, source, digest,
+            )
+            marker_name = safety.ENV_MARKER
+        (child / marker_name).write_text(json.dumps(child_marker))
+        return domain
+
+    def test_preview_includes_owned_siblings_without_mutation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.fixture(root)
+            variants = self.sibling_fixture(base)
+            poetry = self.sibling_fixture(base, "poetry-runtime")
+            before = sorted(str(p.relative_to(root)) for p in root.rglob("*"))
+            result = uninstall_target(base, "conda", dry_run=True)
+            self.assertEqual(set(result["managed_roots"]), {str(base), str(variants), str(poetry)})
+            self.assertIn(str(variants / "variants"), result["paths"])
+            self.assertIn(str(poetry / "poetry-runtime"), result["paths"])
+            self.assertEqual(before, sorted(str(p.relative_to(root)) for p in root.rglob("*")))
+
+    def test_all_owned_domains_share_recovery_and_preserve_unrelated_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.fixture(root)
+            variants = self.sibling_fixture(base)
+            poetry = self.sibling_fixture(base, "poetry-runtime")
+            keep = variants / "reference.fa"
+            keep.write_text("user reference")
+            with patch.object(safety, "_active_processes", return_value=[]):
+                result = uninstall_target(base, "conda", dry_run=False)
+            recovery = Path(result["recovery_directory"])
+            record = json.loads((recovery / "uninstall.json").read_text())
+            for original in (base / "core", variants / "variants", poetry / "poetry-runtime"):
+                self.assertFalse(original.exists())
+                self.assertTrue((recovery / record["recovery_entries"][str(original)]).is_dir())
+            self.assertEqual((recovery / "core/installed-file").read_text(), "synthetic tool")
+            self.assertEqual(keep.read_text(), "user reference")
+            self.assertFalse((variants / safety.BASE_MARKER).exists())
+            self.assertFalse(poetry.exists())
+
+    def test_untrusted_sibling_refuses_entire_removal(self):
+        for defect in ("unowned", "wrong-family", "tampered", "symlink", "pending"):
+            with self.subTest(defect=defect), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                base = self.fixture(root)
+                sibling = self.sibling_fixture(base)
+                if defect == "unowned":
+                    (sibling / safety.BASE_MARKER).unlink()
+                elif defect == "wrong-family":
+                    marker_path = sibling / safety.BASE_MARKER
+                    marker = json.loads(marker_path.read_text())
+                    marker["managed_children"] = list(safety.MANAGED_CHILDREN)
+                    marker_path.write_text(json.dumps(marker))
+                elif defect == "tampered":
+                    (sibling / "variants/foreign.txt").write_text("keep")
+                elif defect == "symlink":
+                    real = sibling.with_name("unrelated-environment")
+                    sibling.rename(real)
+                    sibling.symlink_to(real, target_is_directory=True)
+                else:
+                    safety._journal_path(sibling, "conda").write_text("{}")
+                with patch.object(safety, "_active_processes", return_value=[]):
+                    with self.assertRaises(OncoTracerError):
+                        uninstall_target(base, "conda", dry_run=False, purge=True)
+                self.assertTrue((base / "core/installed-file").is_file())
+                self.assertTrue((base / safety.BASE_MARKER).is_file())
+                self.assertFalse(list(root.glob("*.oncotracer-uninstalled-*")))
+
+    def test_sibling_move_or_verification_failure_rolls_back_all_domains(self):
+        for failure in ("move", "verification"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                base = self.fixture(root)
+                variants = self.sibling_fixture(base)
+                poetry = self.sibling_fixture(base, "poetry-runtime")
+                rename = safety._rename_noreplace
+                verify = safety._child_marker_at
+                failed = False
+
+                def move(source, destination, label):
+                    nonlocal failed
+                    if failure == "move" and source == poetry / "poetry-runtime" and not failed:
+                        failed = True
+                        raise OncoTracerError("synthetic sibling failure")
+                    return rename(source, destination, label)
+
+                def check(storage, destination, marker, name):
+                    nonlocal failed
+                    if failure == "verification" and name == "variants" and storage != destination and not failed:
+                        failed = True
+                        raise OncoTracerError("synthetic sibling failure")
+                    return verify(storage, destination, marker, name)
+
+                with (
+                    patch.object(safety, "_active_processes", return_value=[]),
+                    patch.object(safety, "_rename_noreplace", side_effect=move),
+                    patch.object(safety, "_child_marker_at", side_effect=check),
+                ):
+                    with self.assertRaisesRegex(OncoTracerError, "synthetic sibling"):
+                        uninstall_target(base, "conda", dry_run=False)
+                for domain in (base, variants, poetry):
+                    self.assertEqual(safety._classify_base(domain)[0], "owned")
+
+    def test_active_sibling_blocks_removal_before_any_move(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.fixture(root)
+            variants = self.sibling_fixture(base)
+            with patch.object(safety, "_active_processes", side_effect=lambda path, **kwargs: [123] if path == variants else []):
+                with self.assertRaisesRegex(OncoTracerError, "active process"):
+                    uninstall_target(base, "conda", dry_run=False)
+            self.assertTrue((base / "core").is_dir())
+            self.assertTrue((variants / "variants").is_dir())
+            self.assertFalse(list(root.glob("*.oncotracer-uninstalled-*")))
+
+    def test_direct_singleton_removal_does_not_infer_further_siblings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.fixture(root)
+            variants = self.sibling_fixture(base)
+            unrelated = variants.with_name(variants.name + "-variants")
+            unrelated.mkdir()
+            (unrelated / "data").write_text("keep")
+            with patch.object(safety, "_active_processes", return_value=[]):
+                result = uninstall_target(variants, "conda", dry_run=False, purge=True)
+            self.assertFalse(result["recoverable"])
+            self.assertFalse(variants.exists())
+            self.assertTrue((base / "core").is_dir())
+            self.assertEqual((unrelated / "data").read_text(), "keep")
+
     def test_preview_never_creates_locks_or_removes_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -251,6 +407,8 @@ class UninstallTests(unittest.TestCase):
             with self.subTest(purge=purge), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 base = self.fixture(root)
+                variants = self.sibling_fixture(base)
+                poetry = self.sibling_fixture(base, "poetry-runtime")
                 keep = base / "results.tsv"
                 keep.write_text("user result")
                 settings = root / "settings/oncotracer/config.json"
@@ -279,6 +437,8 @@ class UninstallTests(unittest.TestCase):
                 result = json.loads(removed.stdout)
                 self.assertFalse(result["dry_run"])
                 self.assertFalse((base / "core").exists())
+                self.assertFalse(variants.exists())
+                self.assertFalse(poetry.exists())
                 self.assertEqual(keep.read_text(), "user result")
                 self.assertEqual(settings.read_text(), saved)
                 if purge:

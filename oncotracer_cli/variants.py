@@ -64,11 +64,16 @@ class VariantRequest:
     matched_normals: tuple[tuple[str, str], ...] = ()
     engine: str = 'native'
     glimpse_config: dict | None = None
+    tool_prefix_source: str = "configured_or_host"
+    tool_prefix_diagnostics: tuple[str, ...] = ()
 
-    def as_dict(self):
+    def as_dict(self, *, include_runtime_diagnostics: bool = True):
         result = {k: str(v) if isinstance(v, Path) else list(v) if isinstance(v, tuple) else v
                 for k, v in asdict(self).items()}
         result["matched_normals"] = dict(self.matched_normals)
+        if not include_runtime_diagnostics:
+            result.pop("tool_prefix_source", None)
+            result.pop("tool_prefix_diagnostics", None)
         return result
 
 
@@ -80,6 +85,8 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
         if str(enabled).lower() not in {'false', '0', 'no', 'off', '', 'none'}:
             raise OncoTracerError('run_variants must be true or false')
         return None
+    from .variant_runtime import apply_variant_runtime
+    config, runtime_selection = apply_variant_runtime(config, mode=mode, emit=True)
     if mode not in SUPPORTED_CALLERS:
         raise OncoTracerError('Variant platform must be illumina or ont')
     specimen = str(config.get('variant_specimen_type') or '').strip().lower()
@@ -178,6 +185,8 @@ def resolve_variant_request(config: Mapping[str, object], *, mode: str) -> Varia
                           ffpe_mode, path('variant_ffperase_root'), path('variant_ffperase_models'),
                           path('variant_ffperase_sif'), path('variant_ffperase_prefix'),
                           vl_mode, fdr, scenario, events, vl_sample, profile, auto_model, download_resources, accept_license, strelka_prefix, tuple(sorted(matched_normals.items())))
+    request = replace(request, tool_prefix_source="managed_install" if runtime_selection.managed else "configured_or_host",
+                      tool_prefix_diagnostics=runtime_selection.diagnostics)
     from .variant_model_assets import resource_download_plan
     resource_download_plan(request)
     if mode == 'illumina':
@@ -634,7 +643,7 @@ def run_variants(request: VariantRequest, bams: Mapping[str, Path], reference, o
                         signature_inputs.append(Path(bams[dict(request.matched_normals)[sample]]))
                     if request.clair3_model and caller == 'clair3':
                         signature_inputs += sorted(p for p in request.clair3_model.rglob('*') if p.is_file())
-                    signature = ledger.signature(f'variants-{sample}-{caller}', [json.dumps(request.as_dict(),sort_keys=True),_module_digest(),json.dumps(status['annovar_detection'],sort_keys=True),_module_digest('annovar.py'),_module_digest('ffperase.py'),_module_digest('varlociraptor.py'),_module_digest('variant_filters.py'),_module_digest('strelka2.py'),json.dumps(detection,sort_keys=True)], signature_inputs + ([request.varlociraptor_scenario] if request.varlociraptor_scenario else []))
+                    signature = ledger.signature(f'variants-{sample}-{caller}', [json.dumps(request.as_dict(include_runtime_diagnostics=False),sort_keys=True),_module_digest(),json.dumps(status['annovar_detection'],sort_keys=True),_module_digest('annovar.py'),_module_digest('ffperase.py'),_module_digest('varlociraptor.py'),_module_digest('variant_filters.py'),_module_digest('strelka2.py'),json.dumps(detection,sort_keys=True)], signature_inputs + ([request.varlociraptor_scenario] if request.varlociraptor_scenario else []))
                     completed = dest/'complete.json'
                     if completed.is_symlink():
                         raise OncoTracerError('Variant completion manifest must not be a symlink')

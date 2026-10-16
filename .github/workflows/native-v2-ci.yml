@@ -76,7 +76,7 @@ jobs:
             tests/test_variant_setup.py \
             tests/test_variant_web.py \
             tests/test_variant_web_ui.py \
-            tests/test_variant_resources.py \
+            tests/test_variant_resources.py tests/test_managed_variant_runtime.py \
             tests/test_variant_installer.py \
             tests/test_variant_model_assets.py \
             tests/test_strelka2.py \

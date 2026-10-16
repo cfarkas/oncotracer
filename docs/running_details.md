@@ -118,10 +118,10 @@ oncotracer run --backend singularity \
 ```bash
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer doctor \
+/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer doctor \
   --backend poetry
 
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer run \
+/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer run \
   --backend poetry \
   --config "$PWD/project/config/illumina.auto.yml"
 ```

@@ -33,6 +33,8 @@ class BcftoolsRuntimeTests(unittest.TestCase):
             with self.subTest(output=output), self.assertRaisesRegex(ValueError, 'requires bcftools 1.23.1 linked to HTSlib 1.24') as error:
                 caller.require_version(output, '/chosen/bin/bcftools')
             self.assertIn('/chosen/bin/bcftools', str(error.exception))
+            self.assertIn('oncotracer install --conda', str(error.exception))
+            self.assertIn('select it automatically', str(error.exception))
             self.assertIn('variant_tool_prefix', str(error.exception))
             self.assertIn('Dockerfile', str(error.exception))
 

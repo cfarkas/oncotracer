@@ -117,7 +117,7 @@ class NativeDocumentationTests(unittest.TestCase):
             with self.subTest(relative=relative, text=text):
                 self.assertEqual(retired_public_entrypoints(relative, text), ["nextflow run"])
         for relative in ("README.md", "docs/GLIMPSE_MIGRATION.md",
-                         "docs/MULTISAMPLE_QUICKSTART.md", "docs/nextflow_entry.md"):
+                         "docs/MULTISAMPLE_QUICKSTART.md", "docs/nextflow_entry.md", "docs/setup.md"):
             self.assertEqual(retired_public_entrypoints(relative, supported), [])
             for launcher in ("run_QS1.sh", "run_QS2.sh", "run_example.sh"):
                 self.assertEqual(retired_public_entrypoints(relative, supported + " " + launcher), [launcher])

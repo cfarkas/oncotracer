@@ -75,7 +75,7 @@ REQUIRED_TEXT = {
         "reference_indexes.md",
     ),
     "docs/installation_details.md": (
-        "Five isolated, versioned environments are created",
+        "Six isolated, versioned scientific environments are created",
         "core alignment",
         "qDNAseq with its pinned R 4.1 stack",
         "ichorCNA/HMMcopy with its pinned R 4.4 stack",

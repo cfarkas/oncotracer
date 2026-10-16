@@ -4,9 +4,11 @@ Complete Illumina runs require bcftools 1.23.1 linked to HTSlib 1.24 in both
 Conda and Docker. environments/native-variants.yml pins that pair and samtools
 1.23.1. Both controller and workflow preflight report the selected executable
 and linked-library version and reject mismatched or unreported versions before
-analysis. An existing older variant_tool_prefix is not silently replaced.
-Create/update a separate environment from that file and select its directory as
-variant_tool_prefix; Docker users rebuild/select the current image.
+analysis. Conda and Poetry installation create and verify a canonical managed
+variant environment before saving installation settings. Managed Illumina setup
+and runs select it and report replacement of stale variant_tool_prefix values.
+Run oncotracer install --conda to repair an older installation. Docker users
+rebuild/select the current image; installation checks its own variant toolchain.
 
 The low-level traits helper still detects supported flags for compatibility
 testing, but that does not authorize older callers for complete workflow runs.

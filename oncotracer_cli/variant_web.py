@@ -74,6 +74,8 @@ def load_configuration(config_path):
             config[key] = str(_path(config[key], config_path.parent, key).resolve())
     mode = str(config.get('mode') or '').strip().lower()
     config['mode'] = mode
+    from .variant_runtime import apply_variant_runtime
+    config, selection = apply_variant_runtime(config, mode=mode)
     request = resolve_variant_request(config, mode=mode)
     if request is None:
         raise OncoTracerError('Set run_variants: true in the existing-BAM configuration.')
@@ -98,6 +100,7 @@ def load_configuration(config_path):
     captured = snapshot(files)
     assert_snapshot(captured, hashes)
     return {'config_path': str(config_path), 'config': config, 'request': request,
+            'runtime_diagnostics': list(selection.diagnostics),
             'samples': [{'sample': name, 'bam': str(bam), 'status': statuses[name]} for name, bam in bams.items()],
             'input_snapshot': captured, 'input_digests': hashes}
 
@@ -126,6 +129,7 @@ def load_for_browser(state, data):
             number += 1
             suggested = parent / (stem + f'-rerun-{number}')
         return {'load_id': load_id, 'config': loaded['config'].copy(), 'samples': loaded['samples'],
+                'runtime_diagnostics': loaded['runtime_diagnostics'],
                 'suggested_project': str(suggested), 'mode': loaded['config']['mode']}
 
 
@@ -164,6 +168,8 @@ def prepare_for_browser(state, data):
         for key in PATH_FIELDS:
             if config.get(key) and not is_auto_resource(key, config[key]):
                 config[key] = str(_path(config[key], Path(loaded['config_path']).parent, key).resolve())
+        from .variant_runtime import apply_variant_runtime
+        config, selection = apply_variant_runtime(config, mode=config['mode'])
         request = resolve_variant_request(config, mode=config['mode'])
         from .strelka2 import validate_samples
         validate_samples(request, [s['sample'] for s in loaded['samples']], {s['sample']: s['status'] for s in loaded['samples']})
@@ -195,7 +201,8 @@ def prepare_for_browser(state, data):
         inputs = {**loaded['input_snapshot'], **snapshot(resource_paths(config))}
         protect_project(project, config, inputs)
         pending = resource_download_plan(request)
-        check = {'errors': [], 'warnings': ['BAM contents are validated when the analysis starts.'], 'resource_downloads': pending}
+        check = {'errors': [], 'warnings': [*loaded.get('runtime_diagnostics', []), *selection.diagnostics,
+                                          'BAM contents are validated when the analysis starts.'], 'resource_downloads': pending}
         if pending:
             check['warnings'].append('Selected public resources will be verified and prepared when Run starts; setup downloads nothing.')
         try:

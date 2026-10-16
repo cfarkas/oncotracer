@@ -101,7 +101,7 @@ oncotracer setup --variants --variant-annovar auto \
 **Terminal only: CNA, Mutect2 and annotation for one Fresh Illumina sample.**
 The following is an alternative to the browser command. It specifies the input
 library, preservation, callers, backend and ANNOVAR paths; use a new project folder.
-Core Conda tools and the [optional variant environment](variants_reference.md#conda-and-docker)
+Core Conda tools and the [managed variant environment](variants_reference.md#conda-and-docker)
 must already be installed.
 
 ```bash
@@ -112,7 +112,6 @@ oncotracer setup --non-interactive --project "$PWD/annotated-study" \
   --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
   --hg38_build --variants \
   --variant-specimen-type fresh --variant-callers mutect2 \
-  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
   --variant-ffperase off --variant-varlociraptor off \
   --variant-annovar auto --variant-annovar-dir /resources/annovar \
   --variant-annovar-db /resources/annovar/humandb
