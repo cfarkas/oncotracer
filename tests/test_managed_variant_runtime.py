@@ -24,6 +24,10 @@ from oncotracer_cli.web import WebState
 from tests.test_web import HARDWARE
 
 
+# Keep the hosted runner executable before setUp isolates PATH.
+NODE_EXECUTABLE = shutil.which("node")
+
+
 class ManagedVariantRuntimeTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="oncotracer-managed-variants-")
@@ -315,7 +319,7 @@ class ManagedVariantRuntimeTests(unittest.TestCase):
         self.assertEqual(original.read_bytes(), original_bytes)
         self.assertFalse((self.root / "new-project/results").exists())
 
-    @unittest.skipUnless(shutil.which("node"), "Node is required for browser state checks")
+    @unittest.skipUnless(NODE_EXECUTABLE, "Node is required for browser state checks")
     def test_browser_discovery_updates_stale_managed_field_but_preserves_other_paths(self):
         from oncotracer_cli.variant_web_ui import PAGE
         function = PAGE.split("async function detectVariantResources(payload", 1)[1].split("async function detectVariantResourcesBeforeSave", 1)[0]
@@ -333,7 +337,7 @@ const api=async()=>({fields:{variant_tool_prefix:'/managed/variants'},managed_va
 """ + "async function detectVariantResources(payload" + function + r"""
 (async()=>{await detectVariantResources({},'all',false);assert.equal(nodes.variant_tool_prefix.value,'/managed/variants');assert.match(nodes['variant-detection-status'].textContent,/updated/);assert.match(nodes['variant-resource-dialog-status'].textContent,/Other entered paths were preserved/);})().catch(error=>{console.error(error);process.exitCode=1;});
 """
-        result = subprocess.run([shutil.which("node"), "-e", script], capture_output=True, text=True)
+        result = subprocess.run([NODE_EXECUTABLE, "-e", script], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
