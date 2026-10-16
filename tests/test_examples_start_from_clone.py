@@ -13,6 +13,11 @@ FENCE = chr(96) * 3
 BASH_BLOCK_RE = re.compile(re.escape(FENCE) + r"bash[ \t]*\n(.*?)" + re.escape(FENCE), re.DOTALL)
 MARKDOWN_HEADING_RE = re.compile(r"^\s*#{2,6}\s")
 CHECKOUT_CD_RE = re.compile(r"(?m)^\s*cd\s+oncotracer\s*(?:#.*)?$")
+CURRENT_NEXTFLOW_PAGES = frozenset({
+    "docs/GLIMPSE_MIGRATION.md",
+    "docs/MULTISAMPLE_QUICKSTART.md",
+    "docs/nextflow_entry.md",
+})
 NATIVE_COMMAND_FILES = {
     'docs/index.md': ("oncotracer setup --project", 'oncotracer setup --project "$PWD/my-study" --run'),
     "docs/quick_start.md": ("oncotracer setup", "oncotracer check", "oncotracer run"),
@@ -86,14 +91,31 @@ def check_installation_is_explicit() -> None:
         fail("Poetry development requires an explicit source checkout before use")
 
 
+def retired_public_entrypoints(relative: str, text: str) -> list[str]:
+    violations = []
+    for forbidden in ("nextflow run", "run_QS1.sh", "run_QS2.sh", "run_example.sh"):
+        if forbidden == "nextflow run" and relative in CURRENT_NEXTFLOW_PAGES:
+            continue
+        checked = text
+        if relative == "README.md" and forbidden == "nextflow run":
+            # The explicit Illumina paragraph documents the supported complete
+            # short-variant entry; ordinary CNA examples remain native.
+            checked = "\n".join(line for line in text.splitlines()
+                                if not line.startswith("**Illumina short variants:**"))
+        found = (re.search(r"\bnextflow\s+run\b", checked, re.IGNORECASE)
+                 if forbidden == "nextflow run" else forbidden.casefold() in checked.casefold())
+        if found:
+            violations.append(forbidden)
+    return violations
+
+
 def check_no_retired_public_entrypoints() -> None:
     installation_pages = {"README.md", "docs/installation.md", "docs/installation_details.md"}
     for path in markdown_files():
         text = path.read_text(encoding="utf-8")
         relative = path.relative_to(ROOT).as_posix()
-        for forbidden in ("nextflow run", "run_QS1.sh", "run_QS2.sh", "run_example.sh"):
-            if forbidden.casefold() in text.casefold():
-                fail(f"retired public entry point in {relative}: {forbidden}")
+        for forbidden in retired_public_entrypoints(relative, text):
+            fail(f"retired public entry point in {relative}: {forbidden}")
         if "git clone" in text and relative not in installation_pages:
             fail(f"checkout instructions belong in installation, not {relative}")
         if re.search(r"(?:oncotracer|\$BINARY|\$ONCOTRACER_DEV)\"? quickstart [12]", text):
