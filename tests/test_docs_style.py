@@ -211,9 +211,9 @@ REQUIRED_TEXT = {
         "qDNAseq in its pinned R 4.1 environment",
         "HMMcopy and ichorCNA 0.5.1",
         ".nf",
-        "file is present in the release executable or container",
+        "bundled GLIMPSE2 workflow includes `.nf` files",
         "exact Git commit and deterministic",
-        "Normal v2 execution does not invoke Nextflow",
+        "Native CNA execution does not invoke Nextflow",
         "canonical path, file type, normalized mode, size, and SHA-256",
         "process-scoped temporary payload",
         "Installer ownership boundary",
@@ -294,7 +294,15 @@ def check_native_runtime_boundary() -> None:
     for relative_path in ACTIVE_NATIVE_FILES:
         text = read(relative_path)
         for phrase in forbidden:
-            if phrase.casefold() in text.casefold():
+            checked = text
+            if relative_path == "README.md" and phrase == "nextflow run":
+                # Match test_native_docs: the explicit short-variant section
+                # documents the supported GLIMPSE2 entry; CNA remains native.
+                checked = "\n".join(line for line in text.splitlines()
+                                    if not line.startswith("**Illumina short variants:**"))
+            found = (re.search(r"\bnextflow\s+run\b", checked, re.IGNORECASE)
+                     if phrase == "nextflow run" else phrase.casefold() in checked.casefold())
+            if found:
                 fail(f"obsolete v1 runtime instruction in {relative_path}: {phrase}")
 
     for relative_path in ("README.md", "docs/installation.md", "docs/index.md"):

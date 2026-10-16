@@ -20,7 +20,10 @@ trace record, and resume signature. The Python engine coordinates:
 - the optional CNA classifier, GISTIC2, knowledge enrichment, pathology concordance, HTML/PDF reports, and clinician summaries.
 
 The optional classifier is a direct native stage graph over its versioned Python
-scripts and assets. No `.nf` file is present in the release executable or container.
+scripts and assets. The bundled GLIMPSE2 workflow includes `.nf` files in the
+release payload; the current Dockerfile also supplies its pinned Nextflow runtime.
+Complete Illumina short-variant analysis uses that workflow, while CNA stages
+remain native. See the [variant migration guide](GLIMPSE_MIGRATION.md).
 The separate [ONT methylation branch](configuration/methylation_reference.md)
 requires additional, user-supplied tools and models.
 
@@ -137,11 +140,12 @@ markers, transactions, environments, images, or saved configuration.
 
 ## Native invariant
 
-Normal v2 execution does not invoke Nextflow. The managed Conda and container
-backends include the Java runtime used internally by Picard for Illumina
-duplicate marking; users do not need a separate host Java installation. CI
-parses the source, inspects the built image, executes an offline classifier
-fixture, and rejects any native command trace containing `nextflow`.
+Native CNA execution does not invoke Nextflow. Its managed Conda and container
+backends include the Java runtime used by Picard for Illumina duplicate marking.
+The complete Illumina variant branch additionally requires Nextflow and a
+compatible Java runtime; the current Dockerfile bundles both. CI retains the
+CNA trace check that excludes Nextflow and separately tests the bundled variant
+workflow with offline startup as an unprivileged container user.
 
 See [release validation](parity_release.md) for the independent comparison used
 during release testing.
