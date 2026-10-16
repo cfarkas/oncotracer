@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import contextlib
 import io
 import json
 import os
@@ -879,6 +880,137 @@ class SingularityIsolationTests(unittest.TestCase):
                 raise KeyboardInterrupt
         self.assertIsNotNone(private)
         self.assertFalse(private.exists())
+
+
+
+class InteractiveEntryTests(unittest.TestCase):
+    def test_ffpe_alias_opens_only_browser_with_selected_defaults_and_resources(self):
+        from oncotracer_cli import cli
+        for backend in ("conda", "docker"):
+            with self.subTest(backend=backend), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                project = root / "project $(touch SHOULD_NOT_EXIST)"
+                values = ["--interactive", "--ffpe", "--backend", backend,
+                          "--project", str(project), "--input-folder", str(root / "reads"),
+                          "--variant-tool-prefix", str(root / "variants"),
+                          "--variant-ffperase-root", str(root / "ffperase"),
+                          "--variant-ffperase-models", str(root / "models"),
+                          "--variant-ffperase-prefix", str(root / "ffpe-env"),
+                          "--variant-ffperase-sif", str(root / "ffpe.sif"), "--no-browser"]
+                if backend == "docker":
+                    values += ["--image", "oncotracer:local"]
+                with patch("oncotracer_cli.web.command_web", return_value=0) as browser, \
+                     patch("oncotracer_cli.setup._command_setup") as save, \
+                     patch.object(cli, "execute_run") as run:
+                    self.assertEqual(cli.main(values), 0)
+                browser.assert_called_once()
+                args = browser.call_args.args[0]
+                self.assertEqual(args.command, "setup")
+                self.assertEqual(args.backend, backend)
+                self.assertEqual(args.mode, "illumina")
+                self.assertEqual(args.analysis, "cna")
+                self.assertTrue(args.variants)
+                self.assertEqual(args.variant_engine, "glimpse2")
+                self.assertEqual(args.variant_specimen_type, "ffpe")
+                self.assertEqual(args.variant_ffperase, "required")
+                self.assertEqual(args.variant_tool_prefix, str(root / "variants"))
+                self.assertEqual(args.variant_ffperase_models, str(root / "models"))
+                self.assertEqual(args.variant_ffperase_prefix, str(root / "ffpe-env"))
+                self.assertEqual(args.variant_ffperase_sif, str(root / "ffpe.sif"))
+                self.assertTrue(args.no_browser)
+                self.assertFalse(args.run)
+                self.assertFalse(args.non_interactive)
+                self.assertIsNone(args.variant_download_resources)
+                self.assertIsNone(args.variant_accept_ffperase_license)
+                save.assert_not_called()
+                run.assert_not_called()
+                self.assertFalse(project.exists())
+                self.assertEqual(list(root.iterdir()), [])
+
+    def test_ffpe_defaults_reach_the_browser_form_without_creating_a_job(self):
+        from oncotracer_cli.cli import parse_arguments
+        from oncotracer_cli.web import WebState
+        with tempfile.TemporaryDirectory() as directory:
+            args = parse_arguments(["--interactive", "--ffpe", "--backend", "conda"])
+            state = WebState(Path(directory), args)
+            with patch("oncotracer_cli.web.inspect_hardware", return_value={"cpu_workers_available": 4}), \
+                 patch("oncotracer_cli.web.resource_report", return_value={"suggested_threads": 2}):
+                defaults = state.system()["defaults"]
+            self.assertEqual(defaults["variant_specimen_type"], "ffpe")
+            self.assertEqual(defaults["variant_ffperase"], "required")
+            self.assertTrue(defaults["variants"])
+            self.assertIsNone(defaults["variant_accept_ffperase_license"])
+            self.assertIsNone(defaults["variant_download_resources"])
+            self.assertIsNone(state.job)
+            self.assertEqual(state.projects, {})
+            self.assertEqual(list(Path(directory).iterdir()), [])
+
+    def test_python_native_entry_help_and_unselected_preset_are_inert(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for flags, expected in (([], 0), (["--help"], 0), (["--ffpe"], 2),
+                                    (["--interactive", "--ffpe", "--help"], 0)):
+                with self.subTest(flags=flags):
+                    result = subprocess.run([sys.executable, str(ROOT / "oncotracer"), *flags],
+                                            cwd=directory, capture_output=True, text=True, timeout=20)
+                    self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+            self.assertEqual(list(Path(directory).iterdir()), [])
+
+    def test_plain_interactive_alias_preserves_general_setup(self):
+        from oncotracer_cli import cli
+        with patch("oncotracer_cli.web.command_web", return_value=0) as browser:
+            self.assertEqual(cli.main(["--backend", "conda", "--interactive"]), 0)
+        args = browser.call_args.args[0]
+        self.assertFalse(args.variants)
+        self.assertIsNone(args.variant_specimen_type)
+        self.assertFalse(args.run)
+
+    def test_interactive_rejects_every_nonbrowser_route_before_dispatch(self):
+        from oncotracer_cli import cli
+        cases = [["--run"], ["--terminal"], ["--manual"], ["--non-interactive"],
+                 ["--samplesheet", "samples.csv"], ["--fastq-1", "R1.fastq"],
+                 ["--fastq-2", "R2.fastq"], ["--sample-name", "MOCK"],
+                 ["--barcodes", "barcode01"], ["--sample-names", "MOCK"],
+                 ["--status", "tumor"], ["--threads", "0"]]
+        for flags in cases:
+            with self.subTest(flags=flags), patch("oncotracer_cli.web.command_web") as browser, \
+                 patch("oncotracer_cli.setup._command_setup") as save, \
+                 patch.object(cli, "execute_run") as run, contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(cli.main(["--interactive", *flags]), 2)
+                browser.assert_not_called()
+                save.assert_not_called()
+                run.assert_not_called()
+
+    def test_ffpe_rejects_conflicting_presets_and_existing_bam_config(self):
+        from oncotracer_cli import cli
+        cases = [["--mode", "ont"], ["--analysis", "methylation"],
+                 ["--variant-specimen-type", "fresh"], ["--variant-ffperase", "off"],
+                 ["--variant-config", "saved.yml"], ["--backend", "singularity"],
+                 ["--reads-folder", "ont"], ["--modbam", "calls.bam"], ["--pod5-dir", "pod5"]]
+        for flags in cases:
+            with self.subTest(flags=flags), patch("oncotracer_cli.web.command_web") as browser, \
+                 contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(cli.main(["--interactive", "--ffpe", *flags]), 2)
+                browser.assert_not_called()
+
+    def test_no_arguments_or_ffpe_alone_start_nothing(self):
+        from oncotracer_cli import cli
+        with patch("oncotracer_cli.web.command_web") as browser, \
+             patch.object(cli, "execute_run") as run, \
+             contextlib.redirect_stdout(io.StringIO()) as output, \
+             contextlib.redirect_stderr(io.StringIO()) as error:
+            self.assertEqual(cli.main([]), 0)
+            self.assertEqual(cli.main(["--ffpe"]), 2)
+        self.assertIn("--interactive", output.getvalue())
+        self.assertIn("--ffpe", output.getvalue())
+        self.assertIn("--interactive --ffpe", error.getvalue())
+        browser.assert_not_called()
+        run.assert_not_called()
+
+    def test_existing_subcommands_remain_explicit(self):
+        from oncotracer_cli.cli import parse_arguments
+        self.assertTrue(parse_arguments(["setup", "--run", "--project", "saved"]).run)
+        self.assertEqual(parse_arguments(["run", "--config", "saved.yml"]).command, "run")
+        self.assertEqual(parse_arguments(["--conda", "-params-file", "saved.yml"]).command, "run")
 
 
 if __name__ == "__main__":

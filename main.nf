@@ -23,8 +23,12 @@ workflow {
     } else {
         argv.addAll(['--analysis', params.analysis.toString(), '--port', params.port.toString()])
         if (selectedFlag(params.interactive, 'interactive')) argv.add('--interactive')
+        if (selectedFlag(params.ffpe, 'ffpe')) argv.add('--ffpe')
+        if (selectedFlag(params.no_browser, 'no_browser')) argv.add('--no-browser')
         if (selectedFlag(params.dry_run, 'dry_run')) argv.add('--dry-run')
-        ['config', 'start_dir', 'backend', 'threads', 'parallel_samples'].each { key ->
+        ['config', 'start_dir', 'backend', 'threads', 'parallel_samples', 'project', 'input_folder',
+         'image', 'variant_tool_prefix', 'variant_ffperase_root', 'variant_ffperase_models',
+         'variant_ffperase_sif', 'variant_ffperase_prefix'].each { key ->
             if (params[key] != null && params[key].toString() != '') {
                 argv.addAll(['--' + key.replace('_', '-'), params[key].toString()])
             }
