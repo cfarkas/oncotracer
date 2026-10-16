@@ -38,7 +38,7 @@ class SharedReferenceTests(unittest.TestCase):
         old = {'glimpse2': True, 'sample': 'OLD', 'reference': str(fasta), 'resource_dir': str(resources),
                'glimpse_chromosomes': ['chr1'], 'glimpse_bin': str(resources),
                'glimpse_reference_dir': str(resources), 'allow_test_reference': False,
-               'versions': {'bcftools': 'fixture1'}, 'tools': {'bcftools': str(resources/'bcftools')},
+               'versions': {'bcftools': 'fixture1', 'bcftools_htslib': '1.24'}, 'tools': {'bcftools': str(resources/'bcftools')},
                'resources': [metadata(fasta)], 'inputs': [], 'root': str(code)}
         raw = json.dumps(old).encode(); runtime = hashlib.sha256(raw).hexdigest()+'.json'
         (work/runtime).write_bytes(raw)
@@ -83,6 +83,25 @@ class SharedReferenceTests(unittest.TestCase):
             published.mkdir(parents=True)
             (published/'reference.chr1.provenance.json').symlink_to(work/'reference.chr1.provenance.json')
             self.assertEqual(set(self.collect(c, code, organized)['references']), {'chr1'})
+
+    def test_linked_htslib_mismatch_or_missing_history_rejects_reference(self):
+        for observed in ('1.23', None):
+            with self.subTest(htslib=observed), tempfile.TemporaryDirectory() as d:
+                c, code, donor, work, _ = self.fixture(Path(d))
+                runtime = next(p for p in work.glob('*.json') if p.name[0] != 'r')
+                previous = json.loads(runtime.read_text())
+                if observed is None:
+                    previous['versions'].pop('bcftools_htslib')
+                else:
+                    previous['versions']['bcftools_htslib'] = observed
+                raw = json.dumps(previous).encode()
+                renamed = work/(hashlib.sha256(raw).hexdigest()+'.json')
+                renamed.write_bytes(raw)
+                script = work/'.command.sh'
+                script.write_text(script.read_text().replace(runtime.name, renamed.name))
+                result = self.collect(c, code, donor)
+                self.assertFalse(result['references'])
+                self.assertTrue(any('linked HTSlib' in row['reason'] for row in result['audit']['rejected']))
 
     def test_runtime_json_checksum_tamper_rejected(self):
         with tempfile.TemporaryDirectory() as d:

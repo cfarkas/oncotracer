@@ -1,7 +1,7 @@
 # OncoTracer
 
 
-**Illumina short variants:** the complete GLIMPSE2 workflow and browser entry are now available through `nextflow run main.nf --interactive`. See the [migration and reuse guide](docs/GLIMPSE_MIGRATION.md) and [parallel-sample quickstart with parity checks](docs/MULTISAMPLE_QUICKSTART.md). Build the current Dockerfile for the pinned offline Nextflow runtime and validated Conda/Docker resume support. Older registry tags predate this repair; the source update does not update those tags. See [resume and FFPE repair notes](docs/glimpse2_repair.txt).
+**Illumina short variants:** `nextflow run main.nf --interactive` opens browser setup for the complete GLIMPSE2 workflow. See the [migration guide](docs/GLIMPSE_MIGRATION.md), [parallel-sample quickstart](docs/MULTISAMPLE_QUICKSTART.md), and [resume/FFPE repair notes](docs/glimpse2_repair.txt).
 
 [![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
@@ -11,7 +11,9 @@ Analyze Illumina and Oxford Nanopore (ONT) reads for DNA copy-number changes and
 
 ## Install
 
-Use Linux, Python 3.10–3.13 and Git, with **Conda or Docker** for analysis tools. First install the launcher from the current source in a directory where you keep software:
+Use Linux, Python 3.10–3.13 and Git, with **Conda or Docker** for analysis tools. The commands below install the stable CNA launcher in a directory where you keep software.
+
+**For complete GLIMPSE2 and the resume/FFPE repairs in [PR #53](https://github.com/cfarkas/oncotracer/pull/53):** until merged, replace `--branch main` below with `--branch feat/glimpse2-complete-short-variants`. Build Docker from that branch using the [source image guide](docs/containers.md#fastq-to-cna-and-variants). Published tags are unchanged.
 
 ```bash
 git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
@@ -36,7 +38,9 @@ Small-variant calling and FFPERASE need [additional Conda environments and resou
 
 ### Docker
 
-With Docker running and accessible to your user, install the image that supports **FASTQ → alignment → CNA and variants**:
+For repaired GLIMPSE2/FFPE, [build the current branch image](docs/containers.md#fastq-to-cna-and-variants) with both provenance arguments and install it with `--no-pull`.
+
+The published image below predates those repairs. It supports the earlier **FASTQ → alignment → CNA and variants** workflow. Docker must be running and accessible:
 
 ```bash
 oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922

@@ -49,6 +49,53 @@ class NativeCliTests(unittest.TestCase):
         self.assertEqual(args.command, "run")
         self.assertEqual(args.backend, "conda")
 
+    def test_docker_install_local_image_keeps_health_check(self) -> None:
+        from oncotracer_cli import cli
+        args = build_parser().parse_args([
+            "install", "--docker", "--image", "oncotracer:local", "--no-pull"
+        ])
+        with patch.object(cli.shutil, "which", return_value="/bin/docker"), \
+             patch.object(cli, "_run") as run, \
+             patch.object(cli, "_save_install_config") as save:
+            cli._install_docker(args)
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(commands, [
+            ["/bin/docker", "info"],
+            ["/bin/docker", "image", "inspect", "oncotracer:local"],
+            ["/bin/docker", "run", "--rm", "oncotracer:local", "doctor", "--backend", "host"],
+        ])
+        save.assert_called_once_with({"backend": "docker", "image": "oncotracer:local"})
+
+    def test_docker_install_default_still_pulls(self) -> None:
+        from oncotracer_cli import cli
+        args = build_parser().parse_args(["install", "--docker", "--image", "registry/image:tag"])
+        with patch.object(cli.shutil, "which", return_value="/bin/docker"), \
+             patch.object(cli, "_run") as run, \
+             patch.object(cli, "_save_install_config"):
+            cli._install_docker(args)
+        self.assertIn(["/bin/docker", "pull", "registry/image:tag"], [call.args[0] for call in run.call_args_list])
+
+    def test_docker_install_missing_or_unhealthy_local_image_does_not_save(self) -> None:
+        from oncotracer_cli import cli
+        for fail_at in (1, 2):
+            with self.subTest(fail_at=fail_at):
+                args = build_parser().parse_args(["install", "--docker", "--image", "oncotracer:local", "--no-pull"])
+                effects = [None] * fail_at + [OncoTracerError("image unavailable or unhealthy")]
+                with patch.object(cli.shutil, "which", return_value="/bin/docker"), \
+                     patch.object(cli, "_run", side_effect=effects), \
+                     patch.object(cli, "_save_install_config") as save:
+                    with self.assertRaises(OncoTracerError):
+                        cli._install_docker(args)
+                save.assert_not_called()
+
+    def test_no_pull_is_rejected_for_other_install_backends(self) -> None:
+        from oncotracer_cli import cli
+        for backend in ("conda", "poetry", "singularity"):
+            with self.subTest(backend=backend):
+                args = build_parser().parse_args(["install", "--" + backend, "--no-pull", "--dry-run"])
+                with self.assertRaisesRegex(OncoTracerError, "backend-irrelevant.*--no-pull"):
+                    cli.command_install(args)
+
     def test_native_docker_uses_invoking_uid_gid(self) -> None:
         config = Path("/data/study/config/run.yml")
         args = build_parser().parse_args(["run", "--config", str(config), "--backend", "docker", "--dry-run"])

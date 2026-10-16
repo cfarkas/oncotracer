@@ -172,7 +172,10 @@ def _install_docker(args: argparse.Namespace) -> dict[str, object]:
     )
     image = args.image or DEFAULT_IMAGE
     _run([docker, "info"], dry_run=args.dry_run)
-    _run([docker, "pull", image], dry_run=args.dry_run)
+    if getattr(args, "no_pull", False):
+        _run([docker, "image", "inspect", image], dry_run=args.dry_run)
+    else:
+        _run([docker, "pull", image], dry_run=args.dry_run)
     _run(
         [docker, "run", "--rm", image, "doctor", "--backend", "host"],
         dry_run=args.dry_run,
@@ -261,11 +264,12 @@ def command_install(args: argparse.Namespace) -> int:
         "--sif": args.sif is not None,
         "--force": bool(args.force),
         "--root": args.root is not None,
+        "--no-pull": bool(getattr(args, "no_pull", False)),
     }
     allowed = {
         "conda": {"--prefix", "--force", "--root"},
         "poetry": {"--prefix", "--force", "--root"},
-        "docker": {"--image"},
+        "docker": {"--image", "--no-pull"},
         "singularity": {"--image", "--sif", "--force"},
     }[backend]
     irrelevant = sorted(
@@ -1631,6 +1635,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--conda", action="store_true")
     install.add_argument("--prefix")
     install.add_argument("--image")
+    install.add_argument("--no-pull", action="store_true", help="use an existing local Docker image; still verify it with doctor")
     install.add_argument("--sif")
     install.add_argument("--force", action="store_true")
     install.add_argument("--dry-run", action="store_true")

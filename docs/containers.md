@@ -72,11 +72,18 @@ and integrated ONT callers (Linux x86-64). Older published image tags do not gai
 these changes when the source branch is updated:
 
 ```bash
-docker build --build-arg SOURCE_COMMIT="$(git rev-parse HEAD)" \
-  -t oncotracer:glimpse2-repair .
+SOURCE_COMMIT="$(git rev-parse HEAD)"
+SOURCE_SHA256="$(git -c tar.umask=0002 archive --format=tar "$SOURCE_COMMIT" | sha256sum | awk '{print $1}')"
+docker build --build-arg SOURCE_COMMIT="$SOURCE_COMMIT" \
+  --build-arg SOURCE_SHA256="$SOURCE_SHA256" -t oncotracer:glimpse2-repair .
+oncotracer install --docker --image oncotracer:glimpse2-repair --no-pull
 oncotracer setup --backend docker \
   --image oncotracer:glimpse2-repair --variants
 ```
+
+`--no-pull` installs an existing local Docker image after checking it with
+`doctor`. Without that flag, installation pulls the selected registry image.
+Use a clean committed checkout when building the source-bound image.
 
 Select Illumina or ONT, Fresh or FFPE, and the compatible callers. **Save and
 check**, then **Run analysis**, starts alignment, CNA analysis and the selected
@@ -195,6 +202,19 @@ Choose an explicit SIF location:
 oncotracer install --singularity \
   --sif "/large/storage/containers/oncotracer-2.1.0.sif"
 ```
+
+To install a source-built image already present in your local Docker daemon,
+use an explicit local transport. This builds the SIF without publishing an image:
+
+```bash
+oncotracer install --singularity \
+  --image docker-daemon:oncotracer:glimpse2-repair \
+  --sif "/large/storage/containers/oncotracer-glimpse2.sif"
+```
+
+This route retains the same ownership, provenance and container health checks.
+The complete Singularity backend supports CNA; integrated small variants remain
+unsupported as shown in the backend table above.
 
 Or override it for one run:
 

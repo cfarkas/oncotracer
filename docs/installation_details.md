@@ -3,6 +3,13 @@
 Start with [installation](installation.md). This reference explains standalone
 builds, alternative backends, ownership checks and recovery behavior.
 
+The complete Illumina GLIMPSE2 workflow and resume/FFPE repairs are on
+[PR #53](https://github.com/cfarkas/oncotracer/pull/53). Until it is merged, select
+`feat/glimpse2-complete-short-variants` when cloning, as described in
+[installation](installation.md#1-install-the-command). Build the repaired
+[Docker image from that source](containers.md#fastq-to-cna-and-variants), with
+both source provenance arguments; existing registry tags are unchanged.
+
 OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.13 is required by the portable zipapp. The selected backend supplies BWA, samtools, Picard, R, qDNAseq, HMMcopy, ichorCNA, the optional classifier, and GISTIC2.
 
 ## Choose the installation route
@@ -10,7 +17,7 @@ OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.1
 | Goal | Use |
 | --- | --- |
 | First CNA analysis | [Standard installation](installation.md), then the Conda section below. |
-| CNA and small variants | Current launcher plus [optional environments](variants_reference.md#conda-and-docker), or the [dated Docker image](containers.md#fastq-to-cna-and-variants). |
+| CNA and small variants | Current branch launcher plus [optional environments](variants_reference.md#conda-and-docker), or the [current source Docker image](containers.md#fastq-to-cna-and-variants). |
 | HPC CNA analysis | The Singularity/Apptainer section below. |
 | Develop the launcher | The Poetry section below. |
 | Move a project to a remote server | [Headless setup and SSH](headless.md). |
@@ -144,7 +151,12 @@ oncotracer run --backend docker \
 
 All paths in the YAML should be absolute. OncoTracer derives the required project mounts from the configuration.
 
-For the optional variant workflow, choose the newer image explicitly and retain
+For the complete GLIMPSE2 workflow and repaired FFPE support, use the
+[current source image build](containers.md#fastq-to-cna-and-variants), then
+install that local image with `--no-pull`.
+
+The following published image supports the earlier variant workflow and
+predates those repairs. Choose it explicitly only for that workflow and retain
 that selection when running:
 
 ```bash
@@ -214,7 +226,7 @@ of those steps without overwriting earlier evidence.
 
 ### Poetry
 
-Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development:
+Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development. To develop or test the repairs before PR #53 is merged, add `--branch feat/glimpse2-complete-short-variants` to the clone command below:
 
 ```bash
 git clone https://github.com/cfarkas/oncotracer.git

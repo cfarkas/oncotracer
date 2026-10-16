@@ -105,8 +105,10 @@ def _tool_match(old, current, name, begin, finish):
             raise ValueError(f'Historical {name} changed after execution')
     if not _same_file(a, b) and digest(a) != digest(b):
         raise ValueError(f'{name} binary differs')
-    if name == 'bcftools' and old.get('versions', {}).get(name) != current.get('versions', {}).get(name):
-        raise ValueError('bcftools version differs')
+    if name == 'bcftools':
+        for key, label in (('bcftools', 'bcftools'), ('bcftools_htslib', 'linked HTSlib')):
+            if old.get('versions', {}).get(key) != current.get('versions', {}).get(key):
+                raise ValueError(label + ' version differs or was not recorded')
     return {'path': str(b.resolve()), 'sha256': digest(b)}
 
 

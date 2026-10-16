@@ -7,8 +7,8 @@ Keep software and analysis projects in separate folders.
 
 Both routes need 64-bit Linux, Python 3.10–3.13 and Git for the launcher.
 The Conda route also needs [Conda/Miniforge](https://github.com/conda-forge/miniforge#install).
-The Docker route needs a running Docker engine accessible to your user; host
-Conda is unnecessary. OncoTracer does not install either backend itself.
+Docker must be running and accessible to your user; host Conda is unnecessary.
+Install either backend separately.
 
 Desktop browsing needs Zenity (Ubuntu/GNOME) or KDialog (KDE). Install either,
 or enter paths. Remote sessions use server paths.
@@ -27,7 +27,13 @@ downloads and extraction also need free disk. Large datasets need more.
 
 ## 1. Install the command
 
-Run these commands in a directory where you keep software:
+For complete GLIMPSE2 and the resume/FFPE repairs in
+[PR #53](https://github.com/cfarkas/oncotracer/pull/53), replace `--branch main`
+below with `--branch feat/glimpse2-complete-short-variants` until merged.
+Build Docker from that branch using the
+[source image guide](containers.md#fastq-to-cna-and-variants); published tags are unchanged.
+
+Install the launcher:
 
 ```bash
 git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
@@ -68,6 +74,10 @@ environments are installed separately; follow [variant setup](variants.md#conda-
 
 ### Docker
 
+For repaired GLIMPSE2/FFPE, [build the current branch image](containers.md#fastq-to-cna-and-variants)
+with both provenance arguments, then install it with `--no-pull`.
+The published image below predates those repairs:
+
 ```bash
 oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
 oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
@@ -81,18 +91,13 @@ oncotracer setup --terminal --backend docker \
   --image carlosfarkas/oncotracer:fastq-variants-20260922
 ```
 
-This published Linux/amd64 image supports Illumina/ONT FASTQs through CNA and
-optional variants. Enable **Add small-variant calling** in the browser, or append
-`--variants` to setup. Run can prepare a selected Clair3 model or, after explicit
-license acceptance, missing FFPERASE resources. ANNOVAR stays separately supplied;
-see [Docker variants](variants.md#run-cna-and-variants-with-docker).
+Enable **Add small-variant calling** in the browser or append `--variants`.
+See [Docker variants](variants.md#run-cna-and-variants-with-docker) for models,
+FFPERASE licensing and ANNOVAR. The older `ghcr.io/cfarkas/oncotracer:2.1.0`
+image supports CNA. For methylation, use [Conda](configuration/methylation.md).
 
-Use this explicit tag for variants. The older `ghcr.io/cfarkas/oncotracer:2.1.0`
-image supports the earlier CNA workflow. Docker methylation is unavailable;
-use the [native methylation setup](configuration/methylation.md).
-
-Add `--verbose` to installation for package output, or `--json` for automation.
-See [execution backends](containers.md) and [advanced installation](installation_details.md).
+Installation flags: `--verbose` logs packages; `--json` supports automation.
+See [backends](containers.md) and [advanced installation](installation_details.md).
 
 ## 3. Start a project
 

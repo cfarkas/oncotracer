@@ -77,7 +77,16 @@ def check(request, tools, toolchain, bundle):
     tools = dict(tools)
     for name in ('samtools', 'bcftools', 'gatk'):
         if name in tools:
-            probe([tools[name], '--version'], name)
+            output = probe([tools[name], '--version'], name)
+            if name == 'bcftools':
+                spec = importlib.util.spec_from_file_location('_oncotracer_caller_contract', bundle / 'bin/bcftools_compat.py')
+                contract = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(contract)
+                try:
+                    runtime = contract.require_version(output, tools[name])
+                except ValueError as error:
+                    raise OncoTracerError(str(error)) from error
+                print(contract.version_diagnostic(runtime), file=sys.stderr, flush=True)
     probe([tools['nextflow'], '-version'], 'Nextflow')
     probe([shutil.which('java') or 'java', '-version'], 'Java')
     tools['python'] = analysis_python(request, toolchain)

@@ -4316,6 +4316,41 @@ def _recover_sif_journal(destination: Path) -> None:
     _restore_sif_transaction(destination, journal_path, journal)
 
 
+def _sif_image_command(
+    executable: str, destination: Path | str, image: str
+) -> list[str]:
+    """Choose the explicit registry or local Docker transport without a shell."""
+    if image.startswith("docker-daemon:"):
+        reference = image[len("docker-daemon:") :].removeprefix("//")
+        last_component = reference.rsplit("/", 1)[-1]
+        if (
+            not reference
+            or reference.startswith(("/", "-"))
+            or any(character.isspace() for character in reference)
+            or ":" not in last_component
+            or not last_component.rsplit(":", 1)[-1]
+        ):
+            raise OncoTracerError(
+                "local Docker SIF source requires an explicit repository:tag "
+                "or sha256 image ID after docker-daemon:"
+            )
+        return [executable, "build", str(destination), f"docker-daemon:{reference}"]
+    if image.startswith("docker://"):
+        reference = image[len("docker://") :]
+    elif "://" in image:
+        raise OncoTracerError(
+            "SIF image source must be a Docker registry reference, docker:// "
+            "reference, or explicit docker-daemon:repository:tag"
+        )
+    else:
+        reference = image
+    if not reference or any(character.isspace() for character in reference):
+        raise OncoTracerError(
+            "SIF Docker image reference must be nonempty without whitespace"
+        )
+    return [executable, "pull", str(destination), f"docker://{reference}"]
+
+
 def install_sif_managed(
     destination: Path,
     *,
@@ -4324,6 +4359,8 @@ def install_sif_managed(
     force: bool,
     dry_run: bool,
 ) -> dict[str, object]:
+    # Validate the transport before creating any ownership or transaction files.
+    _sif_image_command(executable, "<same-directory-staged-sif>", image)
     destination = _guard_dedicated(destination, "SIF destination")
     journal_path = _journal_path(destination, "sif")
     if os.path.lexists(journal_path):
@@ -4348,7 +4385,7 @@ def install_sif_managed(
         _classify_sif(destination)
     if dry_run:
         _run_checked(
-            [executable, "pull", "<same-directory-staged-sif>", f"docker://{image}"],
+            _sif_image_command(executable, "<same-directory-staged-sif>", image),
             dry_run=True,
         )
         _run_checked(
@@ -4421,7 +4458,7 @@ def install_sif_managed(
             transaction = _create_transaction(destination, "sif", transaction_id)
             candidate = transaction / "candidate.sif"
             candidate_sidecar = transaction / "candidate.sidecar.json"
-            _run_checked([executable, "pull", candidate, f"docker://{image}"])
+            _run_checked(_sif_image_command(executable, candidate, image))
             metadata = candidate.lstat()
             if (
                 not stat.S_ISREG(metadata.st_mode)

@@ -2,6 +2,7 @@
 from dataclasses import replace
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -58,11 +59,12 @@ class GlimpseReadinessTests(unittest.TestCase):
 
     def test_offline_report_check_preserves_exact_model_and_interpreter(self):
         bundle = self.root/'bundle'; (bundle/'bin').mkdir(parents=True)
+        shutil.copyfile(pipeline.BUNDLE/'bin/bcftools_compat.py', bundle/'bin/bcftools_compat.py')
         (bundle/'bin/llm_reporting.py').write_text(
             'def prepare(c):\n c["llm_python"]="/report/python"\n c["llm_model_directory"]="/local/model"\n')
         tools = {'samtools':'samtools','bcftools':'bcftools','gatk':'gatk','nextflow':'nextflow'}
         with patch.object(ready,'analysis_python',return_value='/scientific/python'), \
-             patch.object(ready,'probe') as probe:
+             patch.object(ready,'probe',return_value='bcftools 1.23.1\nUsing htslib 1.24\n') as probe:
             result = ready.check(self.request, tools, None, bundle)
         self.assertEqual(result['python'], '/scientific/python')
         self.assertEqual(result['llm_python'], '/report/python')

@@ -257,7 +257,7 @@ import sys
 args = sys.argv[1:]
 with open(os.environ["FAKE_INSTALL_LOG"], "a", encoding="utf-8") as handle:
     handle.write("apptainer\\t" + "\\t".join(args) + "\\n")
-if args[0] == "pull":
+if args[0] in {"pull", "build"}:
     pathlib.Path(args[1]).write_bytes(os.environ.get("FAKE_SIF_CONTENT", "sif-one").encode())
 elif "doctor" in args:
     print(json.dumps({"success": os.environ.get("FAKE_DOCTOR_FAIL") != "1"}))
@@ -350,6 +350,70 @@ else:
             if self.log.exists()
             else []
         )
+
+    def test_sif_local_docker_build_preserves_source_and_verifies_runtime(self) -> None:
+        destination = self.scratch / "local-docker.sif"
+        image = "docker-daemon:oncotracer:local-test"
+        installed = install_safety.install_sif_managed(
+            destination,
+            executable=str(self.apptainer),
+            image=image,
+            force=False,
+            dry_run=False,
+        )
+        self.assertEqual(installed, {"sif": str(destination), "image": image})
+        marker = json.loads(install_safety._sif_sidecar(destination).read_text())
+        self.assertEqual(marker["image"], image)
+        self.assertEqual(marker["source"], SOURCE)
+        lines = self._log_lines()
+        self.assertTrue(any("\tbuild\t" in line and line.endswith("\t" + image) for line in lines))
+        self.assertFalse(any("\tpull\t" in line for line in lines))
+        self.assertTrue(any("\tdoctor\t" in line for line in lines))
+        self.assertTrue(any("\tprovenance\t" in line for line in lines))
+
+    def test_sif_local_docker_dry_run_has_no_writes_or_subprocess(self) -> None:
+        destination = self.scratch / "local-docker-dry.sif"
+        before = _snapshot(self.scratch)
+        with mock.patch.object(install_safety.subprocess, "run") as run:
+            install_safety.install_sif_managed(
+                destination,
+                executable=str(self.apptainer),
+                image="docker-daemon://oncotracer:local-test",
+                force=False,
+                dry_run=True,
+            )
+        run.assert_not_called()
+        self.assertEqual(_snapshot(self.scratch), before)
+
+    def test_sif_image_transport_command_keeps_registry_and_local_separate(self) -> None:
+        for image in ("registry.example/oncotracer:test", "docker://registry.example/oncotracer:test"):
+            self.assertEqual(
+                install_safety._sif_image_command("apptainer", "candidate.sif", image),
+                ["apptainer", "pull", "candidate.sif", "docker://registry.example/oncotracer:test"],
+            )
+        for image in ("docker-daemon:oncotracer:test", "docker-daemon://oncotracer:test"):
+            self.assertEqual(
+                install_safety._sif_image_command("apptainer", "candidate.sif", image),
+                ["apptainer", "build", "candidate.sif", "docker-daemon:oncotracer:test"],
+            )
+
+    def test_sif_invalid_transport_fails_before_mutation(self) -> None:
+        destination = self.scratch / "invalid-source.sif"
+        before = _snapshot(self.scratch)
+        for image in (
+            "", "docker://", "https://example.test/image.sif", "docker-daemon:",
+            "docker-daemon:oncotracer", "docker-daemon:registry:5000/oncotracer",
+            "docker-daemon:oncotracer:", "docker-daemon:oncotracer:tag with space",
+        ):
+            with self.subTest(image=image), self.assertRaises(OncoTracerError):
+                install_safety.install_sif_managed(
+                    destination,
+                    executable=str(self.apptainer),
+                    image=image,
+                    force=False,
+                    dry_run=False,
+                )
+            self.assertEqual(_snapshot(self.scratch), before)
 
     def test_conda_unowned_target_is_preserved_with_and_without_force(self) -> None:
         for force in (False, True):

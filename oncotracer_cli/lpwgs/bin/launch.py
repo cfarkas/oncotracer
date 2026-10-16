@@ -222,8 +222,10 @@ def parse_memory(value):
 
 def find_tool(name, prefix=None):
     options=[Path(prefix)/'bin'/name] if prefix else []
-    options += [LOCAL/'tools/oncotracer-variants-env/bin'/name]
-    options += [Path(shutil.which(name))] if shutil.which(name) else []
+    # An explicitly selected caller must not fall back to a different runtime.
+    if not (prefix and name == 'bcftools'):
+        options += [LOCAL/'tools/oncotracer-variants-env/bin'/name]
+        options += [Path(shutil.which(name))] if shutil.which(name) else []
     for p in options:
         if p.is_file() and os.access(p,os.X_OK): return str(p.absolute())
     raise ValueError(f'Missing executable {name}; install it or set --tool-prefix (environment with bin/{name}).')
@@ -415,18 +417,23 @@ def prepare(a):
             for ext in ['.amb','.ann','.bwt','.pac','.sa']: check(lambda ext=ext: checked_path(runtime['bwa_index']+ext))
     names=['samtools','bcftools','gatk','perl'] if a.bam else ['bwa','samtools','bcftools','gatk','fastp','perl']
     runtime['tools']={name:check(lambda name=name: find_tool(name,a.tool_prefix)) for name in names}
-    versions={}
+    versions={};version_outputs={}
     for name,cmd in [('bwa',[]),('samtools',['--version']),('bcftools',['--version']),('fastp',['--version']),('gatk',['--version'])]:
         executable=runtime['tools'].get(name)
         if not executable: continue
         try:
             proc=subprocess.run([executable,*cmd],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=30)
+            version_outputs[name]=proc.stdout
             lines=proc.stdout.splitlines()
             versions[name]=next((ln for ln in lines if re.search(r'Version:|Genome Analysis Toolkit|^samtools |^bcftools |^fastp ',ln)), '\n'.join(lines[:3]))
             if proc.returncode!=0 and name!='bwa': errors.append(f'{name} exists but its version probe failed: {versions[name]}')
         except (OSError,subprocess.TimeoutExpired) as e: errors.append(f'{name} cannot run: {e}')
+    from bcftools_compat import require_version, trait_call_options, version_diagnostic
+    if runtime['tools'].get('bcftools'):
+        caller_runtime=require_version(version_outputs.get('bcftools',''),runtime['tools']['bcftools'])
+        versions['bcftools_htslib']=caller_runtime['htslib']
+        print(version_diagnostic(caller_runtime),flush=True)
     runtime['versions']=versions
-    from bcftools_compat import trait_call_options
     trait_options=check(lambda: trait_call_options(runtime['tools']['bcftools']))
     if trait_options:
         print('Traits caller compatibility verified: '+versions.get('bcftools','bcftools')+
