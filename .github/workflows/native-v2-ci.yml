@@ -152,7 +152,7 @@ jobs:
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
           ./oncotracer --version | grep -F 'OncoTracer 2.1.0'
-          ./oncotracer --help | grep -F 'Native LP-WGS CNA analysis.'
+          ./oncotracer --help | grep -F 'Native LP-WGS CNA and variant analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
             SetupTests.test_installed_setup_and_check_from_outside_checkout -v

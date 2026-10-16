@@ -254,6 +254,7 @@ class StandaloneDryRunTests(unittest.TestCase):
                 "native-ichorcna.yml",
                 "native-classifier.yml",
                 "native-gistic2.yml",
+                "native-variants.yml",
             ):
                 (environments / name).write_text("name: test\n", encoding="utf-8")
             target = base / "generated-envs"
@@ -272,6 +273,7 @@ class StandaloneDryRunTests(unittest.TestCase):
 
         completed = self._run_case(prepare)
         self.assertIn("explicit-root/environments/native-core.yml", completed.stderr)
+        self.assertIn("explicit-root/environments/native-variants.yml", completed.stderr)
 
     def test_standalone_ignores_an_adjacent_checkout_payload(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
