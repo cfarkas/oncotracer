@@ -706,5 +706,165 @@ class NativeCliTests(unittest.TestCase):
             native.assert_called_once()
 
 
+class SingularityIsolationTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.home = self.root / "host home"
+        self.project = self.home / "project"
+        self.external = self.home / "outside project's reads"
+        self.project.mkdir(parents=True)
+        self.external.mkdir()
+        self.fastq = self.external / "R1.fastq"
+        self.fastq.write_text("@read\nACGT\n+\nIIII\n")
+        self.lane = self.external / "R1 lane2.fastq"
+        self.lane.write_text(self.fastq.read_text())
+        self.link = self.project / "R1.fastq"
+        self.link.symlink_to(self.fastq)
+        self.sheet = self.project / "samples.csv"
+        self.config = self.project / "run.yml"
+        self.outdir = self.project / "results"
+        self.host_settings = self.home / ".config/oncotracer/config.json"
+        self.host_settings.parent.mkdir(parents=True)
+        self.host_settings.write_text(json.dumps({"backend": "conda", "core_prefix": "/host/poison"}))
+        self.values = dict(mode="illumina", lpwgs_root=str(self.project),
+                           outdir=str(self.outdir), illumina_samplesheet=str(self.sheet))
+        self.sheet.write_text(f"sample,fastq_1,fastq_2,status\nMOCK,{self.link},,tumor\n")
+        self.config.write_text(render_flat_yaml(self.values))
+
+    @staticmethod
+    def command_environment(command):
+        values = dict(str(command[index + 1]).split("=", 1)
+                      for index, value in enumerate(command) if value == "--env")
+        values["HOME"] = str(command[command.index("--home") + 1]).split(":")[1]
+        return values
+
+    def test_private_settings_survive_home_data_bind_and_cleanup(self):
+        from oncotracer_cli.sif_runtime import isolated_sif_command
+        original = self.host_settings.read_bytes()
+        with patch.dict(os.environ, {"HOME": str(self.home), "DISPLAY": ":999",
+                                     "XDG_CONFIG_HOME": str(self.home / ".config")}):
+            with isolated_sif_command("apptainer", mounts=[(self.home, "rw")], cwd=self.home) as command:
+                self.assertIn("--cleanenv", command)
+                self.assertIn("--no-home", command)
+                settings = self.command_environment(command)
+                self.assertNotEqual(settings["HOME"], str(self.home))
+                self.assertNotEqual(settings["XDG_CONFIG_HOME"], str(self.home / ".config"))
+                self.assertEqual(command[command.index("--pwd") + 1], self.home)
+                binds = [str(command[i + 1]) for i, part in enumerate(command) if part == "--bind"]
+                private = Path(binds[-1].split(":")[0])
+                self.assertEqual(binds[0], f"{self.home}:{self.home}:rw")
+                self.assertTrue((private / "config").is_dir())
+                self.assertEqual(list((private / "config").iterdir()), [])
+                self.assertEqual(os.environ["DISPLAY"], ":999")
+            self.assertFalse(private.exists())
+        self.assertEqual(self.host_settings.read_bytes(), original)
+
+    def test_installer_doctor_and_provenance_share_isolation(self):
+        from oncotracer_cli import install_safety
+        source = dict(oncotracer_version="2.1.0", source_commit="a" * 40,
+                      source_sha256="b" * 64, source_tree_dirty=False)
+        seen = []
+        def checked(command):
+            self.assertIn("--cleanenv", command)
+            self.assertIn("--no-home", command)
+            seen.append(self.command_environment(command))
+            record = {"success": True} if "doctor" in command else source
+            return subprocess.CompletedProcess(command, 0, json.dumps(record), "")
+        with patch.object(install_safety, "_run_checked", side_effect=checked):
+            install_safety._verify_sif_runtime("apptainer", self.root / "image.sif", source)
+        self.assertEqual(len(seen), 2)
+        self.assertEqual(seen[0], seen[1])
+
+    def test_runtime_binds_relative_external_lanes_and_keeps_config_bytes(self):
+        import csv
+        from oncotracer_cli import cli
+        with self.sheet.open("w", newline="") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(["sample", "fastq_1", "fastq_2", "status"])
+            writer.writerow(["MOCK", json.dumps(["project/R1.fastq", str(self.lane)]), "", "tumor"])
+        self.values["lpwgs_root"] = "project"
+        self.values["illumina_samplesheet"] = "project/samples.csv"
+        self.values["outdir"] = "project/results"
+        self.config.write_text(render_flat_yaml(self.values))
+        before = self.config.read_bytes()
+        args = build_parser().parse_args(["run", "--config", str(self.config),
+                                         "--backend", "singularity", "--dry-run"])
+        previous = Path.cwd()
+        try:
+            os.chdir(self.home)
+            with patch.dict(os.environ, {"HOME": str(self.home), "DISPLAY": ":999",
+                                         "XDG_CONFIG_HOME": str(self.home / ".config")}), \
+                 patch.object(cli, "_run") as run:
+                cli._run_singularity(self.config, args)
+        finally:
+            os.chdir(previous)
+        command = run.call_args.args[0]
+        binds = [str(command[i + 1]) for i, part in enumerate(command) if part == "--bind"]
+        for path in (self.link, self.fastq, self.lane, self.sheet):
+            self.assertIn(f"{path}:{path}:ro", binds)
+        self.assertEqual(command[command.index("--pwd") + 1], self.home)
+        self.assertNotEqual(self.command_environment(command)["HOME"], str(self.home))
+        self.assertEqual(run.call_args.kwargs, {"dry_run": True})
+        self.assertEqual(self.config.read_bytes(), before)
+        self.assertFalse(self.outdir.exists())
+        self.assertFalse((self.project / ".oncotracer").exists())
+
+    def test_ont_directory_symlink_targets_are_visible_and_overlap_fails(self):
+        from oncotracer_cli.sif_runtime import sif_read_mounts
+        reads = self.project / "ont"
+        reads.mkdir()
+        (reads / "selected library").symlink_to(self.external, target_is_directory=True)
+        self.values.update(mode="ont", ont_folder=str(reads), ont_single_sample=True,
+                           ont_barcodes=".", ont_sample_names="MOCK")
+        self.values.pop("illumina_samplesheet")
+        self.config.write_text(render_flat_yaml(self.values))
+        mounts = dict(sif_read_mounts(self.config))
+        self.assertEqual(mounts[self.external], "ro")
+        self.assertEqual(mounts[reads / "selected library"], "ro")
+        self.values["outdir"] = str(reads / "results")
+        self.config.write_text(render_flat_yaml(self.values))
+        with self.assertRaisesRegex(OncoTracerError, "choose a separate output directory"):
+            sif_read_mounts(self.config)
+        alias = self.project / "output parent alias"
+        alias.symlink_to(reads, target_is_directory=True)
+        self.values["outdir"] = str(alias / "results")
+        self.config.write_text(render_flat_yaml(self.values))
+        with self.assertRaisesRegex(OncoTracerError, "choose a separate output directory"):
+            sif_read_mounts(self.config)
+
+    def test_project_directory_alias_keeps_lexical_parent(self):
+        from oncotracer_cli.sif_runtime import sif_project_alias_mounts
+        alias_parent = self.home / "aliases"
+        alias_parent.mkdir()
+        alias = alias_parent / "reference project"
+        alias.symlink_to(self.project, target_is_directory=True)
+        self.values["lpwgs_root"] = str(alias)
+        self.config.write_text(render_flat_yaml(self.values))
+        self.assertIn((alias_parent, "rw"), sif_project_alias_mounts(self.config))
+
+    def test_unsupported_bind_paths_and_home_syntax_fail_before_execution(self):
+        from oncotracer_cli.sif_runtime import isolated_sif_command, sif_read_mounts
+        for path in (Path("/"), Path("/opt"), self.root / "reads,extra"):
+            with self.subTest(path=path), self.assertRaises(OncoTracerError):
+                with isolated_sif_command("apptainer", mounts=[(path, "ro")]):
+                    self.fail("unsafe bind was accepted")
+        self.sheet.write_text("sample,fastq_1,fastq_2,status\nMOCK,~/R1.fastq,,tumor\n")
+        with self.assertRaisesRegex(OncoTracerError, "fastq_1 in samplesheet row 2"):
+            sif_read_mounts(self.config)
+
+    def test_private_directory_is_removed_on_interruption(self):
+        from oncotracer_cli.sif_runtime import isolated_sif_command
+        private = None
+        with self.assertRaises(KeyboardInterrupt):
+            with isolated_sif_command("apptainer") as command:
+                bind = command[command.index("--bind") + 1]
+                private = Path(str(bind).split(":")[0])
+                raise KeyboardInterrupt
+        self.assertIsNotNone(private)
+        self.assertFalse(private.exists())
+
+
 if __name__ == "__main__":
     unittest.main()

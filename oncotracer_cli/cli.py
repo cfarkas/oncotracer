@@ -576,9 +576,11 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
     sif = (
         sif_candidate if args.dry_run else require_file(sif_candidate, "OncoTracer SIF")
     )
-    command: list[str | Path] = [executable, "exec", "--cleanenv"]
-    for mount in _project_mounts(config_path):
-        command.extend(["--bind", f"{mount}:{mount}"])
+    from .sif_runtime import isolated_sif_command, sif_project_alias_mounts, sif_read_mounts
+    reads = sif_read_mounts(config_path)
+    mounts = [(mount, "rw") for mount in _project_mounts(config_path)]
+    mounts += sif_project_alias_mounts(config_path) + reads
+    command: list[str | Path] = []
     command.extend(
         [
             sif,
@@ -604,11 +606,12 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--pod5-dir", Path(args.pod5_dir).expanduser().resolve()])
     if args.gpu:
         command.append("--gpu")
-    if args.dry_run:
-        _run(command, dry_run=True)
-    else:
-        with managed_sif_runtime_lock(sif, executable=executable, semantic=False):
-            _run(command)
+    with isolated_sif_command(executable, mounts=mounts, cwd=Path.cwd()) as prefix:
+        if args.dry_run:
+            _run(prefix + command, dry_run=True)
+        else:
+            with managed_sif_runtime_lock(sif, executable=executable, semantic=False):
+                _run(prefix + command)
 
 
 def _methylation_requested(config_path: Path, args: argparse.Namespace) -> bool:
