@@ -3997,12 +3997,14 @@ def _verify_sif_runtime(
     sif: Path,
     expected_source: Mapping[str, object],
 ) -> None:
-    doctor = _run_checked(
-        [executable, "exec", sif, "oncotracer", "doctor", "--backend", "host", "--json"]
-    )
-    provenance = _run_checked(
-        [executable, "exec", sif, "oncotracer", "provenance", "--json"]
-    )
+    from .sif_runtime import isolated_sif_command
+    with isolated_sif_command(executable) as command:
+        doctor = _run_checked(
+            command + [sif, "oncotracer", "doctor", "--backend", "host", "--json"]
+        )
+        provenance = _run_checked(
+            command + [sif, "oncotracer", "provenance", "--json"]
+        )
     assert doctor is not None and provenance is not None
     doctor_record = _parse_json_output(doctor, "container doctor")
     provenance_record = _parse_json_output(provenance, "container provenance")
@@ -4388,29 +4390,16 @@ def install_sif_managed(
             _sif_image_command(executable, "<same-directory-staged-sif>", image),
             dry_run=True,
         )
-        _run_checked(
-            [
-                executable,
-                "exec",
-                "<same-directory-staged-sif>",
-                "oncotracer",
-                "doctor",
-                "--backend",
-                "host",
-            ],
-            dry_run=True,
-        )
-        _run_checked(
-            [
-                executable,
-                "exec",
-                "<same-directory-staged-sif>",
-                "oncotracer",
-                "provenance",
-                "--json",
-            ],
-            dry_run=True,
-        )
+        from .sif_runtime import isolated_sif_command
+        with isolated_sif_command(executable) as command:
+            _run_checked(
+                command + ["<same-directory-staged-sif>", "oncotracer", "doctor", "--backend", "host", "--json"],
+                dry_run=True,
+            )
+            _run_checked(
+                command + ["<same-directory-staged-sif>", "oncotracer", "provenance", "--json"],
+                dry_run=True,
+            )
         return {"sif": str(destination), "image": image}
 
     source = _source_identity()
