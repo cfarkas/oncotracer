@@ -111,10 +111,13 @@ def prepare_request(request):
         p.prog = 'nextflow run main.nf'
         for action in p._actions:
             if action.dest in {'resume', 'work_dir'}: action.help = argparse.SUPPRESS
-        p.epilog += ('\nNative Nextflow options: -resume to resume; -work-dir DIR to set the work folder; '
+        p.epilog += ('\nNative Nextflow options: -resume enables validated continuation; -work-dir DIR sets the work folder; '
                     '-params-file FILE for JSON/YAML parameters. --fastq also accepts comma-separated '
                     'paths, a JSON array, or additional space-separated paths. No manifest is needed.')
         return {'run': False, 'help': p.format_help()}
+    # Engine -resume follows the same validated continuation path as --continue.
+    if '-resume' in shlex.split(request.get('command_line','')):
+        parameters['continue']=True
     has_legacy = parameters.get('manifest') or parameters.get('runtime')
     if has_legacy:
         if parameters.get('fastq'): raise ValueError('Use --fastq or the legacy manifest/runtime parameters, not both')
@@ -137,7 +140,16 @@ def prepare_request(request):
 
 def main():
     try:
-        result = prepare_request(json.load(sys.stdin))
+        request = json.load(sys.stdin)
+        if 'requests' in request:
+            # One interpreter retains read-only panel/hash caches across samples.
+            # This is only a preflight API; a batch can never dispatch analysis.
+            result={'run':False,'samples':[]}
+            for item in request['requests']:
+                item={**item,'parameters':{**item.get('parameters',{}),'preflight_only':True}}
+                result['samples'].append(prepare_request(item))
+        else:
+            result = prepare_request(request)
         json.dump(result, sys.stdout)
         sys.stdout.write('\n')
         return 0

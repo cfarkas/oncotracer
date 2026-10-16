@@ -401,8 +401,6 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
         return {"run_variants": False, **({"variant_specimen_type": specimen} if specimen else {})}
     if (analysis or args.analysis) == "methylation":
         raise OncoTracerError("Small-variant calling needs aligned reads: choose CNA or CNA and methylation, rather than methylation-only analysis.")
-    if mode == "illumina" and args.backend in {"docker", "singularity", "apptainer"}:
-        raise OncoTracerError("Illumina GLIMPSE2 needs --backend host or conda; current container images lack the complete Nextflow/model environment.")
     if args.backend and args.backend not in {"host", "conda", "poetry", "docker"}:
         raise OncoTracerError("Small-variant calling needs --backend conda, host, poetry, or docker; Singularity remains unsupported.")
     if args.backend == 'docker' and (analysis or args.analysis) != 'cna':

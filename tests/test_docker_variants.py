@@ -218,14 +218,25 @@ class DockerVariantTests(unittest.TestCase):
             self.assertIn('custom/image:new',call.args[0])
             self.assertNotIn('local/image:tested',call.args[0])
 
-    def test_docker_dispatch_rejects_unsupported_complete_glimpse_before_running(self):
+    def test_complete_glimpse_dispatches_through_image_preflight(self):
         def host(config_path, args):
             return resolve_variant_request(self.config,mode='illumina')
         with patch.object(cli,'_prepare_configured_hg38'), patch.object(cli,'_run_host',side_effect=host), \
              patch.object(cli,'_run_docker') as run:
-            with self.assertRaisesRegex(OncoTracerError,'GLIMPSE2 workflow requires'):
-                cli.execute_run(self.config_path,self.args('--dry-run'))
-        run.assert_not_called()
+            request=cli.execute_run(self.config_path,self.args('--dry-run'))
+        self.assertEqual(request.engine,'glimpse2')
+        run.assert_called_once()
+
+    def test_glimpse_inputs_and_caches_are_bound_with_distinct_access(self):
+        workflow=self.external/'workflow';workflow.mkdir()
+        cache=self.external/'shared-cache'
+        clinvar=self.external/'clinvar.vcf.gz';clinvar.write_bytes(b'fixture')
+        index=Path(str(clinvar)+'.tbi');index.write_bytes(b'index')
+        self.config.update(variant_workflow_source=str(workflow),variant_clinvar=str(clinvar),variant_resource_dir=str(cache))
+        self.save()
+        mounts=dict(docker_runtime.docker_mounts(self.config_path,environment={},create=True))
+        for path in (workflow,clinvar,index):self.assertEqual(mounts[path],'ro')
+        self.assertEqual(mounts[cache],'rw');self.assertTrue(cache.is_dir())
 
     def publish_partial(self):
         from oncotracer_cli.output_safety import claim_output_run

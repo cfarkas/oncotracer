@@ -26,6 +26,24 @@ def variant_config(base: Path, output: Path) -> Path:
 
 
 class VariantEngineTests(unittest.TestCase):
+    def test_variant_cancellation_stops_before_copy_number_analysis(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            runtime = make_runtime_root(base)
+            config = variant_config(base, base / 'results')
+            with (
+                patch.object(engine, 'prepare_reference', return_value={}),
+                patch.object(engine, 'align_illumina', return_value={'SYNTHETIC': base/'input.bam'}),
+                patch.object(engine, '_validated_fasta_reader', return_value=contextlib.nullcontext()),
+                patch.object(engine, 'run_variants', return_value={'overall_status':'interrupted'}),
+                patch.object(engine, 'run_qdnaseq') as qdnaseq,
+                patch.object(engine, 'run_refinement_and_outputs') as refinement,
+            ):
+                with self.assertRaisesRegex(KeyboardInterrupt, 'stopped'):
+                    engine.run_native(config, root=runtime)
+            qdnaseq.assert_not_called()
+            refinement.assert_not_called()
+
     def test_full_run_parallel_override_is_applied_before_variant_resolution(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

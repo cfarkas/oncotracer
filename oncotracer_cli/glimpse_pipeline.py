@@ -25,7 +25,7 @@ SCHEMA='oncotracer-glimpse2-v1'
 MIN_SAMPLE_MEMORY_GB=32 # Complete workflow includes the default CPU float32 local LLM.
 BUNDLE=Path(__file__).parent/'lpwgs'
 OPTION_KEYS=('parallel_samples','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','confidence_gwas','patients','reuse_from','reference_reuse_from','nextflow','workflow_source','clinvar','memory','pgs_cache','ancestry_explorer_cache','literature_cache','llm_model','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites')
-PATH_KEYS={'analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','patients','reuse_from','reference_reuse_from','clinvar','pgs_cache','ancestry_explorer_cache','literature_cache','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites'}
+PATH_KEYS={'workflow_source','analysis_reuse_from','glimpse_reference_dir','glimpse_bin','resource_dir','patients','reuse_from','reference_reuse_from','clinvar','pgs_cache','ancestry_explorer_cache','literature_cache','llm_python','patient_database','germline_resource','panel_of_normals','contamination_sites'}
 
 
 def workflow_bundle(source=None):
@@ -75,6 +75,12 @@ def preflight(request,toolchain=None):
     from dataclasses import replace
     from .variants import preflight_variant_tools
     tools=preflight_variant_tools(replace(request,engine='native'),toolchain)
+    if request.ffperase!='off':
+        from .variant_model_assets import ffperase_pending,preflight_ffperase_runtime
+        from . import ffperase
+        preflight_ffperase_runtime(request)
+        if not ffperase_pending(request):
+            ffperase.preflight_models(ffperase.discover(request.ffperase_root,request.ffperase_models,request.ffperase_sif,request.ffperase_prefix))
     nf=str((request.glimpse_config or {}).get('nextflow','nextflow'))
     resolved=shutil.which(nf)
     if not resolved:raise OncoTracerError('Nextflow is required for the complete GLIMPSE2 workflow: '+nf)
@@ -151,7 +157,7 @@ def sample_parameters(request,sample,bam,reference,output,resources,threads,veri
     return params,audit
 
 
-def ensure_resources(params,runner,bundle=None):
+def ensure_resources(params,runner,bundle=None,*,bcftools=None):
     bundle=workflow_bundle() if bundle is None else Path(bundle)
     # Resolve reporting resources before CommandRunner isolates HOME/font caches.
     # Pass absolute paths to the child so installed local models remain visible.
@@ -172,6 +178,16 @@ def ensure_resources(params,runner,bundle=None):
         # Reuse the resumable, integrity-checking downloader, never patient uploads.
         script="import sys;sys.path.insert(0,sys.argv[1]);from glimpse_download import download;from pathlib import Path;download(sys.argv[2],Path(sys.argv[3]))"
         runner.run('glimpse-clinvar-resource',[params.get('python',sys.executable),'-c',script,str(bundle/'bin'),'https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz',clinical])
+    # Validate shared clinical input before spending hours preparing sample panels.
+    # The original download may legitimately lack ##contig metadata.
+    result=resources/'clinvar/prepared_clinvar.json'
+    result.parent.mkdir(parents=True,exist_ok=True)
+    bcftools=bcftools or ((Path(params['tool_prefix'])/'bin/bcftools') if params.get('tool_prefix') else shutil.which('bcftools'))
+    if not bcftools:raise OncoTracerError('bcftools is required to validate ClinVar')
+    runner.run('glimpse-clinvar-preflight',[params.get('python',sys.executable),bundle/'bin/clinvar_resource.py',
+        '--clinvar',clinical,'--reference',params['reference'],'--bcftools',bcftools,
+        '--cache',resources/'clinvar/header_cache','--result',result])
+    params['clinvar']=json.loads(result.read_text())['clinvar']
 
 
 def _page(root,status):
@@ -388,8 +404,42 @@ def _cohort(request,exports,root,tools,reference,threads,imputed,sample_statuses
     return json.loads(result.read_text())
 
 
+def preflight_jobs(jobs,runner,bundle,*,force=False):
+    """Check every selected sample and print reuse before scheduling any sample."""
+    checks=[];requests=[]
+    print('Checking completed outputs for every sample before analysis…',flush=True)
+    for sample,bam,sample_root,launch,params,row in jobs:
+        if force:
+            params['continue']=False
+            params.pop('reuse_from',None)
+        requests.append({'parameters':{**params,'preflight_only':True}})
+    if not jobs:return checks
+    launch=jobs[0][3].parent
+    request_path=launch/'preflight_request.json';response_path=launch/'preflight_response.json'
+    atomic_write_json(request_path,{'requests':requests})
+    with request_path.open() as request_file,response_path.open('w') as response_file:
+        runner.run('glimpse-resume-preflight',
+                   [jobs[0][4].get('python',sys.executable),'-B',bundle/'bin/nextflow_entry.py'],
+                   stdin=request_file,stdout=response_file,cwd=launch)
+    response=json.loads(response_path.read_text())
+    if len(response.get('samples',[]))!=len(jobs):raise OncoTracerError('Incomplete cohort preflight response')
+    for job,prepared in zip(jobs,response['samples']):
+        sample,bam,sample_root,launch,params,row=job
+        if prepared.get('run') is not False:
+            raise OncoTracerError('Expected a preflight-only response for '+sample)
+        row['reuse_validation']=prepared['reuse_validation']
+        checks.append(row['reuse_validation'])
+    print('All sample resume checks passed. Starting the remaining work.',flush=True)
+    return checks
+
+
 def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,sample_statuses=None,toolchain=None):
     allocation=resource_allocation(request,threads,len(bams))
+    if allocation['parallel_samples'] < min(allocation['requested_parallel_samples'],len(bams)):
+        print(f"Requested {allocation['requested_parallel_samples']} parallel samples; "
+              f"the {allocation['total_memory_gb']:g}GB / {threads}-CPU total budget allows "
+              f"{allocation['parallel_samples']}. Each concurrent sample requires at least "
+              f"{MIN_SAMPLE_MEMORY_GB}GB.",file=sys.stderr,flush=True)
     if len(set(Path(p).resolve() for p in bams.values()))!=len(bams):raise OncoTracerError('One physical BAM cannot represent multiple individuals')
     for tumor,normal in request.matched_normals:
         if tumor not in bams or normal not in bams or (sample_statuses or {}).get(tumor)!='tumor' or (sample_statuses or {}).get(normal)!='normal':
@@ -438,13 +488,17 @@ def run(request,bams,reference,outdir,runner,ledger,*,threads=1,force=False,samp
         # any sample. Later panel/PGS/literature downloads use cross-process flocks.
         first=jobs[0][4]
         bootstrap=_sample_runner(runner,root/'resource_commands.tsv',stop)
-        ensure_resources(first,bootstrap,bundle)
+        ensure_resources(first,bootstrap,bundle,bcftools=tools.get('bcftools'))
         for job in jobs[1:]:
-            for key in ('llm_python','llm_model'):
+            for key in ('llm_python','llm_model','clinvar'):
                 if key in first:job[4][key]=first[key]
+        status['reuse_validation']=preflight_jobs(jobs,bootstrap,bundle,force=force)
+        publish()
         resolved_ffpe=None
         if request.specimen_type=='ffpe':
             resolved_ffpe=_prepare_ffpe_resources(request,root,runner,stop)
+            from . import ffperase
+            ffperase.preflight_models(ffperase.discover(resolved_ffpe.ffperase_root,resolved_ffpe.ffperase_models,resolved_ffpe.ffperase_sif,resolved_ffpe.ffperase_prefix))
 
         def execute(job):
             sample,bam,sample_root,launch,params,row=job

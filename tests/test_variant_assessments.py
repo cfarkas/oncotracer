@@ -92,6 +92,17 @@ class AssessmentTests(unittest.TestCase):
             self.assertEqual(result['counts']['NOT_EVALUATED'],3)
             self.assertEqual(evidence_identity(source),evidence_identity(work/'out.vcf'))
 
+    def test_ffpe_sif_input_beside_work_does_not_shadow_writable_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);bam=root/'sample.bam';reference=root/'reference.fa'
+            bam.touch();reference.touch();Path(str(bam)+'.bai').touch()
+            command=ffperase._command({'sif':'runtime.sif','runtime':'apptainer','root':'/source','models':'/models'},root,bam,reference,['python3','features.py'])
+            binds=[command[i+1] for i,x in enumerate(command[:-1]) if x=='--bind']
+            self.assertIn(f'{root}:{root}:rw',binds)
+            self.assertNotIn(f'{root}:{root}:ro',binds)
+            self.assertIn(f'{bam}:{bam}:ro',binds)
+            self.assertIn(f'{bam}.bai:{bam}.bai:ro',binds)
+
     def test_varlociraptor_commands_and_dropped_alleles(self):
         with tempfile.TemporaryDirectory() as d:
             d=Path(d); source=d/'input.vcf';source.write_text(HEADER+''.join(DATA))

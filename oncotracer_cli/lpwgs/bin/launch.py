@@ -314,7 +314,7 @@ def parser():
     p.add_argument('--confidence_gwas','--confidence-gwas',choices=['strict','medium','exploratory'],help='Trait/GWAS genotype evidence preset; affects these reports only, not clinical or PGS filters')
     p.add_argument('--trait-mode',choices=['strict','exploratory'],default='exploratory')
     p.add_argument('--trait-min-depth',type=int,default=2)
-    p.add_argument('--trait-min-gq',type=float,default=5)
+    p.add_argument('--trait-min-gq',type=float,default=5.0)
     p.add_argument('--imputation-min-gp',type=float,default=0.90)
     p.add_argument('--imputation-min-info',type=float,default=0.30)
     p.add_argument('--imputed-clinvar',action=argparse.BooleanOptionalAction,default=False,help='Annotate every imputed SNP with ClinVar; requires GLIMPSE2')
@@ -351,6 +351,7 @@ def parser():
 
 def prepare(a):
     """Validate a run and write stable inputs; never invoke Nextflow or analyse reads."""
+    if a.resume:a.continue_run=True
     selected_python=python_executable(a.python)
     if a.report_llm:a.interpretation_report=True
     if a.pgs_reference_stats and not (a.polygenic and a.glimpse2):raise ValueError('--pgs-reference-stats requires --polygenic and --glimpse2')
@@ -399,7 +400,7 @@ def prepare(a):
     if not a.allow_test_reference and a.memory<8: errors.append('The hg38 alignment requires a memory budget of at least 8GB.')
     def check(fn):
         try: return fn()
-        except (ValueError,OSError) as e: errors.append(str(e)); return None
+        except (ValueError,OSError,subprocess.TimeoutExpired) as e: errors.append(str(e)); return None
     ref=check(lambda: checked_path(a.reference or LOCAL/'references/samurai_hg38/genome.fa'))
     if ref:
         runtime['reference']=str(ref)
@@ -425,6 +426,11 @@ def prepare(a):
             if proc.returncode!=0 and name!='bwa': errors.append(f'{name} exists but its version probe failed: {versions[name]}')
         except (OSError,subprocess.TimeoutExpired) as e: errors.append(f'{name} cannot run: {e}')
     runtime['versions']=versions
+    from bcftools_compat import trait_call_options
+    trait_options=check(lambda: trait_call_options(runtime['tools']['bcftools']))
+    if trait_options:
+        print('Traits caller compatibility verified: '+versions.get('bcftools','bcftools')+
+              ' ('+' '.join(trait_options)+')',flush=True)
     if a.bam:
         import import_alignment
         check(lambda: import_alignment.validate_bam(runtime['bam'],sample,runtime['reference'],runtime['tools']['samtools']))
@@ -447,6 +453,9 @@ def prepare(a):
     if runtime['annotation']: print(runtime['annotation']['message'],flush=True)
     clinical=check(lambda: checked_path(a.clinvar or LOCAL/'resources/clinvar/clinvar_GRCh38.vcf.gz'))
     runtime['clinvar']=str(clinical) if clinical else None
+    if clinical and ref and Path(str(ref)+'.fai').is_file():
+        import clinvar_resource
+        check(lambda: clinvar_resource.inspect(clinical,ref,allow_test_reference=a.allow_test_reference))
     for key in ['germline_resource','contamination_sites','regions']:
         value=getattr(a,key)
         runtime[key]=str(check(lambda value=value: checked_path(value))) if value else None
@@ -551,6 +560,9 @@ def prepare(a):
     source_reused = continuation.collect(runtime,None,ROOT,source_output) if a.continue_run and source_output != output else {}
     reused = {**source_reused, **(continuation.collect(runtime,previous,ROOT,output,a.work_dir) if a.continue_run else {})}
     reuse_outputs.annotation_outputs(reused,sample)
+    from reuse_validation import Validator, summary
+    validator=Validator()
+    validator.core(reused,sample)
     import glimpse_continuation
     # Validate shared panels before collecting phases: a source sample may have
     # borrowed every reference, leaving no reference tasks in its own work tree.
@@ -566,10 +578,16 @@ def prepare(a):
         source_imputation = glimpse_continuation.collect(runtime,ROOT,source_output,reused,reference_reused=shared['references'])
         for kind, values in source_imputation.items():
             imputation_reused[kind] = {**values, **imputation_reused[kind]}
+    validator.imputation(imputation_reused,sample)
     reuse_outputs.publish_reused(output,sample,reused,imputation_reused)
     import analysis_continuation
-    analysis_reused=analysis_continuation.collect(runtime,ROOT,list(dict.fromkeys([source_output,output])),reused,imputation_reused) if a.continue_run else {k:{} for k in analysis_continuation.CODE}
+    analysis_reused=analysis_continuation.collect(runtime,ROOT,list(dict.fromkeys([source_output,output])),reused,imputation_reused,publish=False) if a.continue_run else {k:{} for k in analysis_continuation.CODE}
+    validator.analyses(analysis_reused,sample)
+    analysis_continuation.publish_reused(runtime,analysis_reused)
     cached_trait_files=analysis_continuation.trait_inputs(runtime,ROOT,list(dict.fromkeys([source_output,output])),reused,imputation_reused) if a.continue_run else []
+    if cached_trait_files and not validator.group('trait_inputs',sample,cached_trait_files,sample):cached_trait_files=[]
+    reuse_check=summary(runtime,reused,imputation_reused,analysis_reused,validator,[source_output,output],a.work_dir)
+    (info/'reuse_validation.json').write_text(json.dumps(reuse_check,indent=2)+'\n')
     (info/'analysis_continuation.json').write_text(json.dumps(analysis_reused,indent=2)+'\n')
     print('Continuation: downstream analyses '+', '.join(k+'='+str(len(v)) for k,v in analysis_reused.items()),flush=True)
     (info/'continuation.json').write_text(json.dumps({'enabled':a.continue_run,'reused':reused,
@@ -594,7 +612,7 @@ def prepare(a):
         'threads':a.threads,'memory_gb':a.memory,'python':runtime['python']}
     (info/'nextflow_params.json').write_text(json.dumps(nf,indent=2)+'\n')
     print(f'Preflight passed: {len(lanes)} lane(s); {info}/preflight.json',flush=True)
-    return {**nf,'bam':runtime.get('bam'),'germline_vcf':runtime.get('germline_vcf'),'somatic_vcf':runtime.get('somatic_vcf'),'code':str(code_dir),'sample':sample,'lane_rows':rows+normal_rows,'reused':reused,'imputation_reused':imputation_reused,'analysis_reused':analysis_reused,'ancestry_explorer':runtime['ancestry_explorer'],'cached_trait_files':cached_trait_files,'explain_findings':a.explain_findings,'interpretation_report':a.interpretation_report,'llm_threads':a.llm_threads,'glimpse2':a.glimpse2,'glimpse_chromosomes':runtime['glimpse_chromosomes'],'polygenic':a.polygenic,'imputed_clinvar':a.imputed_clinvar,'pgs_ids':runtime.get('pgs_ids',[]),'pgs_reference_stats':a.pgs_reference_stats,'unified_vcf':a.unified_vcf,'homozygosity_report':a.homozygosity_report,'cardiomyopathy_report':a.cardiomyopathy_report,'cancer_report':a.cancer_report,'pon_mode':runtime['pon']['mode'],'pon_vcf':runtime['pon']['vcf'],'pon_index':runtime['pon']['index']}
+    return {**nf,'reuse_validation':reuse_check,'bam':runtime.get('bam'),'germline_vcf':runtime.get('germline_vcf'),'somatic_vcf':runtime.get('somatic_vcf'),'code':str(code_dir),'sample':sample,'lane_rows':rows+normal_rows,'reused':reused,'imputation_reused':imputation_reused,'analysis_reused':analysis_reused,'ancestry_explorer':runtime['ancestry_explorer'],'cached_trait_files':cached_trait_files,'explain_findings':a.explain_findings,'interpretation_report':a.interpretation_report,'llm_threads':a.llm_threads,'glimpse2':a.glimpse2,'glimpse_chromosomes':runtime['glimpse_chromosomes'],'polygenic':a.polygenic,'imputed_clinvar':a.imputed_clinvar,'pgs_ids':runtime.get('pgs_ids',[]),'pgs_reference_stats':a.pgs_reference_stats,'unified_vcf':a.unified_vcf,'homozygosity_report':a.homozygosity_report,'cardiomyopathy_report':a.cardiomyopathy_report,'cancer_report':a.cancer_report,'pon_mode':runtime['pon']['mode'],'pon_vcf':runtime['pon']['vcf'],'pon_index':runtime['pon']['index']}
 
 
 def main(argv=None):

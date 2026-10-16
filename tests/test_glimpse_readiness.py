@@ -83,10 +83,17 @@ class GlimpseReadinessTests(unittest.TestCase):
     def test_resource_and_ffpe_children_use_selected_scientific_python(self):
         resources=self.root/'resources'
         params={'resource_dir':str(resources),'clinvar':str(resources/'clinvar.vcf.gz'),
-                'python':'/scientific/python','report_llm':False}
-        runner=SimpleNamespace(run=lambda *a,**kw: calls.append(a))
-        calls=[];pipeline.ensure_resources(params,runner,pipeline.BUNDLE)
-        self.assertEqual([call[1][0] for call in calls], ['/scientific/python','/scientific/python'])
+                'python':'/scientific/python','report_llm':False,'reference':'/fixture/ref.fa'}
+        calls=[]
+        def run(*args,**kwargs):
+            calls.append(args)
+            if args[0]=='glimpse-clinvar-preflight':
+                command=args[1]
+                Path(command[command.index('--result')+1]).write_text(
+                    json.dumps({'clinvar':str(resources/'clinvar.vcf.gz')}))
+        runner=SimpleNamespace(run=run)
+        pipeline.ensure_resources(params,runner,pipeline.BUNDLE,bcftools='/scientific/bcftools')
+        self.assertEqual([call[1][0] for call in calls], ['/scientific/python']*3)
         request=SimpleNamespace(ffperase_root=None,ffperase_models=None,ffperase_prefix=None,ffperase_sif=None)
         cmd=pipeline._ffpe_command(request,'calls.vcf',self.root,'SAMPLE',[],'sample.bam','ref.fa',
                                    {'python':'/scientific/python','samtools':'samtools','gatk':'gatk'})

@@ -10,7 +10,7 @@ from llm_reporting import KEYS as REPORT_KEYS
 EXPLANATION_KEYS={'ancestry_explorer','ancestry_explorer_manifest','ancestry_explorer_cache','explain_findings','explanation_evidence','literature_cache','literature_release','literature_offline'}
 PGS_KEYS={'imputed_clinvar','polygenic','pgs_manifest','pgs_cache','pgs_ids','pgs_source_files','pgs_min_coverage','pgs_min_weight_coverage'}
 CODE={
- 'traits':['pipeline.py','traits_lpwgs.py','gwas_confidence.py'],
+ 'traits':['pipeline.py','traits_lpwgs.py','gwas_confidence.py','bcftools_compat.py'],
  'evidence':['pipeline.py','traits_lpwgs.py','variant_evidence.py'],
  'imputed_clinvar':['pipeline.py','traits_lpwgs.py','variant_evidence.py','extension_common.py','imputed_clinvar.py'],
  'pgs_prepare':['polygenic.py','glimpse_download.py','extension_common.py','traits_lpwgs.py','pipeline.py'],
@@ -75,12 +75,12 @@ def outputs(work,stage,sample,tag):
     return names,folder
 
 
-def collect(config,root,outputs_roots,core,imputation):
+def collect(config,root,outputs_roots,core,imputation,*,publish=True):
     result={stage:{} for stage in CODE}
     expected_chroms=set(config['glimpse_chromosomes']) if config.get('glimpse2') else set()
     if expected_chroms-set(imputation.get('ligated',{})):return result
-    required={f'merge:{config["sample"]}',f'annotate:{config["sample"]}:germline',f'annotate:{config["sample"]}:somatic'}
-    if not required.issubset(core):return result
+    sample=config['sample']
+    if f'merge:{sample}' not in core:return result
     for output_root in outputs_roots:
         for command in sorted((Path(output_root)/'work').glob('*/*/.command.sh'),key=lambda p:p.stat().st_mtime):
             work=command.parent
@@ -88,6 +88,11 @@ def collect(config,root,outputs_roots,core,imputation):
                 desc=describe(work)
                 if not desc:continue
                 stage,options,old_code=desc
+                # Match the actual workflow dependencies: chromosome ClinVar
+                # and PGS preparation do not consume per-caller annotations.
+                if stage=='evidence' and not {f'annotate:{sample}:germline',f'annotate:{sample}:somatic'}.issubset(core):continue
+                if stage=='imputed_clinvar' and 'prepare_clinvar' not in core:continue
+                if stage=='pgs_score' and f'ancestry:{sample}' not in core:continue
                 end=work/'.exitcode';begin=work/'.command.begin'
                 if not end.is_file() or end.read_text().strip()!='0' or not begin.is_file():continue
                 previous=json.loads((work/options['--config'][0]).read_text())
@@ -113,10 +118,14 @@ def collect(config,root,outputs_roots,core,imputation):
                         paths=[str(published/n) for n in names]
                 result[stage][tag]={'files':paths,'source_work':str(work),'signature':signature(config,stage),'folder':folder}
             except (OSError,ValueError,KeyError,SyntaxError):continue
+    if publish:publish_reused(config,result)
+    return result
+
+
+def publish_reused(config,result):
     for items in result.values():
         for value in items.values():
             for p in value['files']:link_file(p,Path(config['output'])/value['folder']/Path(p).name)
-    return result
 
 
 def trait_inputs(config,root,output_roots,core,imputation):

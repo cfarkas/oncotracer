@@ -29,6 +29,7 @@ class ParallelSamplesTests(unittest.TestCase):
 
     def run_pipeline(self,runner,**kwargs):
         with patch.object(pipeline,'preflight',return_value={'nextflow':'nextflow','bcftools':'bcftools'}), \
+             patch.object(pipeline,'preflight_jobs',return_value=[]), \
              patch.object(pipeline,'ensure_resources') as bootstrap, \
              patch('oncotracer_cli.glimpse_joint.merge_cohort',return_value={'outputs':{}}) as cohort:
             result=pipeline.run(self.request,self.bams,self.reference,self.root/'output',runner,None,threads=8,**kwargs)

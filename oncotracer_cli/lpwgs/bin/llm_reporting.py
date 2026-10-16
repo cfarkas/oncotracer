@@ -35,7 +35,7 @@ def prepare(config):
     if not config.get('explain_findings'):raise ValueError('--interpretation-report requires --explain-findings')
     if not 1<=int(config.get('llm_threads',4))<=int(config['threads']):raise ValueError('--llm-threads must be between 1 and the total --threads budget')
     if not 128<=int(config.get('llm_max_new_tokens',512))<=1536:raise ValueError('--llm-max-new-tokens must be 128..1536')
-    candidates=[config['llm_python']] if config.get('llm_python') else [str(Path.home()/'.local/share/oncotracer/2.1.0/envs/classifier/bin/python'),sys.executable]
+    candidates=[config['llm_python']] if config.get('llm_python') else [str(Path(os.environ.get('ONCOTRACER_CLASSIFIER_PREFIX') or Path.home()/'.local/share/oncotracer/2.1.0/envs/classifier')/'bin/python'),sys.executable]
     modules=['reportlab'] if config.get('report_pdf',True) else []
     if config.get('report_llm'):modules+=['torch','transformers']
     for candidate in candidates:
