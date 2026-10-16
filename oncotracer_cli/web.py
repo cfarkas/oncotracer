@@ -150,6 +150,18 @@ class WebState:
             reference = getattr(args, "hg38_build", None) or getattr(args, "reference_root", None)
             defaults["reference"] = "build" if getattr(args, "build_reference", False) else "reuse" if reference else "download"
             defaults["reference_path"] = str(Path(reference).expanduser().resolve()) if reference else ""
+        from .variant_runtime import apply_variant_runtime
+        try:
+            defaults, selection = apply_variant_runtime(defaults, mode=str(defaults.get("mode") or ""),
+                                                        backend=defaults.get("backend"))
+            if selection.managed:
+                defaults["managed_variant_prefix"] = str(selection.prefix)
+                defaults["variant_runtime_note"] = "Using the validated OncoTracer variant environment: " + str(selection.prefix)
+                if selection.diagnostics:
+                    defaults["variant_runtime_note"] = " ".join(selection.diagnostics)
+        except OncoTracerError as error:
+            defaults.pop("variant_tool_prefix", None)
+            defaults["variant_runtime_note"] = str(error)
         places = [("Home", Path.home()), ("This computer", Path("/")),
                   ("Starting folder", self.start_dir), ("Mounted drives", Path("/media")),
                   ("Other mounts", Path("/mnt"))]
@@ -427,6 +439,9 @@ class WebState:
                 valid = checked.returncode == 0 and not report.get("errors")
             except subprocess.TimeoutExpired:
                 valid, report = False, {"errors": ["Configuration check timed out. Settings were saved; use oncotracer check before running."]}
+            for message in getattr(args, "_variant_runtime_diagnostics", []):
+                if message not in report.setdefault("warnings", []):
+                    report["warnings"].append(message)
             project_id = secrets.token_urlsafe(18)
             paths = [config_path, project / "config/sample_metadata.csv"]
             if discovered.mode == "illumina":

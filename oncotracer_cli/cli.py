@@ -39,6 +39,8 @@ from .install_safety import (
     install_sif_managed,
     installer_cli_target_arguments,
     managed_conda_runtime_lock,
+    managed_variants_runtime_lock,
+    managed_sibling_base,
     managed_sif_runtime_lock,
     verify_managed_sif_runtime,
 )
@@ -133,8 +135,8 @@ def _conda_prefixes(prefix: Path | None = None) -> dict[str, Path]:
         os.path.abspath(os.fspath((prefix or (_data_home() / "envs")).expanduser()))
     )
     return {
-        name: base / name
-        for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
+        **{name: base / name for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")},
+        "variants": managed_sibling_base(base, "variants") / "variants",
     }
 
 
@@ -160,6 +162,7 @@ def _install_conda(
         "ichorcna_prefix": str(prefixes["ichorcna"]),
         "classifier_prefix": str(prefixes["classifier"]),
         "gistic_prefix": str(prefixes["gistic"]),
+        "variants_prefix": str(prefixes["variants"]),
     }
     if save and not args.dry_run:
         _save_install_config(result)
@@ -238,7 +241,7 @@ def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
     result: dict[str, object] = {
         "backend": "poetry",
         "repository": str(root),
-        "poetry_prefix": str(base.expanduser().absolute() / "poetry-runtime"),
+        "poetry_prefix": str(managed_sibling_base(base, "poetry") / "poetry-runtime"),
         "scientific_backend": "conda",
         **{f"{name}_prefix": str(path) for name, path in prefixes.items()},
     }
@@ -361,18 +364,16 @@ def _managed_conda_base(config: dict[str, object], *, require_poetry: bool) -> P
     assert core is not None
     base = core.parent
     for name, prefix in prefixes.items():
-        if prefix != base / name:
+        expected = managed_sibling_base(base, "variants") / name if name == "variants" else base / name
+        if prefix != expected:
             raise OncoTracerError(
                 f"managed runtime {name} prefix is not the fixed child of {base}: {prefix}"
             )
     poetry = config.get("poetry_prefix")
-    if require_poetry and (
-        not poetry
-        or Path(str(poetry)).expanduser().resolve() != base / "poetry-runtime"
-    ):
-        raise OncoTracerError(
-            f"Poetry runtime is not configured at the fixed managed child {base / 'poetry-runtime'}"
-        )
+    poetry_base = managed_sibling_base(base, "poetry")
+    expected_poetry = (poetry_base if os.path.lexists(poetry_base) else base) / "poetry-runtime"
+    if require_poetry and (not poetry or Path(str(poetry)).expanduser().resolve() != expected_poetry):
+        raise OncoTracerError(f"Poetry runtime is not configured at the fixed managed child {expected_poetry}")
     return base
 
 
@@ -415,7 +416,12 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
         lock = managed_conda_runtime_lock(
             base, require_poetry=require_poetry, semantic=False
         )
-    with lock:
+    from .variant_runtime import managed_variant_runtime, variant_runtime_backend
+    selection_config = load_flat_yaml(config_path)
+    variants_lock = (contextlib.nullcontext() if args.dry_run else managed_variant_runtime(
+        selection_config, mode=str(selection_config.get("mode") or ""),
+        backend=backend, install_config=install, semantic=False))
+    with lock, variant_runtime_backend(backend), variants_lock:
         old = os.environ.copy()
         try:
             os.environ.update(_native_environment(install))
@@ -458,7 +464,12 @@ def _preflight_host_runtime(config_path: Path, args: argparse.Namespace) -> None
             base, require_poetry=require_poetry, semantic=True
         )
     print("Checking environment readiness before reference preparation and analysis…", flush=True)
-    with lock:
+    from .variant_runtime import managed_variant_runtime, variant_runtime_backend
+    selection_config = load_flat_yaml(config_path)
+    with lock, variant_runtime_backend(_backend_from(args)), managed_variant_runtime(
+        selection_config, mode=str(selection_config.get("mode") or ""),
+        backend=_backend_from(args), install_config=install, semantic=True
+    ):
         old = os.environ.copy()
         try:
             os.environ.update(_native_environment(install))
@@ -1086,6 +1097,7 @@ def _configured_native_prefixes(install: dict[str, object]) -> dict[str, Path | 
         "ichorcna": ("ichorcna_prefix", "ONCOTRACER_ICHORCNA_PREFIX"),
         "classifier": ("classifier_prefix", "ONCOTRACER_CLASSIFIER_PREFIX"),
         "gistic": ("gistic_prefix", "ONCOTRACER_GISTIC_PREFIX"),
+        "variants": ("variants_prefix", "ONCOTRACER_VARIANTS_PREFIX"),
     }
     prefixes: dict[str, Path | None] = {}
     for group, (config_key, environment_key) in definitions.items():
@@ -1308,6 +1320,15 @@ def _probe_native_prefixes(
             "success": bool(gistic_probe["success"]),
             "probes": {"gistic2": gistic_probe},
         }
+    variants = prefixes.get("variants")
+    if variants is None:
+        results["variants"] = {"success": False, "probes": {}, "error": "mandatory variants prefix is not configured; rerun oncotracer install"}
+    else:
+        from .variant_install_checks import verify_variant_environment
+        try:
+            results["variants"] = verify_variant_environment(variants)
+        except OncoTracerError as error:
+            results["variants"] = {"success": False, "probes": {}, "error": str(error)}
     return results
 
 
@@ -1391,11 +1412,13 @@ def _command_doctor(args: argparse.Namespace) -> int:
                         base = _managed_conda_base(
                             install, require_poetry=require_poetry
                         )
-                        with managed_conda_runtime_lock(
-                            base,
-                            require_poetry=require_poetry,
-                            semantic=False,
-                        ) as managed:
+                        with contextlib.ExitStack() as stack:
+                            managed = dict(stack.enter_context(managed_conda_runtime_lock(
+                                base, require_poetry=require_poetry, semantic=False,
+                            )))
+                            managed["variants"] = stack.enter_context(managed_variants_runtime_lock(
+                                prefixes["variants"], semantic=False,
+                            ))
                             for group, prefix in prefixes.items():
                                 if (
                                     group in managed

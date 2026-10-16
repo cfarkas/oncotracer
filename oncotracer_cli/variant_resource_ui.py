@@ -296,12 +296,18 @@ async function detectVariantResources(payload,scope='all',openDialog=true){
   status.textContent='Checking '+(scope==='all'?'selected resources':scope==='annotation'?'ANNOVAR':scope==='ffperase'?'FFPERASE':variantFieldLabel(scope))+'…';
   try{
     const result=await api('/api/variant-resources',payload),fields=variantScopeFields(scope);let filled=0;
+    let managedChanged=false;
+    if(result.managed_variant_prefix&&fields.includes('variant_tool_prefix')){
+      const field=$('variant_tool_prefix');field.dataset.managedPrefix=result.managed_variant_prefix;managedChanged=field.value.trim()!==result.managed_variant_prefix;
+      if(managedChanged){field.value=result.managed_variant_prefix;field.dispatchEvent(new Event('input',{bubbles:true}));filled++;}
+    }
     for(const [key,value]of Object.entries(result.fields||{}))if(fields.includes(key)&&variantApplyPath(key,value))filled++;
     variantResourceLastResult=result;variantResourceLastScope=scope;renderVariantResources(result,scope);
     const missing=(result.resources||[]).filter(resource=>resource.status==='missing'&&(scope==='all'||fields.includes(variantResourceField(resource)))).length;
     status.textContent='Check complete · '+filled+' empty path'+(filled===1?'':'s')+' filled'+(missing?' · see official download and registration links for missing resources':'')+'.';
     document.getElementById('variant-resource-title').textContent=scope==='all'?'Detected resources':scope==='annotation'?'ANNOVAR resources':scope==='ffperase'?'FFPERASE resources':variantFieldLabel(scope);
-    document.getElementById('variant-resource-dialog-status').textContent='Only empty fields were filled. Choose a candidate explicitly to change an entered path.';
+    document.getElementById('variant-resource-dialog-status').textContent=result.managed_variant_prefix?(managedChanged?'Caller environment updated to the validated OncoTracer installation: ':'Caller tools use the validated OncoTracer installation: ')+result.managed_variant_prefix+'. Other entered paths were preserved.':'Only empty fields were filled. Choose a candidate explicitly to change an entered path.';
+    if(managedChanged)status.textContent='Caller environment updated to the validated OncoTracer installation: '+result.managed_variant_prefix;
     document.getElementById('variant-resource-review').hidden=false;if(openDialog)openVariantResourceDialog();
     return result;
   }catch(error){status.textContent='Resource check could not finish. Your entered paths were kept.';throw error;}

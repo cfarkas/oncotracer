@@ -50,6 +50,10 @@ MAX_TARGET_CLAIM_JSON_BYTES = 64 * 1024
 
 CONDA_NAMES = ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
 MANAGED_CHILDREN = (*CONDA_NAMES, "poetry-runtime")
+VARIANTS_CHILDREN = ("variants",)
+POETRY_CHILDREN = ("poetry-runtime",)
+MANAGED_FAMILIES = (MANAGED_CHILDREN, VARIANTS_CHILDREN, POETRY_CHILDREN)
+KNOWN_CHILDREN = (*MANAGED_CHILDREN, "variants")
 BASE_MARKER = ".oncotracer-conda-root.json"
 ENV_MARKER = ".oncotracer-environment.json"
 POETRY_MARKER = ".oncotracer-poetry-runtime.json"
@@ -1147,6 +1151,30 @@ def _managed_conda_probe_environment(
 
 
 def _verify_conda_runtime(destination: Path, name: str) -> None:
+    if name == "variants":
+        from .variant_install_checks import verify_variant_environment
+
+        def managed_probe(command, environment):
+            executable = Path(command[0])
+            label = "managed variants environment probe"
+            descriptor, resolved = _open_managed_probe(destination, executable, label)
+            identity = os.fstat(descriptor)
+            try:
+                result = subprocess.run([str(resolved), *command[1:]], env=environment,
+                                        capture_output=True, text=True, check=False, timeout=90)
+                observed_descriptor, observed_path = _open_managed_probe(destination, executable, label)
+                try:
+                    observed = os.fstat(observed_descriptor)
+                    if observed_path != resolved or (observed.st_dev, observed.st_ino) != (identity.st_dev, identity.st_ino):
+                        raise OncoTracerError(f"{label} changed while running: {executable}")
+                finally:
+                    os.close(observed_descriptor)
+                return result
+            finally:
+                os.close(descriptor)
+
+        verify_variant_environment(destination, runner=managed_probe)
+        return
     probes: dict[str, tuple[list[str | Path], str]] = {
         "core": (
             [
@@ -1261,14 +1289,15 @@ def _verify_conda_runtime(destination: Path, name: str) -> None:
 
 
 def _base_marker(
-    base: Path, install_id: str, source: Mapping[str, object]
+    base: Path, install_id: str, source: Mapping[str, object],
+    *, children: Sequence[str] = MANAGED_CHILDREN,
 ) -> dict[str, object]:
     return {
         "schema": CONDA_BASE_SCHEMA,
         "object_type": "conda-install-root",
         "install_id": install_id,
         "canonical_path": str(base),
-        "managed_children": list(MANAGED_CHILDREN),
+        "managed_children": list(children),
         "source": dict(source),
     }
 
@@ -1290,7 +1319,7 @@ def _valid_base_marker(value: object, base: Path) -> bool:
         and isinstance(value.get("install_id"), str)
         and bool(_HEX_32.fullmatch(str(value["install_id"])))
         and value.get("canonical_path") == str(base)
-        and value.get("managed_children") == list(MANAGED_CHILDREN)
+        and value.get("managed_children") in [list(family) for family in MANAGED_FAMILIES]
         and _valid_source(value.get("source"))
     )
 
@@ -1422,7 +1451,7 @@ def _classify_base(base: Path) -> tuple[str, dict[str, object] | None]:
             f"Conda install-root ownership marker is malformed or path-mismatched: {marker_path}"
         )
     install_id = str(marker["install_id"])
-    for name in MANAGED_CHILDREN:
+    for name in marker["managed_children"]:
         child = base / name
         if not os.path.lexists(child):
             continue
@@ -2042,7 +2071,7 @@ def _write_target_claim(
 ) -> None:
     if (
         not _HEX_32.fullmatch(transaction_id)
-        or name not in MANAGED_CHILDREN
+        or name not in KNOWN_CHILDREN
         or (marker is not None and not _valid_target_claim_marker(marker, target, name))
     ):
         raise OncoTracerError(f"installer target claim is malformed: {target}")
@@ -3101,7 +3130,7 @@ def _valid_conda_journal(value: object, base: Path) -> bool:
         and value.get("prestate") in {"absent", "empty", "owned"}
         and isinstance(value.get("assets"), list)
         and bool(value["assets"])
-        and all(name in MANAGED_CHILDREN for name in value["assets"])
+        and all(name in KNOWN_CHILDREN for name in value["assets"])
         and len(set(value["assets"])) == len(value["assets"])
         and isinstance(value.get("previous_markers"), dict)
         and isinstance(value.get("new_markers"), dict)
@@ -3128,6 +3157,7 @@ def _valid_conda_journal(value: object, base: Path) -> bool:
     if (
         not _valid_base_marker(base_after, base)
         or base_after.get("install_id") != install_id
+        or not set(assets).issubset(base_after["managed_children"])
     ):
         return False
     for name in assets:
@@ -3146,13 +3176,16 @@ def _valid_conda_journal(value: object, base: Path) -> bool:
             value.get("base_marker_before") is None
             and all(value["previous_markers"].get(name) is None for name in assets)
             and (
-                set(assets) == set(CONDA_NAMES) or set(assets) == set(MANAGED_CHILDREN)
+                set(assets) == set(base_after["managed_children"])
+                or (base_after["managed_children"] == list(MANAGED_CHILDREN)
+                    and set(assets) == set(CONDA_NAMES))
             )
         )
     base_before = value.get("base_marker_before")
     return (
         _valid_base_marker(base_before, base)
         and base_before.get("install_id") == install_id
+        and base_before.get("managed_children") == base_after.get("managed_children")
         and all(
             value["previous_markers"].get(name) is None
             or value["previous_markers"][name].get("source")
@@ -3448,6 +3481,51 @@ def _recover_conda_journal(base: Path) -> None:
     _restore_conda_transaction(base, journal_path, journal)
 
 
+
+def managed_sibling_base(base: Path, family: str) -> Path:
+    if family not in {"variants", "poetry"}:
+        raise OncoTracerError("unsupported managed sibling family")
+    base = _absolute(base)
+    return base.with_name(base.name + "-" + family)
+
+
+def _conda_definitions(root: Path, names: Sequence[str]) -> dict[str, Path]:
+    return {name: root / "environments" / ("native-gistic2.yml" if name == "gistic" else f"native-{name}.yml")
+            for name in names}
+
+
+def install_conda_managed(
+    root: Path, base: Path, *, conda: str, force: bool, dry_run: bool,
+    poetry: str | None = None,
+) -> dict[str, Path]:
+    """Install the five native groups plus mandatory variants before publishing settings."""
+    if poetry is not None and not dry_run:
+        _require_poetry_v2(poetry)
+        _verify_poetry_source_checkout(_absolute(root), _source_identity())
+    families = [(base, MANAGED_CHILDREN), (managed_sibling_base(base, "variants"), VARIANTS_CHILDREN)]
+    if poetry is not None:
+        families.append((managed_sibling_base(base, "poetry"), POETRY_CHILDREN))
+    for family_base, children in families:
+        family_base = _guard_dedicated(family_base, "managed installation family")
+        journal_path = _journal_path(family_base, "conda")
+        if os.path.lexists(journal_path):
+            journal = _safe_read_json(journal_path, "Conda transaction journal", max_bytes=MAX_INVENTORY_JSON_BYTES)
+            if not _valid_conda_journal(journal, family_base):
+                raise OncoTracerError(f"refusing malformed or foreign Conda transaction journal: {journal_path}")
+        else:
+            _, marker = _classify_base(family_base)
+            if marker is not None and marker["managed_children"] != list(children):
+                raise OncoTracerError(f"managed environment family differs from the selected installation: {family_base}")
+    prefixes = _install_conda_family(root, base, conda=conda, force=force, dry_run=dry_run)
+    variants_base = managed_sibling_base(base, "variants")
+    prefixes.update(_install_conda_family(root, variants_base, conda=conda, force=force,
+                                          dry_run=dry_run, native_names=VARIANTS_CHILDREN))
+    if poetry is not None:
+        _install_conda_family(root, managed_sibling_base(base, "poetry"), conda=conda,
+                              force=force, dry_run=dry_run, native_names=(), poetry=poetry)
+    return prefixes
+
+
 def _dry_run_conda_plan(
     base: Path,
     root: Path,
@@ -3455,15 +3533,10 @@ def _dry_run_conda_plan(
     *,
     include_poetry: bool,
     poetry: str | None,
+    native_names: Sequence[str] = CONDA_NAMES,
 ) -> None:
     state, marker = _classify_base(base)
-    definitions = {
-        "core": root / "environments" / "native-core.yml",
-        "qdnaseq": root / "environments" / "native-qdnaseq.yml",
-        "ichorcna": root / "environments" / "native-ichorcna.yml",
-        "classifier": root / "environments" / "native-classifier.yml",
-        "gistic": root / "environments" / "native-gistic2.yml",
-    }
+    definitions = _conda_definitions(root, native_names)
     for name, definition in definitions.items():
         if not definition.is_file():
             raise OncoTracerError(
@@ -3534,7 +3607,7 @@ def _assert_claimed_identity(
         )
 
 
-def install_conda_managed(
+def _install_conda_family(
     root: Path,
     base: Path,
     *,
@@ -3542,8 +3615,16 @@ def install_conda_managed(
     force: bool,
     dry_run: bool,
     poetry: str | None = None,
+    native_names: Sequence[str] = CONDA_NAMES,
 ) -> dict[str, Path]:
-    """Install directly at final prefixes with owned transactional backups."""
+    """Install one fixed ownership family with transactional backups."""
+    native_names = tuple(native_names)
+    children = MANAGED_CHILDREN if native_names == CONDA_NAMES else (
+        VARIANTS_CHILDREN if native_names == VARIANTS_CHILDREN and poetry is None else
+        POETRY_CHILDREN if not native_names and poetry is not None else ()
+    )
+    if not children:
+        raise OncoTracerError("unsupported managed environment family")
     base = _guard_dedicated(base, "Conda install root")
     root = _absolute(root)
     include_poetry = poetry is not None
@@ -3570,9 +3651,10 @@ def install_conda_managed(
         _assert_inactive(base)
     if dry_run:
         _dry_run_conda_plan(
-            base, root, conda, include_poetry=include_poetry, poetry=poetry
+            base, root, conda, include_poetry=include_poetry, poetry=poetry,
+            native_names=native_names,
         )
-        return {name: base / name for name in CONDA_NAMES}
+        return {name: base / name for name in native_names}
 
     source = _source_identity()
     project = root / "pyproject.toml"
@@ -3597,7 +3679,23 @@ def install_conda_managed(
             if observed_base_marker is not None
             else uuid.uuid4().hex
         )
-        expected_base_marker = _base_marker(base, install_id, source)
+        if observed_base_marker is not None and observed_base_marker["managed_children"] != list(children):
+            raise OncoTracerError(f"managed environment family differs from the selected installation: {base}")
+        expected_base_marker = _base_marker(base, install_id, source, children=children)
+        # Scientific dependencies are reusable across application revisions when
+        # every authenticated definition is identical. Keep all old ownership
+        # records byte-for-byte intact for older saved-study controllers.
+        if (state == "owned" and observed_base_marker is not None and not force
+                and not include_poetry and observed_base_marker["source"] != source
+                and all(_conda_complete(base / name) for name in native_names)):
+            prior = {name: _child_marker_value(base, observed_base_marker, name) for name in native_names}
+            definitions = _conda_definitions(root, native_names)
+            if all(prior[name] is not None and prior[name]["definition_sha256"] == sha256_file(definitions[name])
+                   for name in native_names):
+                for name in native_names:
+                    _verify_conda_runtime(base / name, name)
+                    _verify_child_inventory(base / name, prior[name])
+                return {name: base / name for name in native_names}
         if (
             state == "owned"
             and not include_poetry
@@ -3610,19 +3708,13 @@ def install_conda_managed(
                 "OncoTracer source; update it with install --poetry or select a "
                 "new dedicated Conda --prefix"
             )
-        definitions = {
-            "core": root / "environments" / "native-core.yml",
-            "qdnaseq": root / "environments" / "native-qdnaseq.yml",
-            "ichorcna": root / "environments" / "native-ichorcna.yml",
-            "classifier": root / "environments" / "native-classifier.yml",
-            "gistic": root / "environments" / "native-gistic2.yml",
-        }
+        definitions = _conda_definitions(root, native_names)
         for name, definition in definitions.items():
             if not definition.is_file() or definition.stat().st_size == 0:
                 raise OncoTracerError(
                     f"native {name} environment definition is missing or empty: {definition}"
                 )
-        names = [*CONDA_NAMES, *(["poetry-runtime"] if include_poetry else [])]
+        names = [*native_names, *(["poetry-runtime"] if include_poetry else [])]
         previous: dict[str, dict[str, object] | None] = {}
         expected: dict[str, dict[str, object]] = {}
         changed: list[str] = []
@@ -3685,7 +3777,7 @@ def install_conda_managed(
                     expected_base_marker,
                     retention_parent=base.parent,
                 )
-            return {name: base / name for name in CONDA_NAMES}
+            return {name: base / name for name in native_names}
         if state == "owned":
             _assert_inactive(base)
 
@@ -3898,7 +3990,7 @@ def install_conda_managed(
                     f"complete; preserve the journal for recovery: {journal_path}: {rollback_error}"
                 ) from rollback_error
             raise
-    return {name: base / name for name in CONDA_NAMES}
+    return {name: base / name for name in native_names}
 
 
 def _sif_sidecar(destination: Path) -> Path:
@@ -4557,9 +4649,9 @@ def install_sif_managed(
     return {"sif": str(destination), "image": image}
 
 
-def _verify_runtime_conda_definitions(base: Path, root: Path) -> None:
+def _verify_runtime_conda_definitions(base: Path, root: Path, names: Sequence[str] = CONDA_NAMES) -> None:
     """Require identical tool specifications when reusing an older Conda install."""
-    for name in CONDA_NAMES:
+    for name in names:
         filename = "native-gistic2.yml" if name == "gistic" else f"native-{name}.yml"
         definition = root / "environments" / filename
         marker = _safe_read_json(base / name / ENV_MARKER, f"{name} ownership marker")
@@ -4577,10 +4669,11 @@ def _verify_runtime_conda_definitions(base: Path, root: Path) -> None:
 
 
 @contextlib.contextmanager
-def managed_conda_runtime_lock(
-    base: Path, *, require_poetry: bool, semantic: bool = False
+def _managed_family_runtime_lock(
+    base: Path, *, names: Sequence[str], children: Sequence[str],
+    require_poetry: bool = False, semantic: bool = False,
 ) -> Iterator[dict[str, Path]]:
-    """Authenticate a managed runtime and hold a shared consumer lock."""
+    """Authenticate one fixed ownership family and hold its shared consumer lock."""
     base = _guard_dedicated(base, "managed Conda runtime")
     with _shared_install_lock(_lock_path(base, "conda"), base, "conda"):
         if os.path.lexists(_journal_path(base, "conda")):
@@ -4592,6 +4685,8 @@ def managed_conda_runtime_lock(
             raise OncoTracerError(
                 f"Conda runtime is not strictly installer-owned: {base}"
             )
+        if marker["managed_children"] != list(children):
+            raise OncoTracerError(f"managed runtime family differs from the requested family: {base}")
         source = _source_identity()
         compatible_root: Path | None = None
         if marker.get("source") != source:
@@ -4603,7 +4698,7 @@ def managed_conda_runtime_lock(
                     f"managed runtime source identity differs from this executable: {base}"
                 )
             compatible_root = runtime_root()
-            _verify_runtime_conda_definitions(base, compatible_root)
+            _verify_runtime_conda_definitions(base, compatible_root, names)
         base_metadata = base.lstat()
         base_identity = (base_metadata.st_dev, base_metadata.st_ino)
         protected_identities: dict[Path, tuple[int, int]] = {}
@@ -4618,7 +4713,7 @@ def managed_conda_runtime_lock(
                 (metadata := (base / name).lstat()).st_dev,
                 metadata.st_ino,
             )
-            for name in MANAGED_CHILDREN
+            for name in marker["managed_children"]
             if os.path.lexists(base / name)
         }
         for name in initial_child_identities:
@@ -4632,7 +4727,6 @@ def managed_conda_runtime_lock(
                     protected_metadata.st_dev,
                     protected_metadata.st_ino,
                 )
-        names = [*CONDA_NAMES, *(["poetry-runtime"] if require_poetry else [])]
         paths: dict[str, Path] = {}
         for name in names:
             child = base / name
@@ -4653,7 +4747,7 @@ def managed_conda_runtime_lock(
                         (metadata := (base / name).lstat()).st_dev,
                         metadata.st_ino,
                     )
-                    for name in MANAGED_CHILDREN
+                    for name in marker["managed_children"]
                     if os.path.lexists(base / name)
                 }
             except OSError as error:
@@ -4697,8 +4791,58 @@ def managed_conda_runtime_lock(
                     f"managed runtime ownership changed during use: {base}"
                 )
             if compatible_root is not None:
-                _verify_runtime_conda_definitions(base, compatible_root)
+                _verify_runtime_conda_definitions(base, compatible_root, names)
             require_original_identities()
+
+
+
+@contextlib.contextmanager
+def managed_conda_runtime_lock(
+    base: Path, *, require_poetry: bool, semantic: bool = False,
+) -> Iterator[dict[str, Path]]:
+    """Keep legacy scientific ownership separate from updated Poetry launchers."""
+    poetry_base = managed_sibling_base(base, "poetry")
+    separate_poetry = require_poetry and os.path.lexists(poetry_base)
+    names = (*CONDA_NAMES, *(["poetry-runtime"] if require_poetry and not separate_poetry else []))
+    with contextlib.ExitStack() as stack:
+        paths = dict(stack.enter_context(_managed_family_runtime_lock(
+            base, names=names, children=MANAGED_CHILDREN,
+            require_poetry=require_poetry and not separate_poetry, semantic=semantic,
+        )))
+        if separate_poetry:
+            paths.update(stack.enter_context(_managed_family_runtime_lock(
+                poetry_base, names=POETRY_CHILDREN, children=POETRY_CHILDREN,
+                require_poetry=True, semantic=semantic,
+            )))
+        yield paths
+
+
+@contextlib.contextmanager
+def managed_variants_runtime_lock(prefix: Path, *, semantic: bool = False) -> Iterator[Path]:
+    """Authenticate the dedicated variants domain without consulting PATH."""
+    prefix = _absolute(prefix)
+    if prefix.name != "variants":
+        raise OncoTracerError(f"managed variants prefix is not its fixed child: {prefix}")
+    with _managed_family_runtime_lock(
+        prefix.parent, names=VARIANTS_CHILDREN, children=VARIANTS_CHILDREN, semantic=semantic,
+    ) as paths:
+        # Always check the active definition, even when source metadata matches.
+        _verify_runtime_conda_definitions(prefix.parent, runtime_root(), VARIANTS_CHILDREN)
+        yield paths["variants"]
+        _verify_runtime_conda_definitions(prefix.parent, runtime_root(), VARIANTS_CHILDREN)
+
+
+def managed_variants_prefix(config: Mapping[str, object], *, semantic: bool = False) -> Path:
+    """Return only the authenticated canonical variants prefix from installation settings."""
+    if not config.get("core_prefix") or not config.get("variants_prefix"):
+        raise OncoTracerError("managed variant tools are not installed; rerun oncotracer install --conda (or --poetry)")
+    base = _absolute(Path(str(config["core_prefix"]))).parent
+    expected = managed_sibling_base(base, "variants") / "variants"
+    selected = _absolute(Path(str(config["variants_prefix"])))
+    if selected != expected:
+        raise OncoTracerError(f"configured variants_prefix is not the canonical managed child {expected}: {selected}")
+    with managed_variants_runtime_lock(selected, semantic=semantic) as verified:
+        return verified
 
 
 def verify_managed_conda_runtime(

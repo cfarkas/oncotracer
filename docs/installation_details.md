@@ -17,14 +17,15 @@ OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.1
 | Goal | Use |
 | --- | --- |
 | First CNA analysis | [Standard installation](installation.md), then the Conda section below. |
-| CNA and small variants | Current branch launcher plus [optional environments](variants_reference.md#conda-and-docker), or the [current source Docker image](containers.md#fastq-to-cna-and-variants). |
+| CNA and small variants | Current branch launcher plus [managed variant tools](variants_reference.md#conda-and-docker), or the [current source Docker image](containers.md#fastq-to-cna-and-variants). |
 | HPC CNA analysis | The Singularity/Apptainer section below. |
 | Develop the launcher | The Poetry section below. |
 | Move a project to a remote server | [Headless setup and SSH](headless.md). |
 
-Choose one backend per run. The five core CNA environments do not install the
-optional small-variant callers or their models. Installing tools, downloading
-reference/model data, and starting an analysis are separate steps.
+Choose one backend per run. Conda and Poetry install both the core CNA tools and
+the shared Illumina variant tools. Caller-specific FFPE/ONT runtimes and models
+remain separate. Installing tools, downloading reference/model data, and starting
+an analysis are separate steps.
 
 ## Requirements
 
@@ -89,13 +90,14 @@ oncotracer install --conda
 oncotracer doctor --backend conda
 ```
 
-Five isolated, versioned environments are created:
+Six isolated, versioned scientific environments are created:
 
 - core alignment, Picard, refinement, CNA notation, and plotting tools;
 - qDNAseq with its pinned R 4.1 stack;
 - ichorCNA/HMMcopy with its pinned R 4.4 stack;
 - the optional CNA classifier/report stack;
-- GISTIC2 for the optional recurrence branch.
+- GISTIC2 for the optional recurrence branch;
+- shared Illumina variant tools, including bcftools 1.23.1 linked to HTSlib 1.24, samtools, GATK, FreeBayes and Varlociraptor.
 
 Separating the environments avoids incompatible R and compiled-library constraints. The default location is below the user's versioned OncoTracer data directory. Use an explicit shared location when required:
 
@@ -106,13 +108,19 @@ oncotracer install --conda \
 oncotracer doctor --backend conda
 ```
 
-The optional `variants`, `ffperase` and `strelka2` environments are created
-separately; see [variant installation commands](variants_reference.md#conda-and-docker).
+For a scientific prefix root `B`, the mandatory variant environment lives at
+`B-variants/variants`. It is installed and checked by the same command.
+Its verified prefix is saved in the installation settings and selected by managed
+Illumina setup and runs, even if an older configuration names an unrelated Conda
+environment. The replacement is reported before analysis. The optional `ffperase`
+and `strelka2` environments are created separately; see
+[variant installation commands](variants_reference.md#conda-and-docker).
 Existing ANNOVAR software and databases are also separate. Setup resource
 autodetection inspects these installations without installing them. Approved
 public model/resource downloads occur only when Run starts.
 
-Use `--force` only when deliberately rebuilding all five prefixes.
+Use `--force` only when deliberately rebuilding managed prefixes. Compatible,
+authenticated scientific environments are reused during application upgrades.
 
 The prefix parent must be absent, empty, or already owned by this OncoTracer
 installer. OncoTracer never adopts a populated Conda directory or an unmarked
@@ -234,14 +242,14 @@ cd oncotracer
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
 
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer --version
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer doctor \
+/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer --version
+/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer doctor \
   --backend poetry
 ```
 
 `./oncotracer install --poetry` installs the locked Python launcher into the
 explicit, OncoTracer-owned `poetry-runtime` child and creates the same five
-Conda scientific environments. It does not select or modify Poetry's global
+core Conda environments plus the verified variant environment. It does not select or modify Poetry's global
 environment, another checkout's virtual environment, or an existing unowned
 prefix. OncoTracer first builds a wheel from an exact clean checkout in an
 isolated transaction tree, then invokes only the final virtual environment's

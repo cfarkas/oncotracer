@@ -164,9 +164,12 @@ class NativeCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             prefixes = _conda_prefixes(Path(directory))
             self.assertEqual(
-                set(prefixes), {"core", "qdnaseq", "ichorcna", "classifier", "gistic"}
+                set(prefixes), {"core", "qdnaseq", "ichorcna", "classifier", "gistic", "variants"}
             )
-            self.assertEqual(len(set(prefixes.values())), 5)
+            self.assertEqual(len(set(prefixes.values())), 6)
+            base = Path(directory).resolve()
+            self.assertEqual(prefixes["variants"], base.parent / (base.name + "-variants") / "variants")
+            self.assertTrue(all(prefix.parent == base for name, prefix in prefixes.items() if name != "variants"))
 
     def test_configured_gistic_prefix_uses_the_official_config_key(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -233,6 +236,8 @@ class NativeCliTests(unittest.TestCase):
                 name: root / name
                 for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
             }
+            prefixes["variants"] = root / "managed-variants" / "variants"
+            prefixes["variants"].mkdir(parents=True)
             names = {
                 "core": ("bwa", "samtools", "minimap2", "pigz", "picard"),
                 "qdnaseq": ("Rscript",),
@@ -283,10 +288,15 @@ class NativeCliTests(unittest.TestCase):
                 patch(
                     "oncotracer_cli.cli._check_process", side_effect=successful_probe
                 ) as process,
+                patch(
+                    "oncotracer_cli.variant_install_checks.verify_variant_environment",
+                    return_value={"success": True, "probes": {}},
+                ) as variants_probe,
             ):
                 results = _probe_native_prefixes(prefixes, toolchain)
 
             self.assertTrue(all(result["success"] for result in results.values()))
+            variants_probe.assert_called_once_with(prefixes["variants"])
             calls = process.call_args_list
             invoked = [Path(call.args[0][0]) for call in calls]
             self.assertNotIn(foreign / "Rscript", invoked)
@@ -357,7 +367,7 @@ class NativeCliTests(unittest.TestCase):
     def test_doctor_folds_missing_prefixes_into_nonzero_exit(self) -> None:
         prefixes = {
             name: None
-            for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
+            for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic", "variants")
         }
         provenance = {
             "source_commit": "a" * 40,
@@ -391,13 +401,11 @@ class NativeCliTests(unittest.TestCase):
             root = Path(directory)
             prefixes = {
                 name: root / name
-                for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
+                for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic", "variants")
             }
             for prefix in prefixes.values():
                 prefix.mkdir()
-            environments = {
-                name: {"success": name != "gistic", "probes": {}} for name in prefixes
-            }
+            install = {f"{name}_prefix": str(prefix) for name, prefix in prefixes.items()}
             provenance = {
                 "source_commit": "a" * 40,
                 "source_sha256": "b" * 64,
@@ -405,39 +413,46 @@ class NativeCliTests(unittest.TestCase):
                 "source_metadata_origin": "embedded",
                 "source_tree_dirty": False,
             }
-            args = build_parser().parse_args(["doctor", "--json", "--backend", "conda"])
-            output = io.StringIO()
-            with (
-                patch("oncotracer_cli.cli._load_install_config", return_value={}),
-                patch(
-                    "oncotracer_cli.cli._configured_native_prefixes",
-                    return_value=prefixes,
-                ),
-                patch(
-                    "oncotracer_cli.cli._probe_native_prefixes",
-                    return_value=environments,
-                ),
-                patch("oncotracer_cli.cli.get_provenance", return_value=provenance),
-                patch("sys.stdout", output),
-            ):
-                returncode = command_doctor(args)
-            result = json.loads(output.getvalue())
-            self.assertEqual(returncode, 1)
-            self.assertFalse(result["success"])
-            self.assertFalse(result["environments"]["gistic"]["success"])
+            args = build_parser().parse_args(["doctor", "--json", "--backend", "host"])
+            for failed_group in ("gistic", "variants"):
+                with self.subTest(failed_group=failed_group):
+                    environments = {
+                        name: {"success": name != failed_group, "probes": {}} for name in prefixes
+                    }
+                    output = io.StringIO()
+                    with (
+                        patch("oncotracer_cli.cli._load_install_config", return_value=install),
+                        patch(
+                            "oncotracer_cli.cli._probe_native_prefixes",
+                            return_value=environments,
+                        ) as probes,
+                        patch("oncotracer_cli.cli.get_provenance", return_value=provenance),
+                        patch("sys.stdout", output),
+                    ):
+                        returncode = command_doctor(args)
+                    result = json.loads(output.getvalue())
+                    probes.assert_called_once()
+                    self.assertEqual(returncode, 1)
+                    self.assertFalse(result["success"])
+                    self.assertTrue(result["managed_install"]["success"])
+                    self.assertFalse(result["environments"][failed_group]["success"])
+                    self.assertTrue(all(item["success"] for name, item in result["environments"].items() if name != failed_group))
 
     def test_poetry_doctor_requires_strict_managed_ownership(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory) / "managed"
-            prefixes = {
+            core_prefixes = {
                 name: base / name
                 for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
             }
-            for prefix in (*prefixes.values(), base / "poetry-runtime"):
+            variants_prefix = base.parent / "managed-variants" / "variants"
+            poetry_prefix = base.parent / "managed-poetry" / "poetry-runtime"
+            prefixes = {**core_prefixes, "variants": variants_prefix}
+            for prefix in (*prefixes.values(), poetry_prefix):
                 prefix.mkdir(parents=True, exist_ok=True)
             install = {
                 **{f"{name}_prefix": str(prefix) for name, prefix in prefixes.items()},
-                "poetry_prefix": str(base / "poetry-runtime"),
+                "poetry_prefix": str(poetry_prefix),
             }
             provenance = {
                 "source_commit": "a" * 40,
@@ -449,36 +464,47 @@ class NativeCliTests(unittest.TestCase):
             environments = {name: {"success": True, "probes": {}} for name in prefixes}
             args = build_parser().parse_args(["doctor", "--json", "--backend", "poetry"])
             output = io.StringIO()
-            active = {"value": False}
-            lock = MagicMock()
+            active = {"core": False, "variants": False}
+            core_lock, variants_lock = MagicMock(), MagicMock()
 
-            def enter_lock():
-                active["value"] = True
-                return {
-                    **prefixes,
-                    "poetry-runtime": base / "poetry-runtime",
-                }
+            def enter_core(*_args):
+                active["core"] = True
+                return {**core_prefixes, "poetry-runtime": poetry_prefix}
 
-            def exit_lock(*_args):
-                active["value"] = False
+            def enter_variants(*_args):
+                active["variants"] = True
+                return variants_prefix
+
+            def exit_core(*_args):
+                active["core"] = False
+                return False
+
+            def exit_variants(*_args):
+                active["variants"] = False
                 return False
 
             def contained_probes(*_args):
-                self.assertTrue(active["value"])
+                self.assertTrue(all(active.values()))
                 return environments
 
-            lock.__enter__.side_effect = enter_lock
-            lock.__exit__.side_effect = exit_lock
+            core_lock.__enter__.side_effect = enter_core
+            core_lock.__exit__.side_effect = exit_core
+            variants_lock.__enter__.side_effect = enter_variants
+            variants_lock.__exit__.side_effect = exit_variants
             with (
                 patch("oncotracer_cli.cli._load_install_config", return_value=install),
                 patch(
                     "oncotracer_cli.cli._probe_native_prefixes",
                     side_effect=contained_probes,
-                ),
+                ) as probes,
                 patch(
                     "oncotracer_cli.cli.managed_conda_runtime_lock",
-                    return_value=lock,
+                    return_value=core_lock,
                 ) as strict,
+                patch(
+                    "oncotracer_cli.cli.managed_variants_runtime_lock",
+                    return_value=variants_lock,
+                ) as strict_variants,
                 patch("oncotracer_cli.cli.get_provenance", return_value=provenance),
                 patch("sys.stdout", output),
             ):
@@ -487,10 +513,13 @@ class NativeCliTests(unittest.TestCase):
             self.assertEqual(returncode, 0)
             self.assertTrue(record["managed_install"]["success"])
             self.assertTrue(record["success"])
+            probes.assert_called_once()
             strict.assert_called_once_with(base, require_poetry=True, semantic=False)
-            lock.__enter__.assert_called_once_with()
-            lock.__exit__.assert_called_once()
-            self.assertFalse(active["value"])
+            strict_variants.assert_called_once_with(variants_prefix, semantic=False)
+            for lock in (core_lock, variants_lock):
+                lock.__enter__.assert_called_once()
+                lock.__exit__.assert_called_once()
+            self.assertFalse(any(active.values()))
 
     def test_host_doctor_reports_containment_error_as_json_failure(self) -> None:
         provenance = {
@@ -569,6 +598,7 @@ class NativeCliTests(unittest.TestCase):
                     f"{name}_prefix": str(base / name)
                     for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
                 },
+                "variants_prefix": str(base.parent / "managed-variants" / "variants"),
                 "backend": "conda",
             }
             arguments = SimpleNamespace(
@@ -631,7 +661,7 @@ class NativeCliTests(unittest.TestCase):
                 "core": root / "opt" / "conda",
                 **{
                     name: root / "opt" / "oncotracer-envs" / name
-                    for name in ("qdnaseq", "ichorcna", "classifier", "gistic")
+                    for name in ("qdnaseq", "ichorcna", "classifier", "gistic", "variants")
                 },
             }
             for prefix in prefixes.values():

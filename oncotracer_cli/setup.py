@@ -382,6 +382,12 @@ def _glimpse_variant_values(args, specimen: str, *, interactive: bool) -> dict[s
             print("FFPERASE requires its upstream resource license: " + FFPERASE_LICENSE)
             values["variant_accept_ffperase_license"] = _ask(None, "Accept the FFPERASE resource license?",
                 default="no", choices=("yes", "no"), interactive=True) == "yes"
+    from .variant_runtime import apply_variant_runtime
+    values["execution_backend"] = args.backend or "host"
+    values, selection = apply_variant_runtime(values, mode="illumina", backend=args.backend, emit=True)
+    args._variant_runtime_diagnostics = list(selection.diagnostics)
+    if selection.managed:
+        args.variant_tool_prefix = str(selection.prefix)
     from .variants import resolve_variant_request
     resolve_variant_request(values, mode="illumina")
     return values
@@ -755,6 +761,12 @@ def _command_setup(args: argparse.Namespace) -> int:
             resolve_variant_request(values, mode=mode)
 
     if values.get('run_variants') and mode == 'illumina':
+        from .variant_runtime import apply_variant_runtime
+        values, selection = apply_variant_runtime(values, mode=mode, backend=args.backend, emit=True)
+        args._variant_runtime_diagnostics = list(dict.fromkeys([
+            *getattr(args, "_variant_runtime_diagnostics", []), *selection.diagnostics]))
+        if selection.managed:
+            args.variant_tool_prefix = str(selection.prefix)
         from .variants import resolve_variant_request
         from .strelka2 import validate_samples
         from .docker_runtime import docker_host_preview
@@ -1056,6 +1068,7 @@ def command_check(args: argparse.Namespace) -> int:
                     core = environment.get("ONCOTRACER_CORE_PREFIX")
                     toolchain = Toolchain(core_prefix=Path(core) if core else None)
                     request = resolve_variant_request(config, mode=mode)
+                    warnings.extend(request.tool_prefix_diagnostics)
                     variant_tools = preflight_variant_tools(request, toolchain)
     except (OncoTracerError, OSError, ValueError) as error:
         errors.append(str(error))

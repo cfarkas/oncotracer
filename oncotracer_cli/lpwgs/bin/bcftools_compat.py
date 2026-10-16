@@ -19,10 +19,12 @@ def require_version(version_output, executable):
             f'Complete Illumina variant analysis requires bcftools {REQUIRED_BCFTOOLS} '
             f'linked to HTSlib {REQUIRED_HTSLIB}; selected {executable} reports '
             f'bcftools {bcftools}, HTSlib {htslib}. '
-            'Create/update the variants environment from environments/native-variants.yml '
-            'and select it with variant_tool_prefix (or --tool-prefix). '
-            'For Docker, rebuild/select an image from the current Dockerfile. '
-            'The selected executable is not replaced automatically.')
+            'Run oncotracer install --conda (or --poetry) to create and verify the '
+            'managed variants environment; managed Illumina runs select it automatically. '
+            'For an unmanaged host, use environments/native-variants.yml and select '
+            'variant_tool_prefix (or --tool-prefix). For Docker, rebuild/select an '
+            'image from the current Dockerfile and run oncotracer install --docker. '
+            'Analysis does not modify installed executables.')
     return {'bcftools': bcftools, 'htslib': htslib, 'executable': str(executable)}
 
 

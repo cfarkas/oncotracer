@@ -137,6 +137,17 @@ def _partial_failure_cause(status) -> str:
 
 
 def command_variants(args) -> int:
+    """Authenticate a managed caller prefix before any workflow dispatch."""
+    if args.dry_run:
+        return _command_variants(args)
+    config_path = require_file(Path(args.config).expanduser(), "Variant configuration").resolve()
+    config = load_flat_yaml(config_path)
+    from .variant_runtime import managed_variant_runtime
+    with managed_variant_runtime(config, mode=str(config.get("mode") or "").strip().lower(), semantic=True):
+        return _command_variants(args)
+
+
+def _command_variants(args) -> int:
     config_path = require_file(Path(args.config).expanduser(), "Variant configuration").resolve()
     digest = sha256_file(config_path)
     config = load_flat_yaml(config_path)

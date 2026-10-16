@@ -17,6 +17,7 @@ CURRENT_NEXTFLOW_PAGES = frozenset({
     "docs/GLIMPSE_MIGRATION.md",
     "docs/MULTISAMPLE_QUICKSTART.md",
     "docs/nextflow_entry.md",
+    "docs/setup.md",
 })
 NATIVE_COMMAND_FILES = {
     'docs/index.md': ("oncotracer setup --project", 'oncotracer setup --project "$PWD/my-study" --run'),

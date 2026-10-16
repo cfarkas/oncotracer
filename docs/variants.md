@@ -47,8 +47,9 @@ oncotracer setup --variants
 <summary>Terminal only: Illumina Fresh, Conda, Mutect2</summary>
 
 This is an alternative to the browser steps, using one tumor library. Install
-[the optional variant environment](variants_reference.md#conda-and-docker) first
-and set its actual prefix below. Use a new project folder.
+[the managed toolchain](variants_reference.md#conda-and-docker) with
+`oncotracer install --conda` first. Its verified variant prefix is selected
+automatically. Use a new project folder.
 
 ```bash
 oncotracer setup --non-interactive --project "$PWD/variant-study" \
@@ -58,7 +59,6 @@ oncotracer setup --non-interactive --project "$PWD/variant-study" \
   --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
   --hg38_build --variants \
   --variant-specimen-type fresh --variant-callers mutect2 \
-  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
   --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
 oncotracer check --config "$PWD/variant-study/config/run.yml"
 oncotracer run --backend conda --config "$PWD/variant-study/config/run.yml"
@@ -97,7 +97,9 @@ change an installation.
 
 Click the glowing **detect_tools** button to check resources for your selected settings, or
 use **Autodetect** beside an individual path. Discovery checks the computer
-running the setup server, fills empty paths and preserves paths you entered.
+running the setup server. Managed Illumina setup selects the installation-verified
+variant environment and reports replacement of stale tool prefixes. Other resource
+fields keep paths you entered.
 If several candidates are found, review them and choose the one to use. Review
 every ONT model against your actual chemistry/basecaller; a detected directory
 does not establish compatibility.
@@ -107,9 +109,10 @@ Missing tools show official download or installation links beside their status.
 Missing ANNOVAR software includes a **Register and download ANNOVAR** link and a
 registration notice. FFPERASE source and models link to their upstream license.
 Use **Choose tools folder** to search a particular installation directory.
-When detection finds missing caller tools, **Install with Conda** and
-**Install with Docker** appear. Choose either button, review the steps,
-then start that installation. The choices disappear when all selected tools are
+Repair a missing managed Illumina environment with `oncotracer install --conda`
+or `oncotracer install --poetry`. For additional caller runtimes, detection offers
+**Install with Conda** or **Install with Docker** where supported. Review the steps
+before starting installation. The choices disappear when all selected tools are
 found, or when you change resource settings and need to detect again. A live log
 and step counter follow installation while the setup server stays open. Conda
 creates fresh optional environments; Docker pulls and checks the selected image.

@@ -335,9 +335,11 @@ YAML runs also require explicit opt-in and skip cohorts below `gistic_min_sample
 For a failed variant branch, run `oncotracer check --variant-tools --config /path/to/run.yml`.
 The browser and `setup --run` perform this executable check automatically.
 Ordinary `check` still validates configuration on machines without caller tools.
-The executable check verifies the selected tools without running them. The CNA
-core environment supplies `samtools`; `bcftools`
-and other callers come from `variant_tool_prefix` or `PATH`. Set
+Managed Illumina runs use the verified variant environment saved by
+`oncotracer install --conda` (or `--poetry`), including bcftools 1.23.1 and HTSlib
+1.24. Re-run installation to repair a missing or incompatible managed variant
+environment; unrelated Conda environments are not selected as replacements.
+An unmanaged host installation can explicitly select `variant_tool_prefix`. Set
 `variant_strelka_prefix` for a separate Strelka2 environment. An explicit variant
 prefix must contain all requested shared tools and callers. See the
 [variant setup guide](variants.md) for installation and resource selection.
