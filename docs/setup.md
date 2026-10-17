@@ -4,11 +4,12 @@
 
 ## 1. Configure interactively (recommended)
 
-```bash
-oncotracer --interactive
-```
+Fresh or FFPE:
 
-FFPE preset: `oncotracer --interactive --ffpe` or `nextflow run main.nf --interactive --ffpe`.
+```bash
+oncotracer --interactive --backend conda
+nextflow run main.nf --interactive --backend conda
+```
 
 Keep the terminal open; use the **127.0.0.1:8888** URL with `#` session code.
 **Browse computer** selects inputs.

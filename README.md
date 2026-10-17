@@ -1,7 +1,7 @@
 # OncoTracer
 
 
-**Illumina short variants:** open browser setup with `oncotracer --interactive` or `nextflow run main.nf --interactive`. Add `--ffpe` for FFPE; review before Run. See the [migration guide](docs/GLIMPSE_MIGRATION.md), [parallel-sample quickstart](docs/MULTISAMPLE_QUICKSTART.md), and [resume/FFPE repair notes](docs/glimpse2_repair.txt).
+**Illumina short variants:** `oncotracer --interactive --backend conda` or `nextflow run main.nf --interactive --backend conda`. Choose platform, **Fresh** or **FFPE**, then **Small variants** in the browser. [Migration](docs/GLIMPSE_MIGRATION.md), [parallelism](docs/MULTISAMPLE_QUICKSTART.md), [repairs](docs/glimpse2_repair.txt).
 
 [![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 

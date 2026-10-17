@@ -8,7 +8,7 @@ From a local checkout:
 
 ```bash
 cd /path/to/oncotracer
-nextflow run main.nf --interactive --threads 64 --parallel_samples 4
+nextflow run main.nf --interactive --backend conda --threads 64 --parallel_samples 4
 ```
 
 Or fetch the migration branch from GitHub and execute locally:
@@ -16,10 +16,10 @@ Or fetch the migration branch from GitHub and execute locally:
 ```bash
 nextflow run cfarkas/oncotracer \
   -r feat/glimpse2-complete-short-variants -latest \
-  --interactive --threads 64 --parallel_samples 4
+  --interactive --backend conda --threads 64 --parallel_samples 4
 ```
 
-`--interactive` opens the browser interface. Select Illumina and complete short-variant analysis, then open **Resources and advanced settings**. Set **Total analysis memory** to `256GB` and **Samples running at once** to `4`, review the samples and start. With at least four samples, this allocates 16 CPU threads and 64GB to each active sample. Choose totals appropriate to the server, leaving room for the operating system and other work.
+`--interactive` opens the same browser interface for Fresh and FFPE. Choose or confirm Illumina, select **Fresh** or **FFPE**, and enable **Small variants** for the complete short-variant analysis. For Docker, use `--backend docker` with your installed image. Then open **Resources and advanced settings**. Set **Total analysis memory** to `256GB` and **Samples running at once** to `4`, review the samples and start. With at least four samples, this allocates 16 CPU threads and 64GB to each active sample. Choose totals appropriate to the server, leaving room for the operating system and other work.
 
 The complete workflow reserves at least **32GB per active sample**, including its local report model. The default total memory is `32GB`, so requesting four simultaneous samples without increasing memory still runs one at a time. Active slots are capped by the requested concurrency, sample count, CPU budget and memory budget. These are task scheduling budgets; controller and filesystem-cache overhead are additional. GLIMPSE2 remains enabled.
 
