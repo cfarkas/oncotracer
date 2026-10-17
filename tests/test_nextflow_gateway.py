@@ -32,6 +32,15 @@ class NextflowGatewayTests(unittest.TestCase):
     def args(self, *values):
         return gateway.parser().parse_args(['--project-dir', str(ROOT), '--launch-dir', str(self.root), *values])
 
+
+    def test_default_port_remains_automatic_but_explicit_default_is_forwarded(self):
+        argv, _, _ = gateway.command(self.args('--interactive'))
+        self.assertNotIn('--port', argv)
+        self.assertIsNone(parse_arguments(argv[3:]).port)
+        explicit, _, _ = gateway.command(self.args('--interactive', '--port', '8888'))
+        self.assertEqual(explicit[explicit.index('--port') + 1], '8888')
+        self.assertEqual(parse_arguments(explicit[3:]).port, 8888)
+
     def test_visual_entry_routes_to_browser_setup_with_glimpse_selected(self):
         argv, cwd, env = gateway.command(self.args('--interactive', '--port', '8765'))
         self.assertEqual(argv[3:], ['--interactive', '--port', '8765', '--mode', 'illumina', '--variants'])

@@ -178,6 +178,29 @@ class VariantBrowserTests(unittest.TestCase):
         with self.assertRaisesRegex(OncoTracerError, 'validate'):
             self.state.run({'project_id': first['id']})
 
+    def test_run_start_during_preflight_prevents_configuration_replacement(self):
+        from oncotracer_cli.output_safety import claim_output_run
+        from tests.test_output_safety import IDENTITY
+        loaded = self.load()
+        prepared = self.prepare(loaded)
+        config = Path(prepared['config_path'])
+        before = config.read_bytes()
+        leases = []
+        def started_during_preflight(*args, **kwargs):
+            leases.append(claim_output_run(Path(prepared['outdir']), config_path=config, identity=IDENTITY))
+            return self.mock_tools
+        try:
+            with patch('oncotracer_cli.variants.preflight_variant_tools', side_effect=started_during_preflight):
+                with self.assertRaisesRegex(OncoTracerError, 'configuration is in use'):
+                    self.state.variant_prepare({'load_id': loaded['load_id'], 'project': prepared['project'],
+                                                'threads': 2, 'variant_varlociraptor': 'required'})
+            self.assertEqual(config.read_bytes(), before)
+            self.assertIn(prepared['id'], self.state.projects)
+            leases[0].validate()
+        finally:
+            for lease in leases:
+                lease.close()
+
     def test_started_or_foreign_files_prevent_reusing_owned_project(self):
         loaded = self.load()
         first = self.prepare(loaded)

@@ -71,6 +71,59 @@ class SetupTests(unittest.TestCase):
                     _save_setup_files(project, {"run.yml":"new settings\n"})
                 self.assertEqual((external if external.is_file() else external / "keep").read_text(), "keep me")
 
+    def test_active_run_prevents_setup_save_without_backup_or_staging(self):
+        from oncotracer_cli.output_safety import claim_output_run
+        from oncotracer_cli.runtime import OncoTracerError
+        from tests.test_output_safety import IDENTITY, tree_snapshot
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            _save_setup_files(project, {"run.yml": "mode: illumina\nthreads: 1\n"})
+            config = project / "config/run.yml"
+            # The guard follows the config even for a non-default output folder.
+            with claim_output_run(Path(temporary) / "custom-results", config_path=config, identity=IDENTITY) as lease:
+                before = tree_snapshot(project)
+                with self.assertRaisesRegex(OncoTracerError, "configuration is in use"):
+                    _save_setup_files(project, {"run.yml": "mode: illumina\nthreads: 2\n"})
+                self.assertEqual(tree_snapshot(project), before)
+                lease.validate()
+            self.assertIsNotNone(_save_setup_files(project, {"run.yml": "mode: illumina\nthreads: 2\n"}))
+
+    def test_run_cannot_start_during_setup_publication(self):
+        import threading
+        from oncotracer_cli.output_safety import claim_output_run
+        from oncotracer_cli.runtime import OncoTracerError
+        from tests.test_output_safety import IDENTITY
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            _save_setup_files(project, {"run.yml": "mode: illumina\nthreads: 1\n"})
+            entered, release = threading.Event(), threading.Event()
+            errors = []
+            replace = os.replace
+            def delayed_replace(source, destination):
+                if Path(source).name == "run.yml":
+                    entered.set()
+                    if not release.wait(5):
+                        raise AssertionError("timed out holding setup publication")
+                return replace(source, destination)
+            def save():
+                try:
+                    _save_setup_files(project, {"run.yml": "mode: illumina\nthreads: 2\n"})
+                except BaseException as error:
+                    errors.append(error)
+            with patch("oncotracer_cli.setup.os.replace", side_effect=delayed_replace):
+                worker = threading.Thread(target=save)
+                worker.start()
+                try:
+                    self.assertTrue(entered.wait(2))
+                    with self.assertRaisesRegex(OncoTracerError, "configuration is in use"):
+                        claim_output_run(project / "results", config_path=project / "config/run.yml", identity=IDENTITY)
+                    self.assertFalse((project / "results").exists())
+                finally:
+                    release.set()
+                    worker.join(3)
+            self.assertFalse(worker.is_alive())
+            self.assertEqual(errors, [])
+
     def test_single_illumina_library_with_spaces_hash_and_quotes_in_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)

@@ -799,9 +799,84 @@ except KeyboardInterrupt:
 
     def test_public_command_registration(self):
         args = build_parser().parse_args(["web"])
-        self.assertEqual(args.port, 8888)
+        self.assertIsNone(args.port)
         self.assertEqual(args.func.__name__, "command_web")
         self.assertEqual(_legacy_to_modern(["web", "--port", "8889"]), ["web", "--port", "8889"])
+
+    def test_parallel_sessions_bind_distinct_ports_and_reject_each_others_tokens(self):
+        from oncotracer_cli import web
+        first = self.start_server()
+        second_state, third_state = WebState(self.root), WebState(self.root)
+        second_state.hardware = third_state.hardware = HARDWARE
+        self.addCleanup(second_state.variant_installer.close)
+        self.addCleanup(third_state.variant_installer.close)
+        with patch.object(web, "DEFAULT_WEB_PORT", first.server_port):
+            second = web._open_web_server(second_state)
+            third = web._open_web_server(third_state)
+        for server in (second, third):
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            self.addCleanup(server.server_close)
+            self.addCleanup(server.shutdown)
+        self.assertEqual(len({first.server_port, second.server_port, third.server_port}), 3)
+        self.assertEqual(len({self.state.token, second_state.token, third_state.token}), 3)
+        self.assertIsNot(self.state.projects, second_state.projects)
+        self.assertIsNot(second_state.lock, third_state.lock)
+        second_state.scans["only-second-session"] = object()
+        self.assertNotIn("only-second-session", self.state.scans)
+        self.assertNotIn("only-second-session", third_state.scans)
+        self.assertEqual(self.request(second, "GET", "/api/system")[0], 403)
+        self.assertEqual(self.request(second, "GET", "/api/system",
+                                     **{"X-OncoTracer-Token": second_state.token})[0], 200)
+        self.assertEqual(self.request(third, "GET", "/api/system",
+                                     **{"X-OncoTracer-Token": third_state.token})[0], 200)
+        self.assertIsNone(second_state.job)
+        self.assertIsNone(third_state.job)
+
+    def test_explicit_occupied_port_is_not_silently_changed(self):
+        from oncotracer_cli import web
+        occupied = WebServer(0, self.state)
+        self.addCleanup(occupied.server_close)
+        with self.assertRaisesRegex(OncoTracerError, "Omit --port"):
+            web._open_web_server(WebState(self.root), occupied.server_port)
+
+    def test_automatic_port_does_not_hide_permission_errors(self):
+        import errno
+        from oncotracer_cli import web
+        with patch.object(web, "WebServer", side_effect=OSError(errno.EACCES, "permission denied")) as constructor:
+            with self.assertRaisesRegex(OncoTracerError, "permission denied"):
+                web._open_web_server(self.state)
+        self.assertEqual(constructor.call_count, 1)
+
+    def test_explicit_zero_port_is_still_rejected(self):
+        from oncotracer_cli import web
+        with self.assertRaisesRegex(OncoTracerError, "--port"):
+            web._open_web_server(self.state, 0)
+
+    def test_failed_bind_closes_session_resources_without_opening_browser(self):
+        from oncotracer_cli import web
+        args = build_parser().parse_args(["web"])
+        with patch.object(web, "WebState", return_value=self.state), \
+             patch.object(web, "_open_web_server", side_effect=OncoTracerError("bind failed")), \
+             patch.object(self.state.variant_installer, "close") as close, \
+             patch.object(web.webbrowser, "open") as browser:
+            with self.assertRaisesRegex(OncoTracerError, "bind failed"):
+                web.command_web(args)
+        close.assert_called_once_with()
+        browser.assert_not_called()
+
+    def test_project_suggestion_is_session_specific_and_preserves_explicit_default(self):
+        first = self.state.system()
+        self.assertEqual(first["suggested_project_name"], self.state.system()["suggested_project_name"])
+        args = build_parser().parse_args(["setup", "--project", str(self.root / "chosen")])
+        other = WebState(self.root, args)
+        other.hardware = HARDWARE
+        self.addCleanup(other.variant_installer.close)
+        second = other.system()
+        self.assertNotEqual(first["suggested_project_name"], second["suggested_project_name"])
+        self.assertTrue(first["suggested_project_name"].startswith("oncotracer-analysis-"))
+        self.assertEqual(second["defaults"]["project"], str(self.root / "chosen"))
+
 
 
 if __name__ == "__main__":

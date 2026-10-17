@@ -67,9 +67,12 @@ oncotracer install --conda \
 
 ### FASTQ to CNA and variants
 
-Build the current source checkout for the complete Illumina GLIMPSE2 workflow
-and integrated ONT callers (Linux x86-64). Older published image tags do not gain
-these changes when the source branch is updated:
+The current Linux x86-64 image is
+`carlosfarkas/oncotracer:fastq-variants-20261017`. It includes the complete
+Illumina GLIMPSE2 workflow, FFPE repairs, integrated ONT callers and concurrent
+project support. `oncotracer install --docker` selects this image by default.
+
+To build the current source checkout instead (older dated tags remain unchanged):
 
 ```bash
 SOURCE_COMMIT="$(git rev-parse HEAD)"

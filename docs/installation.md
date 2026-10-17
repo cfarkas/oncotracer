@@ -27,8 +27,8 @@ BAMs and temporary files. Docker extraction and larger datasets need more.
 For complete GLIMPSE2 and the resume/FFPE repairs in
 [PR #53](https://github.com/cfarkas/oncotracer/pull/53), replace `--branch main`
 below with `--branch feat/glimpse2-complete-short-variants` until merged.
-Build Docker from that branch using the
-[source image guide](containers.md#fastq-to-cna-and-variants); published tags are unchanged.
+Use the current Docker image below or the
+[source image guide](containers.md#fastq-to-cna-and-variants).
 
 Install the launcher:
 
@@ -70,21 +70,19 @@ GISTIC and verified Illumina variant environments. Setup selects tools automatic
 
 ### Docker
 
-For repaired GLIMPSE2/FFPE, [build the current branch image](containers.md#fastq-to-cna-and-variants)
-with both provenance arguments, then install it with `--no-pull`.
-The published image below predates those repairs:
+The current image includes GLIMPSE2/FFPE repairs and supports concurrent projects:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
-oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017
 ```
 
 Terminal setup alternative with the same image:
 
 ```bash
 oncotracer setup --terminal --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922
+  --image carlosfarkas/oncotracer:fastq-variants-20261017
 ```
 
 Enable **Add small-variant calling** in the browser or append `--variants`.
@@ -97,7 +95,7 @@ Successful backend installation adds `~/.local/bin/oncotracer`; `--no-launcher` 
 
 ## 3. Start a project
 
-Setup opens **127.0.0.1:8888**; use the complete printed URL and keep the terminal
+Use setup’s complete printed URL (normally **127.0.0.1:8888**) and keep its terminal
 open. Select FASTQs, assign samples to Normal or Cancer, review settings and
 choose a project folder. Click **Save configuration and check**, then **Run analysis**.
 See the [setup guide](setup.md) or [QuickStart 1](quick_start.md).

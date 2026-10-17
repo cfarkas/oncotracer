@@ -175,7 +175,7 @@ oncotracer install --docker
 oncotracer doctor --backend docker
 ```
 
-The default installer pulls the stable CNA image `ghcr.io/cfarkas/oncotracer:2.1.0`, validates the native tools inside it, and saves the image reference. It does not install Docker, alter daemon settings, or request administrator privileges silently.
+The default installer pulls `carlosfarkas/oncotracer:fastq-variants-20261017`, validates its tools and saves the image reference. The older `ghcr.io/cfarkas/oncotracer:2.1.0` remains available for earlier CNA workflows. It does not install Docker, alter daemon settings, or request administrator privileges silently.
 
 Run an analysis with:
 
@@ -186,19 +186,18 @@ oncotracer run --backend docker \
 
 All paths in the YAML should be absolute. OncoTracer derives the required project mounts from the configuration.
 
-For the complete GLIMPSE2 workflow and repaired FFPE support, use the
+To build locally instead, use the
 [current source image build](containers.md#fastq-to-cna-and-variants), then
 install that local image with `--no-pull`.
 
-The following published image supports the earlier variant workflow and
-predates those repairs. Choose it explicitly only for that workflow and retain
+The following image includes the GLIMPSE2/FFPE and concurrent-project repairs. Retain
 that selection when running:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922 \
+  --image carlosfarkas/oncotracer:fastq-variants-20261017 \
   --config /absolute/path/project/config/run.yml
 ```
 

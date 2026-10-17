@@ -336,6 +336,40 @@ def _safe_make_parents(path: Path) -> None:
 
 
 @contextlib.contextmanager
+def configuration_lock(path: Path, *, exclusive: bool, directory: bool = False) -> Iterator[None]:
+    """Lock a physical setup directory or YAML without creating lock files."""
+    path = _absolute_lexical(path)
+    _reject_symlink_components(path)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    if directory:
+        flags |= getattr(os, "O_DIRECTORY", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise OncoTracerError(f"could not lock project configuration {path}: {error}") from error
+    try:
+        opened = os.fstat(descriptor)
+        valid = stat.S_ISDIR(opened.st_mode) if directory else stat.S_ISREG(opened.st_mode) and opened.st_nlink == 1
+        if not valid:
+            raise OncoTracerError(f"project configuration must be a physical {'directory' if directory else 'single-link regular file'}: {path}")
+        try:
+            fcntl.flock(descriptor, (fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH) | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise OncoTracerError(
+                f"project configuration is in use by another run or setup save: {path}; "
+                "wait for it to finish or choose a separate project"
+            ) from error
+        _reject_symlink_components(path)
+        current = path.lstat()
+        if (current.st_dev, current.st_ino) != (opened.st_dev, opened.st_ino):
+            raise OncoTracerError(f"project configuration changed while locking: {path}")
+        yield
+    finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
+@contextlib.contextmanager
 def _parent_claim_lock(parent: Path) -> Iterator[None]:
     flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
@@ -444,6 +478,7 @@ class OutputRunLease:
     config_sha256: str
     runtime_root_path: Path | None
     revalidate_runtime: bool
+    _configuration_guard: object | None = None
 
     def validate(self) -> None:
         try:
@@ -484,6 +519,9 @@ class OutputRunLease:
                 handle.close()
         finally:
             self._lock_handle = None
+            if self._configuration_guard is not None:
+                self._configuration_guard.close()
+                self._configuration_guard = None
 
     def __enter__(self) -> "OutputRunLease":
         return self
@@ -500,7 +538,30 @@ def claim_output_run(
     runtime_root_path: Path | None = None,
     expected_config_sha256: str | None = None,
 ) -> OutputRunLease:
-    """Claim or authenticate *outdir* and acquire its nonblocking run lock."""
+    """Claim the output and retain a shared configuration lease for the run."""
+    config_path = config_path.expanduser().resolve(strict=True)
+    guard = contextlib.ExitStack()
+    try:
+        guard.enter_context(configuration_lock(config_path, exclusive=False))
+        lease = _claim_output_run_locked(
+            outdir, config_path=config_path, identity=identity,
+            runtime_root_path=runtime_root_path,
+            expected_config_sha256=expected_config_sha256,
+        )
+    except BaseException:
+        guard.close()
+        raise
+    lease._configuration_guard = guard
+    return lease
+
+
+def _claim_output_run_locked(
+    outdir: Path, *, config_path: Path,
+    identity: Mapping[str, object] | None,
+    runtime_root_path: Path | None,
+    expected_config_sha256: str | None,
+) -> OutputRunLease:
+    """Authenticate *outdir* while setup cannot replace the configuration."""
     path = _absolute_lexical(outdir)
     _reject_broad_target(path)
     _reject_symlink_components(path)
