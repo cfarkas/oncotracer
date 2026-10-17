@@ -113,6 +113,7 @@ jobs:
             tests/test_report_llm.py tests/test_classifier_layout.py tests/test_report_presentation.py tests/test_cna_evidence_assessment.py \
             tests/test_system_check.py \
             tests/test_uninstall.py \
+            tests/test_user_launcher.py \
             tests/test_reference_bundle.py \
             tests/test_native_provenance.py \
             tests/test_ichorcna_plot_compat.py \

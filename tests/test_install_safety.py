@@ -355,6 +355,11 @@ else:
 """,
         )
         self.environment = {
+            "HOME": str(self.scratch / "home"),
+            "XDG_CONFIG_HOME": str(self.scratch / "config"),
+            "XDG_DATA_HOME": str(self.scratch / "data"),
+            "XDG_CACHE_HOME": str(self.scratch / "cache"),
+            "TMPDIR": str(self.scratch),
             "FAKE_INSTALL_LOG": str(self.log),
             "FAKE_SOURCE_VERSION": str(SOURCE["oncotracer_version"]),
             "FAKE_SOURCE_COMMIT": str(SOURCE["source_commit"]),
@@ -2423,6 +2428,9 @@ with (
 """
         environment = os.environ.copy()
         environment.update(self.environment)
+        environment["HOME"] = str(self.scratch / "cli-home")
+        environment["XDG_CACHE_HOME"] = str(self.scratch / "cli-cache")
+        environment["TMPDIR"] = str(self.scratch)
         environment["XDG_CONFIG_HOME"] = str(self.scratch / "cli-config")
         environment["XDG_DATA_HOME"] = str(self.scratch / "cli-data")
         return subprocess.run(

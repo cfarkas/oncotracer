@@ -1,19 +1,17 @@
 # Install OncoTracer
 
-Install the OncoTracer command, then choose **Conda or Docker** for analysis tools.
-Keep software and analysis projects in separate folders.
+Install the command, then choose **Conda or Docker**. Keep software and projects separate.
 
 ## Requirements
 
 Both routes need 64-bit Linux, Python 3.10–3.13 and Git for the launcher.
 The Conda route also needs [Conda/Miniforge](https://github.com/conda-forge/miniforge#install).
 Docker must be running and accessible to your user; host Conda is unnecessary.
-Install either backend separately.
 
 Desktop browsing needs Zenity (Ubuntu/GNOME) or KDialog (KDE). Install either,
 or enter paths. Remote sessions use server paths.
 
-For a small low-pass genome run with 2–4 threads, plan for:
+For small runs with 2–4 threads, plan for:
 
 | Analysis | Available RAM to plan for |
 | --- | --- |
@@ -21,9 +19,8 @@ For a small low-pass genome run with 2–4 threads, plan for:
 | ONT copy-number analysis | 24 GiB |
 | Methylation classifiers or report LLMs | Depends on the model; checked separately |
 
-These are planning estimates. Leave at least 60 GiB free for tools, references
-and a small run, plus space for FASTQs, BAMs and temporary files. Docker image
-downloads and extraction also need free disk. Large datasets need more.
+Leave at least 60 GiB free for tools, references and a small run, plus FASTQs,
+BAMs and temporary files. Docker extraction and larger datasets need more.
 
 ## 1. Install the command
 
@@ -43,8 +40,7 @@ source oncotracer-env/bin/activate
 oncotracer --help
 ```
 
-Keep both folders: the editable installation links the launcher to its source.
-Keep results elsewhere and leave the source unchanged.
+Keep both folders: the editable installation needs its source and Python environment.
 
 ## 2. Choose an analysis backend
 
@@ -96,8 +92,8 @@ See [Docker variants](variants.md#run-cna-and-variants-with-docker) for models,
 FFPERASE licensing and ANNOVAR. The older `ghcr.io/cfarkas/oncotracer:2.1.0`
 image supports CNA. For methylation, use [Conda](configuration/methylation.md).
 
-Installation flags: `--verbose` logs packages; `--json` supports automation.
-See [backends](containers.md) and [advanced installation](installation_details.md).
+Successful backend installation adds `~/.local/bin/oncotracer`; `--no-launcher` opts out.
+`--verbose` logs packages; `--json` supports automation. See [advanced installation](installation_details.md).
 
 ## 3. Start a project
 
@@ -129,15 +125,18 @@ indexes by default; reuse or build alternatives are covered in [genome indexes](
 
 ## In a new terminal
 
-Activate the same environment, using the location you chose during installation:
+Run from any directory, without activating the Python environment:
 
 ```bash
-source /absolute/path/to/oncotracer-env/bin/activate
-oncotracer --help
+oncotracer --interactive --backend conda
 ```
+
+Choose platform and **Fresh** or **FFPE** in the browser. If `~/.local/bin` is
+missing from `PATH`, follow the installer’s printed PATH instruction.
 
 ## Uninstall
 
 Preview managed Conda removal with `oncotracer uninstall --conda --dry-run`.
-Follow [uninstall](uninstall.md) to remove Conda tools, the Docker image or the
-launcher while preserving project data and results.
+Matching backend removal also removes the global command. Use
+`oncotracer uninstall --global-launcher --yes` for command-only removal.
+See [uninstall](uninstall.md); project data and results remain.

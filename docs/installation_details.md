@@ -77,6 +77,33 @@ oncotracer-v2.1.0-parity-audit.tar.gz
 
 `release-provenance.json` records the exact release commit, deterministic source archive SHA-256, executable SHA-256, stable container digest, and the successful QuickStart workflow and artifact identities. The values emitted by `oncotracer provenance --json` must agree with that record.
 
+## Command available from any directory
+
+A successful `oncotracer install` creates `~/.local/bin/oncotracer` for the
+current user, after validating the selected backend. It binds the Python
+interpreter and application location used to install it, so later terminals do
+not need environment activation. Keep the source and virtual environment for
+an editable installation, or the original archive for a standalone installation.
+It preserves the directory and arguments supplied by the caller.
+
+If `~/.local/bin` is absent from `PATH`, installation prints the export command
+needed for the current terminal. Add that directory to your shell's PATH for
+future sessions; the installer does not edit shell startup files.
+`--no-launcher` skips global command installation. Installation refuses an
+existing foreign or modified command rather than overwriting it. If you already
+placed the standalone archive itself at `~/.local/bin/oncotracer`, use
+`install --no-launcher` to retain it there.
+
+Normal [uninstall](uninstall.md) also removes the global command when its recorded
+application and backend match the removal target. `uninstall --global-launcher`
+selects only that command. Preview and dry-run leave it untouched; actual removal
+requires `--yes`. Remove it before uninstalling the Python package with pip.
+
+A command or settings publication failure does not undo already prepared analysis
+tools. Retry using the original application and target. If an interrupted command
+transaction is reported, preserve its printed journal and recovery folder; those
+records identify the previous command files and paths needed for recovery.
+
 ## Prepare exactly one backend
 
 The installation choice is saved under the user's OncoTracer configuration directory. You may still override it per run with `--backend`.

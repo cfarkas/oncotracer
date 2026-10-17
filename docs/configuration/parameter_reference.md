@@ -44,6 +44,7 @@ oncotracer install --singularity
 | `--sif PATH` | Singularity | Override the managed Singularity/Apptainer image path |
 | `--force` | Conda, Poetry, Singularity | Transactionally replace intact, owned assets only |
 | `--dry-run` | every backend | Print installation commands without executing them or writing state |
+| `--no-launcher` | every backend | Skip the owned `~/.local/bin/oncotracer` command |
 | `--root PATH` | Conda, Poetry | Explicit source or extracted payload root |
 
 Backend-irrelevant options are errors; they are never silently ignored. Conda
