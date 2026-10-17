@@ -58,12 +58,12 @@ class UserLauncherTests(unittest.TestCase):
         return code, output.getvalue() + (errors.getvalue() if code else "")
 
     @contextlib.contextmanager
-    def pip_console(self, directory_mode=0o755):
+    def pip_console(self, directory_mode=0o755, command_mode=0o755):
         path = launch.default_path()
         path.parent.mkdir(parents=True)
         path.parent.chmod(directory_mode)
         data = b"#!/usr/bin/python3\nfrom oncotracer_cli.cli import main\nmain()\n"
-        path.write_bytes(data); path.chmod(0o755)
+        path.write_bytes(data); path.chmod(command_mode)
         site = self.home / ".local/lib/python/site-packages"
         module = site / "oncotracer_cli/user_launcher.py"
         module.parent.mkdir(parents=True); module.write_text("# installed module\n")
@@ -79,7 +79,7 @@ class UserLauncherTests(unittest.TestCase):
 
     def test_pip_owned_command_is_retained_without_any_launcher_writes(self):
         for mode in (0o755, 0o775):
-            with self.subTest(mode=mode), self.pip_console(mode) as (path, data):
+            with self.subTest(mode=mode), self.pip_console(mode, mode) as (path, data):
                 before = sorted(p.name for p in path.parent.iterdir())
                 with launch.install_transaction() as transaction:
                     self.assertEqual(transaction.publish(self.config)["action"], "retain-pip")
@@ -94,6 +94,27 @@ class UserLauncherTests(unittest.TestCase):
             # Each mode uses a distinct HOME; no deletion of ownership evidence.
             self.home = self.scratch / ("home-" + str(mode))
             os.environ["HOME"] = str(self.home)
+
+    def test_default_docker_uninstall_preserves_real_pip_entry_ownership(self):
+        with self.pip_console(0o775, 0o775) as (path, data):
+            with mock.patch.object(cli, "_load_install_config", return_value=dict(self.config)):
+                code, output = self.invoke(["uninstall", "--yes", "--json"])
+            self.assertEqual(code, 0, output)
+            self.assertEqual(json.loads(output)["action"], "preserve")
+            self.assertEqual(path.read_bytes(), data)
+            self.assertEqual(sorted(p.name for p in path.parent.iterdir()), [launch.COMMAND])
+            code, output = self.invoke(["uninstall", "--global-launcher", "--yes"])
+            self.assertEqual(code, 2)
+            self.assertIn("pip uninstall oncotracer", output)
+            self.assertEqual(path.read_bytes(), data)
+
+    def test_pip_read_only_exception_does_not_adopt_foreign_group_writable_command(self):
+        with self.pip_console(0o775, 0o775) as (path, data):
+            path.write_bytes(data + b"# foreign bytes\n")
+            with self.assertRaisesRegex(OncoTracerError, "unowned"):
+                with launch.install_transaction():
+                    self.fail("foreign command was adopted")
+            self.assertFalse((path.parent / launch.MARKER).exists())
 
     def test_changed_pip_console_is_not_adopted(self):
         with self.pip_console() as (path, data):
