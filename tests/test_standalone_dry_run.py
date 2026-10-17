@@ -26,7 +26,14 @@ class DryRunPayloadCacheScopeTests(unittest.TestCase):
     def test_cli_restores_existing_payload_cache_override(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             existing = Path(directory) / "persistent-payload"
-            environment = {"ONCOTRACER_PAYLOAD_CACHE": str(existing)}
+            environment = {
+                "ONCOTRACER_PAYLOAD_CACHE": str(existing),
+                "HOME": str(Path(directory) / "home"),
+                "XDG_CONFIG_HOME": str(Path(directory) / "config"),
+                "XDG_DATA_HOME": str(Path(directory) / "data"),
+                "XDG_CACHE_HOME": str(Path(directory) / "cache"),
+                "TMPDIR": directory,
+            }
             with mock.patch.dict(os.environ, environment, clear=False):
                 with (
                     contextlib.redirect_stdout(io.StringIO()),
