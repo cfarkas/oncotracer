@@ -188,10 +188,12 @@ def _inspect(fd: int | None, path: Path, *, allow_foreign=False):
         except FileNotFoundError:
             return None
         return {"foreign": True}
-    command = _read(fd, COMMAND, 0o755)
+    command = _read(fd, COMMAND, 0o755 if marker is not None else None)
     if command is None and marker is None:
         return None
-    if command is not None and marker is None and _pip_recorded_command(path, command[0]):
+    if (command is not None and marker is None
+            and stat.S_IMODE(command[1][2]) in {0o755, 0o775}
+            and _pip_recorded_command(path, command[0])):
         return {"pip": True, "files": {COMMAND: command}}
     if command is None or marker is None:
         raise OncoTracerError(f"refusing an unowned or incomplete user command: {path}; use install --no-launcher to leave it unchanged")

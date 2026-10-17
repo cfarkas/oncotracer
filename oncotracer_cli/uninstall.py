@@ -233,6 +233,7 @@ def _command_uninstall(args) -> int:
     from .cli import _load_install_config
     from .user_launcher import installation_target, remove_transaction
 
+    explicit_global = bool(getattr(args, "global_launcher", False))
     # Fully specified removal targets do not depend on saved settings, which
     # may be missing or damaged precisely when a user needs to uninstall.
     explicit_target = (
@@ -258,7 +259,7 @@ def _command_uninstall(args) -> int:
         if args.sif or args.prefix:
             raise OncoTracerError("--global-launcher does not accept --sif or --prefix")
         target = installation_target(install) if install.get("backend") == "docker" else None
-        with remove_transaction(target, dry_run=preview, purge=args.purge, required=True) as command:
+        with remove_transaction(target, dry_run=preview, purge=args.purge, required=explicit_global) as command:
             result = command.detach()
         result.update({"kind": "global-launcher", "preserved": "Scientific tools, Docker images, saved settings and all project data are retained."})
         if getattr(args, "json", False):
