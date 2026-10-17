@@ -26,6 +26,45 @@ def variant_config(base: Path, output: Path) -> Path:
 
 
 class VariantEngineTests(unittest.TestCase):
+    def test_variant_cancellation_stops_before_copy_number_analysis(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            runtime = make_runtime_root(base)
+            config = variant_config(base, base / 'results')
+            with (
+                patch.object(engine, 'prepare_reference', return_value={}),
+                patch.object(engine, 'align_illumina', return_value={'SYNTHETIC': base/'input.bam'}),
+                patch.object(engine, '_validated_fasta_reader', return_value=contextlib.nullcontext()),
+                patch.object(engine, 'run_variants', return_value={'overall_status':'interrupted'}),
+                patch.object(engine, 'run_qdnaseq') as qdnaseq,
+                patch.object(engine, 'run_refinement_and_outputs') as refinement,
+            ):
+                with self.assertRaisesRegex(KeyboardInterrupt, 'stopped'):
+                    engine.run_native(config, root=runtime)
+            qdnaseq.assert_not_called()
+            refinement.assert_not_called()
+
+    def test_full_run_parallel_override_is_applied_before_variant_resolution(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root/'config.yml'
+            config.write_text('mode: illumina\nvariant_parallel_samples: 1\n')
+            with patch.object(engine, 'resolve_variant_request', side_effect=RuntimeError('resolved')) as resolve:
+                with self.assertRaisesRegex(RuntimeError, 'resolved'):
+                    engine.run_native(config, parallel_samples=4, dry_run=True)
+            self.assertEqual(resolve.call_args.args[0]['variant_parallel_samples'], 4)
+            self.assertEqual(config.read_text(), 'mode: illumina\nvariant_parallel_samples: 1\n')
+            with self.assertRaisesRegex(OncoTracerError, 'positive integer'):
+                engine.run_native(config, parallel_samples=True, dry_run=True)
+
+    def test_full_run_parallel_samples_requires_glimpse_branch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory)/'config.yml'
+            config.write_text('mode: illumina\n')
+            with patch.object(engine, 'resolve_variant_request', return_value=None):
+                with self.assertRaisesRegex(OncoTracerError, 'requires the Illumina GLIMPSE2'):
+                    engine.run_native(config, parallel_samples=2, dry_run=True)
+
     def test_missing_variant_tool_does_not_prevent_cna_or_browsable_failure_report(self):
         with tempfile.TemporaryDirectory(prefix="oncotracer-variant-engine-") as directory:
             base = Path(directory)

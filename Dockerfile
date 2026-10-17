@@ -2,7 +2,7 @@
 # No Docker socket, privileged execution, or nested Singularity is needed.
 FROM hkubal/clairs-to:v0.4.4@sha256:4587ee6307575f68eec686f8cce23919a59b20b8f97c6d84d0084b1ef46a8c01 AS ont_callers
 
-# OncoTracer v2 native runtime: no Nextflow. Picard's Java runtime is managed inside Conda.
+# CNA uses the native controller; complete short variants use bundled Nextflow.
 FROM condaforge/miniforge3:24.11.3-0
 
 ARG SOURCE_COMMIT
@@ -27,6 +27,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     ONCOTRACER_VARIANTS_PREFIX=/opt/oncotracer-envs/variants \
     ONCOTRACER_STRELKA_PREFIX=/opt/oncotracer-envs/strelka2 \
     ONCOTRACER_FFPERASE_PREFIX=/opt/oncotracer-envs/ffperase \
+    NXF_HOME=/tmp/nextflow \
+    NXF_DIST=/opt/nextflow/framework \
+    NXF_PLUGINS_DIR=/tmp/nextflow-plugins \
+    NXF_VER=26.04.2 \
+    NXF_OFFLINE=true \
+    NXF_DISABLE_CHECK_LATEST=true \
     MPLBACKEND=Agg \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/conda/bin:/usr/local/bin:$PATH
@@ -42,6 +48,15 @@ COPY environments/ ${ONCOTRACER_HOME}/environments/
 RUN conda config --system --set channel_priority strict \
     && conda env update --prefix /opt/conda --file environments/native-core.yml \
     && conda clean -afy
+
+# Keep the pinned launcher and framework readable for arbitrary container UIDs.
+# Runtime checks and workflow parsing work offline, without nested containers.
+RUN mkdir -p /opt/nextflow/framework/26.04.2 \
+    && curl -fsSL --retry 3 https://www.nextflow.io/releases/v26.04.2/nextflow -o /usr/local/bin/nextflow \
+    && curl -fsSL --retry 3 https://www.nextflow.io/releases/v26.04.2/nextflow-26.04.2-one.jar -o /opt/nextflow/framework/26.04.2/nextflow-26.04.2-one.jar \
+    && chmod 0755 /usr/local/bin/nextflow \
+    && chmod -R a+rX /opt/nextflow \
+    && NXF_HOME=/tmp/nextflow-build nextflow -version
 
 COPY scripts/bioconductor_mirror.sh /opt/build-support/bioconductor_mirror.sh
 
@@ -89,9 +104,10 @@ RUN if [[ -z "${SOURCE_COMMIT}" && -z "${SOURCE_SHA256}" ]]; then \
         exit 2; \
     fi \
     && chmod 0755 /usr/local/bin/oncotracer \
-    && find "${ONCOTRACER_HOME}" -type f \( -name '*.nf' -o -name 'nextflow.config' \) -delete \
     && oncotracer --version \
-    && ! command -v nextflow
+    && test -s "${ONCOTRACER_HOME}/oncotracer_cli/lpwgs/main.nf" \
+    && test -s "${ONCOTRACER_HOME}/oncotracer_cli/lpwgs/bin/bcftools_compat.py" \
+    && NXF_HOME=/tmp/nextflow-build nextflow -version
 
 ENTRYPOINT ["oncotracer"]
 CMD ["--help"]

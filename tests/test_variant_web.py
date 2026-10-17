@@ -73,6 +73,16 @@ class VariantBrowserTests(unittest.TestCase):
         self.assertFalse(Path(config['outdir']).exists())
         self.assertFalse(config['force'])
 
+    def test_parallel_resources_roundtrip_and_invalid_values(self):
+        for value in (0, -1, True, 1.5, '3'):
+            with self.subTest(value=value), self.assertRaisesRegex(OncoTracerError, 'positive integer'):
+                self.prepare(variant_parallel_samples=value)
+            self.assertFalse((self.root / 'new-project').exists())
+        prepared = self.prepare(variant_parallel_samples=2, variant_memory='64GB')
+        config = load_flat_yaml(Path(prepared['config_path']))
+        self.assertEqual(config['variant_parallel_samples'], 2)
+        self.assertEqual(config['variant_memory'], '64GB')
+
     def test_empty_override_clears_loaded_optional_fields(self):
         scenario = self.root / 'scenario.yml'; scenario.write_text('scenario fixture')
         self.values['variant_varlociraptor_scenario'] = str(scenario)
@@ -167,6 +177,29 @@ class VariantBrowserTests(unittest.TestCase):
         self.assertEqual(load_flat_yaml(Path(second['config_path']))['variant_varlociraptor'], 'required')
         with self.assertRaisesRegex(OncoTracerError, 'validate'):
             self.state.run({'project_id': first['id']})
+
+    def test_run_start_during_preflight_prevents_configuration_replacement(self):
+        from oncotracer_cli.output_safety import claim_output_run
+        from tests.test_output_safety import IDENTITY
+        loaded = self.load()
+        prepared = self.prepare(loaded)
+        config = Path(prepared['config_path'])
+        before = config.read_bytes()
+        leases = []
+        def started_during_preflight(*args, **kwargs):
+            leases.append(claim_output_run(Path(prepared['outdir']), config_path=config, identity=IDENTITY))
+            return self.mock_tools
+        try:
+            with patch('oncotracer_cli.variants.preflight_variant_tools', side_effect=started_during_preflight):
+                with self.assertRaisesRegex(OncoTracerError, 'configuration is in use'):
+                    self.state.variant_prepare({'load_id': loaded['load_id'], 'project': prepared['project'],
+                                                'threads': 2, 'variant_varlociraptor': 'required'})
+            self.assertEqual(config.read_bytes(), before)
+            self.assertIn(prepared['id'], self.state.projects)
+            leases[0].validate()
+        finally:
+            for lease in leases:
+                lease.close()
 
     def test_started_or_foreign_files_prevent_reusing_owned_project(self):
         loaded = self.load()

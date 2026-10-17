@@ -1,5 +1,6 @@
 """Existing-BAM CLI ownership, validation, real calling and failure recovery."""
 import contextlib
+from dataclasses import replace
 import io
 import json
 import os
@@ -65,9 +66,25 @@ class VariantCommandTests(unittest.TestCase):
         self.assertEqual(plan['outdir'],str(self.outdir))
         self.assertEqual(plan['reference'],str(self.reference))
         self.assertEqual(plan['threads'],2)
-        self.assertFalse(plan['nextflow_used'])
+        self.assertTrue(plan['nextflow_used'])
+        self.assertEqual(plan['engine'], 'glimpse2')
+        self.assertTrue(plan['variants']['glimpse2_required'])
+        self.assertEqual(plan['variants']['callers'], ['bcftools', 'mutect2'])
         self.assertFalse(self.outdir.exists())
         self.assertEqual(before,{str(p.relative_to(self.root)):p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
+
+    def test_parallel_cli_override_reaches_request_without_rewriting_config(self):
+        saved = self.config.read_bytes()
+        original = variant_command.resolve_variant_request
+        with patch.object(variant_command, 'resolve_variant_request', wraps=original) as resolve:
+            code, output = self.cli('--dry-run', '--threads', '8', '--parallel-samples', '2')
+        self.assertEqual(code, 0, output)
+        self.assertEqual(resolve.call_args.args[0]['variant_parallel_samples'], 2)
+        self.assertEqual(self.config.read_bytes(), saved)
+        self.assertFalse(self.outdir.exists())
+        code, output = self.cli('--dry-run', '--parallel-samples', '0')
+        self.assertEqual(code, 2)
+        self.assertIn('positive integer', output)
 
     def test_bad_manifest_and_sample_duplicates_fail_before_writes(self):
         for data,message in [
@@ -115,7 +132,16 @@ class VariantCommandTests(unittest.TestCase):
         self.assertFalse(self.outdir.exists())
 
     @unittest.skipUnless(shutil.which('samtools') and shutil.which('bcftools'), 'samtools and bcftools required')
-    def test_real_bcftools_exports_resume_failure_recovery_and_preserves_sources(self):
+    def test_internal_native_bcftools_exports_resume_failure_recovery_and_preserves_sources(self):
+        # Native execution remains an internal backend contract (also used by
+        # ONT). Override only this synthetic test; public Illumina requests
+        # above retain the complete mandatory GLIMPSE2 plan.
+        resolve = variant_command.resolve_variant_request
+        def native_request(*args, **kwargs):
+            return replace(resolve(*args, **kwargs), engine='native', callers=('bcftools',), ffperase='off')
+        resolver = patch.object(variant_command, 'resolve_variant_request', side_effect=native_request)
+        resolver.start()
+        self.addCleanup(resolver.stop)
         fixture_root=self.root/'synthetic';fixture_root.mkdir()
         fixture=SyntheticInput(fixture_root)
         self.manifest.write_text(f'sample\tbam\tstatus\nFIXTURE\t{fixture.bam}\ttumor\n')

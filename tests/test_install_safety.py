@@ -38,6 +38,38 @@ SOURCE = {
 }
 
 
+_FAKE_VARIANT_PROGRAM = r"""#!/usr/bin/python3
+import os
+import sys
+from pathlib import Path
+name = Path(sys.argv[0]).name
+args = sys.argv[1:]
+if name == "bcftools":
+    if args == ["--version"]:
+        print("bcftools " + os.environ.get("FAKE_BCFTOOLS_VERSION", "1.23.1"))
+        print("Using htslib " + os.environ.get("FAKE_HTSLIB_VERSION", "1.24"))
+    elif args == ["call", "--help"]:
+        print("--multiallelic-caller --keep-alts --keep-unseen-allele --ploidy --annotate")
+        raise SystemExit(255)
+    elif args and args[0] == "call" and "-o" in args:
+        quality = os.environ.get("FAKE_CALL_GQ", "127")
+        Path(args[args.index("-o") + 1]).write_text(
+            "##fileformat=VCFv4.2\n"
+            "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTHETIC\n"
+            "chr1\t10\t.\tA\tG\t.\t.\t.\tGT:DP:GQ\t1/1:30:" + quality + "\n"
+        )
+    else:
+        raise SystemExit(1)
+else:
+    print({
+        "samtools": "samtools 1.23.1\nUsing htslib 1.24",
+        "freebayes": "version: v1.3.10",
+        "gatk": "The Genome Analysis Toolkit (GATK) v4.6.2.0",
+        "varlociraptor": "varlociraptor 8.9.5",
+    }[name])
+"""
+
+
 def _write_executable(path: Path, content: str) -> Path:
     path.write_text(content, encoding="utf-8")
     path.chmod(0o755)
@@ -130,6 +162,50 @@ class ManagedInventoryDiagnosticsTests(unittest.TestCase):
             self.assertEqual(_snapshot(root), before)
 
 
+class VariantSemanticProbeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory(prefix="oncotracer-variant-probe-test-")
+        self.addCleanup(temporary.cleanup)
+        self.prefix = Path(temporary.name) / "variants"
+        (self.prefix / "bin").mkdir(parents=True)
+        for name in ("bcftools", "samtools", "freebayes", "gatk", "varlociraptor"):
+            _write_executable(self.prefix / "bin" / name, _FAKE_VARIANT_PROGRAM)
+
+    def test_exact_versions_and_actual_synthetic_subprocess_are_required(self) -> None:
+        from oncotracer_cli.variant_install_checks import verify_variant_environment
+        result = verify_variant_environment(self.prefix)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["probes"]["synthetic_call"]["calls"], [[10, "1/1", 30, 127]])
+        for environment in ({"FAKE_BCFTOOLS_VERSION": "1.17"}, {"FAKE_HTSLIB_VERSION": "1.23"},
+                            {"FAKE_CALL_GQ": "0"}, {"FAKE_CALL_GQ": "."}):
+            with self.subTest(environment=environment), mock.patch.dict(os.environ, environment), self.assertRaises(OncoTracerError):
+                verify_variant_environment(self.prefix)
+
+    def test_probe_rejects_executable_symlink_outside_selected_prefix(self) -> None:
+        from oncotracer_cli.variant_install_checks import verify_variant_environment
+        selected = self.prefix / "bin/bcftools"
+        outside = _write_executable(self.prefix.parent / "foreign-bcftools", _FAKE_VARIANT_PROGRAM)
+        selected.unlink()
+        selected.symlink_to(outside)
+        with self.assertRaisesRegex(OncoTracerError, "escapes its selected prefix"):
+            verify_variant_environment(self.prefix)
+
+    def test_probe_removes_foreign_runtime_and_loader_environment(self) -> None:
+        from oncotracer_cli.variant_install_checks import verify_variant_environment
+        forbidden = ("LD_LIBRARY_PATH", "LD_PRELOAD", "LD_LIBRARY_PATH_MCR", "PYTHONPYCACHEPREFIX",
+                     "PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV", "JAVA_HOME", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS")
+        commands = []
+        def runner(command, environment):
+            commands.append(command)
+            self.assertTrue(all(key not in environment for key in forbidden))
+            self.assertEqual(environment["PATH"].split(os.pathsep)[0], str(self.prefix / "bin"))
+            self.assertNotEqual(environment["HOME"], os.environ.get("HOME"))
+            return subprocess.run(command, env=environment, capture_output=True, text=True, check=False)
+        with mock.patch.dict(os.environ, {key: "/unrelated/environment" for key in forbidden}):
+            self.assertTrue(verify_variant_environment(self.prefix, runner=runner)["success"])
+        self.assertTrue(any(command[1:2] == ["call"] and "--ploidy" in command for command in commands))
+
+
 class ManagedInstallerSafetyTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory(prefix="oncotracer-install-safe-")
@@ -186,6 +262,12 @@ probe.write_text(
 probe.chmod(0o755)
 """,
         )
+        # Real subprocesses exercise the mandatory variants probes without downloads.
+        self.conda.write_text(self.conda.read_text() + "\n" +
+            "for name in ('bcftools', 'samtools', 'freebayes', 'gatk', 'varlociraptor'):\n"
+            "    executable = prefix / 'bin' / name\n"
+            f"    executable.write_text({_FAKE_VARIANT_PROGRAM!r}, encoding='utf-8')\n"
+            "    executable.chmod(0o755)\n")
         self.poetry = _write_executable(
             self.scratch / "fake-poetry",
             r"""#!/usr/bin/env python3
@@ -257,7 +339,7 @@ import sys
 args = sys.argv[1:]
 with open(os.environ["FAKE_INSTALL_LOG"], "a", encoding="utf-8") as handle:
     handle.write("apptainer\\t" + "\\t".join(args) + "\\n")
-if args[0] == "pull":
+if args[0] in {"pull", "build"}:
     pathlib.Path(args[1]).write_bytes(os.environ.get("FAKE_SIF_CONTENT", "sif-one").encode())
 elif "doctor" in args:
     print(json.dumps({"success": os.environ.get("FAKE_DOCTOR_FAIL") != "1"}))
@@ -273,6 +355,11 @@ else:
 """,
         )
         self.environment = {
+            "HOME": str(self.scratch / "home"),
+            "XDG_CONFIG_HOME": str(self.scratch / "config"),
+            "XDG_DATA_HOME": str(self.scratch / "data"),
+            "XDG_CACHE_HOME": str(self.scratch / "cache"),
+            "TMPDIR": str(self.scratch),
             "FAKE_INSTALL_LOG": str(self.log),
             "FAKE_SOURCE_VERSION": str(SOURCE["oncotracer_version"]),
             "FAKE_SOURCE_COMMIT": str(SOURCE["source_commit"]),
@@ -324,7 +411,8 @@ else:
         poetry: bool = False,
         dry_run: bool = False,
     ) -> dict[str, Path]:
-        return install_safety.install_conda_managed(
+        # Keep the historical five-child family under adversarial coverage.
+        return install_safety._install_conda_family(
             ROOT,
             base,
             conda=str(self.conda),
@@ -332,6 +420,103 @@ else:
             dry_run=dry_run,
             poetry=str(self.poetry) if poetry else None,
         )
+
+    def _public_install(self, base: Path, *, poetry: bool = False) -> dict[str, Path]:
+        return install_safety.install_conda_managed(
+            ROOT, base, conda=str(self.conda), force=False, dry_run=False,
+            poetry=str(self.poetry) if poetry else None,
+        )
+
+    def test_public_install_always_owns_and_checks_variants_in_separate_family(self) -> None:
+        base = self.scratch / "mandatory-environments"
+        prefixes = self._public_install(base)
+        variants = install_safety.managed_sibling_base(base, "variants") / "variants"
+        self.assertEqual(set(prefixes), {*install_safety.CONDA_NAMES, "variants"})
+        self.assertEqual(prefixes["variants"], variants)
+        self.assertEqual(json.loads((base / install_safety.BASE_MARKER).read_text())["managed_children"],
+                         list(install_safety.MANAGED_CHILDREN))
+        self.assertEqual(json.loads((variants.parent / install_safety.BASE_MARKER).read_text())["managed_children"],
+                         ["variants"])
+        configuration = {"core_prefix": str(prefixes["core"]), "variants_prefix": str(variants)}
+        with mock.patch.object(install_safety, "_verify_conda_runtime") as semantic_probe:
+            self.assertEqual(install_safety.managed_variants_prefix(configuration), variants)
+        semantic_probe.assert_not_called()
+        before = (_snapshot(base), _snapshot(variants.parent))
+        creates = len(self._log_lines())
+        self.assertEqual(self._public_install(base), prefixes)
+        self.assertEqual(len(self._log_lines()), creates)
+        self.assertEqual((_snapshot(base), _snapshot(variants.parent)), before)
+
+    def test_source_upgrade_adds_variants_without_rewriting_five_owned_environments(self) -> None:
+        base = self.scratch / "existing-five"
+        self._conda_install(base)
+        before = _snapshot(base)
+        creates = len(self._log_lines())
+        upgraded = {**SOURCE, "source_commit": "d" * 40, "source_sha256": "e" * 64}
+        with mock.patch.object(install_safety, "_source_identity", return_value=upgraded):
+            prefixes = self._public_install(base)
+            configuration = {"core_prefix": str(prefixes["core"]), "variants_prefix": str(prefixes["variants"])}
+            self.assertEqual(install_safety.managed_variants_prefix(configuration), prefixes["variants"])
+            with install_safety.managed_conda_runtime_lock(base, require_poetry=False) as native:
+                self.assertEqual(set(native), set(install_safety.CONDA_NAMES))
+        self.assertEqual(_snapshot(base), before)
+        self.assertEqual(len(self._log_lines()) - creates, 1)
+        marker = json.loads((prefixes["variants"].parent / install_safety.BASE_MARKER).read_text())
+        self.assertEqual(marker["source"], upgraded)
+
+    def test_poetry_upgrade_keeps_scientific_markers_and_updates_separate_launcher(self) -> None:
+        base = self.scratch / "poetry-additive-upgrade"
+        self._conda_install(base, poetry=True)
+        before = _snapshot(base)
+        creates = sum(line.startswith("conda\t") for line in self._log_lines())
+        upgraded = {**SOURCE, "source_commit": "d" * 40, "source_sha256": "e" * 64}
+        with (
+            mock.patch.object(install_safety, "_source_identity", return_value=upgraded),
+            mock.patch.dict(os.environ, {"FAKE_SOURCE_COMMIT": upgraded["source_commit"],
+                                         "FAKE_SOURCE_SHA256": upgraded["source_sha256"]}),
+        ):
+            prefixes = self._public_install(base, poetry=True)
+            with install_safety.managed_conda_runtime_lock(base, require_poetry=True, semantic=True) as runtime:
+                self.assertEqual(runtime["poetry-runtime"],
+                                 install_safety.managed_sibling_base(base, "poetry") / "poetry-runtime")
+        self.assertEqual(_snapshot(base), before)
+        self.assertEqual(sum(line.startswith("conda\t") for line in self._log_lines()) - creates, 1)
+        self.assertIn("variants", prefixes)
+        poetry_base = install_safety.managed_sibling_base(base, "poetry")
+        marker = json.loads((poetry_base / install_safety.BASE_MARKER).read_text())
+        self.assertEqual(marker["managed_children"], ["poetry-runtime"])
+        self.assertEqual(marker["source"], upgraded)
+
+    def test_public_install_rejects_unowned_variants_before_changing_native_base(self) -> None:
+        base = self.scratch / "blocked-native"
+        foreign = install_safety.managed_sibling_base(base, "variants")
+        foreign.mkdir()
+        (foreign / "sentinel").write_bytes(b"unowned bytes")
+        before = _snapshot(self.scratch)
+        with self.assertRaisesRegex(OncoTracerError, "unowned"):
+            self._public_install(base)
+        self.assertEqual(_snapshot(self.scratch), before)
+
+    def test_managed_variant_selection_rejects_foreign_paths_and_modified_inventory(self) -> None:
+        base = self.scratch / "authenticated-selection"
+        prefixes = self._public_install(base)
+        configuration = {"core_prefix": str(prefixes["core"]), "variants_prefix": str(prefixes["variants"])}
+        with self.assertRaisesRegex(OncoTracerError, "canonical managed child"):
+            install_safety.managed_variants_prefix({**configuration, "variants_prefix": str(base / "other")})
+        tool = prefixes["variants"] / "bin/bcftools"
+        tool.write_text(tool.read_text() + "\n# unauthorized mutation\n")
+        with self.assertRaisesRegex(OncoTracerError, "changed or foreign entries"):
+            install_safety.managed_variants_prefix(configuration)
+
+    def test_bad_caller_version_does_not_publish_install_settings(self) -> None:
+        base = self.scratch / "bad-variant-version"
+        with mock.patch.dict(os.environ, {"FAKE_BCFTOOLS_VERSION": "1.17"}):
+            result = self._run_unmocked_cli_install("install", "--conda", "--root", str(ROOT), "--prefix", str(base))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("1.23.1", result.stderr)
+        self.assertFalse((self.scratch / "cli-config/oncotracer/config.json").exists())
+        variants = install_safety.managed_sibling_base(base, "variants")
+        self.assertFalse((variants / install_safety.BASE_MARKER).exists())
 
     def _sif_install(
         self, destination: Path, *, force: bool = False, dry_run: bool = False
@@ -350,6 +535,70 @@ else:
             if self.log.exists()
             else []
         )
+
+    def test_sif_local_docker_build_preserves_source_and_verifies_runtime(self) -> None:
+        destination = self.scratch / "local-docker.sif"
+        image = "docker-daemon:oncotracer:local-test"
+        installed = install_safety.install_sif_managed(
+            destination,
+            executable=str(self.apptainer),
+            image=image,
+            force=False,
+            dry_run=False,
+        )
+        self.assertEqual(installed, {"sif": str(destination), "image": image})
+        marker = json.loads(install_safety._sif_sidecar(destination).read_text())
+        self.assertEqual(marker["image"], image)
+        self.assertEqual(marker["source"], SOURCE)
+        lines = self._log_lines()
+        self.assertTrue(any("\tbuild\t" in line and line.endswith("\t" + image) for line in lines))
+        self.assertFalse(any("\tpull\t" in line for line in lines))
+        self.assertTrue(any("\tdoctor\t" in line for line in lines))
+        self.assertTrue(any("\tprovenance\t" in line for line in lines))
+
+    def test_sif_local_docker_dry_run_has_no_writes_or_subprocess(self) -> None:
+        destination = self.scratch / "local-docker-dry.sif"
+        before = _snapshot(self.scratch)
+        with mock.patch.object(install_safety.subprocess, "run") as run:
+            install_safety.install_sif_managed(
+                destination,
+                executable=str(self.apptainer),
+                image="docker-daemon://oncotracer:local-test",
+                force=False,
+                dry_run=True,
+            )
+        run.assert_not_called()
+        self.assertEqual(_snapshot(self.scratch), before)
+
+    def test_sif_image_transport_command_keeps_registry_and_local_separate(self) -> None:
+        for image in ("registry.example/oncotracer:test", "docker://registry.example/oncotracer:test"):
+            self.assertEqual(
+                install_safety._sif_image_command("apptainer", "candidate.sif", image),
+                ["apptainer", "pull", "candidate.sif", "docker://registry.example/oncotracer:test"],
+            )
+        for image in ("docker-daemon:oncotracer:test", "docker-daemon://oncotracer:test"):
+            self.assertEqual(
+                install_safety._sif_image_command("apptainer", "candidate.sif", image),
+                ["apptainer", "build", "candidate.sif", "docker-daemon:oncotracer:test"],
+            )
+
+    def test_sif_invalid_transport_fails_before_mutation(self) -> None:
+        destination = self.scratch / "invalid-source.sif"
+        before = _snapshot(self.scratch)
+        for image in (
+            "", "docker://", "https://example.test/image.sif", "docker-daemon:",
+            "docker-daemon:oncotracer", "docker-daemon:registry:5000/oncotracer",
+            "docker-daemon:oncotracer:", "docker-daemon:oncotracer:tag with space",
+        ):
+            with self.subTest(image=image), self.assertRaises(OncoTracerError):
+                install_safety.install_sif_managed(
+                    destination,
+                    executable=str(self.apptainer),
+                    image=image,
+                    force=False,
+                    dry_run=False,
+                )
+            self.assertEqual(_snapshot(self.scratch), before)
 
     def test_conda_unowned_target_is_preserved_with_and_without_force(self) -> None:
         for force in (False, True):
@@ -1091,6 +1340,25 @@ else:
                     (binaries / "gistic2").symlink_to("gistic2.bin")
                 install_safety._verify_conda_runtime(destination, name)
 
+    def test_variant_probe_accepts_packaged_gatk_relative_share_symlink(self) -> None:
+        destination = self.scratch / "packaged-variant-tools"
+        binaries = destination / "bin"
+        binaries.mkdir(parents=True)
+        for name in ("bcftools", "samtools", "freebayes", "varlociraptor"):
+            _write_executable(binaries / name, _FAKE_VARIANT_PROGRAM)
+        share = destination / "share/gatk4-4.6.2.0-1"
+        share.mkdir(parents=True)
+        target = _write_executable(share / "gatk", _FAKE_VARIANT_PROGRAM)
+        logical = binaries / "gatk"
+        logical.symlink_to("../share/gatk4-4.6.2.0-1/gatk")
+        descriptor, resolved = install_safety._open_managed_probe(destination, logical, "packaged GATK")
+        try:
+            self.assertEqual(resolved, target)
+            self.assertEqual(os.fstat(descriptor).st_ino, target.stat().st_ino)
+        finally:
+            os.close(descriptor)
+        install_safety._verify_conda_runtime(destination, "variants")
+
     def test_named_physical_python_preserves_real_prefix_discovery(self) -> None:
         destination = self.scratch / "real-prefix-probe"
         venv.EnvBuilder(with_pip=False, symlinks=False).create(destination)
@@ -1196,7 +1464,21 @@ else:
                 (runtimes / "current").symlink_to(outside, target_is_directory=True)
                 probe.symlink_to("runtimes/current/python")
             elif attack == "dotdot":
-                probe.symlink_to("../outside-python")
+                probe.symlink_to("../../external-probe")
+            elif attack == "nested-dotdot":
+                outside = self.scratch / "unverified-nested-runtime"
+                outside.mkdir()
+                (binaries / "unverified").symlink_to(outside, target_is_directory=True)
+                _write_executable(binaries / "python3.11", "#!/bin/sh\necho CORE_OK\n")
+                probe.symlink_to("unverified/../python3.11")
+            elif attack == "share-parent":
+                outside = self.scratch / "unverified-share-runtime"
+                outside.mkdir()
+                _write_executable(outside / "python", "#!/bin/sh\necho EXTERNAL\n")
+                (destination / "share").symlink_to(outside, target_is_directory=True)
+                probe.symlink_to("../share/python")
+            elif attack == "parent-loop":
+                probe.symlink_to("../bin/python")
             elif attack == "loop":
                 probe.symlink_to("python3")
                 (binaries / "python3").symlink_to("python")
@@ -1220,6 +1502,9 @@ else:
             "absolute",
             "parent",
             "dotdot",
+            "nested-dotdot",
+            "share-parent",
+            "parent-loop",
             "loop",
             "special",
             "hardlinked-symlink",
@@ -2143,6 +2428,9 @@ with (
 """
         environment = os.environ.copy()
         environment.update(self.environment)
+        environment["HOME"] = str(self.scratch / "cli-home")
+        environment["XDG_CACHE_HOME"] = str(self.scratch / "cli-cache")
+        environment["TMPDIR"] = str(self.scratch)
         environment["XDG_CONFIG_HOME"] = str(self.scratch / "cli-config")
         environment["XDG_DATA_HOME"] = str(self.scratch / "cli-data")
         return subprocess.run(

@@ -9,14 +9,20 @@ requires-python = ">=3.10,<3.14"
 dependencies = []
 
 [project.optional-dependencies]
+reports = ["torch>=2.2", "transformers>=4.51,<5", "safetensors>=0.4", "reportlab>=4.0"]
+variants = ["pysam>=0.22", "numpy>=1.24", "scipy>=1.10", "openpyxl>=3.1", "reportlab>=4.0"]
 paper = ["matplotlib>=3.6", "numpy>=1.24"]
 
 [project.scripts]
 oncotracer = "oncotracer_cli.cli:main"
 
 [tool.poetry]
+exclude = ["**/__pycache__/**", "**/*.pyc", "tests/artifacts/**"]
 packages = [{ include = "oncotracer_cli" }]
 include = [
+  { path = "main.nf", format = ["wheel", "sdist"] },
+  { path = "nextflow.config", format = ["wheel", "sdist"] },
+  { path = "oncotracer_cli/lpwgs", format = ["wheel", "sdist"] },
   { path = "bin/cna_classifier_nf/VERSION.txt", format = ["wheel", "sdist"] },
   { path = "bin/cna_classifier_nf/assets", format = ["wheel", "sdist"] },
   { path = "bin/cna_classifier_nf/bin", format = ["wheel", "sdist"] },

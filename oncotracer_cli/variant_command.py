@@ -137,13 +137,31 @@ def _partial_failure_cause(status) -> str:
 
 
 def command_variants(args) -> int:
+    """Authenticate a managed caller prefix before any workflow dispatch."""
+    if args.dry_run:
+        return _command_variants(args)
+    config_path = require_file(Path(args.config).expanduser(), "Variant configuration").resolve()
+    config = load_flat_yaml(config_path)
+    from .variant_runtime import managed_variant_runtime
+    with managed_variant_runtime(config, mode=str(config.get("mode") or "").strip().lower(), semantic=True):
+        return _command_variants(args)
+
+
+def _command_variants(args) -> int:
     config_path = require_file(Path(args.config).expanduser(), "Variant configuration").resolve()
     digest = sha256_file(config_path)
     config = load_flat_yaml(config_path)
     if sha256_file(config_path) != digest:
         raise OncoTracerError("Variant configuration changed while being read")
+    parallel_samples = getattr(args, "parallel_samples", None)
+    if parallel_samples is not None:
+        if type(parallel_samples) is not int or parallel_samples < 1:
+            raise OncoTracerError("parallel_samples must be a positive integer")
+        config["variant_parallel_samples"] = parallel_samples
     mode = str(config.get("mode") or "").strip().lower()
     request = resolve_variant_request(config, mode=mode)
+    if parallel_samples is not None and parallel_samples > 1 and (request is None or request.engine != "glimpse2"):
+        raise OncoTracerError("--parallel-samples > 1 requires the Illumina GLIMPSE2 short-variant workflow")
     if request is None:
         raise OncoTracerError("Set run_variants: true in the variant configuration")
     outdir = Path(os.path.abspath(_path(config.get("outdir"), config_path.parent, "outdir")))
@@ -179,7 +197,7 @@ def command_variants(args) -> int:
     # no embedded reference/scripts payload needs extraction, even in a zipapp.
     inspect_output_target(outdir)
     _standalone_target(outdir)
-    plan = {"schema": COMMAND_SCHEMA, "engine": "native", "nextflow_used": False,
+    plan = {"schema": COMMAND_SCHEMA, "engine": request.engine, "nextflow_used": request.engine == "glimpse2",
             "analysis": "variants", "mode": mode, "config": str(config_path), "outdir": str(outdir),
             "threads": threads, "force": force, "reference": str(reference), "bam_manifest": str(manifest),
             "samples": [{"sample": sample, "bam": str(bam), "status": statuses[sample]} for sample, bam in bams.items()],
@@ -204,7 +222,7 @@ def command_variants(args) -> int:
         atomic_write_json(outdir / MARKER, {"schema": COMMAND_SCHEMA, "output_id": lease.owner["output_id"]})
         atomic_write_json(native / "variant-inputs.json", {**plan, "config_sha256": digest, "manifest_sha256": manifest_digest,
                                                           "input_metadata": input_snapshot})
-        atomic_write_text(native / "engine.txt", f"engine=native\nnextflow_used=false\nversion={__version__}\nanalysis=variants\n")
+        atomic_write_text(native / "engine.txt", f"engine={request.engine}\nnextflow_used={str(request.engine == 'glimpse2').lower()}\nversion={__version__}\nanalysis=variants\n")
         cache = native / "runtime-cache"
         cache.mkdir(exist_ok=True)
         trace = native / "trace.tsv"
@@ -226,7 +244,7 @@ def command_variants(args) -> int:
                 atomic_write_json(Path(status["status_file"]), status)
         validate_inputs()
         lease.validate()
-        summary = {"oncotracer_version": __version__, "engine": "native", "nextflow_used": False,
+        summary = {"oncotracer_version": __version__, "engine": request.engine, "nextflow_used": request.engine == "glimpse2",
                    "analysis": "variants", "mode": mode, "outdir": str(outdir), "completed_at": utc_now(),
                    "workflow_status": status["overall_status"], "cna_status": "not_requested",
                    "methylation_status": "not_requested", "cna_classifier_status": "not_requested",
@@ -254,7 +272,8 @@ def command_variants(args) -> int:
 def add_variants_command(subparsers) -> None:
     parser = subparsers.add_parser("variants", help="Call small variants from existing BAMs without repeating CNA/alignment")
     parser.add_argument("--config", required=True, help="flat YAML with mode, outdir, variant_bam_manifest, variant_reference and variant options")
-    parser.add_argument("--threads", type=int, help="override CPU threads from the configuration")
+    parser.add_argument("--threads", type=int, help="total CPU budget shared across concurrent samples")
+    parser.add_argument("--parallel-samples", type=int, help="maximum concurrent Illumina sample workflows (default: config, otherwise 1)")
     parser.add_argument("--force", action="store_true", default=None, help="rerun owned variant outputs; never permits overwriting foreign files")
     parser.add_argument("--dry-run", action="store_true", help="validate paths/config and print a plan without writing files or running tools")
     parser.set_defaults(func=command_variants)

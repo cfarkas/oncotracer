@@ -11,6 +11,7 @@ from .variant_model_assets import is_auto_resource, resource_download_plan
 
 
 PATH_FIELDS = (
+    'variant_glimpse_reference_dir', 'variant_glimpse_bin', 'variant_resource_dir', 'variant_patients', 'variant_reuse_from',
     'variant_targets_bed', 'variant_tool_prefix', 'variant_strelka_prefix', 'variant_clair3_model',
     'variant_clairsto_sif', 'variant_annovar_dir', 'variant_annovar_db',
     'variant_ffperase_root', 'variant_ffperase_models', 'variant_ffperase_sif',
@@ -49,7 +50,7 @@ def resource_paths(config):
             # Optional annotation discovery reports absent paths at execution.
             continue
         paths.append(path)
-        if not path.is_dir():
+        if not path.is_dir() or key in ('variant_glimpse_reference_dir', 'variant_resource_dir', 'variant_reuse_from'):
             continue
         if key in ('variant_tool_prefix', 'variant_ffperase_prefix', 'variant_strelka_prefix'):
             for directory in ('bin', 'conda-meta'):
@@ -73,6 +74,8 @@ def load_configuration(config_path):
             config[key] = str(_path(config[key], config_path.parent, key).resolve())
     mode = str(config.get('mode') or '').strip().lower()
     config['mode'] = mode
+    from .variant_runtime import apply_variant_runtime
+    config, selection = apply_variant_runtime(config, mode=mode)
     request = resolve_variant_request(config, mode=mode)
     if request is None:
         raise OncoTracerError('Set run_variants: true in the existing-BAM configuration.')
@@ -97,6 +100,7 @@ def load_configuration(config_path):
     captured = snapshot(files)
     assert_snapshot(captured, hashes)
     return {'config_path': str(config_path), 'config': config, 'request': request,
+            'runtime_diagnostics': list(selection.diagnostics),
             'samples': [{'sample': name, 'bam': str(bam), 'status': statuses[name]} for name, bam in bams.items()],
             'input_snapshot': captured, 'input_digests': hashes}
 
@@ -125,6 +129,7 @@ def load_for_browser(state, data):
             number += 1
             suggested = parent / (stem + f'-rerun-{number}')
         return {'load_id': load_id, 'config': loaded['config'].copy(), 'samples': loaded['samples'],
+                'runtime_diagnostics': loaded['runtime_diagnostics'],
                 'suggested_project': str(suggested), 'mode': loaded['config']['mode']}
 
 
@@ -150,6 +155,10 @@ def prepare_for_browser(state, data):
                 elif key == "variant_matched_normals":
                     from .strelka2 import parse_matched_normals
                     config[key] = parse_matched_normals(data[key])
+                elif key == "variant_parallel_samples":
+                    if type(data[key]) is not int or data[key] < 1:
+                        raise OncoTracerError("Parallel samples must be a positive integer.")
+                    config[key] = data[key]
                 elif key in VARIANT_BOOLEAN_FIELDS:
                     if type(data[key]) is not bool:
                         raise OncoTracerError(f"{key} must be true or false.")
@@ -159,6 +168,8 @@ def prepare_for_browser(state, data):
         for key in PATH_FIELDS:
             if config.get(key) and not is_auto_resource(key, config[key]):
                 config[key] = str(_path(config[key], Path(loaded['config_path']).parent, key).resolve())
+        from .variant_runtime import apply_variant_runtime
+        config, selection = apply_variant_runtime(config, mode=config['mode'])
         request = resolve_variant_request(config, mode=config['mode'])
         from .strelka2 import validate_samples
         validate_samples(request, [s['sample'] for s in loaded['samples']], {s['sample']: s['status'] for s in loaded['samples']})
@@ -190,7 +201,8 @@ def prepare_for_browser(state, data):
         inputs = {**loaded['input_snapshot'], **snapshot(resource_paths(config))}
         protect_project(project, config, inputs)
         pending = resource_download_plan(request)
-        check = {'errors': [], 'warnings': ['BAM contents are validated when the analysis starts.'], 'resource_downloads': pending}
+        check = {'errors': [], 'warnings': [*loaded.get('runtime_diagnostics', []), *selection.diagnostics,
+                                          'BAM contents are validated when the analysis starts.'], 'resource_downloads': pending}
         if pending:
             check['warnings'].append('Selected public resources will be verified and prepared when Run starts; setup downloads nothing.')
         try:
@@ -219,8 +231,14 @@ def prepare_for_browser(state, data):
             with config_path.open('x', encoding='utf-8') as handle:
                 handle.write(render_flat_yaml(config))
         else:
-            atomic_write_text(config_path, render_flat_yaml(config))
-            state.projects.pop(previous['id'])
+            from .output_safety import configuration_lock
+            with configuration_lock(config_path.parent, exclusive=True, directory=True), configuration_lock(config_path, exclusive=True):
+                if (set(project.iterdir()) != {config_path.parent}
+                        or set(config_path.parent.iterdir()) != {config_path}
+                        or _fingerprint([config_path]) != previous['fingerprint']):
+                    raise OncoTracerError('This project has started or changed. Choose a new project folder.')
+                atomic_write_text(config_path, render_flat_yaml(config))
+                state.projects.pop(previous['id'])
         project_stat = project.stat()
         prepared = {'id': secrets.token_urlsafe(18), 'project': str(project),
                     'config_path': str(config_path), 'config': config_path.read_text(),

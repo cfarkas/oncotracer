@@ -1,0 +1,4 @@
+chrom	pos	rsid	ref	alt	effect_allele	trait	model	association	limitation	pubmed
+15	28120472	rs12913832	A	G	G	Eye pigmentation	recessive	Two G alleles are associated with lighter/blue eyes in studied European cohorts	Other pigmentation genes and population background substantially affect eye color; this is not a complete phenotype predictor	18252222
+2	135851076	rs4988235	G	A	A	Adult lactase persistence	dominant	The A allele is associated with lactase persistence in several European-derived populations	Other persistence alleles exist; this marker does not diagnose lactose intolerance or symptoms	29063188
+16	48224287	rs17822931	C	T	T	Earwax type	recessive	Two T alleles are associated with dry earwax	This is one trait association, not a health assessment; genomic alleles are forward-strand GRCh38	16444273

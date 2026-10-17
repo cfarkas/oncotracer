@@ -25,7 +25,7 @@ function variantScopeFields(scope){
 function variantFieldLabel(key){return document.querySelector('label[for="'+key+'"]')?.textContent||key.replace(/^variant_/,'').replaceAll('_',' ');}
 let variantPairSamples=[],variantPairSelections=new Map(),variantPairDefaults={};
 function resetVariantPairing(){variantPairSamples=[];variantPairSelections.clear();variantPairDefaults={};}
-function activeVariantCallers(){return [...document.querySelectorAll('#variant-callers input:checked,#callers input:checked')].map(field=>field.value);}
+function activeVariantCallers(){if(typeof mode!=='undefined'&&mode==='illumina')return ['bcftools','mutect2'];return [...document.querySelectorAll('#variant-callers input:checked,#callers input:checked')].map(field=>field.value);}
 function renderVariantCallers(containerId,options,selected,onchange){
   const container=document.getElementById(containerId);container.replaceChildren();
   const groups=[
@@ -94,13 +94,20 @@ function configureVariantModelControls(config={}){
   }
 }
 function syncVariantChoices(platform,preservation){
-  const ready=Boolean(preservation);
-  show('variant-caller-settings',ready);
+  const ready=Boolean(preservation),glimpse=platform==='illumina';
+  show('variant-caller-settings',ready&&!glimpse);show('variant-glimpse-settings',ready&&glimpse);show('variant-glimpse-resources',ready&&glimpse);
+  show('variant-target-settings',!glimpse);show('variant-extra-filter-settings',!glimpse);
+  for(const nav of document.querySelectorAll('.variant-nav'))nav.hidden=glimpse;
+  for(const id of ['variant_ffperase','variant-ffperase-choice-label','variant_annovar','variant-annovar-choice-label'])show(id,!glimpse);
+  if(glimpse){document.getElementById('variant_ffperase').value=preservation==='ffpe'?'required':'off';document.getElementById('variant_annovar').value='auto';document.getElementById('variant_varlociraptor').value='off';const annovar=document.getElementById('variant-annovar-fields')||document.getElementById('annovar-fields');if(annovar)annovar.hidden=false;}
+  const advanced=document.getElementById('variant-advanced-settings');if(advanced.dataset.platform!==platform){advanced.open=!glimpse;advanced.dataset.platform=platform||'';}
+  document.getElementById('variant-tools-title').textContent=glimpse?'Resources and workflow':'Caller tools and models';
+  document.getElementById('variant-specimen-title').textContent=glimpse?'Complete short-variant analysis':'Specimen and callers';
   for(const id of ['variant-tools-section','variant-filter-section','variant-annotation-section'])show(id,ready);
   for(const button of document.querySelectorAll('[data-variant-section]'))if(button.dataset.variantSection!=='variant-specimen-section')button.disabled=!ready;
   document.getElementById('variant-filter-title').textContent=preservation==='ffpe'&&platform==='illumina'?'FFPE damage and filtering':'Variant filtering';
   document.getElementById('variant-filter-note').textContent=preservation==='ffpe'?
-    (platform==='illumina'?'Caller filters and FFPE orientation checks apply. FFPERASE provides a separate damage assessment.':'ONT caller filters apply. FFPERASE supports Illumina reads and is not applied to ONT.'):
+    (platform==='illumina'?'FFPERASE assessment is required. FFPE flags and germline imputation support are retained separately; imputation alone does not confirm an artifact or a somatic mutation.':'ONT caller filters apply. FFPERASE supports Illumina reads and is not applied to ONT.'):
     'Caller quality filters are applied automatically. Add Varlociraptor only when you want the extra evidence assessment.';
 }
 function syncVariantModelControls(){
@@ -121,6 +128,15 @@ function syncVariantModelControls(){
 }
 function guidedVariantPayload(data){
   const get=id=>document.getElementById(id);
+  if(typeof mode!=='undefined'&&mode==='illumina'){
+    data.variant_engine='glimpse2';data.variant_callers='bcftools,mutect2';data.variant_annovar='auto';data.variant_varlociraptor='off';
+    data.variant_ffperase=data.variant_specimen_type==='ffpe'?'required':'off';
+    data.variant_confidence_gwas=get('variant_confidence_gwas').value||'medium';
+    const parallel=Number(get('variant_parallel_samples').value);
+    if(!Number.isInteger(parallel)||parallel<1)throw Error('Samples running at once must be a positive integer.');
+    data.variant_parallel_samples=parallel;data.variant_memory=get('variant_memory').value.trim()||'32GB';
+    for(const key of ['variant_patients','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])data[key]=get(key).value.trim();
+  }else data.variant_engine='legacy';
   if(String(data.variant_callers||'').split(',').includes('clair3')&&get('variant-clair3-source').value==='auto'){
     data.variant_clair3_model='auto';data.variant_ont_profile=get('variant_ont_profile').value;
   }else data.variant_ont_profile='';
@@ -179,8 +195,9 @@ function resetVariantResourceResults(){
   for(const status of document.querySelectorAll('.variant-path-status')){status.textContent='';delete status.dataset.state;}
 }
 function variantResourceValues(){
-  const keys=[...variantPathKeys,'variant_clairsto_platform','variant_ffperase','variant_varlociraptor','variant_annovar','variant_ont_profile'];
+  const keys=[...variantPathKeys,'variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_patients','variant_reuse_from','variant_clairsto_platform','variant_ffperase','variant_varlociraptor','variant_annovar','variant_ont_profile'];
   const values=Object.fromEntries(keys.map(key=>[key,document.getElementById(key).value.trim()]));
+  values.variant_engine=typeof mode!=='undefined'&&mode==='illumina'?'glimpse2':'legacy';
   values.variant_download_resources=document.getElementById('variant_download_resources').checked;
   values.variant_accept_ffperase_license=document.getElementById('variant_accept_ffperase_license').checked;
   // Keep inactive alternative paths in the form, but don't use them for this check.
@@ -279,12 +296,18 @@ async function detectVariantResources(payload,scope='all',openDialog=true){
   status.textContent='Checking '+(scope==='all'?'selected resources':scope==='annotation'?'ANNOVAR':scope==='ffperase'?'FFPERASE':variantFieldLabel(scope))+'…';
   try{
     const result=await api('/api/variant-resources',payload),fields=variantScopeFields(scope);let filled=0;
+    let managedChanged=false;
+    if(result.managed_variant_prefix&&fields.includes('variant_tool_prefix')){
+      const field=$('variant_tool_prefix');field.dataset.managedPrefix=result.managed_variant_prefix;managedChanged=field.value.trim()!==result.managed_variant_prefix;
+      if(managedChanged){field.value=result.managed_variant_prefix;field.dispatchEvent(new Event('input',{bubbles:true}));filled++;}
+    }
     for(const [key,value]of Object.entries(result.fields||{}))if(fields.includes(key)&&variantApplyPath(key,value))filled++;
     variantResourceLastResult=result;variantResourceLastScope=scope;renderVariantResources(result,scope);
     const missing=(result.resources||[]).filter(resource=>resource.status==='missing'&&(scope==='all'||fields.includes(variantResourceField(resource)))).length;
     status.textContent='Check complete · '+filled+' empty path'+(filled===1?'':'s')+' filled'+(missing?' · see official download and registration links for missing resources':'')+'.';
     document.getElementById('variant-resource-title').textContent=scope==='all'?'Detected resources':scope==='annotation'?'ANNOVAR resources':scope==='ffperase'?'FFPERASE resources':variantFieldLabel(scope);
-    document.getElementById('variant-resource-dialog-status').textContent='Only empty fields were filled. Choose a candidate explicitly to change an entered path.';
+    document.getElementById('variant-resource-dialog-status').textContent=result.managed_variant_prefix?(managedChanged?'Caller environment updated to the validated OncoTracer installation: ':'Caller tools use the validated OncoTracer installation: ')+result.managed_variant_prefix+'. Other entered paths were preserved.':'Only empty fields were filled. Choose a candidate explicitly to change an entered path.';
+    if(managedChanged)status.textContent='Caller environment updated to the validated OncoTracer installation: '+result.managed_variant_prefix;
     document.getElementById('variant-resource-review').hidden=false;if(openDialog)openVariantResourceDialog();
     return result;
   }catch(error){status.textContent='Resource check could not finish. Your entered paths were kept.';throw error;}
@@ -298,7 +321,7 @@ async function detectVariantResourcesBeforeSave(){
 for(const field of document.querySelectorAll('[id^="variant_"],#backend,#docker_image'))for(const event of ['input','change'])field.addEventListener(event,()=>{resetVariantResourceResults();syncVariantLayout();});
 document.getElementById('variant-ffperase-runtime').addEventListener('input',()=>{document.getElementById('variant-ffperase-runtime').dataset.chosen='user';},true);
 document.getElementById('variant-ffperase-runtime').onchange=()=>{document.getElementById('variant-ffperase-runtime').dataset.chosen='user';resetVariantResourceResults();syncVariantLayout();invalidate();};
-for(const button of document.querySelectorAll('[data-variant-section]'))button.onclick=()=>{const section=document.getElementById(button.dataset.variantSection),heading=section.querySelector('h3');section.scrollIntoView({behavior:'smooth',block:'start'});heading.tabIndex=-1;heading.focus({preventScroll:true});};
+for(const button of document.querySelectorAll('[data-variant-section]'))button.onclick=()=>{const section=document.getElementById(button.dataset.variantSection),heading=section.querySelector('h3');for(let parent=section.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;section.scrollIntoView({behavior:'smooth',block:'start'});heading.tabIndex=-1;heading.focus({preventScroll:true});};
 document.getElementById('variant-resource-close').onclick=()=>document.getElementById('variant-resource-dialog').close();
 document.getElementById('variant-resource-review').onclick=()=>{if(variantResourceLastResult){renderVariantResources(variantResourceLastResult,variantResourceLastScope);openVariantResourceDialog();}};
 '''

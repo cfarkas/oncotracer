@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from dataclasses import replace
 import gzip
 import hashlib
 import json
@@ -102,7 +103,9 @@ class VariantRequestTests(unittest.TestCase):
         with patch.object(shutil, "which", return_value=None):
             request = variants.resolve_variant_request(request_config(), mode="illumina")
             self.assertEqual(request.specimen_type, "fresh")
-            self.assertEqual(request.callers, ("bcftools",))
+            self.assertEqual(request.callers, ("bcftools", "mutect2"))
+            self.assertEqual(request.engine, "glimpse2")
+            self.assertTrue(variants.variant_plan(request)["glimpse2_required"])
             self.assertIsInstance(variants.variant_plan(request), dict)
 
     def test_missing_or_invalid_preservation_is_rejected(self):
@@ -238,6 +241,9 @@ class NativeVariantIntegrationTests(unittest.TestCase):
     def run_fixture(self, fixture: SyntheticInput, *, specimen_type="fresh", runner=None, annotation="off", force=False):
         request = variants.resolve_variant_request(
             request_config(variant_specimen_type=specimen_type, variant_annovar=annotation, variant_ffperase="off"), mode="illumina")
+        # Exercise the retained internal native engine with a tiny synthetic
+        # reference. Public Illumina resolution must still mandate GLIMPSE2.
+        request = replace(request, engine="native", callers=("bcftools",), ffperase="off")
         result = variants.run_variants(
             request, {"FIXTURE": fixture.bam}, fixture.reference,
             fixture.outdir, runner or fixture.runner, fixture.ledger,

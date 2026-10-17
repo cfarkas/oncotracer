@@ -160,7 +160,7 @@ jq -e \
     .parity_audit_bundle_sha256 == $parity and
     .native_nextflow_required == false and
     .container.reference == ("ghcr.io/cfarkas/oncotracer@" + $digest) and
-    .container.digest == $digest and .container.nextflow_present == false and
+    .container.digest == $digest and .container.nextflow_present == true and
     .frozen_comparator.oncotracer_commit ==
       "032c1268fa7fdcadc48087055066d7a9fc59bd89" and
     .frozen_comparator.oncotracer_image ==

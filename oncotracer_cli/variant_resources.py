@@ -29,11 +29,12 @@ CALLERS = {"illumina": ("mutect2", "freebayes", "bcftools", "strelka2_germline",
 TOOLS = {"mutect2": ("gatk",), "freebayes": ("freebayes",), "bcftools": ("bcftools",),
          "clair3": ("run_clair3.sh", "run_clair3.py"), "clairs_to": ("run_clairs_to",)}
 PATH_FIELDS = {
+    "variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir", "variant_patients", "variant_reuse_from",
     "variant_tool_prefix", "variant_strelka_prefix", "variant_targets_bed", "variant_clair3_model", "variant_clairsto_sif",
     "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_prefix", "variant_ffperase_sif",
     "variant_annovar_dir", "variant_annovar_db", "variant_varlociraptor_scenario",
 }
-SETTING_FIELDS = {"variant_ffperase", "variant_varlociraptor", "variant_annovar", "variant_reference_build",
+SETTING_FIELDS = {"variant_engine", "variant_ffperase", "variant_varlociraptor", "variant_annovar", "variant_reference_build",
                   "variant_clairsto_platform", "variant_specimen_type", "variant_callers", "variant_varlociraptor_fdr",
                   "variant_varlociraptor_events", "variant_varlociraptor_sample", "variant_ont_profile",
                   "variant_download_resources", "variant_accept_ffperase_license"}
@@ -313,8 +314,17 @@ def discover_variant_resources(data, *, roots=(), environment=None):
     """
     mode, backend, specimen, callers, values, image = _payload(data)
     search = _Search(environment, roots)
+    from .variant_runtime import apply_variant_runtime
+    values, runtime_selection = apply_variant_runtime(
+        values, mode=mode, backend=backend, install_config=search.config, environment=search.env)
+    for message in runtime_selection.diagnostics:
+        search.note(message)
+    if runtime_selection.managed:
+        search.note("Caller tools use the authenticated OncoTracer installation; unrelated Conda environments and PATH are not candidates.")
     fields = {k: v for k, v in values.items() if k in PATH_FIELDS and v and not (backend == "docker" and k in DOCKER_IGNORED)}
     resources, missing, candidates = [], [], []
+    # Other optional runtimes (FFPErase/Strelka2) still use bounded discovery.
+    # The common Illumina caller prefix was already selected authoritatively.
     prefixes = search.prefixes()
     locations = search.resource_locations()
     if backend == "singularity":
@@ -444,7 +454,7 @@ def discover_variant_resources(data, *, roots=(), environment=None):
             search.note("Docker ignores host caller/Strelka2/FFPERASE prefixes and SIFs. External source, models and annotation paths remain host resources.")
     else:
         matching = []
-        path_complete = all(search.which(names) for names in required.values())
+        path_complete = not runtime_selection.managed and all(search.which(names) for names in required.values())
         if not selected_prefix:
             matching = [p for p in prefixes if all(search.which(names, p) for names in required.values())]
             if not path_complete and len(matching) == 1:
@@ -602,7 +612,8 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         if item['status'] == 'missing':
             item.update(official_resource_help(item['id']))
     guides = installation_guides(missing, backend=backend, mode=mode, root=recipe_root)
-    return {"backend": backend, "fields": fields, "resources": resources, "candidates": candidates, "install_guides": guides,
+    return {**({"managed_variant_prefix": str(runtime_selection.prefix)} if runtime_selection.managed else {}),
+            "backend": backend, "fields": fields, "resources": resources, "candidates": candidates, "install_guides": guides,
             "searched": search.searched, "notes": ["Read-only discovery: no executable, model, installer, download or analysis was run. Review suggestions before saving.",
             "Only common installation folders and a bounded set of their children were checked. For resources elsewhere, enter the exact path and select detect_tools again.",
             "Clinical target BEDs, Varlociraptor scenarios and reference genomes are never selected from filenames; supply the intended files explicitly.", *search.notes]}

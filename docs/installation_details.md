@@ -3,6 +3,13 @@
 Start with [installation](installation.md). This reference explains standalone
 builds, alternative backends, ownership checks and recovery behavior.
 
+The complete Illumina GLIMPSE2 workflow and resume/FFPE repairs are on
+[PR #53](https://github.com/cfarkas/oncotracer/pull/53). Until it is merged, select
+`feat/glimpse2-complete-short-variants` when cloning, as described in
+[installation](installation.md#1-install-the-command). Build the repaired
+[Docker image from that source](containers.md#fastq-to-cna-and-variants), with
+both source provenance arguments; existing registry tags are unchanged.
+
 OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.13 is required by the portable zipapp. The selected backend supplies BWA, samtools, Picard, R, qDNAseq, HMMcopy, ichorCNA, the optional classifier, and GISTIC2.
 
 ## Choose the installation route
@@ -10,14 +17,15 @@ OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.1
 | Goal | Use |
 | --- | --- |
 | First CNA analysis | [Standard installation](installation.md), then the Conda section below. |
-| CNA and small variants | Current launcher plus [optional environments](variants_reference.md#conda-and-docker), or the [dated Docker image](containers.md#fastq-to-cna-and-variants). |
+| CNA and small variants | Current branch launcher plus [managed variant tools](variants_reference.md#conda-and-docker), or the [current source Docker image](containers.md#fastq-to-cna-and-variants). |
 | HPC CNA analysis | The Singularity/Apptainer section below. |
 | Develop the launcher | The Poetry section below. |
 | Move a project to a remote server | [Headless setup and SSH](headless.md). |
 
-Choose one backend per run. The five core CNA environments do not install the
-optional small-variant callers or their models. Installing tools, downloading
-reference/model data, and starting an analysis are separate steps.
+Choose one backend per run. Conda and Poetry install both the core CNA tools and
+the shared Illumina variant tools. Caller-specific FFPE/ONT runtimes and models
+remain separate. Installing tools, downloading reference/model data, and starting
+an analysis are separate steps.
 
 ## Requirements
 
@@ -69,6 +77,33 @@ oncotracer-v2.1.0-parity-audit.tar.gz
 
 `release-provenance.json` records the exact release commit, deterministic source archive SHA-256, executable SHA-256, stable container digest, and the successful QuickStart workflow and artifact identities. The values emitted by `oncotracer provenance --json` must agree with that record.
 
+## Command available from any directory
+
+A successful `oncotracer install` creates `~/.local/bin/oncotracer` for the
+current user, after validating the selected backend. It binds the Python
+interpreter and application location used to install it, so later terminals do
+not need environment activation. Keep the source and virtual environment for
+an editable installation, or the original archive for a standalone installation.
+It preserves the directory and arguments supplied by the caller.
+
+If `~/.local/bin` is absent from `PATH`, installation prints the export command
+needed for the current terminal. Add that directory to your shell's PATH for
+future sessions; the installer does not edit shell startup files.
+`--no-launcher` skips global command installation. Installation refuses an
+existing foreign or modified command rather than overwriting it. If you already
+placed the standalone archive itself at `~/.local/bin/oncotracer`, use
+`install --no-launcher` to retain it there.
+
+Normal [uninstall](uninstall.md) also removes the global command when its recorded
+application and backend match the removal target. `uninstall --global-launcher`
+selects only that command. Preview and dry-run leave it untouched; actual removal
+requires `--yes`. Remove it before uninstalling the Python package with pip.
+
+A command or settings publication failure does not undo already prepared analysis
+tools. Retry using the original application and target. If an interrupted command
+transaction is reported, preserve its printed journal and recovery folder; those
+records identify the previous command files and paths needed for recovery.
+
 ## Prepare exactly one backend
 
 The installation choice is saved under the user's OncoTracer configuration directory. You may still override it per run with `--backend`.
@@ -82,13 +117,14 @@ oncotracer install --conda
 oncotracer doctor --backend conda
 ```
 
-Five isolated, versioned environments are created:
+Six isolated, versioned scientific environments are created:
 
 - core alignment, Picard, refinement, CNA notation, and plotting tools;
 - qDNAseq with its pinned R 4.1 stack;
 - ichorCNA/HMMcopy with its pinned R 4.4 stack;
 - the optional CNA classifier/report stack;
-- GISTIC2 for the optional recurrence branch.
+- GISTIC2 for the optional recurrence branch;
+- shared Illumina variant tools, including bcftools 1.23.1 linked to HTSlib 1.24, samtools, GATK, FreeBayes and Varlociraptor.
 
 Separating the environments avoids incompatible R and compiled-library constraints. The default location is below the user's versioned OncoTracer data directory. Use an explicit shared location when required:
 
@@ -99,13 +135,19 @@ oncotracer install --conda \
 oncotracer doctor --backend conda
 ```
 
-The optional `variants`, `ffperase` and `strelka2` environments are created
-separately; see [variant installation commands](variants_reference.md#conda-and-docker).
+For a scientific prefix root `B`, the mandatory variant environment lives at
+`B-variants/variants`. It is installed and checked by the same command.
+Its verified prefix is saved in the installation settings and selected by managed
+Illumina setup and runs, even if an older configuration names an unrelated Conda
+environment. The replacement is reported before analysis. The optional `ffperase`
+and `strelka2` environments are created separately; see
+[variant installation commands](variants_reference.md#conda-and-docker).
 Existing ANNOVAR software and databases are also separate. Setup resource
 autodetection inspects these installations without installing them. Approved
 public model/resource downloads occur only when Run starts.
 
-Use `--force` only when deliberately rebuilding all five prefixes.
+Use `--force` only when deliberately rebuilding managed prefixes. Compatible,
+authenticated scientific environments are reused during application upgrades.
 
 The prefix parent must be absent, empty, or already owned by this OncoTracer
 installer. OncoTracer never adopts a populated Conda directory or an unmarked
@@ -133,7 +175,7 @@ oncotracer install --docker
 oncotracer doctor --backend docker
 ```
 
-The default installer pulls the stable CNA image `ghcr.io/cfarkas/oncotracer:2.1.0`, validates the native tools inside it, and saves the image reference. It does not install Docker, alter daemon settings, or request administrator privileges silently.
+The default installer pulls `carlosfarkas/oncotracer:fastq-variants-20261017`, validates its tools and saves the image reference. The older `ghcr.io/cfarkas/oncotracer:2.1.0` remains available for earlier CNA workflows. It does not install Docker, alter daemon settings, or request administrator privileges silently.
 
 Run an analysis with:
 
@@ -144,14 +186,18 @@ oncotracer run --backend docker \
 
 All paths in the YAML should be absolute. OncoTracer derives the required project mounts from the configuration.
 
-For the optional variant workflow, choose the newer image explicitly and retain
+To build locally instead, use the
+[current source image build](containers.md#fastq-to-cna-and-variants), then
+install that local image with `--no-pull`.
+
+The following image includes the GLIMPSE2/FFPE and concurrent-project repairs. Retain
 that selection when running:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922 \
+  --image carlosfarkas/oncotracer:fastq-variants-20261017 \
   --config /absolute/path/project/config/run.yml
 ```
 
@@ -214,7 +260,7 @@ of those steps without overwriting earlier evidence.
 
 ### Poetry
 
-Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development:
+Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development. To develop or test the repairs before PR #53 is merged, add `--branch feat/glimpse2-complete-short-variants` to the clone command below:
 
 ```bash
 git clone https://github.com/cfarkas/oncotracer.git
@@ -222,14 +268,14 @@ cd oncotracer
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
 
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer --version
-/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer doctor \
+/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer --version
+/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer doctor \
   --backend poetry
 ```
 
 `./oncotracer install --poetry` installs the locked Python launcher into the
 explicit, OncoTracer-owned `poetry-runtime` child and creates the same five
-Conda scientific environments. It does not select or modify Poetry's global
+core Conda environments plus the verified variant environment. It does not select or modify Poetry's global
 environment, another checkout's virtual environment, or an existing unowned
 prefix. OncoTracer first builds a wheel from an exact clean checkout in an
 isolated transaction tree, then invokes only the final virtual environment's

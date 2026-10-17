@@ -3629,9 +3629,13 @@ def _run_variant_branch(request, bams, reference, outdir, runner, ledger, toolch
     """Preserve successful CNA work when an optional caller fails."""
     try:
         with _validated_fasta_reader(reference, runner):
-            return run_variants(request, bams, reference, outdir, runner, ledger,
-                                threads=threads, force=force, toolchain=toolchain,
-                                sample_statuses={s.sample: s.status for s in samples})
+            status = run_variants(request, bams, reference, outdir, runner, ledger,
+                                  threads=threads, force=force, toolchain=toolchain,
+                                  sample_statuses={s.sample: s.status for s in samples})
+            if status.get('overall_status') == 'interrupted':
+                # Cancellation applies to the whole run, including later CNA work.
+                raise KeyboardInterrupt('OncoTracer analysis stopped')
+            return status
     except (OSError, OncoTracerError, ValueError) as error:
         status = {"overall_status": "failed", "completed_samples": [], "failed_samples": list(bams),
                   "error": _sanitize_sample_error(error)}
@@ -3645,6 +3649,7 @@ def run_native(
     *,
     root: Path | None = None,
     threads: int | None = None,
+    parallel_samples: int | None = None,
     force: bool | None = None,
     dry_run: bool = False,
     methylation: bool | None = None,
@@ -3659,6 +3664,7 @@ def run_native(
         config_path,
         root=root,
         threads=threads,
+        parallel_samples=parallel_samples,
         force=force,
         dry_run=dry_run,
         methylation=methylation,
@@ -3679,6 +3685,7 @@ def _run_native_impl(
     *,
     root: Path | None,
     threads: int | None,
+    parallel_samples: int | None,
     force: bool | None,
     dry_run: bool,
     methylation: bool | None,
@@ -3711,6 +3718,10 @@ def _run_native_impl(
                 f"OncoTracer YAML config changed before execution: {config_path}"
             )
         config = dict(_verified_config)
+    if parallel_samples is not None:
+        if type(parallel_samples) is not int or parallel_samples < 1:
+            raise OncoTracerError("parallel_samples must be a positive integer")
+        config["variant_parallel_samples"] = parallel_samples
     _reject_local_sample_panel(config)
     if methylation_only is not None:
         config["methylation_only"] = methylation_only
@@ -3726,6 +3737,8 @@ def _run_native_impl(
         raise OncoTracerError("config mode must be illumina or ont")
     ont_caller = _ont_caller(config) if mode == "ont" else None
     variant_request = resolve_variant_request(config, mode=mode)
+    if parallel_samples is not None and parallel_samples > 1 and (variant_request is None or variant_request.engine != "glimpse2"):
+        raise OncoTracerError("--parallel-samples > 1 requires the Illumina GLIMPSE2 short-variant workflow")
     if variant_request and only_methylation:
         raise OncoTracerError("Variants require alignment; select CNA with optional methylation, not methylation_only")
     if variant_request and variant_request.reference_build != "hg38":
@@ -3767,6 +3780,7 @@ def _run_native_impl(
                 config_path,
                 root=execution_root,
                 threads=threads,
+                parallel_samples=parallel_samples,
                 force=force,
                 dry_run=False,
                 methylation=methylation,

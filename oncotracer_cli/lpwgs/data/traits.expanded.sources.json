@@ -1,0 +1,838 @@
+{
+  "assembly": "GRCh38",
+  "sources": {
+    "rs312262906": {
+      "url": "https://rest.ensembl.org/variation/human/rs312262906?content-type=application/json",
+      "mapping": {
+        "start": 89919343,
+        "end": 89919344,
+        "location": "16:89919343-89919344",
+        "coord_system": "chromosome",
+        "allele_string": "AA/A/AAA",
+        "ancestral_allele": "AA",
+        "assembly_name": "GRCh38",
+        "seq_region_name": "16",
+        "strand": 1
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs11547464": {
+      "url": "https://rest.ensembl.org/variation/human/rs11547464?content-type=application/json",
+      "mapping": {
+        "strand": 1,
+        "end": 89919683,
+        "location": "16:89919683-89919683",
+        "assembly_name": "GRCh38",
+        "start": 89919683,
+        "seq_region_name": "16",
+        "ancestral_allele": "G",
+        "coord_system": "chromosome",
+        "allele_string": "G/A"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs885479": {
+      "url": "https://rest.ensembl.org/variation/human/rs885479?content-type=application/json",
+      "mapping": {
+        "coord_system": "chromosome",
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "G",
+        "strand": 1,
+        "location": "16:89919746-89919746",
+        "start": 89919746,
+        "seq_region_name": "16",
+        "allele_string": "G/A/C",
+        "end": 89919746
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1805008": {
+      "url": "https://rest.ensembl.org/variation/human/rs1805008?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "strand": 1,
+        "allele_string": "C/T",
+        "ancestral_allele": "C",
+        "location": "16:89919736-89919736",
+        "seq_region_name": "16",
+        "start": 89919736,
+        "coord_system": "chromosome",
+        "end": 89919736
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1805005": {
+      "url": "https://rest.ensembl.org/variation/human/rs1805005?content-type=application/json",
+      "mapping": {
+        "end": 89919436,
+        "ancestral_allele": "G",
+        "allele_string": "G/T",
+        "coord_system": "chromosome",
+        "seq_region_name": "16",
+        "assembly_name": "GRCh38",
+        "location": "16:89919436-89919436",
+        "start": 89919436,
+        "strand": 1
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1805006": {
+      "url": "https://rest.ensembl.org/variation/human/rs1805006?content-type=application/json",
+      "mapping": {
+        "strand": 1,
+        "allele_string": "C/A/G",
+        "coord_system": "chromosome",
+        "seq_region_name": "16",
+        "assembly_name": "GRCh38",
+        "location": "16:89919510-89919510",
+        "start": 89919510,
+        "end": 89919510,
+        "ancestral_allele": "C"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1805007": {
+      "url": "https://rest.ensembl.org/variation/human/rs1805007?content-type=application/json",
+      "mapping": {
+        "location": "16:89919709-89919709",
+        "seq_region_name": "16",
+        "start": 89919709,
+        "end": 89919709,
+        "coord_system": "chromosome",
+        "assembly_name": "GRCh38",
+        "strand": 1,
+        "allele_string": "C/A/G/T",
+        "ancestral_allele": "C"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1805009": {
+      "url": "https://rest.ensembl.org/variation/human/rs1805009?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "coord_system": "chromosome",
+        "start": 89920138,
+        "strand": 1,
+        "allele_string": "G/A/C",
+        "location": "16:89920138-89920138",
+        "end": 89920138,
+        "ancestral_allele": "G",
+        "seq_region_name": "16"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs201326893": {
+      "url": "https://rest.ensembl.org/variation/human/rs201326893?content-type=application/json",
+      "mapping": {
+        "strand": 1,
+        "ancestral_allele": "C",
+        "end": 89919714,
+        "seq_region_name": "16",
+        "allele_string": "C/A",
+        "coord_system": "chromosome",
+        "start": 89919714,
+        "assembly_name": "GRCh38",
+        "location": "16:89919714-89919714"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs2228479": {
+      "url": "https://rest.ensembl.org/variation/human/rs2228479?content-type=application/json",
+      "mapping": {
+        "seq_region_name": "16",
+        "assembly_name": "GRCh38",
+        "start": 89919532,
+        "location": "16:89919532-89919532",
+        "end": 89919532,
+        "strand": 1,
+        "allele_string": "G/A/C",
+        "coord_system": "chromosome",
+        "ancestral_allele": "G"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1110400": {
+      "url": "https://rest.ensembl.org/variation/human/rs1110400?content-type=application/json",
+      "mapping": {
+        "location": "16:89919722-89919722",
+        "seq_region_name": "16",
+        "start": 89919722,
+        "end": 89919722,
+        "coord_system": "chromosome",
+        "assembly_name": "GRCh38",
+        "strand": 1,
+        "ancestral_allele": "T",
+        "allele_string": "T/C"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs28777": {
+      "url": "https://rest.ensembl.org/variation/human/rs28777?content-type=application/json",
+      "mapping": {
+        "coord_system": "chromosome",
+        "ancestral_allele": "C",
+        "allele_string": "C/A/G",
+        "assembly_name": "GRCh38",
+        "start": 33958854,
+        "strand": 1,
+        "location": "5:33958854-33958854",
+        "end": 33958854,
+        "seq_region_name": "5"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs16891982": {
+      "url": "https://rest.ensembl.org/variation/human/rs16891982?content-type=application/json",
+      "mapping": {
+        "seq_region_name": "5",
+        "assembly_name": "GRCh38",
+        "start": 33951588,
+        "strand": 1,
+        "end": 33951588,
+        "location": "5:33951588-33951588",
+        "allele_string": "C/A/G",
+        "coord_system": "chromosome",
+        "ancestral_allele": "C"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs12821256": {
+      "url": "https://rest.ensembl.org/variation/human/rs12821256?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "T",
+        "allele_string": "T/A/C/G",
+        "strand": 1,
+        "seq_region_name": "12",
+        "location": "12:88934558-88934558",
+        "end": 88934558,
+        "coord_system": "chromosome",
+        "start": 88934558
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs4959270": {
+      "url": "https://rest.ensembl.org/variation/human/rs4959270?content-type=application/json",
+      "mapping": {
+        "allele_string": "C/A/G/T",
+        "location": "6:457748-457748",
+        "end": 457748,
+        "seq_region_name": "6",
+        "ancestral_allele": "C",
+        "assembly_name": "GRCh38",
+        "start": 457748,
+        "strand": 1,
+        "coord_system": "chromosome"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs12203592": {
+      "url": "https://rest.ensembl.org/variation/human/rs12203592?content-type=application/json",
+      "mapping": {
+        "allele_string": "C/G/T",
+        "seq_region_name": "6",
+        "end": 396321,
+        "start": 396321,
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "C",
+        "coord_system": "chromosome",
+        "strand": 1,
+        "location": "6:396321-396321"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1042602": {
+      "url": "https://rest.ensembl.org/variation/human/rs1042602?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "strand": 1,
+        "seq_region_name": "11",
+        "allele_string": "C/A",
+        "ancestral_allele": "C",
+        "location": "11:89178528-89178528",
+        "coord_system": "chromosome",
+        "start": 89178528,
+        "end": 89178528
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1800407": {
+      "url": "https://rest.ensembl.org/variation/human/rs1800407?content-type=application/json",
+      "mapping": {
+        "start": 27985172,
+        "coord_system": "chromosome",
+        "end": 27985172,
+        "location": "15:27985172-27985172",
+        "seq_region_name": "15",
+        "strand": 1,
+        "allele_string": "C/T",
+        "ancestral_allele": "C",
+        "assembly_name": "GRCh38"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs2402130": {
+      "url": "https://rest.ensembl.org/variation/human/rs2402130?content-type=application/json",
+      "mapping": {
+        "allele_string": "G/A/C/T",
+        "ancestral_allele": "G",
+        "seq_region_name": "14",
+        "strand": 1,
+        "assembly_name": "GRCh38",
+        "end": 92334859,
+        "start": 92334859,
+        "coord_system": "chromosome",
+        "location": "14:92334859-92334859"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs12913832": {
+      "url": "https://rest.ensembl.org/variation/human/rs12913832?content-type=application/json",
+      "mapping": {
+        "end": 28120472,
+        "seq_region_name": "15",
+        "allele_string": "A/C/G",
+        "start": 28120472,
+        "location": "15:28120472-28120472",
+        "strand": 1,
+        "coord_system": "chromosome",
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "A"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs2378249": {
+      "url": "https://rest.ensembl.org/variation/human/rs2378249?content-type=application/json",
+      "mapping": {
+        "allele_string": "G/A/C",
+        "location": "20:34630286-34630286",
+        "end": 34630286,
+        "ancestral_allele": "A",
+        "seq_region_name": "20",
+        "assembly_name": "GRCh38",
+        "coord_system": "chromosome",
+        "strand": 1,
+        "start": 34630286
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs12896399": {
+      "url": "https://rest.ensembl.org/variation/human/rs12896399?content-type=application/json",
+      "mapping": {
+        "start": 92307319,
+        "end": 92307319,
+        "allele_string": "G/A/T",
+        "seq_region_name": "14",
+        "strand": 1,
+        "location": "14:92307319-92307319",
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "G",
+        "coord_system": "chromosome"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1393350": {
+      "url": "https://rest.ensembl.org/variation/human/rs1393350?content-type=application/json",
+      "mapping": {
+        "strand": 1,
+        "allele_string": "G/A",
+        "ancestral_allele": "G",
+        "assembly_name": "GRCh38",
+        "start": 89277878,
+        "end": 89277878,
+        "coord_system": "chromosome",
+        "location": "11:89277878-89277878",
+        "seq_region_name": "11"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs683": {
+      "url": "https://rest.ensembl.org/variation/human/rs683?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "seq_region_name": "9",
+        "strand": 1,
+        "ancestral_allele": "A",
+        "allele_string": "C/A",
+        "location": "9:12709305-12709305",
+        "coord_system": "chromosome",
+        "start": 12709305,
+        "end": 12709305
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs3114908": {
+      "url": "https://rest.ensembl.org/variation/human/rs3114908?content-type=application/json",
+      "mapping": {
+        "strand": 1,
+        "end": 89317317,
+        "ancestral_allele": "C",
+        "assembly_name": "GRCh38",
+        "location": "16:89317317-89317317",
+        "start": 89317317,
+        "coord_system": "chromosome",
+        "allele_string": "T/A/C/G",
+        "seq_region_name": "16"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1800414": {
+      "url": "https://rest.ensembl.org/variation/human/rs1800414?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "coord_system": "chromosome",
+        "strand": 1,
+        "start": 27951891,
+        "location": "15:27951891-27951891",
+        "allele_string": "T/A/C",
+        "ancestral_allele": "T",
+        "seq_region_name": "15",
+        "end": 27951891
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs10756819": {
+      "url": "https://rest.ensembl.org/variation/human/rs10756819?content-type=application/json",
+      "mapping": {
+        "ancestral_allele": "G",
+        "end": 16858086,
+        "seq_region_name": "9",
+        "allele_string": "G/A/C/T",
+        "coord_system": "chromosome",
+        "start": 16858086,
+        "assembly_name": "GRCh38",
+        "location": "9:16858086-16858086",
+        "strand": 1
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs2238289": {
+      "url": "https://rest.ensembl.org/variation/human/rs2238289?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "coord_system": "chromosome",
+        "start": 28208069,
+        "strand": 1,
+        "allele_string": "A/G",
+        "location": "15:28208069-28208069",
+        "end": 28208069,
+        "ancestral_allele": "A",
+        "seq_region_name": "15"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs17128291": {
+      "url": "https://rest.ensembl.org/variation/human/rs17128291?content-type=application/json",
+      "mapping": {
+        "ancestral_allele": "A",
+        "allele_string": "A/G",
+        "assembly_name": "GRCh38",
+        "seq_region_name": "14",
+        "strand": 1,
+        "start": 92416482,
+        "end": 92416482,
+        "location": "14:92416482-92416482",
+        "coord_system": "chromosome"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs6497292": {
+      "url": "https://rest.ensembl.org/variation/human/rs6497292?content-type=application/json",
+      "mapping": {
+        "seq_region_name": "15",
+        "allele_string": "A/G",
+        "end": 28251049,
+        "start": 28251049,
+        "coord_system": "chromosome",
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "G",
+        "location": "15:28251049-28251049",
+        "strand": 1
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1129038": {
+      "url": "https://rest.ensembl.org/variation/human/rs1129038?content-type=application/json",
+      "mapping": {
+        "coord_system": "chromosome",
+        "location": "15:28111713-28111713",
+        "end": 28111713,
+        "start": 28111713,
+        "strand": 1,
+        "seq_region_name": "15",
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "C",
+        "allele_string": "C/T"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1667394": {
+      "url": "https://rest.ensembl.org/variation/human/rs1667394?content-type=application/json",
+      "mapping": {
+        "allele_string": "C/A/T",
+        "ancestral_allele": "C",
+        "coord_system": "chromosome",
+        "seq_region_name": "15",
+        "end": 28285036,
+        "location": "15:28285036-28285036",
+        "strand": 1,
+        "assembly_name": "GRCh38",
+        "start": 28285036
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1126809": {
+      "url": "https://rest.ensembl.org/variation/human/rs1126809?content-type=application/json",
+      "mapping": {
+        "location": "11:89284793-89284793",
+        "seq_region_name": "11",
+        "start": 89284793,
+        "coord_system": "chromosome",
+        "end": 89284793,
+        "assembly_name": "GRCh38",
+        "strand": 1,
+        "allele_string": "G/A",
+        "ancestral_allele": "G"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1470608": {
+      "url": "https://rest.ensembl.org/variation/human/rs1470608?content-type=application/json",
+      "mapping": {
+        "allele_string": "G/A/C/T",
+        "ancestral_allele": "T",
+        "seq_region_name": "15",
+        "strand": 1,
+        "assembly_name": "GRCh38",
+        "end": 28042975,
+        "start": 28042975,
+        "coord_system": "chromosome",
+        "location": "15:28042975-28042975"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1426654": {
+      "url": "https://rest.ensembl.org/variation/human/rs1426654?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "G",
+        "allele_string": "A/G/T",
+        "strand": 1,
+        "seq_region_name": "15",
+        "location": "15:48134287-48134287",
+        "end": 48134287,
+        "coord_system": "chromosome",
+        "start": 48134287
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs6119471": {
+      "url": "https://api.ncbi.nlm.nih.gov/variation/v0/refsnp/6119471",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "seq_region_name": "20",
+        "strand": 1,
+        "start": 34197406,
+        "end": 34197406,
+        "allele_string": "C/A/G"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1545397": {
+      "url": "https://rest.ensembl.org/variation/human/rs1545397?content-type=application/json",
+      "mapping": {
+        "start": 27942626,
+        "end": 27942626,
+        "coord_system": "chromosome",
+        "location": "15:27942626-27942626",
+        "seq_region_name": "15",
+        "strand": 1,
+        "allele_string": "A/T",
+        "ancestral_allele": "A",
+        "assembly_name": "GRCh38"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs6059655": {
+      "url": "https://rest.ensembl.org/variation/human/rs6059655?content-type=application/json",
+      "mapping": {
+        "seq_region_name": "20",
+        "end": 34077942,
+        "location": "20:34077942-34077942",
+        "strand": 1,
+        "assembly_name": "GRCh38",
+        "start": 34077942,
+        "allele_string": "A/G",
+        "ancestral_allele": "G",
+        "coord_system": "chromosome"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs12441727": {
+      "url": "https://rest.ensembl.org/variation/human/rs12441727?content-type=application/json",
+      "mapping": {
+        "allele_string": "G/A/C",
+        "ancestral_allele": "G",
+        "strand": 1,
+        "assembly_name": "GRCh38",
+        "coord_system": "chromosome",
+        "end": 28026629,
+        "start": 28026629,
+        "seq_region_name": "15",
+        "location": "15:28026629-28026629"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs3212355": {
+      "url": "https://rest.ensembl.org/variation/human/rs3212355?content-type=application/json",
+      "mapping": {
+        "location": "16:89917970-89917970",
+        "seq_region_name": "16",
+        "start": 89917970,
+        "end": 89917970,
+        "coord_system": "chromosome",
+        "assembly_name": "GRCh38",
+        "strand": 1,
+        "allele_string": "C/T",
+        "ancestral_allele": "C"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs8051733": {
+      "url": "https://rest.ensembl.org/variation/human/rs8051733?content-type=application/json",
+      "mapping": {
+        "coord_system": "chromosome",
+        "start": 89957798,
+        "strand": 1,
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "G",
+        "seq_region_name": "16",
+        "end": 89957798,
+        "location": "16:89957798-89957798",
+        "allele_string": "A/G"
+      },
+      "trait": "Pigmentation (HIrisPlex-S marker)",
+      "source_url": "https://hirisplex.erasmusmc.nl/",
+      "pubmed": ""
+    },
+    "rs1815739": {
+      "url": "https://rest.ensembl.org/variation/human/rs1815739?content-type=application/json",
+      "mapping": {
+        "end": 66560624,
+        "seq_region_name": "11",
+        "allele_string": "C/A/T",
+        "start": 66560624,
+        "location": "11:66560624-66560624",
+        "strand": 1,
+        "coord_system": "chromosome",
+        "assembly_name": "GRCh38",
+        "ancestral_allele": "C"
+      },
+      "trait": "ACTN3 muscle function",
+      "source_url": "https://bots.snpedia.com/index.php/Rs1815739",
+      "pubmed": ""
+    },
+    "rs713598": {
+      "url": "https://rest.ensembl.org/variation/human/rs713598?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "strand": 1,
+        "allele_string": "C/A/G/T",
+        "ancestral_allele": "G",
+        "location": "7:141973545-141973545",
+        "seq_region_name": "7",
+        "start": 141973545,
+        "end": 141973545,
+        "coord_system": "chromosome"
+      },
+      "trait": "Bitter taste (TAS2R38 haplotype marker)",
+      "source_url": "https://bots.snpedia.com/index.php/Rs713598",
+      "pubmed": ""
+    },
+    "rs1726866": {
+      "url": "https://api.ncbi.nlm.nih.gov/variation/v0/refsnp/1726866",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "seq_region_name": "7",
+        "strand": 1,
+        "start": 141972905,
+        "end": 141972905,
+        "allele_string": "G/A/C/T"
+      },
+      "trait": "Bitter taste (TAS2R38 haplotype marker)",
+      "source_url": "https://bots.snpedia.com/index.php/Rs1726866",
+      "pubmed": ""
+    },
+    "rs10246939": {
+      "url": "https://rest.ensembl.org/variation/human/rs10246939?content-type=application/json",
+      "mapping": {
+        "start": 141972804,
+        "location": "7:141972804-141972804",
+        "assembly_name": "GRCh38",
+        "seq_region_name": "7",
+        "allele_string": "T/C",
+        "coord_system": "chromosome",
+        "ancestral_allele": "C",
+        "end": 141972804,
+        "strand": 1
+      },
+      "trait": "Bitter taste (TAS2R38 haplotype marker)",
+      "source_url": "https://bots.snpedia.com/index.php/Rs10246939",
+      "pubmed": ""
+    },
+    "rs762551": {
+      "url": "https://rest.ensembl.org/variation/human/rs762551?content-type=application/json",
+      "mapping": {
+        "allele_string": "C/A/G",
+        "location": "15:74749576-74749576",
+        "end": 74749576,
+        "ancestral_allele": "A",
+        "seq_region_name": "15",
+        "assembly_name": "GRCh38",
+        "coord_system": "chromosome",
+        "strand": 1,
+        "start": 74749576
+      },
+      "trait": "Caffeine metabolism",
+      "source_url": "https://bots.snpedia.com/index.php/Rs762551",
+      "pubmed": ""
+    },
+    "rs1229984": {
+      "url": "https://rest.ensembl.org/variation/human/rs1229984?content-type=application/json",
+      "mapping": {
+        "location": "4:99318162-99318162",
+        "allele_string": "T/A/C/G",
+        "seq_region_name": "4",
+        "ancestral_allele": "C",
+        "end": 99318162,
+        "assembly_name": "GRCh38",
+        "strand": 1,
+        "start": 99318162,
+        "coord_system": "chromosome"
+      },
+      "trait": "Alcohol metabolism (ADH1B)",
+      "source_url": "https://bots.snpedia.com/index.php/Rs1229984",
+      "pubmed": ""
+    },
+    "rs671": {
+      "url": "https://rest.ensembl.org/variation/human/rs671?content-type=application/json",
+      "mapping": {
+        "strand": 1,
+        "start": 111803962,
+        "coord_system": "chromosome",
+        "assembly_name": "GRCh38",
+        "seq_region_name": "12",
+        "ancestral_allele": "G",
+        "end": 111803962,
+        "location": "12:111803962-111803962",
+        "allele_string": "G/A"
+      },
+      "trait": "Alcohol metabolism (ALDH2)",
+      "source_url": "https://bots.snpedia.com/index.php/Rs671",
+      "pubmed": ""
+    },
+    "rs9939609": {
+      "url": "https://rest.ensembl.org/variation/human/rs9939609?content-type=application/json",
+      "mapping": {
+        "assembly_name": "GRCh38",
+        "strand": 1,
+        "start": 53786615,
+        "coord_system": "chromosome",
+        "location": "16:53786615-53786615",
+        "allele_string": "T/A",
+        "seq_region_name": "16",
+        "ancestral_allele": "A",
+        "end": 53786615
+      },
+      "trait": "Body mass association (FTO)",
+      "source_url": "https://bots.snpedia.com/index.php/Rs9939609",
+      "pubmed": ""
+    }
+  },
+  "excluded": [
+    {
+      "rsid": "rs312262906",
+      "reason": "indel or non-SNP; not supported by this SNP panel"
+    }
+  ]
+}

@@ -68,12 +68,18 @@ class AssessmentTests(unittest.TestCase):
         for preservation, expected in [('fresh','off'),('ffpe','required')]:
             req=variants.resolve_variant_request({'run_variants':True,'variant_specimen_type':preservation,'variant_callers':'bcftools'},mode='illumina')
             self.assertEqual(req.ffperase,expected)
-        with self.assertRaises(OncoTracerError):
-            variants.resolve_variant_request({'run_variants':True,'variant_specimen_type':'fresh','variant_ffperase':'required'},mode='illumina')
+        fresh=variants.resolve_variant_request({'run_variants':True,'variant_specimen_type':'fresh','variant_ffperase':'required'},mode='illumina')
+        self.assertEqual(fresh.ffperase,'off')
     def test_invalid_fdr_and_custom_event_without_model_rejected(self):
-        for updates in [{'variant_varlociraptor_fdr':float('nan')},{'variant_varlociraptor_fdr':0},{'variant_varlociraptor_events':'SOMATIC'}]:
+        for updates in [{'variant_varlociraptor_fdr':float('nan')},{'variant_varlociraptor_fdr':0}]:
             with self.assertRaises(OncoTracerError):
                 variants.resolve_variant_request({'run_variants':True,'variant_specimen_type':'fresh',**updates},mode='illumina')
+    def test_custom_varlociraptor_events_without_scenario_still_rejected_for_ont(self):
+        with self.assertRaises(OncoTracerError):
+            variants.resolve_variant_request({'run_variants':True,'variant_specimen_type':'fresh',
+                'variant_callers':'clairs_to','variant_clairsto_platform':'ont_r10_fixture',
+                'variant_varlociraptor_events':'SOMATIC'},mode='ont')
+
     def test_low_coverage_never_inflated_or_sent_to_model(self):
         with tempfile.TemporaryDirectory() as d:
             d=Path(d);work=d/'bcftools';work.mkdir();shared=d/'ffperase_shared';shared.mkdir()
@@ -85,6 +91,17 @@ class AssessmentTests(unittest.TestCase):
             self.assertEqual(result['status'],'not_assessed');self.assertEqual(result['upstream_integer_coverage'],1)
             self.assertEqual(result['counts']['NOT_EVALUATED'],3)
             self.assertEqual(evidence_identity(source),evidence_identity(work/'out.vcf'))
+
+    def test_ffpe_sif_input_beside_work_does_not_shadow_writable_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);bam=root/'sample.bam';reference=root/'reference.fa'
+            bam.touch();reference.touch();Path(str(bam)+'.bai').touch()
+            command=ffperase._command({'sif':'runtime.sif','runtime':'apptainer','root':'/source','models':'/models'},root,bam,reference,['python3','features.py'])
+            binds=[command[i+1] for i,x in enumerate(command[:-1]) if x=='--bind']
+            self.assertIn(f'{root}:{root}:rw',binds)
+            self.assertNotIn(f'{root}:{root}:ro',binds)
+            self.assertIn(f'{bam}:{bam}:ro',binds)
+            self.assertIn(f'{bam}.bai:{bam}.bai:ro',binds)
 
     def test_varlociraptor_commands_and_dropped_alleles(self):
         with tempfile.TemporaryDirectory() as d:
@@ -243,10 +260,12 @@ class AssessmentTests(unittest.TestCase):
 class AssessmentSetupTests(VariantSetupTests):
     def test_new_assessment_controls_roundtrip(self):
         prepared=self.prepare(self.state(),variants=True,variant_specimen_type='ffpe',variant_callers='bcftools',
-                     variant_ffperase='off',variant_varlociraptor='required',variant_varlociraptor_fdr='0.10')
+                     variant_ffperase='off',variant_varlociraptor='required',variant_varlociraptor_fdr='0.10',
+                     variant_accept_ffperase_license=True)
         from oncotracer_cli.runtime import load_flat_yaml
         config=load_flat_yaml(Path(prepared['config_path']))
-        self.assertEqual(config['variant_ffperase'],'off')
-        self.assertEqual(float(config['variant_varlociraptor_fdr']),0.10)
+        self.assertEqual(config['variant_ffperase'],'required')
+        self.assertEqual(config['variant_varlociraptor'],'off')
+        self.assertEqual(config['variant_callers'],'bcftools,mutect2')
 
 if __name__=='__main__':unittest.main()
