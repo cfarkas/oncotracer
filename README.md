@@ -51,7 +51,13 @@ oncotracer uninstall --conda --dry-run
 oncotracer uninstall --conda --yes
 ```
 
-For permanent removal instead, add `--purge` to the second command. Separately created FFPE/ONT environments need separate removal. To remove the Docker image:
+For permanent removal instead, use:
+
+```bash
+oncotracer uninstall --conda --yes --purge
+```
+
+Separately created FFPE/ONT environments need separate removal. To remove the Docker image:
 
 ```bash
 docker image rm carlosfarkas/oncotracer:fastq-variants-20261017

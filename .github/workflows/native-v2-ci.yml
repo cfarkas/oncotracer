@@ -486,7 +486,36 @@ jobs:
           docker build \
             --build-arg SOURCE_COMMIT='${{ steps.source.outputs.source_commit }}' \
             --build-arg SOURCE_SHA256='${{ steps.source.outputs.source_sha256 }}' \
+            --iidfile "$RUNNER_TEMP/docker-image-id.txt" \
             --tag oncotracer:v2-ci .
+      - name: Test Docker installation and doctor through the native CLI
+        run: |
+          set -Eeuo pipefail
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/docker-install/config"
+          export XDG_DATA_HOME="$RUNNER_TEMP/docker-install/data"
+          export XDG_CACHE_HOME="$RUNNER_TEMP/docker-install/cache"
+          IMAGE_ID="$(cat "$RUNNER_TEMP/docker-image-id.txt")"
+          python3 -B "$GITHUB_WORKSPACE/oncotracer" install --docker \
+            --image "$IMAGE_ID" --no-pull --no-launcher --json \
+            2> "$RUNNER_TEMP/docker-install.log" \
+            | tee "$RUNNER_TEMP/docker-install.json"
+          jq -e --arg image "$IMAGE_ID" \
+            '.backend == "docker" and .image == $image' \
+            "$RUNNER_TEMP/docker-install.json"
+          # Omit --image so doctor must use the image saved by installation.
+          python3 -B "$GITHUB_WORKSPACE/oncotracer" doctor --backend docker --json \
+            2> "$RUNNER_TEMP/docker-installed-doctor.log" \
+            | tee "$RUNNER_TEMP/docker-installed-doctor.json"
+          jq -e --arg image "$IMAGE_ID" \
+            --arg commit '${{ steps.source.outputs.source_commit }}' \
+            --arg sha256 '${{ steps.source.outputs.source_sha256 }}' \
+            '.backend == "docker" and .success == true and
+             .docker.success == true and .docker.returncode == 0 and
+             (.docker.command | contains($image)) and
+             .source.source_commit == $commit and
+             .source.source_sha256 == $sha256 and
+             .source.source_tree_dirty == false' \
+            "$RUNNER_TEMP/docker-installed-doctor.json"
       - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
           docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.1.0'
@@ -586,3 +615,8 @@ jobs:
             ${{ runner.temp }}/docker-resource-preflight.txt
             ${{ runner.temp }}/docker-provenance.json
             ${{ runner.temp }}/docker-doctor.json
+            ${{ runner.temp }}/docker-image-id.txt
+            ${{ runner.temp }}/docker-install.json
+            ${{ runner.temp }}/docker-install.log
+            ${{ runner.temp }}/docker-installed-doctor.json
+            ${{ runner.temp }}/docker-installed-doctor.log
