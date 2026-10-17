@@ -35,8 +35,9 @@ oncotracer doctor --backend conda --json
 
 The provenance JSON identifies the executable and source. The doctor JSON adds
 the backend, all five configured prefixes or image, semantic command/package
-checks, and whether Nextflow is required (`false`). A failed check returns a
-nonzero status.
+checks, and whether Nextflow is required for the native CNA runtime (`false`).
+The complete Illumina variant branch has a separate Nextflow/resource preflight.
+A failed check returns a nonzero status.
 
 Use the backend that actually runs the analysis:
 
@@ -177,8 +178,8 @@ or digest. A bare `install --docker` selects the older default CNA image.
 
 ```bash
 docker info
-oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017
 ```
 
 Common causes:
@@ -334,9 +335,11 @@ YAML runs also require explicit opt-in and skip cohorts below `gistic_min_sample
 For a failed variant branch, run `oncotracer check --variant-tools --config /path/to/run.yml`.
 The browser and `setup --run` perform this executable check automatically.
 Ordinary `check` still validates configuration on machines without caller tools.
-The executable check verifies the selected tools without running them. The CNA
-core environment supplies `samtools`; `bcftools`
-and other callers come from `variant_tool_prefix` or `PATH`. Set
+Managed Illumina runs use the verified variant environment saved by
+`oncotracer install --conda` (or `--poetry`), including bcftools 1.23.1 and HTSlib
+1.24. Re-run installation to repair a missing or incompatible managed variant
+environment; unrelated Conda environments are not selected as replacements.
+An unmanaged host installation can explicitly select `variant_tool_prefix`. Set
 `variant_strelka_prefix` for a separate Strelka2 environment. An explicit variant
 prefix must contain all requested shared tools and callers. See the
 [variant setup guide](variants.md) for installation and resource selection.

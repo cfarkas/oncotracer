@@ -63,7 +63,7 @@ cd "$TMP_DIR"
 "$BINARY" --help
 ```
 
-The zipapp must contain native scripts, environment definitions, classifier assets, and no `.nf` workflow or `nextflow.config` payload.
+The zipapp contains native scripts, environment definitions, classifier assets, and the supported bundled `oncotracer_cli/lpwgs/main.nf` and `nextflow.config`. Other legacy Nextflow payloads are excluded.
 
 ## Test the public command surface
 

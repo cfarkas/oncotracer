@@ -80,7 +80,6 @@ oncotracer setup --non-interactive --project "$PWD/ffpe-study" \
   --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz \
   --hg38_build --variants \
   --variant-specimen-type ffpe --variant-callers mutect2 \
-  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
   --variant-ffperase required \
   --variant-ffperase-root /resources/nf-ffperase \
   --variant-ffperase-models /resources/ffperase-models \
@@ -115,7 +114,7 @@ explain these separate choices.
 Choose **Docker** under analysis tools in the browser and enter the **Docker image
 tag or digest**. The following retained integration example uses the
 20260921 image with existing resources and the earlier caller set; it does not include Strelka2. For Strelka2 and automatic model preparation use
-`carlosfarkas/oncotracer:fastq-variants-20260922` consistently in setup and run,
+`carlosfarkas/oncotracer:fastq-variants-20261017` consistently in setup and run,
 as shown in the [current Docker guide](variants.md#run-cna-and-variants-with-docker).
 The same selection can prefill the form:
 
@@ -304,7 +303,6 @@ variant_reference_build: hg38
 variant_specimen_type: fresh
 variant_callers: mutect2,bcftools
 variant_annovar: auto
-variant_tool_prefix: /data/environments/variant-tools
 ```
 
 ```bash
@@ -421,7 +419,6 @@ the matched normal before saving:
 oncotracer setup --project "$PWD/strelka-fastq-study" \
   --mode illumina --backend conda --input-folder /data/illumina --variants \
   --variant-specimen-type fresh --variant-callers strelka2_somatic \
-  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
   --variant-strelka-prefix "$HOME/.local/share/oncotracer/optional-tools/strelka2"
 ```
 
@@ -433,7 +430,6 @@ oncotracer setup --non-interactive --project "$PWD/strelka-fastq-study" \
   --samplesheet /data/strelka-paired-fastqs.csv --hg38_build --variants \
   --variant-specimen-type fresh --variant-callers strelka2_somatic \
   --variant-matched-normals '{"TUMOR01":"NORMAL01"}' \
-  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
   --variant-strelka-prefix "$HOME/.local/share/oncotracer/optional-tools/strelka2" \
   --variant-ffperase off --variant-varlociraptor off --variant-annovar auto
 oncotracer check --config "$PWD/strelka-fastq-study/config/run.yml"
@@ -474,7 +470,6 @@ variant_reference_build: hg38
 variant_specimen_type: fresh
 variant_callers: strelka2_somatic
 variant_matched_normals: '{"TUMOR01":"NORMAL01"}'
-variant_tool_prefix: /data/environments/variant-tools
 variant_strelka_prefix: /data/environments/strelka
 variant_ffperase: off
 variant_varlociraptor: off
@@ -527,7 +522,6 @@ run_variants: true
 variant_reference_build: hg38
 variant_specimen_type: fresh
 variant_callers: strelka2_germline
-variant_tool_prefix: /data/environments/variant-tools
 variant_strelka_prefix: /data/environments/strelka
 variant_ffperase: off
 variant_varlociraptor: off
@@ -649,7 +643,6 @@ oncotracer setup --non-interactive --project "$PWD/ffpe-auto-resources-study" \
   --fastq-1 /data/illumina/TUMOR01_R1.fastq.gz \
   --fastq-2 /data/illumina/TUMOR01_R2.fastq.gz --hg38_build --variants \
   --variant-specimen-type ffpe --variant-callers mutect2 \
-  --variant-tool-prefix "$HOME/.local/share/oncotracer/optional-tools/variants" \
   --variant-ffperase required \
   --variant-ffperase-prefix "$HOME/.local/share/oncotracer/optional-tools/ffperase" \
   --variant-download-resources --variant-accept-ffperase-license \
@@ -718,19 +711,30 @@ without an assessment remain `NOT_EVALUATED`.
 
 ### Conda and Docker
 
-In the browser, the glowing **detect_tools** button checks your selected tools.
-If caller tools are missing, choose **Install with Conda** or **Install with Docker**
-for background installation with a live log and tool checks.
-Use **Choose tools folder** before detection to search an existing environment.
-After installation, save and check your settings before starting analysis. See
-the [resource workflow](variants.md#find-resources) for supported routes and retries.
-
-The pinned variant environment supplies Mutect2, FreeBayes, bcftools, samtools and **Varlociraptor 8.9.5**. FFPERASE uses a separate legacy environment to match its model dependencies. From your `oncotracer-src` checkout, create these user-owned prefixes once (skip creation for an existing compatible environment):
+Install the shared Illumina tools once with the normal installer:
 
 ```bash
-export ONCOTRACER_VARIANTS_PREFIX="$HOME/.local/share/oncotracer/optional-tools/variants"
+oncotracer install --conda
+oncotracer doctor --backend conda
+oncotracer --interactive --backend conda
+```
+
+`install --poetry` installs the same scientific tools. Installation creates one
+managed variant environment from `environments/native-variants.yml` and checks
+bcftools 1.23.1, its linked HTSlib 1.24, samtools 1.23.1 and the caller tools before
+saving its prefix. Managed Illumina setup and runs always select that verified
+prefix, reporting replacement of stale `variant_tool_prefix` settings. They do
+not fall back to unrelated Conda environments or the shell's `PATH`.
+
+The browser's **detect_tools** button checks selected resources. A missing or
+invalid managed variant installation needs the normal installation command above.
+Optional caller-specific environments, FFPE models and annotation remain separate.
+The pinned shared environment supplies Mutect2, FreeBayes, bcftools, samtools and
+**Varlociraptor 8.9.5**. FFPERASE uses a separate legacy environment to match its
+model dependencies; create it only when needed, from the source checkout:
+
+```bash
 export ONCOTRACER_FFPERASE_PREFIX="$HOME/.local/share/oncotracer/optional-tools/ffperase"
-conda env create -p "$ONCOTRACER_VARIANTS_PREFIX" -f environments/native-variants.yml
 conda env create -p "$ONCOTRACER_FFPERASE_PREFIX" -f environments/native-ffperase.yml
 ```
 
@@ -759,7 +763,7 @@ starting setup/run. Keep shared utilities in `variant_tool_prefix`. The supporte
 runtime is Linux x86-64; the Strelka-enabled amd64 Docker image supplies it without
 host Conda.
 
-These additional environments are installed explicitly; the existing CNA environment installer is unchanged. `variant_tool_prefix` overrides `ONCOTRACER_VARIANTS_PREFIX`. Existing environments and user installations are never modified by an analysis run. For exact platform-specific reproducibility, save `conda list --explicit -p PREFIX` after creation.
+FFPERASE, Strelka2 and ONT caller environments are installed explicitly. An unmanaged `host` workflow can select a compatible `variant_tool_prefix`; managed Illumina workflows use the installation-verified prefix. Analysis runs never install or replace executables. For exact platform-specific reproducibility, save `conda list --explicit -p PREFIX` after creation.
 
 The updated Dockerfile builds the variant, FFPERASE and Strelka2 environments and sets their prefixes. Each environment has its own cached build layer. Legacy Bioconda annotation downloads use listed Bioconductor mirrors during the build (TU Dortmund for the archived QDNAseq release and Posit for current data), with the original package checksum verification retained. In Docker, use the native FFPERASE prefix; no nested container is necessary. Existing source/model folders are mounted read-only. A current build or the 20260922 image can instead prepare selected Clair3/FFPERASE resources on Run as described above. ANNOVAR remains separately supplied. The pinned ClairS-TO runtime includes its platform models; select the matching preset explicitly. For example:
 

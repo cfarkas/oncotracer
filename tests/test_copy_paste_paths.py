@@ -97,7 +97,9 @@ def check_native_quickstarts() -> None:
             for block in (setup, run):
                 require(first_command(block) == ANALYSES_CD, f"{relative} must enter the analysis directory first")
         for forbidden in ("git clone", "cd oncotracer", "nextflow run", "oncotracer quickstart", "--download-only", "--test-root"):
-            require(forbidden not in text, f"{relative} must use ordinary commands: found {forbidden}")
+            found = (re.search(r"\bnextflow\s+run\b", text, re.IGNORECASE)
+                     if forbidden == "nextflow run" else forbidden in text)
+            require(not found, f"{relative} must use ordinary commands: found {forbidden}")
     for page in projects:
         require(page in read("README.md"), f"README must link to {page}")
 

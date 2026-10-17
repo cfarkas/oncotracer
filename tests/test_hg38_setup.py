@@ -14,6 +14,13 @@ from tests import test_reference_bundle, test_reference_storage_safety
 
 
 class Hg38SetupTests(unittest.TestCase):
+    def setUp(self):
+        # These tests isolate reference ownership/transfer behaviour; startup
+        # runtime ordering and failures are covered in test_run_readiness.
+        readiness = patch.object(cli, "_preflight_host_runtime")
+        readiness.start()
+        self.addCleanup(readiness.stop)
+
     def command(self, *args):
         output = io.StringIO()
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):

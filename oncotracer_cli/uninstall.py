@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shlex
@@ -48,35 +49,57 @@ def uninstall_target(
 ) -> dict:
     target = safety._guard_dedicated(target, "uninstall target")
 
-    def inspect():
-        if kind in {"conda", "sif"} and os.path.lexists(
-            safety._journal_path(target, kind)
-        ):
+    def conda_domain(root: Path, *, expected_family: str | None = None):
+        root = safety._guard_dedicated(root, "uninstall target")
+        if os.path.lexists(safety._journal_path(root, "conda")):
             raise OncoTracerError(
                 "uninstall refuses an interrupted installation; recover it with the matching installer first"
             )
+        state, marker = safety._classify_base(root)
+        if state != "owned" or marker is None:
+            raise OncoTracerError(f"not a managed OncoTracer installation: {root}")
+        if expected_family and marker["managed_children"] != [expected_family]:
+            raise OncoTracerError(
+                f"managed {expected_family} sibling has a different ownership family: {root}"
+            )
+        children = [
+            root / name
+            for name in marker["managed_children"]
+            if os.path.lexists(root / name)
+        ]
+        for child in children:
+            safety._child_marker_value(root, marker, child.name)
+        return root, marker, children
+
+    def inspect():
         if kind == "conda":
-            state, marker = safety._classify_base(target)
-            if state != "owned":
-                raise OncoTracerError(
-                    f"not a managed OncoTracer installation: {target}"
-                )
-            children = [
-                target / name
-                for name in safety.MANAGED_CHILDREN
-                if os.path.lexists(target / name)
+            domains = [conda_domain(target)]
+            marker = domains[0][1]
+            if marker["managed_children"] == list(safety.MANAGED_CHILDREN):
+                for suffix, family in (("variants", "variants"), ("poetry", "poetry-runtime")):
+                    sibling = safety.managed_sibling_base(target, suffix)
+                    if os.path.lexists(sibling) or os.path.lexists(
+                        safety._journal_path(sibling, "conda")
+                    ):
+                        domains.append(conda_domain(sibling, expected_family=family))
+            paths = [
+                path
+                for root, _, children in domains
+                for path in [*children, root / safety.BASE_MARKER]
             ]
-            for child in children:
-                safety._child_marker_value(target, marker, child.name)
-            return children + [target / safety.BASE_MARKER], marker
+            return paths, marker, domains
         if kind == "sif":
+            if os.path.lexists(safety._journal_path(target, kind)):
+                raise OncoTracerError(
+                    "uninstall refuses an interrupted installation; recover it with the matching installer first"
+                )
             state, marker = safety._classify_sif(target)
             if state != "owned":
                 raise OncoTracerError(f"not a managed OncoTracer SIF: {target}")
-            return [target, safety._sif_sidecar(target)], marker
-        return [target], _launcher(target)
+            return [target, safety._sif_sidecar(target)], marker, []
+        return [target], _launcher(target), []
 
-    paths, identity = inspect()
+    paths, identity, domains = inspect()
     result = {
         "kind": kind,
         "target": str(target),
@@ -89,75 +112,115 @@ def uninstall_target(
         "dry_run": dry_run,
         "preserved": "FASTQs, POD5s, BAMs, references, project YAML, results, model caches, unrelated environments and saved installation settings are not removed.",
     }
+    if domains:
+        result["managed_roots"] = [str(root) for root, _, _ in domains]
     if dry_run:
         return result
     if purge and not shutil.rmtree.avoids_symlink_attacks:
         raise OncoTracerError(
             "safe purge requires fd-based shutil.rmtree; omit --purge to retain a recoverable backup"
         )
-    # Check before taking an exclusive lock so an active analysis fails promptly.
-    with safety.installer_cli_target_arguments(target):
-        safety._assert_inactive(target)
-        with safety._exclusive_install_lock(
-            safety._lock_path(target, kind), target, kind
-        ):
-            current, observed = inspect()
-            if current != paths or observed != identity:
-                raise OncoTracerError("uninstall target changed during validation")
-            safety._assert_inactive(target)
-            recovery = Path(
-                tempfile.mkdtemp(
-                    prefix=f"{target.name}.oncotracer-uninstalled-", dir=target.parent
+    lock_targets = {root for root, _, _ in domains} or {target}
+    if kind == "conda" and identity["managed_children"] == list(safety.MANAGED_CHILDREN):
+        # Lock absent canonical siblings too: an additive install must not
+        # appear between the final inspection and removal of the parent tools.
+        lock_targets.update(
+            safety.managed_sibling_base(target, suffix)
+            for suffix in ("variants", "poetry")
+        )
+    lock_targets = sorted(lock_targets, key=str)
+    # Inspect every independent domain before moving any asset. Hold all locks
+    # through validation, recovery moves and rollback in one deterministic order.
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(safety.installer_cli_target_arguments(*lock_targets))
+        for root in lock_targets:
+            safety._assert_inactive(root)
+        for root in lock_targets:
+            stack.enter_context(safety._exclusive_install_lock(
+                safety._lock_path(root, kind), root, kind
+            ))
+        current, observed, current_domains = inspect()
+        if current != paths or observed != identity or current_domains != domains:
+            raise OncoTracerError("uninstall target changed during validation")
+        for root in lock_targets:
+            safety._assert_inactive(root)
+        recovery = Path(
+            tempfile.mkdtemp(
+                prefix=f"{target.name}.oncotracer-uninstalled-", dir=target.parent
+            )
+        )
+        recovery.chmod(0o700)
+        destinations = {original: recovery / original.name for original in paths}
+        for root, _, children in domains[1:]:
+            bucket = recovery / "domains" / root.name
+            bucket.mkdir(parents=True, mode=0o700)
+            for original in [*children, root / safety.BASE_MARKER]:
+                destinations[original] = bucket / original.name
+        record = recovery / "uninstall.json"
+        recovery_entries = {
+            str(original): str(destination.relative_to(recovery))
+            for original, destination in destinations.items()
+        }
+        record.write_text(
+            json.dumps({
+                **result,
+                "original_identity": identity,
+                "domain_identities": [
+                    {"target": str(root), "marker": marker}
+                    for root, marker, _ in domains
+                ],
+                "recovery_entries": recovery_entries,
+            }, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        moved = []
+        try:
+            for index, original in enumerate(paths):
+                status(f"Removing {original.name}", completed=index, total=len(paths))
+                safety._rename_noreplace(
+                    original, destinations[original], "uninstall recovery move"
                 )
-            )
-            recovery.chmod(0o700)
-            record = recovery / "uninstall.json"
-            record.write_text(
-                json.dumps({**result, "original_identity": identity}, indent=2) + "\n",
-                encoding="utf-8",
-            )
-            moved = []
-            try:
-                for index, original in enumerate(paths):
-                    status(f"Removing {original.name}", completed=index, total=len(paths))
-                    safety._rename_noreplace(
-                        original, recovery / original.name, "uninstall recovery move"
-                    )
-                    moved.append(original)
-                # Verify again at the new location; never delete a substituted tree.
-                if kind == "conda":
-                    for original in paths[:-1]:
-                        safety._child_marker_at(
-                            recovery / original.name, original, identity, original.name
-                        )
-                elif kind == "sif":
-                    if sha256_file(recovery / target.name) != identity["sif_sha256"]:
-                        raise OncoTracerError("SIF changed during uninstall")
-                elif sha256_file(recovery / target.name) != identity["sha256"]:
-                    raise OncoTracerError("launcher changed during uninstall")
-            except BaseException:
-                for original in reversed(moved):
-                    if not os.path.lexists(original):
-                        safety._rename_noreplace(
-                            recovery / original.name, original, "uninstall rollback"
-                        )
-                raise
+                moved.append(original)
+            # Verify using each domain's original canonical paths and source.
             if kind == "conda":
-                # Keep a root containing any unrelated sibling. Never recurse here.
+                for root, marker, children in domains:
+                    if safety._safe_read_json(
+                        destinations[root / safety.BASE_MARKER],
+                        "uninstall root ownership marker",
+                    ) != marker:
+                        raise OncoTracerError("managed root ownership changed during uninstall")
+                    for original in children:
+                        safety._child_marker_at(
+                            destinations[original], original, marker, original.name
+                        )
+            elif kind == "sif":
+                if sha256_file(destinations[target]) != identity["sif_sha256"]:
+                    raise OncoTracerError("SIF changed during uninstall")
+            elif sha256_file(destinations[target]) != identity["sha256"]:
+                raise OncoTracerError("launcher changed during uninstall")
+        except BaseException:
+            for original in reversed(moved):
+                if not os.path.lexists(original):
+                    safety._rename_noreplace(
+                        destinations[original], original, "uninstall rollback"
+                    )
+            raise
+        if kind == "conda":
+            # Keep roots containing unrelated siblings. Never recurse here.
+            for root, _, _ in domains:
                 try:
-                    target.rmdir()
+                    root.rmdir()
                 except OSError:
                     pass
-            result["recovery_directory"] = str(recovery)
-            if purge:
-                # Only this newly created, private, authenticated recovery folder
-                # is a recursive deletion target. The user explicitly chose purge.
-                safety._assert_inactive(recovery)
-                shutil.rmtree(recovery)
-                result["recovery_directory"] = None
-                result["recoverable"] = False
-            else:
-                result["recoverable"] = True
+        result["recovery_directory"] = str(recovery)
+        if purge:
+            # Only this private, authenticated recovery folder is deleted.
+            safety._assert_inactive(recovery)
+            shutil.rmtree(recovery)
+            result["recovery_directory"] = None
+            result["recoverable"] = False
+        else:
+            result["recoverable"] = True
     return result
 
 
@@ -168,6 +231,7 @@ def command_uninstall(args) -> int:
 
 def _command_uninstall(args) -> int:
     from .cli import _load_install_config
+    from .user_launcher import installation_target, remove_transaction
 
     # Fully specified removal targets do not depend on saved settings, which
     # may be missing or damaged precisely when a user needs to uninstall.
@@ -175,16 +239,42 @@ def _command_uninstall(args) -> int:
         (args.conda and args.prefix)
         or (args.singularity and args.sif)
         or args.launcher
+        or getattr(args, "global_launcher", False)
     )
     install = {} if explicit_target else _load_install_config()
-    if not any((args.conda, args.singularity, args.launcher)):
+    if not any((args.conda, args.singularity, args.launcher, getattr(args, "global_launcher", False))):
         backend = install.get("backend")
         if backend in {"conda", "poetry"}:
             args.conda = True
         elif backend == "singularity":
             args.singularity = True
+        elif backend == "docker":
+            args.global_launcher = True
         else:
-            raise OncoTracerError("select the tools to remove: --conda, --singularity, or --launcher PATH")
+            raise OncoTracerError("select the tools to remove: --conda, --singularity, --global-launcher, or --launcher PATH")
+    preview = args.dry_run or not args.yes
+    global_only = getattr(args, "global_launcher", False)
+    if global_only:
+        if args.sif or args.prefix:
+            raise OncoTracerError("--global-launcher does not accept --sif or --prefix")
+        target = installation_target(install) if install.get("backend") == "docker" else None
+        with remove_transaction(target, dry_run=preview, purge=args.purge, required=True) as command:
+            result = command.detach()
+        result.update({"kind": "global-launcher", "preserved": "Scientific tools, Docker images, saved settings and all project data are retained."})
+        if getattr(args, "json", False):
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"{'Uninstall preview' if preview else 'Uninstall complete'}: user command")
+            for path in result["paths"]:
+                print(f"  {path}")
+            if result.get("reason"):
+                print(result["reason"])
+            if result.get("recovery_directory"):
+                print(f"Recovery folder: {result['recovery_directory']}")
+            print(result["preserved"])
+            if preview:
+                print("Preview only. Add --yes to remove the owned command.")
+        return 0
     if args.conda:
         if args.sif:
             raise OncoTracerError("--sif applies only to --singularity")
@@ -208,12 +298,24 @@ def _command_uninstall(args) -> int:
             "no installed target is recorded; supply the exact --prefix or --sif"
         )
     try:
-        result = uninstall_target(
-            Path(str(value)),
-            kind,
-            dry_run=args.dry_run or not args.yes,
-            purge=args.purge,
+        # A copied archive can also be the exact source of the global command.
+        # Removing other copied executables must leave that command untouched.
+        command_context = (
+            remove_transaction(archive=Path(str(value)), dry_run=preview, purge=args.purge)
+            if kind == "launcher" else remove_transaction(
+                {"kind": kind, "target": os.path.abspath(os.path.expanduser(str(value)))},
+                dry_run=preview, purge=args.purge,
+            )
         )
+        with command_context as command:
+            if command is not None:
+                command.detach()
+            result = uninstall_target(
+                Path(str(value)), kind, dry_run=preview, purge=args.purge,
+            )
+        if command is not None:
+            result["global_launcher"] = command.result
+            result["paths"].extend(command.result["paths"])
     except OSError as error:
         raise OncoTracerError(
             f"could not uninstall the selected target: {error}"
@@ -232,7 +334,7 @@ def _command_uninstall(args) -> int:
         )
     elif result["recoverable"]:
         print(
-            "Tools removed from their installed paths. Recovery folder retained; disk space has not been reclaimed. Restore its named entries to their original paths if needed."
+            "Tools removed from their installed paths. Recovery folder retained; disk space has not been reclaimed. The uninstall.json record maps each recovery entry to its original path."
         )
     else:
         print("Verified tools permanently removed; no backup retained.")
@@ -251,7 +353,7 @@ def add_uninstall_command(subparsers) -> None:
     group.add_argument(
         "--conda",
         action="store_true",
-        help="managed Conda tools, including a managed Poetry runtime if present",
+        help="managed Conda tools, including managed variants and Poetry runtimes",
     )
     group.add_argument(
         "--singularity",
@@ -262,6 +364,11 @@ def add_uninstall_command(subparsers) -> None:
         "--launcher",
         metavar="PATH",
         help="exact path to a copied standalone executable; not a pip launcher",
+    )
+    group.add_argument(
+        "--global-launcher",
+        action="store_true",
+        help="remove only this installation's owned ~/.local/bin/oncotracer; keep scientific tools and container images",
     )
     parser.add_argument(
         "--prefix",

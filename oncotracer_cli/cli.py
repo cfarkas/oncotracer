@@ -39,6 +39,8 @@ from .install_safety import (
     install_sif_managed,
     installer_cli_target_arguments,
     managed_conda_runtime_lock,
+    managed_variants_runtime_lock,
+    managed_sibling_base,
     managed_sif_runtime_lock,
     verify_managed_sif_runtime,
 )
@@ -59,7 +61,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "ghcr.io/cfarkas/oncotracer:2.1.0"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:fastq-variants-20261017"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -133,8 +135,8 @@ def _conda_prefixes(prefix: Path | None = None) -> dict[str, Path]:
         os.path.abspath(os.fspath((prefix or (_data_home() / "envs")).expanduser()))
     )
     return {
-        name: base / name
-        for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")
+        **{name: base / name for name in ("core", "qdnaseq", "ichorcna", "classifier", "gistic")},
+        "variants": managed_sibling_base(base, "variants") / "variants",
     }
 
 
@@ -160,25 +162,29 @@ def _install_conda(
         "ichorcna_prefix": str(prefixes["ichorcna"]),
         "classifier_prefix": str(prefixes["classifier"]),
         "gistic_prefix": str(prefixes["gistic"]),
+        "variants_prefix": str(prefixes["variants"]),
     }
     if save and not args.dry_run:
         _save_install_config(result)
     return result
 
 
-def _install_docker(args: argparse.Namespace) -> dict[str, object]:
+def _install_docker(args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
     docker = shutil.which("docker") or (
         "docker" if args.dry_run else require_command("docker")
     )
     image = args.image or DEFAULT_IMAGE
     _run([docker, "info"], dry_run=args.dry_run)
-    _run([docker, "pull", image], dry_run=args.dry_run)
+    if getattr(args, "no_pull", False):
+        _run([docker, "image", "inspect", image], dry_run=args.dry_run)
+    else:
+        _run([docker, "pull", image], dry_run=args.dry_run)
     _run(
         [docker, "run", "--rm", image, "doctor", "--backend", "host"],
         dry_run=args.dry_run,
     )
     result: dict[str, object] = {"backend": "docker", "image": image}
-    if not args.dry_run:
+    if save and not args.dry_run:
         _save_install_config(result)
     return result
 
@@ -187,7 +193,7 @@ def _singularity_command() -> str:
     return shutil.which("apptainer") or shutil.which("singularity") or ""
 
 
-def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
+def _install_singularity(args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
     executable = _singularity_command() or ("apptainer" if args.dry_run else "")
     if not executable:
         raise OncoTracerError("Apptainer or Singularity is required for --singularity")
@@ -210,12 +216,12 @@ def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
         "backend": "singularity",
         "singularity_command": executable,
     }
-    if not args.dry_run:
+    if save and not args.dry_run:
         _save_install_config(result)
     return result
 
 
-def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
+def _install_poetry(root: Path, args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
     poetry = shutil.which("poetry") or (
         "poetry" if args.dry_run else require_command("poetry")
     )
@@ -235,11 +241,11 @@ def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
     result: dict[str, object] = {
         "backend": "poetry",
         "repository": str(root),
-        "poetry_prefix": str(base.expanduser().absolute() / "poetry-runtime"),
+        "poetry_prefix": str(managed_sibling_base(base, "poetry") / "poetry-runtime"),
         "scientific_backend": "conda",
         **{f"{name}_prefix": str(path) for name, path in prefixes.items()},
     }
-    if not args.dry_run:
+    if save and not args.dry_run:
         _save_install_config(result)
     return result
 
@@ -261,11 +267,12 @@ def command_install(args: argparse.Namespace) -> int:
         "--sif": args.sif is not None,
         "--force": bool(args.force),
         "--root": args.root is not None,
+        "--no-pull": bool(getattr(args, "no_pull", False)),
     }
     allowed = {
         "conda": {"--prefix", "--force", "--root"},
         "poetry": {"--prefix", "--force", "--root"},
-        "docker": {"--image"},
+        "docker": {"--image", "--no-pull"},
         "singularity": {"--image", "--sif", "--force"},
     }[backend]
     irrelevant = sorted(
@@ -282,14 +289,34 @@ def command_install(args: argparse.Namespace) -> int:
         log_dir=None if args.dry_run else _data_home() / "logs",
         log_file=getattr(args, "log_file", None) if not args.dry_run else None,
     ):
-        if backend == "conda":
-            result = _install_conda(runtime_root(args.root), args)
-        elif backend == "docker":
-            result = _install_docker(args)
-        elif backend == "singularity":
-            result = _install_singularity(args)
-        else:
-            result = _install_poetry(runtime_root(args.root), args)
+        from .user_launcher import install_transaction
+
+        launcher_context = (
+            contextlib.nullcontext(None)
+            if getattr(args, "no_launcher", False)
+            else install_transaction(dry_run=args.dry_run)
+        )
+        with launcher_context as launcher:
+            if backend == "conda":
+                result = _install_conda(runtime_root(args.root), args, save=False)
+            elif backend == "docker":
+                result = _install_docker(args, save=False)
+            elif backend == "singularity":
+                result = _install_singularity(args, save=False)
+            else:
+                result = _install_poetry(runtime_root(args.root), args, save=False)
+            if launcher is not None:
+                result["global_launcher"] = launcher.publish(result)
+            if not args.dry_run:
+                _save_install_config(result)
+    launcher_result = result.get("global_launcher")
+    if launcher_result and not getattr(args, "json", False):
+        verb = "Would publish" if args.dry_run else "Command"
+        print(f"{verb}: {launcher_result['path']}")
+        if not launcher_result["path_ready"]:
+            directory = str(Path(launcher_result["path"]).parent)
+            print("Add this directory to PATH in your shell or login configuration:")
+            print(f'  export PATH={shlex.quote(directory)}:"$PATH"')
     if getattr(args, "json", False):
         print(json.dumps(result, indent=2, sort_keys=True))
     elif args.dry_run:
@@ -357,18 +384,16 @@ def _managed_conda_base(config: dict[str, object], *, require_poetry: bool) -> P
     assert core is not None
     base = core.parent
     for name, prefix in prefixes.items():
-        if prefix != base / name:
+        expected = managed_sibling_base(base, "variants") / name if name == "variants" else base / name
+        if prefix != expected:
             raise OncoTracerError(
                 f"managed runtime {name} prefix is not the fixed child of {base}: {prefix}"
             )
     poetry = config.get("poetry_prefix")
-    if require_poetry and (
-        not poetry
-        or Path(str(poetry)).expanduser().resolve() != base / "poetry-runtime"
-    ):
-        raise OncoTracerError(
-            f"Poetry runtime is not configured at the fixed managed child {base / 'poetry-runtime'}"
-        )
+    poetry_base = managed_sibling_base(base, "poetry")
+    expected_poetry = (poetry_base if os.path.lexists(poetry_base) else base) / "poetry-runtime"
+    if require_poetry and (not poetry or Path(str(poetry)).expanduser().resolve() != expected_poetry):
+        raise OncoTracerError(f"Poetry runtime is not configured at the fixed managed child {expected_poetry}")
     return base
 
 
@@ -411,7 +436,12 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
         lock = managed_conda_runtime_lock(
             base, require_poetry=require_poetry, semantic=False
         )
-    with lock:
+    from .variant_runtime import managed_variant_runtime, variant_runtime_backend
+    selection_config = load_flat_yaml(config_path)
+    variants_lock = (contextlib.nullcontext() if args.dry_run else managed_variant_runtime(
+        selection_config, mode=str(selection_config.get("mode") or ""),
+        backend=backend, install_config=install, semantic=False))
+    with lock, variant_runtime_backend(backend), variants_lock:
         old = os.environ.copy()
         try:
             os.environ.update(_native_environment(install))
@@ -419,6 +449,7 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
                 config_path,
                 root=Path(args.root).expanduser().resolve() if args.root else None,
                 threads=args.threads,
+                parallel_samples=getattr(args, "parallel_samples", None),
                 force=args.force if args.force else None,
                 dry_run=args.dry_run,
                 methylation=args.methylation,
@@ -433,6 +464,53 @@ def _run_host(config_path: Path, args: argparse.Namespace) -> Path:
         finally:
             os.environ.clear()
             os.environ.update(old)
+
+
+def _preflight_host_runtime(config_path: Path, args: argparse.Namespace) -> None:
+    """Check installed tools before reference transfers or genomic analysis.
+
+    Execution still authenticates the environment again in ``_run_host``.
+    Dry-runs remain configuration-only and require no installed tools.
+    """
+    if args.dry_run:
+        return
+    install = _load_install_config()
+    managed_backend = _managed_install_backend(install, _backend_from(args))
+    lock = contextlib.nullcontext()
+    if managed_backend is not None:
+        require_poetry = managed_backend == "poetry"
+        base = _managed_conda_base(install, require_poetry=require_poetry)
+        lock = managed_conda_runtime_lock(
+            base, require_poetry=require_poetry, semantic=True
+        )
+    print("Checking environment readiness before reference preparation and analysis…", flush=True)
+    from .variant_runtime import managed_variant_runtime, variant_runtime_backend
+    selection_config = load_flat_yaml(config_path)
+    with lock, variant_runtime_backend(_backend_from(args)), managed_variant_runtime(
+        selection_config, mode=str(selection_config.get("mode") or ""),
+        backend=_backend_from(args), install_config=install, semantic=True
+    ):
+        old = os.environ.copy()
+        try:
+            os.environ.update(_native_environment(install))
+            from .variants import resolve_variant_request, preflight_variant_tools
+
+            config = load_flat_yaml(config_path)
+            toolchain = Toolchain.from_environment()
+            mode = str(config.get("mode", ""))
+            core_tools = {"samtools", "pigz"}
+            core_tools.update({"bwa", "picard"} if mode == "illumina" else {"minimap2"})
+            core = _probe_core(toolchain.core_prefix, toolchain, names=core_tools)
+            if not core["success"]:
+                failed = [name for name, probe in core["probes"].items() if not probe["success"]]
+                raise OncoTracerError("Environment readiness failed for core tool(s): " + ", ".join(failed))
+            request = resolve_variant_request(config, mode=mode)
+            if request is not None:
+                preflight_variant_tools(request, toolchain)
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
+    print("Environment readiness checks passed. Preparing reference and analysis…", flush=True)
 
 
 def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
@@ -476,6 +554,8 @@ def _run_docker(config_path: Path, args: argparse.Namespace) -> None:
     )
     if args.threads:
         command.extend(["--threads", str(args.threads)])
+    if getattr(args, "parallel_samples", None) is not None:
+        command.extend(["--parallel-samples", str(args.parallel_samples)])
     if args.force:
         command.append("--force")
     if args.methylation:
@@ -527,9 +607,11 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
     sif = (
         sif_candidate if args.dry_run else require_file(sif_candidate, "OncoTracer SIF")
     )
-    command: list[str | Path] = [executable, "exec", "--cleanenv"]
-    for mount in _project_mounts(config_path):
-        command.extend(["--bind", f"{mount}:{mount}"])
+    from .sif_runtime import isolated_sif_command, sif_project_alias_mounts, sif_read_mounts
+    reads = sif_read_mounts(config_path)
+    mounts = [(mount, "rw") for mount in _project_mounts(config_path)]
+    mounts += sif_project_alias_mounts(config_path) + reads
+    command: list[str | Path] = []
     command.extend(
         [
             sif,
@@ -543,6 +625,8 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
     )
     if args.threads:
         command.extend(["--threads", str(args.threads)])
+    if getattr(args, "parallel_samples", None) is not None:
+        command.extend(["--parallel-samples", str(args.parallel_samples)])
     if args.force:
         command.append("--force")
     if args.methylation:
@@ -553,11 +637,12 @@ def _run_singularity(config_path: Path, args: argparse.Namespace) -> None:
         command.extend(["--pod5-dir", Path(args.pod5_dir).expanduser().resolve()])
     if args.gpu:
         command.append("--gpu")
-    if args.dry_run:
-        _run(command, dry_run=True)
-    else:
-        with managed_sif_runtime_lock(sif, executable=executable, semantic=False):
-            _run(command)
+    with isolated_sif_command(executable, mounts=mounts, cwd=Path.cwd()) as prefix:
+        if args.dry_run:
+            _run(prefix + command, dry_run=True)
+        else:
+            with managed_sif_runtime_lock(sif, executable=executable, semantic=False):
+                _run(prefix + command)
 
 
 def _methylation_requested(config_path: Path, args: argparse.Namespace) -> bool:
@@ -675,11 +760,13 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
                     f"'oncotracer install --{backend}' "
                     f"(missing: {', '.join(missing)})"
                 )
+        _preflight_host_runtime(config_path, args)
         _prepare_configured_hg38(config_path, args)
         return _run_host(config_path, args)
     if backend == "docker":
         from .docker_runtime import docker_host_preview, validate_docker_variants
-        validate_docker_variants(load_flat_yaml(config_path))
+        selected=load_flat_yaml(config_path)
+        validate_docker_variants(selected)
         with docker_host_preview():
             _prepare_configured_hg38(config_path, args)
             outdir = _run_host(config_path, args) if args.dry_run else None
@@ -696,6 +783,9 @@ def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
 
 
 def command_run(args: argparse.Namespace) -> int:
+    parallel = getattr(args, "parallel_samples", None)
+    if parallel is not None and (type(parallel) is not int or parallel < 1):
+        raise OncoTracerError("parallel_samples must be a positive integer")
     outdir = execute_run(Path(args.config), args)
     if args.dry_run:
         target = (
@@ -1027,10 +1117,15 @@ def _configured_native_prefixes(install: dict[str, object]) -> dict[str, Path | 
         "ichorcna": ("ichorcna_prefix", "ONCOTRACER_ICHORCNA_PREFIX"),
         "classifier": ("classifier_prefix", "ONCOTRACER_CLASSIFIER_PREFIX"),
         "gistic": ("gistic_prefix", "ONCOTRACER_GISTIC_PREFIX"),
+        "variants": ("variants_prefix", "ONCOTRACER_VARIANTS_PREFIX"),
     }
     prefixes: dict[str, Path | None] = {}
     for group, (config_key, environment_key) in definitions.items():
-        value = os.environ.get(environment_key) or install.get(config_key)
+        if group == "variants" and install.get("backend") in {"conda", "poetry"}:
+            # An inherited environment cannot replace the authenticated managed caller.
+            value = install.get(config_key)
+        else:
+            value = os.environ.get(environment_key) or install.get(config_key)
         prefixes[group] = Path(str(value)).expanduser().resolve() if value else None
     return prefixes
 
@@ -1068,7 +1163,7 @@ def _prefix_environment(
     return _contained_environment(environment, containment)
 
 
-def _probe_core(prefix: Path | None, toolchain: Toolchain) -> dict[str, object]:
+def _probe_core(prefix: Path | None, toolchain: Toolchain, *, names: set[str] | None = None) -> dict[str, object]:
     definitions: dict[str, tuple[list[str], frozenset[int], str]] = {
         "bwa": ([], frozenset({1}), r"Program:\s*bwa"),
         "samtools": (["--version"], frozenset({0}), r"\bsamtools\b"),
@@ -1079,6 +1174,8 @@ def _probe_core(prefix: Path | None, toolchain: Toolchain) -> dict[str, object]:
     probes: dict[str, dict[str, object]] = {}
     containment = toolchain.environment("core")
     for name, (arguments, accepted, expected) in definitions.items():
+        if names is not None and name not in names:
+            continue
         if prefix is not None:
             result = _probe_executable(
                 prefix,
@@ -1247,6 +1344,15 @@ def _probe_native_prefixes(
             "success": bool(gistic_probe["success"]),
             "probes": {"gistic2": gistic_probe},
         }
+    variants = prefixes.get("variants")
+    if variants is None:
+        results["variants"] = {"success": False, "probes": {}, "error": "mandatory variants prefix is not configured; rerun oncotracer install"}
+    else:
+        from .variant_install_checks import verify_variant_environment
+        try:
+            results["variants"] = verify_variant_environment(variants)
+        except OncoTracerError as error:
+            results["variants"] = {"success": False, "probes": {}, "error": str(error)}
     return results
 
 
@@ -1330,11 +1436,13 @@ def _command_doctor(args: argparse.Namespace) -> int:
                         base = _managed_conda_base(
                             install, require_poetry=require_poetry
                         )
-                        with managed_conda_runtime_lock(
-                            base,
-                            require_poetry=require_poetry,
-                            semantic=False,
-                        ) as managed:
+                        with contextlib.ExitStack() as stack:
+                            managed = dict(stack.enter_context(managed_conda_runtime_lock(
+                                base, require_poetry=require_poetry, semantic=False,
+                            )))
+                            managed["variants"] = stack.enter_context(managed_variants_runtime_lock(
+                                prefixes["variants"], semantic=False,
+                            ))
                             for group, prefix in prefixes.items():
                                 if (
                                     group in managed
@@ -1491,7 +1599,8 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--backend", choices=("host", "conda", "docker", "singularity", "poetry")
     )
-    parser.add_argument("--threads", type=int)
+    parser.add_argument("--threads", type=int, help="total CPU budget; shared across concurrent GLIMPSE2 samples")
+    parser.add_argument("--parallel-samples", type=int, help="maximum concurrent Illumina sample workflows (default: config, otherwise 1)")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--root", help="Repository or extracted payload root")
@@ -1552,8 +1661,14 @@ def _add_common_run_options(parser: argparse.ArgumentParser) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="oncotracer",
-        description="Native LP-WGS CNA analysis.",
+        description="Native LP-WGS CNA and variant analysis.",
+        epilog=("Browser setup: oncotracer --interactive [--ffpe] [setup options]. "
+                "Use oncotracer setup --help for project, input, backend and resource options."),
     )
+    parser.add_argument("--interactive", action="store_true",
+                        help="open browser setup; accepts setup options and starts no analysis")
+    parser.add_argument("--ffpe", action="store_true",
+                        help="with --interactive, preselect Illumina FFPE variants and FFPErase")
     parser.add_argument(
         "--version", action="version", version=f"OncoTracer {__version__}"
     )
@@ -1576,6 +1691,8 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--conda", action="store_true")
     install.add_argument("--prefix")
     install.add_argument("--image")
+    install.add_argument("--no-pull", action="store_true", help="use an existing local Docker image; still verify it with doctor")
+    install.add_argument("--no-launcher", action="store_true", help="leave ~/.local/bin/oncotracer unchanged; do not publish a user command")
     install.add_argument("--sif")
     install.add_argument("--force", action="store_true")
     install.add_argument("--dry-run", action="store_true")
@@ -1696,14 +1813,56 @@ def _legacy_to_modern(values: list[str]) -> list[str]:
     raise OncoTracerError("use an OncoTracer v2 subcommand; run 'oncotracer --help'")
 
 
+def parse_arguments(values: Sequence[str], parser: argparse.ArgumentParser | None = None) -> argparse.Namespace:
+    """Resolve the public browser alias without weakening setup/run boundaries."""
+    parser = parser or build_parser()
+    values = list(values)
+    top_level = bool(values) and values[0].startswith("-")
+    interactive = top_level and "--interactive" in values
+    ffpe = top_level and "--ffpe" in values
+    if ffpe and not interactive:
+        raise OncoTracerError("--ffpe is a browser setup preset; use --interactive --ffpe")
+    if interactive:
+        values = ["setup", *(value for value in values if value not in {"--interactive", "--ffpe"})]
+    args = parser.parse_args(_legacy_to_modern(values))
+    if interactive:
+        args.interactive = True
+        args.ffpe = ffpe
+        disallowed = ("run", "terminal", "manual", "non_interactive", "samplesheet",
+                      "fastq_1", "fastq_2", "sample_name", "barcodes", "sample_names", "status")
+        selected = ["--" + name.replace("_", "-") for name in disallowed if getattr(args, name, None)]
+        if selected:
+            raise OncoTracerError(
+                "--interactive opens browser setup without starting analysis; omit " + ", ".join(selected)
+            )
+        if args.threads is not None and args.threads < 1:
+            raise OncoTracerError("--threads must be positive")
+        if ffpe:
+            if args.variant_config:
+                raise OncoTracerError("--ffpe presets a new FASTQ setup; omit --variant-config and review existing configurations separately")
+            if args.backend == "singularity":
+                raise OncoTracerError("--ffpe enables variants; the integrated Singularity backend supports CNA only. Choose conda or docker")
+            defaults = {"mode": "illumina", "analysis": "cna", "variant_engine": "glimpse2",
+                        "variant_specimen_type": "ffpe", "variant_ffperase": "required"}
+            for name, value in defaults.items():
+                current = getattr(args, name, None)
+                if current not in (None, value):
+                    raise OncoTracerError(f"--ffpe conflicts with --{name.replace('_', '-')} {current}")
+                setattr(args, name, value)
+            if args.reads_folder or args.modbam or args.pod5_dir:
+                raise OncoTracerError("--ffpe selects Illumina FASTQ setup; use --input-folder for its reads")
+            args.variants = True
+    return args
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     try:
-        values = _legacy_to_modern(list(sys.argv[1:] if argv is None else argv))
+        values = list(sys.argv[1:] if argv is None else argv)
         if not values:
             parser.print_help()
             return 0
-        args = parser.parse_args(values)
+        args = parse_arguments(values, parser)
         if not hasattr(args, "func"):
             parser.print_help()
             return 2

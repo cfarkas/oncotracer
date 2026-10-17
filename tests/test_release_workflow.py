@@ -424,7 +424,7 @@ printf '%s\n' "$FAKE_MAIN"
             '            "$RUNNER_TEMP/published-container-provenance.json"',
             text,
         )
-        self.assertIn("-c '! command -v nextflow'", text)
+        self.assertIn("-c 'nextflow -version'", text)
 
     def test_partial_repair_rebinds_attempt_owned_probe_to_selected_digest(
         self,
@@ -470,7 +470,7 @@ printf '%s\n' "$FAKE_MAIN"
             "anonymous-container-provenance.json", anonymous_pull_index
         )
         anonymous_nextflow_index = text.index(
-            "-c '! command -v nextflow'", anonymous_provenance_index
+            "-c 'nextflow -version'", anonymous_provenance_index
         )
         reauthentication_index = text.index(
             "docker login ghcr.io", anonymous_nextflow_index
@@ -610,7 +610,7 @@ printf '%s\n' "$FAKE_MAIN"
         self.assertIn('XDG_DATA_HOME="$BEGINNER_DATA"', helper)
         self.assertIn('XDG_CACHE_HOME="$BEGINNER_CACHE"', helper)
         self.assertIn("-u ONCOTRACER_PAYLOAD_CACHE", helper)
-        self.assertIn(".container.nextflow_present == false", helper)
+        self.assertIn(".container.nextflow_present == true", helper)
         self.assertIn(".parity_audit_bundle_sha256 == $parity", helper)
         self.assertIn('! -L "$ACCEPTANCE_ROOT"', helper)
         self.assertIn("def positive_integer:", helper)
@@ -684,7 +684,7 @@ esac
                 "container": {
                     "reference": f"ghcr.io/cfarkas/oncotracer@{image_digest}",
                     "digest": image_digest,
-                    "nextflow_present": False,
+                    "nextflow_present": True,
                 },
                 "frozen_comparator": {
                     "oncotracer_commit": "032c1268fa7fdcadc48087055066d7a9fc59bd89",

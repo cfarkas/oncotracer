@@ -1116,7 +1116,19 @@ class StageLedger:
         record = self.data["stages"].get(name)
         if not isinstance(record, dict) or record.get("signature") != signature:
             return False
-        return all(path.is_file() and path.stat().st_size > 0 for path in outputs)
+        saved = {item.get("path"): item for item in record.get("outputs", []) if isinstance(item, dict)}
+        try:
+            for path in outputs:
+                item = saved.get(str(path.resolve()))
+                if not item or not path.is_file() or path.stat().st_size <= 0 or path.stat().st_size != item.get("size"):
+                    return False
+                if item.get("mtime_ns") is not None and path.stat().st_mtime_ns != item["mtime_ns"]:
+                    return False
+                if item.get("sha256") and sha256_file(path) != item["sha256"]:
+                    return False
+        except OSError:
+            return False
+        return True
 
     def complete(self, name: str, signature: str, outputs: Iterable[Path]) -> None:
         self.data["stages"][name] = {
@@ -1126,6 +1138,7 @@ class StageLedger:
                 {
                     "path": str(path.resolve()),
                     "size": path.stat().st_size if path.exists() else None,
+                    "mtime_ns": path.stat().st_mtime_ns if path.exists() else None,
                     "sha256": (
                         sha256_file(path)
                         if path.is_file() and path.stat().st_size < 128 * 1024 * 1024

@@ -407,7 +407,7 @@ jobs:
             > "$RUNNER_TEMP/container-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/container-doctor.json"
           docker run --rm --entrypoint bash oncotracer:v2.1.0-release-candidate \
-            -c '! command -v nextflow'
+            -c 'nextflow -version'
 
           CURRENT_MAIN="$(gh api "/repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           test "$CURRENT_MAIN" = "$MAIN_SHA"
@@ -462,7 +462,7 @@ jobs:
             > "$RUNNER_TEMP/anonymous-container-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/anonymous-container-doctor.json"
           docker run --rm --entrypoint bash "$CANDIDATE_IMAGE" \
-            -c '! command -v nextflow'
+            -c 'nextflow -version'
 
           # The anonymous scope is never reused for publishing. Authenticate
           # the normal Docker config explicitly only after public pullability
@@ -532,7 +532,7 @@ jobs:
             > "$RUNNER_TEMP/published-container-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/published-container-doctor.json"
           docker run --rm --entrypoint bash "$PUBLISHED_IMAGE" \
-            -c '! command -v nextflow'
+            -c 'nextflow -version'
           echo "authenticated release container digest $IMAGE_DIGEST"
 
           # The conditional-write capability probe must only touch an exact,
@@ -619,7 +619,7 @@ jobs:
               container: {
                 reference: ("ghcr.io/cfarkas/oncotracer@" + $image_digest),
                 digest: $image_digest,
-                nextflow_present: false
+                nextflow_present: true
               },
               frozen_comparator: {
                 oncotracer_commit: $v1_commit,

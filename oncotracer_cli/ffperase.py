@@ -8,6 +8,8 @@ import csv
 import math
 import os
 import shutil
+import subprocess
+import json
 from pathlib import Path
 from .runtime import OncoTracerError, atomic_write_json, require_file, sha256_file
 from .variant_filters import add_assessment, records, key
@@ -51,15 +53,64 @@ def discover(root=None, models=None, sif=None, prefix=None):
             'resources':identity, 'expected_interface_revision':REVISION}
 
 
+
+def preflight_models(detection):
+    """Load the selected models and predict synthetic rows before heavy analysis."""
+    code = """import json,sys
+import numpy as np,pandas as pd,joblib,sklearn
+result={}
+for kind in ('snvs','indels'):
+    model=joblib.load(sys.argv[1]+'/model.'+kind+'.joblib')
+    preprocess=model.named_steps['preprocess']
+    row={}
+    for name,transformer,columns in preprocess.transformers_:
+        if name=='cat':
+            for col,values in zip(columns,transformer.categories_):row[col]=values[0]
+        elif name=='num':
+            for col in columns:row[col]=0.0
+    row.update(VAF=.5,DEPTH=20.0,VARIANT_READS=10.0)
+    columns=getattr(preprocess,'_feature_names_in',None)
+    if columns is None:columns=getattr(preprocess,'feature_names_in_',list(row))
+    table=pd.DataFrame([row],columns=columns);prediction=model.predict(table);prob=model.predict_proba(table)
+    assert prob.shape==(1,2) and np.isfinite(prob).all() and (prob>=0).all() and (prob<=1).all()
+    result[kind]={'loaded':True,'synthetic_prediction':bool(prediction[0]),'synthetic_probability':float(prob[0,1])}
+print('ONCOTRACER_FFPERASE_READY '+json.dumps({'models':result,'sklearn':sklearn.__version__}))
+"""
+    command=[str(Path(detection['prefix'])/'bin/python') if detection.get('prefix') and not detection.get('sif') else 'python3',
+             '-B','-c',code,detection['models']]
+    if detection.get('sif'):
+        bind=[]
+        for value in (detection['root'],detection['models']):
+            if any(c in value for c in ':,\n\r'):raise OncoTracerError('FFPErase bind path contains a separator')
+            bind.extend(['--bind',value+':'+value+':ro'])
+        command=[detection['runtime'],'exec','--cleanenv',*bind,detection['sif'],*command]
+    env=dict(os.environ,PYTHONDONTWRITEBYTECODE='1',OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1')
+    try:
+        result=subprocess.run(command,capture_output=True,text=True,timeout=120,env=env)
+    except (OSError,subprocess.TimeoutExpired) as error:
+        raise OncoTracerError('FFPErase model runtime is not ready: '+str(error)) from error
+    marker='ONCOTRACER_FFPERASE_READY '
+    line=next((x for x in result.stdout.splitlines() if x.startswith(marker)),None)
+    if result.returncode or line is None:
+        raise OncoTracerError('FFPErase model runtime is not ready: '+(result.stderr or result.stdout)[-1600:])
+    return json.loads(line[len(marker):])
+
+
 def _command(detection, work, bam, reference, command):
     if not detection['sif']:
         if command[0] == 'python3':
             command = [str(Path(detection['prefix'])/'bin/python'), *command[1:]]
         return command
     writable = work.resolve()
-    readonly = {Path(detection['root']), Path(detection['models']), bam.resolve().parent, reference.resolve().parent}
+    # Bind exact input files so an input beside the work directory cannot turn
+    # the writable output tree read-only through duplicate parent bind mounts.
+    readonly = {Path(detection['root']), Path(detection['models']), bam.resolve(), reference.resolve()}
+    for source, suffixes in ((bam, ('.bai','.csi')), (reference, ('.fai',))):
+        for suffix in suffixes:
+            index=Path(str(source)+suffix)
+            if index.is_file():readonly.add(index.resolve())
     args = [detection['runtime'],'exec','--cleanenv']
-    for path, access in [(p,'ro') for p in sorted(readonly, key=str)] + [(writable,'rw')]:
+    for path, access in [(writable,'rw')] + [(p,'ro') for p in sorted(readonly, key=str)]:
         if any(c in str(path) for c in ':,\n\r'):
             raise OncoTracerError('FFPErase bind path contains a separator')
         args += ['--bind', f'{path}:{path}:{access}']

@@ -1,5 +1,6 @@
 """Scientific contract and isolated execution for optional short-read Strelka2."""
 import contextlib
+from dataclasses import replace
 import csv
 import gzip
 import io
@@ -25,7 +26,10 @@ class StrelkaTests(unittest.TestCase):
         if caller == 'strelka2_somatic':
             settings['variant_matched_normals'] = {'T': 'N'}
         settings.update(kwargs)
-        return variants.resolve_variant_request(settings, mode='illumina')
+        public = variants.resolve_variant_request(settings, mode='illumina')
+        # Retain tests for the internal Strelka caller without weakening the
+        # mandatory public Illumina GLIMPSE2 execution contract.
+        return replace(public, engine='native', callers=(caller,))
 
     def test_illumina_only_and_explicit_somatic_pair(self):
         self.assertEqual(self.request().matched_normals, (('T', 'N'),))
@@ -34,10 +38,14 @@ class StrelkaTests(unittest.TestCase):
         for caller in strelka2.CALLERS:
             with self.assertRaises(OncoTracerError):
                 variants.resolve_variant_request(request_config(variant_callers=caller), mode='ont')
-        with self.assertRaisesRegex(OncoTracerError, 'explicit tumor-to'):
-            self.request(variant_matched_normals={})
-        with self.assertRaisesRegex(OncoTracerError, 'requires selecting'):
-            self.request('bcftools', variant_matched_normals={'T': 'N'})
+        with self.assertRaisesRegex(OncoTracerError, 'explicit matched normal'):
+            strelka2.validate_samples(self.request(variant_matched_normals={}),
+                                     ['T', 'N'], {'T': 'tumor', 'N': 'normal'})
+        public = variants.resolve_variant_request(
+            request_config(variant_matched_normals={'T': 'N'}), mode='illumina')
+        self.assertEqual(public.engine, 'glimpse2')
+        self.assertEqual(public.callers, ('bcftools', 'mutect2'))
+        self.assertEqual(public.matched_normals, (('T', 'N'),))
 
     def test_mapping_rejects_unsafe_or_ambiguous_types(self):
         for value in ['T:N', ['T', 'N'], {'T': ['N']}, {'T': 'T'}, {'T': '../N'}, True]:
@@ -166,11 +174,13 @@ class StrelkaTests(unittest.TestCase):
             self.assertEqual(code,0,capture.getvalue())
             config=load_flat_yaml(project/'config/run.yml')
             self.assertEqual(config['variant_matched_normals'],{'T':'N'})
+            self.assertEqual(config['variant_callers'], 'bcftools,mutect2')
+            self.assertEqual(config['variant_engine'], 'glimpse2')
             code=main(['check','--config',str(project/'config/run.yml')])
             self.assertEqual(code,0,capture.getvalue())
         self.assertFalse((project/'results').exists())
 
-    def test_cli_single_end_strelka_fails_before_project_is_created(self):
+    def test_cli_single_end_uses_complete_glimpse_instead_of_legacy_strelka(self):
         from oncotracer_cli.cli import main
         fastq=self.root/'single.fq.gz'
         with gzip.open(fastq,'wt') as out:
@@ -180,9 +190,11 @@ class StrelkaTests(unittest.TestCase):
             code=main(['setup','--non-interactive','--backend','host','--mode','illumina','--project',str(project),
                        '--sample-name','T','--fastq-1',str(fastq),'--variants','--variant-specimen-type','fresh',
                        '--variant-callers','strelka2_germline','--variant-annovar','off'])
-        self.assertEqual(code,2,capture.getvalue())
-        self.assertIn('paired-end',capture.getvalue())
-        self.assertFalse(project.exists())
+        self.assertEqual(code,0,capture.getvalue())
+        config = load_flat_yaml(project/'config/run.yml')
+        self.assertEqual(config['variant_callers'], 'bcftools,mutect2')
+        self.assertEqual(config['variant_engine'], 'glimpse2')
+        self.assertFalse((project/'results').exists())
 
     def test_germline_uses_single_bam_and_retains_native_vcf(self):
         results=self.root/'strelka2/results/variants';results.mkdir(parents=True)

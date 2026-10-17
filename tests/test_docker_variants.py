@@ -31,6 +31,10 @@ class DockerVariantTests(unittest.TestCase):
         self.sheet.write_text(f'sample,fastq_1,fastq_2,status\nSAMPLE,{self.link},,tumor\n')
         self.bed = self.external / 'targets.bed'
         self.bed.write_text('chr1\t0\t100\n')
+        # Dispatch tests bind a model path; image readiness validates its contents.
+        # Never discover a developer's cached checkpoint in these unit tests.
+        self.report_model = self.external / 'report-model-fixture'
+        self.report_model.mkdir()
         self.outdir = self.project / 'outputs' / 'study'
         self.config_path = self.project / 'run.yml'
         self.config = dict(mode='illumina', lpwgs_root=str(self.project), outdir=str(self.outdir),
@@ -38,6 +42,7 @@ class DockerVariantTests(unittest.TestCase):
                            variant_specimen_type='fresh', variant_callers='bcftools',
                            variant_annovar='off', variant_targets_bed=str(self.bed),
                            variant_tool_prefix='/host/environment/does-not-exist',
+                           variant_llm_model=str(self.report_model),
                            docker_image='local/image:tested')
         self.save()
 
@@ -197,11 +202,23 @@ class DockerVariantTests(unittest.TestCase):
             self.assertIn('1007:1008',command)
             self.assertIn('ONCOTRACER_CONTAINER_RUNTIME=docker',command)
             self.assertIn(f'{self.fastq}:{self.fastq}:ro',command)
+            self.assertIn(f'{self.report_model}:{self.report_model}:ro',command)
+            self.assertIn(f'ONCOTRACER_LLM_MODEL={self.report_model}',command)
             self.assertIn(f'{self.outdir}:{self.outdir}:rw',command)
             self.assertIn(str(self.config_path),command)
             self.assertNotIn('/host/environment/does-not-exist',command)
         self.assertFalse(self.outdir.exists())
         self.assertEqual(original,self.config_path.read_bytes())
+
+    def test_missing_report_model_blocks_container_dispatch(self):
+        self.config['variant_llm_model'] = str(self.root/'missing-model')
+        self.save()
+        with patch.object(cli, '_load_install_config', return_value={}), \
+             patch.object(cli, '_run') as run:
+            with self.assertRaisesRegex(OncoTracerError, 'local Safetensors directory'):
+                cli._run_docker(self.config_path, self.args())
+        run.assert_not_called()
+        self.assertFalse(self.outdir.exists())
 
     def test_failed_image_preflight_does_not_start_analysis(self):
         with patch.object(cli,'_load_install_config',return_value={}), \
@@ -218,14 +235,25 @@ class DockerVariantTests(unittest.TestCase):
             self.assertIn('custom/image:new',call.args[0])
             self.assertNotIn('local/image:tested',call.args[0])
 
-    def test_docker_dispatch_runs_with_validated_preview_context(self):
+    def test_complete_glimpse_dispatches_through_image_preflight(self):
         def host(config_path, args):
             return resolve_variant_request(self.config,mode='illumina')
         with patch.object(cli,'_prepare_configured_hg38'), patch.object(cli,'_run_host',side_effect=host), \
              patch.object(cli,'_run_docker') as run:
-            result=cli.execute_run(self.config_path,self.args('--dry-run'))
-        self.assertEqual(result.callers,('bcftools',))
+            request=cli.execute_run(self.config_path,self.args('--dry-run'))
+        self.assertEqual(request.engine,'glimpse2')
         run.assert_called_once()
+
+    def test_glimpse_inputs_and_caches_are_bound_with_distinct_access(self):
+        workflow=self.external/'workflow';workflow.mkdir()
+        cache=self.external/'shared-cache'
+        clinvar=self.external/'clinvar.vcf.gz';clinvar.write_bytes(b'fixture')
+        index=Path(str(clinvar)+'.tbi');index.write_bytes(b'index')
+        self.config.update(variant_workflow_source=str(workflow),variant_clinvar=str(clinvar),variant_resource_dir=str(cache))
+        self.save()
+        mounts=dict(docker_runtime.docker_mounts(self.config_path,environment={},create=True))
+        for path in (workflow,clinvar,index):self.assertEqual(mounts[path],'ro')
+        self.assertEqual(mounts[cache],'rw');self.assertTrue(cache.is_dir())
 
     def publish_partial(self):
         from oncotracer_cli.output_safety import claim_output_run

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import errno
 import hashlib
 import hmac
 import json
@@ -31,6 +32,7 @@ from .variant_resources import discover_variant_resources
 from .variant_installer import VariantInstaller, tools_roots
 from .web_ui import PAGE
 from .web_progress import progress_for_job
+from .source_runtime import python_module
 
 
 def _launcher() -> list[str]:
@@ -42,7 +44,7 @@ def _launcher() -> list[str]:
     entry = Path(__file__).resolve().parents[1] / "oncotracer"
     if entry.is_file():
         return [sys.executable, str(entry)]
-    return [sys.executable, "-c", "from oncotracer_cli.cli import main; raise SystemExit(main())"]
+    return python_module('oncotracer_cli.cli')
 
 
 def _text(data, key, *, default=None):
@@ -121,6 +123,7 @@ class WebState:
         self.start_dir = start_dir.expanduser().resolve()
         self.setup_args = setup_args
         self.token = secrets.token_urlsafe(32)
+        self.suggested_project_name = "oncotracer-analysis-" + secrets.token_hex(4)
         self.lock = threading.RLock()
         self.picker_lock = threading.Lock()
         self.scans = {}
@@ -149,11 +152,24 @@ class WebState:
             reference = getattr(args, "hg38_build", None) or getattr(args, "reference_root", None)
             defaults["reference"] = "build" if getattr(args, "build_reference", False) else "reuse" if reference else "download"
             defaults["reference_path"] = str(Path(reference).expanduser().resolve()) if reference else ""
+        from .variant_runtime import apply_variant_runtime
+        try:
+            defaults, selection = apply_variant_runtime(defaults, mode=str(defaults.get("mode") or ""),
+                                                        backend=defaults.get("backend"))
+            if selection.managed:
+                defaults["managed_variant_prefix"] = str(selection.prefix)
+                defaults["variant_runtime_note"] = "Using the validated OncoTracer variant environment: " + str(selection.prefix)
+                if selection.diagnostics:
+                    defaults["variant_runtime_note"] = " ".join(selection.diagnostics)
+        except OncoTracerError as error:
+            defaults.pop("variant_tool_prefix", None)
+            defaults["variant_runtime_note"] = str(error)
         places = [("Home", Path.home()), ("This computer", Path("/")),
                   ("Starting folder", self.start_dir), ("Mounted drives", Path("/media")),
                   ("Other mounts", Path("/mnt"))]
         locations = [{"name": name, "path": str(path)} for name, path in places if path.is_dir()]
         return {"hardware": self.hardware, "defaults": defaults, "locations": locations,
+                "suggested_project_name": self.suggested_project_name,
                 "suggested_threads": resource_report(hardware=self.hardware, path=self.start_dir)["suggested_threads"],
                 "start_dir": str(self.start_dir), "qdnaseq_binsizes": sorted(QDNASEQ_HG38_SOURCE_SHA256)}
 
@@ -321,6 +337,10 @@ class WebState:
                     if key == "variant_matched_normals":
                         from .strelka2 import parse_matched_normals
                         setattr(args, key, parse_matched_normals(data[key]))
+                    elif key == "variant_parallel_samples":
+                        if type(data[key]) is not int or data[key] < 1:
+                            raise OncoTracerError("Parallel samples must be a positive integer.")
+                        setattr(args, key, data[key])
                     elif key in VARIANT_BOOLEAN_FIELDS:
                         if type(data[key]) is not bool:
                             raise OncoTracerError(f"{key} must be true or false.")
@@ -422,6 +442,9 @@ class WebState:
                 valid = checked.returncode == 0 and not report.get("errors")
             except subprocess.TimeoutExpired:
                 valid, report = False, {"errors": ["Configuration check timed out. Settings were saved; use oncotracer check before running."]}
+            for message in getattr(args, "_variant_runtime_diagnostics", []):
+                if message not in report.setdefault("warnings", []):
+                    report["warnings"].append(message)
             project_id = secrets.token_urlsafe(18)
             paths = [config_path, project / "config/sample_metadata.csv"]
             if discovered.mode == "illumina":
@@ -518,7 +541,23 @@ class WebState:
             return self.status()
 
     def _wait(self, job):
-        result = job["process"].wait()
+        # Keep the foreground terminal and browser on the same persistent log.
+        def mirror():
+            try:
+                with Path(job['log_path']).open(errors='replace') as reader:
+                    while True:
+                        chunk=reader.read()
+                        if chunk:print(chunk,end='',flush=True)
+                        if job['process'].poll() is not None:
+                            print(reader.read(),end='',flush=True)
+                            return
+                        time.sleep(.2)
+            except (OSError,KeyError):
+                return
+        thread=threading.Thread(target=mirror,daemon=True)
+        thread.start()
+        try:result = job["process"].wait()
+        finally:thread.join(timeout=2)
         with self.lock:
             job["exit_code"] = result
             if job.get("stop_requested"):
@@ -859,20 +898,38 @@ class WebHandler(BaseHTTPRequestHandler):
         self._reply(400, {"error": message})
 
 
+DEFAULT_WEB_PORT = 8888
+
+
+def _open_web_server(state: WebState, port: int | None = None) -> WebServer:
+    """Bind directly: the kernel allocates a free port without a probe race."""
+    if port is not None and not 1 <= port <= 65535:
+        raise OncoTracerError("--port must be from 1 to 65535.")
+    selected = DEFAULT_WEB_PORT if port is None else port
+    try:
+        return WebServer(selected, state)
+    except OSError as error:
+        if port is None and error.errno == errno.EADDRINUSE:
+            try:
+                return WebServer(0, state)
+            except OSError as fallback:
+                raise OncoTracerError(f"Cannot open a local browser port: {fallback}.") from fallback
+        hint = " Omit --port to select an available port automatically." if port is not None else ""
+        raise OncoTracerError(f"Cannot open 127.0.0.1:{selected}: {error}.{hint}") from error
+
+
 def command_web(args):
-    if not 1 <= args.port <= 65535:
+    port = getattr(args, "port", None)
+    if port is not None and not 1 <= port <= 65535:
         raise OncoTracerError("--port must be from 1 to 65535.")
     state = WebState(Path(args.start_dir), args if hasattr(args, "input_folder") or getattr(args, "variant_config", None) else None)
+    server = None
     try:
-        server = WebServer(args.port, state)
-    except OSError as error:
-        alternate = args.port + 1 if args.port < 65535 else 8888
-        raise OncoTracerError(f"Cannot open 127.0.0.1:{args.port}: {error}. Try --port {alternate}.") from error
-    route = '/variants/' if getattr(args, 'variant_config', None) else '/'
-    url = f"{server.origin}{route}#{state.token}"
-    print(f"OncoTracer browser URL (copy the entire link, including #):\n{url}", flush=True)
-    print("Folders are on this computer. Keep this terminal open; Ctrl+C closes the setup page.", flush=True)
-    try:
+        server = _open_web_server(state, port)
+        route = '/variants/' if getattr(args, 'variant_config', None) else '/'
+        url = f"{server.origin}{route}#{state.token}"
+        print(f"OncoTracer browser URL (copy the entire link, including #):\n{url}", flush=True)
+        print("Folders are on this computer. Keep this terminal open; Ctrl+C closes the setup page.", flush=True)
         if not args.no_browser:
             try:
                 webbrowser.open(url)
@@ -884,13 +941,14 @@ def command_web(args):
             print(f"Analysis continues (PID {state.job['pid']}). Log: {state.job['log_path']}", flush=True)
     finally:
         state.variant_installer.close()
-        server.server_close()
+        if server is not None:
+            server.server_close()
     return 0
 
 
 def add_web_command(subparsers):
     parser = subparsers.add_parser("web", help="Open the local browser setup and analysis dashboard")
-    parser.add_argument("--port", type=int, default=8888, help="loopback HTTP port (default: 8888)")
+    parser.add_argument("--port", type=int, help="fixed loopback HTTP port; default: 8888 or an available port")
     parser.add_argument("--start-dir", default=str(Path.cwd()), help="starting folder in the local file navigator")
     parser.add_argument("--no-browser", action="store_true", help="print the local URL without opening a browser automatically")
     parser.add_argument('--variant-config', help='Review and rerun an existing-BAM variant YAML in the browser')

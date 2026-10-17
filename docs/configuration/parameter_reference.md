@@ -24,26 +24,27 @@ Run `oncotracer <subcommand> --help` to inspect the executable installed on the 
 
 ## `oncotracer install`
 
-Choose one command below. Conda/Poetry install the core CNA tools; optional variant environments are covered in the [variant installation guide](../variants.md). Docker below explicitly selects the current variant-capable image.
+Choose one command below. Conda/Poetry install the core CNA tools and verified shared Illumina variant environment; caller-specific resources are covered in the [variant installation guide](../variants.md). Docker below explicitly selects the current variant-capable image.
 
 ```bash
 oncotracer install --conda
-oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
 oncotracer install --singularity
 ./oncotracer install --poetry
 ```
 
 | Option | Accepted with | Meaning |
 | --- | --- | --- |
-| `--conda` | exactly one backend | Create/update five isolated Conda prefixes |
+| `--conda` | exactly one backend | Create/update core Conda prefixes and the verified variant prefix |
 | `--docker` | exactly one backend | Validate Docker, pull the native image, and run its host doctor |
 | `--singularity` | exactly one backend | Pull/reuse a SIF through Apptainer or Singularity |
-| `--poetry` | exactly one backend | Install an isolated source-development launcher and the five Conda prefixes |
+| `--poetry` | exactly one backend | Install an isolated source-development launcher, core Conda tools and verified variant tools |
 | `--prefix PATH` | Conda, Poetry | Dedicated owned parent for fixed managed children |
 | `--image IMAGE` | Docker, Singularity | Override the default native container image |
 | `--sif PATH` | Singularity | Override the managed Singularity/Apptainer image path |
 | `--force` | Conda, Poetry, Singularity | Transactionally replace intact, owned assets only |
 | `--dry-run` | every backend | Print installation commands without executing them or writing state |
+| `--no-launcher` | every backend | Skip the owned `~/.local/bin/oncotracer` command |
 | `--root PATH` | Conda, Poetry | Explicit source or extracted payload root |
 
 Backend-irrelevant options are errors; they are never silently ignored. Conda

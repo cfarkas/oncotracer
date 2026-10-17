@@ -63,6 +63,7 @@ jobs:
           python3 -m unittest -v \
             tests/test_bootstrap.py \
             tests/test_native_cli.py \
+            tests/test_nextflow_gateway.py \
             tests/test_native_engine.py \
             tests/test_native_variants.py \
             tests/test_variant_command.py \
@@ -75,7 +76,7 @@ jobs:
             tests/test_variant_setup.py \
             tests/test_variant_web.py \
             tests/test_variant_web_ui.py \
-            tests/test_variant_resources.py \
+            tests/test_variant_resources.py tests/test_managed_variant_runtime.py \
             tests/test_variant_installer.py \
             tests/test_variant_model_assets.py \
             tests/test_strelka2.py \
@@ -112,6 +113,7 @@ jobs:
             tests/test_report_llm.py tests/test_classifier_layout.py tests/test_report_presentation.py tests/test_cna_evidence_assessment.py \
             tests/test_system_check.py \
             tests/test_uninstall.py \
+            tests/test_user_launcher.py \
             tests/test_reference_bundle.py \
             tests/test_native_provenance.py \
             tests/test_ichorcna_plot_compat.py \
@@ -124,7 +126,10 @@ jobs:
             tests/test_hosted_ci_storage_safety.py \
             tests/test_ci_parity_resource_guards.py \
             tests/test_ichor_asset_identity.py \
+            tests/test_reuse_validation.py \
+            tests/test_clinvar_resource.py \
             tests/test_release_workflow.py
+          python3 -m unittest discover -s tests -p 'test_glimpse*.py'
       - name: Run shell and standalone documentation regression tests
         run: |
           set -Eeuo pipefail
@@ -148,7 +153,7 @@ jobs:
           cp dist/oncotracer "$RUNNER_TEMP/outside-checkout/oncotracer"
           cd "$RUNNER_TEMP/outside-checkout"
           ./oncotracer --version | grep -F 'OncoTracer 2.1.0'
-          ./oncotracer --help | grep -F 'Native LP-WGS CNA analysis.'
+          ./oncotracer --help | grep -F 'Native LP-WGS CNA and variant analysis.'
           ONCOTRACER_TEST_EXECUTABLE="$RUNNER_TEMP/outside-checkout/oncotracer" \
             python3 "$GITHUB_WORKSPACE/tests/test_setup.py" \
             SetupTests.test_installed_setup_and_check_from_outside_checkout -v
@@ -205,7 +210,8 @@ jobs:
           }
           assert not (required - names), sorted(required - names)
           assert not any(
-              name.endswith('.nf') or PurePosixPath(name).name == 'nextflow.config'
+              (name.endswith('.nf') or PurePosixPath(name).name == 'nextflow.config')
+              and not name.startswith('payload/oncotracer_cli/lpwgs/')
               for name in names
           )
           PY
@@ -479,7 +485,7 @@ jobs:
             --build-arg SOURCE_COMMIT='${{ steps.source.outputs.source_commit }}' \
             --build-arg SOURCE_SHA256='${{ steps.source.outputs.source_sha256 }}' \
             --tag oncotracer:v2-ci .
-      - name: Verify image provenance, eight environments, ONT callers, and absent Nextflow
+      - name: Verify image provenance, eight environments, ONT callers, and bundled Nextflow
         run: |
           docker run --rm oncotracer:v2-ci --version | grep -F 'OncoTracer 2.1.0'
           docker run --rm oncotracer:v2-ci provenance --json \
@@ -493,9 +499,12 @@ jobs:
           docker run --rm oncotracer:v2-ci doctor --backend host --json \
             | tee "$RUNNER_TEMP/docker-doctor.json"
           jq -e '.success == true' "$RUNNER_TEMP/docker-doctor.json"
+          docker run --rm --network none --user 1000:1000 --workdir /tmp --env HOME=/tmp \
+            --entrypoint /usr/local/bin/nextflow oncotracer:v2-ci \
+            run /opt/oncotracer/oncotracer_cli/lpwgs/main.nf --help -ansi-log false
           docker run --rm --entrypoint bash oncotracer:v2-ci -c '
             set -Eeuo pipefail
-            ! command -v nextflow
+            nextflow -version
             test -x "$ONCOTRACER_CORE_PREFIX/bin/bwa"
             test -x "$ONCOTRACER_CORE_PREFIX/bin/samtools"
             test -x "$ONCOTRACER_CORE_PREFIX/bin/minimap2"

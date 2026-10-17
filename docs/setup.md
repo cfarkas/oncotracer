@@ -4,13 +4,16 @@
 
 ## 1. Configure interactively (recommended)
 
+Fresh or FFPE:
+
 ```bash
-oncotracer setup
+oncotracer --interactive --backend conda
+nextflow run main.nf --interactive --backend conda
 ```
 
-Keep the terminal open. If needed, open the printed **127.0.0.1:8888** URL
-including its `#` session code.
-**Browse computer** opens the system folder chooser and discovers selected inputs.
+Keep the terminal open; use its printed URL with `#` session code. Each session
+chooses an available port. See [concurrent projects](nextflow_entry.md#concurrent-projects).
+**Browse computer** selects inputs.
 Folders without FASTQ, POD5 or BAM files (including subfolders) display
 **No sequencing files found. Check your paths.**
 
@@ -41,7 +44,7 @@ oncotracer setup --terminal --backend conda --run
 ```
 
 In terminal setup, add `--variant-specimen-type fresh` or `ffpe` to record preservation,
-including for CNA-only projects. Older CNA commands without this metadata remain valid.
+including for CNA-only projects.
 
 ### Optional analyses
 

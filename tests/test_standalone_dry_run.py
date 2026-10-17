@@ -26,7 +26,14 @@ class DryRunPayloadCacheScopeTests(unittest.TestCase):
     def test_cli_restores_existing_payload_cache_override(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             existing = Path(directory) / "persistent-payload"
-            environment = {"ONCOTRACER_PAYLOAD_CACHE": str(existing)}
+            environment = {
+                "ONCOTRACER_PAYLOAD_CACHE": str(existing),
+                "HOME": str(Path(directory) / "home"),
+                "XDG_CONFIG_HOME": str(Path(directory) / "config"),
+                "XDG_DATA_HOME": str(Path(directory) / "data"),
+                "XDG_CACHE_HOME": str(Path(directory) / "cache"),
+                "TMPDIR": directory,
+            }
             with mock.patch.dict(os.environ, environment, clear=False):
                 with (
                     contextlib.redirect_stdout(io.StringIO()),
@@ -254,6 +261,7 @@ class StandaloneDryRunTests(unittest.TestCase):
                 "native-ichorcna.yml",
                 "native-classifier.yml",
                 "native-gistic2.yml",
+                "native-variants.yml",
             ):
                 (environments / name).write_text("name: test\n", encoding="utf-8")
             target = base / "generated-envs"
@@ -272,6 +280,7 @@ class StandaloneDryRunTests(unittest.TestCase):
 
         completed = self._run_case(prepare)
         self.assertIn("explicit-root/environments/native-core.yml", completed.stderr)
+        self.assertIn("explicit-root/environments/native-variants.yml", completed.stderr)
 
     def test_standalone_ignores_an_adjacent_checkout_payload(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

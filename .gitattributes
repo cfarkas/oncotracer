@@ -1,1 +1,4 @@
 *.pdf binary
+
+# Preserve byte-identical public resource tables and their recorded provenance.
+oncotracer_cli/lpwgs/data/** -whitespace

@@ -87,7 +87,7 @@ COMMENTS = {
     "methylation_modbam": "Existing modified-base BAM file or directory. Reuses MM/ML calls; aligns to hg38 on CPU.",
     "methylation_pod5_dir": "Existing raw-signal directory. Only FASTQ-selected read IDs are re-basecalled.",
     "run_cna_classifier": "Optional interpretation of copy-number changes; separate from methylation classification.",
-    "run_variants": "Add native small-variant calling using locally installed tools.",
+    "run_variants": "Illumina: complete GLIMPSE2 Nextflow workflow, annotations and reports. ONT: compatible native callers.",
     "variant_specimen_type": "Documented preservation: fresh or ffpe. FFPE calls require artifact review.",
     "variant_callers": "Comma-separated callers compatible with the selected sequencing platform.",
     "variant_annovar": "auto uses an existing local ANNOVAR installation/database when available; off skips annotation.",
@@ -215,6 +215,9 @@ def _existing_hg38_parent(path: Path, mode: str) -> Path:
 
 def command_setup(args: argparse.Namespace) -> int:
     try:
+        parallel = getattr(args, "variant_parallel_samples", None)
+        if parallel is not None and (type(parallel) is not int or parallel < 1):
+            raise OncoTracerError("variant_parallel_samples must be a positive integer")
         explicit_samples = any((args.samplesheet, args.fastq_1, args.fastq_2, args.sample_name,
                                 args.barcodes, args.sample_names, args.status))
         if getattr(args, "variant_config", None):
@@ -263,7 +266,7 @@ def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
     if check_code:
         print(check_output.getvalue(), end="")
         raise OncoTracerError("setup saved the configuration, but validation failed; correct it before running")
-    print("Configuration OK. Preparing to run…", flush=True)
+    print("Configuration OK. Checking the tools required before starting…", flush=True)
     # Installation is explicit through --run; reuse configured tools when present.
     install = cli._load_install_config()
     backend = args.backend
@@ -293,6 +296,8 @@ def _run_setup(config_path: Path, args: argparse.Namespace) -> int:
         run.image = str(image)
     if args.threads is not None:
         run.threads = args.threads
+    if getattr(args, "variant_parallel_samples", None) is not None:
+        run.parallel_samples = args.variant_parallel_samples
     return cli.command_run(run)
 
 
@@ -308,7 +313,84 @@ VARIANT_RESOURCE_FIELDS = (
 )
 VARIANT_ASSESSMENT_FIELDS = ("variant_ffperase", "variant_varlociraptor", "variant_varlociraptor_fdr", "variant_varlociraptor_events", "variant_varlociraptor_sample")
 VARIANT_BOOLEAN_FIELDS = ("variant_download_resources", "variant_accept_ffperase_license")
-VARIANT_FIELDS = ("variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", "variant_matched_normals", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
+VARIANT_GLIMPSE_FIELDS = (
+    "variant_engine", "variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir",
+    "variant_parallel_samples", "variant_memory", "variant_confidence_gwas", "variant_patients", "variant_reuse_from", "variant_nextflow", "variant_workflow_source",
+)
+VARIANT_FIELDS = (*VARIANT_GLIMPSE_FIELDS, "variant_specimen_type", "variant_callers", "variant_annovar", "variant_ont_profile", "variant_matched_normals", *VARIANT_BOOLEAN_FIELDS, *VARIANT_ASSESSMENT_FIELDS, *VARIANT_RESOURCE_FIELDS)
+
+
+def _glimpse_variant_values(args, specimen: str, *, interactive: bool) -> dict[str, object]:
+    """The complete Illumina workflow is fixed; prompts concern report inputs only."""
+    supplied = getattr(args, "variant_callers", None)
+    if supplied:
+        selected = [item.strip().lower() for item in str(supplied).split(",")]
+        if not selected or any(item not in VARIANT_CALLERS_BY_MODE["illumina"] for item in selected):
+            raise OncoTracerError("Variant callers for illumina: " + ", ".join(VARIANT_CALLERS_BY_MODE["illumina"]))
+        if len(selected) != len(set(selected)):
+            raise OncoTracerError("Choose each variant caller only once.")
+    print("Illumina short variants: complete Nextflow workflow with mandatory GLIMPSE2, germline and somatic evidence, annotation, reports and a cohort VCF.")
+    values = {"run_variants": True, "variant_engine": "glimpse2", "variant_specimen_type": specimen,
+              "variant_callers": "bcftools,mutect2", "variant_annovar": "auto", "variant_varlociraptor": "off",
+              "variant_ffperase": "required" if specimen == "ffpe" else "off"}
+    parallel = getattr(args, "variant_parallel_samples", None)
+    if parallel is None:
+        parallel = 1
+    if type(parallel) is not int or parallel < 1:
+        raise OncoTracerError("variant_parallel_samples must be a positive integer")
+    values["variant_parallel_samples"] = parallel
+    values["variant_memory"] = getattr(args, "variant_memory", None) or "32GB"
+    pairs = getattr(args, "variant_matched_normals", None)
+    if pairs:
+        from .strelka2 import parse_matched_normals
+        values["variant_matched_normals"] = parse_matched_normals(pairs)
+    values["variant_confidence_gwas"] = _ask(getattr(args, "variant_confidence_gwas", None),
+        "Trait/GWAS confidence (--variant-confidence-gwas)", default="medium",
+        choices=("strict", "medium", "exploratory"), interactive=interactive)
+    patients = _ask(getattr(args, "variant_patients", None),
+        "Patient TSV, optional: sample/name/age/sex; unknown values allowed (--variant-patients)",
+        default="", interactive=interactive, required=False)
+    if patients:
+        values["variant_patients"] = str(Path(patients).expanduser().resolve())
+    reuse = _ask(getattr(args, "variant_reuse_from", None),
+        "Previous compatible analysis folder to reuse, optional (--variant-reuse-from)",
+        default="", interactive=interactive, required=False)
+    if reuse:
+        values["variant_reuse_from"] = str(Path(reuse).expanduser().resolve())
+    for key in ("variant_glimpse_reference_dir", "variant_glimpse_bin", "variant_resource_dir",
+                "variant_tool_prefix", "variant_annovar_dir", "variant_annovar_db", "variant_targets_bed", "variant_clairsto_sif",
+                "variant_ffperase_root", "variant_ffperase_models", "variant_ffperase_prefix", "variant_ffperase_sif"):
+        value = getattr(args, key, None)
+        if value:
+            from .variant_model_assets import is_auto_resource
+            values[key] = str(value) if is_auto_resource(key, value) else str(Path(value).expanduser().resolve())
+    for key in ("variant_nextflow", "variant_workflow_source"):
+        if getattr(args, key, None):
+            values[key] = str(getattr(args, key))
+    for key in VARIANT_BOOLEAN_FIELDS:
+        value = getattr(args, key, None)
+        if value is not None:
+            if type(value) is not bool:
+                raise OncoTracerError(f"{key} must be true or false")
+            values[key] = value
+    if specimen == "ffpe":
+        values.setdefault("variant_download_resources", True)
+        supplied = all(values.get(key) and str(values[key]).lower() != "auto"
+                       for key in ("variant_ffperase_root", "variant_ffperase_models"))
+        if interactive and values["variant_download_resources"] and not supplied and not values.get("variant_accept_ffperase_license"):
+            from .variant_model_assets import FFPERASE_LICENSE
+            print("FFPERASE requires its upstream resource license: " + FFPERASE_LICENSE)
+            values["variant_accept_ffperase_license"] = _ask(None, "Accept the FFPERASE resource license?",
+                default="no", choices=("yes", "no"), interactive=True) == "yes"
+    from .variant_runtime import apply_variant_runtime
+    values["execution_backend"] = args.backend or "host"
+    values, selection = apply_variant_runtime(values, mode="illumina", backend=args.backend, emit=True)
+    args._variant_runtime_diagnostics = list(selection.diagnostics)
+    if selection.managed:
+        args.variant_tool_prefix = str(selection.prefix)
+    from .variants import resolve_variant_request
+    resolve_variant_request(values, mode="illumina")
+    return values
 
 
 def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None = None) -> dict[str, object]:
@@ -332,6 +414,13 @@ def _variant_values(args, mode: str, *, interactive: bool, analysis: str | None 
     specimen = _ask(getattr(args, "variant_specimen_type", None),
                     "Sample preservation (--variant-specimen-type)",
                     choices=("fresh", "ffpe"), interactive=interactive)
+    if mode == "illumina":
+        return _glimpse_variant_values(args, specimen, interactive=interactive)
+    parallel = getattr(args, "variant_parallel_samples", None)
+    if parallel is not None and (type(parallel) is not int or parallel < 1):
+        raise OncoTracerError("variant_parallel_samples must be a positive integer")
+    if parallel is not None and parallel > 1:
+        raise OncoTracerError("--parallel-samples > 1 requires the Illumina GLIMPSE2 short-variant workflow")
     callers = _ask(getattr(args, "variant_callers", None),
                    "Variant callers (--variant-callers; comma-separated: " + ", ".join(VARIANT_CALLERS_BY_MODE[mode]) + ")",
                    default=VARIANT_DEFAULT_CALLER[mode], interactive=interactive)
@@ -404,6 +493,21 @@ def _save_setup_files(project: Path, files: dict[str, str]) -> Path | None:
     """Replace validated setup files, retaining the previous settings together."""
     if set(files) - {"run.yml", "samplesheet.csv", "sample_metadata.csv"}:
         raise OncoTracerError("Unsupported setup configuration file.")
+    _validate_setup_destination(project)
+    directory = project / "config"
+    directory.mkdir(parents=True, exist_ok=True)
+    from .output_safety import configuration_lock
+    with contextlib.ExitStack() as locks:
+        locks.enter_context(configuration_lock(directory, exclusive=True, directory=True))
+        _validate_setup_destination(project)
+        config_path = directory / "run.yml"
+        if config_path.exists():
+            locks.enter_context(configuration_lock(config_path, exclusive=True))
+        return _save_setup_files_locked(project, files)
+
+
+def _save_setup_files_locked(project: Path, files: dict[str, str]) -> Path | None:
+    """Publish only while setup owns the directory and any previous YAML."""
     _validate_setup_destination(project)
     directory = project / "config"
     original = {name: (directory / name).read_bytes() if (directory / name).exists() else None for name in files}
@@ -672,6 +776,12 @@ def _command_setup(args: argparse.Namespace) -> int:
             resolve_variant_request(values, mode=mode)
 
     if values.get('run_variants') and mode == 'illumina':
+        from .variant_runtime import apply_variant_runtime
+        values, selection = apply_variant_runtime(values, mode=mode, backend=args.backend, emit=True)
+        args._variant_runtime_diagnostics = list(dict.fromkeys([
+            *getattr(args, "_variant_runtime_diagnostics", []), *selection.diagnostics]))
+        if selection.managed:
+            args.variant_tool_prefix = str(selection.prefix)
         from .variants import resolve_variant_request
         from .strelka2 import validate_samples
         from .docker_runtime import docker_host_preview
@@ -973,6 +1083,7 @@ def command_check(args: argparse.Namespace) -> int:
                     core = environment.get("ONCOTRACER_CORE_PREFIX")
                     toolchain = Toolchain(core_prefix=Path(core) if core else None)
                     request = resolve_variant_request(config, mode=mode)
+                    warnings.extend(request.tool_prefix_diagnostics)
                     variant_tools = preflight_variant_tools(request, toolchain)
     except (OncoTracerError, OSError, ValueError) as error:
         errors.append(str(error))
@@ -1031,7 +1142,7 @@ def add_setup_commands(subparsers) -> None:
         ),
     )
     parser.add_argument("--terminal", action="store_true", help="use the terminal folder wizard instead of the browser")
-    parser.add_argument("--port", type=int, default=8888, help="local browser port (default: 8888)")
+    parser.add_argument("--port", type=int, help="fixed local browser port; default: 8888 or an available port")
     parser.add_argument("--no-browser", action="store_true", help="print the local URL without opening a browser automatically")
     parser.add_argument(
         "--variant-config", metavar="PATH",
@@ -1095,7 +1206,7 @@ def add_setup_commands(subparsers) -> None:
         "--reference-cache", help="shared verified download cache (default: a sibling of the project)"
     )
     parser.add_argument(
-        "--threads", type=int, help="CPU worker threads (wizard suggests from hardware; manual/scripted default: 8)"
+        "--threads", type=int, help="total CPU budget, shared across concurrent GLIMPSE2 samples (manual/scripted default: 8)"
     )
     parser.add_argument(
         "--non-interactive",
@@ -1132,7 +1243,13 @@ def add_setup_commands(subparsers) -> None:
         help="single Illumina library status (default: tumor)",
     )
     variant = parser.add_argument_group("Optional native small-variant calling")
+    variant.add_argument("--parallel-samples", "--variant-parallel-samples", dest="variant_parallel_samples", type=int, help="maximum simultaneous Illumina samples; CPU/memory budgets are shared (default: 1)")
+    variant.add_argument("--variant-memory", help="total memory budget across concurrent Illumina samples (default: 32GB)")
     variant.add_argument("--variants", action="store_true", help="add native small-variant calling to the selected analysis")
+    variant.add_argument('--variant-engine', choices=('glimpse2',), help='Complete Illumina short-variant workflow (required)')
+    variant.add_argument('--variant-confidence-gwas', choices=('strict','medium','exploratory'), help='Trait evidence preset; default medium')
+    for field in ('glimpse-reference-dir','glimpse-bin','resource-dir','patients','reuse-from','nextflow','workflow-source'):
+        variant.add_argument('--variant-'+field, help='GLIMPSE2 workflow '+field.replace('-',' '))
     variant.add_argument("--variant-specimen-type", choices=("fresh", "ffpe"),
                          help="sample preservation; required when variants are enabled (one preservation type per project)")
     variant.add_argument("--variant-callers", help="comma-separated callers: Illumina mutect2/freebayes/bcftools/strelka2_germline/strelka2_somatic; ONT clair3/clairs_to")

@@ -14,23 +14,23 @@ and SSH access, see [terminal and headless servers](headless.md).
 | Conda | `oncotracer install --conda` | Native workstation/server execution |
 | Docker | `oncotracer install --docker` | Reproducible container execution |
 | Singularity/Apptainer | `oncotracer install --singularity` | HPC execution with a reusable SIF |
-| Poetry | `./oncotracer install --poetry` | Launcher development; scientific programs remain in five Conda prefixes |
+| Poetry | `./oncotracer install --poetry` | Launcher development; scientific programs use isolated Conda prefixes, including verified variant tools |
 
-The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`. Variant-enabled images also include isolated `variants` and `ffperase` environments; the updated image adds the legacy `strelka2` runtime.
+The five core Conda groups are `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`. Conda and Poetry installation also create and verify one managed Illumina `variants` environment. Variant-enabled images include isolated `variants` and `ffperase` environments plus the legacy `strelka2` runtime.
 
 ## Which analyses does each backend support?
 
 | Analysis | Conda / host / Poetry | Updated Docker image | Singularity / Apptainer backend |
 | --- | --- | --- | --- |
 | CNA and optional CNA reports | Yes | Yes | Yes |
-| CNA plus small variants | With the requested optional tools | Yes, use the dated variant image below | Not supported |
+| CNA plus small variants | With the requested optional tools | Yes, build the current variant image below | Not supported |
 | ONT methylation | With separate compatible tools/models | Not supported | Not supported |
 | Existing BAMs, variants only | Direct `oncotracer variants` command | Explicit container command in the [variant reference](variants_reference.md#conda-and-docker) | No integrated route |
 
 An existing caller-specific SIF can supply ClairS-TO or FFPERASE on the host.
 That is different from selecting Singularity for the complete OncoTracer pipeline.
-A core `doctor` pass checks the CNA toolchain; variant callers and resources
-have their own preflight when variants are selected.
+Installation and `doctor` verify the shared variant toolchain as well as CNA tools.
+Selected caller-specific resources and models also have their own preflight.
 
 ## Conda
 
@@ -67,27 +67,40 @@ oncotracer install --conda \
 
 ### FASTQ to CNA and variants
 
-Use the current source checkout and this published integration image for the
-combined workflow (Linux x86-64):
+The current Linux x86-64 image is
+`carlosfarkas/oncotracer:fastq-variants-20261017`. It includes the complete
+Illumina GLIMPSE2 workflow, FFPE repairs, integrated ONT callers and concurrent
+project support. `oncotracer install --docker` selects this image by default.
+
+To build the current source checkout instead (older dated tags remain unchanged):
 
 ```bash
-docker pull carlosfarkas/oncotracer:fastq-variants-20260922
+SOURCE_COMMIT="$(git rev-parse HEAD)"
+SOURCE_SHA256="$(git -c tar.umask=0002 archive --format=tar "$SOURCE_COMMIT" | sha256sum | awk '{print $1}')"
+docker build --build-arg SOURCE_COMMIT="$SOURCE_COMMIT" \
+  --build-arg SOURCE_SHA256="$SOURCE_SHA256" -t oncotracer:glimpse2-repair .
+oncotracer install --docker --image oncotracer:glimpse2-repair --no-pull
 oncotracer setup --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants
+  --image oncotracer:glimpse2-repair --variants
 ```
+
+`--no-pull` installs an existing local Docker image after checking it with
+`doctor`. Without that flag, installation pulls the selected registry image.
+Use a clean committed checkout when building the source-bound image.
 
 Select Illumina or ONT, Fresh or FFPE, and the compatible callers. **Save and
 check**, then **Run analysis**, starts alignment, CNA analysis and the selected
 variant stages in one project. ANNOVAR uses an existing licensed installation
-and databases. With the 20260922 image, Run can prepare the selected Clair3
-model and missing FFPERASE source/models after explicit license acceptance.
+and databases. Run can prepare the selected Clair3 model and missing FFPERASE
+source/models after explicit license acceptance. The image includes pinned
+Nextflow with a writable runtime cache for arbitrary container UIDs.
 Checks and dry runs download no variant resources; existing paths remain supported.
 
 Terminal equivalent, using the same image and variant branch:
 
 ```bash
 oncotracer setup --terminal --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants --run
+  --image oncotracer:glimpse2-repair --variants --run
 ```
 
 Answer the platform, input, preservation, caller and resource questions. `--run`
@@ -97,16 +110,16 @@ then use the project path you selected:
 ```bash
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922 \
+  --image oncotracer:glimpse2-repair \
   --config /absolute/path/to/my-study/config/run.yml
 ```
 
 Choose either setup route for a new project. For fully unattended FASTQ setup,
 use the [explicit sample commands](headless.md) with `--non-interactive`.
 
-This dated image was tested with the synthetic FASTQ integration checks described in
-[small-variant calling](variants.md#run-cna-and-variants-with-docker). The stable
-release below predates this optional variant branch.
+See the [resume and FFPE repair notes](glimpse2_repair.txt) for validation scope,
+compatible resource requirements and the existing-output ownership boundary.
+The stable release below predates the complete GLIMPSE2 branch.
 
 ### Stable CNA release
 
@@ -193,6 +206,19 @@ oncotracer install --singularity \
   --sif "/large/storage/containers/oncotracer-2.1.0.sif"
 ```
 
+To install a source-built image already present in your local Docker daemon,
+use an explicit local transport. This builds the SIF without publishing an image:
+
+```bash
+oncotracer install --singularity \
+  --image docker-daemon:oncotracer:glimpse2-repair \
+  --sif "/large/storage/containers/oncotracer-glimpse2.sif"
+```
+
+This route retains the same ownership, provenance and container health checks.
+The complete Singularity backend supports CNA; integrated small variants remain
+unsupported as shown in the backend table above.
+
 Or override it for one run:
 
 ```bash
@@ -208,7 +234,7 @@ oncotracer run \
 ./oncotracer install --poetry \
   --prefix /path/to/my/oncotracer-v2-dev-envs
 
-ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs/poetry-runtime/bin/oncotracer
+ONCOTRACER_DEV=/path/to/my/oncotracer-v2-dev-envs-poetry/poetry-runtime/bin/oncotracer
 "$ONCOTRACER_DEV" doctor --backend poetry
 "$ONCOTRACER_DEV" check --config "$PWD/project/config/illumina.auto.yml"
 "$ONCOTRACER_DEV" run \
@@ -244,15 +270,15 @@ oncotracer provenance --json
 oncotracer doctor --backend docker
 ```
 
-For the dated variant image, inspect that exact image as well; the host launcher
+For a locally built variant image, inspect that exact image as well; the host launcher
 and container can come from different commits:
 
 ```bash
-docker run --rm carlosfarkas/oncotracer:fastq-variants-20260922 provenance --json
+docker run --rm oncotracer:glimpse2-repair provenance --json
 oncotracer doctor --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20260922
+  --image oncotracer:glimpse2-repair
 docker image inspect --format '{{json .RepoDigests}}' \
-  carlosfarkas/oncotracer:fastq-variants-20260922
+  oncotracer:glimpse2-repair
 ```
 
 Record the digest you used with the study. `doctor` here checks core tools;
