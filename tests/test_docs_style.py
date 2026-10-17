@@ -42,8 +42,8 @@ ACTIVE_NATIVE_FILES = (
 REQUIRED_TEXT = {
     "README.md": (
         "copy-number changes",
-        "git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src",
-        "pip install -e ./oncotracer-src",
+        "pip install oncotracer",
+        "No Git checkout is required",
         "oncotracer setup --project",
         "oncotracer check --config",
         "oncotracer install --conda",
@@ -61,8 +61,8 @@ REQUIRED_TEXT = {
         "parity_release.md",
     ),
     "docs/installation.md": (
-        "git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src",
-        "pip install -e ./oncotracer-src",
+        "pip install oncotracer",
+        "No Git checkout is needed",
         "source oncotracer-env/bin/activate",
         "oncotracer system --path",
         "oncotracer install --conda",

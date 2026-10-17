@@ -1,7 +1,11 @@
 """Owned per-user command publication and removal, using only temporary homes."""
 from __future__ import annotations
 
+import base64
 import contextlib
+import csv
+import hashlib
+import importlib.metadata
 import io
 import json
 import os
@@ -52,6 +56,60 @@ class UserLauncherTests(unittest.TestCase):
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
             code = cli.main(arguments)
         return code, output.getvalue() + (errors.getvalue() if code else "")
+
+    @contextlib.contextmanager
+    def pip_console(self, directory_mode=0o755):
+        path = launch.default_path()
+        path.parent.mkdir(parents=True)
+        path.parent.chmod(directory_mode)
+        data = b"#!/usr/bin/python3\nfrom oncotracer_cli.cli import main\nmain()\n"
+        path.write_bytes(data); path.chmod(0o755)
+        site = self.home / ".local/lib/python/site-packages"
+        module = site / "oncotracer_cli/user_launcher.py"
+        module.parent.mkdir(parents=True); module.write_text("# installed module\n")
+        info = site / "oncotracer-2.1.0.dist-info"; info.mkdir()
+        (info / "METADATA").write_text("Name: oncotracer\nVersion: 2.1.0\n")
+        (info / "entry_points.txt").write_text("[console_scripts]\noncotracer = oncotracer_cli.cli:main\n")
+        digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
+        with (info / "RECORD").open("w", newline="") as output:
+            csv.writer(output).writerow((os.path.relpath(path, site), "sha256=" + digest, len(data)))
+        distribution = importlib.metadata.PathDistribution(info)
+        with mock.patch.object(launch, "__file__", str(module)), mock.patch.object(launch.importlib.metadata, "distribution", return_value=distribution):
+            yield path, data
+
+    def test_pip_owned_command_is_retained_without_any_launcher_writes(self):
+        for mode in (0o755, 0o775):
+            with self.subTest(mode=mode), self.pip_console(mode) as (path, data):
+                before = sorted(p.name for p in path.parent.iterdir())
+                with launch.install_transaction() as transaction:
+                    self.assertEqual(transaction.publish(self.config)["action"], "retain-pip")
+                self.assertEqual(path.read_bytes(), data)
+                self.assertEqual(sorted(p.name for p in path.parent.iterdir()), before)
+                with launch.remove_transaction(target=launch.installation_target(self.config)) as transaction:
+                    self.assertEqual(transaction.detach()["paths"], [])
+                with self.assertRaisesRegex(OncoTracerError, "pip uninstall oncotracer"):
+                    with launch.remove_transaction(required=True):
+                        self.fail("pip console removal was authorized")
+                self.assertEqual(path.read_bytes(), data)
+            # Each mode uses a distinct HOME; no deletion of ownership evidence.
+            self.home = self.scratch / ("home-" + str(mode))
+            os.environ["HOME"] = str(self.home)
+
+    def test_changed_pip_console_is_not_adopted(self):
+        with self.pip_console() as (path, data):
+            path.write_bytes(data + b"# changed\n")
+            with self.assertRaisesRegex(OncoTracerError, "unowned"):
+                with launch.install_transaction():
+                    self.fail("changed console was adopted")
+
+    def test_pip_console_replacement_during_backend_work_is_detected(self):
+        with self.pip_console() as (path, data):
+            with self.assertRaisesRegex(OncoTracerError, "unowned|changed"):
+                with launch.install_transaction() as transaction:
+                    path.write_bytes(data + b"# changed during install\n")
+                    transaction.publish(self.config)
+            self.assertEqual(path.read_bytes(), data + b"# changed during install\n")
+            self.assertFalse((path.parent / launch.MARKER).exists())
 
     def test_preview_creates_no_home_directory(self):
         with launch.install_transaction(dry_run=True) as transaction:

@@ -4,7 +4,7 @@ Install the command, then choose **Conda or Docker**. Keep software and projects
 
 ## Requirements
 
-Both routes need 64-bit Linux, Python 3.10–3.13 and Git for the launcher.
+Both routes need 64-bit Linux and Python 3.10–3.13 for the launcher.
 The Conda route also needs [Conda/Miniforge](https://github.com/conda-forge/miniforge#install).
 Docker must be running and accessible to your user; host Conda is unnecessary.
 
@@ -24,21 +24,24 @@ BAMs and temporary files. Docker extraction and larger datasets need more.
 
 ## 1. Install the command
 
-The main branch includes complete GLIMPSE2 and the resume/FFPE repairs.
-Use the current Docker image below or the
-[source image guide](containers.md#fastq-to-cna-and-variants).
-
-Install the launcher:
+Install the application and bundled workflows in your Python environment:
 
 ```bash
-git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
-python3 -m venv oncotracer-env
-oncotracer-env/bin/python -m pip install -e ./oncotracer-src
-source oncotracer-env/bin/activate
+pip install oncotracer
 oncotracer --help
 ```
 
-Keep both folders: the editable installation needs its source and Python environment.
+No Git checkout is needed. For a separate Python environment, or when system
+Python requires one:
+
+```bash
+python3 -m venv oncotracer-env
+source oncotracer-env/bin/activate
+python -m pip install oncotracer
+```
+
+Keep that environment. Scientific tools are installed and checked separately below.
+Development builds use the [GitHub source route](installation_details.md#install-from-github).
 
 ## 2. Choose an analysis backend
 
@@ -53,7 +56,7 @@ oncotracer system --path /absolute/path/to/my-study
 ```bash
 oncotracer install --conda
 oncotracer doctor --backend conda
-oncotracer setup --backend conda
+oncotracer --interactive --backend conda
 ```
 
 Terminal setup alternative to the last command:
@@ -73,7 +76,7 @@ The current image includes GLIMPSE2/FFPE repairs and supports concurrent project
 ```bash
 oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
 oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017
-oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer --interactive --backend docker
 ```
 
 Terminal setup alternative with the same image:
@@ -88,7 +91,8 @@ See [Docker variants](variants.md#run-cna-and-variants-with-docker) for models,
 FFPERASE licensing and ANNOVAR. The older `ghcr.io/cfarkas/oncotracer:2.1.0`
 image supports CNA. For methylation, use [Conda](configuration/methylation.md).
 
-Successful backend installation adds `~/.local/bin/oncotracer`; `--no-launcher` opts out.
+Backend installation creates `~/.local/bin/oncotracer` when needed and preserves
+an existing pip-owned command; `--no-launcher` opts out.
 `--verbose` logs packages; `--json` supports automation. See [advanced installation](installation_details.md).
 
 ## 3. Start a project
@@ -133,6 +137,8 @@ missing from `PATH`, follow the installer’s printed PATH instruction.
 ## Uninstall
 
 Preview managed Conda removal with `oncotracer uninstall --conda --dry-run`.
-Matching backend removal also removes the global command. Use
-`oncotracer uninstall --global-launcher --yes` for command-only removal.
-See [uninstall](uninstall.md); project data and results remain.
+Matching backend removal also removes its additional global command. Use
+`oncotracer uninstall --global-launcher --yes` for command-only removal;
+pip-owned commands remain until pip uninstalls them.
+Then run `python -m pip uninstall oncotracer` in the Python environment used for
+installation. See [uninstall](uninstall.md); project data and results remain.

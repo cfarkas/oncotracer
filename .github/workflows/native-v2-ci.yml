@@ -128,7 +128,9 @@ jobs:
             tests/test_ichor_asset_identity.py \
             tests/test_reuse_validation.py \
             tests/test_clinvar_resource.py \
-            tests/test_release_workflow.py
+            tests/test_release_workflow.py \
+            tests/test_pypi_publish.py \
+            tests/test_python_distribution.py
           python3 -m unittest discover -s tests -p 'test_glimpse*.py'
       - name: Run shell and standalone documentation regression tests
         run: |

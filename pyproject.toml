@@ -3,10 +3,16 @@ name = "oncotracer"
 version = "2.1.0"
 description = "Native, auditable LP-WGS CNA analysis for Illumina and Oxford Nanopore data"
 authors = [{ name = "OncoTracer developers" }]
-readme = "README.md"
+readme = "PYPI_README.md"
 license = "MIT"
 requires-python = ">=3.10,<3.14"
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/cfarkas/oncotracer"
+Documentation = "https://cfarkas.github.io/oncotracer/"
+Source = "https://github.com/cfarkas/oncotracer"
+Issues = "https://github.com/cfarkas/oncotracer/issues"
 
 [project.optional-dependencies]
 reports = ["torch>=2.2", "transformers>=4.51,<5", "safetensors>=0.4", "reportlab>=4.0"]
@@ -20,6 +26,7 @@ oncotracer = "oncotracer_cli.cli:main"
 exclude = ["**/__pycache__/**", "**/*.pyc", "tests/artifacts/**"]
 packages = [{ include = "oncotracer_cli" }]
 include = [
+  { path = "oncotracer_build_backend.py", format = ["sdist"] },
   { path = "main.nf", format = ["wheel", "sdist"] },
   { path = "nextflow.config", format = ["wheel", "sdist"] },
   { path = "oncotracer_cli/lpwgs", format = ["wheel", "sdist"] },
@@ -59,4 +66,5 @@ include = [
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+build-backend = "oncotracer_build_backend"
+backend-path = ["."]
