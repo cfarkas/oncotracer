@@ -11,9 +11,9 @@ Analyze Illumina and Oxford Nanopore (ONT) reads for DNA copy-number changes and
 
 ## Install
 
-Use Linux, Python 3.10–3.13 and Git, with **Conda or Docker** for analysis tools. Install the stable CNA launcher in your software directory.
+Use Linux, Python 3.10–3.13 and Git, with **Conda or Docker** for analysis tools. Install OncoTracer in your software directory.
 
-**For complete GLIMPSE2 and the resume/FFPE repairs in [PR #53](https://github.com/cfarkas/oncotracer/pull/53):** until merged, replace `--branch main` below with `--branch feat/glimpse2-complete-short-variants`. Use the current Docker image below, or [build from source](docs/containers.md#fastq-to-cna-and-variants).
+The main branch includes complete GLIMPSE2 and the resume/FFPE repairs. Use the current Docker image below, or [build from source](docs/containers.md#fastq-to-cna-and-variants).
 
 ```bash
 git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src

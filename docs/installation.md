@@ -24,9 +24,7 @@ BAMs and temporary files. Docker extraction and larger datasets need more.
 
 ## 1. Install the command
 
-For complete GLIMPSE2 and the resume/FFPE repairs in
-[PR #53](https://github.com/cfarkas/oncotracer/pull/53), replace `--branch main`
-below with `--branch feat/glimpse2-complete-short-variants` until merged.
+The main branch includes complete GLIMPSE2 and the resume/FFPE repairs.
 Use the current Docker image below or the
 [source image guide](containers.md#fastq-to-cna-and-variants).
 

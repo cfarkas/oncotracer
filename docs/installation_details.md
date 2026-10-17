@@ -3,12 +3,10 @@
 Start with [installation](installation.md). This reference explains standalone
 builds, alternative backends, ownership checks and recovery behavior.
 
-The complete Illumina GLIMPSE2 workflow and resume/FFPE repairs are on
-[PR #53](https://github.com/cfarkas/oncotracer/pull/53). Until it is merged, select
-`feat/glimpse2-complete-short-variants` when cloning, as described in
-[installation](installation.md#1-install-the-command). Build the repaired
-[Docker image from that source](containers.md#fastq-to-cna-and-variants), with
-both source provenance arguments; existing registry tags are unchanged.
+The main branch includes the complete Illumina GLIMPSE2 workflow and
+resume/FFPE repairs. For Docker, use the current image documented below or
+[build from source](containers.md#fastq-to-cna-and-variants) with both source
+provenance arguments.
 
 OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.13 is required by the portable zipapp. The selected backend supplies BWA, samtools, Picard, R, qDNAseq, HMMcopy, ichorCNA, the optional classifier, and GISTIC2.
 
@@ -260,7 +258,7 @@ of those steps without overwriting earlier evidence.
 
 ### Poetry
 
-Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development. To develop or test the repairs before PR #53 is merged, add `--branch feat/glimpse2-complete-short-variants` to the clone command below:
+Poetry 2.0 or newer is required. Poetry is a source-development route, not the normal binary installation. Clone the repository only for development.
 
 ```bash
 git clone https://github.com/cfarkas/oncotracer.git
