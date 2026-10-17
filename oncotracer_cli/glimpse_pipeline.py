@@ -158,6 +158,18 @@ def sample_parameters(request,sample,bam,reference,output,resources,threads,veri
 
 
 def ensure_resources(params,runner,bundle=None,*,bcftools=None):
+    # Independent projects may explicitly share this cache. Legacy bootstrap
+    # writers use fixed temporary names, so serialize preparation at this root.
+    if getattr(runner, 'dry_run', False):
+        return
+    from .engine import _physical_directory_lock
+    resources=Path(params['resource_dir'])
+    resources.mkdir(parents=True,exist_ok=True)
+    with _physical_directory_lock(resources, 'shared variant resource directory'):
+        return _ensure_resources_locked(params,runner,bundle,bcftools=bcftools)
+
+
+def _ensure_resources_locked(params,runner,bundle=None,*,bcftools=None):
     bundle=workflow_bundle() if bundle is None else Path(bundle)
     # Resolve reporting resources before CommandRunner isolates HOME/font caches.
     # Pass absolute paths to the child so installed local models remain visible.

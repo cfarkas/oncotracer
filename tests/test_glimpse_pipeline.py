@@ -27,6 +27,80 @@ class GlimpsePipelineTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.request = resolve_variant_request({'run_variants': True, 'variant_specimen_type': 'fresh'}, mode='illumina')
 
+    def test_shared_resource_bootstrap_serializes_only_the_selected_root(self):
+        import threading
+        shared, independent = self.root / "shared", self.root / "independent"
+        clinical = self.root / "clinvar.vcf.gz"
+        clinical.write_bytes(b"synthetic fixture")
+        entered, release, independent_done = threading.Event(), threading.Event(), threading.Event()
+        calls, errors = [], []
+        class Runner:
+            def run(inner, stage, command, **kwargs):
+                if stage == "glimpse-public-resources":
+                    target = Path(command[command.index("--directory") + 1])
+                    calls.append(target)
+                    if target == shared:
+                        entered.set()
+                        if not release.wait(5):
+                            raise AssertionError("timed out holding shared bootstrap")
+                    (target / "gwas").mkdir(exist_ok=True)
+                    (target / "gwas/associations.GRCh38.tsv.gz").write_bytes(b"fixture")
+                    (target / "ancestry/reference").mkdir(parents=True, exist_ok=True)
+                    (target / "ancestry/reference/complete.json").write_text("{}")
+                elif stage == "glimpse-clinvar-preflight":
+                    result = Path(command[command.index("--result") + 1])
+                    result.write_text(json.dumps({"clinvar": str(clinical)}))
+                else:
+                    raise AssertionError(stage)
+        def worker(target):
+            try:
+                params = {"resource_dir": str(target), "clinvar": str(clinical), "reference": "synthetic.fa"}
+                pipeline.ensure_resources(params, Runner(), self.root, bcftools="synthetic-bcftools")
+                if target == independent:
+                    independent_done.set()
+            except BaseException as error:
+                errors.append(error)
+        first = threading.Thread(target=worker, args=(shared,))
+        second = threading.Thread(target=worker, args=(shared,))
+        other = threading.Thread(target=worker, args=(independent,))
+        first.start()
+        try:
+            self.assertTrue(entered.wait(2))
+            second.start()
+            other.start()
+            self.assertTrue(independent_done.wait(2), "unrelated resource root was blocked")
+            self.assertEqual(calls.count(shared), 1)
+            self.assertTrue(second.is_alive())
+        finally:
+            release.set()
+            for thread in (first, second, other):
+                if thread.ident is not None:
+                    thread.join(3)
+        self.assertFalse(any(thread.is_alive() for thread in (first, second, other)))
+        self.assertEqual(errors, [])
+        self.assertEqual(calls.count(shared), 1)
+
+    def test_resource_bootstrap_dry_run_creates_nothing(self):
+        from unittest.mock import Mock
+        runner = Mock(dry_run=True)
+        resources = self.root / "absent"
+        pipeline.ensure_resources({"resource_dir": str(resources)}, runner, self.root)
+        self.assertFalse(resources.exists())
+        runner.run.assert_not_called()
+
+    def test_resource_bootstrap_rejects_symlink_root(self):
+        from unittest.mock import Mock
+        target = self.root / "external"
+        target.mkdir()
+        (target / "sentinel").write_bytes(b"preserve")
+        resources = self.root / "alias"
+        resources.symlink_to(target, target_is_directory=True)
+        runner = Mock(dry_run=False)
+        with self.assertRaisesRegex(OncoTracerError, "physical directory"):
+            pipeline.ensure_resources({"resource_dir": str(resources)}, runner, self.root)
+        self.assertEqual(list(target.iterdir()), [target / "sentinel"])
+        runner.run.assert_not_called()
+
     def test_illumina_always_dispatches_complete_glimpse_workflow(self):
         self.assertEqual(self.request.engine, 'glimpse2')
         self.assertEqual(self.request.callers, ('bcftools', 'mutect2'))

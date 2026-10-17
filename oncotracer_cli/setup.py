@@ -495,6 +495,21 @@ def _save_setup_files(project: Path, files: dict[str, str]) -> Path | None:
         raise OncoTracerError("Unsupported setup configuration file.")
     _validate_setup_destination(project)
     directory = project / "config"
+    directory.mkdir(parents=True, exist_ok=True)
+    from .output_safety import configuration_lock
+    with contextlib.ExitStack() as locks:
+        locks.enter_context(configuration_lock(directory, exclusive=True, directory=True))
+        _validate_setup_destination(project)
+        config_path = directory / "run.yml"
+        if config_path.exists():
+            locks.enter_context(configuration_lock(config_path, exclusive=True))
+        return _save_setup_files_locked(project, files)
+
+
+def _save_setup_files_locked(project: Path, files: dict[str, str]) -> Path | None:
+    """Publish only while setup owns the directory and any previous YAML."""
+    _validate_setup_destination(project)
+    directory = project / "config"
     original = {name: (directory / name).read_bytes() if (directory / name).exists() else None for name in files}
     changed = {name: text.encode("utf-8") for name, text in files.items() if text.encode("utf-8") != original[name]}
     if not changed:
@@ -1127,7 +1142,7 @@ def add_setup_commands(subparsers) -> None:
         ),
     )
     parser.add_argument("--terminal", action="store_true", help="use the terminal folder wizard instead of the browser")
-    parser.add_argument("--port", type=int, default=8888, help="local browser port (default: 8888)")
+    parser.add_argument("--port", type=int, help="fixed local browser port; default: 8888 or an available port")
     parser.add_argument("--no-browser", action="store_true", help="print the local URL without opening a browser automatically")
     parser.add_argument(
         "--variant-config", metavar="PATH",

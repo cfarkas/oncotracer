@@ -21,7 +21,8 @@ workflow {
     if (selectedFlag(params.help, 'help')) {
         argv.add('--help')
     } else {
-        argv.addAll(['--analysis', params.analysis.toString(), '--port', params.port.toString()])
+        argv.addAll(['--analysis', params.analysis.toString()])
+        if (params.port != null) argv.addAll(['--port', params.port.toString()])
         if (selectedFlag(params.interactive, 'interactive')) argv.add('--interactive')
         if (selectedFlag(params.ffpe, 'ffpe')) argv.add('--ffpe')
         if (selectedFlag(params.no_browser, 'no_browser')) argv.add('--no-browser')

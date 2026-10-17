@@ -13,7 +13,7 @@ Analyze Illumina and Oxford Nanopore (ONT) reads for DNA copy-number changes and
 
 Use Linux, Python 3.10–3.13 and Git, with **Conda or Docker** for analysis tools. Install the stable CNA launcher in your software directory.
 
-**For complete GLIMPSE2 and the resume/FFPE repairs in [PR #53](https://github.com/cfarkas/oncotracer/pull/53):** until merged, replace `--branch main` below with `--branch feat/glimpse2-complete-short-variants`. Build Docker from that branch using the [source image guide](docs/containers.md#fastq-to-cna-and-variants). Published tags are unchanged.
+**For complete GLIMPSE2 and the resume/FFPE repairs in [PR #53](https://github.com/cfarkas/oncotracer/pull/53):** until merged, replace `--branch main` below with `--branch feat/glimpse2-complete-short-variants`. Use the current Docker image below, or [build from source](docs/containers.md#fastq-to-cna-and-variants).
 
 ```bash
 git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
@@ -38,13 +38,11 @@ Installation verifies bcftools 1.23.1 with HTSlib 1.24; setup and runs select it
 
 ### Docker
 
-For repaired GLIMPSE2/FFPE, [build the current branch image](docs/containers.md#fastq-to-cna-and-variants) with both provenance arguments and install it with `--no-pull`.
-
-The published image below predates those repairs. It supports the earlier **FASTQ → alignment → CNA and variants** workflow. Docker must be running and accessible:
+The current image includes GLIMPSE2/FFPE repairs and concurrent-project support. Docker must be running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20260922
-oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20260922 --variants
+oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer setup --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017 --variants
 ```
 
 This route needs no host Conda. Omit `--variants` for CNA alone. Select Fresh or FFPE and compatible callers in the browser. Choose verified model preparation on Run or existing resources in the [variant guide](docs/variants.md); FFPERASE downloads require license acceptance, and ANNOVAR remains separately supplied. ONT methylation uses the Conda route.
@@ -61,7 +59,7 @@ oncotracer uninstall --conda --yes
 For permanent removal instead, add `--purge` to the second command. Separately created FFPE/ONT environments need separate removal. To remove the Docker image:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:fastq-variants-20260922
+docker image rm carlosfarkas/oncotracer:fastq-variants-20261017
 ```
 
 For command-only removal, use `oncotracer uninstall --global-launcher --yes`; then `python -m pip uninstall oncotracer` inside `oncotracer-env`. Projects and results remain. See [uninstall and recovery](docs/uninstall.md).
@@ -82,7 +80,7 @@ oncotracer setup --project "$PWD/my-study" --mode illumina --input-folder /data/
 2. **Choose settings**, including threads, reference, reports and optional variant callers. Use separate projects for Fresh and FFPE specimens.
 3. **Save configuration and check**, review the configuration, then **Run analysis**. Follow progress and open results when complete.
 
-The server opens **127.0.0.1:8888**. Keep its terminal open; if necessary, copy the complete printed URL including the session code after `#`. See the [browser walkthrough](docs/browser_demo.md) or [full setup guide](docs/setup.md).
+Keep each terminal open and use its complete printed URL, including the session code after `#`. Sessions choose available ports, normally **127.0.0.1:8888**. See the [browser walkthrough](docs/browser_demo.md) or [setup guide](docs/setup.md).
 
 ### Terminal-only setup
 

@@ -31,7 +31,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--analysis', choices=('variants', 'full'), default='variants',
                    help='variants reuses aligned BAMs; full runs the configured OncoTracer analysis')
     p.add_argument('--config', help='OncoTracer YAML configuration; required without --interactive')
-    p.add_argument('--port', type=int, default=8888, help='local browser port (default: 8888)')
+    p.add_argument('--port', type=int, help='fixed browser port; default: 8888 or an available port')
     p.add_argument('--start_dir', '--start-dir', help='initial browser folder; defaults to the Nextflow launch directory')
     p.add_argument('--backend', choices=('host', 'conda', 'poetry', 'docker', 'singularity'))
     p.add_argument('--threads', type=int, help='total CPU budget shared across concurrent samples')
@@ -58,7 +58,7 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         raise ValueError('--threads must be positive')
     if args.parallel_samples is not None and args.parallel_samples < 1:
         raise ValueError('--parallel_samples must be a positive integer')
-    if not 1 <= args.port <= 65535:
+    if args.port is not None and not 1 <= args.port <= 65535:
         raise ValueError('--port must be between 1 and 65535')
     config = resolve_path(args.config, launch) if args.config else None
     if config is not None and not config.is_file():
@@ -80,7 +80,9 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         cwd = resolve_path(args.start_dir, launch) if args.start_dir else launch
         if not cwd.is_dir():
             raise ValueError(f'Browser start directory does not exist: {cwd}')
-        argv += ['--interactive', '--port', str(args.port)]
+        argv.append('--interactive')
+        if args.port is not None:
+            argv += ['--port', str(args.port)]
         if args.ffpe:
             argv.append('--ffpe')
         if args.no_browser:

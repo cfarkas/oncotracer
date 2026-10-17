@@ -241,6 +241,33 @@ class OutputSafetyTests(unittest.TestCase):
             with claim_output_run(output, config_path=config, identity=IDENTITY):
                 pass
 
+    def test_configuration_beside_outputs_allows_independent_run_readers(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "run.yml"
+            config.write_text("mode: illumina\n")
+            with claim_output_run(root / "first", config_path=config, identity=IDENTITY) as first:
+                with claim_output_run(root / "second", config_path=config, identity=IDENTITY) as second:
+                    first.validate()
+                    second.validate()
+                    with self.assertRaisesRegex(OncoTracerError, "already using"):
+                        claim_output_run(root / "first", config_path=config, identity=IDENTITY)
+            with output_safety.configuration_lock(config, exclusive=True):
+                pass
+
+    def test_configuration_writer_blocks_start_before_output_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "run.yml"
+            config.write_text("mode: illumina\n")
+            output = root / "run"
+            with output_safety.configuration_lock(config, exclusive=True):
+                with self.assertRaisesRegex(OncoTracerError, "configuration is in use"):
+                    claim_output_run(output, config_path=config, identity=IDENTITY)
+                self.assertFalse(output.exists())
+            with claim_output_run(output, config_path=config, identity=IDENTITY):
+                pass
+
     def test_escaping_symlink_hardlink_and_fifo_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

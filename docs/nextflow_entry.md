@@ -43,6 +43,38 @@ nextflow run main.nf --interactive --config /path/to/variants.yml
 
 The configuration must supply the existing BAM manifest and reference. The browser protects the original inputs and prepares a new run folder.
 
+## Concurrent projects
+
+Open a separate terminal for each project:
+
+```bash
+# Terminal 1
+oncotracer --interactive --backend conda --project /work/study-A
+
+# Terminal 2
+oncotracer --interactive --backend conda --project /work/study-B
+```
+
+Additional terminals work the same way; Docker is also supported. Without
+`--port`, each session chooses an available loopback port, preferring 8888.
+Use each terminal's complete printed URL, including its own session code.
+An explicitly requested `--port` must be free; it is never silently changed.
+
+The equivalent Nextflow command is:
+
+```bash
+nextflow run /absolute/path/to/oncotracer-src/main.nf --interactive --backend conda --project /work/study-B
+```
+
+Choose a different project/output directory for each simultaneous run. One
+session can run one project at a time; separate sessions can run together.
+Concurrent writes to the same output directory and saving over an active
+configuration are rejected. Shared variant resources are prepared one run at a
+time; independent computation can overlap. Assign each run
+its share of CPU threads and memory; resource settings apply per run. Managed
+tools can be shared by active runs, while installation or removal waits for
+those tools to be free. Stop controls apply to their own session.
+
 ## Existing configurations
 
 ```bash

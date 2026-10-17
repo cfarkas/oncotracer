@@ -231,8 +231,14 @@ def prepare_for_browser(state, data):
             with config_path.open('x', encoding='utf-8') as handle:
                 handle.write(render_flat_yaml(config))
         else:
-            atomic_write_text(config_path, render_flat_yaml(config))
-            state.projects.pop(previous['id'])
+            from .output_safety import configuration_lock
+            with configuration_lock(config_path.parent, exclusive=True, directory=True), configuration_lock(config_path, exclusive=True):
+                if (set(project.iterdir()) != {config_path.parent}
+                        or set(config_path.parent.iterdir()) != {config_path}
+                        or _fingerprint([config_path]) != previous['fingerprint']):
+                    raise OncoTracerError('This project has started or changed. Choose a new project folder.')
+                atomic_write_text(config_path, render_flat_yaml(config))
+                state.projects.pop(previous['id'])
         project_stat = project.stat()
         prepared = {'id': secrets.token_urlsafe(18), 'project': str(project),
                     'config_path': str(config_path), 'config': config_path.read_text(),
