@@ -1709,6 +1709,7 @@ def _poetry_payload_allowed(relative: Path) -> bool:
 def _copy_poetry_project(snapshot: _PoetrySourceSnapshot, staging: Path) -> None:
     """Materialize fixed product roots from one authenticated Git archive."""
     file_roots = {"pyproject.toml", "poetry.lock", "README.md"}
+    optional_files = {"PYPI_README.md", "oncotracer_build_backend.py"}
     directory_roots = {"oncotracer_cli", *_POETRY_PAYLOAD_ROOTS}
     required_roots = file_roots | directory_roots
     observed_roots: set[str] = set()
@@ -1724,7 +1725,7 @@ def _copy_poetry_project(snapshot: _PoetrySourceSnapshot, staging: Path) -> None
                     )
                 observed_members.add(rendered)
                 root_name = relative.parts[0]
-                selected = rendered in file_roots or root_name in directory_roots
+                selected = rendered in file_roots or rendered in optional_files or root_name in directory_roots
                 if not selected or not _poetry_payload_allowed(relative):
                     continue
                 if root_name in file_roots and rendered != root_name:
@@ -1794,6 +1795,21 @@ def _write_poetry_build_metadata(staging: Path, source: Mapping[str, object]) ->
         contents.encode("utf-8"),
         retention_parent=staging.parent / "metadata-history",
     )
+
+    if (staging / "oncotracer_build_backend.py").is_file():
+        # The selected files came from the authenticated canonical Git archive.
+        # Preserve that source binding through the package's PEP 517 backend.
+        records = {}
+        for path in sorted(staging.rglob("*")):
+            if path.is_file():
+                data = path.read_bytes()
+                records[path.relative_to(staging).as_posix()] = {
+                    "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)
+                }
+        manifest = {"schema": "oncotracer-sdist-source-v1", **dict(source), "source_tree_dirty": False, "files": records}
+        _atomic_write_bytes(staging / "oncotracer-source-manifest.json",
+                            (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode(),
+                            retention_parent=staging.parent / "metadata-history")
 
 
 def _verify_poetry_wheel(wheel: Path) -> None:

@@ -76,14 +76,18 @@ def check_installation_is_explicit() -> None:
     for relative in ("README.md", "docs/installation.md"):
         text = read(relative)
         required = (
-            "git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src",
-            "python3 -m venv oncotracer-env",
-            "oncotracer-env/bin/python -m pip install -e ./oncotracer-src",
-            "source oncotracer-env/bin/activate",
+            "pip install oncotracer",
+            "oncotracer install --conda",
+            "oncotracer --interactive --backend conda",
         )
-        positions = [text.find(command) for command in required]
-        if -1 in positions or positions != sorted(positions):
-            fail(f"incomplete or out-of-order installation in {relative}")
+        position = 0
+        for command in required:
+            found = text.find(command, position)
+            if found == -1:
+                fail(f"incomplete or out-of-order installation in {relative}")
+            position = found + len(command)
+        if "git clone" in text:
+            fail(f"PyPI installation must not require a source checkout in {relative}")
         if "gh release download v2.0.0" in text:
             fail(f"competing old executable installation in {relative}")
     advanced = read("docs/installation_details.md").split("### Poetry", 1)[1]

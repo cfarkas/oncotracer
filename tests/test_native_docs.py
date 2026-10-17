@@ -29,16 +29,16 @@ ACTIVE = [
 
 
 class NativeDocumentationTests(unittest.TestCase):
-    def test_source_installation_uses_main_without_stale_branch_links(self) -> None:
+    def test_pip_installation_needs_no_checkout_and_source_route_uses_main(self) -> None:
         for relative in ("README.md", "docs/installation.md"):
             text = (ROOT / relative).read_text(encoding="utf-8")
-            self.assertIn(
-                "git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src",
-                text,
-            )
+            self.assertIn("pip install oncotracer", text)
+            self.assertNotIn("git clone", text)
             self.assertNotIn("improve/beginner-setup-methylation", text)
-            self.assertIn("pip install -e ./oncotracer-src", text)
             self.assertNotIn("not in the v2.0.0 release executable", text)
+        advanced = (ROOT / "docs/installation_details.md").read_text(encoding="utf-8")
+        self.assertIn("git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src", advanced)
+        self.assertIn("pip install -e ./oncotracer-src", advanced)
 
     def test_pages_validates_prs_and_deploys_only_main_artifacts(self) -> None:
         text = (ROOT / ".github/workflows/docs.yml").read_text(encoding="utf-8")

@@ -59,24 +59,10 @@ def require_order(block: str, fragments: tuple[str, ...], label: str) -> None:
     require(positions == sorted(positions), f"{label} commands are out of order")
 
 
-def check_source_install(relative_path: str) -> None:
-    block = find_block(
-        relative_path,
-        "git clone --branch main",
-        "python3 -m venv oncotracer-env",
-        "pip install -e ./oncotracer-src",
-        "source oncotracer-env/bin/activate",
-    )
-    require_order(
-        block,
-        (
-            "git clone --branch main",
-            "python3 -m venv oncotracer-env",
-            "pip install -e ./oncotracer-src",
-            "source oncotracer-env/bin/activate",
-        ),
-        f"{relative_path} source installation",
-    )
+def check_pip_install(relative_path: str) -> None:
+    block = find_block(relative_path, "pip install oncotracer")
+    require(first_command(block) == "pip install oncotracer", f"{relative_path} must start with the public PyPI installation")
+    require("git clone" not in block, f"{relative_path} pip installation must not need a checkout")
     require("sudo" not in block, f"{relative_path} launcher install must not need administrator access")
     require("nextflow" not in block.casefold(), f"{relative_path} install invoked Nextflow")
 
@@ -285,8 +271,8 @@ def main() -> None:
     readme = read("README.md")
     require("not in the v2.0.0 release executable" not in readme, "first-use docs must not teach migration history")
     require("oncotracer setup --project" in readme, "landing page must teach project setup")
-    check_source_install("README.md")
-    check_source_install("docs/installation.md")
+    check_pip_install("README.md")
+    check_pip_install("docs/installation.md")
     check_native_quickstarts()
     check_every_pwd_quickstart_block_enters_analysis_directory()
     check_tutorial_figures_are_native_and_beginner_safe()

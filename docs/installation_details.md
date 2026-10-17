@@ -3,6 +3,20 @@
 Start with [installation](installation.md). This reference explains standalone
 builds, alternative backends, ownership checks and recovery behavior.
 
+## Install from GitHub
+
+For development, install an editable checkout from the main branch:
+
+```bash
+git clone --branch main https://github.com/cfarkas/oncotracer.git oncotracer-src
+python3 -m venv oncotracer-env
+oncotracer-env/bin/python -m pip install -e ./oncotracer-src
+source oncotracer-env/bin/activate
+```
+
+Keep both folders for this route. A normal `pip install oncotracer` includes the
+application and its resources without requiring a checkout.
+
 The main branch includes the complete Illumina GLIMPSE2 workflow and
 resume/FFPE repairs. For Docker, use the current image documented below or
 [build from source](containers.md#fastq-to-cna-and-variants) with both source

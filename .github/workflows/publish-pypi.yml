@@ -1,0 +1,275 @@
+name: Publish Python package to PyPI
+
+# The PyPI Trusted Publisher must name this workflow and the pypi environment.
+# Publication is an explicit release action, never a side effect of a push.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact package version already committed on main
+        required: true
+        type: string
+      source_commit:
+        description: Full 40-character current main commit to publish
+        required: true
+        type: string
+
+permissions: {}
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
+concurrency:
+  group: publish-pypi-oncotracer
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'cfarkas/oncotracer' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      source_commit: ${{ steps.source.outputs.source_commit }}
+      source_sha256: ${{ steps.source.outputs.source_sha256 }}
+      version: ${{ steps.source.outputs.version }}
+      artifact_id: ${{ steps.distributions.outputs.artifact-id }}
+      artifact_hashes: ${{ steps.hashes.outputs.artifact_hashes }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+      - name: Authenticate the requested version and exact current main
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          REQUESTED_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import tomllib
+
+          def require(condition, message):
+              if not condition:
+                  raise SystemExit(message)
+
+          require(os.environ["GITHUB_REPOSITORY"] == "cfarkas/oncotracer", "Wrong publication repository")
+          require(os.environ["GITHUB_EVENT_NAME"] == "workflow_dispatch", "Publication requires explicit dispatch")
+          require(os.environ["GITHUB_REF"] == "refs/heads/main", "Publication must run from main")
+          commit = os.environ["REQUESTED_COMMIT"]
+          version = os.environ["REQUESTED_VERSION"]
+          require(re.fullmatch(r"[0-9a-f]{40}", commit), "Expected a full lowercase commit SHA")
+          require(re.fullmatch(r"[0-9]+(?:\.[0-9]+)*(?:(?:a|b|rc)[0-9]+)?(?:\.post[0-9]+)?(?:\.dev[0-9]+)?", version), "Expected a public Python package version")
+          require(commit == os.environ["GITHUB_SHA"], "Dispatch and requested commit differ")
+          head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          require(head == commit, "Checkout and requested commit differ")
+          dirty = subprocess.check_output(["git", "status", "--porcelain"], text=True)
+          require(not dirty, "Publication requires a clean checkout")
+          main = subprocess.check_output([
+              "gh", "api", "/repos/cfarkas/oncotracer/commits/main", "--jq", ".sha",
+          ], text=True).strip()
+          require(main == commit, "Requested commit is no longer current main")
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
+          require(project["name"] == "oncotracer", "Unexpected package name")
+          require(project["version"] == version, "Requested version differs from pyproject.toml")
+          archive = subprocess.check_output([
+              "git", "-c", "tar.umask=0002", "archive", "--format=tar", commit,
+          ])
+          source_sha256 = hashlib.sha256(archive).hexdigest()
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(f"source_commit={commit}\nsource_sha256={source_sha256}\nversion={version}\n")
+          PY
+      - name: Build and validate the wheel and source distribution
+        env:
+          SOURCE_COMMIT: ${{ steps.source.outputs.source_commit }}
+          SOURCE_SHA256: ${{ steps.source.outputs.source_sha256 }}
+          EXPECTED_VERSION: ${{ steps.source.outputs.version }}
+        run: |
+          set -Eeuo pipefail
+          python -m pip install --disable-pip-version-check 'build>=1.2,<2' 'twine>=6,<7'
+          python -m unittest -v tests/test_pypi_publish.py
+          python -m build --outdir "$RUNNER_TEMP/distributions"
+          python -m twine check --strict "$RUNNER_TEMP"/distributions/*
+          python scripts/verify_python_dist.py \
+            --dist-dir "$RUNNER_TEMP/distributions" \
+            --expected-commit "$SOURCE_COMMIT" \
+            --expected-source-sha256 "$SOURCE_SHA256" \
+            --expected-version "$EXPECTED_VERSION" \
+            --output "$RUNNER_TEMP/python-distribution-manifest.json"
+          test -z "$(git status --porcelain)"
+      - name: Record the verified artifact hashes
+        id: hashes
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import stat
+
+          directory = Path(os.environ["RUNNER_TEMP"]) / "distributions"
+          files = sorted(directory.iterdir())
+          if len(files) != 2 or any(not stat.S_ISREG(path.lstat().st_mode) for path in files):
+              raise SystemExit("Expected exactly two regular distribution files")
+          if sum(path.name.endswith(".whl") for path in files) != 1 or sum(path.name.endswith(".tar.gz") for path in files) != 1:
+              raise SystemExit("Expected one wheel and one source distribution")
+          hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
+          encoded = json.dumps(hashes, sort_keys=True, separators=(",", ":"))
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(f"artifact_hashes={encoded}\n")
+          (Path(os.environ["RUNNER_TEMP"]) / "python-distribution-sha256.json").write_text(encoded + "\n", encoding="utf-8")
+          PY
+      - name: Store the verified distributions
+        id: distributions
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: pypi-distributions-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/distributions/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Store distribution validation evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: pypi-build-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/python-distribution-manifest.json
+            ${{ runner.temp }}/python-distribution-sha256.json
+          if-no-files-found: error
+          retention-days: 30
+
+  smoke:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.build.outputs.source_commit }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: ${{ runner.temp }}/distributions
+          merge-multiple: true
+      - name: Test the installed wheel outside the checkout
+        env:
+          SOURCE_COMMIT: ${{ needs.build.outputs.source_commit }}
+          SOURCE_SHA256: ${{ needs.build.outputs.source_sha256 }}
+          EXPECTED_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -Eeuo pipefail
+          export HOME="$RUNNER_TEMP/smoke-home"
+          export XDG_CONFIG_HOME="$HOME/config" XDG_DATA_HOME="$HOME/data" XDG_CACHE_HOME="$HOME/cache"
+          export TMPDIR="$RUNNER_TEMP/smoke-tmp" PIP_CACHE_DIR="$RUNNER_TEMP/pip-cache"
+          export PIP_CONFIG_FILE=/dev/null PYTHONNOUSERSITE=1
+          unset PYTHONPATH PYTHONHOME
+          mkdir -p "$HOME" "$TMPDIR" "$RUNNER_TEMP/smoke-cwd"
+          python -m venv "$RUNNER_TEMP/wheel-environment"
+          "$RUNNER_TEMP/wheel-environment/bin/python" -m pip install \
+            --no-index --no-deps "$RUNNER_TEMP"/distributions/*.whl
+          cd "$RUNNER_TEMP/smoke-cwd"
+          python "$GITHUB_WORKSPACE/scripts/smoke_python_install.py" \
+            --python "$RUNNER_TEMP/wheel-environment/bin/python" \
+            --expected-commit "$SOURCE_COMMIT" \
+            --expected-source-sha256 "$SOURCE_SHA256" \
+            --expected-version "$EXPECTED_VERSION" \
+            --output "$RUNNER_TEMP/wheel-smoke.json"
+      - name: Store installed-wheel validation evidence
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: pypi-wheel-python-${{ matrix.python }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/wheel-smoke.json
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    needs: [build, smoke]
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/oncotracer
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # This job does not check out, build, install, or execute package code.
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: dist
+          merge-multiple: true
+      - name: Recheck main and the exact validated distribution bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ needs.build.outputs.source_commit }}
+          EXPECTED_HASHES: ${{ needs.build.outputs.artifact_hashes }}
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import stat
+          import subprocess
+
+          commit = os.environ["SOURCE_COMMIT"]
+          if (os.environ["GITHUB_REPOSITORY"] != "cfarkas/oncotracer"
+                  or os.environ["GITHUB_EVENT_NAME"] != "workflow_dispatch"
+                  or os.environ["GITHUB_REF"] != "refs/heads/main"
+                  or not re.fullmatch(r"[0-9a-f]{40}", commit)
+                  or os.environ["GITHUB_SHA"] != commit):
+              raise SystemExit("Invalid publication context")
+          main = subprocess.check_output([
+              "gh", "api", "/repos/cfarkas/oncotracer/commits/main", "--jq", ".sha",
+          ], text=True).strip()
+          if main != commit:
+              raise SystemExit("Main changed after validation; start a new explicit release")
+          expected = json.loads(os.environ["EXPECTED_HASHES"])
+          if not isinstance(expected, dict) or len(expected) != 2:
+              raise SystemExit("Expected exactly two validated artifact hashes")
+          for name, digest in expected.items():
+              if (not isinstance(name, str) or Path(name).name != name
+                      or not name.startswith("oncotracer-")
+                      or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest)):
+                  raise SystemExit("Malformed artifact identity")
+          if sum(name.endswith(".whl") for name in expected) != 1 or sum(name.endswith(".tar.gz") for name in expected) != 1:
+              raise SystemExit("Expected one validated wheel and one source distribution")
+          files = list(Path("dist").iterdir())
+          if {path.name for path in files} != set(expected):
+              raise SystemExit("Downloaded artifacts differ from the validated file set")
+          for path in files:
+              if not stat.S_ISREG(path.lstat().st_mode):
+                  raise SystemExit("Distribution is not a regular file")
+              if hashlib.sha256(path.read_bytes()).hexdigest() != expected[path.name]:
+                  raise SystemExit("Distribution changed after validation")
+          PY
+      - name: Publish to PyPI using Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          packages-dir: dist/
+          verify-metadata: true
+          attestations: true
+          print-hash: true
+          skip-existing: false

@@ -1,9 +1,11 @@
 """Publish one authenticated per-user command without changing shell profiles."""
 from __future__ import annotations
 
+import base64
 import contextlib
 import fcntl
 import hashlib
+import importlib.metadata
 import json
 import os
 import shlex
@@ -115,8 +117,8 @@ def _directory(path: Path, *, create: bool, secure: bool = True):
         os.close(fd)
 
 
-def _same_directory(fd: int, path: Path):
-    with _directory(path, create=False) as current:
+def _same_directory(fd: int, path: Path, *, secure=True):
+    with _directory(path, create=False, secure=secure) as current:
         if current is None or (os.fstat(fd).st_dev, os.fstat(fd).st_ino) != (
             os.fstat(current).st_dev, os.fstat(current).st_ino
         ):
@@ -149,6 +151,28 @@ def _read(fd: int, name: str, mode: int | None = None):
         os.close(handle)
 
 
+def _pip_recorded_command(path: Path, data: bytes) -> bool:
+    """Retain only this distribution's unchanged pip-created console entry."""
+    try:
+        distribution = importlib.metadata.distribution("oncotracer")
+        imported = Path(__file__).resolve()
+        if Path(distribution.locate_file("oncotracer_cli/user_launcher.py")).resolve() != imported:
+            return False
+        if not any(entry.group == "console_scripts" and entry.name == COMMAND
+                   and entry.value == "oncotracer_cli.cli:main"
+                   for entry in distribution.entry_points):
+            return False
+        digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
+        return any(
+            os.path.abspath(distribution.locate_file(entry)) == str(path)
+            and entry.hash is not None and entry.hash.mode == "sha256"
+            and entry.hash.value == digest and entry.size == len(data)
+            for entry in distribution.files or ()
+        )
+    except (OSError, ValueError, TypeError, importlib.metadata.PackageNotFoundError):
+        return False
+
+
 def _inspect(fd: int | None, path: Path, *, allow_foreign=False):
     if fd is None:
         return None
@@ -167,6 +191,8 @@ def _inspect(fd: int | None, path: Path, *, allow_foreign=False):
     command = _read(fd, COMMAND, 0o755)
     if command is None and marker is None:
         return None
+    if command is not None and marker is None and _pip_recorded_command(path, command[0]):
+        return {"pip": True, "files": {COMMAND: command}}
     if command is None or marker is None:
         raise OncoTracerError(f"refusing an unowned or incomplete user command: {path}; use install --no-launcher to leave it unchanged")
     try:
@@ -321,12 +347,46 @@ class _Transaction:
             self.result["recoverable"] = False
 
 
+class _PipCommand:
+    """Read-only participation: pip retains ownership and uninstall responsibility."""
+    def __init__(self, fd, path, observed, dry_run):
+        self.fd, self.path, self.observed = fd, path, observed
+        self.result = {
+            "path": str(path), "manifest": None, "action": "retain-pip",
+            "dry_run": dry_run, "paths": [], "recoverable": False,
+            "reason": "unchanged pip-owned console entry; remove with pip uninstall oncotracer",
+            "path_ready": str(path.parent) in [os.path.abspath(p) for p in os.environ.get("PATH", "").split(os.pathsep) if p],
+        }
+
+    def validate_published(self):
+        _same_directory(self.fd, self.path.parent, secure=False)
+        if _inspect(self.fd, self.path) != self.observed:
+            raise OncoTracerError("pip-owned console entry changed during backend preparation; no launcher files were modified")
+
+    def publish(self, config):
+        self.validate_published()
+        return dict(self.result)
+
+
 @contextlib.contextmanager
 def _locked(action, *, dry_run, target=None, archive=None, required=False, purge=False):
     path = default_path()
     optional_removal = action == "remove" and not required
-    with _directory(path.parent, create=False, secure=not optional_removal) as fd:
+    with _directory(path.parent, create=False, secure=False) as fd:
         observed = _inspect(fd, path, allow_foreign=optional_removal)
+    if observed is not None and observed.get("pip"):
+        if action == "remove":
+            raise OncoTracerError("this console entry is owned by pip; use pip uninstall oncotracer to remove it")
+        with _directory(path.parent, create=False, secure=False) as fd:
+            transaction = _PipCommand(fd, path, observed, dry_run)
+            transaction.validate_published()
+            yield transaction
+            transaction.validate_published()
+        return
+    if not optional_removal:
+        with _directory(path.parent, create=False) as fd:
+            if _inspect(fd, path) != observed:
+                raise OncoTracerError("user command changed during preflight")
     if action == "remove":
         reason = None
         if observed is None:

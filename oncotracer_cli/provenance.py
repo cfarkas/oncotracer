@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import importlib.metadata
+import stat
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import zipfile
 from pathlib import Path
 from typing import Sequence
 
-from . import __version__
+from . import __version__, _build_metadata
 from ._build_metadata import (
     BUILD_METADATA_SCHEMA,
     PROVENANCE_PAYLOAD_PATH,
@@ -165,8 +169,82 @@ def _source_metadata() -> tuple[str | None, str | None, bool | None, str]:
     return None, None, SOURCE_TREE_DIRTY, SOURCE_METADATA_ORIGIN or "unavailable"
 
 
+def _distribution_bytes(root: Path, name: str) -> bytes:
+    """Read a package file through pinned directories without following links."""
+    if (not isinstance(name, str) or name.startswith("/") or "\\" in name
+            or any(part in {"", ".", ".."} for part in name.split("/"))):
+        raise ValueError("unsafe distribution file path")
+    parts = name.split("/")
+    descriptor = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in parts[:-1]:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+        handle = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=descriptor)
+        with os.fdopen(handle, "rb") as stream:
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode):
+                raise ValueError("distribution payload is not a regular file: " + name)
+            data = stream.read()
+            after = os.fstat(stream.fileno())
+            if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                raise ValueError("distribution payload changed while reading: " + name)
+            return data
+    finally:
+        os.close(descriptor)
+
+
+def verify_distribution_files() -> bool:
+    """Verify pip-installed product bytes before accepting embedded provenance."""
+    expected_hash = getattr(_build_metadata, "DISTRIBUTION_MANIFEST_SHA256", None)
+    root = Path(os.path.abspath(__file__)).parents[1]
+    manifest_name = "oncotracer_cli/_distribution_files.json"
+    try:
+        try:
+            distribution = importlib.metadata.distribution("oncotracer")
+        except importlib.metadata.PackageNotFoundError:
+            distribution = None
+        owns_package = (distribution is not None and
+                        Path(distribution.locate_file("oncotracer_cli/provenance.py")).resolve() == Path(__file__).resolve())
+        if not owns_package:
+            if expected_hash is None and not os.path.lexists(root / manifest_name):
+                return False  # Source checkout or copied executable, not a wheel.
+            raise ValueError("installed distribution does not own the imported package")
+        entries = {entry.as_posix(): entry for entry in distribution.files or ()}
+        metadata_entry = entries.get("oncotracer_cli/_build_metadata.py")
+        if metadata_entry is None or metadata_entry.hash is None or metadata_entry.hash.mode != "sha256":
+            raise ValueError("installed source metadata lacks its pip RECORD hash")
+        metadata_bytes = _distribution_bytes(root, "oncotracer_cli/_build_metadata.py")
+        recorded = base64.urlsafe_b64encode(hashlib.sha256(metadata_bytes).digest()).rstrip(b"=").decode()
+        if recorded != metadata_entry.hash.value or len(metadata_bytes) != metadata_entry.size:
+            raise ValueError("installed source metadata differs from its pip RECORD")
+        if expected_hash is None:
+            if manifest_name in entries or os.path.lexists(root / manifest_name):
+                raise ValueError("installed wheel has incomplete bound file metadata")
+            return False  # Older authenticated managed-Poetry wheels have no seal.
+        raw = _distribution_bytes(root, manifest_name)
+        if hashlib.sha256(raw).hexdigest() != expected_hash:
+            raise ValueError("distribution file manifest hash mismatch")
+        manifest = json.loads(raw)
+        if (manifest.get("schema") != "oncotracer-wheel-files-v1"
+                or manifest.get("source_commit") != SOURCE_COMMIT
+                or manifest.get("source_sha256") != SOURCE_SHA256
+                or manifest.get("source_tree_dirty") is not False
+                or not isinstance(manifest.get("files"), dict)):
+            raise ValueError("distribution file manifest identity mismatch")
+        for name, expected in manifest["files"].items():
+            data = _distribution_bytes(root, name)
+            if len(data) != expected["size"] or hashlib.sha256(data).hexdigest() != expected["sha256"]:
+                raise ValueError(f"installed distribution file changed: {name}")
+    except (OSError, ValueError, TypeError, KeyError, importlib.metadata.PackageNotFoundError) as error:
+        raise ProvenanceError(f"installed OncoTracer files failed integrity verification: {error}; reinstall oncotracer with pip") from error
+    return True
+
+
 def get_provenance(binary_path: Path | None = None) -> dict[str, object]:
     """Return machine-readable source, payload, and running-binary provenance."""
+    verify_distribution_files()
     payload = historical_source_provenance()
     source_commit, source_sha256, source_tree_dirty, source_origin = _source_metadata()
     archive = binary_path.expanduser().resolve() if binary_path is not None else _zipapp_path()
