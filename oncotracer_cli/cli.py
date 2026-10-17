@@ -169,7 +169,7 @@ def _install_conda(
     return result
 
 
-def _install_docker(args: argparse.Namespace) -> dict[str, object]:
+def _install_docker(args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
     docker = shutil.which("docker") or (
         "docker" if args.dry_run else require_command("docker")
     )
@@ -184,7 +184,7 @@ def _install_docker(args: argparse.Namespace) -> dict[str, object]:
         dry_run=args.dry_run,
     )
     result: dict[str, object] = {"backend": "docker", "image": image}
-    if not args.dry_run:
+    if save and not args.dry_run:
         _save_install_config(result)
     return result
 
@@ -193,7 +193,7 @@ def _singularity_command() -> str:
     return shutil.which("apptainer") or shutil.which("singularity") or ""
 
 
-def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
+def _install_singularity(args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
     executable = _singularity_command() or ("apptainer" if args.dry_run else "")
     if not executable:
         raise OncoTracerError("Apptainer or Singularity is required for --singularity")
@@ -216,12 +216,12 @@ def _install_singularity(args: argparse.Namespace) -> dict[str, object]:
         "backend": "singularity",
         "singularity_command": executable,
     }
-    if not args.dry_run:
+    if save and not args.dry_run:
         _save_install_config(result)
     return result
 
 
-def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
+def _install_poetry(root: Path, args: argparse.Namespace, *, save: bool = True) -> dict[str, object]:
     poetry = shutil.which("poetry") or (
         "poetry" if args.dry_run else require_command("poetry")
     )
@@ -245,7 +245,7 @@ def _install_poetry(root: Path, args: argparse.Namespace) -> dict[str, object]:
         "scientific_backend": "conda",
         **{f"{name}_prefix": str(path) for name, path in prefixes.items()},
     }
-    if not args.dry_run:
+    if save and not args.dry_run:
         _save_install_config(result)
     return result
 
@@ -289,14 +289,34 @@ def command_install(args: argparse.Namespace) -> int:
         log_dir=None if args.dry_run else _data_home() / "logs",
         log_file=getattr(args, "log_file", None) if not args.dry_run else None,
     ):
-        if backend == "conda":
-            result = _install_conda(runtime_root(args.root), args)
-        elif backend == "docker":
-            result = _install_docker(args)
-        elif backend == "singularity":
-            result = _install_singularity(args)
-        else:
-            result = _install_poetry(runtime_root(args.root), args)
+        from .user_launcher import install_transaction
+
+        launcher_context = (
+            contextlib.nullcontext(None)
+            if getattr(args, "no_launcher", False)
+            else install_transaction(dry_run=args.dry_run)
+        )
+        with launcher_context as launcher:
+            if backend == "conda":
+                result = _install_conda(runtime_root(args.root), args, save=False)
+            elif backend == "docker":
+                result = _install_docker(args, save=False)
+            elif backend == "singularity":
+                result = _install_singularity(args, save=False)
+            else:
+                result = _install_poetry(runtime_root(args.root), args, save=False)
+            if launcher is not None:
+                result["global_launcher"] = launcher.publish(result)
+            if not args.dry_run:
+                _save_install_config(result)
+    launcher_result = result.get("global_launcher")
+    if launcher_result and not getattr(args, "json", False):
+        verb = "Would publish" if args.dry_run else "Command"
+        print(f"{verb}: {launcher_result['path']}")
+        if not launcher_result["path_ready"]:
+            directory = str(Path(launcher_result["path"]).parent)
+            print("Add this directory to PATH in your shell or login configuration:")
+            print(f'  export PATH={shlex.quote(directory)}:"$PATH"')
     if getattr(args, "json", False):
         print(json.dumps(result, indent=2, sort_keys=True))
     elif args.dry_run:
@@ -1672,6 +1692,7 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("--prefix")
     install.add_argument("--image")
     install.add_argument("--no-pull", action="store_true", help="use an existing local Docker image; still verify it with doctor")
+    install.add_argument("--no-launcher", action="store_true", help="leave ~/.local/bin/oncotracer unchanged; do not publish a user command")
     install.add_argument("--sif")
     install.add_argument("--force", action="store_true")
     install.add_argument("--dry-run", action="store_true")

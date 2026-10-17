@@ -231,6 +231,7 @@ def command_uninstall(args) -> int:
 
 def _command_uninstall(args) -> int:
     from .cli import _load_install_config
+    from .user_launcher import installation_target, remove_transaction
 
     # Fully specified removal targets do not depend on saved settings, which
     # may be missing or damaged precisely when a user needs to uninstall.
@@ -238,16 +239,42 @@ def _command_uninstall(args) -> int:
         (args.conda and args.prefix)
         or (args.singularity and args.sif)
         or args.launcher
+        or getattr(args, "global_launcher", False)
     )
     install = {} if explicit_target else _load_install_config()
-    if not any((args.conda, args.singularity, args.launcher)):
+    if not any((args.conda, args.singularity, args.launcher, getattr(args, "global_launcher", False))):
         backend = install.get("backend")
         if backend in {"conda", "poetry"}:
             args.conda = True
         elif backend == "singularity":
             args.singularity = True
+        elif backend == "docker":
+            args.global_launcher = True
         else:
-            raise OncoTracerError("select the tools to remove: --conda, --singularity, or --launcher PATH")
+            raise OncoTracerError("select the tools to remove: --conda, --singularity, --global-launcher, or --launcher PATH")
+    preview = args.dry_run or not args.yes
+    global_only = getattr(args, "global_launcher", False)
+    if global_only:
+        if args.sif or args.prefix:
+            raise OncoTracerError("--global-launcher does not accept --sif or --prefix")
+        target = installation_target(install) if install.get("backend") == "docker" else None
+        with remove_transaction(target, dry_run=preview, purge=args.purge, required=True) as command:
+            result = command.detach()
+        result.update({"kind": "global-launcher", "preserved": "Scientific tools, Docker images, saved settings and all project data are retained."})
+        if getattr(args, "json", False):
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"{'Uninstall preview' if preview else 'Uninstall complete'}: user command")
+            for path in result["paths"]:
+                print(f"  {path}")
+            if result.get("reason"):
+                print(result["reason"])
+            if result.get("recovery_directory"):
+                print(f"Recovery folder: {result['recovery_directory']}")
+            print(result["preserved"])
+            if preview:
+                print("Preview only. Add --yes to remove the owned command.")
+        return 0
     if args.conda:
         if args.sif:
             raise OncoTracerError("--sif applies only to --singularity")
@@ -271,12 +298,24 @@ def _command_uninstall(args) -> int:
             "no installed target is recorded; supply the exact --prefix or --sif"
         )
     try:
-        result = uninstall_target(
-            Path(str(value)),
-            kind,
-            dry_run=args.dry_run or not args.yes,
-            purge=args.purge,
+        # A copied archive can also be the exact source of the global command.
+        # Removing other copied executables must leave that command untouched.
+        command_context = (
+            remove_transaction(archive=Path(str(value)), dry_run=preview, purge=args.purge)
+            if kind == "launcher" else remove_transaction(
+                {"kind": kind, "target": os.path.abspath(os.path.expanduser(str(value)))},
+                dry_run=preview, purge=args.purge,
+            )
         )
+        with command_context as command:
+            if command is not None:
+                command.detach()
+            result = uninstall_target(
+                Path(str(value)), kind, dry_run=preview, purge=args.purge,
+            )
+        if command is not None:
+            result["global_launcher"] = command.result
+            result["paths"].extend(command.result["paths"])
     except OSError as error:
         raise OncoTracerError(
             f"could not uninstall the selected target: {error}"
@@ -325,6 +364,11 @@ def add_uninstall_command(subparsers) -> None:
         "--launcher",
         metavar="PATH",
         help="exact path to a copied standalone executable; not a pip launcher",
+    )
+    group.add_argument(
+        "--global-launcher",
+        action="store_true",
+        help="remove only this installation's owned ~/.local/bin/oncotracer; keep scientific tools and container images",
     )
     parser.add_argument(
         "--prefix",

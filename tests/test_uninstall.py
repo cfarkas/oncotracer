@@ -25,6 +25,13 @@ SOURCE = {
 
 
 class UninstallTests(unittest.TestCase):
+    def setUp(self):
+        home = tempfile.TemporaryDirectory(prefix="oncotracer-uninstall-home-")
+        self.addCleanup(home.cleanup)
+        environment = patch.dict(os.environ, {"HOME": home.name})
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def fixture(self, root):
         base = root / "tools"
         base.mkdir()

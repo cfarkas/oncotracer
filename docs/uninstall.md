@@ -59,6 +59,25 @@ Saved installation settings are retained. Reinstall the backend before using it
 again. To restore a recovery copy, move its named entries back to the original
 paths listed in `uninstall.json`; do not overwrite a newer installation.
 
+## Global command
+
+Backend installation creates an owned `~/.local/bin/oncotracer` command. Normal
+uninstall removes it when it belongs to the selected installation and backend.
+Selecting an unrelated custom prefix leaves that command intact. Backend removal
+preserves unowned commands. Modified ownership-marked commands require inspection
+before removal; `--force` does not bypass their checks.
+
+To remove only the global command, leaving all analysis tools installed:
+
+```bash
+oncotracer uninstall --global-launcher --dry-run
+oncotracer uninstall --global-launcher --yes
+```
+
+Preview does not change the command. Add `--purge` to discard its recovery copy.
+With Docker saved as the backend, `oncotracer uninstall --yes` removes the owned
+global command; Docker images are removed separately below.
+
 ## Docker: remove the installed image
 
 After stopping containers that use it, remove the image installed by the
@@ -74,15 +93,16 @@ data and results intact; a system-wide Docker prune is unnecessary.
 
 ## Remove the launcher last
 
-For a pip/editable installation, activate the environment used to install it:
+Remove the global command with OncoTracer first, as above. Then, for a
+pip/editable installation, activate the environment used to install it:
 
 ```bash
 source /absolute/path/to/oncotracer-env/bin/activate
 python -m pip uninstall oncotracer
 ```
 
-This removes the command from that environment. It leaves the environment and
-source folders in place.
+This removes the command from that environment. Pip alone does not remove the
+separately owned global command. It leaves the environment and source folders in place.
 
 For a copied standalone executable:
 

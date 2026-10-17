@@ -6,8 +6,26 @@ OncoTracer's repository root is a Nextflow entry. It opens the existing visual b
 
 ```bash
 cd /path/to/oncotracer
-nextflow run main.nf --interactive
+nextflow run main.nf --interactive --backend conda
 ```
+
+From an input folder or any other directory, supply the installed repository’s
+absolute path:
+
+```bash
+nextflow run /absolute/path/to/oncotracer-src/main.nf --interactive --backend conda
+```
+
+Paths and browsing start from the directory where you launched the command.
+After backend installation, the native alternative needs neither the repository
+path nor environment activation:
+
+```bash
+oncotracer --interactive --backend conda
+```
+
+Use `--backend docker` for Docker. Select the sequencing platform, then **Fresh**
+or **FFPE** in the browser; no `--ffpe` flag is required.
 
 This opens the local OncoTracer browser with Illumina and short variants selected. Select preservation, samples and the remaining report options, then save, review and start the analysis. `--interactive` does not invoke the terminal question wizard. Keep the launching terminal open while using the interface. If no browser is available, use the full local URL printed in that terminal.
 

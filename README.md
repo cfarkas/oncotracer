@@ -22,7 +22,7 @@ oncotracer-env/bin/python -m pip install -e ./oncotracer-src
 source oncotracer-env/bin/activate
 ```
 
-Keep both folders; activate `oncotracer-env` in new terminals. Then choose **one** backend. See [requirements and installation details](docs/installation.md).
+Keep both folders. Choose **one** backend below; installation adds `~/.local/bin/oncotracer` for use from any directory without activation. See [installation details](docs/installation.md).
 
 ### Conda
 
@@ -51,7 +51,7 @@ This route needs no host Conda. Omit `--variants` for CNA alone. Select Fresh or
 
 ## Uninstall
 
-Preview removal of OncoTracer-managed Conda tools, then remove them with a recoverable backup:
+Preview removal of managed Conda tools and their global command, then remove them with a recovery copy:
 
 ```bash
 oncotracer uninstall --conda --dry-run
@@ -64,7 +64,7 @@ For permanent removal instead, add `--purge` to the second command. Separately c
 docker image rm carlosfarkas/oncotracer:fastq-variants-20260922
 ```
 
-To remove the launcher, run `python -m pip uninstall oncotracer` inside `oncotracer-env`. These commands preserve projects, reads and results. See [uninstall and recovery](docs/uninstall.md) for custom locations and full cleanup.
+For command-only removal, use `oncotracer uninstall --global-launcher --yes`; then `python -m pip uninstall oncotracer` inside `oncotracer-env`. Projects and results remain. See [uninstall and recovery](docs/uninstall.md).
 
 ## Set up your analysis in the browser
 
@@ -115,4 +115,4 @@ oncotracer run --backend conda --config "$PWD/my-study/config/run.yml"
 | Add methylation, variants or manuscript panels | [Methylation](docs/configuration/methylation.md) · [Variants](docs/variants.md) · [ANNOVAR](docs/annovar.md) · [Paper report](docs/paper_report.md) |
 | Understand results and partial failures | [Outputs](docs/outputs.md) · [Troubleshooting](docs/troubleshooting.md) |
 
-See the [repository map](docs/repository_guide.md) for the purpose of each folder. The [complete documentation](https://cfarkas.github.io/oncotracer/) covers all settings and validation. Optional `run_cna_classifier: true` adds CNA interpretation. Runs record commands and output checksums; released builds include `release-provenance.json`.
+See the [repository map](docs/repository_guide.md) for the purpose of each folder. The [complete documentation](https://cfarkas.github.io/oncotracer/) covers settings and validation. Optional `run_cna_classifier: true` adds CNA interpretation. Runs record commands and output checksums; released builds include `release-provenance.json`.
