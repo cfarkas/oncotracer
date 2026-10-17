@@ -11,11 +11,11 @@ cd /path/to/oncotracer
 nextflow run main.nf --interactive --backend conda --threads 64 --parallel_samples 4
 ```
 
-Or fetch the migration branch from GitHub and execute locally:
+Or fetch the main branch from GitHub and execute locally:
 
 ```bash
 nextflow run cfarkas/oncotracer \
-  -r feat/glimpse2-complete-short-variants -latest \
+  -r main -latest \
   --interactive --backend conda --threads 64 --parallel_samples 4
 ```
 
@@ -77,7 +77,7 @@ Or use the same configuration through GitHub:
 
 ```bash
 nextflow run cfarkas/oncotracer \
-  -r feat/glimpse2-complete-short-variants -latest \
+  -r main -latest \
   --analysis variants --config /data/analysis/run.yml \
   --threads 64 --parallel_samples 4
 ```

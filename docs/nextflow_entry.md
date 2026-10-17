@@ -105,16 +105,16 @@ Set `variant_memory: 128GB` in the YAML for a 128GB total analysis memory budget
 
 ## Remote repository entry
 
-The migration branch is `feat/glimpse2-complete-short-variants`:
+Use the main branch:
 
 ```bash
-nextflow run cfarkas/oncotracer -r feat/glimpse2-complete-short-variants --interactive
-nextflow run cfarkas/oncotracer -r feat/glimpse2-complete-short-variants --analysis variants --config /absolute/path/to/variants.yml
+nextflow run cfarkas/oncotracer -r main --interactive
+nextflow run cfarkas/oncotracer -r main --analysis variants --config /absolute/path/to/variants.yml
 ```
 
 The launcher loads the selected revision even when the current directory contains an older OncoTracer checkout. There is no need to reinstall OncoTracer or change Python for this import-order fix; `--python` remains an optional interpreter override. Use `-latest` after a branch update to fetch the fix.
 
-For reproducibility, replace the branch with its commit SHA. Remote invocation fetches the code and executes locally with the same dependency and resource requirements. It does not upload sequencing data to a hosted analysis service. The published main branch changes only after the migration is merged.
+For reproducibility, replace the branch with its commit SHA. Remote invocation fetches the code and executes locally with the same dependency and resource requirements. It does not upload sequencing data to a hosted analysis service.
 
 ## Startup validation
 

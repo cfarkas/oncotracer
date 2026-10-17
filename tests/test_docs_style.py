@@ -307,7 +307,7 @@ def check_native_runtime_boundary() -> None:
 
     for relative_path in ("README.md", "docs/installation.md", "docs/index.md"):
         text = read(relative_path)
-        for obsolete in ("gh release download v2.0.0", "not in the v2.0.0 release executable", "available from main"):
+        for obsolete in ("gh release download v2.0.0", "not in the v2.0.0 release executable"):
             if obsolete in text:
                 fail(f"first-use instructions contain an obsolete installation route: {relative_path}")
 
