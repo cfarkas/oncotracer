@@ -5,12 +5,13 @@ Selecting short variants in OncoTracer now runs the bundled complete Nextflow wo
 ## Launch
 
 ```bash
-nextflow run main.nf --interactive
+oncotracer --interactive --backend conda
+nextflow run main.nf --interactive --backend conda
 nextflow run main.nf --analysis variants --config /absolute/path/run.yml
 nextflow run main.nf --analysis full --config /absolute/path/run.yml
 ```
 
-The first command opens the browser interface. The variants route starts from existing coordinate-sorted BAM files; the full route performs configured upstream analyses first. Remote `nextflow run cfarkas/oncotracer -r REVISION` uses exactly the same entry. It downloads code to the local machine, not patient data to a remote service. Use a published revision containing this migration. See [entry details](nextflow_entry.md).
+The interactive commands open the browser for either Fresh or FFPE specimens. Choose or confirm Illumina, then select **Fresh** or **FFPE** and enable **Small variants**. Use `--backend docker` for your installed image. Save and check before explicitly starting analysis. The variants route starts from existing coordinate-sorted BAM files; the full route performs configured upstream analyses first. Remote `nextflow run cfarkas/oncotracer -r REVISION` uses exactly the same entry. It downloads code to the local machine, not patient data to a remote service. Use a published revision containing this migration. See [entry details](nextflow_entry.md).
 
 ## Requirements
 

@@ -26,7 +26,9 @@ From a source checkout, open visual setup explicitly:
   python3 ./oncotracer --interactive --backend conda
   nextflow run ./main.nf --interactive --backend conda
 
-Choose a project and review the saved settings before pressing Run analysis.
+Choose the sequencing platform, then Fresh or FFPE in the browser. The launch
+commands are the same for both specimen types. Select a project, enable Small
+variants when required, and review the settings before pressing Run analysis.
 These entry points require an explicit interactive or configured run request.
 For a saved configuration, run only after reviewing it:
 
@@ -79,17 +81,21 @@ Use a separate Docker project/output and review compatible imports explicitly.
 
 FFPE
 
-Use the same native or Nextflow entry point with the FFPE preset:
+Open the same setup used for fresh specimens:
 
-  oncotracer --interactive --ffpe --backend conda
-  python3 ./oncotracer --interactive --ffpe --backend conda
-  nextflow run ./main.nf --interactive --ffpe --backend conda
+  oncotracer --interactive --backend conda
+  python3 ./oncotracer --interactive --backend conda
+  nextflow run ./main.nf --interactive --backend conda
 
 Use --backend docker for Docker. These commands open browser setup; they do not
-start analysis. The preset selects Illumina, variants, FFPE preservation and
-required FFPErase assessment. It does not accept model licenses or start resource
-downloads. Choose inputs, a new project and resources, then Save and check before
-Run analysis. No separate FFPE launcher is needed.
+start analysis. Choose the sequencing platform, then FFPE in the browser. For
+Illumina FFPE variant analysis, enable Small variants and supply the required
+FFPErase resources. Choose inputs and a new project, then Save and check before
+Run analysis. Selecting FFPE does not accept model licenses or start downloads.
+No separate FFPE launcher or specimen flag is needed for browser setup.
+
+The optional --ffpe preset remains supported only with --interactive. Terminal
+setup records preservation with setup --terminal --variant-specimen-type ffpe.
 
 The native command accepts --project, --input-folder, --image and the existing
 --variant-ffperase-root/models/sif/prefix and --variant-tool-prefix options.
