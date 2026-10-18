@@ -5,13 +5,15 @@ import hashlib
 import io
 import json
 import os
+import subprocess
+from types import SimpleNamespace
 import tarfile
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from oncotracer_cli import variant_model_assets as assets
+from oncotracer_cli import cli, ffperase, glimpse_pipeline, variant_model_assets as assets
 from oncotracer_cli.cli import main
 from oncotracer_cli.runtime import OncoTracerError, load_flat_yaml, render_flat_yaml
 from oncotracer_cli.variants import resolve_variant_request, variant_plan
@@ -33,6 +35,12 @@ class VariantModelAssetsTests(unittest.TestCase):
         patch.dict(os.environ, {key: '' for key in ('ONCOTRACER_FFPERASE_ROOT', 'ONCOTRACER_FFPERASE_MODELS',
                     'ONCOTRACER_FFPERASE_PREFIX', 'ONCOTRACER_FFPERASE_SIF')}).start()
         patch.object(Path, 'home', return_value=self.root / 'home').start()
+        patch.dict(os.environ, {'HOME': str(self.root / 'home'),
+                   'XDG_CONFIG_HOME': str(self.root / 'config'),
+                   'XDG_DATA_HOME': str(self.root / 'data'),
+                   'XDG_CACHE_HOME': str(self.root / 'cache'),
+                   'ONCOTRACER_VARIANTS_PREFIX': ''}).start()
+        patch('oncotracer_cli.cli._load_install_config', return_value={}).start()
         patch.object(assets.platform, 'system', return_value='Linux').start()
         patch.object(assets.platform, 'machine', return_value='x86_64').start()
 
@@ -197,8 +205,8 @@ class VariantModelAssetsTests(unittest.TestCase):
     def test_missing_ffperase_requires_explicit_download_and_terms_acknowledgment(self):
         with self.assertRaisesRegex(OncoTracerError, 'variant_accept_ffperase_license'):
             self.ffpe_request(variant_accept_ffperase_license=False)
-        manual = self.ffpe_request(variant_download_resources=False, variant_accept_ffperase_license=False)
-        self.assertEqual(assets.resource_download_plan(manual), [])
+        with self.assertRaisesRegex(OncoTracerError, 'variant_ffperase_root.*variant_ffperase_models'):
+            self.ffpe_request(variant_download_resources=False, variant_accept_ffperase_license=False)
         auto = self.ffpe_request()
         self.assertEqual({item['resource'] for item in assets.resource_download_plan(auto)}, {'ffperase_source', 'ffperase_models'})
         self.assertFalse(any(self.root.iterdir()))
@@ -206,7 +214,7 @@ class VariantModelAssetsTests(unittest.TestCase):
     def test_existing_ffperase_assets_require_no_new_download_ack_and_are_preserved(self):
         source, models = self.custom_ffpe()
         request = self.ffpe_request(variant_ffperase_root=str(source), variant_ffperase_models=str(models),
-                                   variant_accept_ffperase_license=False)
+                                   variant_download_resources=False, variant_accept_ffperase_license=False)
         with patch.object(assets, '_download', side_effect=AssertionError('downloaded custom FFPErase')):
             result = assets.prepare_variant_resources(request, self.root / 'output')
         self.assertEqual((result.ffperase_root, result.ffperase_models), (source, models))
@@ -228,7 +236,8 @@ class VariantModelAssetsTests(unittest.TestCase):
         network = self.network(content)
         request = self.ffpe_request(variant_ffperase_root=str(source), variant_ffperase_prefix=str(prefix))
         with patch.dict(assets.FFPERASE_MODEL_FILES, models, clear=True), \
-             patch('subprocess.run', side_effect=AssertionError('resource preparation executed code')):
+             patch.object(ffperase, 'preflight_runtime', return_value={'functional_probe': True}), \
+             patch('subprocess.run', side_effect=AssertionError('resource preparation executed model code')):
             result = assets.prepare_variant_resources(request, self.root / 'output')
         self.assertEqual(result.ffperase_root, source)
         self.assertIsNone(request.ffperase_models)
@@ -241,6 +250,190 @@ class VariantModelAssetsTests(unittest.TestCase):
         with patch.object(assets, '_download', side_effect=AssertionError('download before runtime')), self.assertRaisesRegex(OncoTracerError, 'runtime'):
             assets.prepare_variant_resources(request, self.root / 'output')
         self.assertFalse((self.root / 'output').exists())
+
+    def ffpe_runtime(self):
+        prefix = self.root / 'custom classifier runtime'
+        for name in ('python', 'samtools', 'bcftools', 'gatk', 'nextflow', 'java'):
+            path = prefix / 'bin' / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('#!/bin/sh\nexit 99\n')
+            path.chmod(0o755)
+        return prefix
+
+    def ffpe_browser(self, backend, **updates):
+        from oncotracer_cli.web import WebState
+        from tests.test_web import HARDWARE
+        reads = self.root / 'browser reads/fixture_R1.fastq.gz'
+        reads.parent.mkdir(parents=True, exist_ok=True)
+        for mate in (reads, reads.with_name('fixture_R2.fastq.gz')):
+            with gzip.open(mate, 'wt') as handle:
+                handle.write('@synthetic\nACGT\n+\nIIII\n')
+        state = WebState(self.root)
+        state.hardware = HARDWARE
+        scan = state.scan({'mode': 'illumina', 'folder': str(reads.parent)})
+        payload = dict(scan_id=scan['scan_id'], project=str(self.root / ('browser-' + backend)),
+                       backend=backend, threads=2, variants=True,
+                       samples=[{'id': 0, 'name': 'SYNTHETIC', 'type': 'cancer'}],
+                       variant_specimen_type='ffpe', variant_download_resources=False,
+                       variant_accept_ffperase_license=False)
+        payload.update(updates)
+        return state, payload
+
+    def check_saved_browser(self, command, **kwargs):
+        # Execute the real public check in-process; external tools are separately
+        # mocked, and no browser or analysis process can be started by this helper.
+        self.assertIn('check', command)
+        self.assertIn('--variant-tools', command)
+        output, errors = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+            code = main(command[command.index('check'):])
+        return subprocess.CompletedProcess(command, code, output.getvalue(), errors.getvalue())
+
+    def test_partial_manual_ffpe_is_rejected_before_browser_save_for_conda_and_docker(self):
+        source, _ = self.custom_ffpe()
+        for backend in ('conda', 'docker'):
+            state, payload = self.ffpe_browser(backend, variant_ffperase_root=str(source))
+            before = dict(payload)
+            with self.subTest(backend=backend), \
+                 patch.object(assets, '_download', side_effect=AssertionError('download during Save')), \
+                 patch('subprocess.run', side_effect=AssertionError('tool check preceded resource validation')), \
+                 patch('subprocess.Popen', side_effect=AssertionError('analysis started')), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(OncoTracerError, 'missing variant_ffperase_models') as raised:
+                    state.prepare(payload)
+            self.assertIn('variant_download_resources: true', str(raised.exception))
+            self.assertIn('variant_accept_ffperase_license: true', str(raised.exception))
+            self.assertEqual(payload, before)
+            self.assertFalse(payload['variant_download_resources'])
+            self.assertFalse(payload['variant_accept_ffperase_license'])
+            self.assertFalse(Path(payload['project']).exists())
+
+    def test_partial_manual_saved_yaml_fails_plain_check_and_preserves_false_flags(self):
+        source, _ = self.custom_ffpe()
+        for backend in ('conda', 'docker'):
+            state, payload = self.ffpe_browser(backend)
+            reads = self.root / 'browser reads/fixture_R1.fastq.gz'
+            sheet = self.root / (backend + '-samples.csv')
+            sheet.write_text('sample,fastq_1,fastq_2,status\nSYNTHETIC,' + str(reads) + ',,tumor\n')
+            config = self.root / (backend + '.yml')
+            config.write_text(render_flat_yaml(dict(mode='illumina', execution_backend=backend,
+                outdir=payload['project'] + '/results', illumina_samplesheet=str(sheet),
+                run_variants=True, variant_specimen_type='ffpe', variant_ffperase_root=str(source),
+                variant_download_resources=False, variant_accept_ffperase_license=False,
+                hg38_auto_download=True)))
+            before = config.read_bytes()
+            output = io.StringIO()
+            with self.subTest(backend=backend), patch.object(assets, '_download', side_effect=AssertionError('check download')), \
+                 patch('subprocess.Popen', side_effect=AssertionError('analysis started')), contextlib.redirect_stdout(output):
+                self.assertEqual(main(['check', '--json', '--config', str(config)]), 2)
+            report = json.loads(output.getvalue())
+            self.assertFalse(report['valid'])
+            self.assertIn('variant_ffperase_models', ' '.join(report['errors']))
+            self.assertEqual(config.read_bytes(), before)
+            self.assertFalse(Path(payload['project']).exists())
+
+    def test_browser_manual_complete_resources_are_reused_without_new_consent(self):
+        source, models = self.custom_ffpe()
+        prefix = self.ffpe_runtime()
+        before = {path: path.read_bytes() for folder in (source, models) for path in folder.rglob('*') if path.is_file()}
+        for backend in ('conda', 'docker'):
+            state, payload = self.ffpe_browser(backend, variant_ffperase_root=str(source),
+                variant_ffperase_models=str(models), variant_ffperase_prefix=str(prefix),
+                variant_tool_prefix=str(prefix))
+            with self.subTest(backend=backend), \
+                 patch.object(assets, '_download', side_effect=AssertionError('local resources downloaded')), \
+                 patch.object(ffperase, 'preflight_runtime', return_value={'functional_probe': True}), \
+                 patch.object(ffperase, 'preflight_models', return_value={'models': 'synthetic validation'}), \
+                 patch('oncotracer_cli.glimpse_readiness.check', side_effect=lambda request, tools, chain, bundle: tools), \
+                 patch.object(glimpse_pipeline.shutil, 'which', side_effect=lambda name: str(prefix / 'bin' / name)), \
+                 patch('subprocess.run', side_effect=self.check_saved_browser), \
+                 patch('subprocess.Popen', side_effect=AssertionError('analysis started')), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                saved = state.prepare(payload)
+                self.assertTrue(saved['valid'], saved['check'])
+                values = load_flat_yaml(Path(saved['config_path']))
+                request = resolve_variant_request(values, mode='illumina')
+                prepared = assets.prepare_variant_resources(request, Path(saved['outdir']) / '08_variants')
+            self.assertEqual((prepared.ffperase_root, prepared.ffperase_models), (source, models))
+            self.assertFalse(values['variant_download_resources'])
+            self.assertFalse(values['variant_accept_ffperase_license'])
+            self.assertFalse(Path(saved['outdir']).exists())
+            self.assertFalse((Path(saved['project']) / 'reference').exists())
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
+    def test_automatic_browser_check_defers_models_and_run_probes_before_mock_downloads(self):
+        source, _ = self.custom_ffpe()
+        prefix = self.ffpe_runtime()
+        for backend in ('conda', 'docker'):
+            state, payload = self.ffpe_browser(backend, variant_ffperase_root=str(source),
+                variant_ffperase_prefix=str(prefix), variant_tool_prefix=str(prefix),
+                variant_download_resources=True, variant_accept_ffperase_license=True)
+            with self.subTest(backend=backend), \
+                 patch.object(assets, '_download', side_effect=AssertionError('download during Save/check')), \
+                 patch.object(ffperase, 'preflight_runtime', return_value={'functional_probe': True}), \
+                 patch.object(ffperase, 'discover', side_effect=AssertionError('models required before preparation')), \
+                 patch('oncotracer_cli.glimpse_readiness.check', side_effect=lambda request, tools, chain, bundle: tools), \
+                 patch.object(glimpse_pipeline.shutil, 'which', side_effect=lambda name: str(prefix / 'bin' / name)), \
+                 patch('subprocess.run', side_effect=self.check_saved_browser), \
+                 patch('subprocess.Popen', side_effect=AssertionError('analysis started')), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                saved = state.prepare(payload)
+            self.assertTrue(saved['valid'], saved['check'])
+            values = load_flat_yaml(Path(saved['config_path']))
+            request = resolve_variant_request(values, mode='illumina')
+            self.assertEqual([item['resource'] for item in assets.ffperase_pending(request)], ['ffperase_models'])
+            self.assertFalse(Path(saved['outdir']).exists())
+            events = []
+            content = b'synthetic models, never deserialized'
+            descriptor = {'url': 'https://example.test/model', 'size': len(content),
+                          'sha256': hashlib.sha256(content).hexdigest()}
+            def runtime(**kwargs):
+                events.append('runtime')
+                return {'functional_probe': True}
+            def download(asset, target):
+                self.assertTrue(events and events[0] == 'runtime')
+                events.append('download')
+                target.write_bytes(content)
+            with patch.object(ffperase, 'preflight_runtime', side_effect=runtime), \
+                 patch.object(assets, '_download', side_effect=download), \
+                 patch.dict(assets.FFPERASE_MODEL_FILES, {name: dict(descriptor) for name in assets.FFPERASE_MODEL_FILES}, clear=True), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                prepared = glimpse_pipeline._prepare_ffpe_resources(request, self.root / ('run-' + backend),
+                                                                    SimpleNamespace(), None)
+            self.assertEqual(events, ['runtime', 'download', 'download'])
+            self.assertEqual(prepared.ffperase_root, source)
+            self.assertTrue((prepared.ffperase_models / 'model.snvs.joblib').is_file())
+            self.assertEqual(load_flat_yaml(Path(saved['config_path'])), values)
+
+    def test_automatic_ffpe_runtime_failure_precedes_any_resource_download(self):
+        request = self.ffpe_request(variant_ffperase_prefix=str(self.ffpe_runtime()))
+        with patch.object(ffperase, 'preflight_runtime', side_effect=OncoTracerError('incompatible Picard-only runtime')) as probe, \
+             patch.object(assets, 'ensure_file_bundle', side_effect=AssertionError('download before runtime')) as bundle, \
+             self.assertRaisesRegex(OncoTracerError, 'Picard-only'):
+            assets.prepare_variant_resources(request, self.root / 'output')
+        probe.assert_called_once()
+        bundle.assert_not_called()
+        self.assertFalse((self.root / 'output').exists())
+
+    def test_custom_runtime_probe_preserves_stdlib_isolation_and_rejects_incomplete_reports(self):
+        prefix = self.ffpe_runtime()
+        report = {'functional_probe': True, 'versions': {key: 'compatible-custom' for key in ffperase.RUNTIME_PACKAGES}}
+        response = subprocess.CompletedProcess([], 0, ffperase.RUNTIME_PROBE_MARKER + json.dumps(report), '')
+        foreign = {key: '/foreign/path' for key in ('PYTHONPATH', 'PYTHONHOME', 'LD_LIBRARY_PATH', 'LD_PRELOAD')}
+        with patch.dict(os.environ, foreign), patch.object(ffperase.subprocess, 'run', return_value=response) as run:
+            self.assertEqual(ffperase.preflight_runtime(prefix=prefix), report)
+        command = run.call_args.args[0]
+        self.assertEqual(command[:4], [str(prefix / 'bin/python'), '-I', '-B', '-c'])
+        self.assertIn('model.fit(', command[4])
+        self.assertIn('joblib.dump(', command[4])
+        self.assertTrue(set(foreign).isdisjoint(run.call_args.kwargs['env']))
+        self.assertFalse((prefix / 'conda-meta').exists())
+        bad = subprocess.CompletedProcess([], 0, ffperase.RUNTIME_PROBE_MARKER + '{"functional_probe":true,"versions":{}}', '')
+        with patch.object(ffperase.subprocess, 'run', return_value=bad), self.assertRaisesRegex(OncoTracerError, 'invalid dependency report'):
+            ffperase.preflight_runtime(prefix=prefix)
+        failed = subprocess.CompletedProcess([], 1, '', "ModuleNotFoundError: No module named 'numpy'")
+        with patch.object(ffperase.subprocess, 'run', return_value=failed), self.assertRaisesRegex(OncoTracerError, 'dedicated FFPERASE environment.*No resources were downloaded'):
+            ffperase.preflight_runtime(prefix=prefix)
 
     def test_ffperase_auto_source_rejects_wrong_architecture(self):
         with patch.object(assets.platform, 'machine', return_value='aarch64'), self.assertRaisesRegex(OncoTracerError, 'Linux x86_64'):

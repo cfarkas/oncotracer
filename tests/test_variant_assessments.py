@@ -66,7 +66,8 @@ class AssessmentTests(unittest.TestCase):
             with self.assertRaises(OncoTracerError):ffperase.parse_classifications(p)
     def test_ffpe_default_requires_model_but_fresh_does_not(self):
         for preservation, expected in [('fresh','off'),('ffpe','required')]:
-            req=variants.resolve_variant_request({'run_variants':True,'variant_specimen_type':preservation,'variant_callers':'bcftools'},mode='illumina')
+            req=variants.resolve_variant_request({'run_variants':True,'variant_specimen_type':preservation,'variant_callers':'bcftools',
+                'variant_download_resources':True,'variant_accept_ffperase_license':True},mode='illumina')
             self.assertEqual(req.ffperase,expected)
         fresh=variants.resolve_variant_request({'run_variants':True,'variant_specimen_type':'fresh','variant_ffperase':'required'},mode='illumina')
         self.assertEqual(fresh.ffperase,'off')

@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from oncotracer_cli import ffperase, variant_model_assets as assets
 from oncotracer_cli.runtime import OncoTracerError
 from oncotracer_cli.variant_install_help import installation_guides
 from oncotracer_cli.variant_resources import MAX_CHILDREN, MAX_SEARCHED, discover_variant_resources
@@ -45,6 +46,14 @@ class VariantResourceTests(unittest.TestCase):
     def tools(self, prefix, *names):
         for name in names:
             self.file(prefix / "bin" / name, "#!/bin/sh\nexit 99\n", executable=True)
+        return prefix
+
+    def ffpe_runtime(self, prefix):
+        self.tools(prefix, "python")
+        for name, version in ffperase.RUNTIME_PACKAGES.items():
+            actual = version + ".20" if name == "python" else version
+            self.file(prefix / "conda-meta" / f"{name}-{actual}-fixture.json",
+                      json.dumps({"name": name, "version": actual}))
         return prefix
 
     def detect(self, **changes):
@@ -116,7 +125,7 @@ class VariantResourceTests(unittest.TestCase):
 
     def test_direct_project_tools_prefix_is_detected(self):
         prefix = self.tools(self.project / "tools/oncotracer-variants-env", "samtools", "bcftools", "gatk", "varlociraptor")
-        runtime = self.tools(self.project / "tools/oncotracer-ffperase-env", "python")
+        runtime = self.ffpe_runtime(self.project / "tools/oncotracer-ffperase-env")
         self.tools(self.home / "anaconda3/envs/ffpe_unrelated", "python")
         result = self.detect(callers=["mutect2"], specimen_type="ffpe",
                              values={"variant_annovar": "off", "variant_varlociraptor": "required"})
@@ -151,7 +160,7 @@ class VariantResourceTests(unittest.TestCase):
         optional = self.home / ".local/share/oncotracer/optional-tools"
         source = self.ffpe_source(optional / "nf-ffperase")
         models = self.ffpe_models(optional / "ffperase-models")
-        runtime = self.tools(optional / "ffperase", "python")
+        runtime = self.ffpe_runtime(optional / "ffperase")
         self.tools(optional / "variants", "samtools", "bcftools", "freebayes", "gatk")
         with patch("pathlib.Path.read_bytes", side_effect=AssertionError("Read model bytes")), \
              patch("oncotracer_cli.ffperase.discover", side_effect=AssertionError("Heavy discovery")):
@@ -161,6 +170,58 @@ class VariantResourceTests(unittest.TestCase):
         self.assertEqual(result["fields"]["variant_ffperase_prefix"], str(runtime))
         self.assertEqual(self.resources(result)["ffperase_prefix"]["status"], "candidate")
         self.assertFalse(result["install_guides"])
+
+    def test_registered_compatible_runtime_wins_over_picard_only_named_environment(self):
+        bad = self.tools(self.home / 'anaconda3/envs/ffperase_picard_metrics', 'python')
+        good = self.ffpe_runtime(self.root / 'registered classifier')
+        self.file(self.home / '.conda/environments.txt', str(bad) + '\n' + str(good) + '\n')
+        with patch('subprocess.run', side_effect=AssertionError('discovery executed runtime')):
+            result = self.detect(specimen_type='ffpe')
+        self.assertEqual(result['fields']['variant_ffperase_prefix'], str(good))
+        self.assertTrue(self.resources(result)['ffperase_prefix']['inventory_compatible'])
+        self.assertIn(str(bad), [item['path'] for item in result['candidates']])
+
+    def test_picard_only_runtime_is_not_autofilled_but_explicit_path_is_preserved(self):
+        bad = self.tools(self.home / 'anaconda3/envs/ffperase_picard_metrics', 'python')
+        result = self.detect(specimen_type='ffpe')
+        self.assertNotIn('variant_ffperase_prefix', result['fields'])
+        self.assertIn('ffperase_runtime', [guide['id'] for guide in result['install_guides']])
+        selected = self.detect(specimen_type='ffpe', values={'variant_ffperase_prefix': str(bad),
+            'variant_download_resources': False, 'variant_accept_ffperase_license': False, 'variant_annovar': 'off'})
+        self.assertEqual(selected['fields']['variant_ffperase_prefix'], str(bad))
+        self.assertFalse(self.resources(selected)['ffperase_prefix']['inventory_compatible'])
+        self.assertIn('ffperase_runtime', [guide['id'] for guide in selected['install_guides']])
+        self.assertNotIn('variant_accept_ffperase_license', selected['fields'])
+        self.assertNotIn('variant_download_resources', selected['fields'])
+
+    def test_actual_glimpse_ffpe_cache_is_discovered_without_model_reads_or_commands(self):
+        cache = self.project / 'results/08_variants/glimpse2/ffperase_resources/resources'
+        source = self.ffpe_source(cache / ('ffperase-source-' + assets.FFPERASE_REVISION))
+        models = self.ffpe_models(cache / ('ffperase-models-' + assets.FFPERASE_MODEL_REVISION))
+        before = {path: path.read_bytes() for path in cache.rglob('*') if path.is_file()}
+        for backend in ('conda', 'docker'):
+            values = {'variant_download_resources': False, 'variant_accept_ffperase_license': False, 'variant_annovar': 'off'}
+            with self.subTest(backend=backend), \
+                 patch('pathlib.Path.read_bytes', side_effect=AssertionError('discovery loaded model bytes')), \
+                 patch('subprocess.run', side_effect=AssertionError('discovery executed runtime')), \
+                 patch.object(assets, '_download', side_effect=AssertionError('discovery downloaded')):
+                result = self.detect(backend=backend, specimen_type='ffpe', values=values)
+            self.assertEqual(result['fields']['variant_ffperase_root'], str(source))
+            self.assertEqual(result['fields']['variant_ffperase_models'], str(models))
+            self.assertFalse(values['variant_download_resources'])
+            self.assertFalse(values['variant_accept_ffperase_license'])
+            self.assertLessEqual(len(result['searched']), MAX_SEARCHED)
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
+    def test_pinned_huggingface_snapshot_is_found_without_searching_other_revisions(self):
+        hub = self.root / 'isolated hub'
+        self.env['HF_HUB_CACHE'] = str(hub)
+        models = self.ffpe_models(hub / 'models--papaemmelab--ffperase/snapshots' / assets.FFPERASE_MODEL_REVISION)
+        self.ffpe_models(models.parent / 'unreviewed-newer-revision')
+        result = self.detect(specimen_type='ffpe')
+        self.assertEqual(result['fields']['variant_ffperase_models'], str(models))
+        self.assertFalse(any('unreviewed-newer-revision' in path for path in result['searched']))
+        self.assertNotIn('variant_accept_ffperase_license', result['fields'])
 
     def test_fresh_or_unknown_preservation_does_not_enable_ffperase(self):
         self.ffpe_source(self.project / "tools/nf-ffperase")
@@ -332,7 +393,7 @@ class VariantResourceTests(unittest.TestCase):
         self.assertTrue(all("chemistry" in c["detail"] for c in choices))
 
     def test_ffperase_native_and_sif_alternatives_are_both_visible(self):
-        prefix = self.tools(self.project / "tools/oncotracer-ffperase-env", "python")
+        prefix = self.ffpe_runtime(self.project / "tools/oncotracer-ffperase-env")
         sif = self.file(self.project / "tools/containers/ffperase.sif")
         result = self.detect(specimen_type="ffpe")
         self.assertEqual(result["fields"]["variant_ffperase_prefix"], str(prefix))

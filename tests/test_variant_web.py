@@ -107,11 +107,11 @@ class VariantBrowserTests(unittest.TestCase):
             self.state.run({'project_id': prepared['id']})
 
     def test_ffperase_resources_preflight_is_required(self):
-        with patch('oncotracer_cli.ffperase.discover', side_effect=OncoTracerError('missing models')) as discovery:
-            prepared = self.prepare(variant_specimen_type='ffpe', variant_ffperase='required')
-        discovery.assert_called_once()
-        self.assertFalse(prepared['valid'])
-        self.assertIn('missing models', prepared['check']['errors'][0])
+        with patch('oncotracer_cli.ffperase.discover', side_effect=AssertionError('late resource check')) as discovery:
+            with self.assertRaisesRegex(OncoTracerError, 'variant_ffperase_root.*variant_ffperase_models'):
+                self.prepare(variant_specimen_type='ffpe', variant_ffperase='required')
+        discovery.assert_not_called()
+        self.assertFalse((self.root / 'new-project').exists())
 
     def test_existing_project_and_resource_overlap_are_rejected(self):
         with self.assertRaisesRegex(OncoTracerError, 'existing folders'):

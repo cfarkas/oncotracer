@@ -174,6 +174,7 @@ class NativeCallerCommandTests(unittest.TestCase):
         (model / "checkpoint").write_text("synthetic-model-not-executed")
         request = variants.resolve_variant_request(request_config(
             variant_specimen_type=specimen, variant_callers=caller,
+            variant_download_resources=specimen == "ffpe", variant_accept_ffperase_license=specimen == "ffpe",
             variant_clair3_model=str(model), variant_clairsto_platform="ont_r10_dorado_sup_5khz"),
             mode="ont" if caller in {"clair3", "clairs_to"} else "illumina")
         class RecordRunner:
@@ -240,7 +241,9 @@ class NativeCallerCommandTests(unittest.TestCase):
 class NativeVariantIntegrationTests(unittest.TestCase):
     def run_fixture(self, fixture: SyntheticInput, *, specimen_type="fresh", runner=None, annotation="off", force=False):
         request = variants.resolve_variant_request(
-            request_config(variant_specimen_type=specimen_type, variant_annovar=annotation, variant_ffperase="off"), mode="illumina")
+            request_config(variant_specimen_type=specimen_type, variant_annovar=annotation, variant_ffperase="off",
+                           variant_download_resources=specimen_type == "ffpe",
+                           variant_accept_ffperase_license=specimen_type == "ffpe"), mode="illumina")
         # Exercise the retained internal native engine with a tiny synthetic
         # reference. Public Illumina resolution must still mandate GLIMPSE2.
         request = replace(request, engine="native", callers=("bcftools",), ffperase="off")

@@ -16,6 +16,81 @@ from .variant_filters import add_assessment, records, key
 
 REVISION = 'b0dd56cbd0a939896a966b9ce30c4d719b158170'
 
+# Discovery uses these package records only as hints. Supplied custom runtimes
+# are checked functionally; model compatibility is confirmed by preflight_models.
+RUNTIME_PACKAGES = {
+    'python': '3.8', 'numpy': '1.19.5', 'pandas': '1.1.5', 'scipy': '1.5.3',
+    'scikit-learn': '0.24.1', 'joblib': '1.1.1', 'pysam': '0.19.1',
+    'imbalanced-learn': '0.8.1',
+}
+RUNTIME_PROBE_MARKER = 'ONCOTRACER_FFPERASE_RUNTIME_READY '
+RUNTIME_PROBE_CODE = """import io,json,sys
+import numpy as np,pandas as pd,scipy,sklearn,joblib,pysam,imblearn
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder,StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from imblearn.pipeline import Pipeline
+frame=pd.DataFrame({'depth':[10.,20.,30.,40.],'context':['A','C','A','C']})
+features=ColumnTransformer([('num',StandardScaler(),['depth']),('cat',OneHotEncoder(handle_unknown='ignore'),['context'])])
+model=Pipeline([('preprocess',features),('classifier',RandomForestClassifier(n_estimators=2,n_jobs=1,random_state=0))])
+model.fit(frame,[0,1,0,1])
+buffer=io.BytesIO();joblib.dump(model,buffer);buffer.seek(0)
+model=joblib.load(buffer);prob=model.predict_proba(frame.iloc[:1]);prediction=model.predict(frame.iloc[:1])
+assert prob.shape==(1,2) and np.isfinite(prob).all() and (prob>=0).all() and (prob<=1).all()
+assert prediction.shape==(1,)
+versions={'python':'.'.join(map(str,sys.version_info[:3])),'numpy':np.__version__,'pandas':pd.__version__,'scipy':scipy.__version__,'scikit-learn':sklearn.__version__,'joblib':joblib.__version__,'pysam':pysam.__version__,'imbalanced-learn':imblearn.__version__}
+print('ONCOTRACER_FFPERASE_RUNTIME_READY '+json.dumps({'functional_probe':True,'versions':versions}))
+"""
+
+
+def _runtime_environment():
+    environment = dict(os.environ)
+    for key in ('PYTHONPATH', 'PYTHONHOME', 'PYTHONSTARTUP', 'PYTHONPYCACHEPREFIX',
+                'LD_PRELOAD', 'LD_LIBRARY_PATH', 'LD_LIBRARY_PATH_MCR'):
+        environment.pop(key, None)
+    environment.update(PYTHONDONTWRITEBYTECODE='1', PYTHONNOUSERSITE='1',
+                       OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1')
+    return environment
+
+
+def preflight_runtime(prefix=None, sif=None):
+    """Exercise dependencies without loading external models or fetching assets."""
+    prefix = prefix or os.environ.get('ONCOTRACER_FFPERASE_PREFIX')
+    sif = sif or os.environ.get('ONCOTRACER_FFPERASE_SIF')
+    if sif:
+        image = Path(sif).expanduser()
+        runtime = shutil.which('apptainer') or shutil.which('singularity')
+        if not image.is_file() or not runtime:
+            raise OncoTracerError('FFPERASE runtime requires an existing variant_ffperase_sif and Apptainer/Singularity')
+        command = [runtime, 'exec', '--cleanenv', '--no-home', str(image),
+                   'python3', '-I', '-B', '-c', RUNTIME_PROBE_CODE]
+    else:
+        python = Path(prefix).expanduser() / 'bin/python' if prefix else None
+        if python is None or not python.is_file() or not os.access(python, os.X_OK):
+            raise OncoTracerError('FFPERASE requires a compatible variant_ffperase_prefix runtime. '
+                                 'Use Install with Conda in the browser to prepare the dedicated FFPERASE environment, '
+                                 'or choose Docker; a Python or Picard-only environment is insufficient.')
+        command = [str(python), '-I', '-B', '-c', RUNTIME_PROBE_CODE]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=120,
+                                env=_runtime_environment())
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise OncoTracerError('FFPERASE runtime dependency check failed: ' + str(error)) from error
+    line = next((line for line in result.stdout.splitlines() if line.startswith(RUNTIME_PROBE_MARKER)), None)
+    if result.returncode or line is None:
+        detail = (result.stderr or result.stdout)[-1600:].strip()
+        raise OncoTracerError('FFPERASE runtime is incompatible: ' + str(sif or prefix) + '. '
+                             'The selected environment must provide numpy, pandas, scipy, scikit-learn, joblib, pysam and imbalanced-learn. '
+                             'Use Install with Conda for the dedicated FFPERASE environment or select Docker. '
+                             'No resources were downloaded. ' + detail)
+    try:
+        report = json.loads(line[len(RUNTIME_PROBE_MARKER):])
+        if report['functional_probe'] is not True or set(report['versions']) != set(RUNTIME_PACKAGES):
+            raise ValueError('incomplete dependency report')
+    except (ValueError, KeyError, TypeError) as error:
+        raise OncoTracerError('FFPERASE runtime returned an invalid dependency report') from error
+    return report
+
 
 def discover(root=None, models=None, sif=None, prefix=None):
     root = root or os.environ.get('ONCOTRACER_FFPERASE_ROOT')
@@ -26,7 +101,9 @@ def discover(root=None, models=None, sif=None, prefix=None):
         cached = Path.home()/'.nextflow/assets/.repos/papaemmelab/nf-ffperase/clones'/REVISION
         root = cached if cached.is_dir() else None
     if not root or not models:
-        raise OncoTracerError('FFPErase requires variant_ffperase_root and variant_ffperase_models (or ONCOTRACER_FFPERASE_ROOT/MODELS)')
+        from .variant_model_assets import ffperase_missing_message
+        missing = [name for name, value in (('ffperase_source', root), ('ffperase_models', models)) if not value]
+        raise OncoTracerError(ffperase_missing_message(missing))
     root, models = Path(root).resolve(), Path(models).resolve()
     files = [root/'bin'/n for n in ('annotate_w_pileup','annotate_variants.py','classify_w_random_forest.py','microrep_python3.py')]
     files += [models/f'model.{kind}.joblib' for kind in ('snvs','indels')]
@@ -77,14 +154,14 @@ for kind in ('snvs','indels'):
 print('ONCOTRACER_FFPERASE_READY '+json.dumps({'models':result,'sklearn':sklearn.__version__}))
 """
     command=[str(Path(detection['prefix'])/'bin/python') if detection.get('prefix') and not detection.get('sif') else 'python3',
-             '-B','-c',code,detection['models']]
+             '-I','-B','-c',code,detection['models']]
     if detection.get('sif'):
         bind=[]
         for value in (detection['root'],detection['models']):
             if any(c in value for c in ':,\n\r'):raise OncoTracerError('FFPErase bind path contains a separator')
             bind.extend(['--bind',value+':'+value+':ro'])
         command=[detection['runtime'],'exec','--cleanenv',*bind,detection['sif'],*command]
-    env=dict(os.environ,PYTHONDONTWRITEBYTECODE='1',OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1')
+    env=_runtime_environment()
     try:
         result=subprocess.run(command,capture_output=True,text=True,timeout=120,env=env)
     except (OSError,subprocess.TimeoutExpired) as error:

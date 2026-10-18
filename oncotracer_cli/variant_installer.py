@@ -161,6 +161,8 @@ class VariantInstaller:
             detected = discover_variant_resources({"mode": mode, "backend": "conda", "specimen_type": specimen,
                 "callers": callers, "values": {**inspected, "variant_annovar": "off"}}, roots=roots)
             states = {row["id"]: row["status"] for row in detected["resources"]}
+            ffpe_inventory = next((row.get("inventory_compatible", False) for row in detected["resources"]
+                                   if row["id"] == "ffperase_prefix"), False)
             if flow == "fastq":
                 plan["fields"]["backend"] = backend if backend in {"conda", "host", "poetry"} else "conda"
             def environment(name, field, packages=None):
@@ -193,10 +195,10 @@ class VariantInstaller:
                 for caller, script in (("strelka2_germline", "configureStrelkaGermlineWorkflow.py"), ("strelka2_somatic", "configureStrelkaSomaticWorkflow.py")):
                     if caller in callers:
                         step("Check " + caller, [str(prefix / "bin/python2.7"), str(prefix / "bin" / script), "--help"])
-            if mode == "illumina" and specimen == "ffpe" and values.get("variant_ffperase", "required") != "off" and not values.get("variant_ffperase_sif") and states.get("ffperase_prefix") == "missing":
+            if mode == "illumina" and specimen == "ffpe" and values.get("variant_ffperase", "required") != "off" and not values.get("variant_ffperase_sif") and (states.get("ffperase_prefix") == "missing" or not ffpe_inventory):
                 prefix = environment("ffperase", "variant_ffperase_prefix")
-                step("Check FFPERASE dependencies", [str(prefix / "bin/python"), "-B", "-c",
-                    "import numpy, pandas, scipy, sklearn, joblib, pysam, imblearn; print('FFPERASE runtime imports passed')"])
+                from .ffperase import RUNTIME_PROBE_CODE
+                step("Check FFPERASE dependencies", [str(prefix / "bin/python"), "-I", "-B", "-c", RUNTIME_PROBE_CODE])
             if "clairs_to" in callers and not values.get("variant_clairsto_sif") and states.get("clairs_to") == "missing":
                 target = directory / "clairs-to_v0.4.4.sif"
                 plan["fields"]["variant_clairsto_sif"] = str(target)

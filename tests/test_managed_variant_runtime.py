@@ -248,6 +248,13 @@ class ManagedVariantRuntimeTests(unittest.TestCase):
         (ffpe / "bin").mkdir(parents=True)
         python = ffpe / "bin/python"
         python.write_text("#!/bin/sh\nexit 99\n"); python.chmod(0o755)
+        from oncotracer_cli.ffperase import RUNTIME_PACKAGES
+        metadata = ffpe / "conda-meta"
+        metadata.mkdir()
+        for name, version in RUNTIME_PACKAGES.items():
+            if name == "python":
+                version += ".20"
+            (metadata / f"{name}-{version}-fixture_0.json").write_text("{}\n")
         with patch("subprocess.run", side_effect=AssertionError("discovery executed a tool")):
             result = discover_variant_resources({"mode": "illumina", "backend": "conda",
                 "callers": ["mutect2"], "specimen_type": "ffpe",

@@ -614,6 +614,32 @@ The implementation measures genome-wide depth and paired-end insert size, collec
 
 **Low-pass limitation:** this upstream feature code requires an integer coverage greater than one for its logarithmic depth feature. Measured coverage is truncated as required by that interface, without inventing a larger value. If the resulting value is <=1, all records receive `FFPERASE_NOT_EVALUATED`; the stage reports `not_assessed` and the run reports partial failure. This is a mathematical compatibility check, not a validated minimum sequencing depth. No low-pass accuracy claim follows from a successful model execution.
 
+### Missing FFPERASE resources or an incompatible runtime
+
+FFPERASE needs three separate resources: the upstream source directory, a model
+folder containing both `model.snvs.joblib` and `model.indels.joblib`, and a
+compatible classifier runtime. Selecting a Python environment does not supply
+the source or models.
+
+A Picard metrics-only environment is insufficient, even if its name contains
+`ffperase` and `bin/python` exists. Use the complete environment from
+`environments/native-ffperase.yml`, including its pinned Python, NumPy, pandas,
+SciPy, scikit-learn, joblib, pysam and imbalanced-learn versions, or supply a
+compatible FFPERASE SIF. Docker uses the FFPERASE runtime inside its image. See
+[environment installation](#conda-and-docker).
+
+Reuse existing source/models that have been verified against the pinned resource
+hashes; another download is unnecessary. Select the source, model folder and
+compatible runtime explicitly, then save and check the configuration. Existing
+local resources can be used with `variant_download_resources: false` and
+`variant_accept_ffperase_license: false`; that download acknowledgment is only
+needed for automatic preparation of missing resources. Existing resources remain
+subject to their upstream terms.
+
+If a resource is missing, either supply its existing path or explicitly enable
+preparation and acknowledge the terms below. OncoTracer does not enable downloads
+or accept the terms to repair a configuration automatically.
+
 ### Automatic FFPERASE resources at run time
 
 In the Illumina FFPE browser form, keep **Prepare missing FFPERASE source and

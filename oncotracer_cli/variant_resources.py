@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Mapping
 
 from .runtime import OncoTracerError
-from .variant_model_assets import is_auto_resource, validate_profile, FFPERASE_LICENSE
+from .variant_model_assets import is_auto_resource, validate_profile, FFPERASE_LICENSE, FFPERASE_MODEL_REVISION
 
 MAX_ROOTS = 12
 MAX_CHILDREN = 64
@@ -267,6 +267,20 @@ class _Search:
                 continue
             ready.append(prefix)
         return ready
+
+    def ffperase_runtime_inventory(self, prefix):
+        """Recognize pinned Conda records without executing Python or models."""
+        from .ffperase import RUNTIME_PACKAGES
+        if not self.file(prefix / "bin/python", executable=True):
+            return False
+        metadata = prefix / "conda-meta"
+        self.record(metadata)
+        for name, version in RUNTIME_PACKAGES.items():
+            version_pattern = version + ".*" if name == "python" else version
+            records = list(islice(metadata.glob(name + "-" + version_pattern + "-*.json"), 2))
+            if not any(self.file(record) for record in records):
+                return False
+        return True
 
     def completed_installs(self):
         data_home = self.path(self.env.get("XDG_DATA_HOME") or str(self.home / ".local/share"))
@@ -543,14 +557,28 @@ def discover_variant_resources(data, *, roots=(), environment=None):
 
     if ffpe_needed:
         cached = search.home / ".nextflow/assets/.repos/papaemmelab/nf-ffperase/clones" / FFPERASE_REVISION
-        source_candidates = [cached]
+        cache_locations = []
+        for base in search.roots:
+            cache_locations += [base / suffix for suffix in (
+                "resources", "results/08_variants/resources", "results/08_variants/glimpse2/resources",
+                "results/08_variants/glimpse2/ffperase_resources/resources",
+                "08_variants/resources", "08_variants/glimpse2/resources",
+                "08_variants/glimpse2/ffperase_resources/resources", "ffperase_resources/resources")]
+        source_candidates = [cached, *[base / ("ffperase-source-" + FFPERASE_REVISION)
+                                      for base in search.unique([*locations, *cache_locations])]]
         for base in locations:
             source_candidates += [base / "nf-ffperase", base / "FFPErase", base / "ffperase"]
             if "ffperase" in base.name.lower(): source_candidates.append(base)
         source = find_resource("variant_ffperase_root", "FFPERASE source", source_candidates,
                                lambda p: all(search.file(p / "bin" / name) for name in ("annotate_w_pileup", "annotate_variants.py", "classify_w_random_forest.py", "microrep_python3.py")))
         if not source: need("ffperase_source")
-        model_candidates = [p / name for p in locations for name in ("ffperase-models", "ffperase_models", "ffperase/models")]
+        cache_home = search.path(search.env.get("XDG_CACHE_HOME") or str(search.home / ".cache"))
+        hf_home = search.path(search.env.get("HF_HOME") or str(cache_home / "huggingface"))
+        hub = search.path(search.env.get("HF_HUB_CACHE") or search.env.get("HUGGINGFACE_HUB_CACHE") or str(hf_home / "hub"))
+        model_candidates = [hub / "models--papaemmelab--ffperase/snapshots" / FFPERASE_MODEL_REVISION]
+        model_candidates += [base / ("ffperase-models-" + FFPERASE_MODEL_REVISION)
+                             for base in search.unique([*locations, *cache_locations])]
+        model_candidates += [p / name for p in locations for name in ("ffperase-models", "ffperase_models", "ffperase/models")]
         model_candidates += [p for p in locations if "ffperase" in p.name.lower()]
         sources = [search.path(c["path"]) for c in candidates if c["field"] == "variant_ffperase_root"]
         if source:
@@ -564,14 +592,29 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         else:
             ffpe_sif_override = search.override("variant_ffperase_sif", values)
             prefix_override = search.override("variant_ffperase_prefix", values)
-            named = [p for p in prefixes if "ffperase" in p.name.lower() and search.file(p / "bin/python", executable=True)]
-            specialized = named or [p for p in prefixes if "ffpe" in p.name.lower()]
-            native = [p for p in specialized if search.file(p / "bin/python", executable=True)]
+            native = [p for p in prefixes if search.ffperase_runtime_inventory(p)]
+            unverified = [p for p in prefixes if p not in native and "ffpe" in p.name.lower()
+                          and search.file(p / "bin/python", executable=True)]
+            for path in unverified:
+                offer("variant_ffperase_prefix", path, "Unverified FFPERASE runtime",
+                      "Only Python was found; the pinned classifier package records are incomplete. "
+                      "This environment is not selected automatically. Save and check must verify a custom runtime.")
             prefer_native = not ffpe_sif_override and bool(prefix_override or native)
             possible_sifs = sif_candidates("ffperase")
-            prefix = find_resource("variant_ffperase_prefix", "FFPERASE native runtime", specialized,
-                                   lambda p: search.file(p / "bin/python", executable=True), candidate=True,
+            prefix = find_resource("variant_ffperase_prefix", "FFPERASE native runtime", native,
+                                   lambda p: search.file(p / "bin/python", executable=True)
+                                   if prefix_override else search.ffperase_runtime_inventory(p), candidate=True,
                                    fill=prefer_native, optional=bool(ffpe_sif_override or possible_sifs))
+            runtime_row = resources[-1]
+            inventory_compatible = bool(prefix and search.ffperase_runtime_inventory(prefix))
+            runtime_row["inventory_compatible"] = inventory_compatible
+            if prefix:
+                runtime_row["detail"] = ("Pinned classifier package records are present; runtime functionality and both models still need preflight."
+                                         if inventory_compatible else
+                                         "The explicit runtime path was preserved, but its package records do not establish classifier compatibility. "
+                                         "Save and check tests the selected runtime; a Python or Picard-only environment is insufficient.")
+            if prefix and not inventory_compatible and not ffpe_sif_override:
+                need("ffperase_runtime")
             ffpe_sif = find_resource("variant_ffperase_sif", "FFPERASE SIF", possible_sifs,
                                      lambda p: search.file(p), candidate=True,
                                      fill=not prefer_native, optional=bool(prefix))

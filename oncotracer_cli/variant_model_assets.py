@@ -3,7 +3,8 @@
 Catalog provenance: Clair3 v1.2.0 README and the official nanoporetech/rerio
 model stubs. Archive SHA256/lengths were independently measured from those
 HTTPS URLs on 2026-09-22; they are not claimed as upstream-published checksums.
-No caller, model loader, installer or shell is executed here.
+Planning executes no caller, model loader, installer or shell. Explicit runtime
+preflight separately checks the selected dependency environment before downloads.
 """
 from __future__ import annotations
 
@@ -113,7 +114,7 @@ def ffperase_asset_paths(request):
 
 
 def ffperase_pending(request):
-    if request.ffperase == 'off' or not request.download_resources:
+    if request.ffperase == 'off':
         return []
     paths = ffperase_asset_paths(request)
     missing = []
@@ -130,6 +131,8 @@ def ffperase_pending(request):
                             'download_bytes': sum(item['size'] for item in assets.values()),
                             'license': FFPERASE_LICENSE,
                             'files': {name: dict(item) for name, item in assets.items()}})
+    if missing and not request.download_resources:
+        raise OncoTracerError(ffperase_missing_message([item['resource'] for item in missing]))
     if missing and not request.accept_ffperase_license:
         raise OncoTracerError('Automatic FFPERASE preparation requires variant_accept_ffperase_license: true after reviewing '
                              + FFPERASE_LICENSE + '. Existing supplied source/models do not require this download acknowledgment.')
@@ -138,15 +141,22 @@ def ffperase_pending(request):
     return missing
 
 
+def ffperase_missing_message(resources):
+    """Explain a partial manual selection without changing download consent."""
+    fields = {'ffperase_source': 'variant_ffperase_root (source folder)',
+              'ffperase_models': 'variant_ffperase_models (folder containing model.snvs.joblib and model.indels.joblib)'}
+    missing = ', '.join(fields[item] for item in resources)
+    return ('FFPERASE resources are incomplete: missing ' + missing + '. '
+            'Choose the existing folder under FFPERASE source and models in the browser, then Save and check. '
+            'Alternatively, enable Prepare missing FFPERASE source and models when the run starts '
+            '(variant_download_resources: true) and explicitly review and accept the upstream license '
+            '(variant_accept_ffperase_license: true). No resources were downloaded and no consent was changed.')
+
+
 def preflight_ffperase_runtime(request):
-    """Read-only runtime validation before optional downloads, never an install."""
-    sif = request.ffperase_sif or os.environ.get('ONCOTRACER_FFPERASE_SIF')
-    prefix = request.ffperase_prefix or os.environ.get('ONCOTRACER_FFPERASE_PREFIX')
-    if sif:
-        if not Path(sif).is_file() or not (shutil.which('apptainer') or shutil.which('singularity')):
-            raise OncoTracerError('Automatic FFPERASE resources still require an existing SIF and Apptainer/Singularity')
-    elif not prefix or not (Path(prefix) / 'bin/python').is_file():
-        raise OncoTracerError('Automatic FFPERASE resources still require a compatible variant_ffperase_prefix runtime; no tools are installed automatically')
+    """Check the selected runtime before downloads, without installing tools."""
+    from .ffperase import preflight_runtime
+    return preflight_runtime(prefix=request.ffperase_prefix, sif=request.ffperase_sif)
 
 
 def is_auto_resource(key, value):
