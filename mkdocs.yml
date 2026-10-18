@@ -9,6 +9,9 @@ edit_uri: edit/main/docs/
 extra_css:
   - stylesheets/oncotracer.css
 
+extra_javascript:
+  - javascripts/quickstart-video.js
+
 theme:
   name: material
   features:

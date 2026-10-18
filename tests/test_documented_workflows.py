@@ -265,7 +265,25 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 self.assertEqual(len(checksums), len(downloads))
                 self.create_tables(text, base)
                 browser_only = relative != "docs/full_tutorial.md"
-                workflow_text = text if browser_only else text.split("## 4. Save the settings", 1)[1]
+                if browser_only:
+                    # The new launch option opens an empty setup session. Parse
+                    # it without starting a server; use the unchanged prefilled
+                    # walkthrough below for synthetic Save/check/dry-run checks.
+                    walkthrough = "2. Follow the browser walkthrough"
+                    launch_text = text.split(f"## {walkthrough}\n", 1)[0]
+                    launches = list(self.commands(launch_text))
+                    self.assertTrue(launches, "QuickStart omitted the simple interactive launch")
+                    for command in launches:
+                        with patch("subprocess.run", side_effect=AssertionError("Launch parser executed a subprocess")):
+                            launch = parse_arguments(command[1:])
+                        self.assertEqual(launch.command, "setup")
+                        self.assertTrue(launch.interactive)
+                        self.assertFalse(launch.run)
+                        self.assertIsNone(launch.project)
+                        self.assertIsNone(launch.input_folder)
+                    workflow_text = self.section(text, walkthrough)
+                else:
+                    workflow_text = text.split("## 4. Save the settings", 1)[1]
                 configs = self.steps(workflow_text, base, samples, browser_only=browser_only)
                 if browser_only:
                     for config in configs:

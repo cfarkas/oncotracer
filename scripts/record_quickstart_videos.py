@@ -7,6 +7,7 @@ analysis are used; /api/run is forbidden. Default outputs are docs media only.
 """
 from __future__ import annotations
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -146,6 +147,7 @@ class Recording:
         self.started = time.monotonic()
         self.cues = []
         self.states = []
+        self.scene_windows = []
         self.errors = []
         page.on("pageerror", lambda e: self.errors.append(str(e)))
 
@@ -234,6 +236,7 @@ class Recording:
             title,
             "Open browser setup after downloading and verifying the reads. This recording uses synthetic file listings and checks.",
         )
+        scene_start = self.cues[-1]["start"]
         self.pause(5)
         if poster:
             self.page.screenshot(path=str(poster), type="jpeg", quality=90)
@@ -350,6 +353,13 @@ class Recording:
         self.focus("#run")
         self.pause(6)
         self.clear_focus()
+        self.scene_windows.append(
+            {
+                "scene": kind,
+                "start": scene_start,
+                "end": time.monotonic() - self.started,
+            }
+        )
         self.page.unroute("**/*")
 
     def finish(self):
@@ -364,9 +374,204 @@ def run_checked(command):
     )
 
 
+def derive_platform_videos(raw_video, output_dir, manifest, windows, ffmpeg, ffprobe):
+    """Export each platform from the original capture, leaving approved media intact."""
+    source = next(
+        v for v in manifest["videos"] if v["name"] == "quick-start-illumina-ont"
+    )
+    originals = {
+        v["name"]: copy.deepcopy(v)
+        for v in manifest["videos"]
+        if v["name"] in {"quick-start-illumina-ont", "quick-start-hcc1143"}
+    }
+    for video in originals.values():
+        for asset in video["files"].values():
+            assert (
+                hashlib.sha256((output_dir / asset["name"]).read_bytes()).hexdigest()
+                == asset["sha256"]
+            )
+    assert (
+        raw_video.suffix == ".webm" and raw_video.is_file()
+    ), "Use the original Playwright WebM capture."
+    capture_sha = hashlib.sha256(raw_video.read_bytes()).hexdigest()
+    windows = {w["scene"]: w for w in windows}
+    additions = []
+    for scene, title in (
+        ("illumina", "QuickStart 1 · Illumina"),
+        ("ont", "QuickStart 1 · Oxford Nanopore"),
+    ):
+        window = windows[scene]
+        start, end = float(window["start"]), float(window["end"])
+        assert 0 <= start < end <= source["duration_seconds"] + 0.1
+        name = "quick-start-" + scene
+        output = output_dir / (name + ".mp4")
+        run_checked(
+            [
+                ffmpeg,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-ss",
+                str(start),
+                "-i",
+                str(raw_video),
+                "-t",
+                str(end - start),
+                "-an",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "medium",
+                "-crf",
+                "25",
+                "-pix_fmt",
+                "yuv420p",
+                "-r",
+                "24",
+                "-threads",
+                "4",
+                "-movflags",
+                "+faststart",
+                str(output),
+            ]
+        )
+        probe = json.loads(
+            run_checked(
+                [
+                    ffprobe,
+                    "-v",
+                    "error",
+                    "-show_format",
+                    "-show_streams",
+                    "-of",
+                    "json",
+                    str(output),
+                ]
+            ).stdout
+        )
+        stream = probe["streams"][0]
+        duration = float(probe["format"]["duration"])
+        assert stream["codec_name"] == "h264" and stream["pix_fmt"] == "yuv420p"
+        assert (stream["width"], stream["height"]) == (1280, 900)
+        data = output.read_bytes()
+        assert len(data) < 25 * 1024 * 1024 and 0 < data.find(b"moov") < data.find(
+            b"mdat"
+        )
+        poster_time = start + min(2.0, (end - start) / 2)
+        run_checked(
+            [
+                ffmpeg,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-ss",
+                str(poster_time),
+                "-i",
+                str(raw_video),
+                "-frames:v",
+                "1",
+                "-q:v",
+                "2",
+                str(output_dir / (name + ".jpg")),
+            ]
+        )
+        cues = []
+        for original in source["cues"]:
+            if not original["title"].startswith(title):
+                continue
+            cue = copy.deepcopy(original)
+            cue["start"] = max(0.0, original["start"] - start)
+            cue["end"] = min(duration, end - start, original["end"] - start)
+            if cue["end"] > cue["start"]:
+                cues.append(cue)
+        assert cues and all(0 <= c["start"] < c["end"] <= duration for c in cues)
+        vtt = "WEBVTT\n\n" + "".join(
+            f'{i}\n{stamp(c["start"])} --> {stamp(c["end"])}\n{c["title"]}\n{c["text"]}\n\n'
+            for i, c in enumerate(cues, 1)
+        )
+        (output_dir / (name + ".vtt")).write_text(vtt.rstrip("\n") + "\n")
+        transcript = (
+            "Silent browser walkthrough. Synthetic inventory and checks; no analysis or downloads.\n\n"
+            + "".join(
+                f'{stamp(c["start"])}  {c["title"]}\n{c["text"]}\n\n' for c in cues
+            )
+        )
+        (output_dir / (name + ".txt")).write_text(transcript.rstrip("\n") + "\n")
+        files = {
+            suffix: {
+                "name": name + suffix,
+                "sha256": hashlib.sha256(
+                    (output_dir / (name + suffix)).read_bytes()
+                ).hexdigest(),
+                "bytes": (output_dir / (name + suffix)).stat().st_size,
+            }
+            for suffix in (".mp4", ".jpg", ".vtt", ".txt")
+        }
+        additions.append(
+            {
+                "name": name,
+                "duration_seconds": duration,
+                "codec": "h264",
+                "pixel_format": "yuv420p",
+                "faststart": True,
+                "resolution": [1280, 900],
+                "cues": cues,
+                "scenes": [
+                    copy.deepcopy(s) for s in source["scenes"] if s["scene"] == scene
+                ],
+                "files": files,
+                "derivation": {
+                    "method": "transcoded_from_original_browser_capture",
+                    "source_capture_name": raw_video.name,
+                    "source_capture_sha256": capture_sha,
+                    "approved_combined_video": source["files"][".mp4"],
+                    "source_window_seconds": [start, end],
+                    "captions_rebased": True,
+                    "inter_scene_navigation_excluded": True,
+                    "poster_source_seconds": poster_time,
+                },
+            }
+        )
+        print(
+            json.dumps(
+                {
+                    "video": name,
+                    "seconds": duration,
+                    "bytes": output.stat().st_size,
+                    "analysis_started": False,
+                }
+            ),
+            flush=True,
+        )
+    for video in originals.values():
+        for asset in video["files"].values():
+            assert (
+                hashlib.sha256((output_dir / asset["name"]).read_bytes()).hexdigest()
+                == asset["sha256"]
+            )
+    manifest["videos"] = [
+        v for v in manifest["videos"] if v["name"] not in {a["name"] for a in additions}
+    ] + additions
+    assert all(
+        next(v for v in manifest["videos"] if v["name"] == name) == old
+        for name, old in originals.items()
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--work-dir", type=Path, required=True)
+    parser.add_argument("--work-dir", type=Path)
+    parser.add_argument(
+        "--split-existing",
+        type=Path,
+        help="Derive separate platform videos from an existing original WebM; no browser is started.",
+    )
+    parser.add_argument(
+        "--illumina-clip", type=float, nargs=2, metavar=("START", "END")
+    )
+    parser.add_argument("--ont-clip", type=float, nargs=2, metavar=("START", "END"))
     parser.add_argument("--output-dir", type=Path, default=MEDIA)
     parser.add_argument("--playwright-path", type=Path)
     parser.add_argument("--browser-path", type=Path)
@@ -388,6 +593,34 @@ def main():
         parser.error("ffmpeg and ffprobe are required")
     if args.pace <= 0:
         parser.error("--pace must be positive")
+    if args.split_existing:
+        if not args.illumina_clip or not args.ont_clip:
+            parser.error(
+                "--split-existing requires both --illumina-clip and --ont-clip"
+            )
+        manifest_path = args.output_dir / "quick-start-recording.json"
+        manifest = json.loads(manifest_path.read_text())
+        assert manifest["passed"] and not manifest["analysis_started"]
+        windows = [
+            {"scene": scene, "start": bounds[0], "end": bounds[1]}
+            for scene, bounds in (
+                ("illumina", args.illumina_clip),
+                ("ont", args.ont_clip),
+            )
+        ]
+        derive_platform_videos(
+            args.split_existing,
+            args.output_dir,
+            manifest,
+            windows,
+            args.ffmpeg,
+            args.ffprobe,
+        )
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+        print("PASS: platform clips derived; existing approved assets preserved.")
+        return
+    if not args.work_dir:
+        parser.error("--work-dir is required when recording the browser")
     args.work_dir.mkdir(parents=True, exist_ok=False)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     if args.playwright_path:
@@ -422,6 +655,8 @@ def main():
         "pace": args.pace,
         "videos": [],
     }
+    combined_capture = None
+    combined_windows = None
     with sync_playwright() as p:
         launch = {"headless": True, "env": isolated_env}
         if args.browser_path:
@@ -452,6 +687,9 @@ def main():
                 video = page.video
                 context.close()
                 raw_video = Path(video.path())
+                if name == "quick-start-illumina-ont":
+                    combined_capture = raw_video
+                    combined_windows = recording.scene_windows
                 output = args.output_dir / (name + ".mp4")
                 run_checked(
                     [
@@ -557,12 +795,20 @@ def main():
                 )
         finally:
             browser.close()
+    derive_platform_videos(
+        combined_capture,
+        args.output_dir,
+        manifest,
+        combined_windows,
+        args.ffmpeg,
+        args.ffprobe,
+    )
     manifest["passed"] = True
     (args.output_dir / "quick-start-recording.json").write_text(
         json.dumps(manifest, indent=2) + "\n"
     )
     print(
-        "PASS: both UI walkthroughs recorded; all requests and saved demo selections verified.",
+        "PASS: walkthroughs recorded and platform clips derived; all requests and saved demo selections verified.",
         flush=True,
     )
 

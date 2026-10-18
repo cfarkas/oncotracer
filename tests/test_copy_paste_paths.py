@@ -78,7 +78,7 @@ def check_native_quickstarts() -> None:
             "terminal QuickStarts must explain reference reuse and local builds")
     for relative, paths in projects.items():
         text = read(relative)
-        require_order(text, ("curl --fail", "md5sum -c", "oncotracer --interactive"), relative)
+        require_order(text, ("curl --fail", "md5sum -c", f'--project "$PWD/{paths[0]}"'), relative)
         require("reference_indexes.md" in text and "Reuse a prepared OncoTracer" in text,
                 f"{relative} must explain reference reuse")
         require("quickstart_terminal.md" in text, f"{relative} must link its scripted alternative")
@@ -91,7 +91,8 @@ def check_native_quickstarts() -> None:
         for forbidden in ("git clone", "cd oncotracer", "oncotracer quickstart", "--download-only", "--test-root"):
             require(forbidden not in text, f"{relative} must use ordinary commands: found {forbidden}")
     for page in projects:
-        require(page in read("README.md"), f"README must link to {page}")
+        published = f"https://cfarkas.github.io/oncotracer/{Path(page).stem}/"
+        require(published in read("README.md"), f"README must link to the playable guide: {published}")
 
 
 def check_every_pwd_quickstart_block_enters_analysis_directory() -> None:

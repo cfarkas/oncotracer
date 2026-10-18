@@ -1,0 +1,51 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:05.004
+QuickStart 1 · Oxford Nanopore
+Open browser setup after downloading and verifying the reads. This recording uses synthetic file listings and checks.
+
+2
+00:00:05.004 --> 00:00:11.736
+QuickStart 1 · Oxford Nanopore · preservation
+Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.
+
+3
+00:00:11.736 --> 00:00:26.187
+QuickStart 1 · Oxford Nanopore · discover inputs
+Choose fastq_pass. Each barcode stays one sample, even when it contains several FASTQ batches.
+
+4
+00:00:26.187 --> 00:00:31.673
+QuickStart 1 · Oxford Nanopore · sample groups
+Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups.
+
+5
+00:00:31.673 --> 00:00:35.891
+QuickStart 1 · Oxford Nanopore · sample name
+Rename barcode01 to DRR165691. The barcode still identifies the same FASTQ input.
+
+6
+00:00:35.891 --> 00:00:44.297
+QuickStart 1 · Oxford Nanopore · CNA settings
+Keep Copy-number analysis, ichorCNA and 500 kb bins. FASTQs alone do not provide methylation calls.
+
+7
+00:00:44.297 --> 00:00:50.748
+QuickStart 1 · Oxford Nanopore · tools and reference
+Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis.
+
+8
+00:00:50.748 --> 00:00:57.480
+QuickStart 1 · Oxford Nanopore · separate project
+Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart.
+
+9
+00:00:57.480 --> 00:01:04.220
+QuickStart 1 · Oxford Nanopore · save and review
+Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated.
+
+10
+00:01:04.220 --> 00:01:11.083
+QuickStart 1 · Oxford Nanopore · ready for your run
+In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run.

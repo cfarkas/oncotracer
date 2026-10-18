@@ -36,14 +36,6 @@ oncotracer --interactive --backend docker
 
 The Docker image is saved for later commands. See [installation](docs/installation.md) for Python environments, requirements and other options. FFPE/ONT callers, model resources and ANNOVAR have [additional setup requirements](docs/variants.md); use Conda for ONT methylation.
 
-## Set up your analysis
-
-1. Choose **Illumina or ONT**, then **Fresh or FFPE**.
-2. Select input files, assign samples to Normal or Cancer, and choose the analysis and project folder.
-3. Review settings, select **Save configuration and check**, then **Run analysis**.
-
-Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
-
 ### Open interactive setup with Nextflow
 
 You can also use Nextflow to open the same browser interface. After installing your backend, run this from the [OncoTracer source checkout](docs/installation_details.md#install-from-github):
@@ -53,6 +45,14 @@ nextflow run main.nf --interactive --backend conda
 ```
 
 From another directory, replace `main.nf` with its full path, such as `/absolute/path/to/oncotracer-src/main.nf`. Use `--backend docker` for Docker. Choose your inputs, Fresh or FFPE, and analysis settings in the browser; analysis starts only when you click **Run analysis**. See [Nextflow setup and concurrent projects](docs/nextflow_entry.md).
+
+## Set up your analysis
+
+1. Choose **Illumina or ONT**, then **Fresh or FFPE**.
+2. Select input files, assign samples to Normal or Cancer, and choose the analysis and project folder.
+3. Review settings, select **Save configuration and check**, then **Run analysis**.
+
+Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
 
 ### Interactive demo
 
@@ -99,7 +99,7 @@ If an extra OncoTracer-owned global launcher remains, [remove it before the Pyth
 
 | Task | Guide |
 | --- | --- |
-| Try public Illumina and ONT data | [QuickStart 1](docs/quick_start.md) · [QuickStart 2](docs/public_cohort.md) |
+| Try public Illumina and ONT data | [QuickStart 1](https://cfarkas.github.io/oncotracer/quick_start/) · [QuickStart 2](https://cfarkas.github.io/oncotracer/public_cohort/) |
 | Check hardware or reuse genome indexes | [Requirements](docs/installation.md#requirements) · [Prebuilt indexes](docs/reference_indexes.md) |
 | Prepare multiple samples | [Batch setup](docs/auto_params.md) · [Command basics](docs/command_basics.md) |
 | Add analysis options | [Methylation](docs/configuration/methylation.md) · [Variants](docs/variants.md) · [Paper report](docs/paper_report.md) |

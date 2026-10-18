@@ -2,16 +2,64 @@
 
 # QuickStart 1: Illumina and ONT
 
-Run a complete native analysis of one public library per platform. Choose
-Illumina, ONT, or both in separate projects. The reads total approximately 225 MB;
-tools, references and results need additional space. This example analyzes
-copy-number changes (CNA); FASTQs alone cannot assess ONT methylation.
+<p class="quickstart-source-link"><strong><a href="https://cfarkas.github.io/oncotracer/quick_start/">Open this guide with playable videos</a></strong></p>
 
-[Install OncoTracer](installation.md), download the reads, then follow the browser
-walkthrough. For a script without a browser, use the
-[terminal version](quickstart_terminal.md#quickstart-1).
+Analyze libraries for copy-number changes (CNA). Choose
+Illumina, ONT or both in separate projects. Reads total approximately 225 MB,
+plus tools, references and results. FASTQs alone cannot assess ONT methylation.
 
-## 1. Download and verify the reads
+[Installation](installation.md) · [Terminal commands](quickstart_terminal.md#quickstart-1).
+
+<nav class="quickstart-options" aria-label="QuickStart options">
+<a href="#1-interactive-launch">1. Interactive launch</a>
+<a href="#2-follow-the-browser-walkthrough">2. Follow the browser walkthrough</a>
+</nav>
+
+## 1. Interactive launch
+
+[Download and verify the reads](#1-download-and-verify-the-reads) before choosing inputs. Open setup:
+
+```bash
+oncotracer --interactive --backend conda
+```
+
+Or use Nextflow from the source checkout:
+
+```bash
+nextflow run main.nf --interactive --backend conda
+```
+
+Use the full path to `main.nf` from another directory. For Docker, use `--backend docker`.
+**Run analysis** starts the work. These videos use synthetic inventories and checks.
+
+<div class="quickstart-videos">
+<section class="quickstart-video-card" aria-label="Illumina video">
+<h3>Illumina</h3>
+<div class="quickstart-player">
+<video controls preload="metadata" playsinline poster="../assets/tutorial/quick-start-illumina.jpg" aria-label="Illumina setup video">
+<source src="../assets/tutorial/quick-start-illumina.mp4" type="video/mp4">
+<track src="../assets/tutorial/quick-start-illumina.vtt" kind="captions" srclang="en" label="English">
+</video>
+<button hidden type="button" class="quickstart-play" aria-label="Play Illumina setup video"><span aria-hidden="true">▶</span> Play video</button>
+</div>
+<p><a href="../assets/tutorial/quick-start-illumina.txt">Transcript</a> · <a href="../assets/tutorial/quick-start-illumina.mp4">Download video</a></p>
+</section>
+<section class="quickstart-video-card" aria-label="ONT video">
+<h3>ONT</h3>
+<div class="quickstart-player">
+<video controls preload="metadata" playsinline poster="../assets/tutorial/quick-start-ont.jpg" aria-label="ONT setup video">
+<source src="../assets/tutorial/quick-start-ont.mp4" type="video/mp4">
+<track src="../assets/tutorial/quick-start-ont.vtt" kind="captions" srclang="en" label="English">
+</video>
+<button hidden type="button" class="quickstart-play" aria-label="Play ONT setup video"><span aria-hidden="true">▶</span> Play video</button>
+</div>
+<p><a href="../assets/tutorial/quick-start-ont.txt">Transcript</a> · <a href="../assets/tutorial/quick-start-ont.mp4">Download video</a></p>
+</section>
+</div>
+
+<a id="1-download-and-verify-the-reads"></a>
+
+## Example data: download and verify
 
 Replace `/path/to/my/analyses_dir/` with your writable analysis directory in every
 block. `$PWD` means that directory's absolute path.

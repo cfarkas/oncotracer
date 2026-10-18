@@ -128,6 +128,8 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertEqual(record["mock_api_sha256"], hashlib.sha256(
             (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes()).hexdigest())
         pages = {"quick-start-illumina-ont": "docs/quick_start.md",
+                 "quick-start-illumina": "docs/quick_start.md",
+                 "quick-start-ont": "docs/quick_start.md",
                  "quick-start-hcc1143": "docs/public_cohort.md"}
         self.assertEqual({video["name"] for video in record["videos"]}, set(pages))
         self.assertEqual(len(record["videos"]), len(pages))

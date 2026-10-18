@@ -1,5 +1,7 @@
 # QuickStart 2: three HCC1143 libraries
 
+<p class="quickstart-source-link"><strong><a href="https://cfarkas.github.io/oncotracer/public_cohort/">Open this guide with playable videos</a></strong></p>
+
 Analyze three public Illumina libraries in one project. Download all six paired-end
 FASTQs, follow the browser walkthrough, then inspect the cohort results.
 [Install OncoTracer](installation.md) first; [QuickStart 1](quick_start.md) is the
@@ -14,7 +16,47 @@ BAMs and results.
 
 All three are tumor libraries. DMSO is a treatment control, not a normal genome.
 
-## 1. Download and verify the reads
+<nav class="quickstart-options" aria-label="QuickStart options">
+<a href="#1-interactive-launch">1. Interactive launch</a>
+<a href="#2-follow-the-browser-walkthrough">2. Follow the browser walkthrough</a>
+</nav>
+
+## 1. Interactive launch
+
+Watch the video, then [download and verify the example reads](#1-download-and-verify-the-reads).
+After [installation](installation.md), open setup:
+
+```bash
+oncotracer --interactive --backend conda
+```
+
+Or use Nextflow from the source checkout:
+
+```bash
+nextflow run main.nf --interactive --backend conda
+```
+
+Use the full path to `main.nf` from another directory. For Docker, use `--backend docker`.
+Choose inputs and settings in the browser; **Run analysis** starts the work.
+The videos show synthetic inventories and checks, without starting analysis.
+
+<div class="quickstart-videos">
+<section class="quickstart-video-card" aria-label="HCC1143 video">
+<h3>HCC1143</h3>
+<div class="quickstart-player">
+<video controls preload="metadata" playsinline poster="../assets/tutorial/quick-start-hcc1143.jpg" aria-label="HCC1143 setup video">
+<source src="../assets/tutorial/quick-start-hcc1143.mp4" type="video/mp4">
+<track src="../assets/tutorial/quick-start-hcc1143.vtt" kind="captions" srclang="en" label="English">
+</video>
+<button hidden type="button" class="quickstart-play" aria-label="Play HCC1143 setup video"><span aria-hidden="true">▶</span> Play video</button>
+</div>
+<p><a href="../assets/tutorial/quick-start-hcc1143.txt">Transcript</a> · <a href="../assets/tutorial/quick-start-hcc1143.mp4">Download video</a></p>
+</section>
+</div>
+
+<a id="1-download-and-verify-the-reads"></a>
+
+## Example data: download and verify
 
 Replace `/path/to/my/analyses_dir/` with your writable analysis directory in every
 block. `$PWD` means its absolute path.

@@ -1,0 +1,46 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:05.077
+QuickStart 1 · Illumina
+Open browser setup after downloading and verifying the reads. This recording uses synthetic file listings and checks.
+
+2
+00:00:05.077 --> 00:00:11.832
+QuickStart 1 · Illumina · preservation
+Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.
+
+3
+00:00:11.832 --> 00:00:26.337
+QuickStart 1 · Illumina · discover inputs
+Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together.
+
+4
+00:00:26.337 --> 00:00:33.812
+QuickStart 1 · Illumina · sample groups
+Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups.
+
+5
+00:00:33.812 --> 00:00:42.215
+QuickStart 1 · Illumina · CNA settings
+Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins.
+
+6
+00:00:42.215 --> 00:00:48.665
+QuickStart 1 · Illumina · tools and reference
+Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis.
+
+7
+00:00:48.665 --> 00:00:55.398
+QuickStart 1 · Illumina · separate project
+Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart.
+
+8
+00:00:55.398 --> 00:01:02.156
+QuickStart 1 · Illumina · save and review
+Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated.
+
+9
+00:01:02.156 --> 00:01:08.792
+QuickStart 1 · Illumina · ready for your run
+In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run.
