@@ -15,11 +15,12 @@
 
 .md-typeset video { display: block; width: 100%; height: auto; margin: 1rem 0 .5rem; border: 1px solid var(--md-default-fg-color--lightest); border-radius: .5rem; background: #111827; }
 
-/* The launch cards enhance only the first QuickStart option. */
+/* Accessible players for browser and terminal QuickStart walkthroughs. */
 .md-typeset .quickstart-options { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.5rem 0; }
 .md-typeset .quickstart-options a { flex: 1 1 15rem; border: 1px solid #cbd5e1; border-radius: .5rem; padding: .8rem 1rem; font-size: 1rem; font-weight: 750; background: #f1f5f9; color: #172554; }
-.md-typeset h2[id="1-interactive-launch"], .md-typeset h2[id="2-follow-the-browser-walkthrough"] { font-size: clamp(1.45rem, 3vw, 1.85rem); line-height: 1.2; font-weight: 800; margin-top: 1.5rem; border-bottom: 3px solid #16a34a; }
+.md-typeset h2[id="1-interactive-launch"], .md-typeset h2[id="2-terminal-questions-for-headless-servers"] { font-size: clamp(1.45rem, 3vw, 1.85rem); line-height: 1.2; font-weight: 800; margin-top: 1.5rem; border-bottom: 3px solid #16a34a; }
 .md-typeset .quickstart-videos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; margin: 1rem 0 1.5rem; }
+.md-typeset .quickstart-terminal-videos { grid-template-columns: 1fr; }
 .md-typeset .quickstart-video-card { min-width: 0; border: 1px solid #cbd5e1; border-radius: .6rem; padding: .8rem; background: #f8fafc; }
 .md-typeset .quickstart-video-card h3 { margin: 0 0 .6rem; font-size: 1.25rem; font-weight: 800; color: #172554; }
 .md-typeset .quickstart-video-card p { margin: .6rem 0 0; font-size: .75rem; }

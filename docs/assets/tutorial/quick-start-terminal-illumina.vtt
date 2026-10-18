@@ -1,0 +1,49 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:07.015
+A terminal is enough: Run setup --terminal on a headless server. These are real wizard prompts using tiny synthetic FASTQs.
+
+2
+00:00:07.015 --> 00:00:11.872
+Choose libraries: The wizard discovers the synthetic FASTQs. Enter all to include every listed library.
+
+3
+00:00:11.872 --> 00:00:17.088
+Keep the library identity: Press Enter to keep the discovered sample name and its existing FASTQ pair.
+
+4
+00:00:17.088 --> 00:00:22.294
+Assign the sample type: These tutorial libraries are cancer samples. Choose the type from your own sample records.
+
+5
+00:00:22.294 --> 00:00:27.147
+Choose copy-number analysis: Enter cna. This walkthrough configures copy-number analysis only.
+
+6
+00:00:27.147 --> 00:00:31.774
+Set the CPU budget: The wizard reports the current machine. Choose 4 threads here; budget resources for your own server.
+
+7
+00:00:31.774 --> 00:00:36.630
+Choose Illumina bins: Use QDNAseq at 100 kb for this tutorial. The wizard records the selected resolution.
+
+8
+00:00:36.630 --> 00:00:41.371
+Keep the example focused: Choose no for additional CNA interpretation reports.
+
+9
+00:00:41.371 --> 00:00:46.114
+Keep small variants off: Choose no. This CNA-only setup does not request variant or FFPE assessment.
+
+10
+00:00:46.114 --> 00:00:51.537
+Select reference handling: Choose download for prebuilt hg38 indexes when analysis runs. Saving does not download them.
+
+11
+00:00:51.537 --> 00:01:00.915
+Review and save only: Review the saved configuration and input checks, then explicitly enter save. No analysis starts.
+
+12
+00:01:00.915 --> 00:01:07.917
+Configuration saved: The wizard confirms: saved without starting analysis. Keep the project and launch the analysis separately when ready.

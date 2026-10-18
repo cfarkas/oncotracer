@@ -17,8 +17,8 @@ folders only.
 
 [![Preview of the interactive OncoTracer setup demo](assets/setup-demo-preview.png)](assets/setup-demo/index.html)
 
-Watch the browser walkthroughs in [QuickStart 1](quick_start.md#2-follow-the-browser-walkthrough)
-and [QuickStart 2](public_cohort.md#2-follow-the-browser-walkthrough), then try the controls yourself.
+Watch the browser walkthroughs in [QuickStart 1](quick_start.md#1-interactive-launch)
+and [QuickStart 2](public_cohort.md#1-interactive-launch), then try the controls yourself.
 
 ## What to try
 

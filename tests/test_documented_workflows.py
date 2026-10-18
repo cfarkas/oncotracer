@@ -90,23 +90,28 @@ class DocumentedWorkflowTests(unittest.TestCase):
                     self.fastq(Path(row[end]), row["sample"] + "_" + end)
         return rows
 
-    def steps(self, text, base, expected, *, unattended=False, browser_only=False):
+    def steps(self, text, base, expected, *, unattended=False, terminal_questions=False):
         configured, checked, planned = [], [], []
         # Follow the guide's choices through the real terminal wizard. Deeper
         # prompt validation and alternate routes live in test_wizard.py.
         names = iter(())
+        prompts = []
 
         def answer_prompt(prompt):
+            prompts.append(prompt)
             if prompt.startswith("Sample name ["):
                 name = next(names, None)
                 self.assertIsNotNone(name, "Wizard discovered more samples than documented")
+                if terminal_questions and initial.mode == "illumina":
+                    self.assertTrue(prompt.startswith(f"Sample name [{name}]"), prompt)
+                    return ""  # Keep each library's discovered identity and pair.
                 return name
             if prompt.startswith("Type for "):
                 return "cancer"
             answers = {
-                "Samples to include (numbers, ranges, or all)": "",
+                "Samples to include (numbers, ranges, or all)": "all" if terminal_questions else "",
                 "Analysis (--analysis; cna=copy-number)": "cna",
-                "CPU threads (--threads)": "",
+                "CPU threads (--threads)": "4" if terminal_questions else "",
                 "ONT CNA method": "ichorcna",
                 "CNA bin size (kb)": "100",
                 "Add CNA interpretation reports?": "no",
@@ -125,9 +130,10 @@ class DocumentedWorkflowTests(unittest.TestCase):
             initial = parse_arguments(args)
             action = initial.command
             self.assertIn(action, ("setup", "auto", "check", "run"))
-            if browser_only:
+            if terminal_questions:
                 self.assertEqual(action, "setup")
-                self.assertTrue(initial.interactive)
+                self.assertTrue(initial.terminal)
+                self.assertFalse(initial.non_interactive)
                 self.assertFalse(initial.run)
             if action == "setup":
                 if unattended:
@@ -162,14 +168,32 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 code, output = (0 if saved["valid"] else 2), json.dumps(saved)
             else:
                 prompt_handler = AssertionError("Scripted workflow requested terminal input") if unattended else answer_prompt
-                with patch("builtins.input", side_effect=prompt_handler):
+                prompts.clear()
+                with contextlib.ExitStack() as guards:
+                    guards.enter_context(patch("builtins.input", side_effect=prompt_handler))
+                    if terminal_questions:
+                        # Keep the documented four-thread choice portable to
+                        # smaller CI runners without dispatching any tool.
+                        guards.enter_context(patch("oncotracer_cli.wizard.inspect_hardware", return_value={
+                            "os": "Linux", "architecture": "x86_64", "python_supported": True,
+                            "cpu_workers_available": 8, "ram_total_bytes": 32 * 1024**3,
+                            "ram_available_bytes": 24 * 1024**3, "gpus": [],
+                            "gpu_detection_status": "synthetic test hardware",
+                        }))
+                        for target in ("oncotracer_cli.setup._run_setup", "oncotracer_cli.cli.command_install",
+                                       "oncotracer_cli.web.command_web"):
+                            guards.enter_context(patch(target, side_effect=AssertionError(
+                                "Terminal tutorial dispatched analysis, installation, or a browser")))
                     code, output = self.cli(*args)
+                if terminal_questions:
+                    self.assertTrue(prompts[-1].startswith("Final action"), prompts)
+                    self.assertIn("Saved without starting analysis", output)
             self.assertEqual(code, 0, f"{shlex.join(command)}\n{output}")
             if action == "setup" and "--input-folder" in args:
                 self.assertIsNone(next(names, None), "Wizard omitted a documented sample")
-                if browser_only:
-                    # The browser performs Save/check. Independently inspect the
-                    # saved plan without clicking Run or launching a web server.
+                if terminal_questions:
+                    # The wizard saves and checks. Independently inspect its
+                    # config and plan without starting the scientific analysis.
                     config = configured[-1]
                     check_code, output = self.cli("check", "--config", str(config), "--json")
                     self.assertEqual(check_code, 0, output)
@@ -237,7 +261,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
             full_cohort = list(csv.DictReader(handle, delimiter="\t"))
         cases = (
             ("docs/quick_start.md", {Path(path).name: (url, md5) for url, path, size, md5 in QS1_FILES}, [["ERR12341627"], ["DRR165691"]]),
-            ("docs/public_cohort.md", {row["filename"]: (row["url"], row["md5"]) for row in cohort}, [["HCC1143_DMSO", "HCC1143_BEZ235", "HCC1143_TRAMETINIB"]]),
+            ("docs/public_cohort.md", {row["filename"]: (row["url"], row["md5"]) for row in cohort}, [["HCC1143_BEZ235", "HCC1143_DMSO", "HCC1143_TRAMETINIB"]]),
             ("docs/full_tutorial.md", {row["sample_alias"] + ".fastq.gz": (row["https_url"], row["fastq_md5"]) for row in full_cohort}, [[row["sample_alias"] for row in full_cohort]]),
         )
         for relative, manifest, samples in cases:
@@ -264,12 +288,12 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 self.assertEqual(observed, set(manifest))
                 self.assertEqual(len(checksums), len(downloads))
                 self.create_tables(text, base)
-                browser_only = relative != "docs/full_tutorial.md"
-                if browser_only:
-                    # The new launch option opens an empty setup session. Parse
-                    # it without starting a server; use the unchanged prefilled
-                    # walkthrough below for synthetic Save/check/dry-run checks.
-                    walkthrough = "2. Follow the browser walkthrough"
+                original = {path: path.read_bytes() for path in base.rglob("*.fastq.gz")}
+                terminal_questions = relative != "docs/full_tutorial.md"
+                if terminal_questions:
+                    # Parse the browser launch without starting a server, then
+                    # exercise the separate headless terminal-question route.
+                    walkthrough = "2. Terminal questions for headless servers"
                     launch_text = text.split(f"## {walkthrough}\n", 1)[0]
                     launches = list(self.commands(launch_text))
                     self.assertTrue(launches, "QuickStart omitted the simple interactive launch")
@@ -284,18 +308,38 @@ class DocumentedWorkflowTests(unittest.TestCase):
                     workflow_text = self.section(text, walkthrough)
                 else:
                     workflow_text = text.split("## 4. Save the settings", 1)[1]
-                configs = self.steps(workflow_text, base, samples, browser_only=browser_only)
-                if browser_only:
+                configs = self.steps(workflow_text, base, samples, terminal_questions=terminal_questions)
+                self.assertEqual({path: path.read_bytes() for path in original}, original)
+                if terminal_questions:
                     for config in configs:
                         self.assertFalse(config.get("methylation", False))
                         self.assertFalse(config.get("methylation_only", False))
                         self.assertFalse(config.get("run_variants", False))
                         self.assertFalse(config.get("run_cna_classifier", False))
+                        self.assertFalse(config.get("run_gistic", False))
+                        self.assertEqual(config["threads"], 4)
+                        self.assertEqual(config["execution_backend"], "conda")
                         if config["mode"] == "illumina":
                             self.assertEqual(config["illumina_binsize_kb"], 100)
+                            libraries = parse_illumina_samplesheet(Path(config["illumina_samplesheet"]))
+                            if relative == "docs/quick_start.md":
+                                folder = base / "oncotracer-quickstart1/input/illumina"
+                                expected_pairs = {"ERR12341627": (folder / "ERR12341627_1.fastq.gz",
+                                                                 folder / "ERR12341627_2.fastq.gz", "tumor")}
+                            else:
+                                folder = base / "oncotracer-quickstart2/input"
+                                expected_pairs = {name: (folder / f"{name}_R1.fastq.gz",
+                                                         folder / f"{name}_R2.fastq.gz", "tumor")
+                                                  for name in samples[0]}
+                            self.assertEqual({item.sample: (item.fastq_1, item.fastq_2, item.status)
+                                              for item in libraries}, expected_pairs)
                         else:
                             self.assertEqual(config["ont_caller"], "ichorcna")
                             self.assertEqual(config["ont_binsize_kb"], 500)
+                            sample, = parse_ont_samples(config)
+                            self.assertEqual((sample.sample, sample.barcode, sample.status, sample.fastq_dir),
+                                             ("DRR165691", "barcode01", "tumor",
+                                              base / "oncotracer-quickstart1/input/fastq_pass/barcode01"))
                 self.assertTrue(all(config["hg38_auto_download"] for config in configs))
                 for config in configs:
                     expected_parent = Path(config["outdir"]).parent

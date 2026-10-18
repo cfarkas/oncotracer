@@ -95,7 +95,8 @@ REQUIRED_TEXT = {
         "--backend docker",
         "03_cna_codification/cna_events.tsv",
         ".oncotracer-native/trace.tsv",
-        "run downloads prebuilt indexes",
+        "**hg38 reference**",
+        "setup does not download indexes",
     ),
     "docs/public_cohort.md": (
         "all six paired-end FASTQs",

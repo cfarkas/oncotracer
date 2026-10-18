@@ -79,14 +79,14 @@ def check_native_quickstarts() -> None:
     for relative, paths in projects.items():
         text = read(relative)
         require_order(text, ("curl --fail", "md5sum -c", f'--project "$PWD/{paths[0]}"'), relative)
-        require("reference_indexes.md" in text and "Reuse a prepared OncoTracer" in text,
-                f"{relative} must explain reference reuse")
+        require(all(item in text for item in ("reference_indexes.md", "**hg38 reference**", "`download`", "`reuse`")),
+                f"{relative} must explain the terminal reference download/reuse choices")
         require("quickstart_terminal.md" in text, f"{relative} must link its scripted alternative")
         for path in paths:
-            browser = find_block(relative, "oncotracer --interactive", f'--project "$PWD/{path}"')
+            questions = find_block(relative, "oncotracer setup --terminal", f'--project "$PWD/{path}"')
             setup = find_block(terminal_page, "oncotracer setup", f'--project "$PWD/{path}"')
             run = find_block(terminal_page, "oncotracer check --config", "oncotracer run --backend conda", f'--config "$PWD/{path}/config/run.yml"')
-            for block in (browser, setup, run):
+            for block in (questions, setup, run):
                 require(first_command(block) == ANALYSES_CD, f"{relative} must enter the analysis directory first")
         for forbidden in ("git clone", "cd oncotracer", "oncotracer quickstart", "--download-only", "--test-root"):
             require(forbidden not in text, f"{relative} must use ordinary commands: found {forbidden}")

@@ -2,3 +2,6 @@
 
 # Preserve byte-identical public resource tables and their recorded provenance.
 oncotracer_cli/lpwgs/data/** -whitespace
+
+# Recorded terminal prompts retain their literal trailing space before Enter.
+docs/assets/tutorial/quick-start-terminal-*.txt whitespace=-blank-at-eol

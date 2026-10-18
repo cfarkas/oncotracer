@@ -12,7 +12,7 @@ plus tools, references and results. FASTQs alone cannot assess ONT methylation.
 
 <nav class="quickstart-options" aria-label="QuickStart options">
 <a href="#1-interactive-launch">1. Interactive launch</a>
-<a href="#2-follow-the-browser-walkthrough">2. Follow the browser walkthrough</a>
+<a href="#2-terminal-questions-for-headless-servers">2. Terminal questions for headless servers</a>
 </nav>
 
 ## 1. Interactive launch
@@ -91,35 +91,50 @@ The ONT folder is `barcode01`.
 
 <a id="2-open-setup-and-run"></a>
 
-## 2. Follow the browser walkthrough
+<a id="2-follow-the-browser-walkthrough"></a>
+<a id="walkthrough-in-text"></a>
 
-<video controls preload="none" playsinline width="100%" poster="../assets/tutorial/quick-start-illumina-ont.jpg" aria-label="QuickStart 1 browser setup walkthrough for Illumina and ONT">
-  <source src="../assets/tutorial/quick-start-illumina-ont.mp4" type="video/mp4">
-  <track src="../assets/tutorial/quick-start-illumina-ont.vtt" kind="captions" srclang="en" label="English">
-  Your browser does not support embedded video. Use the download link below.
+## 2. Terminal questions for headless servers
+
+Use this option over SSH without a browser. Choose **one setup route per project**.
+The videos show real terminal questions using tiny synthetic FASTQs; no analysis
+runs. Use the verified public downloads above for your analysis.
+
+<div class="quickstart-videos quickstart-terminal-videos">
+<section class="quickstart-video-card" aria-label="Illumina terminal video">
+<h3>Illumina</h3>
+<div class="quickstart-player">
+<video controls preload="metadata" playsinline poster="../assets/tutorial/quick-start-terminal-illumina.jpg" aria-label="Illumina terminal questions video">
+<source src="../assets/tutorial/quick-start-terminal-illumina.mp4" type="video/mp4">
+<track src="../assets/tutorial/quick-start-terminal-illumina.vtt" kind="captions" srclang="en" label="English">
 </video>
+<button hidden type="button" class="quickstart-play" aria-label="Play Illumina terminal questions video"><span aria-hidden="true">▶</span> Play video</button>
+</div>
+<p><a href="../assets/tutorial/quick-start-terminal-illumina.txt">Transcript</a> · <a href="../assets/tutorial/quick-start-terminal-illumina.mp4">Download video</a></p>
+</section>
+<section class="quickstart-video-card" aria-label="ONT terminal video">
+<h3>ONT</h3>
+<div class="quickstart-player">
+<video controls preload="metadata" playsinline poster="../assets/tutorial/quick-start-terminal-ont.jpg" aria-label="ONT terminal questions video">
+<source src="../assets/tutorial/quick-start-terminal-ont.mp4" type="video/mp4">
+<track src="../assets/tutorial/quick-start-terminal-ont.vtt" kind="captions" srclang="en" label="English">
+</video>
+<button hidden type="button" class="quickstart-play" aria-label="Play ONT terminal questions video"><span aria-hidden="true">▶</span> Play video</button>
+</div>
+<p><a href="../assets/tutorial/quick-start-terminal-ont.txt">Transcript</a> · <a href="../assets/tutorial/quick-start-terminal-ont.mp4">Download video</a></p>
+</section>
+</div>
 
-[Watch or download the video](assets/tutorial/quick-start-illumina-ont.mp4) ·
-[Text walkthrough](#walkthrough-in-text) · [Full transcript](assets/tutorial/quick-start-illumina-ont.txt) ·
-[Try the interface](browser_demo.md)
+### Answer the questions
 
-**Video chapters:** Illumina at **0:00**; [ONT at **1:11**](assets/tutorial/quick-start-illumina-ont.mp4#t=71).
-The silent video includes on-screen instructions, optional captions and a transcript.
-
-The video uses the current interface with synthetic file inventories and simulated
-checks. It stops before starting analysis. The downloaded reads above are the
-real inputs for your run.
-
-### Open your project
-
-From your analysis directory, choose a platform. These commands only open setup;
-you review the settings before starting an analysis.
+These commands supply the project, platform and input folder; the wizard asks
+for the remaining settings. Press Enter to accept a displayed default.
 
 **Illumina**
 
 ```bash
 cd /path/to/my/analyses_dir/
-oncotracer --interactive --backend conda \
+oncotracer setup --terminal --backend conda \
   --project "$PWD/oncotracer-quickstart1/illumina" \
   --mode illumina --input-folder "$PWD/oncotracer-quickstart1/input/illumina"
 ```
@@ -128,41 +143,34 @@ oncotracer --interactive --backend conda \
 
 ```bash
 cd /path/to/my/analyses_dir/
-oncotracer --interactive --backend conda \
+oncotracer setup --terminal --backend conda \
   --project "$PWD/oncotracer-quickstart1/ont" \
   --mode ont --input-folder "$PWD/oncotracer-quickstart1/input/fastq_pass"
 ```
 
-For an installed Docker backend, replace `--backend conda` with `--backend docker`.
-Keep each launching terminal open and use its complete printed browser URL.
-You can run both projects in separate terminals; each session selects an available
-port. Divide CPU and memory between runs. For a remote server, use [SSH forwarding](headless.md#remote-browser-through-ssh).
+For an installed Docker backend, use `--backend docker`.
+Select `all`, assign `cancer`, and choose `cna`:
 
-### Walkthrough in text
+| Project | Sample name | CNA settings |
+| --- | --- | --- |
+| Illumina | Keep `ERR12341627` | QDNAseq; answer `100` kb |
+| ONT | Rename `barcode01` to `DRR165691` | Choose `ichorcna`; fixed 500 kb |
 
-Choose preservation, discover the inputs, and assign samples as shown in the video:
+All FASTQ batches inside `barcode01` form one sample. Set a CPU budget, for example
+`4`, and answer `no` to interpretation reports and small variants. CNA-only
+terminal setup does not ask Fresh/FFPE; preservation is asked when enabling variants.
 
-| Project | Sample in Cancer | Analysis | Bin size |
-| --- | --- | --- | --- |
-| Illumina | `ERR12341627` | CNA, QDNAseq | 100 kb |
-| ONT | Rename `barcode01` to `DRR165691` | CNA, ichorCNA | 500 kb |
+For **hg38 reference**, choose `download`, or `reuse` and give a prepared reference
+folder. With `download` selected, the first analysis downloads about **8.0 GiB for
+Illumina** or **9.7 GiB for ONT**; setup does not download indexes. See [genome indexes](reference_indexes.md).
 
-All FASTQ batches inside `barcode01` form one sample. The video uses **Fresh** as
-example metadata; choose **Fresh** or **FFPE** from specimen records for your own
-data. FFPE is available in the browser without an extra command-line flag.
-
-Keep small variants off for this CNA tutorial. Choose a thread budget, for example
-**4**, then **Save configuration and check**. Review the checks and click **Run
-analysis** when ready. Saving and checking does not start analysis or download
-references. GISTIC requires at least two samples, so leave it off here.
-
-The first run downloads prebuilt indexes: about **8.0 GiB for Illumina** or
-**9.7 GiB for ONT**. To reuse existing indexes, choose **Reuse a prepared OncoTracer
-reference** in the browser. See [genome indexes](reference_indexes.md).
+At **Final action**, enter `save`. Review the checked configuration and sample
+names. When ready, launch the printed `oncotracer run` command in your terminal.
 
 ## 3. Read the results
 
-Click **Open results** when the run finishes. Files are also under
+When finished, click **Open results** in the browser or open `results/index.html`.
+Files are under
 `oncotracer-quickstart1/illumina/results/` or `oncotracer-quickstart1/ont/results/`:
 
 | File | Purpose |
@@ -176,10 +184,14 @@ Click **Open results** when the run finishes. Files are also under
 
 ## Stop or resume
 
-Use **Stop analysis** to stop a browser-started run. Wait until it stops, then
-choose **No** in **Delete incomplete run?** to retain the project. Closing the browser or its setup terminal does not stop that analysis.
-To resume, follow [Run, stop and resume](running.md#resume-behavior) with the saved
-project's path. Valid completed steps are reused; no new setup is needed.
+For a terminal run, press **Ctrl+C**; use [tmux](headless.md#keep-a-long-run-open)
+to keep a remote run alive after disconnecting. For a browser run, use **Stop
+analysis**, wait for it to stop, and choose **No** in **Delete incomplete run?**.
+Closing its browser or setup terminal does not stop that analysis.
+
+Follow [Run, stop and resume](running.md#resume-behavior) with the saved project
+path. Valid completed steps are reused. Concurrent runs need separate projects
+and a share of the server's CPU and memory.
 
 Next: [your own samples](setup.md) or [QuickStart 2: HCC1143](public_cohort.md).
 

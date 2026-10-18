@@ -1,0 +1,65 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:07.012
+A terminal is enough: Run setup --terminal on a headless server. These are real wizard prompts using tiny synthetic FASTQs.
+
+2
+00:00:07.012 --> 00:00:11.874
+Choose libraries: The wizard discovers the synthetic FASTQs. Enter all to include every listed library.
+
+3
+00:00:11.874 --> 00:00:17.089
+Keep the library identity: Press Enter to keep the discovered sample name and its existing FASTQ pair.
+
+4
+00:00:17.089 --> 00:00:22.288
+Assign the sample type: These tutorial libraries are cancer samples. Choose the type from your own sample records.
+
+5
+00:00:22.288 --> 00:00:27.503
+Keep the library identity: Press Enter to keep the discovered sample name and its existing FASTQ pair.
+
+6
+00:00:27.503 --> 00:00:32.700
+DMSO is still a cancer sample: DMSO is a treatment control, not a normal genome. Keep its sample type as cancer.
+
+7
+00:00:32.700 --> 00:00:37.915
+Keep the library identity: Press Enter to keep the discovered sample name and its existing FASTQ pair.
+
+8
+00:00:37.915 --> 00:00:43.110
+Assign the sample type: These tutorial libraries are cancer samples. Choose the type from your own sample records.
+
+9
+00:00:43.110 --> 00:00:47.968
+Choose copy-number analysis: Enter cna. This walkthrough configures copy-number analysis only.
+
+10
+00:00:47.968 --> 00:00:52.595
+Set the CPU budget: The wizard reports the current machine. Choose 4 threads here; budget resources for your own server.
+
+11
+00:00:52.595 --> 00:00:57.453
+Choose Illumina bins: Use QDNAseq at 100 kb for this tutorial. The wizard records the selected resolution.
+
+12
+00:00:57.453 --> 00:01:02.195
+Keep the example focused: Choose no for additional CNA interpretation reports.
+
+13
+00:01:02.195 --> 00:01:06.937
+Keep small variants off: Choose no. This CNA-only setup does not request variant or FFPE assessment.
+
+14
+00:01:06.937 --> 00:01:12.359
+Select reference handling: Choose download for prebuilt hg38 indexes when analysis runs. Saving does not download them.
+
+15
+00:01:12.359 --> 00:01:21.743
+Review and save only: Review the saved configuration and input checks, then explicitly enter save. No analysis starts.
+
+16
+00:01:21.743 --> 00:01:29.042
+Configuration saved: The wizard confirms: saved without starting analysis. Keep the project and launch the analysis separately when ready.

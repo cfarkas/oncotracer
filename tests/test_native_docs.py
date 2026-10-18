@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -127,7 +128,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertEqual(record["ui_page_sha256"], hashlib.sha256(PAGE.encode("utf-8")).hexdigest())
         self.assertEqual(record["mock_api_sha256"], hashlib.sha256(
             (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes()).hexdigest())
-        pages = {"quick-start-illumina-ont": "docs/quick_start.md",
+        pages = {"quick-start-illumina-ont": None,
                  "quick-start-illumina": "docs/quick_start.md",
                  "quick-start-ont": "docs/quick_start.md",
                  "quick-start-hcc1143": "docs/public_cohort.md"}
@@ -135,22 +136,89 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertEqual(len(record["videos"]), len(pages))
         for video in record["videos"]:
             with self.subTest(video=video["name"]):
-                page = (ROOT / pages[video["name"]]).read_text(encoding="utf-8")
-                self.assertGreater(video["duration_seconds"], 0)
-                self.assertEqual(set(video["files"]), {".mp4", ".jpg", ".vtt", ".txt"})
-                for extension, item in video["files"].items():
-                    self.assertEqual(item["name"], video["name"] + extension)
-                    content = (assets / item["name"]).read_bytes()
-                    self.assertGreater(len(content), 0)
-                    self.assertEqual(len(content), item["bytes"])
-                    self.assertEqual(hashlib.sha256(content).hexdigest(), item["sha256"])
-                    if extension != ".txt":
-                        self.assertIn(item["name"], page)
-                captions = (assets / (video["name"] + ".vtt")).read_text(encoding="utf-8")
-                self.assertTrue(captions.startswith("WEBVTT"))
-                self.assertIn("-->", captions)
-                self.assertTrue((assets / (video["name"] + ".txt")).read_text(encoding="utf-8").strip())
+                self.assert_recording_media(video, pages[video["name"]])
                 self.assertNotIn("/api/run", json.dumps(video.get("scenes", [])))
+
+    def assert_recording_media(self, video, relative, *, extra_extensions=()) -> None:
+        assets = ROOT / "docs/assets/tutorial"
+        page = (ROOT / relative).read_text(encoding="utf-8") if relative else None
+        self.assertGreater(video["duration_seconds"], 0)
+        self.assertEqual(set(video["files"]), {".mp4", ".jpg", ".vtt", ".txt", *extra_extensions})
+        for extension, item in video["files"].items():
+            self.assertEqual(item["name"], video["name"] + extension)
+            content = (assets / item["name"]).read_bytes()
+            self.assertGreater(len(content), 0)
+            self.assertEqual(len(content), item["bytes"])
+            self.assertEqual(hashlib.sha256(content).hexdigest(), item["sha256"])
+            if page is not None and extension in {".mp4", ".jpg", ".vtt", ".txt"}:
+                self.assertIn(item["name"], page)
+        captions = (assets / (video["name"] + ".vtt")).read_text(encoding="utf-8")
+        self.assertTrue(captions.startswith("WEBVTT"))
+        self.assertIn("-->", captions)
+        self.assertTrue((assets / (video["name"] + ".txt")).read_text(encoding="utf-8").strip())
+
+    def test_terminal_recordings_match_source_and_saved_only_sessions(self) -> None:
+        assets = ROOT / "docs/assets/tutorial"
+        record = json.loads((assets / "quick-start-terminal-recording.json").read_text(encoding="utf-8"))
+        self.assertEqual(record["schema"], 1)
+        self.assertIs(record["passed"], True)
+        self.assertIs(record["analysis_started"], False)
+        self.assertIs(record["synthetic_inputs"], True)
+        self.assertIs(record["real_reads_downloaded"], False)
+        self.assertTrue({"oncotracer_cli/wizard.py", "oncotracer_cli/setup.py",
+                         "oncotracer_cli/cli.py", "oncotracer_cli/discovery.py",
+                         "scripts/record_terminal_quickstarts.py"}.issubset(record["source_files"]))
+        for relative, expected in record["source_files"].items():
+            self.assertFalse(Path(relative).is_absolute())
+            self.assertNotIn("..", Path(relative).parts)
+            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected, relative)
+        pages = {"quick-start-terminal-illumina": "docs/quick_start.md",
+                 "quick-start-terminal-ont": "docs/quick_start.md",
+                 "quick-start-terminal-hcc1143": "docs/public_cohort.md"}
+        self.assertEqual({video["name"] for video in record["videos"]}, set(pages))
+        self.assertEqual(len(record["videos"]), len(pages))
+        for video in record["videos"]:
+            with self.subTest(video=video["name"]):
+                self.assert_recording_media(video, pages[video["name"]], extra_extensions=(".cast",))
+                self.assertEqual(video["exit_code"], 0)
+                command = shlex.split(video["command"]) if isinstance(video["command"], str) else video["command"]
+                self.assertIn("setup", command)
+                self.assertIn("--terminal", command)
+                self.assertNotIn("--run", command)
+                self.assertTrue(video["answers"][-1]["prompt"].startswith("Final action"))
+                self.assertEqual(video["answers"][-1]["answer"], "save")
+                checks = video["config_checks"]
+                self.assertIs(checks["saved"], True)
+                for key in ("analysis_started", "reference_created", "results_created"):
+                    self.assertIs(checks[key], False, key)
+                expected_mode, expected_caller, expected_bins = (
+                    ("ont", "ichorcna", 500) if video["name"].endswith("-ont")
+                    else ("illumina", "qdnaseq", 100)
+                )
+                self.assertEqual((checks["mode"], checks["caller"], checks["bin_size_kb"]),
+                                 (expected_mode, expected_caller, expected_bins))
+                self.assertEqual(checks["threads"], 4)
+                self.assertIs(checks["run_variants"], False)
+                self.assertIs(checks["hg38_auto_download"], True)
+                expected_samples = {
+                    "quick-start-terminal-illumina": ["ERR12341627"],
+                    "quick-start-terminal-ont": ["DRR165691"],
+                    "quick-start-terminal-hcc1143": ["HCC1143_BEZ235", "HCC1143_DMSO", "HCC1143_TRAMETINIB"],
+                }[video["name"]]
+                self.assertEqual(checks["samples"], expected_samples)
+                self.assertEqual([item["sample"] for item in checks["metadata"]], expected_samples)
+                for item in checks["metadata"]:
+                    self.assertEqual((item["sample_type"], item["analysis_role"]), ("cancer", "tumor"))
+                    sample = item["sample"]
+                    expected_files = (["DRR165691_1.fastq.gz"] if expected_mode == "ont" else
+                                      [f"{sample}_{mate}.fastq.gz" for mate in
+                                       (("R1", "R2") if sample.startswith("HCC1143_") else ("1", "2"))])
+                    self.assertEqual(sorted(Path(file).name for file in json.loads(item["fastq_files"])), expected_files)
+                cast = [json.loads(line) for line in (assets / (video["name"] + ".cast")).read_text(encoding="utf-8").splitlines()]
+                self.assertEqual(cast[0]["version"], 2)
+                output = "".join(event[2] for event in cast[1:] if event[1] == "o")
+                self.assertIn("Final action", output)
+                self.assertIn("Saved without starting analysis", output)
 
     def test_architecture_overview_keeps_implementation_details_separate(self) -> None:
         text = (ROOT / "docs/native_architecture.md").read_text(encoding="utf-8")
