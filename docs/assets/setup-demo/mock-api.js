@@ -12,6 +12,20 @@ function demoFixture(platform){
   });
 }
 function demoAssertPath(path){if(typeof path!=='string'||!(path==='/demo'||path.startsWith('/demo/')))throw Error('This demo only contains the fictional /demo folders. Load an example or browse its synthetic folders.');}
+function demoMethylationSelection(payload){
+  if(!Object.hasOwn(payload,'methylation_assignments'))return {payload,group:null};
+  if(demoState.scan?.mode!=='ont'||payload.analysis!=='methylation'||!['marlin','sturgeon'].includes(payload.classifier))throw Error('Classifier sample groups require ONT methylation-only analysis and an explicit classifier.');
+  const samples=payload.samples||[],ids=new Set(samples.map(sample=>sample.id)),assignments=payload.methylation_assignments,assigned=new Map();
+  if(!Array.isArray(assignments)||ids.size!==samples.length)throw Error('Provide explicit, unique sample assignments.');
+  for(const row of assignments){
+    if(!row||Object.keys(row).sort().join(',')!=='classifier,id'||!Number.isInteger(row.id)||!ids.has(row.id)||assigned.has(row.id)||!['','marlin','sturgeon'].includes(row.classifier))throw Error('Invalid or repeated methylation sample assignment.');
+    assigned.set(row.id,row.classifier);
+  }
+  if(assigned.size!==ids.size)throw Error('Assign or explicitly exclude every included sample.');
+  const included=samples.filter(sample=>assigned.get(sample.id)===payload.classifier);
+  if(!included.length)throw Error('The selected classifier group is empty.');
+  return {payload:{...payload,samples:included},group:{classifier:payload.classifier,included:included.length,excluded:samples.length-included.length}};
+}
 function demoYaml(payload){
   // Mirror WebState.prepare + setup._command_setup's flat native configuration.
   // No executable/resource inspection or file writing happens in this preview.
@@ -171,7 +185,9 @@ function demoApi(path,payload){
       return {run:'/demo/nanopore',fastq:folder.startsWith(demoPaths.ont)?folder:demoPaths.ont,pod5:'/demo/nanopore/pod5_pass',modbam:'/demo/nanopore/bam_pass'};
     }
     case '/api/prepare':{
+      const selection=demoMethylationSelection(payload);payload=selection.payload;
       const check=demoCheck(payload);demoState.lastPayload=structuredClone(payload);demoState.job=null;
+      if(selection.group)check.warnings.push(`Only the ${selection.group.classifier.toUpperCase()} group (${selection.group.included} samples) is included in this preview. ${selection.group.excluded} other/unassigned samples are excluded and are not queued.`);
       demoState.prepared={id:'synthetic-project-'+(++demoState.revision),project:payload.project,config_path:payload.project+'/config/run.yml (preview only)',config:demoYaml(payload),backend:payload.backend,valid:check.errors.length===0,check,outdir:payload.project+'/results'};
       return demoState.prepared;
     }

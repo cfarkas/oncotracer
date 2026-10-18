@@ -458,6 +458,98 @@ const window={},document={addEventListener(){}},location={href:'https://example.
         result = subprocess.run([shutil.which('node'), '-e', script], text=True, capture_output=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_methylation_groups_save_only_the_explicit_classifier_project(self):
+        from tests.test_native_methylation import Fixture
+        from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
+        inputs = [self.fastq(f"grouped/barcode0{index}/reads.fastq.gz") for index in (1, 2, 3)]
+        before = {path: path.read_bytes() for path in inputs}
+        selections = [{"id": index, "name": name, "type": "cancer"}
+                      for index, name in enumerate(("leukemia-research", "cns-research", "excluded"))]
+        assignments = [{"id": 0, "classifier": "marlin"}, {"id": 1, "classifier": "sturgeon"},
+                       {"id": 2, "classifier": ""}]
+        for classifier, barcode, sample in (("marlin", "barcode01", "leukemia-research"),
+                                             ("sturgeon", "barcode02", "cns-research")):
+            with self.subTest(classifier=classifier):
+                resources = self.root / classifier
+                resources.mkdir()
+                fixture = Fixture(resources, classifier)
+                allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[classifier])
+                paths = {key: value for key, value in fixture.config().items() if key in allowed}
+                prepared = self.prepare(mode="ont", folder="grouped", samples=selections,
+                                        project=str(self.root / (classifier + "-project")), analysis="methylation",
+                                        classifier=classifier, methylation_assignments=assignments,
+                                        methylation_source="pod5", methylation_path=str(fixture.pod5),
+                                        resource_paths=paths, accept_sturgeon_license=True)
+                self.assertTrue(prepared["valid"], prepared["check"])
+                config = load_flat_yaml(Path(prepared["config_path"]))
+                self.assertTrue(config["methylation_only"])
+                self.assertFalse(config["run_variants"])
+                self.assertEqual(config["methylation_classifier"], classifier)
+                self.assertEqual(config["ont_barcodes"], barcode)
+                self.assertEqual(config["ont_sample_names"], sample)
+                self.assertEqual([row["name"] for row in prepared["reviewed_summary"]["samples"]], [sample])
+                self.assertEqual(prepared["reviewed_summary"]["methylation_group"],
+                                 {"classifier": classifier, "included": 1, "excluded": 2})
+                self.assertEqual(prepared["reviewed_summary"]["config"]["methylation_classifier"], classifier)
+                self.assertTrue(any("not queued" in message for message in prepared["check"]["warnings"]))
+                self.assertFalse((Path(prepared["project"]) / "results").exists())
+                self.assertFalse((Path(prepared["project"]) / "reference").exists())
+        self.assertEqual(before, {path: path.read_bytes() for path in inputs})
+        self.assertIsNone(self.state.job)
+
+    def test_methylation_groups_reject_invalid_or_empty_assignments_before_writes(self):
+        self.fastq("reads/barcode01/reads.fastq.gz")
+        self.fastq("reads/barcode02/reads.fastq.gz")
+        valid = [{"id": 0, "classifier": "marlin"}, {"id": 1, "classifier": "sturgeon"}]
+        cases = [({}, "assignments"), ([valid[0]], "every included"),
+                 ([valid[0], valid[0]], "repeated"),
+                 ([valid[0], {"id": 3, "classifier": "sturgeon"}], "Invalid"),
+                 ([valid[0], {"id": 1, "classifier": "guess"}], "Invalid"),
+                 ([{"id": 0, "classifier": ""}, valid[1]], "empty"),
+                 ([{"id": True, "classifier": "marlin"}, valid[1]], "Invalid")]
+        for assignments, error in cases:
+            with self.subTest(assignments=assignments), self.assertRaisesRegex(OncoTracerError, error):
+                self.prepare(mode="ont", analysis="methylation", classifier="marlin",
+                             methylation_assignments=assignments)
+            self.assertFalse((self.root / "project").exists())
+        for analysis in ("cna", "both"):
+            with self.subTest(analysis=analysis), self.assertRaisesRegex(OncoTracerError, "methylation-only"):
+                self.prepare(mode="ont", analysis=analysis, classifier="marlin",
+                             methylation_assignments=valid)
+
+    def test_methylation_group_does_not_overwrite_completed_ont_configuration(self):
+        self.fastq("reads/barcode01/reads.fastq.gz")
+        prior = self.prepare(mode="ont")
+        paths = list((self.root / "project/config").iterdir())
+        before = {path: path.read_bytes() for path in paths if path.is_file()}
+        with self.assertRaisesRegex(OncoTracerError, "separate methylation project"):
+            self.prepare(mode="ont", project=prior["project"], analysis="methylation", classifier="marlin",
+                         methylation_assignments=[{"id": 0, "classifier": "marlin"}])
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+        self.assertEqual(set(paths), set((self.root / "project/config").iterdir()))
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for classifier payload checks")
+    def test_classifier_payload_preserves_opposite_and_unassigned_groups(self):
+        from oncotracer_cli.web_ui import PAGE
+        function = PAGE.split("function methylationAssignmentPayload(){", 1)[1].split("function assignMethylationSample", 1)[0]
+        script = r"""
+const assert=require('node:assert/strict');
+let mode='ont',analysis='methylation',classifier='marlin';
+const $=id=>({value:id==='analysis'?analysis:classifier});
+let ids=[0,1,2];const selectedRows=()=>ids.map(id=>({dataset:{id:String(id)}}));
+const methylationAssignments=new Map([[0,'marlin'],[1,'sturgeon']]);
+""" + "function methylationAssignmentPayload(){" + function + r"""
+assert.deepEqual(methylationAssignmentPayload(),{methylation_assignments:[{id:0,classifier:'marlin'},{id:1,classifier:'sturgeon'},{id:2,classifier:''}]});
+classifier='sturgeon';assert.equal(methylationAssignmentPayload().methylation_assignments[0].classifier,'marlin');
+classifier='';assert.throws(methylationAssignmentPayload,/Assign at least one/);
+classifier='marlin';ids=[1,2];assert.throws(methylationAssignmentPayload,/Assign at least one/);
+analysis='both';assert.deepEqual(methylationAssignmentPayload(),{});
+analysis='cna';assert.deepEqual(methylationAssignmentPayload(),{});
+mode='illumina';analysis='methylation';assert.deepEqual(methylationAssignmentPayload(),{});
+"""
+        checked = subprocess.run([shutil.which("node"), "-e", script], capture_output=True, text=True)
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+
     def test_methylation_form_paths_save_real_checked_config_for_both_classifiers(self):
         from tests.test_native_methylation import Fixture
         from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES

@@ -14,6 +14,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -457,6 +458,146 @@ class DocumentedWorkflowTests(unittest.TestCase):
         self.assertFalse(variant_run.dry_run)
         self.assertEqual(variant_plan.config, variant_run.config)
         self.assertEqual(variant_run.threads, 8)
+
+    def test_post_ont_guide_saves_and_plans_each_classifier_separately(self):
+        from oncotracer_cli.reference_bundle import _files, reference_paths
+        from oncotracer_cli.runtime import render_flat_yaml
+        from oncotracer_cli.setup import EXECUTABLES, RESOURCE_FLAGS, RESOURCE_FILES
+        from tests.test_native_methylation import Fixture
+        from tests.test_web import HARDWARE
+
+        text = (ROOT / "docs/post_ont_cpg.md").read_text()
+        commands = list(self.commands(text))
+        self.assertEqual(len(commands), 3)
+        with tempfile.TemporaryDirectory() as temporary, contextlib.ExitStack() as guards:
+            base = Path(temporary) / "analysis with spaces"
+            base.mkdir()
+            guards.enter_context(patch("oncotracer_cli.cli._load_install_config", return_value={}))
+            for target in ("oncotracer_cli.web.WebState.run", "oncotracer_cli.web.command_web",
+                           "oncotracer_cli.cli.command_install", "oncotracer_cli.engine.prepare_reference",
+                           "oncotracer_cli.methylation.run_methylation"):
+                guards.enter_context(patch(target, side_effect=AssertionError(
+                    "The documented CpG test must only save, check and plan")))
+            parsed = [parse_arguments([self.remap(value, base) for value in command[1:]])
+                      for command in commands]
+            initial, marlin_run, sturgeon_run = parsed
+            self.assertEqual((initial.command, initial.mode, initial.analysis, initial.backend),
+                             ("setup", "ont", "methylation", "conda"))
+            self.assertFalse(initial.run)
+            self.assertFalse(initial.terminal)
+            folder = Path(initial.input_folder)
+            for barcode in ("barcode01", "barcode02", "barcode03"):
+                self.fastq(folder / barcode / "reads.fastq.gz", barcode)
+            bam = folder.parent / "bam_pass/original-modified-base.bam"
+            bam.parent.mkdir()
+            bam.write_bytes(b"synthetic BAM path fixture; never processed")
+            reference = base / "completed-ont/reference"
+            for name in _files():
+                asset = reference_paths(reference)[0] / name
+                asset.parent.mkdir(parents=True, exist_ok=True)
+                asset.write_bytes(b"synthetic reference path fixture; never processed")
+            resources = {}
+            for classifier in ("marlin", "sturgeon"):
+                directory = base / "resources" / classifier
+                directory.mkdir(parents=True)
+                fixture = Fixture(directory, classifier)
+                allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[classifier])
+                resources.update({key: value for key, value in fixture.config().items()
+                                  if key in allowed or key.endswith(("_sha256", "_interface_contract_commit"))})
+            resource_yaml = base / "resources/methylation.yml"
+            resource_yaml.write_text(render_flat_yaml(resources))
+            original = {path: path.read_bytes() for path in base.rglob("*") if path.is_file()}
+            state = WebState(base, initial)
+            state.hardware = dict(HARDWARE)
+            scan = state.scan({"mode": initial.mode, "folder": initial.input_folder})
+            names = ["LEUKEMIA_EXAMPLE", "CNS_EXAMPLE", "UNKNOWN_EXAMPLE"]
+            selections = [{"id": row["id"], "name": names[index], "type": "cancer"}
+                          for index, row in enumerate(scan["samples"])]
+            assignments = [{"id": 0, "classifier": "marlin"},
+                           {"id": 1, "classifier": "sturgeon"},
+                           {"id": 2, "classifier": ""}]
+            projects = []
+            for offset, (classifier, run) in enumerate((("marlin", marlin_run),
+                                                       ("sturgeon", sturgeon_run)), start=1):
+                self.assertEqual((run.command, run.backend), ("run", "conda"))
+                self.assertFalse(run.dry_run)
+                project = Path(run.config).parent.parent
+                if classifier == "marlin":
+                    self.assertEqual(project, Path(initial.project))
+                with contextlib.redirect_stdout(io.StringIO()):
+                    saved = state.prepare({
+                        "scan_id": scan["scan_id"], "project": str(project), "samples": selections,
+                        "threads": 4, "backend": "conda", "analysis": "methylation",
+                        "classifier": classifier, "methylation_assignments": assignments,
+                        "methylation_source": "modbam", "methylation_path": str(bam),
+                        "resources": str(resource_yaml), "reference": "reuse",
+                        "reference_path": str(reference), "variants": False,
+                        "variant_specimen_type": "fresh", "accept_sturgeon_license": classifier == "sturgeon",
+                    })
+                self.assertTrue(saved["valid"], saved["check"])
+                self.assertEqual(Path(saved["config_path"]), Path(run.config))
+                config = load_flat_yaml(Path(run.config))
+                self.assertTrue(config["methylation_only"])
+                self.assertFalse(config["run_variants"])
+                self.assertEqual(config["methylation_classifier"], classifier)
+                self.assertEqual(config["methylation_modbam"], str(bam))
+                self.assertEqual(Path(config["lpwgs_root"]), reference)
+                selected, = parse_ont_samples(config)
+                self.assertEqual((selected.sample, selected.barcode),
+                                 (names[offset - 1], f"barcode{offset:02d}"))
+                self.assertEqual(saved["reviewed_summary"]["methylation_group"],
+                                 {"classifier": classifier, "included": 1, "excluded": 2})
+                # Execute the documented run command as a plan only.
+                argv = [self.remap(value, base) for value in commands[offset][1:]]
+                code, output = self.cli(*argv, "--dry-run")
+                self.assertEqual(code, 0, output)
+                self.assertIn("oncotracer-native-dry-run-v1", output)
+                self.assertFalse(Path(config["outdir"]).exists())
+                self.assertFalse((project / "reference").exists())
+                self.assertIsNone(state.job)
+                projects.append(project)
+            self.assertNotEqual(*projects)
+            self.assertEqual(original, {path: path.read_bytes() for path in original})
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for the static demo contract")
+    def test_static_cpg_demo_filters_the_selected_group(self):
+        assets = ROOT / "docs/assets/setup-demo"
+        script = """
+const assert=require('node:assert/strict');
+const window={},document={addEventListener(){}},location={href:'https://example.test/'};
+"""
+        script += (assets / "computer-browser.js").read_text()
+        script += (assets / "mock-api.js").read_text().replace(
+            "__VARIANT_INSTALL_GUIDES__", "{}").replace("__ANNOVAR_RESOURCE_HELP__", "{}")
+        script += r"""
+const scan=demoApi('/api/scan',{mode:'ont',folder:demoPaths.ont});
+const payload={scan_id:scan.scan_id,project:'/demo/projects/cpg-marlin',analysis:'methylation',
+  classifier:'marlin',backend:'conda',threads:4,caller:'ichorcna',binsize:500,reports:false,
+  reference:'download',methylation_source:'modbam',methylation_path:'/demo/nanopore/bam_pass',
+  samples:scan.samples.map((sample,id)=>({id,name:['LEUKEMIA','CNS','UNKNOWN'][id],type:'cancer'})),
+  methylation_assignments:[{id:0,classifier:'marlin'},{id:1,classifier:'sturgeon'},{id:2,classifier:''}]};
+for(const [classifier,name,barcode] of [['marlin','LEUKEMIA','barcode01'],['sturgeon','CNS','barcode02']]){
+  const before=JSON.stringify(payload);
+  const prepared=demoApi('/api/prepare',{...payload,classifier,project:'/demo/projects/cpg-'+classifier});
+  assert.equal(prepared.valid,true);
+  assert.deepEqual(prepared.check.plan.samples,[name]);
+  assert.ok(prepared.config.includes('ont_barcodes: '+JSON.stringify(barcode)));
+  assert.ok(prepared.config.includes('methylation_classifier: '+JSON.stringify(classifier)));
+  assert.ok(prepared.check.warnings.some(w=>w.includes('2 other/unassigned')&&w.includes('not queued')));
+  assert.equal(demoState.job,null);
+  assert.equal(JSON.stringify(payload),before);
+}
+for(const assignments of [[],[{id:0,classifier:'marlin'}],
+  [{id:0,classifier:'marlin'},{id:0,classifier:'sturgeon'},{id:2,classifier:''}],
+  [{id:0,classifier:''},{id:1,classifier:'sturgeon'},{id:2,classifier:''}]]){
+  assert.throws(()=>demoApi('/api/prepare',{...payload,methylation_assignments:assignments}));
+}
+assert.throws(()=>demoApi('/api/prepare',{...payload,analysis:'both'}));
+assert.equal(demoState.job,null);
+"""
+        result = subprocess.run([shutil.which("node"), "-e", script], capture_output=True,
+                                text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_all_input_table_examples_create_files_with_cat(self):
         count = 0

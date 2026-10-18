@@ -19,6 +19,7 @@ ACTIVE = [
     ROOT / "docs/installation.md",
     ROOT / "docs/quick_start.md",
     ROOT / "docs/public_cohort.md",
+    ROOT / "docs/post_ont_cpg.md",
     ROOT / "docs/auto_params.md",
     ROOT / "docs/running.md",
     ROOT / "docs/containers.md",
@@ -36,6 +37,22 @@ class NativeDocumentationTests(unittest.TestCase):
         from oncotracer_cli.cli import DEFAULT_IMAGE
 
         content = (ROOT / relative).read_bytes()
+        if relative == "docs/assets/setup-demo/mock-api.js":
+            cpg_review = json.loads(
+                (ROOT / "docs/assets/tutorial/cpg-demo-compatibility.json").read_text()
+            )
+            self.assertEqual(cpg_review["schema"], 1)
+            self.assertEqual(cpg_review["file"], relative)
+            self.assertEqual(cpg_review["current_sha256"], hashlib.sha256(content).hexdigest())
+            self.assertTrue(cpg_review["replacements"])
+            for replacement in cpg_review["replacements"]:
+                current = replacement["current"].encode()
+                recorded = replacement["recorded"].encode()
+                self.assertTrue(current)
+                self.assertNotEqual(current, recorded)
+                self.assertEqual(content.count(current), 1)
+                content = content.replace(current, recorded, 1)
+            self.assertEqual(cpg_review["recorded_sha256"], hashlib.sha256(content).hexdigest())
         compatibility = json.loads(
             (ROOT / "docs/assets/tutorial/image-default-compatibility.json").read_text()
         )
@@ -194,6 +211,72 @@ class NativeDocumentationTests(unittest.TestCase):
             with self.subTest(video=video["name"]):
                 self.assert_recording_media(video, pages[video["name"]])
                 self.assertNotIn("/api/run", json.dumps(video.get("scenes", [])))
+
+    def test_post_ont_cpg_recording_keeps_explicit_groups_and_stops_after_save(self) -> None:
+        from oncotracer_cli.web_ui import PAGE
+
+        assets = ROOT / "docs/assets/tutorial"
+        record = json.loads((assets / "post-ont-cpg-recording.json").read_text())
+        self.assertEqual(record["schema"], 1)
+        for key in ("passed", "synthetic_inputs", "unknown_sample_unassigned",
+                    "original_fixture_files_unchanged"):
+            self.assertIs(record[key], True, key)
+        for key in ("analysis_started", "real_reads_downloaded", "patient_data"):
+            self.assertIs(record[key], False, key)
+        self.assertEqual(record["forbidden_actions"], [])
+        self.assertEqual(record["page_errors"], [])
+        self.assertIn("real loopback WebServer", record["api"])
+        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(PAGE.encode()).hexdigest())
+        self.assertTrue({"oncotracer_cli/web.py", "oncotracer_cli/web_ui.py",
+                         "oncotracer_cli/setup.py", "scripts/record_post_ont_cpg_video.py"
+                         }.issubset(record["source_files"]))
+        for relative, expected in record["source_files"].items():
+            self.assertFalse(Path(relative).is_absolute())
+            self.assertNotIn("..", Path(relative).parts)
+            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(),
+                             expected, relative)
+        self.assertEqual([(row["sample_id"], row["classifier"]) for row in record["pointer_drags"]],
+                         [(0, "marlin"), (1, "sturgeon")])
+        self.assertTrue(all(row["pointer_events"] is True for row in record["pointer_drags"]))
+        self.assertEqual(len(record["saved_groups"]), 2)
+        self.assertEqual(len(record["prepare_requests"]), 2)
+        projects = set()
+        assignments = [{"id": 0, "classifier": "marlin"},
+                       {"id": 1, "classifier": "sturgeon"},
+                       {"id": 2, "classifier": ""}]
+        for group, request, classifier, sample in zip(
+            record["saved_groups"], record["prepare_requests"],
+            ("marlin", "sturgeon"), ("DEMO_LEUKEMIA", "DEMO_CNS")
+        ):
+            self.assertEqual((group["classifier"], group["sample"], group["included"], group["excluded"]),
+                             (classifier, sample, 1, 2))
+            for key in ("configuration_saved", "configuration_checked"):
+                self.assertIs(group[key], True, key)
+            for key in ("analysis_started", "results_created", "reference_created"):
+                self.assertIs(group[key], False, key)
+            self.assertRegex(group["config_sha256"], r"^[0-9a-f]{64}$")
+            self.assertEqual(request["analysis"], "methylation")
+            self.assertEqual(request["classifier"], classifier)
+            self.assertIs(request["variants"], False)
+            self.assertEqual(request["methylation_assignments"], assignments)
+            self.assertEqual([row["name"] for row in request["samples"]],
+                             ["DEMO_LEUKEMIA", "DEMO_CNS", "DEMO_UNKNOWN"])
+            projects.add(request["project"])
+        self.assertEqual(len(projects), 2)
+        self.assertEqual(len(record["videos"]), 1)
+        video = record["videos"][0]
+        self.assertEqual(video["name"], "post-ont-cpg")
+        self.assertEqual((video["codec"], video["pixel_format"]), ("h264", "yuv420p"))
+        self.assertIs(video["faststart"], True)
+        self.assert_recording_media(video, "docs/post_ont_cpg.md")
+        self.assertIn("post_ont_cpg.md", (ROOT / "mkdocs.yml").read_text())
+        last_end = 0.0
+        for cue in video["cues"]:
+            self.assertGreaterEqual(cue["start"], last_end)
+            self.assertGreater(cue["end"], cue["start"])
+            self.assertLessEqual(cue["end"], video["duration_seconds"])
+            self.assertTrue(cue["title"] and cue["text"])
+            last_end = cue["end"]
 
     def assert_recording_media(self, video, relative, *, extra_extensions=()) -> None:
         assets = ROOT / "docs/assets/tutorial"

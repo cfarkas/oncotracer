@@ -5,6 +5,8 @@ Choose **MARLIN** for leukemia or **Sturgeon** for CNS-tumor research. Select th
 [Install first](../installation.md). Browser and terminal routes are below; see
 [resources](methylation_reference.md) and [SSH/headless](../headless.md) for details.
 
+Finished an ONT copy-number run? Follow the [post-ONT CpG video guide](../post_ont_cpg.md) to reuse original inputs and assign separate MARLIN/Sturgeon projects.
+
 ## What you need
 
 You need matching FASTQs, methylation input, and an installed classifier:
@@ -37,11 +39,17 @@ Choose **Oxford Nanopore**, then **Fresh or FFPE** from specimen records. **Brow
 including a single barcode folder or a nonbarcoded ligation FASTQ folder.
 Assign and name the samples, then choose **Methylation classification** or **CNA and methylation**.
 
-Choose the linked POD5 or modified-base BAM input, then **Sturgeon · CNS tumours** or
-**MARLIN · leukemias**. Browse to the installed tools and model files, or reuse a
-resource YAML. Modkit extracts CpG methylation for either classifier. Barcode FASTQ
-read IDs keep each sample separate when the signal folder is shared. Save, check,
-and click **Run analysis**.
+Choose the linked POD5 or modified-base BAM input. For methylation-only analysis,
+drag included samples into the MARLIN or Sturgeon classifier group according to
+documented clinical context, then select **Classifier group to save and run**.
+Other groups and unassigned samples are excluded, not queued; save each classifier
+to a separate project. **CNA and methylation** keeps one chosen classifier for all
+selected samples.
+
+Browse to the installed tools and model files, or reuse a resource YAML. Modkit
+extracts CpG methylation for either classifier. Barcode FASTQ read IDs keep each
+sample separate when the signal folder is shared. Save, check, and click
+**Run analysis** for the last saved project.
 
 ### Terminal example: leukemia using existing BAMs
 

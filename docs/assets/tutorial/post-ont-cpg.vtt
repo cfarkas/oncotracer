@@ -1,0 +1,65 @@
+WEBVTT
+
+1
+00:00:00.560 --> 00:00:05.597
+After your ONT run: Start a new methylation-only project. This is the real UI with synthetic files; no analysis is run.
+
+2
+00:00:05.597 --> 00:00:12.349
+Original sample membership: Choose preservation from specimen records, then discover the original barcode FASTQs. These are synthetic examples.
+
+3
+00:00:12.349 --> 00:00:27.517
+Name the samples: These fictional tumour samples have leukemia, CNS or unknown clinical context. Assign the main sample role first.
+
+4
+00:00:27.517 --> 00:00:34.300
+Use original methylation calls: Keep methylation-only analysis. Link the original modified-base BAMs with MM/ML tags, not an ordinary CNA alignment.
+
+5
+00:00:34.300 --> 00:00:43.425
+POD5 is the alternative: POD5 requires compatible Dorado basecalling and modified-base models. Existing modified-base BAMs avoid basecalling again.
+
+6
+00:00:43.425 --> 00:00:54.280
+Drag from documented clinical context: Drag leukemia to MARLIN and CNS tumour to Sturgeon. A previous classifier prediction is not the selection rule.
+
+7
+00:00:54.280 --> 00:01:00.299
+Unknown stays unassigned: Leave unknown or unsuitable clinical context unassigned. The dropdown on each card offers the same accessible choice.
+
+8
+00:01:00.299 --> 00:01:16.154
+Reuse local tools and reference: Supply installed tool and model paths, or a resource YAML. This demonstration uses synthetic path fixtures, not trained models.
+
+9
+00:01:16.154 --> 00:01:22.714
+One classifier per project: Choose MARLIN. Only its assigned sample enters this project; the other two are excluded and are not queued.
+
+10
+00:01:22.714 --> 00:01:27.076
+Separate destination: Save to a new cpg-marlin project. Keep the completed ONT project and the other classifier's project unchanged.
+
+11
+00:01:27.076 --> 00:01:34.873
+Save and check only: Save the selected group's configuration and inspect the included names. These checks validate synthetic paths, not biological model quality.
+
+12
+00:01:34.873 --> 00:01:41.401
+One classifier per project: Choose Sturgeon. Only its assigned sample enters this project; the other two are excluded and are not queued.
+
+13
+00:01:41.401 --> 00:01:43.294
+Sturgeon resources and license: Use your installed Sturgeon assets and confirm its terms only after accepting them. This checkbox is demonstrated with synthetic fixtures.
+
+14
+00:01:43.294 --> 00:01:47.759
+Separate destination: Save to a new cpg-sturgeon project. Keep the completed ONT project and the other classifier's project unchanged.
+
+15
+00:01:47.759 --> 00:01:55.557
+Save and check only: Save the selected group's configuration and inspect the included names. These checks validate synthetic paths, not biological model quality.
+
+16
+00:01:55.557 --> 00:02:03.458
+Ready for a real project: Resolve errors before Run analysis in your real project. Review CpG coverage and classifier scores afterward. This recording ends without running analysis.

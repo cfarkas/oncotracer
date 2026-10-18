@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "file": "docs/assets/setup-demo/mock-api.js",
+  "scope": "Synthetic methylation-only previews now filter to the explicitly selected classifier group, matching WebState.prepare. Historical CNA recordings and their capture hashes are unchanged. Exact replacements reverse only this reviewed synthetic-service change before checking the earlier image-tag transition.",
+  "recorded_sha256": "ada68d6837f22c62442cd49588ebd673b23a95c95be5c78a73b2ce9cb86a53b3",
+  "current_sha256": "48ea3705d5e29369e0af7ec24d60115ea90e2a6090473cfee3432a0205e9484a",
+  "replacements": [
+    {
+      "recorded": "function demoYaml(payload){\n",
+      "current": "function demoMethylationSelection(payload){\n  if(!Object.hasOwn(payload,'methylation_assignments'))return {payload,group:null};\n  if(demoState.scan?.mode!=='ont'||payload.analysis!=='methylation'||!['marlin','sturgeon'].includes(payload.classifier))throw Error('Classifier sample groups require ONT methylation-only analysis and an explicit classifier.');\n  const samples=payload.samples||[],ids=new Set(samples.map(sample=>sample.id)),assignments=payload.methylation_assignments,assigned=new Map();\n  if(!Array.isArray(assignments)||ids.size!==samples.length)throw Error('Provide explicit, unique sample assignments.');\n  for(const row of assignments){\n    if(!row||Object.keys(row).sort().join(',')!=='classifier,id'||!Number.isInteger(row.id)||!ids.has(row.id)||assigned.has(row.id)||!['','marlin','sturgeon'].includes(row.classifier))throw Error('Invalid or repeated methylation sample assignment.');\n    assigned.set(row.id,row.classifier);\n  }\n  if(assigned.size!==ids.size)throw Error('Assign or explicitly exclude every included sample.');\n  const included=samples.filter(sample=>assigned.get(sample.id)===payload.classifier);\n  if(!included.length)throw Error('The selected classifier group is empty.');\n  return {payload:{...payload,samples:included},group:{classifier:payload.classifier,included:included.length,excluded:samples.length-included.length}};\n}\nfunction demoYaml(payload){\n"
+    },
+    {
+      "recorded": "    case '/api/prepare':{\n      const check=demoCheck(payload);demoState.lastPayload=structuredClone(payload);demoState.job=null;\n      demoState.prepared={id:'synthetic-project-'+(++demoState.revision),project:payload.project,config_path:payload.project+'/config/run.yml (preview only)',config:demoYaml(payload),backend:payload.backend,valid:check.errors.length===0,check,outdir:payload.project+'/results'};\n      return demoState.prepared;\n    }\n",
+      "current": "    case '/api/prepare':{\n      const selection=demoMethylationSelection(payload);payload=selection.payload;\n      const check=demoCheck(payload);demoState.lastPayload=structuredClone(payload);demoState.job=null;\n      if(selection.group)check.warnings.push(`Only the ${selection.group.classifier.toUpperCase()} group (${selection.group.included} samples) is included in this preview. ${selection.group.excluded} other/unassigned samples are excluded and are not queued.`);\n      demoState.prepared={id:'synthetic-project-'+(++demoState.revision),project:payload.project,config_path:payload.project+'/config/run.yml (preview only)',config:demoYaml(payload),backend:payload.backend,valid:check.errors.length===0,check,outdir:payload.project+'/results'};\n      return demoState.prepared;\n    }\n"
+    }
+  ]
+}

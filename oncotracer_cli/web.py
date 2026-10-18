@@ -289,7 +289,31 @@ class WebState:
                 role = (_choice(selected, "role", ("tumor", "normal")) if kind == "custom"
                         else "normal" if kind == "normal" else "tumor")
                 entries.append({"source": discovered.samples[index], "sample": name,
-                                "sample_type": label, "analysis_role": role})
+                                "sample_type": label, "analysis_role": role, "scan_index": index})
+            methylation_group = None
+            if "methylation_assignments" in data:
+                if discovered.mode != "ont" or data.get("analysis") != "methylation":
+                    raise OncoTracerError("Classifier sample groups require ONT methylation-only analysis.")
+                classifier = _choice(data, "classifier", ("marlin", "sturgeon"))
+                assignments = data["methylation_assignments"]
+                if not isinstance(assignments, list):
+                    raise OncoTracerError("Provide explicit methylation sample assignments.")
+                assigned = {}
+                for assignment in assignments:
+                    if (not isinstance(assignment, dict) or set(assignment) != {"id", "classifier"}
+                            or type(assignment["id"]) is not int or assignment["id"] not in indices
+                            or assignment["id"] in assigned
+                            or assignment["classifier"] not in ("marlin", "sturgeon", "")):
+                        raise OncoTracerError("Invalid or repeated methylation sample assignment; review the classifier groups.")
+                    assigned[assignment["id"]] = assignment["classifier"]
+                if set(assigned) != indices:
+                    raise OncoTracerError("Assign or explicitly exclude every included sample from methylation classification.")
+                included = [row for row in entries if assigned[row["scan_index"]] == classifier]
+                if not included:
+                    raise OncoTracerError("The selected classifier group is empty. Assign at least one sample to it.")
+                methylation_group = {"classifier": classifier, "included": len(included),
+                                     "excluded": len(entries) - len(included)}
+                entries = included
             if discovered.mode == "illumina" and len({row["source"].fastq_2 is not None for row in entries}) > 1:
                 raise OncoTracerError("Select either paired-end or single-end samples for this project; use separate projects for different layouts.")
             # Recheck the discovery before saving, so changed folders need a fresh review.
@@ -306,6 +330,11 @@ class WebState:
             if project == discovered.root or project in discovered.root.parents or discovered.root in project.parents:
                 raise OncoTracerError("Choose a project directory outside the input FASTQ folder.")
             analysis = _choice(data, "analysis", ("cna",) if discovered.mode == "illumina" else ("cna", "methylation", "both"), "cna")
+            if methylation_group and (project / "config/run.yml").exists():
+                prior = load_flat_yaml(project / "config/run.yml")
+                if (prior.get("methylation_only") is not True
+                        or prior.get("methylation_classifier") != methylation_group["classifier"]):
+                    raise OncoTracerError("Choose a separate methylation project for this classifier group; keep the completed ONT project and other classifier projects unchanged.")
             backend = _choice(data, "backend", ("conda", "docker", "singularity", "poetry", "host"), "conda")
             threads = data.get("threads")
             maximum = self.system()["hardware"]["cpu_workers_available"]
@@ -458,6 +487,7 @@ class WebState:
                            "run_variants": bool(saved.get("run_variants", False)),
                            "specimen_type": saved.get("variant_specimen_type"),
                            "variant_callers": saved.get("variant_callers") if saved.get("run_variants") else None},
+                "methylation_group": copy.deepcopy(methylation_group),
                 "samples": [{"name": row["sample"], "sample_type": row["sample_type"],
                              "analysis_role": row["analysis_role"],
                              "detected_name": row["source"].sample,
@@ -474,6 +504,13 @@ class WebState:
                         "project_created": project_created,
                         "project_removable": project_removable, "protected_paths": protected_paths,
                         "project_identity": (project_stat.st_dev, project_stat.st_ino)}
+            if analysis != "cna":
+                reviewed_summary["config"]["methylation_classifier"] = args.classifier
+            if methylation_group:
+                report.setdefault("warnings", []).append(
+                    f"Only the {methylation_group['classifier'].upper()} group ({methylation_group['included']} samples) is saved. "
+                    f"{methylation_group['excluded']} other/unassigned samples are excluded and are not queued. "
+                    "Use a separate project for the other classifier group.")
             self.projects[project_id] = prepared
             return {key: value for key, value in prepared.items()
                     if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot", "project_created", "project_removable", "protected_paths", "project_identity"}}

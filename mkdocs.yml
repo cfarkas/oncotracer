@@ -39,6 +39,7 @@ nav:
       - QuickStart 1 — Illumina + ONT: quick_start.md
       - QuickStart 2 — HCC1143: public_cohort.md
       - QuickStarts from the Terminal: quickstart_terminal.md
+      - After ONT — CpG Classifier Groups: post_ont_cpg.md
       - Complete PRJNA754199 archive: full_tutorial.md
       - Mock cohort — six tumors + four independent normals: six_tumor_four_normal.md
   - Analyses and Results:

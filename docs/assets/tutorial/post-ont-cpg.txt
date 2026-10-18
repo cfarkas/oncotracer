@@ -1,0 +1,52 @@
+Post-ONT CpG classification — synthetic demonstration
+
+Actual UI, pointer drags, temporary configuration saves and checks.
+Synthetic reads/resources only; no analysis, downloads or patient data.
+
+After your ONT run
+Start a new methylation-only project. This is the real UI with synthetic files; no analysis is run.
+
+Original sample membership
+Choose preservation from specimen records, then discover the original barcode FASTQs. These are synthetic examples.
+
+Name the samples
+These fictional tumour samples have leukemia, CNS or unknown clinical context. Assign the main sample role first.
+
+Use original methylation calls
+Keep methylation-only analysis. Link the original modified-base BAMs with MM/ML tags, not an ordinary CNA alignment.
+
+POD5 is the alternative
+POD5 requires compatible Dorado basecalling and modified-base models. Existing modified-base BAMs avoid basecalling again.
+
+Drag from documented clinical context
+Drag leukemia to MARLIN and CNS tumour to Sturgeon. A previous classifier prediction is not the selection rule.
+
+Unknown stays unassigned
+Leave unknown or unsuitable clinical context unassigned. The dropdown on each card offers the same accessible choice.
+
+Reuse local tools and reference
+Supply installed tool and model paths, or a resource YAML. This demonstration uses synthetic path fixtures, not trained models.
+
+One classifier per project
+Choose MARLIN. Only its assigned sample enters this project; the other two are excluded and are not queued.
+
+Separate destination
+Save to a new cpg-marlin project. Keep the completed ONT project and the other classifier's project unchanged.
+
+Save and check only
+Save the selected group's configuration and inspect the included names. These checks validate synthetic paths, not biological model quality.
+
+One classifier per project
+Choose Sturgeon. Only its assigned sample enters this project; the other two are excluded and are not queued.
+
+Sturgeon resources and license
+Use your installed Sturgeon assets and confirm its terms only after accepting them. This checkbox is demonstrated with synthetic fixtures.
+
+Separate destination
+Save to a new cpg-sturgeon project. Keep the completed ONT project and the other classifier's project unchanged.
+
+Save and check only
+Save the selected group's configuration and inspect the included names. These checks validate synthetic paths, not biological model quality.
+
+Ready for a real project
+Resolve errors before Run analysis in your real project. Review CpG coverage and classifier scores afterward. This recording ends without running analysis.
