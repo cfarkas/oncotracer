@@ -1,6 +1,7 @@
 """Owned per-user command publication and removal, using only temporary homes."""
 from __future__ import annotations
 
+import argparse
 import base64
 import contextlib
 import csv
@@ -10,6 +11,8 @@ import io
 import json
 import os
 from pathlib import Path
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -57,6 +60,38 @@ class UserLauncherTests(unittest.TestCase):
             code = cli.main(arguments)
         return code, output.getvalue() + (errors.getvalue() if code else "")
 
+    def legacy_command(self, binding=None):
+        """Independent bytes and marker produced by the pre-bootstrap launcher."""
+        binding = binding or launch.current_binding()
+        path = launch.default_path()
+        path.parent.mkdir(parents=True)
+        path.parent.chmod(0o755)
+        bootstrap = (
+            "import sys; "
+            f"sys.path.insert(0, {binding['source']!r}); "
+            f"sys.argv[0] = {str(path)!r}; "
+            "from oncotracer_cli.cli import main; raise SystemExit(main())"
+        )
+        command = [binding['python'], '-I', '-B', '-c', bootstrap]
+        data = (
+            "#!/bin/sh\n"
+            "# Managed by oncotracer install; use oncotracer uninstall --global-launcher.\n"
+            "unset PYTHONPATH PYTHONHOME PYTHONSTARTUP PYTHONUSERBASE "
+            "CONDA_PREFIX CONDA_DEFAULT_ENV CONDA_PROMPT_MODIFIER "
+            "LD_LIBRARY_PATH LD_PRELOAD LD_LIBRARY_PATH_MCR\n"
+            "exec " + shlex.join(command) + ' "$@"\n'
+        ).encode()
+        path.write_bytes(data)
+        path.chmod(0o755)
+        marker = path.parent / launch.MARKER
+        marker.write_text(json.dumps({
+            'schema':'oncotracer-user-launcher-v1', 'path':str(path), 'uid':os.getuid(),
+            'binding':binding, 'installation':{'kind':'docker', 'target':self.config['image']},
+            'sha256':hashlib.sha256(data).hexdigest(),
+        }, sort_keys=True, indent=2) + '\n')
+        marker.chmod(0o600)
+        return path
+
     @contextlib.contextmanager
     def pip_console(self, directory_mode=0o755, command_mode=0o755):
         path = launch.default_path()
@@ -74,7 +109,7 @@ class UserLauncherTests(unittest.TestCase):
         with (info / "RECORD").open("w", newline="") as output:
             csv.writer(output).writerow((os.path.relpath(path, site), "sha256=" + digest, len(data)))
         distribution = importlib.metadata.PathDistribution(info)
-        with mock.patch.object(launch, "__file__", str(module)), mock.patch.object(launch.importlib.metadata, "distribution", return_value=distribution):
+        with mock.patch.object(launch, "__file__", str(module)), mock.patch.object(launch, "owning_distribution", return_value=distribution):
             yield path, data
 
     def test_pip_owned_command_is_retained_without_any_launcher_writes(self):
@@ -188,6 +223,84 @@ class UserLauncherTests(unittest.TestCase):
             "cwd": str(unrelated), "argv": ["one argument", "literal;$x"],
             "conda": None, "pythonpath": None,
         })
+
+    def test_legacy_launcher_with_argparse_backport_upgrades_to_working_cli(self):
+        source = self.scratch / 'installed wheel site-packages'
+        shutil.copytree(ROOT / 'oncotracer_cli', source / 'oncotracer_cli',
+                        ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+        # Reproduce the old backport's missing `required` argument without an
+        # external install, using this interpreter's otherwise compatible parser.
+        backport = Path(argparse.__file__).read_text() + """
+_modern_subparsers_init = _SubParsersAction.__init__
+def _legacy_subparsers_init(self, *args, **kwargs):
+    if 'required' in kwargs:
+        raise TypeError("_SubParsersAction.__init__() got an unexpected keyword argument 'required'")
+    _modern_subparsers_init(self, *args, **kwargs)
+_SubParsersAction.__init__ = _legacy_subparsers_init
+"""
+        (source / 'argparse.py').write_text(backport)
+        binding = {'python':os.path.abspath(sys.executable), 'kind':'module', 'source':str(source)}
+        path = self.legacy_command(binding)
+        before = self.pair()
+        broken = subprocess.run([str(path), '--help'], cwd=self.scratch,
+                                env=os.environ.copy(), text=True, capture_output=True, timeout=20)
+        self.assertNotEqual(broken.returncode, 0)
+        self.assertIn("unexpected keyword argument 'required'", broken.stderr)
+        with mock.patch.object(launch, 'current_binding', return_value=binding):
+            self.install()
+        self.assertNotEqual(path.read_bytes(), before[0])
+        recovery = list(path.parent.glob('.oncotracer-launcher-recovery-*/old-oncotracer'))
+        self.assertEqual([item.read_bytes() for item in recovery], [before[0]])
+        for arguments in (['--help'], ['reference', '--help'], ['--version']):
+            with self.subTest(arguments=arguments):
+                result = subprocess.run([str(path), *arguments], cwd=self.scratch,
+                                        env=os.environ.copy(), text=True, capture_output=True, timeout=20)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('oncotracer', result.stdout.lower())
+        self.assertEqual((source / 'argparse.py').read_text(), backport)
+
+    def test_legacy_command_can_remove_itself_with_recoverable_original_bytes(self):
+        path = self.legacy_command()
+        before = self.pair()
+        result = subprocess.run([str(path), 'uninstall', '--global-launcher', '--yes', '--json'],
+                                cwd=self.scratch, env=os.environ.copy(), text=True,
+                                capture_output=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(path.exists())
+        self.assertFalse((path.parent / launch.MARKER).exists())
+        report = json.loads(result.stdout)
+        self.assertTrue(report['recoverable'])
+        recovery = Path(report['recovery_directory'])
+        self.assertEqual((recovery / 'old-oncotracer').read_bytes(), before[0])
+        self.assertEqual((recovery / ('old-' + launch.MARKER)).read_bytes(), before[1])
+
+    def test_failed_public_upgrade_restores_exact_legacy_pair(self):
+        path = self.legacy_command()
+        before = self.pair()
+        with mock.patch.object(cli, '_install_docker', return_value=dict(self.config)) as installer:
+            with mock.patch.object(cli, '_save_install_config', side_effect=OSError('config save failed')):
+                code, output = self.invoke(['install', '--docker'])
+        self.assertEqual(code, 2, output)
+        installer.assert_called_once()
+        self.assertEqual(self.pair(), before)
+        self.assertFalse((path.parent / launch.PENDING).exists())
+
+    def test_rehashed_tampered_legacy_template_is_refused_before_backend(self):
+        path = self.legacy_command()
+        path.write_bytes(path.read_bytes() + b'# modified historical command\n')
+        marker_path = path.parent / launch.MARKER
+        marker = json.loads(marker_path.read_text())
+        marker['sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+        marker_path.write_text(json.dumps(marker))
+        before = self.pair()
+        with mock.patch.object(cli, '_install_docker') as installer:
+            code, output = self.invoke(['install', '--docker'])
+        self.assertEqual(code, 2, output)
+        installer.assert_not_called()
+        with self.assertRaises(OncoTracerError):
+            with launch.remove_transaction(required=True):
+                self.fail('tampered legacy template was authorized')
+        self.assertEqual(self.pair(), before)
 
     def test_archive_command_survives_payload_cache_change(self):
         archive = self.scratch / "original copied app"
@@ -490,7 +603,6 @@ class UserLauncherTests(unittest.TestCase):
         self.assertEqual((moved / launch.COMMAND).read_bytes(), before[0])
         self.assertEqual((path.parent / "foreign-file").read_text(), "preserve")
         self.assertFalse(path.exists())
-
 
     def test_optional_tool_removal_preserves_unmarked_command(self):
         path = launch.default_path()

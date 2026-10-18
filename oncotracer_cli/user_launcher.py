@@ -16,6 +16,8 @@ from pathlib import Path
 
 from .install_safety import _rename_noreplace_at
 from .runtime import OncoTracerError
+from .provenance import ProvenanceError, owning_distribution
+from .source_runtime import package_bootstrap
 
 COMMAND = "oncotracer"
 MARKER = ".oncotracer-launcher.json"
@@ -60,7 +62,7 @@ def installation_target(config: dict) -> dict:
     raise OncoTracerError("unsupported backend for the user command")
 
 
-def _wrapper(binding: dict, path: Path) -> bytes:
+def _wrapper(binding: dict, path: Path, *, legacy: bool = False) -> bytes:
     if set(binding) != {"python", "kind", "source"} or binding["kind"] not in {"module", "archive"}:
         raise OncoTracerError("invalid user command binding")
     for key in ("python", "source"):
@@ -69,12 +71,22 @@ def _wrapper(binding: dict, path: Path) -> bytes:
     if binding["kind"] == "archive":
         command = [binding["python"], "-I", "-B", binding["source"]]
     else:
-        bootstrap = (
-            "import sys; "
-            f"sys.path.insert(0, {binding['source']!r}); "
-            f"sys.argv[0] = {str(path)!r}; "
-            "from oncotracer_cli.cli import main; raise SystemExit(main())"
-        )
+        if legacy:
+            # Exact pre-fix template: authenticate existing owned commands for
+            # transactional upgrade/removal, never generate it for publication.
+            bootstrap = (
+                "import sys; "
+                f"sys.path.insert(0, {binding['source']!r}); "
+                f"sys.argv[0] = {str(path)!r}; "
+                "from oncotracer_cli.cli import main; raise SystemExit(main())"
+            )
+        else:
+            bootstrap = (
+                package_bootstrap(binding["source"])
+                + "import sys; "
+                + f"sys.argv[0] = {str(path)!r}; "
+                + "from oncotracer_cli.cli import main; raise SystemExit(main())"
+            )
         command = [binding["python"], "-I", "-B", "-c", bootstrap]
     return (
         "#!/bin/sh\n"
@@ -154,7 +166,9 @@ def _read(fd: int, name: str, mode: int | None = None):
 def _pip_recorded_command(path: Path, data: bytes) -> bool:
     """Retain only this distribution's unchanged pip-created console entry."""
     try:
-        distribution = importlib.metadata.distribution("oncotracer")
+        distribution = owning_distribution()
+        if distribution is None:
+            return False
         imported = Path(__file__).resolve()
         if Path(distribution.locate_file("oncotracer_cli/user_launcher.py")).resolve() != imported:
             return False
@@ -169,7 +183,7 @@ def _pip_recorded_command(path: Path, data: bytes) -> bool:
             and entry.hash.value == digest and entry.size == len(data)
             for entry in distribution.files or ()
         )
-    except (OSError, ValueError, TypeError, importlib.metadata.PackageNotFoundError):
+    except (OSError, ValueError, TypeError, importlib.metadata.PackageNotFoundError, ProvenanceError):
         return False
 
 
@@ -204,7 +218,8 @@ def _inspect(fd: int | None, path: Path, *, allow_foreign=False):
             and value["path"] == str(path)
             and value["uid"] == os.getuid()
             and value["sha256"] == hashlib.sha256(command[0]).hexdigest()
-            and command[0] == _wrapper(value["binding"], path)
+            and command[0] in (_wrapper(value["binding"], path),
+                               _wrapper(value["binding"], path, legacy=True))
             and set(value["installation"]) == {"kind", "target"}
             and value["installation"]["kind"] in {"conda", "sif", "docker"}
         )

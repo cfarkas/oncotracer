@@ -1,6 +1,7 @@
 """Child interpreters use the selected release even inside an older checkout."""
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -72,6 +73,68 @@ class SourceRuntimeTests(unittest.TestCase):
                 self.assertEqual(Path(result['package']), source / 'oncotracer_cli/__init__.py')
                 self.assertEqual(result['argv'], arguments)
                 self.assertFalse((self.launch / 'UNWANTED').exists())
+
+    def dependency_package(self, root):
+        package = self.package(root)
+        (package / '__init__.py').write_text(
+            "import argparse\n"
+            "from .relative import VALUE\n"
+            "import oncotracer_test_targetdep\n"
+            "argparse.ArgumentParser().add_subparsers(dest='action', required=True)\n"
+        )
+        (package / 'relative.py').write_text("VALUE = 'bound package relative import'\n")
+        (root / 'oncotracer_test_targetdep.py').write_text("VALUE = 'target-only dependency'\n")
+        (root / 'oncotracer_test_prioritydep.py').write_text("VALUE = 'incorrect promoted dependency'\n")
+        (self.launch / 'oncotracer_test_prioritydep.py').write_text("VALUE = 'original dependency priority'\n")
+        for name in ('argparse', 'json'):
+            (root / (name + '.py')).write_text("raise RuntimeError('sibling shadows standard library')\n")
+        probe = """import argparse, json, os, sys
+import oncotracer_cli, oncotracer_test_targetdep, oncotracer_test_prioritydep
+print(json.dumps({'package':oncotracer_cli.__file__, 'argparse':argparse.__file__,
+                  'relative':oncotracer_cli.VALUE, 'target':oncotracer_test_targetdep.VALUE,
+                  'priority':oncotracer_test_prioritydep.VALUE, 'cwd':os.getcwd(), 'argv':sys.argv[1:]}))
+"""
+        (package / 'probe.py').write_text(probe)
+        return probe
+
+    def assert_dependency_probe(self, source, probe):
+        arguments = ['relative/config with spaces.yml', 'literal;$VALUE']
+        for command in (source_runtime.python_code(probe, source=source),
+                        source_runtime.python_module('oncotracer_cli.probe', source=source)):
+            with self.subTest(source=str(source), module='run_module' in command[2]):
+                result = self.invoke(command + arguments)
+                self.assertEqual(result, {
+                    'package':str(source / 'oncotracer_cli/__init__.py'),
+                    'argparse':str(Path(argparse.__file__)),
+                    'relative':'bound package relative import',
+                    'target':'target-only dependency',
+                    'priority':'original dependency priority',
+                    'cwd':str(self.launch), 'argv':arguments,
+                })
+
+    def test_bound_wheel_keeps_stdlib_and_existing_dependency_priority(self):
+        source = self.root / 'selected wheel site-packages'
+        probe = self.dependency_package(source)
+        self.assert_dependency_probe(source, probe)
+
+    def test_bound_zip_keeps_stdlib_and_existing_dependency_priority(self):
+        source = self.root / 'zip content'
+        probe = self.dependency_package(source)
+        archive = self.root / 'selected release with spaces.pyz'
+        with zipfile.ZipFile(archive, 'w') as release:
+            for path in source.rglob('*.py'):
+                release.write(path, path.relative_to(source).as_posix())
+        self.assert_dependency_probe(archive, probe)
+
+    def test_missing_selected_package_does_not_fall_back_to_other_checkout(self):
+        source = self.root / 'missing selected package'
+        source.mkdir()
+        result = subprocess.run(source_runtime.python_code(PROBE, source=source),
+                                cwd=self.launch, env=self.env, text=True,
+                                capture_output=True, timeout=20)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Cannot load the selected OncoTracer package', result.stderr)
+        self.assertNotIn('WRONG_OLD_CHECKOUT', result.stderr)
 
     def test_code_supports_multiline_body(self):
         code = "if True:\n    " + PROBE.replace('\n', '\n    ').rstrip() + '\n'

@@ -29,6 +29,72 @@ CLASSIFIER_OVERLAY_SHA256 = (
 )
 
 
+class OwningDistributionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory(prefix="oncotracer-metadata-owner-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    def distribution(self, root: Path, version: str = "2.1.0", name: str = "oncotracer") -> Path:
+        package = root / "oncotracer_cli"
+        package.mkdir(parents=True, exist_ok=True)
+        (package / "provenance.py").write_text("# fixture package\n", encoding="utf-8")
+        metadata = root / f"oncotracer-{version}.dist-info"
+        metadata.mkdir()
+        (metadata / "METADATA").write_text(
+            f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n", encoding="utf-8"
+        )
+        return metadata
+
+    def test_bound_target_owner_wins_over_earlier_installed_distribution(self) -> None:
+        target = self.root / "target"
+        earlier = self.root / "earlier"
+        self.distribution(target)
+        self.distribution(earlier, "9.9.9")
+        with mock.patch.object(provenance, "__file__", str(target / "oncotracer_cli/provenance.py")), \
+                mock.patch.object(sys, "path", [str(earlier), *sys.path]):
+            default = provenance.importlib.metadata.distribution("oncotracer")
+            self.assertEqual(Path(default.locate_file("")), earlier)
+            owner = provenance.owning_distribution()
+            self.assertIsNotNone(owner)
+            self.assertEqual(Path(owner.locate_file("")), target)
+
+    def test_source_checkout_does_not_adopt_unrelated_installed_metadata(self) -> None:
+        checkout = self.root / "checkout"
+        checkout.mkdir()
+        earlier = self.root / "earlier"
+        self.distribution(earlier)
+        with mock.patch.object(provenance, "__file__", str(checkout / "oncotracer_cli/provenance.py")), \
+                mock.patch.object(provenance._build_metadata, "DISTRIBUTION_MANIFEST_SHA256", None, create=True), \
+                mock.patch.object(sys, "path", [str(earlier), *sys.path]):
+            self.assertIsNone(provenance.owning_distribution())
+            self.assertFalse(provenance.verify_distribution_files())
+
+    def test_duplicate_local_owners_are_rejected(self) -> None:
+        self.distribution(self.root)
+        self.distribution(self.root, "9.9.9")
+        with mock.patch.object(provenance, "__file__", str(self.root / "oncotracer_cli/provenance.py")):
+            with self.assertRaisesRegex(provenance.ProvenanceError, "multiple local distributions"):
+                provenance.owning_distribution()
+
+    def test_changed_metadata_name_cannot_trigger_unsealed_fallback(self) -> None:
+        self.distribution(self.root, name="another-project")
+        with mock.patch.object(provenance, "__file__", str(self.root / "oncotracer_cli/provenance.py")), \
+                mock.patch.object(provenance._build_metadata, "DISTRIBUTION_MANIFEST_SHA256", None, create=True):
+            with self.assertRaisesRegex(provenance.ProvenanceError, "inconsistent package metadata"):
+                provenance.verify_distribution_files()
+
+    def test_metadata_must_locate_the_bound_package(self) -> None:
+        target = self.root / "target"
+        target.mkdir()
+        foreign = self.distribution(self.root / "foreign")
+        candidate = provenance.importlib.metadata.PathDistribution(foreign)
+        with mock.patch.object(provenance, "__file__", str(target / "oncotracer_cli/provenance.py")), \
+                mock.patch.object(provenance.importlib.metadata, "distributions", return_value=[candidate]):
+            with self.assertRaisesRegex(provenance.ProvenanceError, "does not own"):
+                provenance.owning_distribution()
+
+
 class NativeProvenanceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:

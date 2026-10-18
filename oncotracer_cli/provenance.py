@@ -195,16 +195,31 @@ def _distribution_bytes(root: Path, name: str) -> bytes:
         os.close(descriptor)
 
 
+def owning_distribution() -> importlib.metadata.Distribution | None:
+    """Find metadata beside the package actually bound to this interpreter."""
+    module = Path(os.path.abspath(__file__))
+    root = module.parents[1]
+    try:
+        owners = list(importlib.metadata.distributions(name="oncotracer", path=[str(root)]))
+        for distribution in owners:
+            if str(distribution.metadata.get("Name", "")).casefold() != "oncotracer":
+                raise ValueError("local OncoTracer distribution has inconsistent package metadata")
+            if Path(distribution.locate_file("oncotracer_cli/provenance.py")).resolve() != module.resolve():
+                raise ValueError("local distribution does not own the imported OncoTracer package")
+        if len(owners) > 1:
+            raise ValueError("multiple local distributions claim the imported OncoTracer package")
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        raise ProvenanceError(f"cannot authenticate installed OncoTracer metadata: {error}") from error
+    return owners[0] if owners else None
+
+
 def verify_distribution_files() -> bool:
     """Verify pip-installed product bytes before accepting embedded provenance."""
     expected_hash = getattr(_build_metadata, "DISTRIBUTION_MANIFEST_SHA256", None)
     root = Path(os.path.abspath(__file__)).parents[1]
     manifest_name = "oncotracer_cli/_distribution_files.json"
     try:
-        try:
-            distribution = importlib.metadata.distribution("oncotracer")
-        except importlib.metadata.PackageNotFoundError:
-            distribution = None
+        distribution = owning_distribution()
         owns_package = (distribution is not None and
                         Path(distribution.locate_file("oncotracer_cli/provenance.py")).resolve() == Path(__file__).resolve())
         if not owns_package:
