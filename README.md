@@ -44,21 +44,15 @@ The Docker image is saved for later commands. See [installation](docs/installati
 
 Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
 
-To prefill a project:
+### Open interactive setup with Nextflow
+
+You can also use Nextflow to open the same browser interface. After installing your backend, run this from the [OncoTracer source checkout](docs/installation_details.md#install-from-github):
 
 ```bash
-oncotracer setup --project "$PWD/my-study" --mode illumina --input-folder /data/illumina
+nextflow run main.nf --interactive --backend conda
 ```
 
-### Nextflow entry
-
-With Nextflow and an [OncoTracer source checkout](docs/installation_details.md#install-from-github), open the browser from any directory using the full path:
-
-```bash
-nextflow run /absolute/path/to/oncotracer-src/main.nf --interactive --backend conda
-```
-
-Use `--backend docker` for Docker. See [Nextflow setup and concurrent projects](docs/nextflow_entry.md).
+From another directory, replace `main.nf` with its full path, such as `/absolute/path/to/oncotracer-src/main.nf`. Use `--backend docker` for Docker. Choose your inputs, Fresh or FFPE, and analysis settings in the browser; analysis starts only when you click **Run analysis**. See [Nextflow setup and concurrent projects](docs/nextflow_entry.md).
 
 ### Interactive demo
 
