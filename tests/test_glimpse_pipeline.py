@@ -1,5 +1,8 @@
 """Full workflow dispatch, safe reuse and real small alignment/VCF imports."""
 from dataclasses import replace
+import contextlib
+import datetime
+import io
 import hashlib
 import importlib.util
 import json
@@ -124,8 +127,110 @@ class GlimpsePipelineTests(unittest.TestCase):
                        {'variant_patients': 17}, {'variant_patients': 'bad\npath'}):
             with self.subTest(config=config), self.assertRaises(OncoTracerError):
                 pipeline.validate_options(config)
-        self.assertEqual(pipeline.validate_options({'variant_patients': str(self.root/'patients.tsv')})['patients'],
-                         str(self.root/'patients.tsv'))
+        patients = self.root / 'patients.tsv'
+        patients.write_text('sample_id\tname\tage\nMOCK001\tMOCK001\t\n')
+        self.assertEqual(pipeline.validate_options({'variant_patients': str(patients)})['patients'], str(patients))
+
+    def test_patient_tsv_rejects_missing_directory_csv_and_duplicate_headers(self):
+        patients = self.root / 'patients.tsv'
+        for text, message in [
+            ('sample,age_years\nMOCK001,42\n', 'tab-separated name and age'),
+            ('name\tage\tage\nMOCK001\t42\t43\n', 'duplicate column'),
+            ('sample_id\tname\tage\n\t\t42\n', 'Missing sample_id/name'),
+            ('name\tage\nMOCK001\t42\textra\n', 'Wrong number'),
+        ]:
+            with self.subTest(message=message):
+                patients.write_text(text)
+                before = patients.read_bytes()
+                with self.assertRaisesRegex(OncoTracerError, message):
+                    pipeline.validate_options({'variant_patients': str(patients)})
+                self.assertEqual(patients.read_bytes(), before)
+        for path in (self.root / 'missing.tsv', self.root):
+            with self.subTest(path=path.name), self.assertRaisesRegex(OncoTracerError, 'existing regular file'):
+                pipeline.validate_options({'variant_patients': str(path)})
+
+    def test_patient_tsv_checks_all_identifiers_and_ages_before_execution(self):
+        patients = self.root / 'patients.tsv'
+        cases = [
+            ('MOCK-01\tMOCK001\t42\t\nmock001\tMOCK002\t43\t\n', 'duplicate sample ID'),
+            ('MOCK001\tMOCK001\t42\t\nMOCK002\tMOCK002\t121\t\n', 'Invalid age'),
+            ('MOCK001\tMOCK001\tinf\t\n', 'Invalid age'),
+            ('MOCK001\tMOCK001\t-1\t\n', 'Invalid age'),
+            ('MOCK001\tMOCK001\tadult\t\n', 'Invalid age'),
+            (f'MOCK001\tMOCK001\t\t{datetime.date.today().year + 1}\n', 'Invalid birth year'),
+            ('MOCK001\tMOCK001\t\tyear_unknown\n', 'Invalid birth year'),
+        ]
+        for rows, message in cases:
+            with self.subTest(message=message, rows=rows):
+                patients.write_text('sample_id\tname\tage\tbirth_year\n' + rows)
+                with self.assertRaisesRegex(OncoTracerError, message):
+                    resolve_variant_request({'run_variants': True, 'variant_specimen_type': 'fresh',
+                                             'variant_patients': str(patients)}, mode='illumina')
+        self.assertEqual(sorted(p.name for p in self.root.iterdir()), ['patients.tsv'])
+
+    def test_patient_tsv_accepts_bom_unknown_values_and_unmatched_samples(self):
+        patients = self.root / 'patients.tsv'
+        patients.write_text('sample_id\tname\tage\tsex\nMOCK001\tMOCK001\t\tunknown\n', encoding='utf-8-sig')
+        self.assertEqual(pipeline.validate_options({'variant_patients': str(patients)})['patients'], str(patients))
+        spec = importlib.util.spec_from_file_location('patient_metadata_fixture', pipeline.workflow_bundle() / 'bin/patient_metadata.py')
+        metadata = importlib.util.module_from_spec(spec); spec.loader.exec_module(metadata)
+        for sample, matched in [('MOCK001', True), ('UNLISTED', False)]:
+            config = {'sample': sample, 'patients': str(patients), 'output': str(self.root / sample)}
+            metadata.prepare(config)
+            self.assertEqual(config['patient_metadata']['metadata_matched'], matched)
+            self.assertEqual(config['patient_metadata']['age_display'], 'Not available')
+            self.assertEqual(config['patient_metadata']['sex'], 'unknown')
+        self.assertEqual(patients.read_text(encoding='utf-8-sig').splitlines()[1], 'MOCK001\tMOCK001\t\tunknown')
+
+    def test_patient_tsv_changed_after_resolution_fails_before_tool_probes(self):
+        patients = self.root / 'patients.tsv'
+        patients.write_text('name\tage\nMOCK001\t42\n')
+        request = resolve_variant_request({'run_variants': True, 'variant_specimen_type': 'fresh',
+                                           'variant_patients': str(patients)}, mode='illumina')
+        patients.write_text('name\tage\nMOCK001\tinvalid\n')
+        with patch('oncotracer_cli.variants.preflight_variant_tools') as tools:
+            with self.assertRaisesRegex(OncoTracerError, 'variant_patients: Invalid age'):
+                pipeline.preflight(request)
+        tools.assert_not_called()
+
+    def test_patient_schema_blocks_public_setup_and_check_without_analysis(self):
+        from oncotracer_cli import cli
+        from oncotracer_cli.runtime import load_flat_yaml, render_flat_yaml
+        reads = self.root / 'MOCK001.fastq'
+        reads.write_text('@fixture\nACGT\n+\nIIII\n')
+        patients = self.root / 'patients.tsv'
+        patients.write_text('sample,age_years\nMOCK001,42\n')
+        project = self.root / 'project'
+        flags = ['setup', '--non-interactive', '--mode', 'illumina', '--backend', 'host',
+                 '--project', str(project), '--sample-name', 'MOCK001', '--fastq-1', str(reads),
+                 '--variants', '--variant-specimen-type', 'fresh', '--variant-patients', str(patients)]
+        def command(args):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+                code = cli.main(args)
+            return code, output.getvalue()
+        with patch.object(cli, '_load_install_config', return_value={}), \
+             patch('subprocess.run', side_effect=AssertionError('schema validation executed a tool')):
+            code, output = command(flags)
+            self.assertEqual(code, 2, output)
+            self.assertIn('tab-separated name and age', output)
+            self.assertFalse(project.exists())
+            patients.write_text('sample_id\tname\tage\nMOCK001\tMOCK001\t\n')
+            code, output = command(flags)
+            self.assertEqual(code, 0, output)
+            saved = project / 'config/run.yml'
+            values = load_flat_yaml(saved)
+            patients.write_text('sample_id\tname\tage\nMOCK001\tMOCK001\t999\n')
+            for backend in ('host', 'docker'):
+                values['execution_backend'] = backend
+                saved.write_text(render_flat_yaml(values))
+                before = saved.read_bytes()
+                code, output = command(['check', '--config', str(saved), '--json'])
+                self.assertEqual(code, 2, output)
+                self.assertIn('variant_patients: Invalid age', output)
+                self.assertEqual(saved.read_bytes(), before)
+        self.assertFalse((project / 'results').exists())
+        self.assertFalse((project / 'reference').exists())
 
     def test_sample_parameters_enable_every_module_and_keep_paths(self):
         patients = self.root / 'patients.tsv'

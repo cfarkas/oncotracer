@@ -2,7 +2,8 @@
 
 Catalog provenance: Clair3 v1.2.0 README and the official nanoporetech/rerio
 model stubs. Archive SHA256/lengths were independently measured from those
-HTTPS URLs on 2026-09-22; they are not claimed as upstream-published checksums.
+HTTPS URLs on 2026-09-22, with HAC v5.2.0 added on 2026-10-18; these are not
+claimed as upstream-published checksums.
 Planning executes no caller, model loader, installer or shell. Explicit runtime
 preflight separately checks the selected dependency environment before downloads.
 """
@@ -33,6 +34,9 @@ CLAIR3_PROFILES = {
         'size': 74586126, 'sha256': '01c05768661bdd7de611e6bae1043c43b7523a54b223e029c683bfac0db7a678'},
     'r1041_e82_400bps_hac_v500': {'label': 'R10.4.1 E8.2 / Dorado HAC v5.0.0 / 400 bps / 5 kHz',
         'size': 74676065, 'sha256': 'facf39a89aa11c6b92d807961f31365cbc49cbef4e53edadc13c98a1cc6d26a0'},
+    'r1041_e82_400bps_hac_v520': {'label': 'R10.4.1 E8.2 / Dorado HAC v5.2.0 / 400 bps / 5 kHz',
+        'size': 74644600, 'sha256': '8b5f4480b8748f4e2127bfe5218077033a84a8b16f14b2a8d40d060ecd2dd980',
+        'source': 'https://github.com/nanoporetech/rerio/blob/master/clair3_models/r1041_e82_400bps_hac_v520_model'},
     'r1041_e82_400bps_sup_v420': {'label': 'R10.4.1 E8.2 / Dorado SUP v4.2.0 / 400 bps / 5 kHz',
         'size': 74872512, 'sha256': 'e90d37d1d277adbfe1bc4cddee98c63d693b93a6c44f3311d8130c76893c72ee'},
     'r1041_e82_400bps_sup_v410': {'label': 'R10.4.1 E8.2 / Dorado SUP v4.1.0 / 400 bps / 4 kHz',
@@ -48,6 +52,10 @@ _CLAIR3_FILE_SHA256 = {'r1041_e82_400bps_hac_v410': {'full_alignment.data-00000-
                                'full_alignment.index': '9e757441cbc05623a67a30429610772fa7c864f9798fc0f43c3a96992e4d7c7e',
                                'pileup.data-00000-of-00001': 'c83c53343e708a187614523a2084a081dc7ba79e4a3420267cd1d95446f37d15',
                                'pileup.index': 'd121b0a8b2f6f4e52ede0da8cbdc07e56e79a0173ad9605d66ff5b076b449c3e'},
+ 'r1041_e82_400bps_hac_v520': {'full_alignment.data-00000-of-00001': 'dbf40a9af413ea5b46f3e09fa64cf8596b2f3fe76895900d179cbf208fd8d44c',
+                               'full_alignment.index': '716119c2a72acd527f3b450b721f9dfe003d5655c485df8df35795e7e49e1746',
+                               'pileup.data-00000-of-00001': '3b2d137f01d56afde56abe4c30cbc2bbc5abf90c2e794e7cf26f868db584718a',
+                               'pileup.index': 'c052719c0c3242bb08705be8677f761930e9957e596e4cb90b0f626576f0d236'},
  'r1041_e82_400bps_sup_v410': {'full_alignment.data-00000-of-00001': 'c7f8ba78253fd7db57ecd00db3688b51c2f893fd264ebfc772124bb9b732283a',
                                'full_alignment.index': 'c979d60ae4d39e30634e80ec103673df804b26bc10f192648408c9f5484aae61',
                                'pileup.data-00000-of-00001': 'b2f18578f2df8b51277e7ac3b159432e19fca436c8c8d4e8246b8dd4c069678f',
@@ -62,7 +70,7 @@ _CLAIR3_FILE_SHA256 = {'r1041_e82_400bps_hac_v410': {'full_alignment.data-00000-
                                'pileup.index': '2c28334119b24395dad45d1c6f06158f1d30abfff8b1c1c5824cd1d48b3fff4b'}}
 for _profile, _metadata in CLAIR3_PROFILES.items():
     _metadata.update(url=CLAIR3_BASE + _profile + '.tar.gz', caller_version='1.2.0',
-                     source=CLAIR3_SOURCE, files=list(CLAIR3_FILES), archive_root=_profile,
+                     source=_metadata.get('source', CLAIR3_SOURCE), files=list(CLAIR3_FILES), archive_root=_profile,
                      file_sha256=_CLAIR3_FILE_SHA256[_profile])
 
 # These presets are bundled with the tested v0.4.4 Docker/SIF distribution.

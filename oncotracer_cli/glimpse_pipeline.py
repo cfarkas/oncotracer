@@ -4,7 +4,9 @@ Samples execute in bounded slots with isolated Nextflow work/cache and traces.
 A single total CPU/memory budget is partitioned across concurrently active samples.
 """
 from __future__ import annotations
+import csv
 import html
+import importlib.util
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import math
 import signal
@@ -41,6 +43,20 @@ def workflow_bundle(source=None):
     return bundle
 
 
+def validate_patient_table(path):
+    """Check optional TSV context without creating outputs or running tools."""
+    if not path:
+        return
+    try:
+        source=workflow_bundle()/'bin/patient_metadata.py'
+        spec=importlib.util.spec_from_file_location('_oncotracer_patient_validation',source)
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.load_rows(path)
+    except (OSError,ValueError,csv.Error) as error:
+        raise OncoTracerError('variant_patients: '+str(error)) from error
+
+
 def validate_options(config):
     result={key:config['variant_'+key] for key in OPTION_KEYS if config.get('variant_'+key) not in (None,'')}
     confidence=result.setdefault('confidence_gwas','medium')
@@ -55,6 +71,7 @@ def validate_options(config):
     result.setdefault('memory','32GB')
     _memory_gb(result['memory'])
     result.setdefault('nextflow','nextflow')
+    validate_patient_table(result.get('patients'))
     return result
 
 
@@ -71,6 +88,7 @@ def plan(request):
 
 
 def preflight(request,toolchain=None):
+    validate_patient_table((request.glimpse_config or {}).get('patients'))
     # Preserve native dependency discovery without entering this dispatcher again.
     from dataclasses import replace
     from .variants import preflight_variant_tools

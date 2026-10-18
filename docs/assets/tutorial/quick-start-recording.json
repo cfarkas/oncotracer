@@ -723,5 +723,12 @@
         "poster_source_seconds": 72.935
       }
     }
-  ]
+  ],
+  "ui_compatibility": {
+    "reviewed_ui_page_sha256": "b3dcd4d5211d77d94bdb5288c368ee0f778f6c367130818f536a0d9fdbd32f3d",
+    "added_unrecorded_clair3_profiles": [
+      "r1041_e82_400bps_hac_v520"
+    ],
+    "scope": "The recorded CNA-only flow is unchanged. The current variant selector additionally offers the exact HAC v5.2 profile; original recording bytes and capture fingerprint are preserved."
+  }
 }

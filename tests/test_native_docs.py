@@ -125,7 +125,23 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIs(record["passed"], True)
         self.assertIs(record["analysis_started"], False)
         self.assertIs(record["real_reads_downloaded"], False)
-        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(PAGE.encode("utf-8")).hexdigest())
+        recorded_page = PAGE
+        compatibility = record.get("ui_compatibility")
+        if compatibility:
+            import html
+            from oncotracer_cli.variant_model_assets import CLAIR3_PROFILES
+            self.assertEqual(compatibility["reviewed_ui_page_sha256"],
+                             hashlib.sha256(PAGE.encode("utf-8")).hexdigest())
+            profiles = compatibility["added_unrecorded_clair3_profiles"]
+            self.assertTrue(profiles)
+            self.assertEqual(len(profiles), len(set(profiles)))
+            for profile in profiles:
+                option = ('<option value="' + html.escape(profile, quote=True) + '">' +
+                          html.escape(CLAIR3_PROFILES[profile]["label"]) + '</option>')
+                self.assertEqual(recorded_page.count(option), 1)
+                recorded_page = recorded_page.replace(option, "")
+        self.assertEqual(record["ui_page_sha256"],
+                         hashlib.sha256(recorded_page.encode("utf-8")).hexdigest())
         self.assertEqual(record["mock_api_sha256"], hashlib.sha256(
             (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes()).hexdigest())
         pages = {"quick-start-illumina-ont": None,

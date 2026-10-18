@@ -44,10 +44,10 @@ class VariantModelAssetsTests(unittest.TestCase):
         patch.object(assets.platform, 'system', return_value='Linux').start()
         patch.object(assets.platform, 'machine', return_value='x86_64').start()
 
-    def archive(self, entries=None):
+    def archive(self, entries=None, profile=PROFILE):
         stream = io.BytesIO()
         if entries is None:
-            entries = [(PROFILE + '/' + name, b'synthetic ' + name.encode(), tarfile.REGTYPE)
+            entries = [(profile + '/' + name, b'synthetic ' + name.encode(), tarfile.REGTYPE)
                        for name in assets.CLAIR3_FILES]
         with tarfile.open(fileobj=stream, mode='w:gz') as handle:
             for name, data, kind in entries:
@@ -58,7 +58,7 @@ class VariantModelAssetsTests(unittest.TestCase):
                 item.size = len(data) if kind == tarfile.REGTYPE else 0
                 handle.addfile(item, io.BytesIO(data))
         payload = stream.getvalue()
-        info = dict(assets.CLAIR3_PROFILES[PROFILE], size=len(payload), sha256=hashlib.sha256(payload).hexdigest(),
+        info = dict(assets.CLAIR3_PROFILES[profile], size=len(payload), sha256=hashlib.sha256(payload).hexdigest(),
                     file_sha256={name.split('/')[-1]: hashlib.sha256(data).hexdigest() for name, data, kind in entries})
         return payload, info
 
@@ -76,6 +76,36 @@ class VariantModelAssetsTests(unittest.TestCase):
             self.assertLess(asset['size'], 100 * 1024 * 1024)
             self.assertEqual(asset['files'], list(assets.CLAIR3_FILES))
         self.assertIn('ont_r10_dorado_sup_5khz_ssrs', assets.CLAIRSTO_PLATFORMS)
+
+    def test_hac_v520_plan_retains_exact_profile_without_loading_or_downloading(self):
+        profile = 'r1041_e82_400bps_hac_v520'
+        values = configuration()
+        values['variant_ont_profile'] = profile
+        with patch.object(assets, '_download', side_effect=AssertionError('download during plan')):
+            request = resolve_variant_request(values, mode='ont')
+            plan = variant_plan(request)
+        self.assertEqual(request.ont_profile, profile)
+        self.assertEqual(request.callers, ('clair3',))
+        download = plan['resource_downloads'][0]
+        self.assertEqual(download['profile'], profile)
+        self.assertEqual(download['url'], assets.CLAIR3_BASE + profile + '.tar.gz')
+        self.assertIn('HAC v5.2.0', assets.validate_profile(profile)['label'])
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_hac_v520_cache_is_verified_and_reused_without_substituting_other_models(self):
+        profile = 'r1041_e82_400bps_hac_v520'
+        payload, asset = self.archive(profile=profile)
+        network = self.network(payload)
+        with patch.dict(assets.CLAIR3_PROFILES, {profile: asset}):
+            directory = assets.ensure_clair3_model(profile, self.root)
+            again = assets.ensure_clair3_model(profile, self.root)
+            self.assertEqual(directory, self.root / profile)
+            self.assertEqual(again, directory)
+            self.assertEqual(network.open.call_count, 1)
+            (directory / 'pileup.index').write_bytes(b'changed checkpoint')
+            with self.assertRaisesRegex(OncoTracerError, 'incomplete or changed'):
+                assets.ensure_clair3_model(profile, self.root)
+        self.assertEqual(network.open.call_count, 1)
 
     def test_auto_requires_explicit_known_profile_independent_of_preservation(self):
         for profile in ('', 'auto', 'ffpe', 'r1041_e82_400bps_sup_v600', '../model'):

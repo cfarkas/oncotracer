@@ -202,9 +202,16 @@ finding a folder establishes that match. The supported Clair3 1.2.0 catalog is:
 | --- | --- |
 | `r1041_e82_400bps_sup_v500` | R10.4.1 E8.2, Dorado SUP v5.0.0, 400 bps, 5 kHz |
 | `r1041_e82_400bps_hac_v500` | R10.4.1 E8.2, Dorado HAC v5.0.0, 400 bps, 5 kHz |
+| `r1041_e82_400bps_hac_v520` | R10.4.1 E8.2, Dorado HAC v5.2.0, 400 bps, 5 kHz |
 | `r1041_e82_400bps_sup_v420` | R10.4.1 E8.2, Dorado SUP v4.2.0, 400 bps, 5 kHz |
 | `r1041_e82_400bps_sup_v410` | R10.4.1 E8.2, Dorado SUP v4.1.0, 400 bps, 4 kHz |
 | `r1041_e82_400bps_hac_v410` | R10.4.1 E8.2, Dorado HAC v4.1.0, 400 bps, 4 kHz |
+
+For reads recorded as `dna_r10.4.1_e8.2_400bps_hac@v5.2.0`, select the exact
+`r1041_e82_400bps_hac_v520` profile. Its
+[official Rerio checkpoint](https://github.com/nanoporetech/rerio/blob/master/clair3_models/r1041_e82_400bps_hac_v520_model)
+uses the TensorFlow format supported by Clair3 1.2.0. This is a germline model;
+it does not establish compatibility with any ClairS-TO somatic preset.
 
 The following example assumes the reads actually used **SUP v5.0.0 / 5 kHz**.
 Change the profile if needed; for other chemistries/basecallers, use the existing

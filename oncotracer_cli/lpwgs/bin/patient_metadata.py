@@ -2,6 +2,7 @@
 import csv
 import datetime
 import hashlib
+import math
 import re
 from pathlib import Path
 
@@ -41,11 +42,36 @@ def database_rows(path):
  finally:book.close()
  return rows
 
+def validate_demographics(row, label):
+ age=text(row.get('age'))
+ if age:
+  try:value=float(age)
+  except (TypeError,ValueError):raise ValueError('Invalid age in '+label+'; use 0–120 years or leave it blank.') from None
+  if not math.isfinite(value) or not 0<=value<=120:raise ValueError('Invalid age in '+label+'; use 0–120 years or leave it blank.')
+ year=text(row.get('birth_year'))
+ if year:
+  try:value=int(year)
+  except (TypeError,ValueError):raise ValueError('Invalid birth year in '+label+'; use a four-digit year or leave it blank.') from None
+  current=datetime.date.today().year
+  if not current-120<=value<=current:raise ValueError('Invalid birth year in '+label+'; use a year within the last 120 years.')
+
 def load_rows(path):
- with open(path,newline='') as f:
+ path=Path(path)
+ if not path.is_file():raise ValueError('Patient TSV must be an existing regular file: '+str(path))
+ with path.open(newline='',encoding='utf-8-sig') as f:
   reader=csv.DictReader(f,delimiter='\t')
-  if not {'name','age'}.issubset(reader.fieldnames or []):raise ValueError('Patient TSV requires name and age columns; age may be blank. sample_id and sex are recommended.')
-  return list(reader)
+  fields=reader.fieldnames or []
+  if not {'name','age'}.issubset(fields):raise ValueError('Patient TSV requires tab-separated name and age columns; age may be blank. sample_id and sex are recommended; convert other metadata schemas explicitly.')
+  if len(fields)!=len(set(fields)):raise ValueError('Patient TSV has duplicate column names.')
+  rows=[];seen=set()
+  for number,row in enumerate(reader,2):
+   label='patient TSV row '+str(number)
+   if None in row or any(v is None for v in row.values()):raise ValueError('Wrong number of tab-separated columns in '+label)
+   key=canonical(row.get('sample_id') or row.get('name'))
+   if not key:raise ValueError('Missing sample_id/name in '+label)
+   if key in seen:raise ValueError('Ambiguous duplicate sample ID in '+label)
+   seen.add(key);validate_demographics(row,label);rows.append(row)
+  return rows
 
 def write_rows(path,rows):
  path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
