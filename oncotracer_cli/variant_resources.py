@@ -19,6 +19,7 @@ from .variant_model_assets import is_auto_resource, validate_profile, FFPERASE_L
 MAX_ROOTS = 12
 MAX_CHILDREN = 64
 MAX_PREFIXES = 96
+MAX_FFPERASE_REGISTERED_PREFIXES = 512
 MAX_CANDIDATES = 2048
 MAX_SEARCHED = 384
 MAX_TEXT_BYTES = 256 * 1024
@@ -262,6 +263,37 @@ class _Search:
             self.note(f"Only the first {MAX_PREFIXES} environment candidates were inspected.")
         ready = []
         for prefix in choices[:MAX_PREFIXES]:
+            status = self.read_json(prefix.parent / "status.json")
+            if status.get("installer") == "oncotracer-optional-tools-v1" and status.get("status") != "complete":
+                continue
+            ready.append(prefix)
+        return ready
+
+    def registered_ffperase_prefixes(self):
+        """Inspect a bounded registry independently of the general prefix cap."""
+        registry = self.home / ".conda/environments.txt"
+        lines = self.read_text(registry).splitlines()
+        if len(lines) > MAX_FFPERASE_REGISTERED_PREFIXES:
+            self.note(
+                f"Only the first {MAX_FFPERASE_REGISTERED_PREFIXES} registered environments "
+                "were inspected for FFPERASE; use an explicit runtime path if needed."
+            )
+        choices = []
+        for line in lines[:MAX_FFPERASE_REGISTERED_PREFIXES]:
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            try:
+                prefix = self.path(line.strip())
+            except OncoTracerError:
+                continue
+            if prefix not in choices:
+                choices.append(prefix)
+        ready = []
+        for prefix in choices:
+            # These are file/metadata hints only: never execute a registered
+            # Python or load a model during browser discovery.
+            if not self.ffperase_runtime_inventory(prefix):
+                continue
             status = self.read_json(prefix.parent / "status.json")
             if status.get("installer") == "oncotracer-optional-tools-v1" and status.get("status") != "complete":
                 continue
@@ -592,7 +624,8 @@ def discover_variant_resources(data, *, roots=(), environment=None):
         else:
             ffpe_sif_override = search.override("variant_ffperase_sif", values)
             prefix_override = search.override("variant_ffperase_prefix", values)
-            native = [p for p in prefixes if search.ffperase_runtime_inventory(p)]
+            ffpe_prefixes = search.unique([*prefixes, *search.registered_ffperase_prefixes()])
+            native = [p for p in ffpe_prefixes if search.ffperase_runtime_inventory(p)]
             unverified = [p for p in prefixes if p not in native and "ffpe" in p.name.lower()
                           and search.file(p / "bin/python", executable=True)]
             for path in unverified:

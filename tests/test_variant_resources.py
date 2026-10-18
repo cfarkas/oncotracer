@@ -12,7 +12,8 @@ from unittest.mock import patch
 from oncotracer_cli import ffperase, variant_model_assets as assets
 from oncotracer_cli.runtime import OncoTracerError
 from oncotracer_cli.variant_install_help import installation_guides
-from oncotracer_cli.variant_resources import MAX_CHILDREN, MAX_SEARCHED, discover_variant_resources
+from oncotracer_cli.variant_resources import (MAX_CHILDREN, MAX_FFPERASE_REGISTERED_PREFIXES,
+    MAX_SEARCHED, discover_variant_resources)
 
 
 class VariantResourceTests(unittest.TestCase):
@@ -180,6 +181,42 @@ class VariantResourceTests(unittest.TestCase):
         self.assertEqual(result['fields']['variant_ffperase_prefix'], str(good))
         self.assertTrue(self.resources(result)['ffperase_prefix']['inventory_compatible'])
         self.assertIn(str(bad), [item['path'] for item in result['candidates']])
+
+    def test_registered_ffpe_runtime_after_general_search_limit_is_detected_read_only(self):
+        good = self.ffpe_runtime(self.root / "external/classifier")
+        bad = self.tools(self.root / "external/ffperase_picard_metrics", "python")
+        entries = [str(self.root / "external" / f"unrelated-{index}") for index in range(101)]
+        entries.append(str(good))  # The real server's compatible prefix is line 102.
+        self.file(self.home / ".conda/environments.txt", "\n".join(entries) + "\n")
+        before = {path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()}
+        with patch("subprocess.run", side_effect=AssertionError("executed runtime")), \
+             patch("subprocess.Popen", side_effect=AssertionError("executed runtime")), \
+             patch.object(assets, "_download", side_effect=AssertionError("downloaded resource")):
+            found = self.detect(specimen_type="ffpe")
+            explicit = self.detect(specimen_type="ffpe", values={
+                "variant_ffperase_prefix": str(bad), "variant_annovar": "off",
+                "variant_download_resources": False, "variant_accept_ffperase_license": False,
+            })
+        self.assertEqual(found["fields"]["variant_ffperase_prefix"], str(good))
+        self.assertTrue(self.resources(found)["ffperase_prefix"]["inventory_compatible"])
+        self.assertEqual(explicit["fields"]["variant_ffperase_prefix"], str(bad))
+        self.assertFalse(self.resources(explicit)["ffperase_prefix"]["inventory_compatible"])
+        self.assertNotIn("variant_download_resources", explicit["fields"])
+        self.assertNotIn("variant_accept_ffperase_license", explicit["fields"])
+        self.assertEqual(before, {path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()})
+
+    def test_ffpe_registry_search_stops_at_512_entries(self):
+        good = self.ffpe_runtime(self.root / "external/classifier")
+        registry = self.home / ".conda/environments.txt"
+        entries = [str(self.root / "external" / f"unrelated-{index}")
+                   for index in range(MAX_FFPERASE_REGISTERED_PREFIXES)]
+        self.file(registry, "\n".join([*entries[:-1], str(good)]) + "\n")
+        self.assertEqual(self.detect(specimen_type="ffpe")["fields"]["variant_ffperase_prefix"], str(good))
+        self.file(registry, "\n".join([*entries, str(good)]) + "\n")
+        beyond = self.detect(specimen_type="ffpe")
+        self.assertNotIn("variant_ffperase_prefix", beyond["fields"])
+        self.assertTrue(any("first 512 registered environments" in note for note in beyond["notes"]))
+        self.assertLessEqual(len(beyond["searched"]), MAX_SEARCHED)
 
     def test_picard_only_runtime_is_not_autofilled_but_explicit_path_is_preserved(self):
         bad = self.tools(self.home / 'anaconda3/envs/ffperase_picard_metrics', 'python')
