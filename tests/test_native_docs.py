@@ -32,6 +32,29 @@ ACTIVE = [
 
 
 class NativeDocumentationTests(unittest.TestCase):
+    def assert_recorded_source_matches(self, relative: str, expected: str) -> None:
+        from oncotracer_cli.cli import DEFAULT_IMAGE
+
+        content = (ROOT / relative).read_bytes()
+        compatibility = json.loads(
+            (ROOT / "docs/assets/tutorial/image-default-compatibility.json").read_text()
+        )
+        self.assertEqual(compatibility["schema"], 1)
+        self.assertEqual(set(compatibility["files"]), {
+            "oncotracer_cli/cli.py", "docs/assets/setup-demo/mock-api.js",
+        })
+        self.assertEqual(compatibility["current_image"], DEFAULT_IMAGE)
+        transition = compatibility["files"].get(relative)
+        if transition:
+            self.assertEqual(transition["recorded_sha256"], expected)
+            self.assertEqual(transition["current_sha256"], hashlib.sha256(content).hexdigest())
+            current = compatibility["current_image"].encode()
+            recorded = compatibility["recorded_image"].encode()
+            self.assertNotEqual(current, recorded)
+            self.assertEqual(content.count(current), 1)
+            content = content.replace(current, recorded)
+        self.assertEqual(hashlib.sha256(content).hexdigest(), expected, relative)
+
     def test_pip_installation_needs_no_checkout_and_source_route_uses_main(self) -> None:
         for relative in ("README.md", "docs/installation.md"):
             text = (ROOT / relative).read_text(encoding="utf-8")
@@ -125,13 +148,29 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIs(record["passed"], True)
         self.assertIs(record["analysis_started"], False)
         self.assertIs(record["real_reads_downloaded"], False)
+        active_job_review = json.loads(
+            (assets / "active-job-ui-compatibility.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(active_job_review["schema"], 1)
+        self.assertEqual(active_job_review["current_page_sha256"],
+                         hashlib.sha256(PAGE.encode("utf-8")).hexdigest())
+        self.assertTrue(active_job_review["replacements"])
         recorded_page = PAGE
+        for replacement in active_job_review["replacements"]:
+            self.assertNotEqual(replacement["recorded"], replacement["current"])
+            self.assertTrue(replacement["current"])
+            self.assertEqual(recorded_page.count(replacement["current"]), 1)
+            recorded_page = recorded_page.replace(
+                replacement["current"], replacement["recorded"], 1
+            )
+        self.assertEqual(active_job_review["recorded_page_sha256"],
+                         hashlib.sha256(recorded_page.encode("utf-8")).hexdigest())
         compatibility = record.get("ui_compatibility")
         if compatibility:
             import html
             from oncotracer_cli.variant_model_assets import CLAIR3_PROFILES
             self.assertEqual(compatibility["reviewed_ui_page_sha256"],
-                             hashlib.sha256(PAGE.encode("utf-8")).hexdigest())
+                             hashlib.sha256(recorded_page.encode("utf-8")).hexdigest())
             profiles = compatibility["added_unrecorded_clair3_profiles"]
             self.assertTrue(profiles)
             self.assertEqual(len(profiles), len(set(profiles)))
@@ -142,8 +181,9 @@ class NativeDocumentationTests(unittest.TestCase):
                 recorded_page = recorded_page.replace(option, "")
         self.assertEqual(record["ui_page_sha256"],
                          hashlib.sha256(recorded_page.encode("utf-8")).hexdigest())
-        self.assertEqual(record["mock_api_sha256"], hashlib.sha256(
-            (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes()).hexdigest())
+        self.assert_recorded_source_matches(
+            "docs/assets/setup-demo/mock-api.js", record["mock_api_sha256"]
+        )
         pages = {"quick-start-illumina-ont": None,
                  "quick-start-illumina": "docs/quick_start.md",
                  "quick-start-ont": "docs/quick_start.md",
@@ -187,7 +227,7 @@ class NativeDocumentationTests(unittest.TestCase):
         for relative, expected in record["source_files"].items():
             self.assertFalse(Path(relative).is_absolute())
             self.assertNotIn("..", Path(relative).parts)
-            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected, relative)
+            self.assert_recorded_source_matches(relative, expected)
         pages = {"quick-start-terminal-illumina": "docs/quick_start.md",
                  "quick-start-terminal-ont": "docs/quick_start.md",
                  "quick-start-terminal-hcc1143": "docs/public_cohort.md"}

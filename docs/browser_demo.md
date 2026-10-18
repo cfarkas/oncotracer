@@ -20,6 +20,9 @@ folders only.
 Watch the browser walkthroughs in [QuickStart 1](quick_start.md#1-interactive-launch)
 and [QuickStart 2](public_cohort.md#1-interactive-launch), then try the controls yourself.
 
+The installed app now restores saved sample assignments when you reload a running
+session. This read-only run summary is newer than the recorded setup walkthroughs.
+
 ## What to try
 
 1. Choose **Illumina** or **ONT**, then explicitly choose **Fresh** or **FFPE**
@@ -53,7 +56,7 @@ For Docker, use the image that includes the variant tools:
 
 ```bash
 oncotracer --interactive --backend docker --project "$PWD/my-study" \
-  --image carlosfarkas/oncotracer:fastq-variants-20261017 --variants
+  --image carlosfarkas/oncotracer:run-audit-20261018 --variants
 ```
 
 ### Terminal equivalents
@@ -67,7 +70,7 @@ oncotracer setup --terminal --project "$PWD/my-study" --backend conda --run
 
 ```bash
 oncotracer setup --terminal --project "$PWD/my-study" --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20261017 --variants --run
+  --image carlosfarkas/oncotracer:run-audit-20261018 --variants --run
 ```
 
 To record the same preservation in terminal setup, add `--variant-specimen-type fresh`

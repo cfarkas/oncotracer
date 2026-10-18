@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "recorded_image": "carlosfarkas/oncotracer:fastq-variants-20261017",
+  "current_image": "carlosfarkas/oncotracer:run-audit-20261018",
+  "published_image_source_commit": "90a24b9764f613939e0e4436fbe17f10dda90ba5",
+  "published_image_digest": "sha256:105fee91440f65529e6d499b3b38eab22d19866de5f046fa8f59db10565f220f",
+  "scope": "Only the default Docker image reference changed in these captured source files. Original recording manifests, media bytes and source hashes remain unchanged; the recorded Conda setup behavior is unaffected.",
+  "files": {
+    "oncotracer_cli/cli.py": {
+      "recorded_sha256": "3d9cb6eebeda64ddeb4fe6cae0c1cd2ff48885a557fac7225ebb83dfef1a55a8",
+      "current_sha256": "326dbdfdbf5d26cca82477dbbf457b379f1d89906248bc7cf73edb034f5d3189"
+    },
+    "docs/assets/setup-demo/mock-api.js": {
+      "recorded_sha256": "14063ecbb8832326c6442729bfb733ee77cc04cef79a3e634b22786faca29cc4",
+      "current_sha256": "ada68d6837f22c62442cd49588ebd673b23a95c95be5c78a73b2ce9cb86a53b3"
+    }
+  }
+}

@@ -199,6 +199,113 @@ class WebTests(unittest.TestCase):
             self.state.run({"project_id": prepared["id"]})
             popen.assert_called_once()
 
+    def test_running_status_retains_reviewed_assignments_without_rereading_inputs(self):
+        self.fastq("reads/barcode01/batch.fastq.gz")
+        self.fastq("reads/barcode02/batch.fastq.gz")
+        prepared = self.prepare(mode="ont", caller="qdnaseq", samples=[
+            {"id": 0, "name": "reviewed-case", "type": "custom", "label": "study tag", "role": "tumor"},
+            {"id": 1, "name": "reviewed-control", "type": "control"}])
+        with patch("oncotracer_cli.web.subprocess.Popen") as popen, patch("oncotracer_cli.web.threading.Thread"):
+            popen.return_value.pid = 123
+            initial = self.state.run({"project_id": prepared["id"]})
+        summary = initial["reviewed_summary"]
+        self.assertEqual(summary["project_id"], prepared["id"])
+        self.assertEqual(summary["config"], {
+            "mode": "ont", "backend": "conda", "analysis": "cna", "threads": 2,
+            "caller": "qdnaseq", "bin_size_kb": 100, "run_variants": False,
+            "specimen_type": None, "variant_callers": None})
+        self.assertEqual([(row["name"], row["sample_type"], row["analysis_role"], row["barcode"])
+                          for row in summary["samples"]],
+                         [("reviewed-case", "study tag", "tumor", "barcode01"),
+                          ("reviewed-control", "normal", "normal", "barcode02")])
+        self.assertNotIn("fastq_files", json.dumps(summary))
+        self.assertNotIn("input_snapshot", initial)
+        # A newly opened page must see the run's frozen review, not a new scan or edited YAML.
+        self.state.projects[prepared["id"]]["reviewed_summary"]["samples"][0]["name"] = "later-edit"
+        Path(prepared["config_path"]).write_text("unrelated: later edit\n")
+        with patch("oncotracer_cli.web.discover_fastqs", side_effect=AssertionError("status must not scan")), \
+             patch("oncotracer_cli.web.load_flat_yaml", side_effect=AssertionError("status must not reload config")):
+            recovered = self.state.status()
+        self.assertEqual(recovered["reviewed_summary"], summary)
+        recovered["reviewed_summary"]["samples"][0]["name"] = "client edit"
+        self.assertEqual(self.state.status()["reviewed_summary"], summary)
+
+    def test_reviewed_assignments_are_only_in_authenticated_status(self):
+        self.fastq("reads/detected.fastq.gz")
+        prepared = self.prepare(samples=[{"id": 0, "name": "reviewed-name", "type": "cancer"}])
+        with patch("oncotracer_cli.web.subprocess.Popen") as popen, patch("oncotracer_cli.web.threading.Thread"):
+            popen.return_value.pid = 123
+            self.state.run({"project_id": prepared["id"]})
+        server = self.start_server()
+        code, content, _ = self.request(server, "GET", "/api/status", **{"X-OncoTracer-Token": ""})
+        self.assertEqual(code, 403)
+        self.assertNotIn(b"reviewed-name", content)
+        code, content, _ = self.request(server, "GET", "/api/status")
+        self.assertEqual(code, 200)
+        summary = json.loads(content)["reviewed_summary"]
+        self.assertEqual(summary["samples"][0]["name"], "reviewed-name")
+        self.assertEqual(summary["samples"][0]["detected_name"], "detected")
+        self.assertNotIn("fingerprint", summary)
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for browser reload checks")
+    def test_reloaded_browser_restores_readonly_review_before_any_discovery(self):
+        from oncotracer_cli.web_ui import PAGE
+        render_and_poll = PAGE.split("function showReviewedRun(job){", 1)[1].split("$('stop').onclick=", 1)[0]
+        restore = PAGE.split("async function restoreRunOrDiscover(defaults){", 1)[1].split("(async()=>", 1)[0]
+        script = r"""
+const assert=require('node:assert/strict');
+const nodes={};
+const $=id=>nodes[id]||(nodes[id]={hidden:false,disabled:false,textContent:'',children:[],parentElement:{hidden:false},replaceChildren(){this.children=[];},append(child){this.children.push(child);}});
+const show=(id,yes)=>$(id).hidden=!yes;
+const node=(tag,text)=>({tag,textContent:text,children:[],append(child){this.children.push(child);}});
+const controls=[$('scan'),$('prepare'),$('run'),$('threads')];
+const document={querySelectorAll:()=>controls};
+let activeJob=null,pollTimer=null,dismissedJobId=null,variantSpecimen='fresh',variantPairDefaults={};
+let scans=0,requestError=null,errors=[],requests=[];
+$('scan').onclick=async()=>{scans++;};
+const showProgress=()=>{},offerCleanup=()=>{},variantSettings=()=>{};
+const failure=error=>errors.push(error.message);
+const clearTimeout=()=>{},setTimeout=()=>1;
+const summary={project_id:'saved-job',config_path:'/project/config/run.yml',config:{mode:'ont',backend:'docker',threads:20,analysis:'cna',caller:'ichorcna',bin_size_kb:500,run_variants:true,variant_callers:'clair3',specimen_type:'fresh'},samples:[{name:'reviewed-name',sample_type:'cancer',analysis_role:'tumor',detected_name:'barcode01',barcode:'barcode01',file_count:3}]};
+let reply={project_id:'saved-job',project_path:'/project',status:'running',log:'alignment',log_path:'/project/log',reviewed_summary:summary};
+const api=async endpoint=>{requests.push(endpoint);if(requestError)throw requestError;return reply;};
+""" + "function showReviewedRun(job){" + render_and_poll + "async function restoreRunOrDiscover(defaults){" + restore + r"""
+(async()=>{
+  const defaults={mode:'ont',input_folder:'/newly-scanned-inputs'};
+  await restoreRunOrDiscover(defaults);
+  assert.equal(scans,0);
+  assert.deepEqual(requests,['/api/status']);
+  for(const id of ['platform-card','specimen-card','input-card','samples-card','settings-card'])assert.equal($(id).hidden,true,id);
+  assert.equal($('reviewed-run').hidden,false);
+  assert.equal($('reviewed-run-samples').children[0].children[0].textContent,'reviewed-name');
+  assert.equal($('reviewed-run-samples').children[0].children[3].textContent,'barcode01');
+  assert.equal($('config-preview').parentElement.hidden,true);
+  for(const control of controls)assert.equal(control.disabled,true);
+  assert.equal($('stop').disabled,false);
+  assert.match($('reviewed-run-config').textContent,/20 CPU threads/);
+  assert.match($('reviewed-run-config').textContent,/clair3/);
+  for(const status of ['stopping','complete','failed']){
+    reply={...reply,status};await poll();
+    assert.equal($('reviewed-run-samples').children.length,1);
+    assert.equal($('reviewed-run-samples').children[0].children[0].textContent,'reviewed-name');
+    assert.equal(scans,0);
+  }
+  reply={...reply,reviewed_summary:{...summary,project_id:'another-job'}};
+  await poll();
+  assert.equal($('reviewed-run-samples').children.length,0);
+  assert.match($('reviewed-run-note').textContent,/no saved assignment snapshot/);
+  assert.equal($('samples-card').hidden,true);
+  // A failed status lookup must not fall through to a fresh, misleading scan.
+  requestError=Error('offline');await restoreRunOrDiscover(defaults);
+  assert.equal(scans,0);assert.deepEqual(errors,['offline']);
+  requestError=null;reply={status:'idle'};await restoreRunOrDiscover(defaults);
+  assert.equal(scans,1);
+})().catch(error=>{console.error(error);process.exitCode=1;});
+"""
+        checked = subprocess.run([shutil.which("node"), "-e", script], capture_output=True, text=True)
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+        self.assertIn("await restoreRunOrDiscover(defaults);", PAGE)
+
     def test_changed_config_cannot_run_from_old_review(self):
         self.fastq("reads/library.fastq.gz")
         prepared = self.prepare()

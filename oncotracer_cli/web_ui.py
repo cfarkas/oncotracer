@@ -36,6 +36,7 @@ PAGE = r'''<!doctype html>
 <label class="check"><input id="variants" type="checkbox">Add complete short-variant analysis (Illumina: GLIMPSE2 included)</label>
 <div id="variant-fields" hidden><!-- VARIANT_FORM --></div>
 <h3>Save project settings</h3><label for="project-mode">Project destination</label><select id="project-mode"><option value="new">Create a project</option><option value="existing">Use existing project · overwrite settings</option></select><div id="new-project-fields" class="grid"><div><label for="project-parent">Parent folder</label><div class="row"><input id="project-parent"><button data-browse="project-parent">Browse</button></div></div><div><label for="project-name">Project folder name</label><input id="project-name" value="oncotracer-analysis" spellcheck="false"></div></div><div id="existing-project-fields" hidden><label for="existing-project">Existing project folder</label><div class="row"><input id="existing-project" autocomplete="off" spellcheck="false" placeholder="Full path to the project folder"><button data-browse="existing-project">Choose existing project</button></div><p class="hint">The selected folder is used directly; no extra project folder is added.</p></div><p class="hint">Save to a new or existing project. Saving replaces its configuration and sample assignments, with previous settings kept in config/backups/.</p><div class="actions"><button class="primary" id="prepare">Save configuration and check</button><span class="hint">Analysis starts only when you choose Run below.</span></div></section>
+<section class="card" id="reviewed-run" hidden aria-labelledby="reviewed-run-title"><div class="sectionhead"><h2 id="reviewed-run-title">Saved assignments for this run</h2></div><p class="hint">Read-only snapshot reviewed before this run started. These are the assignments used by the analysis.</p><p id="reviewed-run-config"></p><p id="reviewed-run-note" class="notice" hidden></p><div class="fastq-inventory" tabindex="0" aria-label="Reviewed sample assignments"><table><thead><tr><th>Analysis sample</th><th>Sample type</th><th>Analysis role</th><th>Detected sample / barcode</th><th>FASTQ files</th></tr></thead><tbody id="reviewed-run-samples"></tbody></table></div></section>
 <section class="card" id="review-card" hidden><div class="sectionhead"><span class="step">6</span><h2>Review and run</h2><span class="badge" id="check-badge"></span></div><p id="saved-path" class="folderpath"></p><div id="check-messages"></div><details><summary>View the saved configuration</summary><pre id="config-preview"></pre></details><p class="notice">Run analysis validates the saved settings, prepares missing analysis tools, and downloads reference files when needed. Processing can take time. Keep this terminal open to follow progress here.</p><div class="actions"><button id="run" class="primary">Run analysis</button><button id="stop" hidden>Stop analysis</button><span id="job-status" role="status"></span><a id="open-results" class="result-link" target="_blank" rel="noopener noreferrer" hidden>Open results</a><button id="new-analysis" hidden>Set up another analysis</button></div><div id="run-progress" hidden><div class="hardware"><div><strong id="run-elapsed">0s</strong><span>Elapsed</span></div><div><strong id="run-step-eta">Waiting for progress</strong><span>Current step ETA</span></div><div><strong id="run-overall-eta">Not yet known</strong><span>Overall analysis ETA</span></div></div><p id="run-stage"></p><p id="run-eta-note" class="hint"></p></div><p id="log-path" class="folderpath"></p><pre id="logs" class="logs" hidden></pre></section>
 </div><footer>OncoTracer runs on this computer. This page loads no external assets and does not upload your files.</footer></main>
 <dialog id="browser"><div class="sectionhead"><h2>Select a folder</h2><button id="close-browser" style="margin-left:auto" aria-label="Close folder navigator">Close</button></div><p class="hint">Browse files and folders on the computer running OncoTracer. Click a folder to open it.</p><nav id="browser-shortcuts" class="browser-shortcuts" aria-label="Computer locations"></nav><div id="browser-error" class="error" role="alert" hidden></div><div class="row"><button id="browser-computer">Browse computer</button><input id="browser-location" aria-label="Folder path"><button id="browser-go">Go</button><button id="browser-up">Up</button></div><nav id="browser-breadcrumbs" class="breadcrumbs" aria-label="Folder breadcrumbs"></nav><p id="browser-path" class="folderpath"></p><div id="folders" class="folders"></div><p id="folder-summary" class="hint"></p><div class="actions"><button id="use-folder" class="primary">Use this folder</button></div></dialog>
@@ -293,10 +294,32 @@ function showProgress(job){
   $('run-stage').textContent=progress.stage+(progress.percent===null||progress.percent===undefined?'':' · '+progress.percent+'%');
   $('run-eta-note').textContent=progress.note;show('run-progress',true);
 }
+function showReviewedRun(job){
+  for(const id of ['platform-card','specimen-card','input-card','samples-card','settings-card'])show(id,false);
+  $('config-preview').parentElement.hidden=true;
+  show('reviewed-run',true);$('reviewed-run-samples').replaceChildren();
+  const review=job.reviewed_summary;
+  if(!review||review.project_id!==job.project_id){
+    $('reviewed-run-config').textContent='';$('saved-path').textContent='Project: '+job.project_path;
+    $('reviewed-run-note').textContent='This session has no saved assignment snapshot. Review the project configuration; a new folder scan does not describe the running analysis.';
+    show('reviewed-run-note',true);return;
+  }
+  show('reviewed-run-note',false);$('saved-path').textContent='Saved: '+review.config_path;
+  const config=review.config,parts=[config.mode==='ont'?'Oxford Nanopore':'Illumina',config.backend,config.threads+' CPU threads',config.analysis];
+  if(config.specimen_type)parts.push(config.specimen_type.toUpperCase());
+  if(config.analysis!=='methylation')parts.push(config.caller+' · '+config.bin_size_kb+' kb');
+  parts.push(config.run_variants?'Variants: '+config.variant_callers:'Small variants off');
+  $('reviewed-run-config').textContent=parts.join(' · ');
+  for(const sample of review.samples){
+    const row=node('tr');
+    for(const value of [sample.name,sample.sample_type,sample.analysis_role,sample.barcode||sample.detected_name,sample.file_count])row.append(node('td',String(value)));
+    $('reviewed-run-samples').append(row);
+  }
+}
 async function poll(){
   clearTimeout(pollTimer);
   try{
-    const job=await api('/api/status');if(job.project_id===dismissedJobId)return;activeJob=job;if(job.status==='idle')return;showProgress(job);
+    const job=await api('/api/status');if(job.project_id===dismissedJobId)return false;activeJob=job;if(job.status==='idle')return false;showProgress(job);showReviewedRun(job);
     show('workflow',true);show('review-card',true);$('run').hidden=true;
     const active=['running','stopping'].includes(job.status);
     $('job-status').textContent=job.status==='running'?'Analysis running…':job.status==='stopping'?(job.stop_error||'Stopping analysis…'):job.status==='stopped'?'Analysis stopped':job.status==='removed'?'Project folder removed':job.status==='complete'?'Analysis completed · exit 0':'Analysis failed · exit '+job.exit_code;
@@ -306,7 +329,8 @@ async function poll(){
     for(const field of document.querySelectorAll('main button, main input, main select'))field.disabled=true;
     show('stop',active);$('stop').disabled=job.status==='stopping'&&!job.stop_error;
     if(active){pollTimer=setTimeout(poll,1000);}else{$('new-analysis').disabled=false;show('new-analysis',true);if(job.status==='stopped')offerCleanup(job);}
-  }catch(error){failure(error);}
+    return true;
+  }catch(error){failure(error);return true;}
 }
 $('stop').onclick=async()=>{
   if(!activeJob||!['running','stopping'].includes(activeJob.status))return;
@@ -320,6 +344,7 @@ function returnToSetup(){
   for(const field of document.querySelectorAll('main button, main input, main select'))field.disabled=false;
   mode=null;scan=null;binsizeCaller=null;variantMode=null;variantSpecimen=null;resetVariantPairing();$('variants').checked=false;variantSettings();
   for(const id of ['stop','run-progress','fastq-preview','workflow','specimen-card','new-analysis','samples-card','settings-card','open-results','logs'])show(id,false);
+  show('reviewed-run',false);show('platform-card',true);show('input-card',true);$('config-preview').parentElement.hidden=false;
   invalidate();$('run').hidden=false;for(const name of ['ont','illumina'])$('choose-'+name).setAttribute('aria-pressed','false');$('platform-card').scrollIntoView({behavior:'smooth'});$('choose-ont').focus();
 }
 $('keep-project').onclick=returnToSetup;
@@ -331,6 +356,10 @@ $('remove-project').onclick=async()=>{
 };
 $('new-analysis').onclick=returnToSetup;
 $('run').onclick=()=>busy($('run'),async()=>{if(!prepared)throw Error('Save and review a configuration first.');await api('/api/run',{project_id:prepared.id});await poll();$('run').hidden=true;});
+async function restoreRunOrDiscover(defaults){
+  if(await poll())return;
+  if(defaults.mode&&variantSpecimen){show('workflow',true);if(defaults.input_folder)await $('scan').onclick();if(defaults.variant_matched_normals){variantPairDefaults={...defaults.variant_matched_normals};variantSettings();}}
+}
 (async()=>{try{if(!token)throw Error('Open the complete URL printed by oncotracer web, including the session code after #.');const system=await api('/api/system');hardware=system.hardware;binsizes=system.qdnaseq_binsizes;for(const place of system.locations||[]){const button=node('button',place.name);button.title=place.path;button.onclick=()=>browse(place.path);$('browser-shortcuts').append(button);}$('input-folder').value=system.start_dir;$('project-parent').value=system.start_dir;$('project-name').value=system.suggested_project_name||'oncotracer-analysis';$('threads').value=system.suggested_threads;$('threads').max=hardware.cpu_workers_available;const ram=bytes=>bytes===null||bytes===undefined?'Unknown':(bytes/1073741824).toFixed(1)+' GiB';for(const [value,label]of[[hardware.cpu_workers_available,'CPU workers available'],[ram(hardware.ram_available_bytes),'RAM available'],[ram(hardware.ram_total_bytes),'RAM total'],[String((hardware.gpus||[]).length),'GPUs detected']]){const item=node('div');item.append(node('strong',String(value)),node('span',label));$('hardware').append(item);}$('gpu-note').textContent=(hardware.gpus||[]).map(gpu=>gpu.name+(gpu.memory_total_bytes?' · '+ram(gpu.memory_total_bytes)+' VRAM':'')).join('; ')+' '+(hardware.gpu_note||'CNA analysis uses CPU.');const defaults=system.defaults||{};for(const key of ['variant_parallel_samples','variant_memory','variant_patients','variant_confidence_gwas','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])if(defaults[key])$(key).value=defaults[key];
 if(defaults.mode)choose(defaults.mode);
 if(defaults.image)$('docker_image').value=defaults.image;
@@ -345,8 +374,7 @@ if(defaults.managed_variant_prefix)$('variant_tool_prefix').dataset.managedPrefi
 if(defaults.variant_runtime_note)$('variant-detection-status').textContent=defaults.variant_runtime_note;
 variantSettings();methylationSettings();
 $('device').value=defaults.gpu?'gpu':'cpu';$('license').checked=Boolean(defaults.accept_sturgeon_license);$('reference').onchange();
-if(defaults.mode&&variantSpecimen){show('workflow',true);if(defaults.input_folder)await $('scan').onclick();if(defaults.variant_matched_normals){variantPairDefaults={...defaults.variant_matched_normals};variantSettings();}}
-await poll();}catch(error){failure(error);}finally{show('setup-loading',false);document.querySelector('main').inert=false;document.querySelector('main').setAttribute('aria-busy','false');}})();
+await restoreRunOrDiscover(defaults);}catch(error){failure(error);}finally{show('setup-loading',false);document.querySelector('main').inert=false;document.querySelector('main').setAttribute('aria-busy','false');}})();
 </script></body></html>'''
 
 from .variant_form_ui import variant_form

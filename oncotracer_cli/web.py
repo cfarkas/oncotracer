@@ -449,7 +449,23 @@ class WebState:
             paths = [config_path, project / "config/sample_metadata.csv"]
             if discovered.mode == "illumina":
                 paths.append(project / "config/samplesheet.csv")
+            # Keep only reviewed display fields, never arbitrary YAML or patient metadata.
+            saved = load_flat_yaml(config_path)
+            reviewed_summary = {
+                "project_id": project_id, "project": str(project), "config_path": str(config_path),
+                "config": {"mode": discovered.mode, "backend": backend, "analysis": analysis,
+                           "threads": saved["threads"], "caller": caller, "bin_size_kb": binsize,
+                           "run_variants": bool(saved.get("run_variants", False)),
+                           "specimen_type": saved.get("variant_specimen_type"),
+                           "variant_callers": saved.get("variant_callers") if saved.get("run_variants") else None},
+                "samples": [{"name": row["sample"], "sample_type": row["sample_type"],
+                             "analysis_role": row["analysis_role"],
+                             "detected_name": row["source"].sample,
+                             "barcode": row["source"].barcode,
+                             "file_count": len(row["source"].files)} for row in entries],
+            }
             prepared = {"id": project_id, "project": str(project), "config_path": str(config_path),
+                        "reviewed_summary": reviewed_summary,
                         "config_backup": str(args._setup_backup) if args._setup_backup else None,
                         "config": config_path.read_text(), "backend": backend, "valid": valid,
                         "check": report, "fingerprint": _fingerprint(paths),
@@ -535,6 +551,7 @@ class WebState:
                     raise
             self.job = {"project_id": prepared["id"], "status": "running", "exit_code": None,
                         "log_path": str(log_path), "pid": process.pid, "process": process,
+                        "_reviewed_summary": copy.deepcopy(prepared.get("reviewed_summary")),
                         "_started_at": time.monotonic(), '_prior_variant_status_mtime': prior_status,
                         '_prior_manifest_mtime': prior_manifest}
             threading.Thread(target=self._wait, args=(self.job,), daemon=True).start()
@@ -688,6 +705,9 @@ class WebState:
             result = {key: value for key, value in self.job.items() if key != "process" and not key.startswith("_")}
             prepared = self.projects[result["project_id"]]
             result["project_path"] = prepared["project"]
+            reviewed = self.job.get("_reviewed_summary")
+            if reviewed is not None:
+                result["reviewed_summary"] = copy.deepcopy(reviewed)
             result["remove_block_reason"] = _project_removal_error(prepared) if result["status"] == "stopped" else None
             result["can_remove"] = result["status"] == "stopped" and not result["remove_block_reason"]
             if result["status"] == "removed":

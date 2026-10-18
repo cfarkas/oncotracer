@@ -69,12 +69,20 @@ class NativeCliTests(unittest.TestCase):
 
     def test_docker_install_default_still_pulls(self) -> None:
         from oncotracer_cli import cli
-        args = build_parser().parse_args(["install", "--docker", "--image", "registry/image:tag"])
-        with patch.object(cli.shutil, "which", return_value="/bin/docker"), \
-             patch.object(cli, "_run") as run, \
-             patch.object(cli, "_save_install_config"):
-            cli._install_docker(args)
-        self.assertIn(["/bin/docker", "pull", "registry/image:tag"], [call.args[0] for call in run.call_args_list])
+        for flags, image in [
+            ([], "carlosfarkas/oncotracer:run-audit-20261018"),
+            (["--image", "registry/image:tag"], "registry/image:tag"),
+        ]:
+            with self.subTest(image=image):
+                args = build_parser().parse_args(["install", "--docker", *flags])
+                with patch.object(cli.shutil, "which", return_value="/bin/docker"), \
+                     patch.object(cli, "_run") as run, \
+                     patch.object(cli, "_save_install_config") as save:
+                    cli._install_docker(args)
+                commands = [call.args[0] for call in run.call_args_list]
+                self.assertIn(["/bin/docker", "pull", image], commands)
+                self.assertIn(["/bin/docker", "run", "--rm", image, "doctor", "--backend", "host"], commands)
+                save.assert_called_once_with({"backend": "docker", "image": image})
 
     def test_docker_install_missing_or_unhealthy_local_image_does_not_save(self) -> None:
         from oncotracer_cli import cli

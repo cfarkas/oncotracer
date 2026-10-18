@@ -61,7 +61,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:fastq-variants-20261017"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:run-audit-20261018"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
