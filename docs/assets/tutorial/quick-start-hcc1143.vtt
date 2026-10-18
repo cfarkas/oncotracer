@@ -1,0 +1,46 @@
+WEBVTT
+
+1
+00:00:00.923 --> 00:00:05.982
+QuickStart 2 · HCC1143 cohort
+Open browser setup after downloading and verifying the reads. This recording uses synthetic file listings and checks.
+
+2
+00:00:05.982 --> 00:00:12.709
+QuickStart 2 · HCC1143 cohort · preservation
+Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.
+
+3
+00:00:12.709 --> 00:00:27.170
+QuickStart 2 · HCC1143 cohort · discover inputs
+Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together.
+
+4
+00:00:27.170 --> 00:00:42.652
+QuickStart 2 · HCC1143 cohort · sample groups
+Assign all three libraries to Cancer. DMSO is a treatment control, not a normal genome.
+
+5
+00:00:42.652 --> 00:00:51.050
+QuickStart 2 · HCC1143 cohort · CNA settings
+Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins.
+
+6
+00:00:51.050 --> 00:00:57.501
+QuickStart 2 · HCC1143 cohort · tools and reference
+Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis.
+
+7
+00:00:57.501 --> 00:01:04.234
+QuickStart 2 · HCC1143 cohort · separate project
+Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart.
+
+8
+00:01:04.234 --> 00:01:10.975
+QuickStart 2 · HCC1143 cohort · save and review
+Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated.
+
+9
+00:01:10.975 --> 00:01:17.833
+QuickStart 2 · HCC1143 cohort · ready for your run
+In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run.

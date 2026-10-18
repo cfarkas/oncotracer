@@ -1,27 +1,22 @@
 # OncoTracer
 
-
-**Illumina short variants:** `oncotracer --interactive --backend conda` or `nextflow run main.nf --interactive --backend conda`. Choose platform, **Fresh** or **FFPE**, then **Small variants** in the browser. [Migration](docs/GLIMPSE_MIGRATION.md), [parallelism](docs/MULTISAMPLE_QUICKSTART.md), [repairs](docs/glimpse2_repair.txt).
-
 [![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
-Analyze Illumina and Oxford Nanopore (ONT) reads for DNA copy-number changes and optional small variants. Configure samples in your browser and follow analysis progress through to tables, plots and reports. ONT methylation supports MARLIN leukemia and Sturgeon CNS-tumor research classifiers. For research use.
+Analyze Illumina and Oxford Nanopore (ONT) reads for DNA copy-number changes and small variants. Set up samples in your browser, run the analysis, and review tables, plots and reports. ONT methylation supports MARLIN leukemia and Sturgeon CNS-tumor research classifiers. For research use.
 
-**[Conda installation](#conda) · [Docker installation](#docker) · [Uninstall](#uninstall) · [Try the interactive demo](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)**
+## Quick start
 
-## Install
-
-Use Linux and Python 3.10–3.13, with **Conda or Docker** for analysis tools. Install the command in your Python environment:
+Use Linux and Python 3.10–3.13. Install the application in your Python environment:
 
 ```bash
 pip install oncotracer
 ```
 
-No Git checkout is required. Pip installs the application and bundled workflows; choose **one** backend below to prepare verified analysis tools. See [installation details](docs/installation.md) for virtual environments and [source installation](docs/installation_details.md#install-from-github) for development.
+No Git checkout is required. Choose **one** backend for the analysis tools:
 
 ### Conda
 
-With Conda available, install and check the managed analysis environments:
+With [Conda](https://github.com/conda-forge/miniforge#install) available:
 
 ```bash
 oncotracer install --conda
@@ -29,89 +24,91 @@ oncotracer doctor --backend conda
 oncotracer --interactive --backend conda
 ```
 
-Installation verifies bcftools 1.23.1 with HTSlib 1.24; setup and runs select its managed environment automatically. FFPERASE, ONT callers and annotation need [additional resources](docs/variants.md). Logs are saved.
-
 ### Docker
 
-The current image includes GLIMPSE2/FFPE repairs and concurrent-project support. Docker must be running and accessible:
+With Docker running and accessible:
 
 ```bash
 oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
 
-This route needs no host Conda. Select the analysis, Fresh or FFPE, and compatible callers in the browser. Choose verified model preparation on Run or existing resources in the [variant guide](docs/variants.md); FFPERASE downloads require license acceptance, and ANNOVAR remains separately supplied. ONT methylation uses the Conda route.
+The Docker image is saved for later commands. See [installation](docs/installation.md) for Python environments, requirements and other options. FFPE/ONT callers, model resources and ANNOVAR have [additional setup requirements](docs/variants.md); use Conda for ONT methylation.
 
-## Uninstall
+## Set up your analysis
 
-Preview removal of managed Conda tools and their global command, then remove them with a recovery copy:
+1. Choose **Illumina or ONT**, then **Fresh or FFPE**.
+2. Select input files, assign samples to Normal or Cancer, and choose the analysis and project folder.
+3. Review settings, select **Save configuration and check**, then **Run analysis**.
 
-```bash
-oncotracer uninstall --conda --dry-run
-oncotracer uninstall --conda --yes
-```
+Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
 
-For permanent removal instead, use:
-
-```bash
-oncotracer uninstall --conda --yes --purge
-```
-
-Separately created FFPE/ONT environments need separate removal. To remove the Docker image:
-
-```bash
-docker image rm carlosfarkas/oncotracer:fastq-variants-20261017
-```
-
-For command-only removal, use `oncotracer uninstall --global-launcher --yes`; then `python -m pip uninstall oncotracer` in the Python environment used for installation. Projects and results remain. See [uninstall and recovery](docs/uninstall.md).
-
-## Set up your analysis in the browser
-
-[![OncoTracer browser setup: assign samples, choose analysis settings, review and run. Click to explore the interactive demo.](docs/assets/setup-demo-preview.png)](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)
-
-**[Open the interactive demo →](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)** — explore the real interface with synthetic samples and simulated execution. No installation required. GitHub displays the preview; the linked documentation site runs the demo.
-
-For your own data, start the local server using the backend command above, or prefill a project:
+To prefill a project:
 
 ```bash
 oncotracer setup --project "$PWD/my-study" --mode illumina --input-folder /data/illumina
 ```
 
-1. **Choose Illumina or ONT, then Fresh or FFPE**, before selecting input files. Assign samples to Normal or Cancer; unassigned samples are excluded. Preservation comes from specimen records, not platform.
-2. **Choose settings**, including threads, reference, reports and optional variant callers. Use separate projects for Fresh and FFPE specimens.
-3. **Save configuration and check**, review the configuration, then **Run analysis**. Follow progress and open results when complete.
+### Nextflow entry
 
-Keep each terminal open and use its complete printed URL, including the session code after `#`. Sessions choose available ports, normally **127.0.0.1:8888**. See the [browser walkthrough](docs/browser_demo.md) or [setup guide](docs/setup.md).
-
-### Terminal-only setup
-
-For the same example, answer questions in the terminal and start the run:
+With Nextflow and an [OncoTracer source checkout](docs/installation_details.md#install-from-github), open the browser from any directory using the full path:
 
 ```bash
-oncotracer setup --terminal --project "$PWD/my-study" \
-  --mode illumina --input-folder /data/illumina --backend conda --run
+nextflow run /absolute/path/to/oncotracer-src/main.nf --interactive --backend conda
 ```
 
-For Docker, use `oncotracer setup --backend docker --terminal --run`.
+Use `--backend docker` for Docker. See [Nextflow setup and concurrent projects](docs/nextflow_entry.md).
+
+### Interactive demo
+
+[![OncoTracer browser setup: assign samples, choose settings, review and run. Click to explore the interactive demo.](docs/assets/setup-demo-preview.png)](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)
+
+[Try the demo](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html) with synthetic samples and simulated execution. See the [browser walkthrough](docs/browser_demo.md) for the complete sequence.
 
 ### Run saved settings
-
-For a Conda project:
 
 ```bash
 oncotracer check --config "$PWD/my-study/config/run.yml"
 oncotracer run --backend conda --config "$PWD/my-study/config/run.yml"
 ```
 
+For Docker, use `--backend docker`. Terminal setup and SSH are covered in the [headless guide](docs/headless.md).
+
+## Uninstall
+
+Remove the backend you installed, then the Python application.
+
+**Conda tools:** permanently remove the managed environments and their matching extra global command:
+
+```bash
+oncotracer uninstall --conda --yes --purge
+```
+
+**Docker image:** remove the selected image/tag:
+
+```bash
+docker image rm carlosfarkas/oncotracer:fastq-variants-20261017
+```
+
+This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Shared image layers may remain.
+
+**Python application:** in the Python environment used for installation:
+
+```bash
+python -m pip uninstall oncotracer
+```
+
+If an extra OncoTracer-owned global launcher remains, [remove it before the Python application](docs/uninstall.md#global-command). Pip removes its own console entry. See [component-by-component removal](docs/uninstall.md) for custom prefixes, separately installed tools and retained settings. User data and results remain.
+
 ## Guides and examples
 
 | Task | Guide |
 | --- | --- |
-| Test with public Illumina and ONT data | [QuickStart 1](docs/quick_start.md) · [QuickStart 2](docs/public_cohort.md) |
-| Terminal runs or remote browser over SSH | [CLI and headless servers](docs/headless.md) |
-| Prepare many libraries or barcodes | [Batch setup](docs/auto_params.md) · [Create CSV tables](docs/command_basics.md) |
+| Try public Illumina and ONT data | [QuickStart 1](docs/quick_start.md) · [QuickStart 2](docs/public_cohort.md) |
 | Check hardware or reuse genome indexes | [Requirements](docs/installation.md#requirements) · [Prebuilt indexes](docs/reference_indexes.md) |
-| Add methylation, variants or manuscript panels | [Methylation](docs/configuration/methylation.md) · [Variants](docs/variants.md) · [ANNOVAR](docs/annovar.md) · [Paper report](docs/paper_report.md) |
-| Understand results and partial failures | [Outputs](docs/outputs.md) · [Troubleshooting](docs/troubleshooting.md) |
+| Prepare multiple samples | [Batch setup](docs/auto_params.md) · [Command basics](docs/command_basics.md) |
+| Add analysis options | [Methylation](docs/configuration/methylation.md) · [Variants](docs/variants.md) · [Paper report](docs/paper_report.md) |
+| Understand results | [Outputs](docs/outputs.md) · [Troubleshooting](docs/troubleshooting.md) |
 
-See the [repository map](docs/repository_guide.md) for the purpose of each folder. The [complete documentation](https://cfarkas.github.io/oncotracer/) covers settings and validation. Optional `run_cna_classifier: true` adds CNA interpretation. Runs record commands and output checksums; released builds include `release-provenance.json`.
+The [complete documentation](https://cfarkas.github.io/oncotracer/) covers settings and validation. Optional `run_cna_classifier: true` adds CNA interpretation. Runs record commands and checksums; released builds include `release-provenance.json`.

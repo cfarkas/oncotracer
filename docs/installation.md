@@ -1,57 +1,18 @@
 # Install OncoTracer
 
-Install the command, then choose **Conda or Docker**. Keep software and projects separate.
+Use 64-bit Linux and Python 3.10–3.13. Install the application, then choose **Conda or Docker** for analysis tools.
 
-## Requirements
-
-Both routes need 64-bit Linux and Python 3.10–3.13 for the launcher.
-The Conda route also needs [Conda/Miniforge](https://github.com/conda-forge/miniforge#install).
-Docker must be running and accessible to your user; host Conda is unnecessary.
-
-Desktop browsing needs Zenity (Ubuntu/GNOME) or KDialog (KDE). Install either,
-or enter paths. Remote sessions use server paths.
-
-For small runs with 2–4 threads, plan for:
-
-| Analysis | Available RAM to plan for |
-| --- | --- |
-| Illumina copy-number analysis | 16 GiB |
-| ONT copy-number analysis | 24 GiB |
-| Methylation classifiers or report LLMs | Depends on the model; checked separately |
-
-Leave at least 60 GiB free for tools, references and a small run, plus FASTQs,
-BAMs and temporary files. Docker extraction and larger datasets need more.
-
-## 1. Install the command
-
-Install the application and bundled workflows in your Python environment:
+## Quick start
 
 ```bash
 pip install oncotracer
-oncotracer --help
 ```
 
-No Git checkout is needed. For a separate Python environment, or when system
-Python requires one:
-
-```bash
-python3 -m venv oncotracer-env
-source oncotracer-env/bin/activate
-python -m pip install oncotracer
-```
-
-Keep that environment. Scientific tools are installed and checked separately below.
-Development builds use the [GitHub source route](installation_details.md#install-from-github).
-
-## 2. Choose an analysis backend
-
-Replace the project path with the location where you plan to keep your analysis:
-
-```bash
-oncotracer system --path /absolute/path/to/my-study
-```
+No Git checkout is needed. If system Python requires a separate environment, use the [Python environment instructions](#python-environment) below.
 
 ### Conda
+
+Install [Conda/Miniforge](https://github.com/conda-forge/miniforge#install) first, then:
 
 ```bash
 oncotracer install --conda
@@ -59,86 +20,79 @@ oncotracer doctor --backend conda
 oncotracer --interactive --backend conda
 ```
 
-Terminal setup alternative to the last command:
-
-```bash
-oncotracer setup --terminal --backend conda
-```
-
-Installation creates isolated alignment, QDNAseq, ichorCNA, classifier/reporting,
-GISTIC and verified Illumina variant environments. Setup selects tools automatically. FFPErase, Strelka2 and ONT resources remain separate; see
-[variant setup](variants_reference.md#conda-and-docker).
+Installation prepares alignment, QDNAseq, ichorCNA, classifier/reporting, GISTIC and verified Illumina variant environments. Setup selects their tools automatically. FFPErase, Strelka2 and ONT resources need [additional setup](variants_reference.md#conda-and-docker).
 
 ### Docker
 
-The current image includes GLIMPSE2/FFPE repairs and supports concurrent projects:
+Docker must be running and accessible to your user. Host Conda is unnecessary:
 
 ```bash
 oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
 
-Terminal setup alternative with the same image:
+Installation saves the selected image; doctor and setup reuse it. Select small variants in the browser when needed. See [Docker variants](variants.md#run-cna-and-variants-with-docker) for models, FFPERASE licensing and ANNOVAR. Use [Conda for ONT methylation](configuration/methylation.md).
+
+## Start a project
+
+Use the complete printed browser URL and keep its terminal open. Choose **Illumina or ONT**, then **Fresh or FFPE**. Select inputs, assign samples to Normal or Cancer, choose a project folder and review settings. Click **Save configuration and check**, then **Run analysis**.
+
+For a named project:
 
 ```bash
-oncotracer setup --terminal --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer --interactive --backend conda --project /absolute/path/to/my-study
 ```
 
-Enable **Add small-variant calling** in the browser or append `--variants`.
-See [Docker variants](variants.md#run-cna-and-variants-with-docker) for models,
-FFPERASE licensing and ANNOVAR. The older `ghcr.io/cfarkas/oncotracer:2.1.0`
-image supports CNA. For methylation, use [Conda](configuration/methylation.md).
+Use `--backend docker` for Docker. Separate terminals can run separate projects at the same time. Each session gets its own URL and available port; give each run a distinct project/output folder and a share of CPU and memory.
 
-Backend installation creates `~/.local/bin/oncotracer` when needed and preserves
-an existing pip-owned command; `--no-launcher` opts out.
-`--verbose` logs packages; `--json` supports automation. See [advanced installation](installation_details.md).
-
-## 3. Start a project
-
-Use setup’s complete printed URL (normally **127.0.0.1:8888**) and keep its terminal
-open. Select FASTQs, assign samples to Normal or Cancer, review settings and
-choose a project folder. Click **Save configuration and check**, then **Run analysis**.
-See the [setup guide](setup.md) or [QuickStart 1](quick_start.md).
-
-The terminal alternatives collect settings through prompts; finish with **run**,
-or **save** to run later. Add `--variant-specimen-type fresh` or `ffpe` to record
-preservation for CNA-only setup. For scripts and SSH, see
-[terminal and headless servers](headless.md). Resume a saved project with:
-
-```bash
-oncotracer setup --project /absolute/path/to/my-study --run
-```
-
-To check and run a Conda project separately:
+For terminal prompts, use `oncotracer setup --terminal --backend conda`. To reopen a saved project, use `oncotracer setup --project /absolute/path/to/my-study --run`. To check and run its saved configuration separately:
 
 ```bash
 oncotracer check --config /absolute/path/to/my-study/config/run.yml
 oncotracer run --backend conda --config /absolute/path/to/my-study/config/run.yml
 ```
 
-For Docker, replace `--backend conda` with `--backend docker` in the run command.
-The browser Run button and `setup --project PATH --run` reuse the saved backend
-and image. Runs download prebuilt hg38
-indexes by default; reuse or build alternatives are covered in [genome indexes](reference_indexes.md).
+Runs use prebuilt hg38 indexes by default. See [genome indexes](reference_indexes.md), the [setup guide](setup.md), or [terminal and SSH instructions](headless.md).
 
-## In a new terminal
+## Nextflow entry
 
-Run from any directory, without activating the Python environment:
+If you have Nextflow and an [OncoTracer source checkout](installation_details.md#install-from-github), supply its full path from any directory:
 
 ```bash
-oncotracer --interactive --backend conda
+nextflow run /absolute/path/to/oncotracer-src/main.nf --interactive --backend conda
 ```
 
-Choose platform and **Fresh** or **FFPE** in the browser. If `~/.local/bin` is
-missing from `PATH`, follow the installer’s printed PATH instruction.
+Use `--backend docker` for Docker. See [Nextflow setup](nextflow_entry.md).
+
+## Python environment
+
+For a dedicated application environment:
+
+```bash
+python3 -m venv oncotracer-env
+source oncotracer-env/bin/activate
+python -m pip install oncotracer
+```
+
+Keep this environment. Backend installation creates an extra `~/.local/bin/oncotracer` command when needed and preserves a pip-owned command already there. Follow the installer’s PATH instruction if necessary; `--no-launcher` opts out. See [advanced installation](installation_details.md) for source, standalone, Poetry and Apptainer routes.
+
+## Requirements
+
+For small runs with 2–4 threads, plan for 16 GiB available RAM for Illumina copy-number analysis or 24 GiB for ONT. Models and larger runs need more. Leave at least 60 GiB free for tools, references and a small run, plus input reads, BAMs and temporary files; Docker extraction needs additional space. Check your intended storage:
+
+```bash
+oncotracer system --path /absolute/path/to/my-study
+```
+
+Desktop file browsing uses Zenity or KDialog; paths can also be entered manually. Remote sessions use server paths.
 
 ## Uninstall
 
-Preview managed Conda removal with `oncotracer uninstall --conda --dry-run`.
-Matching backend removal also removes its additional global command. Use
-`oncotracer uninstall --global-launcher --yes` for command-only removal;
-pip-owned commands remain until pip uninstalls them.
-Then run `python -m pip uninstall oncotracer` in the Python environment used for
-installation. See [uninstall](uninstall.md); project data and results remain.
+Permanently remove managed Conda tools:
+
+```bash
+oncotracer uninstall --conda --yes --purge
+```
+
+Then remove the application with `python -m pip uninstall oncotracer` in its Python environment. Docker images and any remaining extra global launcher have separate removal steps. See [uninstall](uninstall.md) for the component commands and retained settings; projects and results remain.

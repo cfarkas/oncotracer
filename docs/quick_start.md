@@ -2,12 +2,14 @@
 
 # QuickStart 1: Illumina and ONT
 
-Run a complete native analysis of one Illumina and one ONT public library:
-approximately 225 MB of reads, plus tools, references and results. This CNA
-example cannot assess methylation from FASTQs.
+Run a complete native analysis of one public library per platform. Choose
+Illumina, ONT, or both in separate projects. The reads total approximately 225 MB;
+tools, references and results need additional space. This example analyzes
+copy-number changes (CNA); FASTQs alone cannot assess ONT methylation.
 
-[Install OncoTracer once](installation.md). Then **download → configure in the
-browser → run → inspect results**, or use the [terminal-only alternative](#alternative-scripted-setup-and-terminal-run). Choose either platform. For SSH, see [headless servers](headless.md).
+[Install OncoTracer](installation.md), download the reads, then follow the browser
+walkthrough. For a script without a browser, use the
+[terminal version](quickstart_terminal.md#quickstart-1).
 
 ## 1. Download and verify the reads
 
@@ -39,47 +41,81 @@ MD5
 Require three checksum `OK` lines. Repeat interrupted `curl` commands to resume.
 The ONT folder is `barcode01`.
 
-## 2. Open setup and run
+<a id="2-open-setup-and-run"></a>
 
-Each command opens prefilled browser setup. Keep its terminal open. Finish and
-stop one server with Ctrl+C before starting another.
+## 2. Follow the browser walkthrough
 
-### Illumina
+<video controls preload="none" playsinline width="100%" poster="../assets/tutorial/quick-start-illumina-ont.jpg" aria-label="QuickStart 1 browser setup walkthrough for Illumina and ONT">
+  <source src="../assets/tutorial/quick-start-illumina-ont.mp4" type="video/mp4">
+  <track src="../assets/tutorial/quick-start-illumina-ont.vtt" kind="captions" srclang="en" label="English">
+  Your browser does not support embedded video. Use the download link below.
+</video>
+
+[Watch or download the video](assets/tutorial/quick-start-illumina-ont.mp4) ·
+[Text walkthrough](#walkthrough-in-text) · [Full transcript](assets/tutorial/quick-start-illumina-ont.txt) ·
+[Try the interface](browser_demo.md)
+
+**Video chapters:** Illumina at **0:00**; [ONT at **1:11**](assets/tutorial/quick-start-illumina-ont.mp4#t=71).
+The silent video includes on-screen instructions, optional captions and a transcript.
+
+The video uses the current interface with synthetic file inventories and simulated
+checks. It stops before starting analysis. The downloaded reads above are the
+real inputs for your run.
+
+### Open your project
+
+From your analysis directory, choose a platform. These commands only open setup;
+you review the settings before starting an analysis.
+
+**Illumina**
 
 ```bash
 cd /path/to/my/analyses_dir/
-oncotracer setup --project "$PWD/oncotracer-quickstart1/illumina" \
+oncotracer --interactive --backend conda \
+  --project "$PWD/oncotracer-quickstart1/illumina" \
   --mode illumina --input-folder "$PWD/oncotracer-quickstart1/input/illumina"
 ```
 
-Move `ERR12341627` to **Cancer**. Keep CNA, QDNAseq and **100 kb** bins.
-
-### ONT
+**ONT**
 
 ```bash
 cd /path/to/my/analyses_dir/
-oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
+oncotracer --interactive --backend conda \
+  --project "$PWD/oncotracer-quickstart1/ont" \
   --mode ont --input-folder "$PWD/oncotracer-quickstart1/input/fastq_pass"
 ```
 
-Move `barcode01` to **Cancer**, rename it `DRR165691`, and keep CNA,
-ichorCNA and **500 kb** bins. All files in the barcode form one sample.
+For an installed Docker backend, replace `--backend conda` with `--backend docker`.
+Keep each launching terminal open and use its complete printed browser URL.
+You can run both projects in separate terminals; each session selects an available
+port. Divide CPU and memory between runs. For a remote server, use [SSH forwarding](headless.md#remote-browser-through-ssh).
 
-### In either browser window
+### Walkthrough in text
 
-Choose **Fresh or FFPE** from specimen metadata before input discovery.
+Choose preservation, discover the inputs, and assign samples as shown in the video:
 
-1. Choose threads, for example **4**, and your installed backend.
-2. Keep reference download. Optional reports work for one sample; GISTIC requires two.
-3. Click **Save configuration and check**, then **Run analysis** after checks pass.
+| Project | Sample in Cancer | Analysis | Bin size |
+| --- | --- | --- | --- |
+| Illumina | `ERR12341627` | CNA, QDNAseq | 100 kb |
+| ONT | Rename `barcode01` to `DRR165691` | CNA, ichorCNA | 500 kb |
 
-Sample types here are example metadata. Saving/checking does not start analysis
-or reference downloads. Use [the demo](browser_demo.md) to preview the interface.
+All FASTQ batches inside `barcode01` form one sample. The video uses **Fresh** as
+example metadata; choose **Fresh** or **FFPE** from specimen records for your own
+data. FFPE is available in the browser without an extra command-line flag.
+
+Keep small variants off for this CNA tutorial. Choose a thread budget, for example
+**4**, then **Save configuration and check**. Review the checks and click **Run
+analysis** when ready. Saving and checking does not start analysis or download
+references. GISTIC requires at least two samples, so leave it off here.
+
+The first run downloads prebuilt indexes: about **8.0 GiB for Illumina** or
+**9.7 GiB for ONT**. To reuse existing indexes, choose **Reuse a prepared OncoTracer
+reference** in the browser. See [genome indexes](reference_indexes.md).
 
 ## 3. Read the results
 
-Open results from the browser, or find them under
-`oncotracer-quickstart1/illumina/results/` and `oncotracer-quickstart1/ont/results/`:
+Click **Open results** when the run finishes. Files are also under
+`oncotracer-quickstart1/illumina/results/` or `oncotracer-quickstart1/ont/results/`:
 
 | File | Purpose |
 | --- | --- |
@@ -90,134 +126,15 @@ Open results from the browser, or find them under
 | `04_cna_custom_plots/cna_per_sample_pages.pdf` | Sample plots |
 | `.oncotracer-native/trace.tsv` | Recorded commands |
 
-Next: [your own samples](setup.md) or [three-library QuickStart 2](public_cohort.md).
+## Stop or resume
 
-## Alternative: scripted setup and terminal run
+Use **Stop analysis** to stop a browser-started run. Wait until it stops, then
+choose **No** in **Delete incomplete run?** to retain the project. Closing the browser or its setup terminal does not stop that analysis.
+To resume, follow [Run, stop and resume](running.md#resume-behavior) with the saved
+project's path. Valid completed steps are reused; no new setup is needed.
 
-After downloading, these **replace browser setup**. For Docker, use
-`--backend docker` in setup/run plus your installed `--image`.
-To match browser preservation metadata, append `--variant-specimen-type fresh`
-or `--variant-specimen-type ffpe` to setup, according to specimen records.
+Next: [your own samples](setup.md) or [QuickStart 2: HCC1143](public_cohort.md).
 
-### Illumina — terminal only
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer setup --non-interactive \
-  --project "$PWD/oncotracer-quickstart1/illumina" --mode illumina --analysis cna \
-  --sample-name ERR12341627 --status tumor \
-  --fastq-1 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz" \
-  --fastq-2 "$PWD/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz" \
-  --backend conda --threads 4
-oncotracer check --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
-```
-
-### ONT — terminal only
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer setup --non-interactive \
-  --project "$PWD/oncotracer-quickstart1/ont" --mode ont --analysis cna \
-  --reads-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
-  --barcodes barcode01 --sample-names DRR165691 --backend conda --threads 4
-oncotracer check --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
-```
-
-## Optional: reuse prepared genome indexes
-
-With the default choice, run downloads prebuilt indexes: about 8.0 GiB for
-Illumina or 9.7 GiB for ONT. Completed downloads are reused.
-Choose **Reuse a prepared OncoTracer reference** in the browser if one exists.
-
-<details markdown="1">
-<summary>Show commands that reuse an existing reference</summary>
-
-Instead of step 2, select your reference parent or its
-`references/samurai_hg38` folder. Illumina needs BWA; ONT needs minimap2.
-
-### Illumina with an existing reference
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer setup --project "$PWD/oncotracer-quickstart1/illumina" \
-  --mode illumina --input-folder "$PWD/oncotracer-quickstart1/input/illumina" \
-  --hg38_build /data/shared-reference
-```
-
-### ONT with an existing reference
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer setup --project "$PWD/oncotracer-quickstart1/ont" \
-  --mode ont --input-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
-  --hg38_build /data/shared-reference
-```
-
-### Same reference examples — Terminal / headless
-
-Use step 2's names/settings; these terminal commands configure, check and run:
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer setup --terminal --run --backend conda \
-  --project "$PWD/oncotracer-quickstart1/illumina" --mode illumina \
-  --input-folder "$PWD/oncotracer-quickstart1/input/illumina" \
-  --hg38_build /data/shared-reference
-```
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer setup --terminal --run --backend conda \
-  --project "$PWD/oncotracer-quickstart1/ont" --mode ont \
-  --input-folder "$PWD/oncotracer-quickstart1/input/fastq_pass" \
-  --hg38_build /data/shared-reference
-```
-
-</details>
-
-For a local build, replace `--hg38_build /data/shared-reference` with
-`--build_reference`; indexing needs more RAM, disk and time. Use one reference
-choice. A bare `--hg38_build` selects automatic download. See [genome indexes](reference_indexes.md).
-
-## Optional: run or resume from the terminal
-
-**Skip if already running.** These use saved settings. Resume with `run`; omit `--force`.
-
-<details markdown="1">
-<summary>Show Illumina and ONT commands</summary>
-
-### Illumina
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer check --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/illumina/config/run.yml"
-```
-
-### ONT
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer check --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart1/ont/config/run.yml"
-```
-
-`--config` selects saved settings; `--backend conda` selects installed tools.
-Use `--backend docker` or `--backend singularity` for the corresponding
-[installed backend](containers.md).
-
-</details>
-
-For questions, add `--terminal` to step 2. Enter accepts the default:
-
-```text
-CNA bin size (kb) (1/5/10/15/30/50/100/500/1000) [100]:
-```
-
-QDNAseq defaults to 100 kb; ONT ichorCNA to 500 kb.
+<a id="alternative-scripted-setup-and-terminal-run"></a>
+For automated setup and terminal execution, use the
+[complete terminal commands](quickstart_terminal.md#quickstart-1).

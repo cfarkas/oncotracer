@@ -13,16 +13,11 @@ FENCE = chr(96) * 3
 BASH_BLOCK_RE = re.compile(re.escape(FENCE) + r"bash[ \t]*\n(.*?)" + re.escape(FENCE), re.DOTALL)
 MARKDOWN_HEADING_RE = re.compile(r"^\s*#{2,6}\s")
 CHECKOUT_CD_RE = re.compile(r"(?m)^\s*cd\s+oncotracer\s*(?:#.*)?$")
-CURRENT_NEXTFLOW_PAGES = frozenset({
-    "docs/GLIMPSE_MIGRATION.md",
-    "docs/MULTISAMPLE_QUICKSTART.md",
-    "docs/nextflow_entry.md",
-    "docs/setup.md",
-})
 NATIVE_COMMAND_FILES = {
-    'docs/index.md': ("oncotracer setup --project", 'oncotracer setup --project "$PWD/my-study" --run'),
-    "docs/quick_start.md": ("oncotracer setup", "oncotracer check", "oncotracer run"),
-    "docs/public_cohort.md": ("oncotracer setup", "oncotracer check", "oncotracer run"),
+    "docs/index.md": ("oncotracer --interactive",),
+    "docs/quick_start.md": ("oncotracer --interactive", "quickstart_terminal.md"),
+    "docs/public_cohort.md": ("oncotracer --interactive", "quickstart_terminal.md"),
+    "docs/quickstart_terminal.md": ("oncotracer setup --non-interactive", "oncotracer check", "oncotracer run"),
     "docs/setup.md": ("--samplesheet", "--barcodes barcode01,barcode02", "oncotracer run"),
     "docs/auto_params.md": ("oncotracer auto", "oncotracer run --backend conda"),
     "docs/six_tumor_four_normal.md": ("oncotracer auto", "oncotracer run"),
@@ -97,21 +92,10 @@ def check_installation_is_explicit() -> None:
 
 
 def retired_public_entrypoints(relative: str, text: str) -> list[str]:
-    violations = []
-    for forbidden in ("nextflow run", "run_QS1.sh", "run_QS2.sh", "run_example.sh"):
-        if forbidden == "nextflow run" and relative in CURRENT_NEXTFLOW_PAGES:
-            continue
-        checked = text
-        if relative == "README.md" and forbidden == "nextflow run":
-            # The explicit Illumina paragraph documents the supported complete
-            # short-variant entry; ordinary CNA examples remain native.
-            checked = "\n".join(line for line in text.splitlines()
-                                if not line.startswith("**Illumina short variants:**"))
-        found = (re.search(r"\bnextflow\s+run\b", checked, re.IGNORECASE)
-                 if forbidden == "nextflow run" else forbidden.casefold() in checked.casefold())
-        if found:
-            violations.append(forbidden)
-    return violations
+    # Both the native command and the current Nextflow gateway are supported.
+    # Retired convenience scripts remain invalid user-facing entrypoints.
+    return [name for name in ("run_QS1.sh", "run_QS2.sh", "run_example.sh")
+            if name.casefold() in text.casefold()]
 
 
 def check_no_retired_public_entrypoints() -> None:

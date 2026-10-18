@@ -29,7 +29,7 @@ OncoTracer v2 runs on Linux as one verified global executable. Python 3.10–3.1
 | Goal | Use |
 | --- | --- |
 | First CNA analysis | [Standard installation](installation.md), then the Conda section below. |
-| CNA and small variants | Current branch launcher plus [managed variant tools](variants_reference.md#conda-and-docker), or the [current source Docker image](containers.md#fastq-to-cna-and-variants). |
+| CNA and small variants | The pip application plus [managed variant tools](variants_reference.md#conda-and-docker), or the [current source Docker image](containers.md#fastq-to-cna-and-variants). |
 | HPC CNA analysis | The Singularity/Apptainer section below. |
 | Develop the launcher | The Poetry section below. |
 | Move a project to a remote server | [Headless setup and SSH](headless.md). |
@@ -64,7 +64,7 @@ does not describe this engine. The [BWA manual](https://bio-bwa.sourceforge.net/
 describes its separate indexing algorithms. Prebuilt indexes avoid construction,
 but must still fit in memory during alignment. Swap is not a substitute for RAM.
 
-Start with at least 40 GiB free for tools, reference assets and a small run;
+Start with at least 60 GiB free for tools, reference assets and a small run;
 add space for your FASTQs, BAMs and temporary copies. Large runs need much more.
 
 The first analysis can take substantially longer because the reference, indexes, packages, and container layers are prepared. If `lpwgs_root/references/samurai_hg38` already exists, OncoTracer treats it as an external, read-only shared reference: every pinned file, index manifest, physical reader lock, and tool identity must validate, and OncoTracer will stop instead of repairing it in place. A plain existing FASTA/index directory is not auto-adopted. When that path is absent, FASTA/index, ichorCNA, and qDNAseq assets go to OncoTracer-owned, content-addressed caches below `lpwgs_root/.oncotracer/reference-cache/`. Later analyses reuse those validated assets even when they use a fresh result directory. Conda channel URLs are retained as informational provenance, but portability validity is based on stable package metadata and the exact indexing-executable SHA-256.
@@ -91,10 +91,10 @@ oncotracer-v2.1.0-parity-audit.tar.gz
 
 ## Command available from any directory
 
-A successful `oncotracer install` creates `~/.local/bin/oncotracer` for the
-current user, after validating the selected backend. It binds the Python
-interpreter and application location used to install it, so later terminals do
-not need environment activation. Keep the source and virtual environment for
+A successful `oncotracer install` creates an extra `~/.local/bin/oncotracer`
+command when needed and preserves an existing pip-owned command. The extra
+launcher binds the Python interpreter and application location used to install
+it, so later terminals do not need environment activation. Keep the source and virtual environment for
 an editable installation, or the original archive for a standalone installation.
 It preserves the directory and arguments supplied by the caller.
 
@@ -107,9 +107,10 @@ placed the standalone archive itself at `~/.local/bin/oncotracer`, use
 `install --no-launcher` to retain it there.
 
 Normal [uninstall](uninstall.md) also removes the global command when its recorded
-application and backend match the removal target. `uninstall --global-launcher`
-selects only that command. Preview and dry-run leave it untouched; actual removal
-requires `--yes`. Remove it before uninstalling the Python package with pip.
+application and backend match the removal target. Use
+`oncotracer uninstall --global-launcher --yes --purge` to remove only an extra
+OncoTracer-owned command. Pip-owned commands are removed by pip instead. Remove
+any extra launcher before uninstalling the Python package.
 
 A command or settings publication failure does not undo already prepared analysis
 tools. Retry using the original application and target. If an interrupted command
@@ -202,14 +203,13 @@ To build locally instead, use the
 [current source image build](containers.md#fastq-to-cna-and-variants), then
 install that local image with `--no-pull`.
 
-The following image includes the GLIMPSE2/FFPE and concurrent-project repairs. Retain
-that selection when running:
+Choose the current image explicitly when installing. Later doctor and run commands
+use the saved image selection:
 
 ```bash
 oncotracer install --docker --image carlosfarkas/oncotracer:fastq-variants-20261017
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:fastq-variants-20261017
+oncotracer doctor --backend docker
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:fastq-variants-20261017 \
   --config /absolute/path/project/config/run.yml
 ```
 

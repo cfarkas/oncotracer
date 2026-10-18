@@ -72,20 +72,24 @@ def check_native_quickstarts() -> None:
         "docs/quick_start.md": ("oncotracer-quickstart1/illumina", "oncotracer-quickstart1/ont"),
         "docs/public_cohort.md": ("oncotracer-quickstart2/analysis",),
     }
+    terminal_page = "docs/quickstart_terminal.md"
+    terminal = read(terminal_page)
+    require("--hg38_build" in terminal and "--build_reference" in terminal,
+            "terminal QuickStarts must explain reference reuse and local builds")
     for relative, paths in projects.items():
         text = read(relative)
-        require_order(text, ("curl --fail", "md5sum -c", "oncotracer setup", "oncotracer check", "oncotracer run"), relative)
-        require("--hg38_build" in text and "optional" in text.lower(), f"{relative} must explain optional reference reuse")
-        require("--build_reference" in text and "replace" in text.lower(), f"{relative} must explain the alternative local-build flag")
+        require_order(text, ("curl --fail", "md5sum -c", "oncotracer --interactive"), relative)
+        require("reference_indexes.md" in text and "Reuse a prepared OncoTracer" in text,
+                f"{relative} must explain reference reuse")
+        require("quickstart_terminal.md" in text, f"{relative} must link its scripted alternative")
         for path in paths:
-            setup = find_block(relative, "oncotracer setup", f'--project "$PWD/{path}"')
-            run = find_block(relative, "oncotracer check --config", "oncotracer run --backend conda", f'--config "$PWD/{path}/config/run.yml"')
-            for block in (setup, run):
+            browser = find_block(relative, "oncotracer --interactive", f'--project "$PWD/{path}"')
+            setup = find_block(terminal_page, "oncotracer setup", f'--project "$PWD/{path}"')
+            run = find_block(terminal_page, "oncotracer check --config", "oncotracer run --backend conda", f'--config "$PWD/{path}/config/run.yml"')
+            for block in (browser, setup, run):
                 require(first_command(block) == ANALYSES_CD, f"{relative} must enter the analysis directory first")
-        for forbidden in ("git clone", "cd oncotracer", "nextflow run", "oncotracer quickstart", "--download-only", "--test-root"):
-            found = (re.search(r"\bnextflow\s+run\b", text, re.IGNORECASE)
-                     if forbidden == "nextflow run" else forbidden in text)
-            require(not found, f"{relative} must use ordinary commands: found {forbidden}")
+        for forbidden in ("git clone", "cd oncotracer", "oncotracer quickstart", "--download-only", "--test-root"):
+            require(forbidden not in text, f"{relative} must use ordinary commands: found {forbidden}")
     for page in projects:
         require(page in read("README.md"), f"README must link to {page}")
 
@@ -181,8 +185,7 @@ def check_checkout_is_only_for_installation() -> None:
     )
 
     readme = read("README.md")
-    non_source_readme = readme.split("## Install", 1)[0] + readme.split("## Set up your analysis", 1)[1]
-    require("git clone" not in non_source_readme, "README clone belongs only in the labeled source-install section")
+    require("git clone" not in readme, "README uses the checkout-independent pip installation")
     for relative_path in (
         "docs/index.md",
         "docs/quick_start.md",
@@ -270,7 +273,7 @@ def check_resumed_nested_trace_combiner() -> None:
 def main() -> None:
     readme = read("README.md")
     require("not in the v2.0.0 release executable" not in readme, "first-use docs must not teach migration history")
-    require("oncotracer setup --project" in readme, "landing page must teach project setup")
+    require("oncotracer --interactive" in readme, "landing page must teach browser setup")
     check_pip_install("README.md")
     check_pip_install("docs/installation.md")
     check_native_quickstarts()

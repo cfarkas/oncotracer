@@ -28,12 +28,14 @@ nav:
       - Interactive Browser Demo: browser_demo.md
       - Set Up Your Own Data: setup.md
       - CLI and Headless Servers: headless.md
+      - Nextflow Entry: nextflow_entry.md
       - Run, Stop and Resume: running.md
       - How OncoTracer Works: native_architecture.md
       - Uninstall: uninstall.md
   - Tutorials:
       - QuickStart 1 — Illumina + ONT: quick_start.md
       - QuickStart 2 — HCC1143: public_cohort.md
+      - QuickStarts from the Terminal: quickstart_terminal.md
       - Complete PRJNA754199 archive: full_tutorial.md
       - Mock cohort — six tumors + four independent normals: six_tumor_four_normal.md
   - Analyses and Results:

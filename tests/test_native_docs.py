@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import subprocess
 import tempfile
@@ -78,6 +80,7 @@ class NativeDocumentationTests(unittest.TestCase):
             "docs/installation.md": 650,
             "docs/quick_start.md": 850,
             "docs/public_cohort.md": 850,
+            "docs/quickstart_terminal.md": 1200,
             "docs/configuration/methylation.md": 1100,
             "docs/auto_params.md": 900,
             "docs/full_tutorial.md": 1200,
@@ -89,38 +92,63 @@ class NativeDocumentationTests(unittest.TestCase):
                 text = (ROOT / relative).read_text(encoding="utf-8")
                 self.assertLess(len(text.split()), words)
                 self.assertNotRegex(text, r"run_QS\d+\.sh")
-                self.assertIn("--config", text)
+                if relative not in {"README.md", "docs/installation.md", "docs/quick_start.md", "docs/public_cohort.md"}:
+                    self.assertIn("--config", text)
                 self.assertIn("--backend", text)
 
     def test_primary_docs_use_global_binary(self) -> None:
         for path in ACTIVE:
             text = path.read_text(encoding="utf-8")
             self.assertIn("oncotracer", text.lower(), path)
-            # CNA docs remain native; README now advertises the explicitly
-            # requested complete short-variant Nextflow entry.
-            if path.name == "README.md":
-                self.assertIn("docs/GLIMPSE_MIGRATION.md", text)
-                text = "\n".join(line for line in text.splitlines() if line.startswith("**Illumina short variants:**") is False)
-            self.assertNotRegex(text, re.compile(r"\bnextflow\s+run\b", re.IGNORECASE), path)
+            self.assertNotIn("carlosfarkas/oncotracer:latest", text)
 
-    def test_standalone_public_entry_guard_limits_the_readme_exception(self) -> None:
+    def test_current_gateway_is_supported_and_retired_scripts_are_rejected(self) -> None:
         from tests.test_examples_start_from_clone import retired_public_entrypoints
-        supported = "**Illumina short variants:** Use `nextflow run main.nf --interactive`."
-        self.assertEqual(retired_public_entrypoints("README.md", supported), [])
-        self.assertEqual(retired_public_entrypoints("README.md", "A pinned Nextflow runtime is bundled."), [])
-        for relative, text in (
-            ("docs/index.md", supported),
-            ("README.md", "Ordinary CNA: nextflow run main.nf"),
-            ("README.md", supported + "\nOther instructions: nextflow\tRUN main.nf"),
-            ("README.md", supported.replace("**Illumina short variants:**", "**Other workflows:**")),
-        ):
-            with self.subTest(relative=relative, text=text):
-                self.assertEqual(retired_public_entrypoints(relative, text), ["nextflow run"])
-        for relative in ("README.md", "docs/GLIMPSE_MIGRATION.md",
-                         "docs/MULTISAMPLE_QUICKSTART.md", "docs/nextflow_entry.md", "docs/setup.md"):
-            self.assertEqual(retired_public_entrypoints(relative, supported), [])
-            for launcher in ("run_QS1.sh", "run_QS2.sh", "run_example.sh"):
-                self.assertEqual(retired_public_entrypoints(relative, supported + " " + launcher), [launcher])
+        supported = (
+            "oncotracer --interactive --backend conda",
+            "nextflow run /absolute/path/to/oncotracer-src/main.nf --interactive --backend conda",
+            "nextflow run cfarkas/oncotracer -r main --interactive",
+        )
+        for relative in ("README.md", "docs/index.md", "docs/setup.md", "docs/nextflow_entry.md"):
+            for command in supported:
+                with self.subTest(page=relative, command=command):
+                    self.assertEqual(retired_public_entrypoints(relative, command), [])
+                    for launcher in ("run_QS1.sh", "run_QS2.sh", "run_example.sh"):
+                        self.assertEqual(retired_public_entrypoints(relative, command + " " + launcher), [launcher])
+
+    def test_quickstart_recordings_match_current_ui_and_linked_media(self) -> None:
+        from oncotracer_cli.web_ui import PAGE
+
+        assets = ROOT / "docs/assets/tutorial"
+        record = json.loads((assets / "quick-start-recording.json").read_text(encoding="utf-8"))
+        self.assertIs(record["passed"], True)
+        self.assertIs(record["analysis_started"], False)
+        self.assertIs(record["real_reads_downloaded"], False)
+        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(PAGE.encode("utf-8")).hexdigest())
+        self.assertEqual(record["mock_api_sha256"], hashlib.sha256(
+            (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes()).hexdigest())
+        pages = {"quick-start-illumina-ont": "docs/quick_start.md",
+                 "quick-start-hcc1143": "docs/public_cohort.md"}
+        self.assertEqual({video["name"] for video in record["videos"]}, set(pages))
+        self.assertEqual(len(record["videos"]), len(pages))
+        for video in record["videos"]:
+            with self.subTest(video=video["name"]):
+                page = (ROOT / pages[video["name"]]).read_text(encoding="utf-8")
+                self.assertGreater(video["duration_seconds"], 0)
+                self.assertEqual(set(video["files"]), {".mp4", ".jpg", ".vtt", ".txt"})
+                for extension, item in video["files"].items():
+                    self.assertEqual(item["name"], video["name"] + extension)
+                    content = (assets / item["name"]).read_bytes()
+                    self.assertGreater(len(content), 0)
+                    self.assertEqual(len(content), item["bytes"])
+                    self.assertEqual(hashlib.sha256(content).hexdigest(), item["sha256"])
+                    if extension != ".txt":
+                        self.assertIn(item["name"], page)
+                captions = (assets / (video["name"] + ".vtt")).read_text(encoding="utf-8")
+                self.assertTrue(captions.startswith("WEBVTT"))
+                self.assertIn("-->", captions)
+                self.assertTrue((assets / (video["name"] + ".txt")).read_text(encoding="utf-8").strip())
+                self.assertNotIn("/api/run", json.dumps(video.get("scenes", [])))
 
     def test_architecture_overview_keeps_implementation_details_separate(self) -> None:
         text = (ROOT / "docs/native_architecture.md").read_text(encoding="utf-8")
@@ -169,7 +197,10 @@ class NativeDocumentationTests(unittest.TestCase):
         # The independent 800-word landing-page limit remains unchanged.
         self.assertLess(len(text.splitlines()), 120)
         self.assertIn("docs/installation.md", text)
-        self.assertIn("oncotracer setup --project", text)
+        headings = re.findall(r"^## (.+)$", text, re.MULTILINE)
+        self.assertTrue(headings)
+        self.assertEqual(headings[0].casefold(), "quick start")
+        self.assertIn("oncotracer --interactive --backend conda", text)
         self.assertNotIn("not in the v2.0.0 release executable", text)
         self.assertIn("complete documentation", text.lower())
 

@@ -1,147 +1,92 @@
 # Uninstall
 
-Use `oncotracer uninstall` to preview your saved backend, or select tools explicitly.
-`oncotracer --uninstall` is an alias with the same options. If an older executable
-rejects the flag, use the `uninstall` subcommand; if it also rejects that, update
-OncoTracer using the [installation instructions](installation.md).
+Remove the analysis tools or container image you installed, then remove the Python application. Finish active analyses first and run removal outside any scientific environment being removed. Keep the application available until backend and extra-launcher removal is complete.
 
-**With `oncotracer uninstall`, removal needs `--yes`; reclaiming disk space also
-needs `--purge`.**
-Integrity checks show progress and can take several minutes for large environments.
-**No command below removes project data or results.**
+These commands preserve input data, references, models, project settings and results.
 
 ## Conda: remove the managed analysis tools
 
-Preview the exact managed Conda paths first:
+Permanently remove the verified environments:
 
 ```bash
-oncotracer uninstall --conda --dry-run
-```
-
-For a custom installation, use the same parent directory passed to
-`oncotracer install --conda --prefix`. For example, if you installed into
-`/data/oncotracer-tools`, preview with:
-
-```bash
-oncotracer uninstall --conda --prefix /data/oncotracer-tools --dry-run
-```
-
-This directory contains `core`, `qdnaseq`, `ichorcna`, `classifier`, and `gistic`.
-Include the same `--prefix` in your removal command below.
-The separately owned, installation-managed variant environment is included in
-removal after its own ownership checks. Independently created `variants`,
-`ffperase`, `strelka2` and ONT environments remain untouched; remove those
-separately with Conda if no other analyses use them.
-
-Choose one removal method:
-
-```bash
-# Remove from the installed paths, keeping a recovery folder.
-oncotracer uninstall --conda --yes
-
-# Or permanently remove the verified tools and reclaim their disk space.
 oncotracer uninstall --conda --yes --purge
 ```
 
-The short summary lists the exact paths and any recovery folder. Use `--json` for
-a machine-readable plan or result.
+This includes the managed core, QDNAseq, ichorCNA, classifier/reporting, GISTIC and variant environments, plus an installation-managed Poetry runtime when present. It also removes an extra global command belonging to the same application and tools. Pip’s application and console entry remain installed.
 
-Without `--yes`, uninstall only previews. `--dry-run` always wins over `--yes`.
-The default recovery folder is printed; it still occupies disk space. Do not run
-the two removal commands consecutively: they are alternatives.
-
-Uninstall refuses active environments, foreign folders, symlinked targets,
-changed installation inventories, and interrupted installations. It preserves
-unrelated folders even inside a managed parent. A managed Poetry runtime inside
-that parent is removed with the Conda tools.
-
-Saved installation settings are retained. Reinstall the backend before using it
-again. To restore a recovery copy, move its named entries back to the original
-paths listed in `uninstall.json`; do not overwrite a newer installation.
-
-## Global command
-
-Backend installation can create an owned `~/.local/bin/oncotracer` command. Normal
-uninstall removes it when it belongs to the selected installation and backend.
-Selecting an unrelated custom prefix leaves that command intact. Backend removal
-preserves unowned commands. Modified ownership-marked commands require inspection
-before removal; `--force` does not bypass their checks.
-
-To remove only the global command, leaving all analysis tools installed:
+For a custom installation, include the same parent prefix used at installation:
 
 ```bash
-oncotracer uninstall --global-launcher --dry-run
-oncotracer uninstall --global-launcher --yes
+oncotracer uninstall --conda --prefix /data/oncotracer-tools --yes --purge
 ```
 
-Preview does not change the command. Add `--purge` to discard its recovery copy.
-With Docker saved as the backend, `oncotracer uninstall --yes` removes the owned
-global command; Docker images are removed separately below.
-
-A console entry installed by pip belongs to pip and is retained by backend
-removal. Remove it with `python -m pip uninstall oncotracer` after cleaning up
-any additional OncoTracer-owned global launcher.
+Independently created `ffperase`, `strelka2`, ONT or other Conda environments are not part of this removal. Remove them separately with their original package manager when no other analysis uses them. Conda itself remains installed.
 
 ## Docker: remove the installed image
 
-After stopping containers that use it, remove the image installed by the
-[Docker installation route](installation.md#docker):
+After stopping containers that use the image:
 
 ```bash
 docker image rm carlosfarkas/oncotracer:fastq-variants-20261017
 ```
 
-If you installed another tag, use that exact name instead. Removing a tag reclaims
-its layers only when no other image references them. This leaves mounted project
-data and results intact; a system-wide Docker prune is unnecessary.
+Use the exact image/tag you installed. **This removes only that Docker image/tag.** It does not uninstall the pip application, remove an extra global launcher, clear saved installation settings, or delete projects, references, models or results. Docker itself remains installed.
 
-## Remove the launcher last
+Layers shared with other image tags or containers remain, so removing a tag may not reclaim all its disk space. If Docker reports a container still references the image, handle that container separately; this command does not remove containers. Continue with the extra global command, if present, and Python application below.
 
-Remove the global command with OncoTracer first, as above. Then, for a
-pip/editable installation, activate the environment used to install it:
+## Global command
+
+Backend installation may create an additional OncoTracer-owned `~/.local/bin/oncotracer` launcher. Matching Conda or SIF removal already removes this launcher. If it remains—for example, after removing a Docker image—remove it **before uninstalling the Python application**:
 
 ```bash
-source /absolute/path/to/oncotracer-env/bin/activate
+oncotracer uninstall --global-launcher --yes --purge
+```
+
+Use this only for the extra launcher created by OncoTracer. A pip-owned console entry is removed by pip instead; if this command says the entry belongs to pip, continue with the next section. A launcher belonging to another application installation is preserved. Run its owning installation to remove it.
+
+## Python application
+
+Use the Python environment in which you ran `pip install oncotracer`:
+
+```bash
 python -m pip uninstall oncotracer
 ```
 
-This removes the package and its console entry from that environment. Pip alone
-does not remove a separately owned global command or scientific tools. It leaves
-the Python environment and any editable source checkout in place.
+If you used a virtual environment, activate it first, for example with `source /absolute/path/to/oncotracer-env/bin/activate`.
 
-For a copied standalone executable:
+Pip removes the application and its own console entry. It leaves the Python environment, scientific environments, Docker images, any separate OncoTracer-owned launcher, and editable source checkouts in place. Remove an extra launcher before pip so its owning application is still available.
 
-```bash
-oncotracer uninstall --launcher /absolute/path/bin/oncotracer --dry-run
-oncotracer uninstall --launcher /absolute/path/bin/oncotracer --yes --purge
-```
-
-This recognizes copied OncoTracer executables, not arbitrary files. A
-system-owned path may require administrator help; uninstall does not escalate
-permissions automatically.
-
-## Singularity/Apptainer
+## Other installation routes
 
 For a managed Singularity/Apptainer image:
 
 ```bash
-oncotracer uninstall --singularity --sif /absolute/path/oncotracer.sif --dry-run
 oncotracer uninstall --singularity --sif /absolute/path/oncotracer.sif --yes --purge
 ```
 
-Conda itself, Python, Docker/Apptainer, reference files, model caches, FASTQs,
-POD5s, BAMs, YAML and analysis results are left alone.
+This removes the verified SIF and its ownership sidecar, plus a matching extra global launcher. It leaves Apptainer/Singularity installed.
 
-## If uninstall did not work
+For a copied standalone executable:
 
-| What you see | What to do |
+```bash
+oncotracer uninstall --launcher /absolute/path/bin/oncotracer --yes --purge
+```
+
+This recognizes copied OncoTracer executables and removes a matching extra launcher. It does not select pip-owned commands or arbitrary files. System-owned paths may require administrator help; uninstall does not escalate permissions.
+
+## Settings and user data
+
+Saved installation settings remain at `$XDG_CONFIG_HOME/oncotracer/config.json`, normally `~/.config/oncotracer/config.json`. Removing a Docker image or Python package does not reset these settings. Reinstall the selected backend before using it again.
+
+All component removals leave FASTQs, POD5s, BAMs, project YAML, analysis outputs, references and model caches intact. Existing installer backups, logs and caches are not cleared by these commands. `--purge` permanently deletes the verified components selected by that uninstall, without retaining a new recovery copy.
+
+## If removal is refused
+
+| Message | Action |
 | --- | --- |
-| `Preview only` and tools are still installed | Add `--yes` to the same command. Remove `--dry-run` when ready. |
-| A recovery folder remains and disk usage is unchanged | `--yes` keeps a recovery copy. Choose `--yes --purge` at removal time to reclaim space. A later uninstall cannot purge an already removed installation's recovery folder. |
-| No target is recorded, or saved settings are invalid | Supply `--conda --prefix /absolute/path/to/envs`, `--singularity --sif /absolute/path/oncotracer.sif`, or `--launcher /absolute/path/bin/oncotracer`. Fully specified targets do not require saved settings. |
-| An active process is reported | Finish or stop the analysis, leave the tools directory, and deactivate any environment being removed. Run uninstall from a separate CLI environment or standalone executable. |
-| Ownership or file-integrity checks fail | The target is an older, unmanaged, moved, or modified installation. Automatic removal requires the installer's ownership records and unchanged managed files; inspect the reported path before removing it with its original package manager. |
+| No installed target is recorded | Supply the original `--prefix`, `--sif`, or `--launcher` path. |
+| An active process is using the tools | Finish or stop that analysis, deactivate the scientific environment, and run removal from the application environment. |
+| Ownership or file checks fail | Inspect the reported installation. Moved, modified or independently installed files are not removed automatically. |
+| An interrupted installation is reported | Rerun its matching install command with the original target before retrying removal. |
 
-An interrupted installation must first be recovered by rerunning its matching
-`oncotracer install` command with the original target. `--force` does not bypass
-uninstall checks, and uninstall has no `--force` option.
+Unrelated folders and commands are preserved. There is no uninstall `--force` option to bypass ownership or active-process checks.

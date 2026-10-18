@@ -1,9 +1,10 @@
 # QuickStart 2: three HCC1143 libraries
 
 Analyze three public Illumina libraries in one project. Download all six paired-end
-FASTQs, assign the three samples in the browser, then run.
-[Install once](installation.md); [QuickStart 1](quick_start.md) is the smaller first example.
-Reads total approximately 1.16 GB, plus tools, references, BAMs and results.
+FASTQs, follow the browser walkthrough, then inspect the cohort results.
+[Install OncoTracer](installation.md) first; [QuickStart 1](quick_start.md) is the
+smaller example. Reads total approximately **1.16 GB**, plus tools, references,
+BAMs and results.
 
 | Sample | Public run |
 | --- | --- |
@@ -11,7 +12,7 @@ Reads total approximately 1.16 GB, plus tools, references, BAMs and results.
 | `HCC1143_BEZ235` | `SRR7085655` |
 | `HCC1143_TRAMETINIB` | `SRR7085657` |
 
-DMSO is a treatment control, not a normal genome. All three are tumor libraries.
+All three are tumor libraries. DMSO is a treatment control, not a normal genome.
 
 ## 1. Download and verify the reads
 
@@ -54,94 +55,74 @@ MD5
 Continue only when all six lines say `OK`. The versioned manifest records each
 exact size and MD5 checksum. Repeat an interrupted `curl` command to resume.
 
-## 2. Open setup and run
+<a id="2-open-setup-and-run"></a>
+
+## 2. Follow the browser walkthrough
+
+<video controls preload="none" playsinline width="100%" poster="../assets/tutorial/quick-start-hcc1143.jpg" aria-label="QuickStart 2 browser setup walkthrough for three HCC1143 libraries">
+  <source src="../assets/tutorial/quick-start-hcc1143.mp4" type="video/mp4">
+  <track src="../assets/tutorial/quick-start-hcc1143.vtt" kind="captions" srclang="en" label="English">
+  Your browser does not support embedded video. Use the download link below.
+</video>
+
+[Watch or download the video](assets/tutorial/quick-start-hcc1143.mp4) ·
+[Text walkthrough](#walkthrough-in-text) · [Full transcript](assets/tutorial/quick-start-hcc1143.txt) ·
+[Try the interface](browser_demo.md)
+
+The silent video includes on-screen instructions, optional captions and a transcript.
+
+The video uses the current interface with synthetic file inventories and simulated
+checks. It stops before starting analysis. Use the verified downloads above for
+your real run.
+
+### Open your project
 
 ```bash
 cd /path/to/my/analyses_dir/
-oncotracer setup --project "$PWD/oncotracer-quickstart2/analysis" \
+oncotracer --interactive --backend conda \
+  --project "$PWD/oncotracer-quickstart2/analysis" \
   --mode illumina --input-folder "$PWD/oncotracer-quickstart2/input"
 ```
 
-Keep the terminal open; use its complete printed URL if the browser does not open.
-Choose preservation from the specimen records before input discovery.
+For an installed Docker backend, replace `--backend conda` with `--backend docker`.
+Keep the terminal open; if the browser does not open, use the complete printed
+URL. For a remote server, see [SSH forwarding](headless.md#remote-browser-through-ssh).
 
-1. Move all three detected paired-end samples into **Cancer**, including DMSO.
-2. Review names and threads. Keep CNA, QDNAseq, **100 kb** bins and reference download.
-3. Select your installed backend, click **Save configuration and check**, then
-   **Run analysis** after checks pass. GISTIC is optional for this three-sample cohort.
+### Walkthrough in text
 
-Each library is analyzed separately. Setup protects existing configurations.
-For a terminal-only run, use the [scripted alternative below](#alternative-scripted-setup-and-terminal-run).
-For a remote browser, see [SSH setup](headless.md#remote-browser-through-ssh).
+Select preservation, discover the folder, and move **all three samples to Cancer**,
+including DMSO. Confirm that each row contains its own R1/R2 pair. The video uses
+**Fresh** as example metadata; use specimen records when choosing **Fresh** or
+**FFPE** for your own samples.
+
+Keep **CNA**, **QDNAseq**, **100 kb** bins and small variants off for this tutorial.
+Choose your CPU budget, for example **4** threads. Click **Save configuration and
+check**, review the three sample names, then click **Run analysis** when ready.
+Each library is analyzed separately. GISTIC is optional for this three-sample cohort.
+
+The first run downloads about **8.0 GiB** of hg38 indexes. To reuse QuickStart 1's
+reference, choose **Reuse a prepared OncoTracer reference** and select
+`oncotracer-quickstart1/illumina/reference`. Saving and checking does not download
+references. See [genome indexes](reference_indexes.md).
 
 ## 3. Review the results
 
-Open the browser results dashboard, or visit `oncotracer-quickstart2/analysis/results/`.
-Start with `06_workflow_summary/workflow_summary.txt`, then inspect plots and
-`03_cna_codification/cna_events.tsv`. See [outputs](outputs.md).
+Click **Open results**, or open `oncotracer-quickstart2/analysis/results/`.
+Check `06_workflow_summary/workflow_summary.txt` for completion, then inspect the
+sample plots and `03_cna_codification/cna_events.tsv`. See [output files](outputs.md).
 
-## Alternative: scripted setup and terminal run
+<a id="resume"></a>
 
-**Terminal / headless version:** after the downloads above, run these blocks
-instead of browser setup. They create the same three-library project without
-questions. Use only one setup method per project. Append
-`--variant-specimen-type fresh` or `--variant-specimen-type ffpe` to setup to
-record the same preservation selected in the browser, using specimen records.
+## Stop or resume
 
-Create the samplesheet with absolute paths. Paste the final `CSV` line too.
-`cat >` replaces the CSV if it already exists.
+Use **Stop analysis** in the browser. Wait until it stops, then choose **No** in
+**Delete incomplete run?** to retain the project.
+Closing the browser or setup terminal leaves an already-started analysis running.
+Follow [Run, stop and resume](running.md#resume-behavior) with the saved project
+path to continue; valid completed steps are reused.
 
-```bash
-cd /path/to/my/analyses_dir/
-cat > "$PWD/oncotracer-quickstart2/input/samplesheet.csv" <<CSV
-sample,fastq_1,fastq_2,status
-HCC1143_DMSO,"$PWD/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz",tumor
-HCC1143_BEZ235,"$PWD/oncotracer-quickstart2/input/HCC1143_BEZ235_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_BEZ235_R2.fastq.gz",tumor
-HCC1143_TRAMETINIB,"$PWD/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fastq.gz","$PWD/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R2.fastq.gz",tumor
-CSV
-```
+Other studies can run at the same time in separate terminals, using different
+project directories and a share of the server's CPU and memory.
 
-Create settings without starting analysis:
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer setup --non-interactive \
-  --project "$PWD/oncotracer-quickstart2/analysis" \
-  --hg38_build \
-  --mode illumina --analysis cna --backend conda \
-  --samplesheet "$PWD/oncotracer-quickstart2/input/samplesheet.csv" \
-  --threads 4
-```
-
-Check should list all three names. Resolve errors before running:
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer check --config "$PWD/oncotracer-quickstart2/analysis/config/run.yml"
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart2/analysis/config/run.yml"
-```
-
-Use the corresponding [backend](containers.md) for Docker or Apptainer.
-
-## Optional: reuse a reference
-
-With the default choice, run downloads about 8.0 GiB of prebuilt hg38 indexes into
-`analysis/reference/`. Saving/checking does not download them.
-To reuse QuickStart 1's reference, select it in the browser or replace the bare
-`--hg38_build` flag with
-`--hg38_build /absolute/path/oncotracer-quickstart1/illumina/reference`.
-To build locally, replace it with `--build_reference`; this needs more RAM, disk
-and time. See [genome indexes](reference_indexes.md).
-
-## Resume
-
-After fixing a reported problem, continue the saved project:
-
-```bash
-cd /path/to/my/analyses_dir/
-oncotracer run --backend conda \
-  --config "$PWD/oncotracer-quickstart2/analysis/config/run.yml"
-```
-
-Completed steps are reused. See [resume details](running.md).
+<a id="alternative-scripted-setup-and-terminal-run"></a>
+For unattended execution, use the [complete terminal commands](quickstart_terminal.md#quickstart-2).

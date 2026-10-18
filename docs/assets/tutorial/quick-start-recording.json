@@ -1,0 +1,410 @@
+{
+  "schema": 1,
+  "passed": true,
+  "analysis_started": false,
+  "real_reads_downloaded": false,
+  "api": "synthetic browser demo",
+  "ui_page_sha256": "d690bce02bc5171feb8be0fb246d1178ed1740d704c38074960fb598346622a9",
+  "mock_api_sha256": "14063ecbb8832326c6442729bfb733ee77cc04cef79a3e634b22786faca29cc4",
+  "pace": 1.0,
+  "videos": [
+    {
+      "name": "quick-start-illumina-ont",
+      "duration_seconds": 142.083333,
+      "codec": "h264",
+      "pixel_format": "yuv420p",
+      "faststart": true,
+      "resolution": [
+        1280,
+        900
+      ],
+      "cues": [
+        {
+          "start": 0.9710646101739258,
+          "end": 6.048053092090413,
+          "title": "QuickStart 1 \u00b7 Illumina",
+          "text": "Open browser setup after downloading and verifying the reads. This recording uses synthetic file listings and checks."
+        },
+        {
+          "start": 6.048053092090413,
+          "end": 12.802950673969463,
+          "title": "QuickStart 1 \u00b7 Illumina \u00b7 preservation",
+          "text": "Choose preservation from specimen records. Fresh is selected only as demonstration metadata here."
+        },
+        {
+          "start": 12.802950673969463,
+          "end": 27.308124103117734,
+          "title": "QuickStart 1 \u00b7 Illumina \u00b7 discover inputs",
+          "text": "Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together."
+        },
+        {
+          "start": 27.308124103117734,
+          "end": 34.78259160812013,
+          "title": "QuickStart 1 \u00b7 Illumina \u00b7 sample groups",
+          "text": "Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups."
+        },
+        {
+          "start": 34.78259160812013,
+          "end": 43.18568314705044,
+          "title": "QuickStart 1 \u00b7 Illumina \u00b7 CNA settings",
+          "text": "Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins."
+        },
+        {
+          "start": 43.18568314705044,
+          "end": 49.635909490985796,
+          "title": "QuickStart 1 \u00b7 Illumina \u00b7 tools and reference",
+          "text": "Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis."
+        },
+        {
+          "start": 49.635909490985796,
+          "end": 56.36864694207907,
+          "title": "QuickStart 1 \u00b7 Illumina \u00b7 separate project",
+          "text": "Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart."
+        },
+        {
+          "start": 56.36864694207907,
+          "end": 63.127438604133204,
+          "title": "QuickStart 1 \u00b7 Illumina \u00b7 save and review",
+          "text": "Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated."
+        },
+        {
+          "start": 63.127438604133204,
+          "end": 70.93455832614563,
+          "title": "QuickStart 1 \u00b7 Illumina \u00b7 ready for your run",
+          "text": "In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run."
+        },
+        {
+          "start": 70.93455832614563,
+          "end": 75.93862153007649,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore",
+          "text": "Open browser setup after downloading and verifying the reads. This recording uses synthetic file listings and checks."
+        },
+        {
+          "start": 75.93862153007649,
+          "end": 82.67141517717391,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 preservation",
+          "text": "Choose preservation from specimen records. Fresh is selected only as demonstration metadata here."
+        },
+        {
+          "start": 82.67141517717391,
+          "end": 97.12179800006561,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 discover inputs",
+          "text": "Choose fastq_pass. Each barcode stays one sample, even when it contains several FASTQ batches."
+        },
+        {
+          "start": 97.12179800006561,
+          "end": 102.60778456204571,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 sample groups",
+          "text": "Assign the example sample to Cancer. Use the type dropdown; you can also drag cards between groups."
+        },
+        {
+          "start": 102.60778456204571,
+          "end": 106.82576621114276,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 sample name",
+          "text": "Rename barcode01 to DRR165691. The barcode still identifies the same FASTQ input."
+        },
+        {
+          "start": 106.82576621114276,
+          "end": 115.23236457910389,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 CNA settings",
+          "text": "Keep Copy-number analysis, ichorCNA and 500 kb bins. FASTQs alone do not provide methylation calls."
+        },
+        {
+          "start": 115.23236457910389,
+          "end": 121.68269873317331,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 tools and reference",
+          "text": "Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis."
+        },
+        {
+          "start": 121.68269873317331,
+          "end": 128.41545292618684,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 separate project",
+          "text": "Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart."
+        },
+        {
+          "start": 128.41545292618684,
+          "end": 135.15495838108473,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 save and review",
+          "text": "Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated."
+        },
+        {
+          "start": 135.15495838108473,
+          "end": 142.02788440906443,
+          "title": "QuickStart 1 \u00b7 Oxford Nanopore \u00b7 ready for your run",
+          "text": "In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run."
+        }
+      ],
+      "scenes": [
+        {
+          "scene": "illumina",
+          "requests": [
+            "/api/system",
+            "/api/variant-install/status",
+            "/api/status",
+            "/api/scan",
+            "/api/prepare"
+          ],
+          "payload": {
+            "variants": false,
+            "variant_specimen_type": "fresh",
+            "scan_id": "recording-synthetic-1",
+            "samples": [
+              {
+                "id": 0,
+                "name": "ERR12341627",
+                "type": "cancer",
+                "label": "",
+                "role": ""
+              }
+            ],
+            "project": "/demo/oncotracer-quickstart1/illumina",
+            "project_mode": "new",
+            "analysis": "cna",
+            "threads": 4,
+            "backend": "conda",
+            "docker_image": "",
+            "caller": "ichorcna",
+            "binsize": 100,
+            "reports": false,
+            "report_context": "broad_cancer",
+            "report_detail": "catalog",
+            "gistic": false,
+            "reference": "download",
+            "reference_path": "",
+            "classifier": "",
+            "methylation_source": "modbam",
+            "methylation_path": "",
+            "resource_paths": {},
+            "resources": "",
+            "device": "cpu",
+            "accept_sturgeon_license": false
+          },
+          "valid": true,
+          "config": "# ILLUSTRATIVE NATIVE CONFIGURATION \u2014 browser simulation only.\n# Uses the real setup field names; no files have been written or validated.\n# The paths, reads and resources are fictional and this is not a runnable project.\n# Reference choice: download prepared indexes at run time (not performed here).\nmode: \"illumina\"\nlpwgs_root: \"/demo/oncotracer-quickstart1/illumina/reference\"\nhg38_auto_download: true\nreference_download_cache: \"/demo/oncotracer-quickstart1/.oncotracer-reference-downloads\"\noutdir: \"/demo/oncotracer-quickstart1/illumina/results\"\nthreads: 4\nforce: false\nrun_cna_classifier: false\nknowledge_web: false\nillumina_samplesheet: \"/demo/oncotracer-quickstart1/illumina/config/samplesheet.csv\"\nillumina_caller: \"qdnaseq\"\nillumina_binsize_kb: 100\nrun_variants: false\nvariant_specimen_type: \"fresh\"\nexecution_backend: \"conda\"\nsample_metadata: \"/demo/oncotracer-quickstart1/illumina/config/sample_metadata.csv\"\n\n# Illustrative companion config/samplesheet.csv (not written):\n# sample,fastq_1,fastq_2,status\n# \"ERR12341627\",\"/demo/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz\",\"/demo/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz\",\"tumor\"\n\n# Illustrative companion config/sample_metadata.csv (not written):\n# sample,sample_type,analysis_role,fastq_files\n# \"ERR12341627\",\"cancer\",\"tumor\",\"[\"\"/demo/oncotracer-quickstart1/input/illumina/ERR12341627_1.fastq.gz\"\",\"\"/demo/oncotracer-quickstart1/input/illumina/ERR12341627_2.fastq.gz\"\"]\"\n# CNA samples are independent; only explicit variant_matched_normals entries define Strelka2 somatic pairs.\n"
+        },
+        {
+          "scene": "ont",
+          "requests": [
+            "/api/system",
+            "/api/variant-install/status",
+            "/api/status",
+            "/api/scan",
+            "/api/ont-inputs",
+            "/api/prepare"
+          ],
+          "payload": {
+            "variants": false,
+            "variant_specimen_type": "fresh",
+            "scan_id": "recording-synthetic-1",
+            "samples": [
+              {
+                "id": 0,
+                "name": "DRR165691",
+                "type": "cancer",
+                "label": "",
+                "role": ""
+              }
+            ],
+            "project": "/demo/oncotracer-quickstart1/ont",
+            "project_mode": "new",
+            "analysis": "cna",
+            "threads": 4,
+            "backend": "conda",
+            "docker_image": "",
+            "caller": "ichorcna",
+            "binsize": 500,
+            "reports": false,
+            "report_context": "broad_cancer",
+            "report_detail": "catalog",
+            "gistic": false,
+            "reference": "download",
+            "reference_path": "",
+            "classifier": "",
+            "methylation_source": "modbam",
+            "methylation_path": "",
+            "resource_paths": {},
+            "resources": "",
+            "device": "cpu",
+            "accept_sturgeon_license": false
+          },
+          "valid": true,
+          "config": "# ILLUSTRATIVE NATIVE CONFIGURATION \u2014 browser simulation only.\n# Uses the real setup field names; no files have been written or validated.\n# The paths, reads and resources are fictional and this is not a runnable project.\n# Reference choice: download prepared indexes at run time (not performed here).\nmode: \"ont\"\nlpwgs_root: \"/demo/oncotracer-quickstart1/ont/reference\"\nhg38_auto_download: true\nreference_download_cache: \"/demo/oncotracer-quickstart1/.oncotracer-reference-downloads\"\noutdir: \"/demo/oncotracer-quickstart1/ont/results\"\nthreads: 4\nforce: false\nrun_cna_classifier: false\nknowledge_web: false\nont_folder: \"/demo/oncotracer-quickstart1/input/fastq_pass\"\nont_barcodes: \"barcode01\"\nont_sample_names: \"DRR165691\"\nont_caller: \"ichorcna\"\nont_binsize_kb: 500\nrun_variants: false\nvariant_specimen_type: \"fresh\"\nexecution_backend: \"conda\"\nsample_metadata: \"/demo/oncotracer-quickstart1/ont/config/sample_metadata.csv\"\n\n# Illustrative companion config/sample_metadata.csv (not written):\n# sample,sample_type,analysis_role,fastq_files\n# \"DRR165691\",\"cancer\",\"tumor\",\"[\"\"/demo/oncotracer-quickstart1/input/fastq_pass/barcode01/DRR165691_1.fastq.gz\"\"]\"\n# CNA samples are independent; only explicit variant_matched_normals entries define Strelka2 somatic pairs.\n"
+        }
+      ],
+      "files": {
+        ".mp4": {
+          "name": "quick-start-illumina-ont.mp4",
+          "sha256": "e2bbf114d6589aa69dec7d26b28ec75d7c1fc4fac1804dd85119011cb52b1b92",
+          "bytes": 6334722
+        },
+        ".jpg": {
+          "name": "quick-start-illumina-ont.jpg",
+          "sha256": "9a01a2c4c31a0e294b27eda4b164cc88395f25a9e03255f43b6a6e12d77aa904",
+          "bytes": 128462
+        },
+        ".vtt": {
+          "name": "quick-start-illumina-ont.vtt",
+          "sha256": "07ad00fbfd56c0a9089958fc1b320c7507fb0a9ad9b7ccb81e5734320cd65892",
+          "bytes": 3525
+        },
+        ".txt": {
+          "name": "quick-start-illumina-ont.txt",
+          "sha256": "0a76a27ec78f2093b2c91e82b5eda8f13a7ca4841989c3a2e3e6e96ed566618d",
+          "bytes": 3252
+        }
+      }
+    },
+    {
+      "name": "quick-start-hcc1143",
+      "duration_seconds": 77.833333,
+      "codec": "h264",
+      "pixel_format": "yuv420p",
+      "faststart": true,
+      "resolution": [
+        1280,
+        900
+      ],
+      "cues": [
+        {
+          "start": 0.9233015729114413,
+          "end": 5.98249307111837,
+          "title": "QuickStart 2 \u00b7 HCC1143 cohort",
+          "text": "Open browser setup after downloading and verifying the reads. This recording uses synthetic file listings and checks."
+        },
+        {
+          "start": 5.98249307111837,
+          "end": 12.708812076132745,
+          "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 preservation",
+          "text": "Choose preservation from specimen records. Fresh is selected only as demonstration metadata here."
+        },
+        {
+          "start": 12.708812076132745,
+          "end": 27.170082095079124,
+          "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 discover inputs",
+          "text": "Review the prefilled FASTQ folder, then choose Discover samples. Each Illumina read pair stays together."
+        },
+        {
+          "start": 27.170082095079124,
+          "end": 42.65191562497057,
+          "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 sample groups",
+          "text": "Assign all three libraries to Cancer. DMSO is a treatment control, not a normal genome."
+        },
+        {
+          "start": 42.65191562497057,
+          "end": 51.05046033510007,
+          "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 CNA settings",
+          "text": "Keep Copy-number analysis and set a CPU budget. This Illumina example uses QDNAseq with 100 kb bins."
+        },
+        {
+          "start": 51.05046033510007,
+          "end": 57.50058329291642,
+          "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 tools and reference",
+          "text": "Choose the backend you installed. Keep prepared hg38 download; real downloads begin only when you start analysis."
+        },
+        {
+          "start": 57.50058329291642,
+          "end": 64.23362019006163,
+          "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 separate project",
+          "text": "Confirm a distinct project folder. Keep optional short-variant analysis off for this CNA QuickStart."
+        },
+        {
+          "start": 64.23362019006163,
+          "end": 70.97523345192894,
+          "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 save and review",
+          "text": "Save configuration and check. Resolve any errors before Run analysis. These displayed checks are simulated."
+        },
+        {
+          "start": 70.97523345192894,
+          "end": 77.833333,
+          "title": "QuickStart 2 \u00b7 HCC1143 cohort \u00b7 ready for your run",
+          "text": "In a real project, choose Run analysis after checks pass and keep its terminal open. This demo stops here; no analysis was run."
+        }
+      ],
+      "scenes": [
+        {
+          "scene": "hcc",
+          "requests": [
+            "/api/system",
+            "/api/variant-install/status",
+            "/api/status",
+            "/api/scan",
+            "/api/prepare"
+          ],
+          "payload": {
+            "variants": false,
+            "variant_specimen_type": "fresh",
+            "scan_id": "recording-synthetic-1",
+            "samples": [
+              {
+                "id": 0,
+                "name": "HCC1143_DMSO",
+                "type": "cancer",
+                "label": "",
+                "role": ""
+              },
+              {
+                "id": 1,
+                "name": "HCC1143_BEZ235",
+                "type": "cancer",
+                "label": "",
+                "role": ""
+              },
+              {
+                "id": 2,
+                "name": "HCC1143_TRAMETINIB",
+                "type": "cancer",
+                "label": "",
+                "role": ""
+              }
+            ],
+            "project": "/demo/oncotracer-quickstart2/analysis",
+            "project_mode": "new",
+            "analysis": "cna",
+            "threads": 4,
+            "backend": "conda",
+            "docker_image": "",
+            "caller": "ichorcna",
+            "binsize": 100,
+            "reports": false,
+            "report_context": "broad_cancer",
+            "report_detail": "catalog",
+            "gistic": false,
+            "reference": "download",
+            "reference_path": "",
+            "classifier": "",
+            "methylation_source": "modbam",
+            "methylation_path": "",
+            "resource_paths": {},
+            "resources": "",
+            "device": "cpu",
+            "accept_sturgeon_license": false
+          },
+          "valid": true,
+          "config": "# ILLUSTRATIVE NATIVE CONFIGURATION \u2014 browser simulation only.\n# Uses the real setup field names; no files have been written or validated.\n# The paths, reads and resources are fictional and this is not a runnable project.\n# Reference choice: download prepared indexes at run time (not performed here).\nmode: \"illumina\"\nlpwgs_root: \"/demo/oncotracer-quickstart2/analysis/reference\"\nhg38_auto_download: true\nreference_download_cache: \"/demo/oncotracer-quickstart2/.oncotracer-reference-downloads\"\noutdir: \"/demo/oncotracer-quickstart2/analysis/results\"\nthreads: 4\nforce: false\nrun_cna_classifier: false\nknowledge_web: false\nillumina_samplesheet: \"/demo/oncotracer-quickstart2/analysis/config/samplesheet.csv\"\nillumina_caller: \"qdnaseq\"\nillumina_binsize_kb: 100\nrun_variants: false\nvariant_specimen_type: \"fresh\"\nexecution_backend: \"conda\"\nsample_metadata: \"/demo/oncotracer-quickstart2/analysis/config/sample_metadata.csv\"\n\n# Illustrative companion config/samplesheet.csv (not written):\n# sample,fastq_1,fastq_2,status\n# \"HCC1143_DMSO\",\"/demo/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz\",\"/demo/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz\",\"tumor\"\n# \"HCC1143_BEZ235\",\"/demo/oncotracer-quickstart2/input/HCC1143_BEZ235_R1.fastq.gz\",\"/demo/oncotracer-quickstart2/input/HCC1143_BEZ235_R2.fastq.gz\",\"tumor\"\n# \"HCC1143_TRAMETINIB\",\"/demo/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fastq.gz\",\"/demo/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R2.fastq.gz\",\"tumor\"\n\n# Illustrative companion config/sample_metadata.csv (not written):\n# sample,sample_type,analysis_role,fastq_files\n# \"HCC1143_DMSO\",\"cancer\",\"tumor\",\"[\"\"/demo/oncotracer-quickstart2/input/HCC1143_DMSO_R1.fastq.gz\"\",\"\"/demo/oncotracer-quickstart2/input/HCC1143_DMSO_R2.fastq.gz\"\"]\"\n# \"HCC1143_BEZ235\",\"cancer\",\"tumor\",\"[\"\"/demo/oncotracer-quickstart2/input/HCC1143_BEZ235_R1.fastq.gz\"\",\"\"/demo/oncotracer-quickstart2/input/HCC1143_BEZ235_R2.fastq.gz\"\"]\"\n# \"HCC1143_TRAMETINIB\",\"cancer\",\"tumor\",\"[\"\"/demo/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R1.fastq.gz\"\",\"\"/demo/oncotracer-quickstart2/input/HCC1143_TRAMETINIB_R2.fastq.gz\"\"]\"\n# CNA samples are independent; only explicit variant_matched_normals entries define Strelka2 somatic pairs.\n"
+        }
+      ],
+      "files": {
+        ".mp4": {
+          "name": "quick-start-hcc1143.mp4",
+          "sha256": "ac9c7130f4592e605b83e9e91b9865f26b15fe9a0ad13d25170e6b515ac88b9a",
+          "bytes": 3074398
+        },
+        ".jpg": {
+          "name": "quick-start-hcc1143.jpg",
+          "sha256": "1fdf76ae2734b57dd66108470d0196ac3fa98b501779539d0793be40eb8bd7c5",
+          "bytes": 130935
+        },
+        ".vtt": {
+          "name": "quick-start-hcc1143.vtt",
+          "sha256": "b0b0d1a25d9ffc77a42792464a7bf96bdfc16206965424f7dac9818914f62128",
+          "bytes": 1696
+        },
+        ".txt": {
+          "name": "quick-start-hcc1143.txt",
+          "sha256": "896f9e9b07d278b3eaf3d407cfc8fbae229cfd6fd708aa40b42cb45929cbb382",
+          "bytes": 1613
+        }
+      }
+    }
+  ]
+}

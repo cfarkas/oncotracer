@@ -20,7 +20,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from oncotracer_cli.cli import QS1_FILES, main, build_parser
+from oncotracer_cli.cli import QS1_FILES, main, build_parser, parse_arguments
 from oncotracer_cli.web import WebState
 from oncotracer_cli.engine import _fastq_files, merge_fastqs, parse_illumina_samplesheet, parse_ont_samples
 from oncotracer_cli.runtime import load_flat_yaml
@@ -90,7 +90,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                     self.fastq(Path(row[end]), row["sample"] + "_" + end)
         return rows
 
-    def steps(self, text, base, expected, *, unattended=False):
+    def steps(self, text, base, expected, *, unattended=False, browser_only=False):
         configured, checked, planned = [], [], []
         # Follow the guide's choices through the real terminal wizard. Deeper
         # prompt validation and alternate routes live in test_wizard.py.
@@ -122,8 +122,13 @@ class DocumentedWorkflowTests(unittest.TestCase):
 
         for command in self.commands(text):
             args = [self.remap(arg, base) for arg in command[1:]]
-            action = args[0]
+            initial = parse_arguments(args)
+            action = initial.command
             self.assertIn(action, ("setup", "auto", "check", "run"))
+            if browser_only:
+                self.assertEqual(action, "setup")
+                self.assertTrue(initial.interactive)
+                self.assertFalse(initial.run)
             if action == "setup":
                 if unattended:
                     self.assertIn("--non-interactive", args)
@@ -145,14 +150,15 @@ class DocumentedWorkflowTests(unittest.TestCase):
             if action == "setup" and "--input-folder" in args and "--terminal" not in args:
                 # Exercise the actual browser discovery/configuration path for
                 # browser-first examples; HTTP/DOM behavior has a Firefox smoke test.
-                initial = build_parser().parse_args(args)
                 state = WebState(base, initial)
                 scan = state.scan({"mode": initial.mode, "folder": initial.input_folder})
                 selections = [{"id": sample["id"], "name": next(names), "type": "cancer"}
                               for sample in scan["samples"] if sample["barcode"] != "unclassified"]
                 with contextlib.redirect_stdout(io.StringIO()):
                     saved = state.prepare({"scan_id": scan["scan_id"], "project": initial.project,
-                                           "threads": 2, "samples": selections})
+                                           "threads": 4, "samples": selections,
+                                           "backend": initial.backend or "conda",
+                                           "variant_specimen_type": "fresh"})
                 code, output = (0 if saved["valid"] else 2), json.dumps(saved)
             else:
                 prompt_handler = AssertionError("Scripted workflow requested terminal input") if unattended else answer_prompt
@@ -161,6 +167,19 @@ class DocumentedWorkflowTests(unittest.TestCase):
             self.assertEqual(code, 0, f"{shlex.join(command)}\n{output}")
             if action == "setup" and "--input-folder" in args:
                 self.assertIsNone(next(names, None), "Wizard omitted a documented sample")
+                if browser_only:
+                    # The browser performs Save/check. Independently inspect the
+                    # saved plan without clicking Run or launching a web server.
+                    config = configured[-1]
+                    check_code, output = self.cli("check", "--config", str(config), "--json")
+                    self.assertEqual(check_code, 0, output)
+                    self.assertEqual(json.loads(output)["plan"]["samples"], expected[len(checked)])
+                    checked.append(config)
+                    run_code, output = self.cli("run", "--backend", initial.backend or "conda",
+                                                "--config", str(config), "--dry-run")
+                    self.assertEqual(run_code, 0, output)
+                    self.assertIn("oncotracer-native-dry-run-v1", output)
+                    planned.append(config)
             if action == "check":
                 checked.append(Path(args[args.index("--config") + 1]))
                 self.assertEqual(json.loads(output)["plan"]["samples"], expected[len(checked) - 1])
@@ -245,21 +264,20 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 self.assertEqual(observed, set(manifest))
                 self.assertEqual(len(checksums), len(downloads))
                 self.create_tables(text, base)
-                # Hardware/backend commands are useful prerequisites, not analysis steps.
-                workflow_text = text if relative != "docs/full_tutorial.md" else text.split("## 4. Save the settings", 1)[1]
-                if relative == "docs/quick_start.md":
-                    # Alternatives replace step 2; the default browser
-                    # walkthrough creates each project exactly once. Scripted
-                    # setup is exercised independently below.
-                    workflow_text = re.sub(
-                        r"^## (?:Alternative: scripted setup and terminal run|Optional: reuse prepared genome indexes)\n.*?(?=^## |\Z)",
-                        "", workflow_text, flags=re.MULTILINE | re.DOTALL,
-                    )
-                if relative == "docs/public_cohort.md":
-                    # These alternatives create the same project. Exercise the
-                    # scripted cohort here; browser mapping has separate coverage.
-                    workflow_text = workflow_text.split("## Alternative:", 1)[1].split("## Resume", 1)[0]
-                configs = self.steps(workflow_text, base, samples)
+                browser_only = relative != "docs/full_tutorial.md"
+                workflow_text = text if browser_only else text.split("## 4. Save the settings", 1)[1]
+                configs = self.steps(workflow_text, base, samples, browser_only=browser_only)
+                if browser_only:
+                    for config in configs:
+                        self.assertFalse(config.get("methylation", False))
+                        self.assertFalse(config.get("methylation_only", False))
+                        self.assertFalse(config.get("run_variants", False))
+                        self.assertFalse(config.get("run_cna_classifier", False))
+                        if config["mode"] == "illumina":
+                            self.assertEqual(config["illumina_binsize_kb"], 100)
+                        else:
+                            self.assertEqual(config["ont_caller"], "ichorcna")
+                            self.assertEqual(config["ont_binsize_kb"], 500)
                 self.assertTrue(all(config["hg38_auto_download"] for config in configs))
                 for config in configs:
                     expected_parent = Path(config["outdir"]).parent
@@ -273,7 +291,8 @@ class DocumentedWorkflowTests(unittest.TestCase):
 
     def test_quickstart_scripted_alternative_uses_downloaded_inputs_without_prompts(self):
         page = (ROOT / "docs/quick_start.md").read_text()
-        text = self.section(page, "Alternative: scripted setup and terminal run")
+        terminal = (ROOT / "docs/quickstart_terminal.md").read_text()
+        text = self.section(terminal, "QuickStart 1")
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary) / "analysis with spaces"
             inputs = []
@@ -298,6 +317,28 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 self.assertEqual(config["threads"], 4)
                 self.assertTrue(config["hg38_auto_download"])
             self.assertEqual({path: path.read_bytes() for path in inputs}, original)
+
+    def test_quickstart2_terminal_commands_keep_all_pairs_without_prompts(self):
+        page = (ROOT / "docs/public_cohort.md").read_text()
+        terminal = self.section((ROOT / "docs/quickstart_terminal.md").read_text(), "QuickStart 2")
+        names = ["HCC1143_DMSO", "HCC1143_BEZ235", "HCC1143_TRAMETINIB"]
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary) / "analysis with spaces"
+            for command in self.commands(page, "curl"):
+                if command[-1].endswith(".fastq.gz"):
+                    target = base / command[command.index("--output") + 1]
+                    self.fastq(target, target.name)
+            original = {path: path.read_bytes() for path in base.rglob("*.fastq.gz")}
+            self.assertEqual(len(original), 6)
+            self.create_tables(terminal, base)
+            config, = self.steps(terminal, base, [names], unattended=True)
+            samples = parse_illumina_samplesheet(Path(config["illumina_samplesheet"]))
+            folder = base / "oncotracer-quickstart2/input"
+            self.assertEqual([(sample.sample, sample.fastq_1, sample.fastq_2, sample.status) for sample in samples],
+                             [(name, folder / (name + "_R1.fastq.gz"), folder / (name + "_R2.fastq.gz"), "tumor") for name in names])
+            self.assertTrue(config["hg38_auto_download"])
+            self.assertEqual(config["threads"], 4)
+            self.assertEqual({path: path.read_bytes() for path in original}, original)
 
     def test_headless_scripted_workflows_keep_pairs_and_selected_barcode_batches(self):
         page = (ROOT / "docs/headless.md").read_text()
@@ -365,6 +406,10 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 continue
             with self.subTest(page=path.relative_to(ROOT)), tempfile.TemporaryDirectory() as temporary:
                 base = Path(temporary) / "analysis #1, with spaces"
+                if path.relative_to(ROOT).as_posix() == "docs/quickstart_terminal.md":
+                    # This guide explicitly follows the linked public download
+                    # page. Exercise its directory setup without downloading.
+                    self.create_tables((ROOT / "docs/public_cohort.md").read_text(), base)
                 count += self.create_tables(text, base)
                 for table in base.rglob("*.csv"):
                     with table.open() as handle:

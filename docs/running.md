@@ -5,7 +5,7 @@
 After [installation](installation.md), open a new project:
 
 ```bash
-oncotracer setup --project "$PWD/my-study"
+oncotracer --interactive --backend conda --project "$PWD/my-study"
 ```
 
 Choose your files and settings. Click **Save configuration and check**, review
@@ -56,7 +56,10 @@ step, or the [output guide](outputs.md) to find a result file.
 ## Stop a run
 
 Click **Stop analysis** in the browser, or press **Ctrl+C** in the terminal running
-the analysis. In the browser, choose **Keep project** to retain work for resuming.
+the analysis. Wait until stopping finishes. In the browser, choose **No** in
+**Delete incomplete run?** to retain work for resuming.
+Closing the browser or the setup-server terminal does **not** stop an already-started
+analysis. Use its **Stop analysis** control before closing setup when you want it stopped.
 
 ## Resume behavior
 
@@ -68,6 +71,14 @@ oncotracer setup --project "$PWD/my-study" --run
 
 This uses the project's saved backend and settings. Completed work is reused
 when still valid. You can also repeat your original `oncotracer run` command.
+
+## Run separate projects at the same time
+
+Open another terminal and launch `oncotracer --interactive --backend conda`
+(or `--backend docker`) for each project. Each session chooses an available port;
+use its own printed URL. Give each run a different project/output directory and
+a share of the available CPU and memory. Concurrent writes to the same project
+are rejected. See [concurrent projects](nextflow_entry.md#concurrent-projects).
 
 ## Preview a run
 

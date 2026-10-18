@@ -41,35 +41,30 @@ ACTIVE_NATIVE_FILES = (
 
 REQUIRED_TEXT = {
     "README.md": (
+        "## Quick start",
+        "oncotracer --interactive --backend conda",
         "copy-number changes",
         "pip install oncotracer",
         "No Git checkout is required",
-        "oncotracer setup --project",
-        "oncotracer check --config",
         "oncotracer install --conda",
         "docs/quick_start.md",
         "docs/public_cohort.md",
-        "oncotracer run --backend conda",
         "run_cna_classifier: true",
         "release-provenance.json",
     ),
     "docs/index.md": (
-        "oncotracer setup --project",
-        "oncotracer check --config",
-        'oncotracer setup --project "$PWD/my-study" --run',
+        "oncotracer --interactive",
         "native_architecture.md",
         "parity_release.md",
     ),
     "docs/installation.md": (
         "pip install oncotracer",
+        "oncotracer --interactive --backend conda",
         "No Git checkout is needed",
         "source oncotracer-env/bin/activate",
         "oncotracer system --path",
         "oncotracer install --conda",
         "oncotracer doctor --backend conda",
-        "oncotracer setup --project",
-        "oncotracer check --config",
-        "oncotracer run --backend conda",
         "Requirements",
         "installation_details.md",
         "reference_indexes.md",
@@ -91,16 +86,13 @@ REQUIRED_TEXT = {
         "backend-specific",
     ),
     "docs/quick_start.md": (
-        "complete native analysis",
+        "oncotracer --interactive",
+        "quickstart_terminal.md#quickstart-1",
+        "<video controls",
         "approximately 225 MB",
-        "oncotracer setup --project",
-        "oncotracer check --config",
-        "oncotracer run --backend conda",
-        "--hg38_build",
         "md5sum -c",
         "--backend conda",
         "--backend docker",
-        "--backend singularity",
         "03_cna_codification/cna_events.tsv",
         ".oncotracer-native/trace.tsv",
         "run downloads prebuilt indexes",
@@ -114,12 +106,21 @@ REQUIRED_TEXT = {
         "SRR7085656",
         "SRR7085655",
         "SRR7085657",
+        "oncotracer --interactive",
+        "quickstart_terminal.md#quickstart-2",
+        "<video controls",
+        "md5sum -c",
+        "## Stop or resume",
+    ),
+    "docs/quickstart_terminal.md": (
+        "## QuickStart 1",
+        "## QuickStart 2",
         "oncotracer setup --non-interactive",
         "--samplesheet",
         "oncotracer check --config",
         "oncotracer run --backend conda",
-        "md5sum -c",
-        "## Resume",
+        "--hg38_build",
+        "--build_reference",
     ),
     "docs/auto_params.md": (
         "does not start the scientific analysis",
@@ -285,7 +286,6 @@ def check_required_native_content() -> None:
 
 def check_native_runtime_boundary() -> None:
     forbidden = (
-        "nextflow run",
         "carlosfarkas/oncotracer:latest",
         "docker://carlosfarkas/oncotracer:latest",
         "Every OncoTracer command starts with Nextflow",
@@ -294,15 +294,7 @@ def check_native_runtime_boundary() -> None:
     for relative_path in ACTIVE_NATIVE_FILES:
         text = read(relative_path)
         for phrase in forbidden:
-            checked = text
-            if relative_path == "README.md" and phrase == "nextflow run":
-                # Match test_native_docs: the explicit short-variant section
-                # documents the supported GLIMPSE2 entry; CNA remains native.
-                checked = "\n".join(line for line in text.splitlines()
-                                    if not line.startswith("**Illumina short variants:**"))
-            found = (re.search(r"\bnextflow\s+run\b", checked, re.IGNORECASE)
-                     if phrase == "nextflow run" else phrase.casefold() in checked.casefold())
-            if found:
+            if phrase.casefold() in text.casefold():
                 fail(f"obsolete v1 runtime instruction in {relative_path}: {phrase}")
 
     for relative_path in ("README.md", "docs/installation.md", "docs/index.md"):

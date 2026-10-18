@@ -80,7 +80,7 @@ validation retains its pinned datasets and comparison gates separately.
 
 ## Documentation
 
-The active GitHub Pages site should retain the full tutorial breadth while every normal command uses the current `oncotracer` CLI. Build strictly:
+The GitHub Pages site uses the current `oncotracer` CLI and the supported `main.nf` gateway. Keep the primary tutorials short and link to scripted alternatives. Build strictly:
 
 ```bash
 python3 -m pip install -r docs/requirements.txt
@@ -98,7 +98,7 @@ publish or replace a software release.
 Documentation regression checks require:
 
 - one tested installation route for the commands shown in the guides;
-- ordinary `setup`/`auto`, `check`, and `run` commands in tutorials;
+- browser-first tutorials using `--interactive`, with tested `setup`/`auto`, `check`, and `run` alternatives on the terminal pages;
 - every user-authored CSV/TSV table created by a complete `cat` block, with its filename and parent folder clear;
 - explicit per-library FASTQ pairs and per-sample ONT barcodes, never guessed identities;
 - no duplicate YAML keys or instructions to append keys that already exist;
@@ -151,3 +151,21 @@ To exercise both folder pickers with temporary synthetic files in Chromium and
 Firefox, install Playwright and its browsers, then run
 `python tests/browser_folder_picker_smoke.py --output /tmp/oncotracer-folder-check`.
 Use a new output directory for each run. No analysis is started.
+
+## Refresh the QuickStart videos
+
+The videos use the current setup page with synthetic file inventories and checks.
+The recorder blocks analysis requests and labels the demo throughout. It requires
+Playwright with Chromium, plus `ffmpeg` and `ffprobe`, in a development environment.
+Choose a new, unused working directory:
+
+```bash
+python3 scripts/record_quickstart_videos.py --work-dir /tmp/oncotracer-quickstart-recording
+```
+
+Commit the generated MP4s, posters, captions, transcripts and
+`docs/assets/tutorial/quick-start-recording.json` together. Inspect the videos at
+normal speed; verify the sample names, preservation, CNA settings and review step.
+The manifest records UI/API source hashes, media checksums and the asserted sample
+selections. Documentation tests verify these records so interface changes require
+updated recordings. Do not record a personal browser profile or real sample data.

@@ -2,7 +2,7 @@
 
 **[Open the interactive demo](assets/setup-demo/index.html)**
 
-Try the same setup interface used by `oncotracer setup`, with synthetic Illumina
+Try the same setup interface used by `oncotracer --interactive`, with synthetic Illumina
 and ONT examples. The demo runs in your browser: configuration checks, progress
 and results are simulated. **Browse folders → Browse computer** also opens your
 computer's folder picker to preview FASTQ (`.fastq`, `.fq`, and gzipped versions),
@@ -16,6 +16,9 @@ files for analysis. The hosted demo's **Use this folder** applies to synthetic
 folders only.
 
 [![Preview of the interactive OncoTracer setup demo](assets/setup-demo-preview.png)](assets/setup-demo/index.html)
+
+Watch the browser walkthroughs in [QuickStart 1](quick_start.md#2-follow-the-browser-walkthrough)
+and [QuickStart 2](public_cohort.md#2-follow-the-browser-walkthrough), then try the controls yourself.
 
 ## What to try
 
@@ -38,17 +41,18 @@ folders only.
 
 ## Start the real server
 
-After [installing OncoTracer](installation.md), activate your launcher environment
-and start a project:
+After [installing OncoTracer](installation.md), start a project from any directory.
+If `oncotracer` is not on PATH and you installed it in a virtual environment,
+activate that environment first:
 
 ```bash
-oncotracer setup --project "$PWD/my-study" --backend conda
+oncotracer --interactive --backend conda --project "$PWD/my-study"
 ```
 
 For Docker, use the image that includes the variant tools:
 
 ```bash
-oncotracer setup --project "$PWD/my-study" --backend docker \
+oncotracer --interactive --backend docker --project "$PWD/my-study" \
   --image carlosfarkas/oncotracer:fastq-variants-20261017 --variants
 ```
 
@@ -70,13 +74,14 @@ To record the same preservation in terminal setup, add `--variant-specimen-type 
 or `--variant-specimen-type ffpe` according to your specimen records.
 
 The [headless guide](headless.md) includes fully scripted Illumina/ONT runs,
-remote-browser SSH commands, logs and resuming. The public QuickStarts include
-complete terminal runs using real downloadable examples. The synthetic demo
+remote-browser SSH commands, logs and resuming. The [terminal QuickStarts](quickstart_terminal.md) provide
+complete runs using real downloadable examples. The synthetic demo
 itself produces no reads or executable analysis.
 
 ### Server behavior
 
-The real interface opens at **127.0.0.1:8888**. Keep the terminal open and use its
+The real interface uses an available loopback port, preferring **127.0.0.1:8888**.
+Separate sessions can open separate projects. Keep each terminal open and use its
 complete printed URL, including the session code after `#`, if the browser does
 not open automatically. In the installed app, **Browse computer** opens the
 desktop's native folder chooser directly and fills the selected absolute path.

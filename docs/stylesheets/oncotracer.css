@@ -12,3 +12,5 @@
 .md-sidebar--primary .md-nav__title { font-weight: 800; }
 .md-nav__link--active { font-weight: 700; }
 @media screen and (min-width: 76.25em) { .md-sidebar--secondary { border-left: 1px solid var(--md-default-fg-color--lightest); } }
+
+.md-typeset video { display: block; width: 100%; height: auto; margin: 1rem 0 .5rem; border: 1px solid var(--md-default-fg-color--lightest); border-radius: .5rem; background: #111827; }

@@ -7,7 +7,7 @@ desktop, you can also connect your laptop browser through SSH.
 
 | Route | Command | What happens |
 | --- | --- | --- |
-| Browser | `oncotracer setup` | Starts the local setup server and opens a browser. |
+| Browser | `oncotracer --interactive --backend conda` | Starts the local setup server and opens a browser. |
 | Terminal questions | `oncotracer setup --terminal` | Asks for inputs/settings in the terminal; finish with `save` or `run`. |
 | Scripted setup | `oncotracer setup --non-interactive ...` | Writes configuration from explicit sample flags; no browser or questions. |
 | Remote browser | `oncotracer setup --no-browser --port 8888` | Starts the setup server and prints its URL; connect through SSH below. |
@@ -17,9 +17,9 @@ desktop, you can also connect your laptop browser through SSH.
 `--non-interactive` for no web interface. There is no `--headless` flag.
 
 Install the [launcher and analysis tools](installation.md) on the server first.
-If installed in a Python environment, activate that launcher environment in each
-shell. All read, reference, model,
-database and project paths belong to the server. Replace `/data` and `/work`
+If `oncotracer` is not on PATH and you installed it in a virtual environment,
+activate that environment first. All read, reference, model, database and project
+paths belong to the server. Replace `/data` and `/work`
 paths with your own. Choose one setup route per new project.
 
 ## Terminal questions
@@ -177,7 +177,7 @@ If `tmux` is installed, create a persistent session **on the server**:
 tmux new -s oncotracer
 ```
 
-Inside that session, activate your launcher environment and run:
+Inside that session, make sure the `oncotracer` command is available, then run:
 
 ```bash
 mkdir -p /work/illumina-scripted/logs
@@ -212,9 +212,8 @@ changes and preview commands, see [running details](running_details.md).
 
 ## Complete examples
 
-[QuickStart 1](quick_start.md#alternative-scripted-setup-and-terminal-run) and
-[QuickStart 2](public_cohort.md#alternative-scripted-setup-and-terminal-run) include
-terminal-only setup/check/run commands using their downloaded reads.
+[QuickStarts from the terminal](quickstart_terminal.md) provides complete
+setup/check/run commands for the verified downloads in both public tutorials.
 The [full public cohort](full_tutorial.md), [batch setup](auto_params.md),
 [methylation guide](configuration/methylation.md), [variant reference](variants_reference.md)
 and [ANNOVAR guide](annovar.md) also include terminal runs.
