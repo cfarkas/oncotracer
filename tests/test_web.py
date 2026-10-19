@@ -110,6 +110,20 @@ class WebTests(unittest.TestCase):
         self.assertEqual([(r.sample, r.status) for r in parse_ont_samples(config)],
                          [("patient", "tumor"), ("control", "normal")])
 
+    def test_ont_controls_allow_ichorcna_and_preserve_roles(self):
+        for barcode in ("barcode01", "barcode02"):
+            self.fastq(f"reads/fastq_pass/{barcode}/read.fastq.gz")
+        with patch("oncotracer_cli.setup._run_setup", side_effect=AssertionError("must not run")):
+            prepared = self.prepare(mode="ont", samples=[
+                {"id": 0, "name": "patient", "type": "cancer"},
+                {"id": 1, "name": "control", "type": "normal"}], caller="ichorcna")
+        self.assertTrue(prepared["valid"], prepared["check"])
+        config = load_flat_yaml(Path(prepared["config_path"]))
+        self.assertEqual(config["ont_caller"], "ichorcna")
+        self.assertEqual(config["ont_binsize_kb"], 500)
+        self.assertEqual([(r.sample, r.status) for r in parse_ont_samples(config)],
+                         [("patient", "tumor"), ("control", "normal")])
+
     def test_named_ont_browser_save_reaches_native_engine_with_original_names(self):
         paths = [self.fastq(f"reads/{name}/fastq_pass/barcode01/batch.fastq.gz")
                  for name in ("ONCO-001", "ONCO-002")]

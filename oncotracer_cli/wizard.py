@@ -178,9 +178,9 @@ def command_wizard(original_args) -> int:
             values.update(ont_normal_folder=str(discovered.root),
                           ont_normal_barcodes=",".join(row["source"].barcode for row in controls),
                           ont_normal_sample_names=",".join(row["sample"] for row in controls))
-            print("ONT controls require the solid-biopsy QDNAseq workflow; every selected sample is analyzed independently.")
-        choices = ("qdnaseq",) if controls else ("ichorcna", "qdnaseq")
-        caller = "qdnaseq" if controls else "ichorcna"
+            print("ONT normal/control labels are retained with either CNA method; every selected sample is analyzed independently.")
+        choices = ("ichorcna", "qdnaseq")
+        caller = "ichorcna"
         if args.analysis != "methylation":
             print("ONT CNA methods: ichorcna uses 500 kb bins; qdnaseq is for solid biopsies.")
             caller = _ask(None, "ONT CNA method", default=caller, choices=choices)

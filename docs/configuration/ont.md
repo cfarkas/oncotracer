@@ -66,6 +66,14 @@ below show that barcode-based route; see also the
 
 The liquid-biopsy caller uses the version-selected upstream HD_ULP ichorCNA reference object as a static scientific asset. That caller resource is not created from the cohort, and no submitted `NORMAL` sample is pooled into it.
 
+In browser or terminal setup, **ONT CNA method** offers **ichorCNA** (500 kb)
+and **QDNAseq** (solid biopsy), including when samples are assigned to Normal.
+Adding controls does not change your method. Both methods analyze each sample
+independently and retain its tumor/normal role. ichorCNA records those roles in
+`ichorcna_sample_status.json` and the workflow summary; controls do not become a
+matched normal or a new panel of normals. Existing saved projects keep their
+saved caller when loaded.
+
 **Terminal / headless versions:** automatic, manual and solid-biopsy examples
 below run through the CLI.
 
@@ -162,7 +170,9 @@ Barcode and sample-name lists are positional. The first barcode maps to the firs
 NORMAL rows separately in `ont_normal_folder`, `ont_normal_barcodes`, and
 `ont_normal_sample_names`.
 
-A cohort containing NORMAL rows uses `solid_biopsy` and `qdnaseq`, as shown above.
+Legacy Automatic Setup selects `solid_biopsy` and `qdnaseq` for NORMAL rows,
+as shown above. Browser and terminal setup also allow ichorCNA with controls;
+manual YAML can use `ont_caller: ichorcna` and `ont_binsize_kb: 500`.
 Native v2 analyzes every sample independently; it never pools, averages, or subtracts the NORMAL group.
 The frozen Nextflow comparator does not support this route.
 

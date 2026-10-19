@@ -572,13 +572,6 @@ def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
                 if identity in identities:
                     raise OncoTracerError(f"The same FASTQ belongs to multiple selected ONT libraries: {identities[identity]} and {path}")
                 identities[identity] = path
-    if any(sample.status == "normal" for sample in samples):
-        caller = _ont_caller(config)
-        if caller != "qdnaseq":
-            raise OncoTracerError(
-                "independent ONT NORMAL samples require ont_analysis_type: "
-                "solid_biopsy and ont_caller: qdnaseq"
-            )
     return samples
 
 
@@ -2733,6 +2726,9 @@ def _write_ichorcna_sample_status(
         "completed_samples": completed,
         "failed_samples": failed,
         "pending_samples": pending,
+        "tumor_samples": [str(record["sample"]) for record in records if record.get("sample_role") == "tumor"],
+        "normal_samples": [str(record["sample"]) for record in records if record.get("sample_role") == "normal"],
+        "sample_derived_panel_used": False,
         "samples": records,
         "updated_at": utc_now(),
     }
@@ -2812,6 +2808,7 @@ def _run_ichorcna_with_assets(
     records: list[dict[str, object]] = [
         {
             "sample": sample.sample,
+            "sample_role": sample.status,
             "status": "pending",
             "stage": "pending",
             "error": None,
@@ -2943,6 +2940,7 @@ def _run_ichorcna_with_assets(
             completed.append((sample, expected_params, expected_seg))
             records[index] = {
                 "sample": sample.sample,
+                "sample_role": sample.status,
                 "status": "complete",
                 "stage": "complete",
                 "error": None,
@@ -2954,6 +2952,7 @@ def _run_ichorcna_with_assets(
             safe_error = _sanitize_sample_error(error)
             records[index] = {
                 "sample": sample.sample,
+                "sample_role": sample.status,
                 "status": "failed",
                 "stage": failed_stage,
                 "error": safe_error,
@@ -3294,6 +3293,10 @@ def run_refinement_and_outputs(
             raise OncoTracerError(
                 f"invalid {sample_status_label} sample status object: {sample_status_path}"
             )
+        if selected_caller == "ichorcna":
+            for key in ("tumor_samples", "normal_samples", "sample_derived_panel_used"):
+                if key in sample_status:
+                    summary[key] = sample_status[key]
         summary.update(
             {
                 "workflow_status": sample_status.get("overall_status"),

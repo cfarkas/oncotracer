@@ -59,6 +59,10 @@ force: false
 
 `ont_barcodes` and `ont_sample_names` are positional and must have the same number of entries.
 
+Independent controls can be included with either caller using `ont_normal_folder`,
+`ont_normal_barcodes` and `ont_normal_sample_names`. Their Normal labels are retained;
+adding controls does not force QDNAseq or build a panel of normals.
+
 The default above is the liquid-biopsy ichorCNA route. For a separate solid-biopsy qDNAseq analysis, use a new `outdir` and set `ont_analysis_type: solid_biopsy`, `ont_caller: qdnaseq`, and an explicit qDNAseq bin width. The engine rejects qDNAseq for other ONT analysis types.
 
 ONT methylation is available with `--methylation` plus `--sturgeon` or `--marlin`. Supply raw signal with `--pod5-dir` or existing modified-base BAMs with `--modbam`. Use `--methylation-only` to skip CNA. [The methylation guide](configuration/methylation.md) explains the inputs, resources, and CPU options.

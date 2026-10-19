@@ -144,7 +144,7 @@ Supplied references are validated before use; shared references are not overwrit
 The wizard saves `config/sample_metadata.csv` and its `sample_metadata` YAML path.
 This records each sample's type label, explicit tumor/normal analysis role and
 selected FASTQ files. `other` labels require an explicit study/control mapping.
-CNA controls are analyzed independently; ONT controls require solid-biopsy qDNAseq.
+CNA controls are analyzed independently; ONT controls support ichorCNA or solid-biopsy qDNAseq.
 Somatic Strelka2 additionally requires explicit tumor-to-normal pairing.
 
 `oncotracer check --config FILE` reports missing paths/settings and the planned
@@ -255,7 +255,7 @@ For somatic variants, [Strelka2 requires explicit pairs](../variants_reference.m
 | `ont_named_samples` | `false` | Use named library directories, each containing one `fastq_pass` directly or under one run directory |
 | `ont_barcodes` | required comma-separated names | Selected named libraries when `ont_named_samples: true`; otherwise tumor barcodes |
 | `ont_sample_names` | barcode names when omitted | Positional biological sample names |
-| `ont_normal_folder` | optional path | Parent containing independent NORMAL library/barcode directories; requires solid-biopsy qDNAseq |
+| `ont_normal_folder` | optional path | Parent containing independent NORMAL library/barcode directories; supported with ichorCNA or solid-biopsy qDNAseq |
 | `ont_normal_barcodes` | required with `ont_normal_folder` | NORMAL library/barcode selection; each is analyzed independently |
 | `ont_normal_sample_names` | NORMAL barcode names when omitted | Positional NORMAL sample names; never pooled into a panel |
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |

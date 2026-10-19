@@ -113,13 +113,12 @@ class WizardTests(unittest.TestCase):
             self.assertEqual(code, 0, output)
             run.assert_not_called()
             config = load_flat_yaml(project / "config/run.yml")
-            self.assertEqual(config["ont_caller"], "qdnaseq")
-            self.assertEqual(config["ont_analysis_type"], "solid_biopsy")
-            self.assertEqual(config["ont_binsize_kb"], 100)
+            self.assertEqual(config["ont_caller"], "ichorcna")
+            self.assertEqual(config["ont_binsize_kb"], 500)
             self.assertEqual([(s.sample, s.barcode, s.status) for s in parse_ont_samples(config)],
                              [("patient", "barcode01", "tumor"), ("healthy", "barcode02", "normal")])
             self.assertIn("Detected 6 FASTQ files in 3 samples", output)
-            self.assertIn("ONT controls require", output)
+            self.assertIn("normal/control labels are retained", output)
             self.assertFalse(any("Type for unclassified" in prompt for prompt in prompts))
 
     def test_named_ont_terminal_save_preserves_specimen_names_and_pass_reads(self):

@@ -48,7 +48,7 @@ function demoYaml(payload){
     cfg.ont_folder=demoState.scan.root;
     cfg.ont_barcodes=study.map(sample=>sample.source.barcode||'.').join(',');
     cfg.ont_sample_names=study.map(sample=>sample.name).join(',');
-    cfg.ont_caller=controls.length?'qdnaseq':payload.caller;
+    cfg.ont_caller=payload.caller||'ichorcna';
     cfg.ont_binsize_kb=cfg.ont_caller==='ichorcna'?500:payload.binsize;
     if(controls.length){
       cfg.ont_normal_folder=demoState.scan.root;

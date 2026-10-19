@@ -428,8 +428,7 @@ class WebState:
                     values.update(ont_normal_folder=str(self.cpg_context.control_root if self.cpg_context else discovered.root),
                                   ont_normal_barcodes=",".join(row["source"].barcode for row in controls),
                                   ont_normal_sample_names=",".join(row["sample"] for row in controls))
-                caller = _choice(data, "caller", ("qdnaseq",) if controls else ("ichorcna", "qdnaseq"),
-                                 "qdnaseq" if controls else "ichorcna")
+                caller = _choice(data, "caller", ("ichorcna", "qdnaseq"), "ichorcna")
                 values["ont_caller"] = caller
                 if caller == "qdnaseq":
                     values["ont_analysis_type"] = "solid_biopsy"

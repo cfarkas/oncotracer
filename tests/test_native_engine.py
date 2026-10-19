@@ -177,7 +177,7 @@ class NativeEngineTests(unittest.TestCase):
                 ],
             )
 
-    def test_ont_normal_samples_require_role_preserving_qdnaseq(self) -> None:
+    def test_ont_normal_samples_preserve_roles_with_either_caller(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "fastq_pass"
             (root / "barcode01").mkdir(parents=True)
@@ -190,10 +190,9 @@ class NativeEngineTests(unittest.TestCase):
                 "ont_normal_barcodes": "barcode02",
                 "ont_normal_sample_names": "Control_A",
             }
-            with self.assertRaisesRegex(
-                OncoTracerError, "independent ONT NORMAL samples require"
-            ):
-                parse_ont_samples(values)
+            self.assertEqual(_ont_caller(values), "ichorcna")
+            self.assertEqual([sample.status for sample in parse_ont_samples(values)],
+                             ["tumor", "normal"])
 
             values["ont_analysis_type"] = "solid_biopsy"
             values["ont_caller"] = "qdnaseq"
@@ -788,7 +787,8 @@ class NativeEngineTests(unittest.TestCase):
                 bam = temporary / f"{name}.bam"
                 bam.write_bytes(b"bam")
                 bams[name] = bam
-                samples.append(OntSample(name, name, fastq_dir))
+                samples.append(OntSample(name, name, fastq_dir,
+                                         status="normal" if name == "SNC-F" else "tumor"))
             samurai = temporary / "01_samurai_ont"
             ichor_out = samurai / "results" / "ichorcna"
             ichor_out.mkdir(parents=True)
@@ -841,6 +841,10 @@ class NativeEngineTests(unittest.TestCase):
             self.assertEqual(status["overall_status"], "partial_failure")
             self.assertEqual(status["failed_samples"], ["SNC-E"])
             self.assertEqual(status["completed_samples"], ["SNC-F"])
+            self.assertEqual([row["sample_role"] for row in status["samples"]], ["tumor", "normal"])
+            self.assertEqual(status["normal_samples"], ["SNC-F"])
+            self.assertEqual(status["tumor_samples"], ["SNC-E"])
+            self.assertFalse(status["sample_derived_panel_used"])
             self.assertEqual(status["samples"][0]["stage"], "ichorcna")
             self.assertIn("invalid 'x'", status["samples"][0]["error"])
             self.assertIn("<path>", status["samples"][0]["error"])
