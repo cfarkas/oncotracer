@@ -24,6 +24,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--no_browser', '--no-browser', action='store_true', help='print the browser URL without opening it automatically')
     p.add_argument('--project', help='project folder to prefill in browser setup')
     p.add_argument('--input_folder', '--input-folder', help='FASTQ folder to prefill in browser setup')
+    p.add_argument('--cpg_from', '--cpg-from', help='reuse a saved ONT project in simplified CpG browser setup')
+    p.add_argument('--classifier', choices=('marlin', 'sturgeon'), help='preselect the CpG classifier group')
+    p.add_argument('--resources', help='existing methylation tool/model resource YAML')
     p.add_argument('--image', help='Docker image to prefill in browser setup')
     for name in ('variant_tool_prefix', 'variant_ffperase_root', 'variant_ffperase_models',
                  'variant_ffperase_sif', 'variant_ffperase_prefix'):
@@ -63,13 +66,15 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
     config = resolve_path(args.config, launch) if args.config else None
     if config is not None and not config.is_file():
         raise ValueError(f'Configuration file does not exist: {config}')
-    setup_paths = ('project', 'input_folder', 'variant_tool_prefix', 'variant_ffperase_root',
+    setup_paths = ('project', 'input_folder', 'cpg_from', 'resources', 'variant_tool_prefix', 'variant_ffperase_root',
                    'variant_ffperase_models', 'variant_ffperase_sif', 'variant_ffperase_prefix')
-    if not args.interactive and (args.ffpe or args.no_browser or args.image or
+    if not args.interactive and (args.ffpe or args.no_browser or args.image or args.classifier or
                                  any(getattr(args, key) for key in setup_paths)):
         raise ValueError('--ffpe and browser setup options require --interactive; no analysis was started')
     if args.ffpe and config is not None:
         raise ValueError('--ffpe presets a new FASTQ setup; omit --config and review existing configurations separately')
+    if args.cpg_from and (config is not None or args.ffpe or args.input_folder):
+        raise ValueError('--cpg_from reuses an ONT project; omit --config, --ffpe and --input_folder')
     argv = python_module('oncotracer_cli.cli', source=source)
     cwd = launch
     if args.interactive:
@@ -92,9 +97,11 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
                 argv += ['--' + key.replace('_', '-'), str(resolve_path(getattr(args, key), launch))]
         if args.image:
             argv += ['--image', args.image]
+        if args.classifier:
+            argv += ['--classifier', args.classifier]
         if config:
             argv += ['--variant-config', str(config)]
-        else:
+        elif not args.cpg_from:
             argv += ['--mode', 'illumina', '--variants']
         if args.backend:
             argv += ['--backend', args.backend]

@@ -57,6 +57,27 @@ class NextflowGatewayTests(unittest.TestCase):
         self.assertEqual(parsed.variant_config, str(self.config))
         self.assertFalse(parsed.terminal)
 
+    def test_cpg_continuation_preserves_literal_project_and_has_no_variant_preset(self):
+        source = 'ONT project $(touch SHOULD_NOT_EXIST)'
+        argv, cwd, _ = gateway.command(self.args(
+            '--interactive', '--cpg_from', source, '--classifier', 'sturgeon',
+            '--resources', 'methylation resources.yml', '--backend', 'conda'))
+        parsed = parse_arguments(argv[3:])
+        self.assertEqual(parsed.cpg_from, str(self.root / source))
+        self.assertEqual(parsed.classifier, 'sturgeon')
+        self.assertEqual(parsed.resources, str(self.root / 'methylation resources.yml'))
+        self.assertEqual(parsed.backend, 'conda')
+        self.assertFalse(parsed.variants)
+        self.assertFalse(parsed.run)
+        self.assertNotIn('--mode', argv)
+        self.assertEqual(cwd, self.root)
+        self.assertFalse((self.root / 'SHOULD_NOT_EXIST').exists())
+
+    def test_cpg_continuation_rejects_competing_input_routes(self):
+        for extra in (['--config', self.config.name], ['--ffpe'], ['--input_folder', 'reads']):
+            with self.subTest(extra=extra), self.assertRaisesRegex(ValueError, 'reuses an ONT project'):
+                gateway.command(self.args('--interactive', '--cpg-from', 'ONT project', *extra))
+
     def test_variants_and_full_commands_preserve_literal_paths(self):
         for kind, expected in [('variants', 'variants'), ('full', 'run')]:
             argv, _, _ = gateway.command(self.args('--analysis', kind, '--config', self.config.name,
@@ -110,6 +131,7 @@ class NextflowGatewayTests(unittest.TestCase):
 
     def test_setup_only_options_never_dispatch_an_analysis(self):
         for flags in (['--ffpe'], ['--project', 'project'], ['--input_folder', 'reads'],
+                      ['--cpg_from', 'ONT project'], ['--classifier', 'marlin'], ['--resources', 'resources.yml'],
                       ['--image', 'local:image'], ['--no_browser'],
                       ['--variant_ffperase_models', 'models'], ['--variant_tool_prefix', 'tools']):
             with self.subTest(flags=flags), patch.object(gateway.subprocess, 'run') as run, \
@@ -205,6 +227,15 @@ class NextflowGatewayTests(unittest.TestCase):
         self.assertTrue(parsed.no_browser)
         self.assertFalse(parsed.run)
         self.assertFalse((self.root / 'FFPE project').exists())
+        cpg = subprocess.run([*argv, '--interactive', '--cpg_from', 'ONT project',
+                              '--classifier', 'marlin', '--backend', 'conda'],
+                             cwd=self.root, env=env, text=True, capture_output=True, timeout=90)
+        self.assertEqual(cpg.returncode, 0, cpg.stdout + cpg.stderr)
+        parsed = parse_arguments(json.loads(record.read_text())['argv'][3:])
+        self.assertEqual(parsed.cpg_from, str(self.root / 'ONT project'))
+        self.assertEqual(parsed.classifier, 'marlin')
+        self.assertFalse(parsed.variants)
+        self.assertFalse(parsed.run)
         before = record.read_bytes()
         no_arguments = subprocess.run(argv, cwd=self.root, env=env,
                                       text=True, capture_output=True, timeout=90)

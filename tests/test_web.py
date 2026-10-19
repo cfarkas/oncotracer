@@ -260,7 +260,7 @@ const show=(id,yes)=>$(id).hidden=!yes;
 const node=(tag,text)=>({tag,textContent:text,children:[],append(child){this.children.push(child);}});
 const controls=[$('scan'),$('prepare'),$('run'),$('threads')];
 const document={querySelectorAll:()=>controls};
-let activeJob=null,pollTimer=null,dismissedJobId=null,variantSpecimen='fresh',variantPairDefaults={};
+let activeJob=null,pollTimer=null,dismissedJobId=null,variantSpecimen='fresh',variantPairDefaults={},cpgContinuation=null;
 let scans=0,requestError=null,errors=[],requests=[];
 $('scan').onclick=async()=>{scans++;};
 const showProgress=()=>{},offerCleanup=()=>{},variantSettings=()=>{};
@@ -300,6 +300,8 @@ const api=async endpoint=>{requests.push(endpoint);if(requestError)throw request
   assert.equal(scans,0);assert.deepEqual(errors,['offline']);
   requestError=null;reply={status:'idle'};await restoreRunOrDiscover(defaults);
   assert.equal(scans,1);
+  cpgContinuation={source_project:'/original'};await restoreRunOrDiscover(defaults);
+  assert.equal(scans,1);assert.equal($('cpg-assign-card').hidden,false);assert.equal($('cpg-check-card').hidden,false);
 })().catch(error=>{console.error(error);process.exitCode=1;});
 """
         checked = subprocess.run([shutil.which("node"), "-e", script], capture_output=True, text=True)
@@ -1075,6 +1077,56 @@ except KeyboardInterrupt:
         self.assertNotEqual(first["suggested_project_name"], second["suggested_project_name"])
         self.assertTrue(first["suggested_project_name"].startswith("oncotracer-analysis-"))
         self.assertEqual(second["defaults"]["project"], str(self.root / "chosen"))
+
+
+class CpgBrowserStateTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("node"), "Node is required for CpG browser checks")
+    def test_cpg_keeps_source_selection_and_uses_explicit_classifier_destination(self):
+        from oncotracer_cli.web_ui import PAGE
+        destination = PAGE.split("function projectDestination(){", 1)[1].split("$('project-mode').onchange=", 1)[0]
+        selection = PAGE.split("function setupSelectedSamples(){", 1)[1].split("function cpgRequirementFields", 1)[0]
+        script = r"""
+const assert=require('node:assert/strict');
+const nodes={classifier:{value:''},'project-mode':{value:'new'},'project-name':{value:'fresh'},'project-parent':{value:'/work'},'existing-project':{value:'/existing'}};
+const $=id=>nodes[id];
+const original=[{id:0,name:'retained-control',type:'normal',label:'',role:'normal'},{id:1,name:'retained-custom',type:'custom',label:'Unlinked study specimen',role:'tumor'}];
+let cpgContinuation={selections:original,projects:{marlin:'/work/source_MARLIN',sturgeon:'/work/source_Sturgeon'}};
+let normalRowsRead=0;
+const selectedRows=()=>{normalRowsRead++;return [{dataset:{id:'7'},querySelector:selector=>({value:{'.sample-name':'regular','.type-select':'cancer','.custom-label':'','.role':''}[selector]})}];};
+""" + "function projectDestination(){" + destination + "function setupSelectedSamples(){" + selection + r"""
+assert.throws(projectDestination,/Choose the classifier/);
+nodes.classifier.value='marlin';assert.equal(projectDestination(),'/work/source_MARLIN');
+nodes.classifier.value='sturgeon';assert.equal(projectDestination(),'/work/source_Sturgeon');
+nodes['project-mode'].value='existing';assert.equal(projectDestination(),'/work/source_Sturgeon');
+const supplied=setupSelectedSamples();assert.deepEqual(supplied,original);assert.equal(normalRowsRead,0);
+supplied[0].name='tampered';assert.equal(original[0].name,'retained-control');
+cpgContinuation=null;assert.equal(projectDestination(),'/existing');
+assert.deepEqual(setupSelectedSamples(),[{id:7,name:'regular',type:'cancer',label:'',role:''}]);
+nodes['project-mode'].value='new';assert.equal(projectDestination(),'/work/fresh');
+"""
+        result = subprocess.run([shutil.which("node"), "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for CpG browser checks")
+    def test_missing_cpg_inputs_remain_visible_until_checked_without_claiming_readiness(self):
+        from oncotracer_cli.web_ui import PAGE
+        requirements = PAGE.split("function cpgRequirementFields(){", 1)[1].split("function updateCpgRequirements", 1)[0]
+        script = r"""
+const assert=require('node:assert/strict');
+const nodes={classifier:{value:'marlin'},'methylation-source':{value:'modbam'},'ont-modbam':{value:'/missing/original.bam'},'ont-pod5':{value:''},marlin_model:{value:'',matches:()=>true,closest:()=>null},sturgeon_model:{value:'',matches:()=>true,closest:()=>({hidden:true})},unsupported:{value:'',matches:()=>false}};
+const $=id=>nodes[id];
+const document={querySelector:()=>({textContent:'Classifier model'})};
+let cpgContinuation={initial_source:'modbam',initial_inputs:{'ont-modbam':'/missing/original.bam','ont-pod5':''},missing_input:true,missing_resources:{marlin:['marlin_model','sturgeon_model','unsupported'],sturgeon:['sturgeon_model']},resource_paths:{}};
+""" + "function cpgRequirementFields(){" + requirements + r"""
+assert.deepEqual(cpgRequirementFields(),[{id:'ont-modbam',label:'Original modified-base BAM or folder',missing:true},{id:'marlin_model',label:'Classifier model',missing:true}]);
+nodes['ont-modbam'].value='/replacement/original.bam';nodes.marlin_model.value='/new/model';
+assert.deepEqual(cpgRequirementFields(),[{id:'marlin_model',label:'Classifier model',missing:false}]);
+nodes['methylation-source'].value='pod5';assert.equal(cpgRequirementFields()[0].id,'ont-pod5');
+nodes['ont-pod5'].value='/original/pod5';assert.equal(cpgRequirementFields().length,1);
+cpgContinuation=null;assert.deepEqual(cpgRequirementFields(),[]);
+"""
+        result = subprocess.run([shutil.which("node"), "-e", script], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 

@@ -2,6 +2,9 @@
   "schema": 1,
   "passed": true,
   "analysis_started": false,
+  "entrypoint": "oncotracer --interactive --cpg-from /path/to/ONT-project",
+  "restored_previous_project": true,
+  "source_project_unchanged": true,
   "synthetic_inputs": true,
   "real_reads_downloaded": false,
   "patient_data": false,
@@ -12,15 +15,16 @@
     "version": "155.0"
   },
   "pace": 1.0,
-  "ui_page_sha256": "acf7c382d313a207cc0da6fd0d852e2733875db31375bca92ed92f9d78c61699",
+  "ui_page_sha256": "e15e2f9e8d660df2095774b23ba6328ab0b3ed74719d56236de9d4b7e9ac0665",
   "source_files": {
-    "oncotracer_cli/web.py": "5f623368c2adf0913378e39767673d472eeee7c6eefc16827d491413565a856a",
-    "oncotracer_cli/web_ui.py": "a6c4aca4284b1df9f2a41c916ef4e4d433fd9e46e2263103d378b087faf6ad25",
-    "oncotracer_cli/setup.py": "c30499c4ca28343eec80c662dad21e4e3ab32e24495e2133530787419a98b3d6",
-    "scripts/record_post_ont_cpg_video.py": "84029ea00937a8d8620f6113b85791b908d7b87fc2399bdebde311038dcdd7a5",
+    "oncotracer_cli/web.py": "9907801e7455234ff08b8f16a8b4cbfe5e74fa4184a1f9af661ee1035db3c82c",
+    "oncotracer_cli/web_ui.py": "d22ac36c976f6b6fcce4319471af5972fcc8cdf95d2a43848fdf023842fe9f7b",
+    "oncotracer_cli/setup.py": "7c2627c337141adb60f6c7b08045f1cc24f2380b99c9e038a3137daab1bc481b",
+    "oncotracer_cli/cpg_setup.py": "c296210d36744cea092d92136f572d2637562a92f3466e1ad6277345cd9b54a2",
+    "scripts/record_post_ont_cpg_video.py": "7d81b99b816ed04e5f3a0e4c69aeee576ef6eb67381ec04d653beec31c4b680b",
     "scripts/record_quickstart_videos.py": "91e8abaf0b092d7f748c83d809968bb5369f849dc0b6d0fb41371ac23f6849ef",
     "tests/test_native_methylation.py": "f6d4eedbe4200261d81c7b576f9664564a47232efcc25fd58f0a36f3a7b588fa",
-    "tests/test_web.py": "d78417704277b4a893dda491faa46e65d1391d6bccad34feb30d53267028c3e1"
+    "tests/test_web.py": "a28034c8bffb266f8fae0ecca35cc4c8887d503f8fe3ed9cec9f8ed2b29f476d"
   },
   "pointer_drags": [
     {
@@ -43,10 +47,12 @@
       "excluded": 2,
       "configuration_saved": true,
       "configuration_checked": true,
-      "config_sha256": "77a5b1d6b567db6ad354b715a3df67c76cc8fac8e7f9b3f903d18a6ad08b8b78",
+      "config_sha256": "f1201a9c8ab3b1fe5d8fba485ce3076282bf1e766169797601949f24b0272fc1",
       "analysis_started": false,
       "results_created": false,
-      "reference_created": false
+      "reference_created": false,
+      "separate_project": true,
+      "project_name": "ONT-project_MARLIN"
     },
     {
       "classifier": "sturgeon",
@@ -55,10 +61,12 @@
       "excluded": 2,
       "configuration_saved": true,
       "configuration_checked": true,
-      "config_sha256": "5f2455701ab934af0829046cfd9717288e15cdd2ea938219abecb02c65e44da2",
+      "config_sha256": "954b3fc22efb2586c5fbca0d8e9849b25fe30e0f7d17bdfbece1e580e3a6696d",
       "analysis_started": false,
       "results_created": false,
-      "reference_created": false
+      "reference_created": false,
+      "separate_project": true,
+      "project_name": "ONT-project_Sturgeon"
     }
   ],
   "prepare_requests": [
@@ -79,31 +87,31 @@
           "classifier": ""
         }
       ],
-      "scan_id": "XYAvRUOScDB0EWHBGXWI9xuF",
+      "scan_id": "UrENSbI78xO-zf4jDqO6r0hD",
       "samples": [
         {
           "id": 0,
           "name": "DEMO_LEUKEMIA",
           "type": "cancer",
           "label": "",
-          "role": ""
+          "role": "tumor"
         },
         {
           "id": 1,
           "name": "DEMO_CNS",
           "type": "cancer",
           "label": "",
-          "role": ""
+          "role": "tumor"
         },
         {
           "id": 2,
           "name": "DEMO_UNKNOWN",
           "type": "cancer",
           "label": "",
-          "role": ""
+          "role": "tumor"
         }
       ],
-      "project": "/tmp/oncotracer-cpg-demo-20261018/demo/projects/cpg-marlin",
+      "project": "/tmp/oncotracer-cpg-short-20261018/final/demo/ONT-project_MARLIN",
       "project_mode": "new",
       "analysis": "methylation",
       "threads": 4,
@@ -116,12 +124,22 @@
       "report_detail": "catalog",
       "gistic": false,
       "reference": "reuse",
-      "reference_path": "/tmp/oncotracer-cpg-demo-20261018/demo/prepared-hg38",
+      "reference_path": "/tmp/oncotracer-cpg-short-20261018/final/demo/prepared-hg38",
       "classifier": "marlin",
       "methylation_source": "modbam",
-      "methylation_path": "/tmp/oncotracer-cpg-demo-20261018/demo/ont-run/bam_pass",
-      "resource_paths": {},
-      "resources": "/tmp/oncotracer-cpg-demo-20261018/demo/resources/methylation.yml",
+      "methylation_path": "/tmp/oncotracer-cpg-short-20261018/final/demo/ont-run/bam_pass",
+      "resource_paths": {
+        "methylation_dorado_executable": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/sturgeon/bin/dorado",
+        "methylation_modkit_executable": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/sturgeon/bin/modkit",
+        "methylation_samtools_executable": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/sturgeon/bin/samtools",
+        "marlin_rscript": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/marlin/bin/Rscript",
+        "marlin_python": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/marlin/bin/python",
+        "marlin_model": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/marlin/marlin-model.h5",
+        "marlin_features": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/marlin/features.RData",
+        "marlin_class_annotations": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/marlin/classes.xlsx",
+        "marlin_probe_bed": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/marlin/marlin-probes.bed"
+      },
+      "resources": "/tmp/oncotracer-cpg-short-20261018/final/demo/ONT-project/config/run.yml",
       "device": "cpu",
       "accept_sturgeon_license": false
     },
@@ -142,31 +160,31 @@
           "classifier": ""
         }
       ],
-      "scan_id": "XYAvRUOScDB0EWHBGXWI9xuF",
+      "scan_id": "UrENSbI78xO-zf4jDqO6r0hD",
       "samples": [
         {
           "id": 0,
           "name": "DEMO_LEUKEMIA",
           "type": "cancer",
           "label": "",
-          "role": ""
+          "role": "tumor"
         },
         {
           "id": 1,
           "name": "DEMO_CNS",
           "type": "cancer",
           "label": "",
-          "role": ""
+          "role": "tumor"
         },
         {
           "id": 2,
           "name": "DEMO_UNKNOWN",
           "type": "cancer",
           "label": "",
-          "role": ""
+          "role": "tumor"
         }
       ],
-      "project": "/tmp/oncotracer-cpg-demo-20261018/demo/projects/cpg-sturgeon",
+      "project": "/tmp/oncotracer-cpg-short-20261018/final/demo/ONT-project_Sturgeon",
       "project_mode": "new",
       "analysis": "methylation",
       "threads": 4,
@@ -179,12 +197,19 @@
       "report_detail": "catalog",
       "gistic": false,
       "reference": "reuse",
-      "reference_path": "/tmp/oncotracer-cpg-demo-20261018/demo/prepared-hg38",
+      "reference_path": "/tmp/oncotracer-cpg-short-20261018/final/demo/prepared-hg38",
       "classifier": "sturgeon",
       "methylation_source": "modbam",
-      "methylation_path": "/tmp/oncotracer-cpg-demo-20261018/demo/ont-run/bam_pass",
-      "resource_paths": {},
-      "resources": "/tmp/oncotracer-cpg-demo-20261018/demo/resources/methylation.yml",
+      "methylation_path": "/tmp/oncotracer-cpg-short-20261018/final/demo/ont-run/bam_pass",
+      "resource_paths": {
+        "methylation_dorado_executable": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/sturgeon/bin/dorado",
+        "methylation_modkit_executable": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/sturgeon/bin/modkit",
+        "methylation_samtools_executable": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/sturgeon/bin/samtools",
+        "sturgeon_executable": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/sturgeon/bin/sturgeon",
+        "sturgeon_model": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/sturgeon/sturgeon-model.zip",
+        "sturgeon_probes": "/tmp/oncotracer-cpg-short-20261018/final/demo/resources/sturgeon/sturgeon-probes.bed"
+      },
+      "resources": "/tmp/oncotracer-cpg-short-20261018/final/demo/ONT-project/config/run.yml",
       "device": "cpu",
       "accept_sturgeon_license": true
     }
@@ -195,7 +220,7 @@
   "videos": [
     {
       "name": "post-ont-cpg",
-      "duration_seconds": 124.583333,
+      "duration_seconds": 43.25,
       "codec": "h264",
       "pixel_format": "yuv420p",
       "faststart": true,
@@ -205,122 +230,62 @@
       ],
       "cues": [
         {
-          "start": 0.559585944050923,
-          "end": 5.596947890007868,
-          "title": "After your ONT run",
-          "text": "Start a new methylation-only project. This is the real UI with synthetic files; no analysis is run."
+          "start": 0.4535280929412693,
+          "end": 4.443471763050184,
+          "title": "Your ONT project is restored",
+          "text": "Names, roles, reference and reusable settings are already loaded. Your original project stays unchanged."
         },
         {
-          "start": 5.596947890007868,
-          "end": 12.349148779176176,
-          "title": "Original sample membership",
-          "text": "Choose preservation from specimen records, then discover the original barcode FASTQs. These are synthetic examples."
+          "start": 4.443471763050184,
+          "end": 12.432201941963285,
+          "title": "1 \u00b7 Drag samples",
+          "text": "Use clinical records: leukemia \u2192 MARLIN; CNS tumour \u2192 Sturgeon. Leave unknown samples unassigned."
         },
         {
-          "start": 12.349148779176176,
-          "end": 27.517124348087236,
-          "title": "Name the samples",
-          "text": "These fictional tumour samples have leukemia, CNS or unknown clinical context. Assign the main sample role first."
+          "start": 12.432201941963285,
+          "end": 21.892133998917416,
+          "title": "2 \u00b7 Save the chosen group",
+          "text": "Choose MARLIN and save. Its new project contains only the leukemia sample."
         },
         {
-          "start": 27.517124348087236,
-          "end": 34.29985363315791,
-          "title": "Use original methylation calls",
-          "text": "Keep methylation-only analysis. Link the original modified-base BAMs with MM/ML tags, not an ordinary CNA alignment."
+          "start": 21.892133998917416,
+          "end": 25.527347607072443,
+          "title": "2 \u00b7 Save the chosen group",
+          "text": "Choose Sturgeon for its separate project. The other group and unknown sample are not queued."
         },
         {
-          "start": 34.29985363315791,
-          "end": 43.42462546704337,
-          "title": "POD5 is the alternative",
-          "text": "POD5 requires compatible Dorado basecalling and modified-base models. Existing modified-base BAMs avoid basecalling again."
+          "start": 25.527347607072443,
+          "end": 35.217918168986216,
+          "title": "Confirm your Sturgeon license",
+          "text": "Only acknowledge this after obtaining Sturgeon and accepting its terms. This demonstration uses synthetic resources."
         },
         {
-          "start": 43.42462546704337,
-          "end": 54.279538626084104,
-          "title": "Drag from documented clinical context",
-          "text": "Drag leukemia to MARLIN and CNS tumour to Sturgeon. A previous classifier prediction is not the selection rule."
-        },
-        {
-          "start": 54.279538626084104,
-          "end": 60.29888505814597,
-          "title": "Unknown stays unassigned",
-          "text": "Leave unknown or unsuitable clinical context unassigned. The dropdown on each card offers the same accessible choice."
-        },
-        {
-          "start": 60.29888505814597,
-          "end": 76.15353217115626,
-          "title": "Reuse local tools and reference",
-          "text": "Supply installed tool and model paths, or a resource YAML. This demonstration uses synthetic path fixtures, not trained models."
-        },
-        {
-          "start": 76.15353217115626,
-          "end": 82.71432776097208,
-          "title": "One classifier per project",
-          "text": "Choose MARLIN. Only its assigned sample enters this project; the other two are excluded and are not queued."
-        },
-        {
-          "start": 82.71432776097208,
-          "end": 87.07602983014658,
-          "title": "Separate destination",
-          "text": "Save to a new cpg-marlin project. Keep the completed ONT project and the other classifier's project unchanged."
-        },
-        {
-          "start": 87.07602983014658,
-          "end": 94.87268273509108,
-          "title": "Save and check only",
-          "text": "Save the selected group's configuration and inspect the included names. These checks validate synthetic paths, not biological model quality."
-        },
-        {
-          "start": 94.87268273509108,
-          "end": 101.40115750813857,
-          "title": "One classifier per project",
-          "text": "Choose Sturgeon. Only its assigned sample enters this project; the other two are excluded and are not queued."
-        },
-        {
-          "start": 101.40115750813857,
-          "end": 103.29358546505682,
-          "title": "Sturgeon resources and license",
-          "text": "Use your installed Sturgeon assets and confirm its terms only after accepting them. This checkbox is demonstrated with synthetic fixtures."
-        },
-        {
-          "start": 103.29358546505682,
-          "end": 107.75904289796017,
-          "title": "Separate destination",
-          "text": "Save to a new cpg-sturgeon project. Keep the completed ONT project and the other classifier's project unchanged."
-        },
-        {
-          "start": 107.75904289796017,
-          "end": 115.55748346401379,
-          "title": "Save and check only",
-          "text": "Save the selected group's configuration and inspect the included names. These checks validate synthetic paths, not biological model quality."
-        },
-        {
-          "start": 115.55748346401379,
-          "end": 123.45817874814384,
-          "title": "Ready for a real project",
-          "text": "Resolve errors before Run analysis in your real project. Review CpG coverage and classifier scores afterward. This recording ends without running analysis."
+          "start": 35.217918168986216,
+          "end": 42.12315707793459,
+          "title": "3 \u00b7 Run only when ready",
+          "text": "Supply any missing original BAM/POD5 or model/license requirement first. Run analysis is explicit; this demo stops after saving."
         }
       ],
       "files": {
         ".mp4": {
           "name": "post-ont-cpg.mp4",
-          "sha256": "d9bdb00c9b5ee4274793cb83af89ebee2581c91f4ff5b33ab38747f49664f319",
-          "bytes": 7794719
+          "sha256": "46ada8a6a223763232a4da4736c6cbfe1be2ce06a3a60a6c60184d6e7edd84f4",
+          "bytes": 2160624
         },
         ".jpg": {
           "name": "post-ont-cpg.jpg",
-          "sha256": "9a20dfa830737f9c0c29347645e7e760209c22ef27889a452e0b55d10696b846",
-          "bytes": 189168
+          "sha256": "313aa7362f87c93c29dbc8f42a5996b659a461408086d71a2c6fc315f23f8d07",
+          "bytes": 169027
         },
         ".vtt": {
           "name": "post-ont-cpg.vtt",
-          "sha256": "9deaba8d9572798030c295e464a39a3a7b37212c7437f92c3909ab328bbcb210",
-          "bytes": 2910
+          "sha256": "bc68d4d4a186797cef51b620ff39cd3d5313f5cf45c0639349b5a220e53fd680",
+          "bytes": 988
         },
         ".txt": {
           "name": "post-ont-cpg.txt",
-          "sha256": "c6ca792332225e95766b109cba8a537bfb277dd905ce7d34acf50c7ec513c2ca",
-          "bytes": 2565
+          "sha256": "f929fee590a65197eafd2657e656f662577b1fb76e80814b0502079b7a50591c",
+          "bytes": 987
         }
       }
     }

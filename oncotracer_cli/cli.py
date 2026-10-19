@@ -1663,6 +1663,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="oncotracer",
         description="Native LP-WGS CNA and variant analysis.",
         epilog=("Browser setup: oncotracer --interactive [--ffpe] [setup options]. "
+                "Continue ONT CpG setup: oncotracer --interactive --cpg-from PROJECT. "
                 "Use oncotracer setup --help for project, input, backend and resource options."),
     )
     parser.add_argument("--interactive", action="store_true",

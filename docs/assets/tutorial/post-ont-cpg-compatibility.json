@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "scope": "After capture, the saved-project loader gained explicit rejection of control-only projects and preserves lexical executable paths such as venv Python symlinks. The recorded fixture has study samples and regular executable files, so its flow is unchanged. Original captured hashes and media are preserved. Exact inverses recover the captured source; the restored-project guide fixture is rerun against current code.",
+  "files": {
+    "oncotracer_cli/cpg_setup.py": {
+      "recorded_sha256": "c296210d36744cea092d92136f572d2637562a92f3466e1ad6277345cd9b54a2",
+      "current_sha256": "658430eaf9b8c818d53f06c6c678326d28c89c1c36b606513d212d21b791fe14",
+      "replacements": [
+        {
+          "recorded": "    native_samples = parse_ont_samples(config)\n    single = config.get(\"ont_single_sample\", False)\n    study = [sample for sample in native_samples if sample.status == \"tumor\"]\n    root = study[0].fastq_dir if single else study[0].fastq_dir.parent\n    controls = [sample for sample in native_samples if sample.status == \"normal\"]\n    control_root = controls[0].fastq_dir.parent if controls else None\n",
+          "current": "    native_samples = parse_ont_samples(config)\n    single = config.get(\"ont_single_sample\", False)\n    study = [sample for sample in native_samples if sample.status == \"tumor\"]\n    if not study:\n        raise OncoTracerError(\"CpG continuation requires at least one saved ONT study sample; a control-only project is not supported.\")\n    root = study[0].fastq_dir if single else study[0].fastq_dir.parent\n    controls = [sample for sample in native_samples if sample.status == \"normal\"]\n    control_root = controls[0].fastq_dir.parent if controls else None\n"
+        },
+        {
+          "recorded": "        if isinstance(value, str) and value.strip():\n            path = Path(value).expanduser()\n            if path.is_absolute() and path.exists():\n                resource_paths[key] = str(path.resolve())\n                setattr(args, key, resource_paths[key])\n    modbam = getattr(args, \"modbam\", None)\n    pod5 = getattr(args, \"pod5_dir\", None)\n",
+          "current": "        if isinstance(value, str) and value.strip():\n            path = Path(value).expanduser()\n            if path.is_absolute() and path.exists():\n                # Resolving an executable symlink can leave its Python/R environment.\n                resource_paths[key] = str(path.absolute() if key in EXECUTABLES else path.resolve())\n                setattr(args, key, resource_paths[key])\n    modbam = getattr(args, \"modbam\", None)\n    pod5 = getattr(args, \"pod5_dir\", None)\n"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "scope": "The --cpg-from option and dispatch plus one CLI help sentence are additive. The original terminal recordings used ordinary setup, without this option. Exact inverses recover their unchanged source; original manifests/media are untouched.",
+  "files": {
+    "oncotracer_cli/cli.py": {
+      "recorded_sha256": "326dbdfdbf5d26cca82477dbbf457b379f1d89906248bc7cf73edb034f5d3189",
+      "current_sha256": "46667faedb142a8d7851f1333a877178d264e11790e6433fb7411d781d17679c",
+      "replacements": [
+        {
+          "recorded": "        prog=\"oncotracer\",\n        description=\"Native LP-WGS CNA and variant analysis.\",\n        epilog=(\"Browser setup: oncotracer --interactive [--ffpe] [setup options]. \"\n                \"Use oncotracer setup --help for project, input, backend and resource options.\"),\n    )\n    parser.add_argument(\"--interactive\", action=\"store_true\",\n",
+          "current": "        prog=\"oncotracer\",\n        description=\"Native LP-WGS CNA and variant analysis.\",\n        epilog=(\"Browser setup: oncotracer --interactive [--ffpe] [setup options]. \"\n                \"Continue ONT CpG setup: oncotracer --interactive --cpg-from PROJECT. \"\n                \"Use oncotracer setup --help for project, input, backend and resource options.\"),\n    )\n    parser.add_argument(\"--interactive\", action=\"store_true\",\n"
+        }
+      ]
+    },
+    "oncotracer_cli/setup.py": {
+      "recorded_sha256": "c30499c4ca28343eec80c662dad21e4e3ab32e24495e2133530787419a98b3d6",
+      "current_sha256": "7c2627c337141adb60f6c7b08045f1cc24f2380b99c9e038a3137daab1bc481b",
+      "replacements": [
+        {
+          "recorded": "\ndef command_setup(args: argparse.Namespace) -> int:\n    try:\n        parallel = getattr(args, \"variant_parallel_samples\", None)\n        if parallel is not None and (type(parallel) is not int or parallel < 1):\n            raise OncoTracerError(\"variant_parallel_samples must be a positive integer\")\n",
+          "current": "\ndef command_setup(args: argparse.Namespace) -> int:\n    try:\n        if getattr(args, \"cpg_from\", None):\n            from .cpg_setup import prepare_cpg_setup\n            from .web import command_web\n\n            prepare_cpg_setup(args)\n            args.start_dir = str(Path.cwd())\n            return command_web(args)\n        parallel = getattr(args, \"variant_parallel_samples\", None)\n        if parallel is not None and (type(parallel) is not int or parallel < 1):\n            raise OncoTracerError(\"variant_parallel_samples must be a positive integer\")\n"
+        },
+        {
+          "recorded": "            \"per-file prompts or --non-interactive with explicit sample flags for scripts.\"\n        ),\n    )\n    parser.add_argument(\"--terminal\", action=\"store_true\", help=\"use the terminal folder wizard instead of the browser\")\n    parser.add_argument(\"--port\", type=int, help=\"fixed local browser port; default: 8888 or an available port\")\n    parser.add_argument(\"--no-browser\", action=\"store_true\", help=\"print the local URL without opening a browser automatically\")\n",
+          "current": "            \"per-file prompts or --non-interactive with explicit sample flags for scripts.\"\n        ),\n    )\n    parser.add_argument(\"--cpg-from\", metavar=\"PROJECT\",\n                        help=\"open guided CpG setup from a saved ONT project; keep its inputs and outputs unchanged\")\n    parser.add_argument(\"--terminal\", action=\"store_true\", help=\"use the terminal folder wizard instead of the browser\")\n    parser.add_argument(\"--port\", type=int, help=\"fixed local browser port; default: 8888 or an available port\")\n    parser.add_argument(\"--no-browser\", action=\"store_true\", help=\"print the local URL without opening a browser automatically\")\n"
+        }
+      ]
+    }
+  }
+}

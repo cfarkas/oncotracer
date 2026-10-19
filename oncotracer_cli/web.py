@@ -132,6 +132,19 @@ class WebState:
         self.result_roots = {}
         self.job = None
         self.hardware = None
+        self.cpg_context = None
+        self.cpg_scan = None
+        if setup_args is not None and getattr(setup_args, "cpg_from", None):
+            from .cpg_setup import prepare_cpg_setup
+            self.cpg_context = prepare_cpg_setup(setup_args)
+            discovered = self.cpg_context.discovery
+            scan_id = secrets.token_urlsafe(18)
+            self.scans[scan_id] = discovered
+            self.cpg_scan = {"scan_id": scan_id, "mode": "ont", "root": str(discovered.root),
+                             "warnings": list(self.cpg_context.warnings), "samples": [
+                                 {"id": index, "name": sample.sample, "barcode": sample.barcode,
+                                  "file_count": len(sample.files), "files": [str(path) for path in sample.files],
+                                  "layout": "ONT batches"} for index, sample in enumerate(discovered.samples)]}
         self.variant_installer = VariantInstaller(self.start_dir)
 
     def system(self):
@@ -169,6 +182,7 @@ class WebState:
                   ("Other mounts", Path("/mnt"))]
         locations = [{"name": name, "path": str(path)} for name, path in places if path.is_dir()]
         return {"hardware": self.hardware, "defaults": defaults, "locations": locations,
+                "cpg": copy.deepcopy(self.cpg_context.public(self.cpg_scan)) if self.cpg_context else None,
                 "suggested_project_name": self.suggested_project_name,
                 "suggested_threads": resource_report(hardware=self.hardware, path=self.start_dir)["suggested_threads"],
                 "start_dir": str(self.start_dir), "qdnaseq_binsizes": sorted(QDNASEQ_HG38_SOURCE_SHA256)}
@@ -259,6 +273,11 @@ class WebState:
             discovered = self.scans.get(_text(data, "scan_id"))
             if discovered is None:
                 raise OncoTracerError("This folder scan expired. Scan the FASTQ folder again.")
+            if self.cpg_context:
+                self.cpg_context.validate_unchanged()
+                if (data.get("scan_id") != self.cpg_scan["scan_id"] or data.get("analysis") != "methylation"
+                        or data.get("variants", False) is not False or "methylation_assignments" not in data):
+                    raise OncoTracerError("CpG continuation uses the saved ONT samples, methylation-only analysis and explicit classifier groups; variants stay off.")
             selections = data.get("samples")
             if not isinstance(selections, list) or not selections:
                 raise OncoTracerError("Select at least one sample.")
@@ -290,6 +309,8 @@ class WebState:
                         else "normal" if kind == "normal" else "tumor")
                 entries.append({"source": discovered.samples[index], "sample": name,
                                 "sample_type": label, "analysis_role": role, "scan_index": index})
+            if self.cpg_context:
+                self.cpg_context.validate_selections(entries)
             methylation_group = None
             if "methylation_assignments" in data:
                 if discovered.mode != "ont" or data.get("analysis") != "methylation":
@@ -317,7 +338,7 @@ class WebState:
             if discovered.mode == "illumina" and len({row["source"].fastq_2 is not None for row in entries}) > 1:
                 raise OncoTracerError("Select either paired-end or single-end samples for this project; use separate projects for different layouts.")
             # Recheck the discovery before saving, so changed folders need a fresh review.
-            refreshed = discover_fastqs(discovered.root, discovered.mode)
+            refreshed = self.cpg_context.discovery if self.cpg_context else discover_fastqs(discovered.root, discovered.mode)
             current = {sample.fastq_dir if discovered.mode == "ont" else sample.fastq_1: sample for sample in refreshed.samples}
             for row in entries:
                 sample = row["source"]
@@ -325,6 +346,8 @@ class WebState:
                 if current.get(key) != sample:
                     raise OncoTracerError("FASTQ files changed since discovery. Scan the folder and review samples again.")
             project = Path(_text(data, "project")).expanduser().resolve()
+            if self.cpg_context:
+                self.cpg_context.validate_destination(project)
             if _choice(data, "project_mode", ("new", "existing"), "new") == "existing" and not project.is_dir():
                 raise OncoTracerError("Choose an existing project folder, or select Create a project.")
             if project == discovered.root or project in discovered.root.parents or discovered.root in project.parents:
@@ -392,7 +415,7 @@ class WebState:
                 if discovered.single_sample:
                     values["ont_single_sample"] = True
                 if controls:
-                    values.update(ont_normal_folder=str(discovered.root),
+                    values.update(ont_normal_folder=str(self.cpg_context.control_root if self.cpg_context else discovered.root),
                                   ont_normal_barcodes=",".join(row["source"].barcode for row in controls),
                                   ont_normal_sample_names=",".join(row["sample"] for row in controls))
                 caller = _choice(data, "caller", ("qdnaseq",) if controls else ("ichorcna", "qdnaseq"),
@@ -425,6 +448,9 @@ class WebState:
                               run_gistic=gistic, gistic_required=gistic,
                               knowledge_llm_threads=min(threads, 4))
             reference = _choice(data, "reference", ("download", "reuse", "build"), "download")
+            if self.cpg_context and (reference != "reuse" or
+                    Path(_text(data, "reference_path")).expanduser().resolve() != Path(self.setup_args.hg38_build)):
+                raise OncoTracerError("CpG continuation must reuse the saved ONT reference.")
             if reference == "reuse":
                 args.hg38_build = _text(data, "reference_path")
             args.build_reference = reference == "build"

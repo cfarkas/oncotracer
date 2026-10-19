@@ -9,10 +9,13 @@ PAGE = r'''<!doctype html>
 .sample-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:20px}.sample-column{border:1px solid var(--line);border-radius:10px;background:#f6f8f7;padding:14px;min-width:0}.sample-column h3{margin:0 0 10px}.sample-column[data-group=normal]{background:#eef5fc}.sample-column[data-group=cancer]{background:#fff3ef}.sample-column[data-group=custom]{grid-column:1/-1}.sample-list{min-height:190px}.sample-list:empty:after{content:attr(data-empty);display:block;padding:25px 8px;color:var(--muted);font-size:14px;text-align:center}.sample-column.drag-over{outline:3px solid var(--accent);outline-offset:2px}.sample{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:0 2px 5px #192c3b08;overflow-wrap:anywhere}.sample.dragging{opacity:.45}.sample .sample-name{font-weight:650}.sample .type-select{margin-top:12px}.sample small{display:block;font-size:12px;color:var(--muted);margin:7px 0}.drag-handle{font-size:12px;color:var(--muted);cursor:grab;touch-action:none;user-select:none;margin-bottom:8px}.sample input,.sample select{cursor:auto}.sample .custom-label,.sample .role{margin-top:8px}@media(max-width:800px){.sample-board{grid-template-columns:1fr}.sample-list{min-height:100px}}
 .browser-shortcuts,.breadcrumbs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.browser-shortcuts button,.breadcrumbs button{font-size:12px;padding:5px 9px}.breadcrumbs{max-height:90px;overflow:auto}
 .fastq-inventory{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:12px}.fastq-inventory td:first-child{width:auto}.fastq-inventory td{padding:8px;overflow-wrap:anywhere}.fastq-inventory thead{position:sticky;top:0;background:#f6f8f7}.fastq-inventory code{font-size:12px}.fastq-inventory summary{cursor:pointer}.fastq-inventory pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;max-height:180px;overflow:auto}.fastq-files{list-style:none;padding:0;margin:8px 0;max-height:140px;overflow:auto;border-top:1px solid var(--line);font-size:12px}.fastq-files li{padding:5px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.fastq-file{padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px;overflow-wrap:anywhere}.fastq-file:before{content:var(--file-label,'FASTQ · ');color:var(--accent);font-weight:650}
+.cpg-mode #platform-card,.cpg-mode #specimen-card,.cpg-mode #input-card,.cpg-mode #samples-card,.cpg-mode #settings-card{display:none!important}.cpg-required-links{margin:10px 0;padding-left:22px}.cpg-required-links button{border:0;padding:2px 0;background:none;color:var(--accent);text-align:left;white-space:normal;text-decoration:underline;font-weight:500}.cpg-retained{border-top:1px solid var(--line);padding-top:18px;margin-top:18px}#cpg-advanced>summary{font-size:15px;font-weight:650}#cpg-advanced .grid{margin:18px 0}#cpg-assign-card #methylation-assignment-board>h3{display:none}#cpg-destination{font-size:13px;overflow-wrap:anywhere}
 </style></head><body>
 <header><div class="brand">Onco<span>Tracer</span></div><div class="local">Local analysis workspace</div></header>
 <main inert aria-busy="true"><p id="setup-loading" class="hint" role="status">Loading setup…</p><div class="intro"><h1>Configure and run an analysis</h1><p class="muted">Choose Illumina or Oxford Nanopore, then Fresh or FFPE. Select input files, assign samples and choose analysis settings. Save the configuration, start or stop analysis, follow its progress, and open the results here.</p><a id="existing-bam-link" href="/variants" style="color:var(--accent)">Call variants from existing BAMs →</a></div>
 <div id="error" role="alert" class="error" hidden></div>
+<section class="card" id="cpg-assign-card" hidden><div class="sectionhead"><span class="step">1</span><h2>Assign samples to a CpG classifier</h2></div><p id="cpg-source" class="hint"></p><div id="cpg-board-host"></div><div id="cpg-classifier-host"></div><p id="cpg-destination" class="notice"></p></section>
+<section class="card" id="cpg-check-card" hidden><div class="sectionhead"><span class="step">2</span><h2>Check this classifier group</h2></div><div id="cpg-requirements" role="status" aria-live="polite"></div><div id="cpg-source-warnings"></div><div id="cpg-license" hidden></div><details id="cpg-advanced"><summary>Advanced · original inputs, tools and retained settings</summary><p class="hint">Sample names, original FASTQ groups and reference come from the ONT project. Review or correct the original modified-base input and installed resource paths here. Saving performs the full checks; no analysis starts automatically.</p><p id="cpg-retained-reference" class="hint"></p><div id="cpg-compute-settings" class="grid"></div><div id="cpg-signal-inputs" class="cpg-retained"></div><div id="cpg-resource-settings" class="cpg-retained"></div></details><div id="cpg-save-actions"></div></section>
 <section class="card" id="platform-card"><div class="sectionhead"><span class="step">1</span><h2>Choose your sequencing platform</h2></div><div class="grid">
 <button class="platform" id="choose-ont" aria-pressed="false"><strong>Oxford Nanopore</strong><span>Barcode folders with FASTQ batches, or one folder from a nonbarcoded ligation library.</span></button>
 <button class="platform" id="choose-illumina" aria-pressed="false"><strong>Illumina</strong><span>Paired-end or single-end FASTQs. Sample names and read pairs are discovered for you.</span></button></div></section>
@@ -94,7 +97,7 @@ async function openNativePicker(target,kind,button){
 $('browser-computer').onclick=()=>{const target=folderTarget,kind=browseKind;$('browser').close();return openNativePicker(target,kind,$('browser-computer'));};
 for(const button of document.querySelectorAll('[data-browse]'))button.onclick=()=>openNativePicker(button.dataset.browse,button.dataset.kind||'folder',button);
 $('browser').addEventListener('close',()=>{browseSequence++;});$('close-browser').onclick=()=>$('browser').close();$('browser-go').onclick=()=>browse($('browser-location').value);$('browser-up').onclick=()=>{if(parentFolder)browse(parentFolder);};$('browser-location').oninput=()=>{browseSequence++;$('use-folder').disabled=true;$('folder-summary').textContent='Press Enter or Go to open the path you typed.';};$('browser-location').onkeydown=event=>{if(event.key==='Enter')browse(event.target.value);};$('use-folder').onclick=()=>{if($('use-folder').disabled||!currentFolder)return;$(folderTarget).value=currentFolder;$(folderTarget).dispatchEvent(new Event('change'));$('browser').close();};
-let methylationAssignments=new Map(),methylationScanId=null;
+let methylationAssignments=new Map(),methylationScanId=null,cpgContinuation=null;
 function sampleRows(){return [...$('samples').querySelectorAll('.sample')].sort((a,b)=>Number(a.dataset.id)-Number(b.dataset.id));}
 function selectedRows(){return sampleRows().filter(row=>row.querySelector('.include').checked);}
 function moveSample(row,kind){
@@ -275,10 +278,10 @@ function methylationSettings(){
   const classifier=$('classifier').value,source=$('methylation-source').value;
   show('sturgeon-fields',classifier==='sturgeon');show('marlin-fields',classifier==='marlin');show('dorado-model-fields',source==='pod5');
   const path=$(source==='pod5'?'ont-pod5':'ont-modbam').value;
-  $('methylation-input-note').textContent=(source==='pod5'?'Dorado → Modkit → ':'Existing modified-base BAM → Modkit → ')+(classifier==='sturgeon'?'Sturgeon (CNS tumours)':classifier==='marlin'?'MARLIN (leukemias)':'choose a classifier')+'. Input: '+(path||'Select the matching '+(source==='pod5'?'POD5 folder':'BAM file or folder')+' in step 3.');
+  $('methylation-input-note').textContent=(source==='pod5'?'Dorado → Modkit → ':'Existing modified-base BAM → Modkit → ')+(classifier==='sturgeon'?'Sturgeon (CNS tumours)':classifier==='marlin'?'MARLIN (leukemias)':'choose a classifier')+'. Input: '+(path||'Select the matching '+(source==='pod5'?'POD5 folder':'BAM file or folder')+(cpgContinuation?' in Advanced below.':' in step 3.'));
   for(const option of $('backend').options)option.disabled=($('analysis').value!=='cna'&&['docker','singularity'].includes(option.value))||($('variants').checked&&option.value==='singularity');
   if($('backend').selectedOptions[0].disabled)$('backend').value='conda';
-  variantSettings();renderMethylationAssignments();
+  variantSettings();renderMethylationAssignments();updateCpgRequirements();
 }
 $('backend').onchange=()=>{methylationSettings();invalidate();};
 $('classifier').onchange=()=>{methylationSettings();invalidate();};$('methylation-source').onchange=()=>{methylationSettings();invalidate();};
@@ -323,6 +326,7 @@ $('ont-run-folder').onchange=()=>{if(mode==='ont'&&$('ont-run-folder').value.tri
 $('select-none').onclick=()=>{for(const row of sampleRows())moveSample(row,'');};$('analysis').onchange=settings;$('caller').onchange=settings;$('reports').onchange=()=>{show('report-context-field',$('reports').checked);invalidate();};$('report-detail').onchange=()=>{$('report-detail-note').textContent=$('report-detail').value==='catalog'?'Uses the included evidence catalog. No publication searches or language-model downloads.':$('report-detail').value==='models'?'Drafts use the bundled CNA catalog and run on this computer. No publication searches. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Sample files are not uploaded.':'Searches publication services using CNA feature terms and study context. Language models run on this computer. The default model downloads about 8 GB and needs at least 24 GiB available RAM. Raw reads and sample names are not sent to publication services.';invalidate();};$('reference').onchange=()=>{show('reference-path-field',$('reference').value==='reuse');$('reference-note').textContent=$('reference').value==='build'?'Local indexing downloads hg38 source files as needed and requires more RAM, temporary disk space, and time.':$('reference').value==='reuse'?'Select a prepared OncoTracer reference parent, or its references/samurai_hg38 folder. It must contain indexes for this platform.':'Prepared downloads are reused. About 8.0 GiB for Illumina or 9.7 GiB for ONT, under your project’s reference folder.';invalidate();};
 for(const field of document.querySelectorAll('#settings-card input,#settings-card select'))field.addEventListener('change',invalidate);$('input-folder').onchange=()=>{if(mode==='ont'){clearAutoOntInputs();methylationSettings();}scan=null;invalidate();show('samples-card',false);show('settings-card',false);show('fastq-preview',false);if(mode&&variantSpecimen&&$('input-folder').value.trim())$('scan').click();};
 function projectDestination(){
+  if(cpgContinuation){const destination=cpgContinuation.projects?.[$('classifier').value];if(!destination)throw Error('Choose the classifier group to check.');return destination;}
   if($('project-mode').value==='existing'){
     const path=$('existing-project').value.trim();if(!path)throw Error('Choose an existing project folder.');return path;
   }
@@ -331,7 +335,70 @@ function projectDestination(){
   return parent.replace(/\/$/,'')+'/'+projectName;
 }
 $('project-mode').onchange=()=>{const existing=$('project-mode').value==='existing';show('new-project-fields',!existing);show('existing-project-fields',existing);invalidate();};
-$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=selectedRows().map(row=>({id:Number(row.dataset.id),name:row.querySelector('.sample-name').value,type:row.querySelector('.type-select').value,label:row.querySelector('.custom-label').value,role:row.querySelector('.role').value}));if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:$('backend').value==='docker'?$('docker_image').value.trim():'',caller:$('caller').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});
+
+function setupSelectedSamples(){
+  if(cpgContinuation)return cpgContinuation.selections.map(sample=>({...sample}));
+  return selectedRows().map(row=>({id:Number(row.dataset.id),name:row.querySelector('.sample-name').value,type:row.querySelector('.type-select').value,label:row.querySelector('.custom-label').value,role:row.querySelector('.role').value}));
+}
+function cpgRequirementFields(){
+  if(!cpgContinuation)return [];
+  const source=$('methylation-source').value,id=source==='pod5'?'ont-pod5':'ont-modbam',fields=[];
+  const signal=$(id).value.trim(),original=cpgContinuation.initial_inputs[id]||'';
+  if(!signal||(cpgContinuation.missing_input&&signal===original&&source===cpgContinuation.initial_source))fields.push({id,label:source==='pod5'?'Original POD5 folder':'Original modified-base BAM or folder',missing:true});
+  for(const key of cpgContinuation.missing_resources?.[$('classifier').value]||[]){
+    const field=$(key);if(!field?.matches('[data-resource]')||field.closest('[hidden]'))continue;
+    const label=document.querySelector('label[for="'+key+'"]')?.textContent.trim()||key;
+    const value=field.value.trim(),original=String(cpgContinuation.resource_paths?.[key]||'');
+    fields.push({id:key,label,missing:!value||value===original});
+  }
+  return fields;
+}
+function updateCpgRequirements(){
+  if(!cpgContinuation)return;
+  const classifier=$('classifier').value,destination=cpgContinuation.projects?.[classifier];
+  $('cpg-destination').textContent=destination?'Separate project: '+destination:'Choose the classifier group to check. Each classifier uses its own project.';
+  show('cpg-license',classifier==='sturgeon');
+  const box=$('cpg-requirements');box.replaceChildren();
+  const fields=cpgRequirementFields();
+  if(fields.length){
+    box.append(node('p','Review these original inputs or installed resources before saving:','notice'));
+    const list=node('ul',undefined,'cpg-required-links');
+    for(const item of fields){const row=node('li'),button=node('button',(item.missing?'Missing or not found: ':'New path — check on save: ')+item.label);button.type='button';button.onclick=()=>{$('cpg-advanced').open=true;$(item.id).scrollIntoView({behavior:'smooth',block:'center'});$(item.id).focus({preventScroll:true});};row.append(button);list.append(row);}
+    box.append(list);
+  }else box.append(node('p',classifier?'Save checks the original modified-base input and required tools/models before Run is enabled.':'Choose a classifier to review its required resources.','hint'));
+  if(classifier==='sturgeon'&&!$('license').checked)box.append(node('p','Sturgeon requires your explicit license acknowledgment below.','notice'));
+}
+function initializeCpgContinuation(value){
+  if(!value||value.scan?.mode!=='ont'||!Array.isArray(value.selections)||!value.selections.length)throw Error('The source ONT project did not provide a valid sample selection.');
+  cpgContinuation={...value,selections:value.selections.map(sample=>({...sample})),initial_source:$('methylation-source').value,initial_inputs:{'ont-pod5':$('ont-pod5').value.trim(),'ont-modbam':$('ont-modbam').value.trim()}};
+  document.body.classList.add('cpg-mode');document.querySelector('.intro h1').textContent='Continue with CpG classification';
+  document.querySelector('.intro p').textContent='Assign the retained samples, check one classifier group, then run it. MARLIN and Sturgeon use separate projects.';show('existing-bam-link',false);
+  mode='ont';scan=value.scan;$('analysis').value='methylation';$('variants').checked=false;$('project-mode').value='new';
+  renderSamples();
+  for(const selection of value.selections){
+    const row=sampleRows().find(candidate=>Number(candidate.dataset.id)===selection.id);if(!row)throw Error('A retained sample is absent from the source FASTQ scan.');
+    row.querySelector('.sample-name').value=selection.name;row.querySelector('.type-select').value=selection.type;row.querySelector('.custom-label').value=selection.label||'';row.querySelector('.role').value=selection.role||'';row.querySelector('.include').checked=true;
+    $(selection.type+'-samples').append(row);
+  }
+  for(const [key,value]of Object.entries(cpgContinuation.resource_paths||{})){const field=$(key);if(field?.matches('[data-resource]'))field.value=value;}
+  $('cpg-source').textContent='Retained '+value.selections.length+' sample(s) from '+value.source_project+'. Names and original sample roles are preserved.';
+  $('cpg-board-host').append($('methylation-assignment-board'));
+  $('methylation-assignment-board').querySelector('p.hint').textContent='Drag samples according to the known specimen diagnosis, or use each card’s dropdown. No classifier is inferred. Only the selected group is saved; the other group is not queued.';
+  $('cpg-classifier-host').append($('classifier').parentElement);
+  $('cpg-compute-settings').append($('threads').parentElement,$('backend').parentElement);
+  $('cpg-signal-inputs').append($('ont-signal-inputs'));show('ont-signal-inputs',true);
+  $('cpg-resource-settings').append($('methylation-fields'));
+  $('cpg-license').append($('license').closest('label'));
+  $('cpg-save-actions').append($('prepare').parentElement);
+  $('cpg-retained-reference').textContent='Retained reference: '+($('reference-path').value||$('reference').selectedOptions[0].textContent);
+  $('ont-links-note').textContent='Use the original modified-base BAMs containing MM/ML tags, or their original POD5 files. CNA alignment BAMs and FASTQs alone do not provide modified-base calls.';
+  $('review-card').querySelector('.step').textContent='3';$('review-card').querySelector('h2').textContent='Review and run';
+  const warnings=$('cpg-source-warnings');warnings.replaceChildren();
+  for(const warning of value.warnings||[])warnings.append(node('p','Source project: '+warning,'notice'));
+  for(const field of document.querySelectorAll('#cpg-advanced input,#cpg-advanced select,#cpg-license input'))field.addEventListener('change',()=>{updateCpgRequirements();invalidate();});
+  settings();show('workflow',true);show('cpg-assign-card',true);show('cpg-check-card',true);updateCpgRequirements();
+}
+$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)throw Error('Discover samples first.');const project=projectDestination();const samples=setupSelectedSamples();if(!samples.length)throw Error('Assign at least one sample to Normal, Cancer, or a custom tag.');for(const sample of samples)if(!sample.type||(sample.type==='custom'&&(!sample.label.trim()||!sample.role)))throw Error('Choose a sample type and, for custom types, an analysis role for every included sample.');if($('analysis').value!=='cna'&&!$('classifier').value)throw Error('Choose a methylation classifier explicitly.');if($('variants').checked){variantPayload();await detectVariantResourcesBeforeSave();}const data={...variantPayload(),...methylationAssignmentPayload(),scan_id:scan.scan_id,samples,project,project_mode:$('project-mode').value,analysis:$('analysis').value,threads:Number($('threads').value),backend:$('backend').value,docker_image:$('backend').value==='docker'?$('docker_image').value.trim():'',caller:$('caller').value,binsize:Number($('binsize').value),reports:$('reports').checked,report_context:$('report-context').value,report_detail:$('report-detail').value,gistic:$('gistic').checked,reference:$('reference').value,reference_path:$('reference-path').value,classifier:$('classifier').value,methylation_source:$('methylation-source').value,methylation_path:$($('methylation-source').value==='pod5'?'ont-pod5':'ont-modbam').value,resource_paths:Object.fromEntries([...document.querySelectorAll('[data-resource]')].filter(field=>field.value.trim()&&!field.closest('[hidden]')).map(field=>[field.dataset.resource,field.value.trim()])),resources:$('resources').value,device:$('device').value,accept_sturgeon_license:$('license').checked};prepared=await api('/api/prepare',data);$('config-preview').textContent=prepared.config;$('saved-path').textContent='Saved: '+prepared.config_path;$('check-badge').textContent=prepared.valid?'Configuration checked':'Needs attention';$('check-messages').replaceChildren();for(const error of prepared.check.errors||[])$('check-messages').append(node('p',error,'error'));const warnings=prepared.check.warnings||prepared.check.resources?.warnings||[];for(const warning of warnings)$('check-messages').append(node('p',typeof warning==='string'?warning:JSON.stringify(warning),'notice'));$('run').disabled=!prepared.valid;$('job-status').textContent='';show('logs',false);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});});
 function offerCleanup(job){
   if(cleanupShown===job.project_id)return;cleanupShown=job.project_id;
   $('cleanup-path').textContent=job.project_path;$('keep-project').disabled=false;$('cleanup').dataset.busy='false';
@@ -349,7 +416,7 @@ function showProgress(job){
   $('run-eta-note').textContent=progress.note;show('run-progress',true);
 }
 function showReviewedRun(job){
-  for(const id of ['platform-card','specimen-card','input-card','samples-card','settings-card'])show(id,false);
+  for(const id of ['platform-card','specimen-card','input-card','samples-card','settings-card','cpg-assign-card','cpg-check-card'])show(id,false);
   $('config-preview').parentElement.hidden=true;
   show('reviewed-run',true);$('reviewed-run-samples').replaceChildren();
   const review=job.reviewed_summary;
@@ -397,6 +464,7 @@ function returnToSetup(){
   if(activeJob?.status==='removed'){$('project-mode').value='new';$('existing-project').value='';$('project-mode').dispatchEvent(new Event('change'));}
   clearTimeout(pollTimer);dismissedJobId=activeJob?.project_id||dismissedJobId;activeJob=null;$('cleanup').close();
   for(const field of document.querySelectorAll('main button, main input, main select'))field.disabled=false;
+  if(cpgContinuation){show('reviewed-run',false);for(const id of ['stop','run-progress','new-analysis','open-results','logs'])show(id,false);show('cpg-assign-card',true);show('cpg-check-card',true);show('workflow',true);$('config-preview').parentElement.hidden=false;invalidate();$('run').hidden=false;updateCpgRequirements();$('cpg-assign-card').scrollIntoView({behavior:'smooth'});return;}
   mode=null;scan=null;binsizeCaller=null;variantMode=null;variantSpecimen=null;resetVariantPairing();$('variants').checked=false;variantSettings();
   for(const id of ['stop','run-progress','fastq-preview','workflow','specimen-card','new-analysis','samples-card','settings-card','open-results','logs'])show(id,false);
   show('reviewed-run',false);show('platform-card',true);show('input-card',true);$('config-preview').parentElement.hidden=false;
@@ -413,6 +481,7 @@ $('new-analysis').onclick=returnToSetup;
 $('run').onclick=()=>busy($('run'),async()=>{if(!prepared)throw Error('Save and review a configuration first.');await api('/api/run',{project_id:prepared.id});await poll();$('run').hidden=true;});
 async function restoreRunOrDiscover(defaults){
   if(await poll())return;
+  if(cpgContinuation){show('cpg-assign-card',true);show('cpg-check-card',true);show('workflow',true);return;}
   if(defaults.mode&&variantSpecimen){show('workflow',true);if(defaults.input_folder)await $('scan').onclick();if(defaults.variant_matched_normals){variantPairDefaults={...defaults.variant_matched_normals};variantSettings();}}
 }
 (async()=>{try{if(!token)throw Error('Open the complete URL printed by oncotracer web, including the session code after #.');const system=await api('/api/system');hardware=system.hardware;binsizes=system.qdnaseq_binsizes;for(const place of system.locations||[]){const button=node('button',place.name);button.title=place.path;button.onclick=()=>browse(place.path);$('browser-shortcuts').append(button);}$('input-folder').value=system.start_dir;$('project-parent').value=system.start_dir;$('project-name').value=system.suggested_project_name||'oncotracer-analysis';$('threads').value=system.suggested_threads;$('threads').max=hardware.cpu_workers_available;const ram=bytes=>bytes===null||bytes===undefined?'Unknown':(bytes/1073741824).toFixed(1)+' GiB';for(const [value,label]of[[hardware.cpu_workers_available,'CPU workers available'],[ram(hardware.ram_available_bytes),'RAM available'],[ram(hardware.ram_total_bytes),'RAM total'],[String((hardware.gpus||[]).length),'GPUs detected']]){const item=node('div');item.append(node('strong',String(value)),node('span',label));$('hardware').append(item);}$('gpu-note').textContent=(hardware.gpus||[]).map(gpu=>gpu.name+(gpu.memory_total_bytes?' · '+ram(gpu.memory_total_bytes)+' VRAM':'')).join('; ')+' '+(hardware.gpu_note||'CNA analysis uses CPU.');const defaults=system.defaults||{};for(const key of ['variant_parallel_samples','variant_memory','variant_patients','variant_confidence_gwas','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])if(defaults[key])$(key).value=defaults[key];
@@ -429,6 +498,7 @@ if(defaults.managed_variant_prefix)$('variant_tool_prefix').dataset.managedPrefi
 if(defaults.variant_runtime_note)$('variant-detection-status').textContent=defaults.variant_runtime_note;
 variantSettings();methylationSettings();
 $('device').value=defaults.gpu?'gpu':'cpu';$('license').checked=Boolean(defaults.accept_sturgeon_license);$('reference').onchange();
+if(system.cpg)initializeCpgContinuation(system.cpg);
 await restoreRunOrDiscover(defaults);}catch(error){failure(error);}finally{show('setup-loading',false);document.querySelector('main').inert=false;document.querySelector('main').setAttribute('aria-busy','false');}})();
 </script></body></html>'''
 

@@ -468,30 +468,40 @@ class DocumentedWorkflowTests(unittest.TestCase):
 
         text = (ROOT / "docs/post_ont_cpg.md").read_text()
         commands = list(self.commands(text))
-        self.assertEqual(len(commands), 3)
+        self.assertEqual(commands, [["oncotracer", "--interactive", "--cpg-from", "/path/to/ONT-project"]])
+        self.assertIn("https://github.com/cfarkas/oncotracer/tree/main", text)
+        self.assertIn("installation_details.md#install-from-github", text)
+        self.assertNotIn("releases/latest", text)
+        from oncotracer_cli.nextflow_gateway import parser as gateway_parser
+        gateway, = list(self.commands(text, "nextflow"))
+        self.assertEqual(gateway[:3], ["nextflow", "run", "main.nf"])
+        gateway_args = gateway_parser().parse_args(gateway[3:])
+        self.assertTrue(gateway_args.interactive)
+        self.assertEqual((gateway_args.cpg_from, gateway_args.backend), ("/path/to/ONT-project", "conda"))
         with tempfile.TemporaryDirectory() as temporary, contextlib.ExitStack() as guards:
             base = Path(temporary) / "analysis with spaces"
             base.mkdir()
+            source = base / "ONT-project"
+            config_dir = source / "config"
+            config_dir.mkdir(parents=True)
             guards.enter_context(patch("oncotracer_cli.cli._load_install_config", return_value={}))
             for target in ("oncotracer_cli.web.WebState.run", "oncotracer_cli.web.command_web",
-                           "oncotracer_cli.cli.command_install", "oncotracer_cli.engine.prepare_reference",
-                           "oncotracer_cli.methylation.run_methylation"):
+                           "oncotracer_cli.web.WebState.scan", "oncotracer_cli.cli.command_install",
+                           "oncotracer_cli.engine.prepare_reference", "oncotracer_cli.methylation.run_methylation"):
                 guards.enter_context(patch(target, side_effect=AssertionError(
-                    "The documented CpG test must only save, check and plan")))
-            parsed = [parse_arguments([self.remap(value, base) for value in command[1:]])
-                      for command in commands]
-            initial, marlin_run, sturgeon_run = parsed
-            self.assertEqual((initial.command, initial.mode, initial.analysis, initial.backend),
-                             ("setup", "ont", "methylation", "conda"))
+                    "The restored-project guide must only restore, save, check and plan")))
+            initial = parse_arguments([str(source) if value == "/path/to/ONT-project" else value
+                                       for value in commands[0][1:]])
+            self.assertEqual((initial.command, initial.cpg_from), ("setup", str(source)))
+            self.assertTrue(initial.interactive)
             self.assertFalse(initial.run)
-            self.assertFalse(initial.terminal)
-            folder = Path(initial.input_folder)
+            folder = base / "original reads/fastq_pass"
             for barcode in ("barcode01", "barcode02", "barcode03"):
                 self.fastq(folder / barcode / "reads.fastq.gz", barcode)
             bam = folder.parent / "bam_pass/original-modified-base.bam"
             bam.parent.mkdir()
             bam.write_bytes(b"synthetic BAM path fixture; never processed")
-            reference = base / "completed-ont/reference"
+            reference = base / "prepared reference"
             for name in _files():
                 asset = reference_paths(reference)[0] / name
                 asset.parent.mkdir(parents=True, exist_ok=True)
@@ -504,52 +514,65 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[classifier])
                 resources.update({key: value for key, value in fixture.config().items()
                                   if key in allowed or key.endswith(("_sha256", "_interface_contract_commit"))})
-            resource_yaml = base / "resources/methylation.yml"
-            resource_yaml.write_text(render_flat_yaml(resources))
+            names = ["LEUKEMIA_EXAMPLE", "CNS_EXAMPLE", "UNKNOWN_EXAMPLE"]
+            metadata = config_dir / "sample_metadata.csv"
+            with metadata.open("w", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=["sample", "sample_type", "analysis_role", "fastq_files"])
+                writer.writeheader()
+                for index, name in enumerate(names, 1):
+                    writer.writerow({"sample": name, "sample_type": "cancer", "analysis_role": "tumor",
+                                     "fastq_files": json.dumps([str(folder / f"barcode{index:02d}/reads.fastq.gz")])})
+            values = {"mode": "ont", "ont_folder": str(folder), "ont_barcodes": "barcode01,barcode02,barcode03",
+                      "ont_sample_names": ",".join(names), "ont_caller": "ichorcna", "ont_binsize_kb": 500,
+                      "threads": 4, "lpwgs_root": str(reference), "hg38_auto_download": False,
+                      "outdir": str(source / "results"), "sample_metadata": str(metadata),
+                      "execution_backend": "conda", "variant_specimen_type": "fresh",
+                      "run_variants": False, "methylation": False, "methylation_modbam": str(bam),
+                      "sturgeon_license_acknowledged": True, **resources}
+            (config_dir / "run.yml").write_text(render_flat_yaml(values))
             original = {path: path.read_bytes() for path in base.rglob("*") if path.is_file()}
+            source_files = {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()}
             state = WebState(base, initial)
             state.hardware = dict(HARDWARE)
-            scan = state.scan({"mode": initial.mode, "folder": initial.input_folder})
-            names = ["LEUKEMIA_EXAMPLE", "CNS_EXAMPLE", "UNKNOWN_EXAMPLE"]
-            selections = [{"id": row["id"], "name": names[index], "type": "cancer"}
-                          for index, row in enumerate(scan["samples"])]
-            assignments = [{"id": 0, "classifier": "marlin"},
-                           {"id": 1, "classifier": "sturgeon"},
+            system = state.system()
+            restored = system["cpg"]
+            defaults = system["defaults"]
+            self.assertFalse(defaults["accept_sturgeon_license"], "A prior project must not grant new license consent")
+            self.assertEqual(Path(restored["source_project"]), source)
+            self.assertEqual([row["name"] for row in restored["selections"]], names)
+            self.assertTrue(all(row["type"] == "cancer" for row in restored["selections"]))
+            assignments = [{"id": 0, "classifier": "marlin"}, {"id": 1, "classifier": "sturgeon"},
                            {"id": 2, "classifier": ""}]
             projects = []
-            for offset, (classifier, run) in enumerate((("marlin", marlin_run),
-                                                       ("sturgeon", sturgeon_run)), start=1):
-                self.assertEqual((run.command, run.backend), ("run", "conda"))
-                self.assertFalse(run.dry_run)
-                project = Path(run.config).parent.parent
-                if classifier == "marlin":
-                    self.assertEqual(project, Path(initial.project))
+            for offset, classifier in enumerate(("marlin", "sturgeon")):
+                project = Path(restored["projects"][classifier])
+                self.assertNotEqual(project, source)
+                self.assertEqual(project.parent, source.parent)
+                allowed = set(EXECUTABLES) | set(RESOURCE_FLAGS) | set(RESOURCE_FILES[classifier])
                 with contextlib.redirect_stdout(io.StringIO()):
                     saved = state.prepare({
-                        "scan_id": scan["scan_id"], "project": str(project), "samples": selections,
-                        "threads": 4, "backend": "conda", "analysis": "methylation",
-                        "classifier": classifier, "methylation_assignments": assignments,
-                        "methylation_source": "modbam", "methylation_path": str(bam),
-                        "resources": str(resource_yaml), "reference": "reuse",
-                        "reference_path": str(reference), "variants": False,
-                        "variant_specimen_type": "fresh", "accept_sturgeon_license": classifier == "sturgeon",
+                        "scan_id": restored["scan"]["scan_id"], "project": str(project),
+                        "samples": restored["selections"], "threads": defaults["threads"],
+                        "backend": defaults["backend"], "analysis": "methylation", "classifier": classifier,
+                        "methylation_assignments": assignments, "methylation_source": defaults["methylation_source"],
+                        "methylation_path": defaults["methylation_path"], "reference": defaults["reference"],
+                        "reference_path": defaults["reference_path"], "variants": False,
+                        "resource_paths": {key: value for key, value in restored["resource_paths"].items() if key in allowed},
+                        "variant_specimen_type": defaults["variant_specimen_type"],
+                        "accept_sturgeon_license": classifier == "sturgeon",
                     })
                 self.assertTrue(saved["valid"], saved["check"])
-                self.assertEqual(Path(saved["config_path"]), Path(run.config))
-                config = load_flat_yaml(Path(run.config))
+                config = load_flat_yaml(Path(saved["config_path"]))
                 self.assertTrue(config["methylation_only"])
                 self.assertFalse(config["run_variants"])
                 self.assertEqual(config["methylation_classifier"], classifier)
                 self.assertEqual(config["methylation_modbam"], str(bam))
                 self.assertEqual(Path(config["lpwgs_root"]), reference)
                 selected, = parse_ont_samples(config)
-                self.assertEqual((selected.sample, selected.barcode),
-                                 (names[offset - 1], f"barcode{offset:02d}"))
+                self.assertEqual((selected.sample, selected.barcode), (names[offset], f"barcode{offset + 1:02d}"))
                 self.assertEqual(saved["reviewed_summary"]["methylation_group"],
                                  {"classifier": classifier, "included": 1, "excluded": 2})
-                # Execute the documented run command as a plan only.
-                argv = [self.remap(value, base) for value in commands[offset][1:]]
-                code, output = self.cli(*argv, "--dry-run")
+                code, output = self.cli("run", "--backend", "conda", "--config", saved["config_path"], "--dry-run")
                 self.assertEqual(code, 0, output)
                 self.assertIn("oncotracer-native-dry-run-v1", output)
                 self.assertFalse(Path(config["outdir"]).exists())
@@ -558,6 +581,10 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 projects.append(project)
             self.assertNotEqual(*projects)
             self.assertEqual(original, {path: path.read_bytes() for path in original})
+            self.assertEqual(source_files, {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()})
+            for classifier in ("marlin", "sturgeon"):
+                choice = parse_arguments(["--interactive", "--cpg-from", str(source), "--classifier", classifier])
+                self.assertEqual(choice.classifier, classifier)
 
     @unittest.skipUnless(shutil.which("node"), "Node is required for the static demo contract")
     def test_static_cpg_demo_filters_the_selected_group(self):

@@ -215,6 +215,13 @@ def _existing_hg38_parent(path: Path, mode: str) -> Path:
 
 def command_setup(args: argparse.Namespace) -> int:
     try:
+        if getattr(args, "cpg_from", None):
+            from .cpg_setup import prepare_cpg_setup
+            from .web import command_web
+
+            prepare_cpg_setup(args)
+            args.start_dir = str(Path.cwd())
+            return command_web(args)
         parallel = getattr(args, "variant_parallel_samples", None)
         if parallel is not None and (type(parallel) is not int or parallel < 1):
             raise OncoTracerError("variant_parallel_samples must be a positive integer")
@@ -1141,6 +1148,8 @@ def add_setup_commands(subparsers) -> None:
             "per-file prompts or --non-interactive with explicit sample flags for scripts."
         ),
     )
+    parser.add_argument("--cpg-from", metavar="PROJECT",
+                        help="open guided CpG setup from a saved ONT project; keep its inputs and outputs unchanged")
     parser.add_argument("--terminal", action="store_true", help="use the terminal folder wizard instead of the browser")
     parser.add_argument("--port", type=int, help="fixed local browser port; default: 8888 or an available port")
     parser.add_argument("--no-browser", action="store_true", help="print the local URL without opening a browser automatically")
