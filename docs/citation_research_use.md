@@ -48,6 +48,8 @@ For small-variant analysis, cite only the components actually used:
 Follow each project's citation instructions and record the actual version/model
 revision. For optional methylation, also cite the basecaller, modification tools
 and classifier used; see [methylation configuration](configuration/methylation.md).
+For Sturgeon, acknowledge the [UMC Utrecht team](https://github.com/UMCUGenetics/sturgeon)
+and cite [Vermeulen, Pagès-Gallego, Kester et al., Nature (2023)](https://doi.org/10.1038/s41586-023-06615-2).
 
 Use the citation/version recorded by the actual run manifest and stage-01 provenance, because tool versions may differ between releases. Cite Nextflow only when reproducing a historical v1.1 analysis; native v2 does not invoke it.
 

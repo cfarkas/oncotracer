@@ -584,7 +584,7 @@ def _command_setup(args: argparse.Namespace) -> int:
                                      f"{shlex.quote(str(existing.parents[1]))} --run, or edit its YAML")
             print(f"Using saved configuration: {existing}")
             from .project_resume import resume_project
-            resume_project(args.project, backend=args.backend)
+            resume_project(args.project, backend=args.backend, image=getattr(args, "image", None))
             return _run_setup(existing, args)
     if getattr(args, 'image', None) and args.backend != 'docker':
         raise OncoTracerError('--image in setup requires --backend docker')

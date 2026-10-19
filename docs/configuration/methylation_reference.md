@@ -24,6 +24,11 @@ This branch is research-only. A methylation class is not a diagnosis and must be
 
 ## Sturgeon pretrained model setup
 
+Sturgeon and its pretrained models are developed by the
+[UMC Utrecht Sturgeon team](https://github.com/UMCUGenetics/sturgeon).
+When using them, cite [Vermeulen, Pagès-Gallego, Kester et al., Nature (2023)](https://doi.org/10.1038/s41586-023-06615-2)
+and record the model and probe checksums from your run.
+
 In either ordinary methylation setup or the post-ONT CpG page, select **Sturgeon**.
 Read the linked [upstream license](https://github.com/UMCUGenetics/sturgeon/blob/main/LICENSE)
 and check the acknowledgement only if you accept the terms for your intended use.

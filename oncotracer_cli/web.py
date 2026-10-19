@@ -555,7 +555,9 @@ class WebState:
         with self.lock:
             if self.job and self.job["status"] in {"running", "stopping"}:
                 raise OncoTracerError("Stop the active analysis before loading another project.")
-            result = resume_project(_text(data, "project"))
+            result = resume_project(_text(data, "project"),
+                                    backend=getattr(self.setup_args, "backend", None),
+                                    image=getattr(self.setup_args, "image", None))
             project, config_path = Path(result["project"]), Path(result["config_path"])
             config = load_flat_yaml(config_path)
             snapshot, samples = sample_snapshot(config)

@@ -35,19 +35,32 @@ def _rebase(value, old, new):
 
 
 def _runtime(backend, config):
-    from .output_safety import current_runtime_identity
+    from .output_safety import current_runtime_identity, _IDENTITY_KEYS
+    from .runtime import runtime_root
     if backend == "docker":
         from .cli import DEFAULT_IMAGE, _load_install_config
         image = config.get("docker_image") or _load_install_config().get("image") or DEFAULT_IMAGE
-        command = ["docker", "run", "--rm", "--network", "none", "--entrypoint", "python3", str(image),
-                   "-c", "import json;from oncotracer_cli.output_safety import current_runtime_identity;print(json.dumps(current_runtime_identity()))"]
-        result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+        # Use the image's real launcher: importing its source with python loses
+        # the standalone binary identity and selects a different runtime payload.
+        command = ["docker", "run", "--rm", "--network", "none", "--user",
+                   f"{os.getuid()}:{os.getgid()}", "--env", "HOME=/tmp", str(image),
+                   "provenance", "--runtime-identity"]
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise OncoTracerError(f"Cannot verify the selected Docker runtime before resuming: {error}") from error
         if result.returncode:
-            raise OncoTracerError("Cannot verify the selected Docker runtime before resuming: " + result.stderr[-1000:])
-        return json.loads(result.stdout)
+            raise OncoTracerError("Cannot verify the selected Docker runtime before resuming. Select an image built from the current source: " + result.stderr[-1000:])
+        try:
+            identity = json.loads(result.stdout)
+        except ValueError as error:
+            raise OncoTracerError("Docker returned an invalid runtime identity") from error
+        if not isinstance(identity, dict) or set(identity) != _IDENTITY_KEYS or not identity.get("runtime_payload_sha256"):
+            raise OncoTracerError("Docker returned an incomplete runtime identity")
+        return identity
     if backend not in {"host", "conda", "poetry"}:
         raise OncoTracerError("Existing-project resume currently supports Conda, host, Poetry and Docker.")
-    return current_runtime_identity()
+    return current_runtime_identity(runtime_root())
 
 
 def sample_snapshot(config):
@@ -74,7 +87,7 @@ def sample_snapshot(config):
     return snapshot, reviewed
 
 
-def resume_project(value, *, backend=None):
+def resume_project(value, *, backend=None, image=None):
     """Back up configuration, rebase owned paths, and authorize the selected runtime.
 
     Never start tools, delete results, bless a stage, or accept a classifier license.
@@ -90,6 +103,10 @@ def resume_project(value, *, backend=None):
         stack.enter_context(configuration_lock(config_path, exclusive=True))
         config = load_flat_yaml(config_path)
         backend = backend or str(config.get("execution_backend") or "conda")
+        if image:
+            if backend != "docker":
+                raise OncoTracerError("An image override requires the Docker backend")
+            config["docker_image"] = str(image)
         old_output = Path(str(config.get("outdir") or ""))
         if not old_output.is_absolute() or old_output.name != "results":
             raise OncoTracerError("Resume requires a setup project with an absolute PROJECT/results output path.")

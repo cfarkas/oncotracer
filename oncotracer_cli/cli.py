@@ -1575,6 +1575,10 @@ def _command_doctor(args: argparse.Namespace) -> int:
 
 
 def command_provenance(args: argparse.Namespace) -> int:
+    if getattr(args, "runtime_identity", False):
+        from .output_safety import current_runtime_identity
+        print(json.dumps(current_runtime_identity(runtime_root()), sort_keys=True))
+        return 0
     try:
         record = get_provenance()
     except ProvenanceError as error:
@@ -1740,8 +1744,13 @@ def build_parser() -> argparse.ArgumentParser:
     provenance = subparsers.add_parser(
         "provenance", help="Report exact source and binary provenance"
     )
-    provenance.add_argument(
+    provenance_format = provenance.add_mutually_exclusive_group()
+    provenance_format.add_argument(
         "--json", action="store_true", help="Emit the complete JSON record"
+    )
+    provenance_format.add_argument(
+        "--runtime-identity", action="store_true",
+        help="Emit the exact runtime identity used to validate existing outputs"
     )
     provenance.set_defaults(func=command_provenance)
     return parser

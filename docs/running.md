@@ -105,6 +105,8 @@ Use the current GitHub code and, for Docker, an image built from that code.
 An older image does not understand the new relocation record. Changes in tools,
 source code or Nextflow working paths can require some stages to run again.
 No output is deleted and no incomplete stage is marked complete by resume.
+To select an updated image explicitly, add `--backend docker --image IMAGE` to
+the interactive command. The chosen image is verified and saved for subsequent runs.
 
 ## Run separate projects at the same time
 

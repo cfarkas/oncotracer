@@ -54,6 +54,12 @@ From another directory, replace `main.nf` with its full path, such as `/absolute
 
 Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
 
+### Interactive demo
+
+[![OncoTracer browser setup: assign samples, choose settings, review and run. Click to explore the interactive demo.](docs/assets/setup-demo-preview.png)](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)
+
+[Try the demo](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html) with synthetic samples and simulated execution. See the [browser walkthrough](docs/browser_demo.md) for the complete sequence.
+
 ### Continue an existing analysis
 
 Use `oncotracer --interactive --project /path/to/existing-project`. Choose **Load saved settings and check**, then **Run analysis**. See [resume and relocation](docs/running.md#resume-behavior).
@@ -93,12 +99,6 @@ matching modified-base BAMs with `MM`/`ML` tags, or POD5 with compatible Dorado
 models. Legacy single MinKNOW runs, barcode folders and single ligation libraries
 remain supported. See [ONT settings](docs/configuration/ont.md) and the
 [CpG guide](docs/post_ont_cpg.md).
-
-### Interactive demo
-
-[![OncoTracer browser setup: assign samples, choose settings, review and run. Click to explore the interactive demo.](docs/assets/setup-demo-preview.png)](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)
-
-[Try the demo](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html) with synthetic samples and simulated execution. See the [browser walkthrough](docs/browser_demo.md) for the complete sequence.
 
 ### Run saved settings
 

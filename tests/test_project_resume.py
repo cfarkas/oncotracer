@@ -1,4 +1,6 @@
 import fcntl
+import contextlib
+import io
 import json
 import shutil
 import subprocess
@@ -9,7 +11,7 @@ from unittest.mock import patch
 
 from oncotracer_cli.output_safety import (_create_owner, current_runtime_identity,
     OUTPUT_LOCK_RELATIVE, OUTPUT_OWNER_RELATIVE, _canonical_path_sha256)
-from oncotracer_cli.project_resume import resume_project, sample_snapshot
+from oncotracer_cli.project_resume import _runtime, resume_project, sample_snapshot
 from oncotracer_cli.runtime import OncoTracerError, StageLedger, load_flat_yaml
 from oncotracer_cli.setup import _render_config
 
@@ -136,6 +138,14 @@ class ResumeTests(unittest.TestCase):
         self.assertEqual(receipt["previous_owner"]["runtime_identity"], self.identity)
         self.assertFalse((self.output / ".oncotracer-native/state.json").exists())
 
+    def test_explicit_docker_image_is_saved_and_verified(self):
+        resume_project(self.project, backend="docker", image="oncotracer:tested")
+        config = load_flat_yaml(self.project / "config/run.yml")
+        self.assertEqual(config["docker_image"], "oncotracer:tested")
+        self.assertEqual(config["execution_backend"], "docker")
+        with self.assertRaisesRegex(OncoTracerError, "Docker"):
+            resume_project(self.project, backend="conda", image="oncotracer:tested")
+
     def test_internal_symlink_rebased_external_file_unchanged(self):
         (self.output / "data.txt").write_text("data")
         (self.output / "alias.txt").symlink_to(self.output / "data.txt")
@@ -156,6 +166,31 @@ class ResumeTests(unittest.TestCase):
         self.fastq.write_text("changed")
         with self.assertRaisesRegex(OncoTracerError, "FASTQ inputs changed"):
             state.run({"project_id": prepared["id"]})
+
+
+class RuntimeIdentityTests(unittest.TestCase):
+    def test_docker_queries_actual_launcher_not_unstamped_source(self):
+        identity = current_runtime_identity()
+        with patch("oncotracer_cli.project_resume.subprocess.run", return_value=subprocess.CompletedProcess([], 0, json.dumps(identity), "")) as command:
+            self.assertEqual(_runtime("docker", {"docker_image": "oncotracer:tested"}), identity)
+        args = command.call_args.args[0]
+        self.assertEqual(args[-3:], ["oncotracer:tested", "provenance", "--runtime-identity"])
+        self.assertNotIn("--entrypoint", args)
+
+    def test_unverifiable_docker_does_not_authorize_resume(self):
+        for status, output in ((2, ""), (0, "not json"), (0, "{}")):
+            with self.subTest(status=status, output=output), patch(
+                "oncotracer_cli.project_resume.subprocess.run", return_value=subprocess.CompletedProcess([], status, output, "unsupported")):
+                with self.assertRaises(OncoTracerError):
+                    _runtime("docker", {"docker_image": "oncotracer:old"})
+
+    def test_runtime_identity_command_uses_analysis_payload_root(self):
+        from oncotracer_cli.cli import main
+        from oncotracer_cli.runtime import runtime_root
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(main(["provenance", "--runtime-identity"]), 0)
+        self.assertEqual(json.loads(output.getvalue()), current_runtime_identity(runtime_root()))
 
 
 if __name__ == "__main__":
