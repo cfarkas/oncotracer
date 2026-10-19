@@ -259,7 +259,7 @@ same status JSON. A mathematically invalid sample may fail post-normalization
 QC without stopping later viable samples; OncoTracer must not silently turn the
 remaining normals into a panel.
 
-## 11. ONT barcode errors
+## 11. ONT library or barcode errors
 
 ```bash
 FASTQ_PASS="$PWD/project/input/fastq_pass"
@@ -270,10 +270,14 @@ find "$FASTQ_PASS" -maxdepth 2 -type f -print | sort | head -40
 
 Confirm that:
 
-- `ont_folder` is the barcode parent or contains exactly one `fastq_pass`;
-- every configured barcode directory exists;
-- barcode and sample-name lists have identical lengths/order;
-- selected FASTQs are directly inside each barcode directory;
+- for [named libraries](configuration/ont.md), `ont_named_samples: true` is saved
+  and `ont_folder` contains the selected named directories;
+- each named library contains exactly one `fastq_pass` (directly or under one
+  run directory), with at most one nonempty barcode;
+- for legacy layouts, `ont_folder` is the barcode parent or one MinKNOW run;
+- every selected library/barcode exists and its sample-name list matches in
+  length and order;
+- completed FASTQs are in the selected pass directories, not failed siblings;
 - `ont_min_age_minutes` is not excluding completed data unexpectedly.
 
 Review used/skipped/warning logs beneath `01_samurai_ont/logs/`.

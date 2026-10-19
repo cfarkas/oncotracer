@@ -124,6 +124,7 @@ class OntSample:
     barcode: str
     fastq_dir: Path
     status: str = "tumor"
+    specimen_root: Path | None = None
 
 
 @dataclass
@@ -437,6 +438,11 @@ def _single_ont_sample_folder(folder: Path) -> Path:
 
 def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
     single = config.get("ont_single_sample", False)
+    named = config.get("ont_named_samples", False)
+    if not isinstance(named, bool):
+        raise OncoTracerError("ont_named_samples must be true or false")
+    if named and single:
+        raise OncoTracerError("ont_named_samples and ont_single_sample cannot both be true")
     if not isinstance(single, bool):
         raise OncoTracerError("ont_single_sample must be true or false")
     if single:
@@ -465,7 +471,8 @@ def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
             raise OncoTracerError(
                 f"ONT config requires {label}_folder and {label}_barcodes"
             )
-        root = _resolve_fastq_pass(Path(str(folder_value)))
+        root = (require_directory(Path(str(folder_value)), "Named ONT cohort folder")
+                if named else _resolve_fastq_pass(Path(str(folder_value))))
         barcodes = [
             token.strip()
             for token in str(barcodes_value).replace(";", ",").split(",")
@@ -491,6 +498,15 @@ def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
                     "ONT barcode must be one folder name; a nonbarcoded library requires ont_single_sample: true"
                 )
             candidate = root / barcode
+            if named:
+                from .ont_layout import resolve_named_ont_sample
+
+                if candidate.is_symlink():
+                    raise OncoTracerError(f"Named ONT library folder must not be a directory symlink: {candidate}")
+                library = resolve_named_ont_sample(candidate)
+                group.append(OntSample(_safe_sample(name), barcode, library.fastq_dir,
+                                       status=status, specimen_root=library.specimen_root))
+                continue
             if not candidate.is_dir() and barcode.isdigit():
                 candidate = root / f"barcode{int(barcode):02d}"
             if not candidate.is_dir():
@@ -545,6 +561,17 @@ def parse_ont_samples(config: Mapping[str, object]) -> list[OntSample]:
         raise OncoTracerError(
             "each ONT barcode directory may appear only once across TUMOR and NORMAL inputs"
         )
+    if named:
+        from .ont_layout import pass_fastq_files
+
+        identities = {}
+        for sample in samples:
+            for path in pass_fastq_files(sample.fastq_dir):
+                stat = path.stat()
+                identity = (stat.st_dev, stat.st_ino)
+                if identity in identities:
+                    raise OncoTracerError(f"The same FASTQ belongs to multiple selected ONT libraries: {identities[identity]} and {path}")
+                identities[identity] = path
     if any(sample.status == "normal" for sample in samples):
         caller = _ont_caller(config)
         if caller != "qdnaseq":
@@ -2390,14 +2417,9 @@ def _fastq_files(directory: Path, min_age_minutes: int) -> list[Path]:
 
     now = time.time()
     files: list[Path] = []
-    for path in sorted(directory.rglob("*")):
-        if not path.is_file() or path.name.endswith(".tmp"):
-            continue
-        lowered = path.name.lower()
-        if not lowered.endswith((".fastq", ".fq", ".fastq.gz", ".fq.gz")):
-            continue
-        if path.stat().st_size == 0:
-            continue
+    from .ont_layout import pass_fastq_files
+
+    for path in pass_fastq_files(directory, allow_empty=True):
         if now - path.stat().st_mtime < min_age_minutes * 60:
             continue
         files.append(path)

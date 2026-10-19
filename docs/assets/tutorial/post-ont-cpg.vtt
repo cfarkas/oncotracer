@@ -1,25 +1,29 @@
 WEBVTT
 
 1
-00:00:00.454 --> 00:00:04.443
-Your ONT project is restored: Names, roles, reference and reusable settings are already loaded. Your original project stays unchanged.
+00:00:00.494 --> 00:00:03.469
+One named folder per ONT library: ONCO-001 and ONCO-002 each contain fastq_pass and pod5_pass. This demo restores their saved ONT project.
 
 2
-00:00:04.443 --> 00:00:12.432
-1 · Drag samples: Use clinical records: leukemia → MARLIN; CNS tumour → Sturgeon. Leave unknown samples unassigned.
+00:00:03.469 --> 00:00:11.234
+Matching POD5 is selected: Each library keeps its own passed signal reads. Compatible Dorado and classifier models are required; these are synthetic fixtures.
 
 3
-00:00:12.432 --> 00:00:21.892
-2 · Save the chosen group: Choose MARLIN and save. Its new project contains only the leukemia sample.
+00:00:11.234 --> 00:00:19.231
+1 · Drag samples: Synthetic example: ONCO-001 → MARLIN; ONCO-002 → Sturgeon. For real data use clinical records; never infer diagnosis from names.
 
 4
-00:00:21.892 --> 00:00:25.527
-2 · Save the chosen group: Choose Sturgeon for its separate project. The other group and unknown sample are not queued.
+00:00:19.231 --> 00:00:27.666
+2 · Save the chosen group: Choose MARLIN and save. Its new project contains only ONCO-001.
 
 5
-00:00:25.527 --> 00:00:35.218
-Confirm your Sturgeon license: Only acknowledge this after obtaining Sturgeon and accepting its terms. This demonstration uses synthetic resources.
+00:00:27.666 --> 00:00:31.297
+2 · Save the chosen group: Choose Sturgeon and save ONCO-002 separately. The other group is not queued.
 
 6
-00:00:35.218 --> 00:00:42.123
-3 · Run only when ready: Supply any missing original BAM/POD5 or model/license requirement first. Run analysis is explicit; this demo stops after saving.
+00:00:31.297 --> 00:00:39.951
+Confirm your Sturgeon license: Only acknowledge this after obtaining Sturgeon and accepting its terms. This demonstration uses synthetic resources.
+
+7
+00:00:39.951 --> 00:00:44.857
+3 · Run only when ready: Use valid POD5 and compatible models, resolve checks and license requirements, then click Run explicitly. This demo stops after saving.

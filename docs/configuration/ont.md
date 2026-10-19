@@ -1,16 +1,75 @@
 # ONT configuration
 
-Use this page for ONT caller settings and independent normal samples. For a
-first run, follow the [multi-barcode example](../auto_params.md#ont-multiple-barcodes-and-fastq-batches).
-Each selected barcode becomes one analysis sample; its FASTQ batches are
-combined without mixing different samples.
+With the [current GitHub source](../installation_details.md#install-from-github),
+use one named folder per intended ONT library. Select the parent `ONT/` in
+browser or terminal setup; `ONCO-001` and `ONCO-002` become the sample names.
+Named-library discovery is newer than PyPI 2.1.0; its legacy layouts still work.
+All completed FASTQ batches within a library's `fastq_pass` belong to that
+library. Do not combine different libraries merely because they share a patient.
+
+```text
+ONT/
+├── ONCO-001/
+│   ├── fastq_pass/
+│   ├── fastq_fail/
+│   ├── pod5_pass/
+│   ├── pod5_fail/
+│   └── bam_pass/       # or modified_bam/
+└── ONCO-002/
+    ├── fastq_pass/
+    ├── fastq_fail/
+    ├── pod5_pass/
+    ├── pod5_fail/
+    └── bam_pass/       # or modified_bam/
+```
+
+Each named library must have exactly one `fastq_pass`, directly inside it or
+under one run directory (`ONT/ONCO-001/RUN/fastq_pass`). At most one nonempty
+barcode may occur beneath that pass root. Split distinct libraries into separate
+named folders; ambiguous multiple runs or barcodes are rejected.
+
+Methylation automatically links each named library's `pod5_pass`. The browser
+lists its ONCO-style name; drag samples to MARLIN or Sturgeon using clinical
+records. Saved or explicitly selected modified-base BAMs remain valid alternatives.
+
+`fastq_pass` supplies CNA and variant reads. The other directories are optional
+original data; `fastq_fail` and `pod5_fail` are not added to the analysis.
+The same library layout keeps methylation inputs associated with their FASTQs.
+FASTQs have no methylation marks: supply matching modified-base BAMs with
+`MM`/`ML` tags, or POD5 with compatible Dorado basecalling/modification models.
+Ordinary CNA alignment BAMs are not a substitute. Review linked paths before
+saving; methylation also needs [classifier tools and resources](methylation.md).
+
+```bash
+oncotracer setup --terminal --backend conda \
+  --project /work/ont-study --mode ont --input-folder /data/ONT
+```
+
+For a cohort with just one named library, add `--ont-named-samples` to select
+this layout explicitly; otherwise a single run retains legacy barcode behavior.
+The flag applies to study and independent normal roots. Setup records it in YAML:
+
+```yaml
+ont_named_samples: true
+ont_folder: /data/ONT
+ont_barcodes: ONCO-001,ONCO-002
+ont_sample_names: ONCO-001,ONCO-002
+```
+
+Here `ont_barcodes` selects named library directories; `ont_sample_names` gives
+the matching analysis names. Retain the generated flag when reusing this YAML.
+
+Legacy single MinKNOW runs, `fastq_pass/barcodeNN` layouts, individual barcode
+folders and single nonbarcoded ligation libraries remain supported. The examples
+below show that barcode-based route; see also the
+[multi-barcode example](../auto_params.md#ont-multiple-barcodes-and-fastq-batches).
 
 The liquid-biopsy caller uses the version-selected upstream HD_ULP ichorCNA reference object as a static scientific asset. That caller resource is not created from the cohort, and no submitted `NORMAL` sample is pooled into it.
 
 **Terminal / headless versions:** automatic, manual and solid-biopsy examples
 below run through the CLI.
 
-## Recommended: Automatic Setup
+## Legacy barcode layout: Automatic Setup
 
 ### Arrange barcode FASTQs
 
@@ -239,8 +298,9 @@ matching stages; use a new `outdir` for different scientific settings.
 
 | Setting | Typical value | Purpose |
 | --- | --- | --- |
-| `ont_folder` | absolute directory | Parent containing selected barcode directories |
-| `ont_barcodes` | comma-separated names | Barcode selection |
+| `ont_folder` | absolute directory | Named-library parent or legacy barcode FASTQ parent |
+| `ont_named_samples` | `true` for named libraries | Resolve one `fastq_pass` per selected library |
+| `ont_barcodes` | comma-separated names | Named library selection with `ont_named_samples`; otherwise barcode selection |
 | `ont_sample_names` | comma-separated names | Biological names in matching order |
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
 | `ont_caller` | `ichorcna` | `ichorcna`, or `qdnaseq` for an explicit `solid_biopsy` analysis |

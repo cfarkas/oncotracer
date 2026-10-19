@@ -1,7 +1,7 @@
 """Safe native ONT POD5 methylation execution.
 
-The methylation branch deliberately has no discovery, download, installation,
-or shared-cache behavior. Every POD5/model/resource location is explicit,
+The methylation branch has no download, installation or shared-cache behavior.
+Explicit signal roots are scoped to configured named libraries where applicable;
 inputs are read-only, and all generated files remain under '07_methylation'.
 """
 
@@ -13,7 +13,7 @@ import json
 import os
 import re
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -39,6 +39,17 @@ SUPPORTED_CLASSIFIER_INTERFACE_COMMITS = {
 
 
 @dataclass(frozen=True)
+class MethylationSignalGroup:
+    """Signal paths for one exact named library; labels never infer identity."""
+
+    sample: str
+    specimen_root: Path
+    barcode: str
+    roots: tuple[Path, ...]
+    files: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
 class MethylationRequest:
     """Fully resolved, immutable inputs for one optional methylation branch."""
 
@@ -60,6 +71,7 @@ class MethylationRequest:
     modbam_input: Path | None = None
     modbam_files: tuple[Path, ...] = ()
     modbam_inventory_sha256: str = ""
+    sample_signals: tuple[MethylationSignalGroup, ...] = ()
 
     @property
     def dorado_device(self) -> str:
@@ -173,10 +185,24 @@ def _validate_optional_tree_hash(
     return observed
 
 
+_FAILED_SIGNAL_FOLDERS = {"fastq_fail", "pod5_fail", "bam_fail"}
+_PHYSICAL_BARCODE = re.compile(r"(?:barcode\d+|unclassified)", re.IGNORECASE)
+
+
+def _reject_failed_signal_path(path: Path) -> None:
+    if any(part.casefold() in _FAILED_SIGNAL_FOLDERS for part in path.parts):
+        raise OncoTracerError("Methylation requires completed pass inputs; failed-read folders are not accepted.")
+
+
 def _pod5_files(directory: Path) -> tuple[Path, ...]:
+    _reject_failed_signal_path(directory)
+    if directory.is_symlink():
+        raise OncoTracerError("Use a physical methylation POD5 directory, not a symlink.")
     root = require_directory(directory, "methylation POD5 directory")
+    _reject_failed_signal_path(root)
     files: list[Path] = []
     for candidate in sorted(root.rglob("*")):
+        _reject_failed_signal_path(candidate)
         if candidate.is_symlink():
             raise OncoTracerError(
                 f"symlinks are not accepted in the explicit POD5 directory: {candidate}"
@@ -223,13 +249,17 @@ def _pod5_inventory_sha256(root: Path, files: Sequence[Path]) -> str:
 
 def _modbam_files(path: Path) -> tuple[Path, ...]:
     """Accept one closed BAM or an explicitly selected directory of BAM batches."""
+    _reject_failed_signal_path(path)
     if path.is_symlink():
         raise OncoTracerError(
             f"use a physical modified-base BAM path, not a symlink: {path}"
         )
     path = path.expanduser().resolve()
+    _reject_failed_signal_path(path)
     if path.is_dir():
         candidates = sorted(path.rglob("*"))
+        for candidate in candidates:
+            _reject_failed_signal_path(candidate)
         if any(p.is_symlink() for p in candidates):
             raise OncoTracerError(
                 "symlinks are not accepted in the explicit modified-base BAM directory"
@@ -244,6 +274,91 @@ def _modbam_files(path: Path) -> tuple[Path, ...]:
             "--modbam must contain non-empty .bam files; use completed MinKNOW BAM batches with MM/ML tags"
         )
     return files
+
+
+def named_signal_groups(
+    config: Mapping[str, object], source: Path, kind: str,
+) -> tuple[MethylationSignalGroup, ...]:
+    """Select pass signal folders from the same configured named specimens.
+
+    A cohort root is a scope, not permission to scan other specimens or failed
+    batches. Explicit paths inside a selected specimen can narrow that scope.
+    """
+    if not config.get("ont_named_samples"):
+        return ()
+    from .engine import parse_ont_samples
+    from .ont_layout import resolve_named_ont_sample
+
+    if kind not in {"pod5", "modbam"}:
+        raise ValueError("unknown methylation signal kind")
+    _reject_failed_signal_path(source)
+    if source.is_symlink():
+        raise OncoTracerError("Use a physical named-library signal root, not a symlink.")
+    source = source.expanduser().resolve()
+    if not source.exists():
+        raise OncoTracerError(f"The selected methylation input does not exist: {source}")
+    names = ("pod5_pass",) if kind == "pod5" else ("modified_bam", "bam_pass")
+    collect = _pod5_files if kind == "pod5" else _modbam_files
+    groups = []
+    for sample in parse_ont_samples(config):
+        specimen = getattr(sample, "specimen_root", None)
+        if specimen is None:
+            raise OncoTracerError("Named methylation inputs require a named specimen folder for every selected sample.")
+        layout = resolve_named_ont_sample(specimen)
+        specimen = layout.specimen_root
+        if not (source == specimen or source in specimen.parents or specimen in source.parents):
+            raise OncoTracerError(f"The methylation input does not cover selected named sample {sample.sample}; choose its cohort or pass signal folder.")
+        candidates = []
+        for parent in dict.fromkeys((layout.run_root, specimen)):
+            for name in names:
+                candidate = parent / name
+                if candidate.is_dir() and (source == candidate or source in candidate.parents or candidate in source.parents):
+                    candidates.append(candidate)
+        if not candidates:
+            raise OncoTracerError(f"Named sample {sample.sample} has no selected {' or '.join(names)} folder; FASTQ alone cannot supply methylation.")
+        if len(candidates) != 1:
+            raise OncoTracerError(f"Named sample {sample.sample} has multiple signal sources; select one completed pass folder to avoid duplicate reads.")
+        signal = candidates[0]
+        selected = source if signal in source.parents else signal
+        if selected.resolve() != specimen and specimen not in selected.resolve().parents:
+            raise OncoTracerError("A named-library signal path escapes its specimen folder.")
+        files = collect(selected)
+        partitions: dict[Path, list[Path]] = {}
+        unpartitioned = []
+        for path in files:
+            relative = path.relative_to(signal)
+            barcode_parts = [(index, part) for index, part in enumerate(relative.parts[:-1])
+                             if _PHYSICAL_BARCODE.fullmatch(part)]
+            if len(barcode_parts) > 1:
+                raise OncoTracerError("Nested signal barcode folders are ambiguous; select one completed barcode.")
+            if barcode_parts:
+                index, barcode = barcode_parts[0]
+                if barcode.casefold() == layout.barcode.casefold():
+                    root = signal.joinpath(*relative.parts[:index + 1])
+                    partitions.setdefault(root, []).append(path)
+            else:
+                unpartitioned.append(path)
+        has_barcode_layout = any(_PHYSICAL_BARCODE.fullmatch(part)
+                                 for path in files for part in path.relative_to(signal).parts[:-1])
+        if has_barcode_layout:
+            if unpartitioned or layout.barcode == "." or not partitions:
+                raise OncoTracerError(f"Signal barcodes do not unambiguously match the passed FASTQs for {sample.sample}.")
+            roots = tuple(sorted(partitions))
+            files = tuple(sorted(path for values in partitions.values() for path in values))
+        else:
+            roots = (selected,)
+        groups.append(MethylationSignalGroup(sample.sample, specimen, layout.barcode, roots, files))
+    return tuple(groups)
+
+
+def _signal_files(groups: Sequence[MethylationSignalGroup]) -> tuple[Path, ...]:
+    return tuple(sorted({path for group in groups for path in group.files}))
+
+
+def _signal_plan(request: MethylationRequest) -> list[dict[str, object]]:
+    return [{"sample": group.sample, "specimen_root": str(group.specimen_root),
+             "barcode": group.barcode, "roots": [str(path) for path in group.roots],
+             "file_count": len(group.files)} for group in request.sample_signals]
 
 
 def resolve_methylation_request(
@@ -306,8 +421,11 @@ def resolve_methylation_request(
         if pod5_value
         else None
     )
-    pod5_files = _pod5_files(pod5_dir) if pod5_dir else ()
-    modbam_files = _modbam_files(modbam_value) if modbam_value else ()
+    signal_source = pod5_value or modbam_value
+    assert signal_source is not None
+    sample_signals = named_signal_groups(config, signal_source, "pod5" if pod5_value else "modbam")
+    pod5_files = (_signal_files(sample_signals) if sample_signals else _pod5_files(pod5_dir)) if pod5_dir else ()
+    modbam_files = (_signal_files(sample_signals) if sample_signals else _modbam_files(modbam_value)) if modbam_value else ()
     modbam_input = modbam_value.expanduser().resolve() if modbam_value else None
 
     build = str(config.get("methylation_reference_build") or "hg38").strip().lower()
@@ -468,6 +586,7 @@ def resolve_methylation_request(
         classifier_interface_contract_commit=configured_commit,
         modbam_input=modbam_input,
         modbam_files=modbam_files,
+        sample_signals=sample_signals,
         modbam_inventory_sha256=(
             _pod5_inventory_sha256(
                 modbam_input if modbam_input.is_dir() else modbam_input.parent,
@@ -490,6 +609,7 @@ def methylation_plan(request: MethylationRequest) -> dict[str, object]:
         "modbam_inventory_sha256": request.modbam_inventory_sha256,
         "pod5_file_count": len(request.pod5_files),
         "pod5_inventory_sha256": request.pod5_inventory_sha256,
+        "sample_signals": _signal_plan(request),
         "gpu_requested": request.gpu,
         "dorado_device": request.dorado_device,
         "modkit_acceleration": "cpu_threads",
@@ -626,6 +746,7 @@ def _provenance_payload(
         "modbam_inventory_sha256": request.modbam_inventory_sha256,
         "pod5_file_count": len(request.pod5_files),
         "pod5_inventory_sha256": request.pod5_inventory_sha256,
+        "sample_signals": _signal_plan(request),
         "gpu_requested": request.gpu,
         "dorado_device": request.dorado_device,
         "modkit_acceleration": "cpu_threads",
@@ -685,14 +806,10 @@ def write_global_methylation_failure(
 
 
 def _fastq_files(directory: Path) -> tuple[Path, ...]:
-    files = tuple(
-        path
-        for path in sorted(directory.rglob("*"))
-        if path.is_file()
-        and not path.is_symlink()
-        and path.stat().st_size > 0
-        and path.name.lower().endswith((".fastq", ".fq", ".fastq.gz", ".fq.gz"))
-    )
+    from .ont_layout import pass_fastq_files
+
+    files = tuple(path for path in pass_fastq_files(directory, allow_empty=True)
+                  if not path.is_symlink())
     if not files:
         raise OncoTracerError(
             f"no FASTQ files are available to map barcode read IDs under {directory}"
@@ -966,6 +1083,32 @@ def _select_modbam_input(
     return selected
 
 
+def _select_named_modbam_input(
+    request: MethylationRequest, read_ids: Mapping[str, Path], output: Path,
+    runner: CommandRunner, threads: int,
+) -> Path:
+    """Intersect each named library's BAMs with its own FASTQs before merging."""
+    selected = output / ".selected_input.bam"
+    selected.unlink(missing_ok=True)
+    pieces = []
+    try:
+        for index, group in enumerate(request.sample_signals):
+            directory = output / ".selected_libraries" / str(index)
+            directory.mkdir(parents=True, exist_ok=True)
+            scoped = replace(request, modbam_files=group.files, sample_signals=())
+            try:
+                piece = _select_modbam_input(scoped, read_ids[group.sample], directory, runner, threads)
+            except OncoTracerError as error:
+                raise OncoTracerError(f"Named methylation input for {group.sample}: {error}") from error
+            pieces.append(piece)
+        runner.run("methylation-input-merge", [request.samtools, "merge", "-@", str(threads),
+                                              "-u", "-o", selected, *pieces])
+        return _nonempty(selected, "merged named-library modified-base BAM")
+    finally:
+        for piece in pieces:
+            piece.unlink(missing_ok=True)
+
+
 def _run_sturgeon(
     request: MethylationRequest,
     sample: str,
@@ -1111,6 +1254,47 @@ def _marlin_environment(
     return environment
 
 
+def _current_signal_files(request: MethylationRequest, kind: str) -> tuple[Path, ...]:
+    collect = _pod5_files if kind == "pod5" else _modbam_files
+    if request.sample_signals:
+        return tuple(sorted({path for group in request.sample_signals
+                             for root in group.roots for path in collect(root)}))
+    source = request.pod5_dir if kind == "pod5" else request.modbam_input
+    return collect(source) if source else ()
+
+
+def _basecall_named_pod5(
+    request: MethylationRequest, command: Sequence[str | Path], read_ids: Mapping[str, Path],
+    output: Path, logs: Path, runner: CommandRunner, threads: int,
+) -> None:
+    """Call only the selected sample's pass roots with that sample's read IDs."""
+    chunks = []
+    try:
+        for group in request.sample_signals:
+            for source in group.roots:
+                index = len(chunks)
+                chunk = output.parent / f".selected_signal.{index}.bam"
+                chunks.append(chunk)
+                argv = list(command)
+                argv[3] = source
+                argv[argv.index("--read-ids") + 1] = read_ids[group.sample]
+                with chunk.open("wb") as stream, (logs / f"dorado-{index}.stderr.log").open("w") as error:
+                    runner.run("methylation-dorado-basecall", argv,
+                               env=_accelerator_environment(request.gpu), stdout=stream, stderr=error)
+                _nonempty(chunk, "Dorado selected-library modified-base stream")
+        runner.run("methylation-dorado-merge", [request.samtools, "merge", "-@", str(threads),
+                                               "-u", "-o", output, *chunks])
+        try:
+            runner.pipeline("methylation-named-unique-reads",
+                            [request.samtools, "view", "-F", "2304", output],
+                            ["awk", "{ if (seen[$1]++) exit 1 }"])
+        except OncoTracerError as error:
+            raise OncoTracerError("Named POD5 batches contain duplicate primary read IDs or could not be validated; use one copy of each completed batch.") from error
+    finally:
+        for chunk in chunks:
+            chunk.unlink(missing_ok=True)
+
+
 def run_methylation(
     root: Path,
     request: MethylationRequest,
@@ -1124,6 +1308,18 @@ def run_methylation(
     force: bool,
 ) -> dict[str, object]:
     """Run modified-base basecalling/classification before CNA execution."""
+    if request.sample_signals and {group.sample for group in request.sample_signals} != {
+        str(getattr(sample, "sample")) for sample in samples
+    }:
+        raise OncoTracerError("Named methylation signal selection does not match the configured samples.")
+    if request.sample_signals:
+        source = request.pod5_dir or request.modbam_input
+        assert source is not None
+        files = request.pod5_files if request.pod5_dir else request.modbam_files
+        expected = request.pod5_inventory_sha256 if request.pod5_dir else request.modbam_inventory_sha256
+        current = _current_signal_files(request, "pod5" if request.pod5_dir else "modbam")
+        if current != files or _pod5_inventory_sha256(source if source.is_dir() else source.parent, current) != expected:
+            raise OncoTracerError("Named methylation signal inputs changed before analysis; reopen and check the selected project.")
     methylation_out = outdir / "07_methylation"
     ids_out = methylation_out / "read_ids"
     modbam_out = methylation_out / "modbam"
@@ -1238,32 +1434,37 @@ def run_methylation(
             request.dorado,
             request.samtools,
         ]
-    signature = ledger.signature(
-        basecall_stage,
-        ["primary-mm-ml-input-v1", *[str(value) for value in dorado_command]],
-        basecall_inputs,
-    )
+    if request.sample_signals:
+        basecall_inputs.extend(read_id_paths[group.sample] for group in request.sample_signals)
+    signature_command = ["primary-mm-ml-input-v1", *[str(value) for value in dorado_command]]
+    if request.sample_signals:
+        signature_command.extend(["named-pass-signal-selection-v1", json.dumps(_signal_plan(request), sort_keys=True)])
+    signature = ledger.signature(basecall_stage, signature_command, basecall_inputs)
     if force or not ledger.reusable(basecall_stage, signature, [all_bam, all_bai]):
         for owned in (all_bam, all_bai, unsorted):
             owned.unlink(missing_ok=True)
         if request.modbam_input:
-            _select_modbam_input(
-                request, union_ids, modbam_out, runner, max(1, threads)
-            )
-        dorado_log = logs_out / "dorado.stderr.log"
-        with (
-            unsorted.open("wb") as output,
-            dorado_log.open("w", encoding="utf-8") as error_log,
-        ):
-            runner.run(
-                basecall_stage,
-                dorado_command,
-                env=_accelerator_environment(
-                    request.gpu if request.pod5_dir else False
-                ),
-                stdout=output,  # type: ignore[arg-type]
-                stderr=error_log,
-            )
+            if request.sample_signals:
+                _select_named_modbam_input(request, read_id_paths, modbam_out, runner, max(1, threads))
+            else:
+                _select_modbam_input(request, union_ids, modbam_out, runner, max(1, threads))
+        if request.pod5_dir and request.sample_signals:
+            _basecall_named_pod5(request, dorado_command, read_id_paths, unsorted, logs_out, runner, max(1, threads))
+        else:
+            dorado_log = logs_out / "dorado.stderr.log"
+            with (
+                unsorted.open("wb") as output,
+                dorado_log.open("w", encoding="utf-8") as error_log,
+            ):
+                runner.run(
+                    basecall_stage,
+                    dorado_command,
+                    env=_accelerator_environment(
+                        request.gpu if request.pod5_dir else False
+                    ),
+                    stdout=output,  # type: ignore[arg-type]
+                    stderr=error_log,
+                )
         _nonempty(unsorted, "Dorado modified-base BAM stream")
         runner.run(
             "methylation-dorado-sort",
@@ -1284,7 +1485,7 @@ def run_methylation(
         runner.run(
             "methylation-dorado-quickcheck", [request.samtools, "quickcheck", all_bam]
         )
-        current_pod5_files = _pod5_files(request.pod5_dir) if request.pod5_dir else ()
+        current_pod5_files = _current_signal_files(request, "pod5") if request.pod5_dir else ()
         current_pod5_inventory = (
             _pod5_inventory_sha256(request.pod5_dir, current_pod5_files)
             if request.pod5_dir
@@ -1299,7 +1500,7 @@ def run_methylation(
             )
         if request.modbam_input:
             source = request.modbam_input
-            current_files = _modbam_files(source)
+            current_files = _current_signal_files(request, "modbam")
             if (
                 current_files != request.modbam_files
                 or _pod5_inventory_sha256(

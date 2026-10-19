@@ -284,7 +284,7 @@ function methylationSettings(){
   variantSettings();renderMethylationAssignments();updateCpgRequirements();
 }
 $('backend').onchange=()=>{methylationSettings();invalidate();};
-$('classifier').onchange=()=>{methylationSettings();invalidate();};$('methylation-source').onchange=()=>{methylationSettings();invalidate();};
+$('classifier').onchange=()=>{methylationSettings();invalidate();};$('methylation-source').onchange=()=>{$('methylation-source').dataset.userSelected='true';methylationSettings();invalidate();};
 function clearAutoOntInputs(){
   for(const id of ['ont-pod5','ont-modbam','ont-run-folder']){
     const field=$(id);if(field.dataset.ontAuto!==undefined&&field.value===field.dataset.ontAuto)field.value='';delete field.dataset.ontAuto;
@@ -292,6 +292,8 @@ function clearAutoOntInputs(){
   for(const id of ['ont-pod5','ont-modbam'])$(id+'-status').textContent=$(id).value.trim()?'Entered path kept. Discover FASTQs to check matching run folders.':'Not checked — discover FASTQs or select a path.';
 }
 function applyOntInputs(linked){
+  const source=$('methylation-source'),previous=$(source.value==='pod5'?'ont-pod5':'ont-modbam');
+  const keepSource=source.dataset.userSelected==='true'||(previous.value.trim()&&previous.value!==previous.dataset.ontAuto);
   show('ont-signal-inputs',mode==='ont');
   for(const [id,key]of[['ont-run-folder','run'],['ont-pod5','pod5'],['ont-modbam','modbam']]){
     const field=$(id),suggestion=linked[key]||'',manual=field.value.trim()&&field.value!==field.dataset.ontAuto;
@@ -300,9 +302,10 @@ function applyOntInputs(linked){
     $(id+'-status').textContent=manual?'Entered path kept. '+(suggestion?'Matching run path: '+suggestion:'Not found in the matching run folders; confirm your entered path.'):
       suggestion?'Found in this run: '+suggestion:'Not found in matching run folders. Browse to an existing '+(key==='pod5'?'POD5 folder.':'modified-base BAM or folder.');
   }
-  const source=$('methylation-source'),selected=$(source.value==='pod5'?'ont-pod5':'ont-modbam');
-  if(!selected.value.trim()&&$('ont-pod5').value.trim())source.value='pod5';
-  else if(!selected.value.trim()&&$('ont-modbam').value.trim())source.value='modbam';
+  const selected=$(source.value==='pod5'?'ont-pod5':'ont-modbam');
+  if(linked.named_samples&&linked.pod5&&!keepSource)source.value='pod5';
+  else if(!keepSource&&!selected.value.trim()&&$('ont-pod5').value.trim())source.value='pod5';
+  else if(!keepSource&&!selected.value.trim()&&$('ont-modbam').value.trim())source.value='modbam';
   $('ont-links-note').textContent='Matching folders are suggestions. Use completed files and confirm that BAMs contain modified-base MM/ML tags. FASTQs define the read IDs used for each sample. '+(linked.notes||[]).join(' ');
   methylationSettings();
 }

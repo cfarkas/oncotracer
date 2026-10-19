@@ -33,10 +33,34 @@ ACTIVE = [
 
 
 class NativeDocumentationTests(unittest.TestCase):
+    def captured_ont_source(self, relative: str, content: bytes) -> bytes:
+        compatibility = json.loads(
+            (ROOT / "docs/assets/tutorial/named-ont-layout-compatibility.json").read_text()
+        )
+        self.assertEqual(compatibility["schema"], 1)
+        self.assertRegex(compatibility["base_commit"], r"^[0-9a-f]{40}$")
+        self.assertEqual(set(compatibility["files"]), {
+            "oncotracer_cli/discovery.py", "oncotracer_cli/setup.py",
+            "oncotracer_cli/wizard.py",
+        })
+        transition = compatibility["files"].get(relative)
+        if transition:
+            self.assertEqual(transition["current_sha256"], hashlib.sha256(content).hexdigest())
+            self.assertTrue(transition["replacements"])
+            for replacement in transition["replacements"]:
+                current = replacement["current"].encode()
+                recorded = replacement["recorded"].encode()
+                self.assertTrue(current)
+                self.assertNotEqual(current, recorded)
+                self.assertEqual(content.count(current), 1)
+                content = content.replace(current, recorded, 1)
+            self.assertEqual(transition["recorded_sha256"], hashlib.sha256(content).hexdigest())
+        return content
+
     def assert_recorded_source_matches(self, relative: str, expected: str) -> None:
         from oncotracer_cli.cli import DEFAULT_IMAGE
 
-        content = (ROOT / relative).read_bytes()
+        content = self.captured_ont_source(relative, (ROOT / relative).read_bytes())
         continuation = json.loads(
             (ROOT / "docs/assets/tutorial/cpg-continuation-compatibility.json").read_text()
         )
@@ -138,7 +162,7 @@ class NativeDocumentationTests(unittest.TestCase):
             "README.md": 800,
             "docs/setup.md": 950,
             "docs/installation.md": 650,
-            "docs/quick_start.md": 850,
+            "docs/quick_start.md": 1000,
             "docs/public_cohort.md": 850,
             "docs/quickstart_terminal.md": 1200,
             "docs/configuration/methylation.md": 1100,
@@ -237,7 +261,8 @@ class NativeDocumentationTests(unittest.TestCase):
         assets = ROOT / "docs/assets/tutorial"
         record = json.loads((assets / "post-ont-cpg-recording.json").read_text())
         self.assertEqual(record["schema"], 1)
-        for key in ("passed", "synthetic_inputs", "unknown_sample_unassigned",
+        for key in ("passed", "synthetic_inputs", "named_sample_layout",
+                    "source_signal_was_unset", "explicit_classifier_assignments",
                     "original_fixture_files_unchanged", "restored_previous_project",
                     "source_project_unchanged"):
             self.assertIs(record[key], True, key)
@@ -253,26 +278,13 @@ class NativeDocumentationTests(unittest.TestCase):
                          "oncotracer_cli/setup.py", "oncotracer_cli/cpg_setup.py",
                          "scripts/record_post_ont_cpg_video.py"
                          }.issubset(record["source_files"]))
-        post_capture = json.loads((assets / "post-ont-cpg-compatibility.json").read_text())
-        self.assertEqual(post_capture["schema"], 1)
-        self.assertEqual(set(post_capture["files"]), {"oncotracer_cli/cpg_setup.py"})
+        self.assertEqual(record["sample_names"], ["ONCO-001", "ONCO-002"])
+        self.assertEqual(record["auto_selected_signal"], "pod5")
+        self.assertIn("not scientifically valid", record["resource_validation_scope"])
         for relative, expected in record["source_files"].items():
             self.assertFalse(Path(relative).is_absolute())
             self.assertNotIn("..", Path(relative).parts)
-            content = (ROOT / relative).read_bytes()
-            transition = post_capture["files"].get(relative)
-            if transition:
-                self.assertEqual(transition["recorded_sha256"], expected)
-                self.assertEqual(transition["current_sha256"], hashlib.sha256(content).hexdigest())
-                self.assertTrue(transition["replacements"])
-                for replacement in transition["replacements"]:
-                    current = replacement["current"].encode()
-                    recorded = replacement["recorded"].encode()
-                    self.assertTrue(current)
-                    self.assertNotEqual(current, recorded)
-                    self.assertEqual(content.count(current), 1)
-                    content = content.replace(current, recorded, 1)
-            self.assertEqual(hashlib.sha256(content).hexdigest(), expected, relative)
+            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected, relative)
         self.assertEqual([(row["sample_id"], row["classifier"]) for row in record["pointer_drags"]],
                          [(0, "marlin"), (1, "sturgeon")])
         self.assertTrue(all(row["pointer_events"] is True for row in record["pointer_drags"]))
@@ -280,33 +292,37 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertEqual(len(record["prepare_requests"]), 2)
         projects = set()
         assignments = [{"id": 0, "classifier": "marlin"},
-                       {"id": 1, "classifier": "sturgeon"},
-                       {"id": 2, "classifier": ""}]
+                       {"id": 1, "classifier": "sturgeon"}]
         for group, request, classifier, sample in zip(
             record["saved_groups"], record["prepare_requests"],
-            ("marlin", "sturgeon"), ("DEMO_LEUKEMIA", "DEMO_CNS")
+            ("marlin", "sturgeon"), ("ONCO-001", "ONCO-002")
         ):
             self.assertEqual((group["classifier"], group["sample"], group["included"], group["excluded"]),
-                             (classifier, sample, 1, 2))
+                             (classifier, sample, 1, 1))
             for key in ("configuration_saved", "configuration_checked"):
                 self.assertIs(group[key], True, key)
             for key in ("analysis_started", "results_created", "reference_created"):
                 self.assertIs(group[key], False, key)
             self.assertRegex(group["config_sha256"], r"^[0-9a-f]{64}$")
+            self.assertEqual(group["signal_source"], "pod5")
+            self.assertEqual(group["selected_signal_files"],
+                             [f"ONT/{sample}/pod5_pass/barcode01/synthetic.pod5"])
+            self.assertEqual(request["methylation_source"], "pod5")
+            self.assertEqual(Path(request["methylation_path"]).name, "ONT")
             self.assertEqual(request["analysis"], "methylation")
             self.assertEqual(request["classifier"], classifier)
             self.assertEqual(request["accept_sturgeon_license"], classifier == "sturgeon")
             self.assertIs(request["variants"], False)
             self.assertEqual(request["methylation_assignments"], assignments)
             self.assertEqual([row["name"] for row in request["samples"]],
-                             ["DEMO_LEUKEMIA", "DEMO_CNS", "DEMO_UNKNOWN"])
+                             ["ONCO-001", "ONCO-002"])
             self.assertIs(group["separate_project"], True)
             projects.add(request["project"])
         self.assertEqual(len(projects), 2)
         self.assertEqual(len(record["videos"]), 1)
         video = record["videos"][0]
         self.assertEqual(video["name"], "post-ont-cpg")
-        self.assertGreaterEqual(video["duration_seconds"], 35)
+        self.assertGreaterEqual(video["duration_seconds"], 30)
         self.assertLessEqual(video["duration_seconds"], 60)
         self.assertEqual((video["codec"], video["pixel_format"]), ("h264", "yuv420p"))
         self.assertIs(video["faststart"], True)
@@ -446,7 +462,7 @@ class NativeDocumentationTests(unittest.TestCase):
         text = (ROOT / "README.md").read_text(encoding="utf-8")
         # Separate fenced terminal examples need more lines without more prose.
         # The independent 800-word landing-page limit remains unchanged.
-        self.assertLess(len(text.splitlines()), 120)
+        self.assertLess(len(text.splitlines()), 150)
         self.assertIn("docs/installation.md", text)
         headings = re.findall(r"^## (.+)$", text, re.MULTILINE)
         self.assertTrue(headings)

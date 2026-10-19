@@ -21,6 +21,8 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--launch-dir', default=str(Path.cwd()), help=argparse.SUPPRESS)
     p.add_argument('--interactive', action='store_true', help='open the local OncoTracer visual browser setup')
     p.add_argument('--ffpe', action='store_true', help='with --interactive, preselect Illumina FFPE variants and FFPErase')
+    p.add_argument('--ont_named_samples', '--ont-named-samples', action='store_true',
+                   help='with --interactive, select ONT setup with named library folders')
     p.add_argument('--no_browser', '--no-browser', action='store_true', help='print the browser URL without opening it automatically')
     p.add_argument('--project', help='project folder to prefill in browser setup')
     p.add_argument('--input_folder', '--input-folder', help='FASTQ folder to prefill in browser setup')
@@ -68,9 +70,11 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
         raise ValueError(f'Configuration file does not exist: {config}')
     setup_paths = ('project', 'input_folder', 'cpg_from', 'resources', 'variant_tool_prefix', 'variant_ffperase_root',
                    'variant_ffperase_models', 'variant_ffperase_sif', 'variant_ffperase_prefix')
-    if not args.interactive and (args.ffpe or args.no_browser or args.image or args.classifier or
+    if not args.interactive and (args.ffpe or args.ont_named_samples or args.no_browser or args.image or args.classifier or
                                  any(getattr(args, key) for key in setup_paths)):
         raise ValueError('--ffpe and browser setup options require --interactive; no analysis was started')
+    if args.ont_named_samples and (args.ffpe or config is not None or args.cpg_from):
+        raise ValueError('--ont_named_samples selects new named ONT inputs; omit --ffpe, --config and --cpg_from')
     if args.ffpe and config is not None:
         raise ValueError('--ffpe presets a new FASTQ setup; omit --config and review existing configurations separately')
     if args.cpg_from and (config is not None or args.ffpe or args.input_folder):
@@ -101,6 +105,8 @@ def command(args: argparse.Namespace) -> tuple[list[str], Path, dict[str, str]]:
             argv += ['--classifier', args.classifier]
         if config:
             argv += ['--variant-config', str(config)]
+        elif args.ont_named_samples:
+            argv += ['--mode', 'ont', '--ont-named-samples']
         elif not args.cpg_from:
             argv += ['--mode', 'illumina', '--variants']
         if args.backend:

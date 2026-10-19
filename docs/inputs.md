@@ -141,7 +141,13 @@ The optional [Strelka2 somatic variant route](variants_reference.md#strelka2-ger
 
 ## ONT input
 
-`ont_folder` is the parent of barcode directories:
+Current browser/terminal setup accepts [named library folders](configuration/ont.md):
+select `ONT/`, containing `NAME/fastq_pass` for each intended library. Folder names
+become sample names, and optional original POD5/modified-base BAMs stay alongside
+their own library. `fastq_fail` and other failed siblings are excluded.
+
+The legacy barcode layout below remains supported, including by `auto`.
+Here `ont_folder` is the parent of barcode directories:
 
 ```text
 project/input/fastq_pass/

@@ -8,6 +8,36 @@ Analyze libraries for copy-number changes (CNA). Choose
 Illumina, ONT or both in separate projects. Reads total approximately 225 MB,
 plus tools, references and results. FASTQs alone cannot assess ONT methylation.
 
+With the [current GitHub source](installation_details.md#install-from-github),
+select `ONT/`: each named folder is one intended library and supplies its sample
+name. This named layout is newer than PyPI 2.1.0.
+
+```text
+ONT/
+├── ONCO-001/
+│   ├── fastq_pass/
+│   ├── fastq_fail/
+│   ├── pod5_pass/
+│   ├── pod5_fail/
+│   └── bam_pass/       # or modified_bam/
+└── ONCO-002/
+    ├── fastq_pass/
+    ├── fastq_fail/
+    ├── pod5_pass/
+    ├── pod5_fail/
+    └── bam_pass/       # or modified_bam/
+```
+
+Methylation automatically links each named library's `pod5_pass`. The browser
+lists its ONCO-style name; drag samples to MARLIN or Sturgeon using clinical
+records. Saved or explicitly selected modified-base BAMs remain valid alternatives.
+
+CNA/variants use only `fastq_pass`. Other folders are optional; methylation needs
+matching `MM`/`ML` modified-base BAMs or POD5 plus compatible Dorado models.
+FASTQs contain no methylation marks. The downloads/videos below use the supported
+legacy `fastq_pass/barcode01` layout; single MinKNOW runs and ligation libraries
+also remain supported. [ONT layout and settings](configuration/ont.md).
+
 [Installation](installation.md) · [Terminal commands](quickstart_terminal.md#quickstart-1).
 
 <nav class="quickstart-options" aria-label="QuickStart options">

@@ -73,6 +73,30 @@ class NextflowGatewayTests(unittest.TestCase):
         self.assertEqual(cwd, self.root)
         self.assertFalse((self.root / 'SHOULD_NOT_EXIST').exists())
 
+    def test_named_ont_aliases_select_only_the_ont_setup_defaults(self):
+        for flag in ('--ont_named_samples', '--ont-named-samples'):
+            with self.subTest(flag=flag):
+                argv, cwd, _ = gateway.command(self.args('--interactive', flag,
+                    '--input_folder', 'ONT $(touch SHOULD_NOT_EXIST)', '--backend', 'conda'))
+                parsed = parse_arguments(argv[3:])
+                self.assertEqual(parsed.mode, 'ont')
+                self.assertTrue(parsed.ont_named_samples)
+                self.assertFalse(parsed.variants)
+                self.assertFalse(parsed.run)
+                self.assertEqual(parsed.input_folder, str(self.root / 'ONT $(touch SHOULD_NOT_EXIST)'))
+                self.assertEqual(cwd, self.root)
+                self.assertFalse((self.root / 'SHOULD_NOT_EXIST').exists())
+
+    def test_named_ont_rejects_other_input_routes_before_dispatch(self):
+        for extra in (['--ffpe'], ['--config', self.config.name], ['--cpg_from', 'ONT project']):
+            with self.subTest(extra=extra), patch.object(gateway.subprocess, 'run') as run, \
+                 contextlib.redirect_stderr(io.StringIO()) as error:
+                code = gateway.main(['--project-dir', str(ROOT), '--launch-dir', str(self.root),
+                                     '--interactive', '--ont_named_samples', *extra])
+                self.assertEqual(code, 2)
+                self.assertIn('selects new named ONT inputs', error.getvalue())
+                run.assert_not_called()
+
     def test_cpg_continuation_rejects_competing_input_routes(self):
         for extra in (['--config', self.config.name], ['--ffpe'], ['--input_folder', 'reads']):
             with self.subTest(extra=extra), self.assertRaisesRegex(ValueError, 'reuses an ONT project'):
@@ -130,7 +154,7 @@ class NextflowGatewayTests(unittest.TestCase):
                 self.assertFalse((self.root / 'SHOULD_NOT_EXIST').exists())
 
     def test_setup_only_options_never_dispatch_an_analysis(self):
-        for flags in (['--ffpe'], ['--project', 'project'], ['--input_folder', 'reads'],
+        for flags in (['--ffpe'], ['--ont_named_samples'], ['--project', 'project'], ['--input_folder', 'reads'],
                       ['--cpg_from', 'ONT project'], ['--classifier', 'marlin'], ['--resources', 'resources.yml'],
                       ['--image', 'local:image'], ['--no_browser'],
                       ['--variant_ffperase_models', 'models'], ['--variant_tool_prefix', 'tools']):
@@ -236,7 +260,23 @@ class NextflowGatewayTests(unittest.TestCase):
         self.assertEqual(parsed.classifier, 'marlin')
         self.assertFalse(parsed.variants)
         self.assertFalse(parsed.run)
+        for flag in ('--ont_named_samples', '--ont-named-samples'):
+            named = subprocess.run([*argv, '--interactive', flag, '--input_folder', 'named ONT',
+                                    '--backend', 'conda', '--no_browser'],
+                                   cwd=self.root, env=env, text=True, capture_output=True, timeout=90)
+            self.assertEqual(named.returncode, 0, named.stdout + named.stderr)
+            parsed = parse_arguments(json.loads(record.read_text())['argv'][3:])
+            self.assertEqual(parsed.mode, 'ont', flag + ': ' + named.stdout + named.stderr)
+            self.assertTrue(parsed.ont_named_samples)
+            self.assertEqual(parsed.input_folder, str(self.root / 'named ONT'))
+            self.assertFalse(parsed.variants)
+            self.assertFalse(parsed.run)
         before = record.read_bytes()
+        conflict = subprocess.run([*argv, '--interactive', '--ont_named_samples', '--ffpe'],
+                                  cwd=self.root, env=env, text=True, capture_output=True, timeout=90)
+        self.assertNotEqual(conflict.returncode, 0)
+        self.assertIn('selects new named ONT inputs', conflict.stdout + conflict.stderr)
+        self.assertEqual(record.read_bytes(), before)
         no_arguments = subprocess.run(argv, cwd=self.root, env=env,
                                       text=True, capture_output=True, timeout=90)
         self.assertNotEqual(no_arguments.returncode, 0)

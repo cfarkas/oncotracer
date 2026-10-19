@@ -10,6 +10,7 @@ from pathlib import Path
 from .discovery import DiscoveredSample, FastqDiscovery, _fastqs
 from .engine import parse_ont_samples
 from .runtime import OncoTracerError, load_flat_yaml
+from .ont_layout import pass_fastq_files
 
 
 def _absolute(value, label):
@@ -53,7 +54,17 @@ class CpgProject:
                 raise OncoTracerError("The source ONT configuration or metadata changed; reopen --cpg-from before saving.")
         current = {}
         for sample in self.discovery.samples:
-            for path in _fastqs(sample.fastq_dir):
+            if self.discovery.named_samples:
+                from .ont_layout import resolve_named_ont_sample
+
+                if sample.specimen_root is None or sample.specimen_root.is_symlink():
+                    raise OncoTracerError("The named ONT library location changed; reopen --cpg-from.")
+                layout = resolve_named_ont_sample(sample.specimen_root)
+                if layout.fastq_dir != sample.fastq_dir or layout.files != sample.files:
+                    raise OncoTracerError("The named ONT pass layout changed; reopen --cpg-from.")
+            files = (pass_fastq_files(sample.fastq_dir) if self.discovery.named_samples
+                     else _fastqs(sample.fastq_dir))
+            for path in files:
                 stat = path.stat()
                 current[path] = (stat.st_size, stat.st_mtime_ns, stat.st_ino, stat.st_dev)
         if current != self.inputs:
@@ -117,12 +128,15 @@ def prepare_cpg_setup(args):
             raise OncoTracerError("--cpg-from reuses the source project's reference; omit a different reference option.")
     native_samples = parse_ont_samples(config)
     single = config.get("ont_single_sample", False)
+    named = config.get("ont_named_samples", False)
     study = [sample for sample in native_samples if sample.status == "tumor"]
     if not study:
         raise OncoTracerError("CpG continuation requires at least one saved ONT study sample; a control-only project is not supported.")
-    root = study[0].fastq_dir if single else study[0].fastq_dir.parent
+    root = (_absolute(config["ont_folder"], "ont_folder") if named else
+            study[0].fastq_dir if single else study[0].fastq_dir.parent)
     controls = [sample for sample in native_samples if sample.status == "normal"]
-    control_root = controls[0].fastq_dir.parent if controls else None
+    control_root = ((_absolute(config["ont_normal_folder"], "ont_normal_folder") if named
+                     else controls[0].fastq_dir.parent) if controls else None)
     fingerprints = {config_path: _hash(config_path)}
     metadata = {}
     metadata_path = (_absolute(config["sample_metadata"], "sample_metadata") if config.get("sample_metadata")
@@ -144,7 +158,7 @@ def prepare_cpg_setup(args):
         raise OncoTracerError("The source ONT sample metadata file is missing.")
     discovered, selections, inputs, identities = [], [], {}, set()
     for index, sample in enumerate(native_samples):
-        files = _fastqs(sample.fastq_dir)
+        files = pass_fastq_files(sample.fastq_dir) if named else _fastqs(sample.fastq_dir)
         if not files:
             raise OncoTracerError("A configured ONT sample has no FASTQ files; restore its original inputs.")
         for path in files:
@@ -168,7 +182,7 @@ def prepare_cpg_setup(args):
         selections.append({"id": index, "name": sample.sample, "type": kind,
                            "label": label if kind == "custom" else "", "role": role})
         discovered.append(DiscoveredSample(sample.sample, files, barcode=sample.barcode,
-                                           fastq_dir=sample.fastq_dir))
+                                           fastq_dir=sample.fastq_dir, specimen_root=sample.specimen_root))
     resources = dict(config)
     if getattr(args, "resources", None):
         resource_file = Path(args.resources).expanduser().resolve()
@@ -191,9 +205,30 @@ def prepare_cpg_setup(args):
     if not modbam and not pod5:
         modbam = config.get("methylation_modbam")
         pod5 = None if modbam else config.get("methylation_pod5_dir")
+    if named and not modbam and not pod5:
+        from .methylation import named_signal_groups
+
+        for kind in ("pod5", "modbam"):
+            try:
+                groups = named_signal_groups(config, root, kind)
+            except OncoTracerError:
+                continue
+            if groups:
+                if kind == "modbam":
+                    modbam = str(root)
+                else:
+                    pod5 = str(root)
+                break
     signal = modbam or pod5
     signal_path = _absolute(signal, "original methylation input") if signal else None
     missing_input = signal_path is None or not signal_path.exists()
+    if named and not missing_input:
+        from .methylation import named_signal_groups
+
+        try:
+            named_signal_groups(config, signal_path, "modbam" if modbam else "pod5")
+        except OncoTracerError:
+            missing_input = True
     missing_resources = {}
     for classifier in ("marlin", "sturgeon"):
         required = [*_resource_keys(classifier), *RESOURCE_FILES[classifier]]
@@ -210,14 +245,15 @@ def prepare_cpg_setup(args):
     warnings.append("Inherited resource paths are not a scientific readiness result; Save/check validates the selected classifier configuration.")
     from .reference_bundle import reference_paths
     protected = [project, output, reference_paths(reference)[0],
-                 *(sample.fastq_dir for sample in native_samples)]
+                 *(sample.specimen_root or sample.fastq_dir for sample in native_samples)]
     if signal_path:
         protected.append(signal_path)
-    context = CpgProject(project, config_path, config, FastqDiscovery("ont", root, tuple(discovered), single_sample=single),
+    context = CpgProject(project, config_path, config, FastqDiscovery("ont", root, tuple(discovered), single_sample=single, named_samples=named),
                          selections, fingerprints, inputs, tuple(protected), control_root,
                          resource_paths, missing_resources, missing_input, warnings)
     args.mode, args.analysis, args.backend, args.variants = "ont", "methylation", backend, False
     args.input_folder, args.hg38_build = str(root), str(reference)
+    args.ont_named_samples = named
     args.resources = getattr(args, "resources", None) or str(config_path)
     args.modbam = str(signal_path) if modbam and signal_path else None
     args.pod5_dir = str(signal_path) if pod5 and signal_path else None

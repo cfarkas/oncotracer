@@ -122,6 +122,26 @@ class WizardTests(unittest.TestCase):
             self.assertIn("ONT controls require", output)
             self.assertFalse(any("Type for unclassified" in prompt for prompt in prompts))
 
+    def test_named_ont_terminal_save_preserves_specimen_names_and_pass_reads(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reads, project = root / "ONT", root / "project"
+            paths = [self.fastq(reads / name / "fastq_pass/barcode01/batch.fastq.gz")
+                     for name in ("ONCO-001", "ONCO-002")]
+            self.fastq(reads / "ONCO-001/fastq_fail/failed.fastq.gz")
+            code, output, prompts, run = self.invoke(
+                "setup", "--terminal", "--project", str(project), "--mode", "ont",
+                "--input-folder", str(reads), "--threads", "2",
+                answers={"Type for ONCO-001": "cancer", "Type for ONCO-002": "cancer"})
+            self.assertEqual(code, 0, output)
+            run.assert_not_called()
+            config = load_flat_yaml(project / "config/run.yml")
+            self.assertTrue(config["ont_named_samples"])
+            self.assertEqual(config["ont_sample_names"], "ONCO-001,ONCO-002")
+            self.assertEqual([row.fastq_dir for row in parse_ont_samples(config)], [path.parent for path in paths])
+            self.assertIn("named library pass reads", output)
+            self.assertFalse((project / "results").exists())
+
     def test_platform_is_asked_before_the_fastq_folder(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

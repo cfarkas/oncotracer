@@ -25,6 +25,10 @@ workflow {
         if (params.port != null) argv.addAll(['--port', params.port.toString()])
         if (selectedFlag(params.interactive, 'interactive')) argv.add('--interactive')
         if (selectedFlag(params.ffpe, 'ffpe')) argv.add('--ffpe')
+        // Nextflow normalizes a hyphenated CLI parameter to camelCase.
+        def namedOntAlias = params.containsKey('ontNamedSamples') ? params.ontNamedSamples : false
+        if (selectedFlag(params.ont_named_samples, 'ont_named_samples') ||
+            selectedFlag(namedOntAlias, 'ont-named-samples')) argv.add('--ont-named-samples')
         if (selectedFlag(params.no_browser, 'no_browser')) argv.add('--no-browser')
         if (selectedFlag(params.dry_run, 'dry_run')) argv.add('--dry-run')
         ['config', 'start_dir', 'backend', 'threads', 'parallel_samples', 'project', 'input_folder',

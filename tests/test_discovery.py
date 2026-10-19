@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from oncotracer_cli.discovery import detect_fastq_mode, discover_fastqs, discover_ont_inputs
-from oncotracer_cli.engine import parse_illumina_samplesheet, parse_ont_samples
+from oncotracer_cli.engine import _fastq_files, parse_illumina_samplesheet, parse_ont_samples
 from oncotracer_cli.fastq_inputs import encode_fastq_field, fastq_paths
 from oncotracer_cli.runtime import OncoTracerError
 
@@ -200,8 +200,10 @@ class DiscoveryTests(unittest.TestCase):
         found = discover_fastqs(selected.parent, "ont")
         linked = discover_ont_inputs(selected.parent, fastq_root=found.root)
         self.assertEqual((linked["pod5"], linked["modbam"]), ("", ""))
-        with self.assertRaisesRegex(OncoTracerError, "Multiple ONT runs"):
-            discover_ont_inputs(self.reads / "selected" / "..")
+        cohort = discover_ont_inputs(self.reads / "selected" / "..")
+        self.assertTrue(cohort["named_samples"])
+        self.assertEqual(cohort["pod5"], "")
+        self.assertEqual(cohort["samples"]["selected"]["pod5"], "")
 
     def test_ont_signal_discovery_direct_files_requires_one_nonempty_bam(self):
         fastq = self.fastq("run/fastq_pass/batch.fastq.gz")
@@ -300,11 +302,129 @@ class DiscoveryTests(unittest.TestCase):
             parse_ont_samples({"ont_folder": str(self.reads / "fastq_pass"),
                                "ont_barcodes": ".", "ont_sample_names": "library_A"})
 
-    def test_multiple_ont_runs_require_narrower_folder(self):
-        for run in ("run1", "run2"):
-            self.fastq(f"{run}/fastq_pass/barcode01/batch.fastq")
+    def test_multiple_outer_libraries_are_named_and_never_pooled_by_barcode(self):
+        for name in ("ONCO-001", "ONCO-002"):
+            self.fastq(f"{name}/fastq_pass/barcode01/batch.fastq")
+            self.fastq(f"{name}/fastq_fail/barcode01/failed.fastq").write_bytes(b"")
+        found = discover_fastqs(self.reads, "ont")
+        self.assertTrue(found.named_samples)
+        self.assertFalse(found.single_sample)
+        self.assertEqual([sample.sample for sample in found.samples], ["ONCO-001", "ONCO-002"])
+        self.assertEqual([sample.barcode for sample in found.samples], ["ONCO-001", "ONCO-002"])
+        self.assertEqual([len(sample.files) for sample in found.samples], [1, 1])
+        self.assertEqual(detect_fastq_mode(self.reads), "ont")
+        config = {"ont_folder": str(self.reads), "ont_named_samples": True,
+                  "ont_barcodes": "ONCO-002,ONCO-001", "ont_sample_names": "second,first"}
+        parsed = parse_ont_samples(config)
+        self.assertEqual([row.sample for row in parsed], ["second", "first"])
+        self.assertEqual([row.specimen_root.name for row in parsed], ["ONCO-002", "ONCO-001"])
+        self.assertEqual([row.fastq_dir for row in parsed], [found.samples[1].fastq_dir, found.samples[0].fastq_dir])
+        self.assertEqual(_fastq_files(parsed[0].fastq_dir, 0), list(found.samples[1].files))
+
+    def test_named_direct_and_nested_pass_libraries_keep_exact_ids(self):
+        first = self.fastq("ONCO-017.2/fastq_pass/combined.fastq")
+        second = self.fastq("ONCO-018.2_run1_barcode03/run1/fastq_pass/barcode03/batch.fastq")
+        for name in ("ONCO-017.2", "ONCO-018.2_run1_barcode03"):
+            self.fastq(f"{name}/fastq_fail/failed.fastq").write_bytes(b"")
+        found = discover_fastqs(self.reads, "ont")
+        self.assertEqual([row.files for row in found.samples], [(first,), (second,)])
+        self.assertEqual([row.sample for row in found.samples], ["ONCO-017.2", "ONCO-018.2_run1_barcode03"])
+
+    def test_named_library_rejects_multiple_runs_or_barcodes(self):
+        self.fastq("valid/fastq_pass/a.fastq")
+        self.fastq("ambiguous/run1/fastq_pass/barcode01/a.fastq")
+        self.fastq("ambiguous/run2/fastq_pass/barcode01/b.fastq")
         with self.assertRaisesRegex(OncoTracerError, "exactly one fastq_pass"):
             discover_fastqs(self.reads, "ont")
+        with self.assertRaisesRegex(OncoTracerError, "exactly one fastq_pass"):
+            parse_ont_samples({"ont_folder": str(self.reads), "ont_named_samples": True,
+                               "ont_barcodes": "ambiguous"})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for barcode in ("barcode01", "barcode02"):
+                target = root / "library/fastq_pass" / barcode / "batch.fastq"
+                target.parent.mkdir(parents=True)
+                target.write_bytes(b"reads")
+            with self.assertRaisesRegex(OncoTracerError, "multiple or nested barcodes"):
+                discover_fastqs(root, "ont", named_ont=True)
+
+    def test_named_cohort_rejects_mixed_legacy_and_named_inputs(self):
+        for name in ("A", "B"):
+            self.fastq(f"{name}/fastq_pass/batch.fastq")
+        self.fastq("barcode03/batch.fastq")
+        with self.assertRaisesRegex(OncoTracerError, "mixes named libraries"):
+            discover_fastqs(self.reads, "ont")
+
+    def test_mixed_direct_pass_and_named_libraries_require_explicit_selection(self):
+        direct = self.fastq("fastq_pass/barcode01/direct.fastq")
+        for name in ("ONCO-001", "ONCO-002"):
+            self.fastq(f"{name}/fastq_pass/named.fastq")
+        with self.assertRaisesRegex(OncoTracerError, "mixes a direct fastq_pass"):
+            discover_fastqs(self.reads, "ont")
+        with self.assertRaisesRegex(OncoTracerError, "mixes a direct fastq_pass"):
+            discover_fastqs(self.reads, "ont", named_ont=True)
+        selected = discover_fastqs(self.reads / "fastq_pass", "ont")
+        self.assertFalse(selected.named_samples)
+        self.assertEqual(selected.samples[0].files, (direct,))
+        self.assertEqual(selected.samples[0].sample, "barcode01")
+
+    def test_named_library_rejects_nested_pass_pooling(self):
+        self.fastq("A/fastq_pass/run1/fastq_pass/batch.fastq")
+        with self.assertRaisesRegex(OncoTracerError, "nested fastq_pass"):
+            discover_fastqs(self.reads, "ont", named_ont=True)
+
+    def test_named_library_config_requires_boolean_and_distinct_pass_inputs(self):
+        first = self.fastq("A/fastq_pass/batch.fastq")
+        second = self.reads / "B/fastq_pass/batch.fastq"
+        second.parent.mkdir(parents=True)
+        second.hardlink_to(first)
+        with self.assertRaisesRegex(OncoTracerError, "multiple named ONT libraries"):
+            discover_fastqs(self.reads, "ont")
+        config = {"ont_folder": str(self.reads), "ont_named_samples": True, "ont_barcodes": "A,B"}
+        with self.assertRaisesRegex(OncoTracerError, "multiple selected ONT libraries"):
+            parse_ont_samples(config)
+        with self.assertRaisesRegex(OncoTracerError, "true or false"):
+            parse_ont_samples({**config, "ont_named_samples": "true"})
+        with self.assertRaisesRegex(OncoTracerError, "cannot both"):
+            parse_ont_samples({**config, "ont_single_sample": True})
+
+    def test_one_library_explicit_named_mode_preserves_legacy_default(self):
+        fastq = self.fastq("library/fastq_pass/barcode07/batch.fastq")
+        legacy = discover_fastqs(self.reads, "ont")
+        self.assertEqual(legacy.samples[0].sample, "barcode07")
+        named = discover_fastqs(self.reads, "ont", named_ont=True)
+        self.assertEqual(named.samples[0].sample, "library")
+        self.assertEqual(named.samples[0].files, (fastq,))
+        self.assertTrue(named.named_samples)
+
+    def test_named_normal_group_keeps_independent_folder_and_reference_role(self):
+        study = self.fastq("study/fastq_pass/study.fastq")
+        normal = self.fastq("control/fastq_pass/control.fastq")
+        parsed = parse_ont_samples({"ont_folder": str(self.reads), "ont_named_samples": True,
+                    "ont_barcodes": "study", "ont_normal_folder": str(self.reads),
+                    "ont_normal_barcodes": "control", "ont_caller": "qdnaseq",
+                    "ont_analysis_type": "solid_biopsy"})
+        self.assertEqual([(row.sample, row.status, row.fastq_dir) for row in parsed],
+                         [("study", "tumor", study.parent), ("control", "normal", normal.parent)])
+
+    def test_named_signal_suggestions_are_per_specimen_and_exclude_failed(self):
+        for name in ("A", "B"):
+            self.fastq(f"{name}/fastq_pass/reads.fastq")
+            (self.reads / name / "modified_bam").mkdir()
+            (self.reads / name / "pod5_pass").mkdir()
+            (self.reads / name / "pod5_fail").mkdir()
+        linked = discover_ont_inputs(self.reads)
+        self.assertTrue(linked["named_samples"])
+        self.assertEqual(set(linked["samples"]), {"A", "B"})
+        self.assertEqual(linked["modbam"], str(self.reads))
+        self.assertEqual(linked["samples"]["A"]["modbam"], str(self.reads / "A/modified_bam"))
+        self.assertEqual(linked["samples"]["B"]["pod5"], str(self.reads / "B/pod5_pass"))
+
+    def test_runtime_walker_never_consumes_nested_failed_read_trees(self):
+        passed = self.fastq("fastq_pass/pass.fastq")
+        self.fastq("fastq_pass/fastq_fail/fail.fastq")
+        self.fastq("fastq_pass/pod5_fail/accidental.fastq")
+        self.assertEqual(_fastq_files(passed.parent, 0), [passed])
 
     def test_ont_does_not_silently_drop_unmapped_fastqs(self):
         self.fastq("fastq_pass/barcode01/batch.fastq")

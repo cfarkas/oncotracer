@@ -54,6 +54,40 @@ From another directory, replace `main.nf` with its full path, such as `/absolute
 
 Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
 
+### ONT input layout
+
+With the [current GitHub source](docs/installation_details.md#install-from-github),
+select `ONT/` with **one named folder per intended library**. Folder names become
+sample names; keep multiple libraries separate even when they share a patient.
+PyPI 2.1.0 retains the legacy layouts described below.
+
+```text
+ONT/
+├── ONCO-001/
+│   ├── fastq_pass/
+│   ├── fastq_fail/
+│   ├── pod5_pass/
+│   ├── pod5_fail/
+│   └── bam_pass/       # or modified_bam/
+└── ONCO-002/
+    ├── fastq_pass/
+    ├── fastq_fail/
+    ├── pod5_pass/
+    ├── pod5_fail/
+    └── bam_pass/       # or modified_bam/
+```
+
+Methylation automatically links each named library's `pod5_pass`. The browser
+lists its ONCO-style name; drag samples to MARLIN or Sturgeon using clinical
+records. Saved or explicitly selected modified-base BAMs remain valid alternatives.
+
+Only `fastq_pass` supplies CNA/variant reads. The other folders are optional;
+retain original signal for methylation. FASTQs have no methylation marks: use
+matching modified-base BAMs with `MM`/`ML` tags, or POD5 with compatible Dorado
+models. Legacy single MinKNOW runs, barcode folders and single ligation libraries
+remain supported. See [ONT settings](docs/configuration/ont.md) and the
+[CpG guide](docs/post_ont_cpg.md).
+
 ### Interactive demo
 
 [![OncoTracer browser setup: assign samples, choose settings, review and run. Click to explore the interactive demo.](docs/assets/setup-demo-preview.png)](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)

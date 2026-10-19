@@ -244,7 +244,7 @@ class WebState:
 
     def scan(self, data):
         mode = _choice(data, "mode", ("illumina", "ont"))
-        discovered = discover_fastqs(_text(data, "folder"), mode)
+        discovered = discover_fastqs(_text(data, "folder"), mode, named_ont=True if getattr(self.setup_args, "ont_named_samples", False) else None)
         scan_id = secrets.token_urlsafe(18)
         with self.lock:
             if len(self.scans) >= 32:
@@ -254,11 +254,11 @@ class WebState:
                 "warnings": list(discovered.warnings), "samples": [
                     {"id": index, "name": sample.sample, "barcode": sample.barcode,
                      "file_count": len(sample.files), "files": [str(p) for p in sample.files],
-                     "layout": ("ONT batches" if mode == "ont" else
+                     "layout": ("named ONT library" if discovered.named_samples else "ONT batches" if mode == "ont" else
                                 "paired-end" if sample.fastq_2 else "single-end")}
                     for index, sample in enumerate(discovered.samples)]}
         if mode == "ont":
-            result["ont_inputs"] = discover_ont_inputs(_text(data, "folder"), fastq_root=discovered.root)
+            result["ont_inputs"] = discover_ont_inputs(_text(data, "folder"), fastq_root=discovered.root, named_ont=discovered.named_samples)
         return result
 
     def prepare(self, data):
@@ -338,7 +338,7 @@ class WebState:
             if discovered.mode == "illumina" and len({row["source"].fastq_2 is not None for row in entries}) > 1:
                 raise OncoTracerError("Select either paired-end or single-end samples for this project; use separate projects for different layouts.")
             # Recheck the discovery before saving, so changed folders need a fresh review.
-            refreshed = self.cpg_context.discovery if self.cpg_context else discover_fastqs(discovered.root, discovered.mode)
+            refreshed = self.cpg_context.discovery if self.cpg_context else discover_fastqs(discovered.root, discovered.mode, named_ont=discovered.named_samples)
             current = {sample.fastq_dir if discovered.mode == "ont" else sample.fastq_1: sample for sample in refreshed.samples}
             for row in entries:
                 sample = row["source"]
@@ -414,6 +414,8 @@ class WebState:
                 args.sample_names = ",".join(row["sample"] for row in study)
                 if discovered.single_sample:
                     values["ont_single_sample"] = True
+                if discovered.named_samples:
+                    values["ont_named_samples"] = True
                 if controls:
                     values.update(ont_normal_folder=str(self.cpg_context.control_root if self.cpg_context else discovered.root),
                                   ont_normal_barcodes=",".join(row["source"].barcode for row in controls),

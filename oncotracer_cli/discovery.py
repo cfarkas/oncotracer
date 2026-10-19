@@ -14,6 +14,7 @@ import re
 
 from .engine import _resolve_fastq_pass, _single_ont_sample_folder
 from .fastq_inputs import FastqInput
+from .ont_layout import discover_named_ont_samples, pass_fastq_files
 from .runtime import OncoTracerError, require_directory
 
 
@@ -33,6 +34,7 @@ class DiscoveredSample:
     fastq_2: FastqInput | None = None
     barcode: str | None = None
     fastq_dir: Path | None = None
+    specimen_root: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -42,6 +44,7 @@ class FastqDiscovery:
     samples: tuple[DiscoveredSample, ...]
     warnings: tuple[str, ...] = ()
     single_sample: bool = False
+    named_samples: bool = False
 
 
 def _fastq_stem(path: Path) -> str | None:
@@ -84,6 +87,8 @@ def detect_fastq_mode(folder: str | Path) -> str | None:
     ONT. The wizard should ask the user when no platform-specific layout exists.
     """
     root = require_directory(Path(folder), "FASTQ folder")
+    if discover_named_ont_samples(root) is not None:
+        return "ont"
     # Follow the same pass-folder selection as ONT discovery. Failed or partial
     # batches elsewhere in a MinKNOW run must not block its completed pass data.
     scan_root = root
@@ -215,7 +220,16 @@ def _illumina(root: Path) -> FastqDiscovery:
     return FastqDiscovery("illumina", root, tuple(sorted(samples, key=lambda sample: sample.sample)), tuple(warnings))
 
 
-def _ont(folder: Path) -> FastqDiscovery:
+def _ont(folder: Path, *, named_ont: bool | None = None) -> FastqDiscovery:
+    named = (discover_named_ont_samples(folder, explicit=named_ont is True)
+             if named_ont is not False else None)
+    if named is not None:
+        samples = tuple(DiscoveredSample(library.name, library.files, barcode=library.name,
+                                        fastq_dir=library.fastq_dir, specimen_root=library.specimen_root)
+                        for library in named)
+        return FastqDiscovery("ont", folder, samples, (
+            "Each named folder is one independent library. Only its fastq_pass reads are selected; "
+            "confirm these folder names and keep separate runs/libraries separate.",), named_samples=True)
     selected = folder.name if _barcode(folder.name) else None
     try:
         root = _resolve_fastq_pass(folder.parent if selected else folder)
@@ -227,7 +241,7 @@ def _ont(folder: Path) -> FastqDiscovery:
         root = folder
     if selected and folder.parent != root:
         raise OncoTracerError(f"The selected barcode folder must be directly below the FASTQ parent: {folder}")
-    paths = _fastqs(folder if selected else root)
+    paths = pass_fastq_files(folder if selected else root)
     if not paths:
         raise OncoTracerError(f"No FASTQ files found in {folder}. Check your paths.")
     if not any(_barcode(part) for path in paths for part in path.relative_to(root).parts[:-1]):
@@ -261,7 +275,7 @@ def _ont(folder: Path) -> FastqDiscovery:
     return FastqDiscovery("ont", root, samples, warnings)
 
 
-def discover_fastqs(folder: str | Path, mode: str) -> FastqDiscovery:
+def discover_fastqs(folder: str | Path, mode: str, *, named_ont: bool | None = None) -> FastqDiscovery:
     """Return validated, deterministic mappings without writing or reading data bodies.
 
     File sizes and naming/layout are checked here. Sequence contents, read-pair
@@ -272,13 +286,13 @@ def discover_fastqs(folder: str | Path, mode: str) -> FastqDiscovery:
         if mode == "illumina":
             return _illumina(root)
         if mode == "ont":
-            return _ont(root)
+            return _ont(root, named_ont=named_ont)
         raise OncoTracerError("FASTQ discovery mode must be illumina or ont")
     except OSError as error:
         raise OncoTracerError(f"Cannot inspect FASTQ folder {root}: {error}") from error
 
 
-def discover_ont_inputs(folder: str | Path, *, fastq_root: Path | None = None) -> dict:
+def discover_ont_inputs(folder: str | Path, *, fastq_root: Path | None = None, named_ont: bool | None = None) -> dict:
     """Suggest only signal inputs belonging to the selected/discovered ONT run.
 
     Match conventional sibling directories without following directory symlinks
@@ -287,9 +301,19 @@ def discover_ont_inputs(folder: str | Path, *, fastq_root: Path | None = None) -
     nested MinKNOW run cannot accidentally borrow a different run's signals.
     """
     selected = require_directory(Path(folder), "ONT input folder")
+    named = (discover_named_ont_samples(selected, explicit=named_ont is True)
+             if named_ont is not False else None)
+    if named is not None:
+        mappings = {library.name: discover_ont_inputs(library.fastq_dir, fastq_root=library.fastq_root,
+                                                     named_ont=False) for library in named}
+        return {"run": str(selected), "fastq": str(selected),
+                "pod5": str(selected) if all(row["pod5"] for row in mappings.values()) else "",
+                "modbam": str(selected) if all(row["modbam"] for row in mappings.values()) else "",
+                "samples": mappings, "named_samples": True,
+                "notes": ["Signal inputs are matched per selected named library; failed and unselected libraries are excluded."]}
     notes: list[str] = []
     fastq_names = {"fastq_pass", "fastq", "fastqs"}
-    signal_names = {"pod5_pass", "pod5", "bam_pass", "modbam"}
+    signal_names = {"pod5_pass", "pod5", "bam_pass", "modbam", "modified_bam"}
 
     def children(path: Path) -> list[Path]:
         try:
@@ -363,7 +387,7 @@ def discover_ont_inputs(folder: str | Path, *, fastq_root: Path | None = None) -
         return None
 
     pod5 = signal_directory(("pod5_pass", "pod5"))
-    modbam = signal_directory(("bam_pass", "modbam"))
+    modbam = signal_directory(("modified_bam", "bam_pass", "modbam"))
     direct = children(run) if pod5 is None or modbam is None else []
     direct_files = []
     for path in direct:

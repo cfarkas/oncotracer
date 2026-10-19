@@ -110,6 +110,42 @@ class WebTests(unittest.TestCase):
         self.assertEqual([(r.sample, r.status) for r in parse_ont_samples(config)],
                          [("patient", "tumor"), ("control", "normal")])
 
+    def test_named_ont_browser_save_reaches_native_engine_with_original_names(self):
+        paths = [self.fastq(f"reads/{name}/fastq_pass/barcode01/batch.fastq.gz")
+                 for name in ("ONCO-001", "ONCO-002")]
+        failed = self.root / "reads/ONCO-001/fastq_fail/failed.fastq.gz"
+        failed.parent.mkdir()
+        failed.write_bytes(b"")
+        before = {path: path.read_bytes() for path in [*paths, failed]}
+        with patch("oncotracer_cli.setup._run_setup", side_effect=AssertionError("must not run")):
+            prepared = self.prepare(mode="ont")
+        self.assertTrue(prepared["valid"], prepared["check"])
+        config = load_flat_yaml(Path(prepared["config_path"]))
+        self.assertTrue(config["ont_named_samples"])
+        self.assertEqual(config["ont_folder"], str(self.root / "reads"))
+        self.assertEqual(config["ont_barcodes"], "ONCO-001,ONCO-002")
+        parsed = parse_ont_samples(config)
+        self.assertEqual([row.sample for row in parsed], ["ONCO-001", "ONCO-002"])
+        self.assertEqual([row.fastq_dir for row in parsed], [path.parent for path in paths])
+        self.assertEqual([row.specimen_root.name for row in parsed], ["ONCO-001", "ONCO-002"])
+        with Path(config["sample_metadata"]).open() as handle:
+            rows = list(csv.DictReader(handle))
+        self.assertEqual([json.loads(row["fastq_files"]) for row in rows], [[str(path)] for path in paths])
+        self.assertFalse((self.root / "project/results").exists())
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
+    def test_named_ont_browser_rejects_changed_library_layout_before_saving(self):
+        for name in ("A", "B"):
+            self.fastq(f"reads/{name}/fastq_pass/barcode01/batch.fastq.gz")
+        scan = self.state.scan({"mode": "ont", "folder": str(self.root / "reads")})
+        self.fastq("reads/B/fastq_pass/barcode02/new.fastq.gz")
+        data = {"scan_id": scan["scan_id"], "project": str(self.root / "project"), "threads": 2,
+                "samples": [{"id": row["id"], "name": row["name"], "type": "cancer"}
+                            for row in scan["samples"]]}
+        with self.assertRaisesRegex(OncoTracerError, "multiple or nested barcodes"):
+            self.state.prepare(data)
+        self.assertFalse((self.root / "project").exists())
+
     def test_nonbarcoded_ont_many_files_are_one_sample(self):
         for number in range(69):
             self.fastq(f"ligation/batch{number}.fastq.gz")
@@ -409,6 +445,34 @@ const api=async endpoint=>{requests.push(endpoint);if(requestError)throw request
         self.assertEqual(sum(len(row["files"]) for row in scan["samples"]), 9)
         self.assertEqual(scan["ont_inputs"]["pod5"], str(self.root / "run/pod5_pass"))
         self.assertEqual(scan["ont_inputs"]["modbam"], str(self.root / "run/bam_pass"))
+
+    @unittest.skipUnless(shutil.which("node"), "Node is required for signal selection checks")
+    def test_named_signal_default_prefers_pod5_and_preserves_explicit_bam(self):
+        from oncotracer_cli.web_ui import PAGE
+
+        source = PAGE[PAGE.index("function applyOntInputs(linked){"):PAGE.index("async function linkDiscoveredOntInputs(){")]
+        handler_start = PAGE.index("$('methylation-source').onchange=")
+        handler = PAGE[handler_start:PAGE.index("\n", handler_start)]
+        script = """
+const assert=require('node:assert/strict');
+let nodes,mode='ont';
+const $=id=>nodes[id]||(nodes[id]={value:'',dataset:{},textContent:''});
+function show(){} function methylationSettings(){} function invalidate(){}
+function reset(){nodes={};$('methylation-source').value='modbam';}
+const linked={named_samples:true,run:'/cohort',pod5:'/cohort',modbam:'/cohort',notes:[]};
+""" + source + """
+reset();applyOntInputs(linked);assert.equal($('methylation-source').value,'pod5');
+reset();$('ont-modbam').value='/explicit/original.bam';applyOntInputs(linked);
+assert.equal($('methylation-source').value,'modbam');assert.equal($('ont-modbam').value,'/explicit/original.bam');
+reset();applyOntInputs(linked);$('methylation-source').value='modbam';
+""" + handler + """
+$('methylation-source').onchange();applyOntInputs(linked);assert.equal($('methylation-source').value,'modbam');
+$('ont-modbam').value='';applyOntInputs({...linked,modbam:''});assert.equal($('methylation-source').value,'modbam');
+reset();applyOntInputs({...linked,named_samples:false});assert.equal($('methylation-source').value,'modbam');
+reset();applyOntInputs({...linked,pod5:''});assert.equal($('methylation-source').value,'modbam');
+"""
+        result = subprocess.run([shutil.which("node"), "-e", script], text=True, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_browser_selects_executable_models_and_counts_signal_files(self):
         for name in ("model.zip", "dorado", "batch.pod5", "calls.bam"):

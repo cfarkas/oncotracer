@@ -109,6 +109,7 @@ oncotracer run --backend conda --config /work/my-study/config/run.yml
 | `--mode illumina` or `--mode ont` | Sequencing platform |
 | `--input-folder PATH` | Folder for browser or terminal discovery; incompatible with `--non-interactive` and explicit sample flags |
 | `--manual` | Use individual file/barcode prompts instead of folder discovery |
+| `--ont-named-samples` | Interpret an ONT cohort as named library folders, including a cohort with only one library |
 | `--analysis cna`, `methylation` or `both` | Requested analysis; methylation requires ONT |
 | `--fastq-1 FILE`, `--fastq-2 FILE`, `--sample-name NAME` | One Illumina library; omit R2 for single-end |
 | `--samplesheet FILE` | Multiple Illumina libraries in a sample/R1/R2/status CSV |
@@ -250,11 +251,12 @@ For somatic variants, [Strelka2 requires explicit pairs](../variants_reference.m
 
 | Field | Typical/default | Meaning |
 | --- | --- | --- |
-| `ont_folder` | required path | Parent containing selected barcode directories |
-| `ont_barcodes` | required comma-separated names | Tumor barcode selection |
+| `ont_folder` | required path | Named-library parent or legacy barcode FASTQ parent |
+| `ont_named_samples` | `false` | Use named library directories, each containing one `fastq_pass` directly or under one run directory |
+| `ont_barcodes` | required comma-separated names | Selected named libraries when `ont_named_samples: true`; otherwise tumor barcodes |
 | `ont_sample_names` | barcode names when omitted | Positional biological sample names |
-| `ont_normal_folder` | optional path | Parent containing independent NORMAL barcode directories; requires solid-biopsy qDNAseq |
-| `ont_normal_barcodes` | required with `ont_normal_folder` | NORMAL barcode selection; each barcode is analyzed as its own sample |
+| `ont_normal_folder` | optional path | Parent containing independent NORMAL library/barcode directories; requires solid-biopsy qDNAseq |
+| `ont_normal_barcodes` | required with `ont_normal_folder` | NORMAL library/barcode selection; each is analyzed independently |
 | `ont_normal_sample_names` | NORMAL barcode names when omitted | Positional NORMAL sample names; never pooled into a panel |
 | `ont_analysis_type` | `liquid_biopsy` | Analysis preset |
 | `ont_caller` | `ichorcna` | `ichorcna`, or `qdnaseq` only with explicit `ont_analysis_type: solid_biopsy` |

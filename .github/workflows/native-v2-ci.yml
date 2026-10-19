@@ -88,6 +88,7 @@ jobs:
             tests/test_fontconfig_safety.py \
             tests/test_command_runner_containment.py \
             tests/test_native_methylation.py \
+            tests/test_named_methylation.py \
             tests/test_beginner_runtime.py \
             tests/test_setup.py \
             tests/test_cpg_setup.py \

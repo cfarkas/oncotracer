@@ -13,14 +13,14 @@ You need matching FASTQs, methylation input, and an installed classifier:
 
 | Input | Why it is needed |
 | --- | --- |
-| FASTQs organized by barcode | Select which read IDs belong to each sample |
+| FASTQs in [named libraries](ont.md) or legacy barcodes | Select each sample’s read IDs |
 | Modified-base BAMs **or** raw POD5 files | Supply methylation information |
 | Dorado, Modkit, and samtools | Align reads and extract methylation |
 | MARLIN or Sturgeon tools and model files | Compare the methylation pattern with known classes |
 
 **Modified-base BAMs** contain `MM`/`ML` tags; reusing them avoids basecalling. Ordinary BAMs or FASTQs alone are insufficient. Raw POD5 needs compatible Dorado basecalling and modification models.
 
-Use completed files or a snapshot. Exclude files MinKNOW is still writing, duplicates and alternate basecalls of the same reads. Select barcodes explicitly; include `unclassified` only with a justified sample assignment, never pooled across patients.
+Use completed files; exclude live files, duplicates and alternate basecalls. Keep one intended library per named folder. Select legacy barcodes explicitly; include `unclassified` only with a justified assignment, never pooled across patients.
 
 ## 1. Prepare the tools once
 
@@ -34,9 +34,10 @@ Locate executables, model and probe BED; MARLIN also needs feature-order `.RData
 oncotracer setup
 ```
 
-Choose **Oxford Nanopore**, then **Fresh or FFPE** from specimen records. **Browse run** fills matching
-`fastq_pass`, POD5 and `bam_pass` paths. You can also browse each path separately,
-including a single barcode folder or a nonbarcoded ligation FASTQ folder.
+Choose **Oxford Nanopore**, then **Fresh or FFPE** from specimen records. Select
+[named library folders](ont.md), or **Browse run** for a legacy MinKNOW run.
+Named libraries automatically link `pod5_pass`; saved/explicit modified BAMs stay
+selected. Failed siblings are excluded. Legacy barcode/ligation layouts also work.
 Assign and name the samples, then choose **Methylation classification** or **CNA and methylation**.
 
 Choose the linked POD5 or modified-base BAM input. For methylation-only analysis,
@@ -47,8 +48,8 @@ to a separate project. **CNA and methylation** keeps one chosen classifier for a
 selected samples.
 
 Browse to the installed tools and model files, or reuse a resource YAML. Modkit
-extracts CpG methylation for either classifier. Barcode FASTQ read IDs keep each
-sample separate when the signal folder is shared. Save, check, and click
+extracts CpG methylation for either classifier. Selected libraries and their
+FASTQ read IDs determine which signal reads belong to each sample. Save, check, and click
 **Run analysis** for the last saved project.
 
 ### Terminal example: leukemia using existing BAMs

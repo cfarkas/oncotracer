@@ -106,11 +106,11 @@ def command_wizard(original_args) -> int:
         project = project_destination(Path(_ask(None, "Project directory (--project)")).expanduser().resolve())
     args.project = str(project)
     folder = Path(_ask(args.input_folder or args.reads_folder, "FASTQ folder (--input-folder)")).expanduser()
-    discovered = discover_fastqs(folder, args.mode)
+    discovered = discover_fastqs(folder, args.mode, named_ont=True if getattr(args, "ont_named_samples", False) else None)
     file_count = sum(len(sample.files) for sample in discovered.samples)
     print(f"\nDetected {file_count} FASTQ files in {len(discovered.samples)} samples under {discovered.root}:")
     for number, sample in enumerate(discovered.samples, 1):
-        layout = ("nonbarcoded library batches" if discovered.single_sample else "barcode batches") if args.mode == "ont" else ("paired-end" if sample.fastq_2 else "single-end")
+        layout = ("named library pass reads" if discovered.named_samples else "nonbarcoded library batches" if discovered.single_sample else "barcode batches") if args.mode == "ont" else ("paired-end" if sample.fastq_2 else "single-end")
         print(f"  {number}. {sample.sample}: {len(sample.files)} FASTQs, {layout}")
         for path in sample.files[:2]:
             print(f"       {path.relative_to(discovered.root)}")
@@ -159,6 +159,8 @@ def command_wizard(original_args) -> int:
     _show_hardware(hardware, report["suggested_threads"])
     args.threads = _integer(args.threads, "CPU threads (--threads)", report["suggested_threads"], hardware["cpu_workers_available"])
     values = {"ont_single_sample": True} if discovered.single_sample else {}
+    if discovered.named_samples:
+        values["ont_named_samples"] = True
     if args.mode == "illumina":
         args.reads_folder = None
         args._wizard_rows = [[row["sample"], encode_fastq_field(row["source"].fastq_1),

@@ -78,7 +78,8 @@ COMMENTS = {
     "illumina_samplesheet": "CSV linking sample names to existing FASTQ files.",
     "ont_folder": "Existing FASTQ parent directory; with ont_single_sample, this is one nonbarcoded library.",
     "ont_single_sample": "true treats ont_folder itself as one nonbarcoded library; ont_barcodes must be a single dot.",
-    "ont_barcodes": "Comma-separated barcode folders. Only these samples are analyzed.",
+    "ont_named_samples": "true selects named library folders under ont_folder; one pass library per folder.",
+    "ont_barcodes": "Comma-separated barcode folders, or named library folders with ont_named_samples. Only these samples are analyzed.",
     "ont_sample_names": "Names in the same order as ont_barcodes. Tumor samples are analyzed independently.",
     "methylation": "Request methylation analysis in addition to the default copy-number workflow.",
     "methylation_only": "true skips copy-number analysis; false runs both requested branches.",
@@ -730,23 +731,31 @@ def _command_setup(args: argparse.Namespace) -> int:
         selected_folder = Path(
             _ask(args.reads_folder, "FASTQ parent folder (--reads-folder)", interactive=interactive)
         )
-        if getattr(args, "_wizard_values", {}).get("ont_single_sample"):
+        from .ont_layout import discover_named_ont_samples
+
+        named_requested = (getattr(args, "ont_named_samples", False)
+                           or getattr(args, "_wizard_values", {}).get("ont_named_samples", False))
+        named = discover_named_ont_samples(selected_folder, explicit=named_requested)
+        if named is not None:
+            folder = require_directory(selected_folder, "Named ONT cohort folder")
+            values["ont_named_samples"] = True
+        elif getattr(args, "_wizard_values", {}).get("ont_single_sample"):
             from .engine import _single_ont_sample_folder
 
             folder = _single_ont_sample_folder(selected_folder)
         else:
             folder = _resolve_fastq_pass(selected_folder)
-        available = [
+        available = ([sample.name for sample in named] if named is not None else [
             p.name
             for p in sorted(folder.iterdir())
             if p.is_dir() and (p.name.startswith("barcode") or p.name == "unclassified")
-        ]
+        ])
         print(
             f"FASTQ folder: {folder}\nAvailable folders: {', '.join(available) or 'none'}"
         )
         selected = _ask(
             args.barcodes,
-            "Barcode folders to include, comma separated (--barcodes)",
+            "Library folders to include, comma separated (--barcodes)" if named is not None else "Barcode folders to include, comma separated (--barcodes)",
             interactive=interactive,
         )
         names = _ask(
@@ -1225,11 +1234,13 @@ def add_setup_commands(subparsers) -> None:
     ont = parser.add_argument_group("ONT samples")
     ont.add_argument(
         "--reads-folder",
-        help="parent of barcode FASTQ folders, or a MinKNOW run containing fastq_pass",
+        help="named ONT cohort, parent of barcode FASTQs, or a MinKNOW run containing fastq_pass",
     )
+    ont.add_argument("--ont-named-samples", action="store_true",
+                     help="treat immediate folders as named ONT libraries (also supports a one-library cohort)")
     ont.add_argument(
         "--barcodes",
-        help="comma-separated barcode folders; choose unclassified explicitly if appropriate",
+        help="comma-separated barcode or named library folders; choose unclassified explicitly if appropriate",
     )
     ont.add_argument(
         "--sample-names",

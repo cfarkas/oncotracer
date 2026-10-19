@@ -1,13 +1,51 @@
 # After ONT: drag samples into a CpG classifier
 
-Open your existing ONT project. OncoTracer restores its sample names, roles,
-reference and reusable settings; the original project stays unchanged.
+Start methylation directly from named ONT inputs, or reuse a saved ONT project.
+A completed CNA analysis is not required. Keep original inputs grouped by intended
+library, using the same names as the ONT setup:
+
+```text
+ONT/
+├── ONCO-001/
+│   ├── fastq_pass/
+│   ├── fastq_fail/
+│   ├── pod5_pass/
+│   ├── pod5_fail/
+│   └── bam_pass/       # or modified_bam/
+└── ONCO-002/
+    ├── fastq_pass/
+    ├── fastq_fail/
+    ├── pod5_pass/
+    ├── pod5_fail/
+    └── bam_pass/       # or modified_bam/
+```
+
+Methylation automatically links each named library's `pod5_pass`. The browser
+lists its ONCO-style name; drag samples to MARLIN or Sturgeon using clinical
+records. Saved or explicitly selected modified-base BAMs remain valid alternatives.
+
+CNA/variants use only `fastq_pass`. FASTQs define sample read membership but
+contain no methylation marks. CpG analysis also needs matching original
+modified-base BAMs with `MM`/`ML` tags, or POD5 plus compatible Dorado models.
+The fail folders are retained originals, not additional analysis inputs; signal
+folders are optional for CNA/variants. Legacy MinKNOW/barcode and single ligation
+layouts remain supported. See [ONT input settings](configuration/ont.md).
+
+**New project from named inputs:** open ordinary setup, discover the libraries,
+and assign samples to the appropriate classifier group:
+
+```bash
+oncotracer --interactive --backend conda --mode ont --analysis methylation --input-folder /data/ONT
+```
+
+**Reuse a saved ONT project:** restore its names, roles, reference and reusable
+settings directly into the CpG assignment page. The original stays unchanged:
 
 ```bash
 oncotracer --interactive --cpg-from /path/to/ONT-project
 ```
 
-This shortcut requires the [current main source](https://github.com/cfarkas/oncotracer/tree/main);
+These named-input and reuse routes require the [current main source](https://github.com/cfarkas/oncotracer/tree/main);
 use the [GitHub installation option](installation_details.md#install-from-github).
 Previously published releases and PyPI 2.1.0 do not include it.
 
@@ -25,7 +63,9 @@ Previously published releases and PyPI 2.1.0 do not include it.
 <p><a href="../assets/tutorial/post-ont-cpg.txt">Transcript</a> · <a href="../assets/tutorial/post-ont-cpg.mp4">Download video</a></p>
 </section>
 
-Actual browser controls, synthetic prior project. **No analysis or patient data.**
+Actual browser controls, synthetic named libraries and POD5 files. The video
+shows the saved-project reuse route, two pointer drags and separate checks.
+**No analysis or patient data.** Fixture models are not scientific models.
 
 ## 1. Drag samples
 

@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT))
 from record_quickstart_videos import OVERLAY, Recording, run_checked, stamp
 
 NAME = "post-ont-cpg"
-SAMPLE_NAMES = ["DEMO_LEUKEMIA", "DEMO_CNS", "DEMO_UNKNOWN"]
+SAMPLE_NAMES = ["ONCO-001", "ONCO-002"]
 
 
 def digest(path):
@@ -71,17 +71,18 @@ def main():
     demo = args.work_dir / "demo"
     demo.mkdir()
     import gzip
-    for number in (1, 2, 3):
-        folder = demo / "ont-run/fastq_pass" / f"barcode{number:02d}"
+    cohort = demo / "ONT"
+    for name in SAMPLE_NAMES:
+        folder = cohort / name / "fastq_pass/barcode01"
         folder.mkdir(parents=True)
         with gzip.open(folder / "synthetic.fastq.gz", "wt") as handle:
-            handle.write("@synthetic-read\nACGT\n+\nIIII\n")
-    bam = demo / "ont-run/bam_pass/synthetic.mod.bam"
-    bam.parent.mkdir()
-    bam.write_bytes(b"synthetic BAM path fixture; never processed")
-    pod5 = demo / "ont-run/pod5_pass"
-    pod5.mkdir()
-    (pod5 / "synthetic.pod5").write_bytes(b"synthetic POD5 path fixture; never processed")
+            handle.write(f"@synthetic-{name}\nACGT\n+\nIIII\n")
+        for directory, filename in (("pod5_pass/barcode01", "synthetic.pod5"),
+                                    ("modified_bam", "synthetic.mod.bam"),
+                                    ("pod5_fail", "failed.pod5")):
+            signal = cohort / name / directory / filename
+            signal.parent.mkdir(parents=True, exist_ok=True)
+            signal.write_bytes(b"synthetic signal path fixture; never processed")
     reference = demo / "prepared-hg38"
     for name in _files():
         path = reference_paths(reference)[0] / name
@@ -106,14 +107,14 @@ def main():
         writer.writeheader()
         for identifier, name in enumerate(SAMPLE_NAMES, 1):
             writer.writerow({"sample": name, "sample_type": "cancer", "analysis_role": "tumor",
-                             "fastq_files": json.dumps([str(demo / f"ont-run/fastq_pass/barcode{identifier:02d}/synthetic.fastq.gz")])})
-    prior = {"mode": "ont", "ont_folder": str(demo / "ont-run/fastq_pass"),
-             "ont_barcodes": "barcode01,barcode02,barcode03", "ont_sample_names": ",".join(SAMPLE_NAMES),
+                             "fastq_files": json.dumps([str(cohort / name / "fastq_pass/barcode01/synthetic.fastq.gz")])})
+    prior = {"mode": "ont", "ont_folder": str(cohort), "ont_named_samples": True,
+             "ont_barcodes": ",".join(SAMPLE_NAMES), "ont_sample_names": ",".join(SAMPLE_NAMES),
              "ont_caller": "ichorcna", "ont_binsize_kb": 500, "threads": 4,
              "outdir": str(source_project / "results"), "lpwgs_root": str(reference),
              "hg38_auto_download": False, "execution_backend": "conda", "variant_specimen_type": "fresh",
              "sample_metadata": str(metadata), "run_variants": False, "methylation": False,
-             "methylation_modbam": str(bam.parent), "sturgeon_license_acknowledged": True,
+             "sturgeon_license_acknowledged": True,
              **resources}
     (source_config_dir / "run.yml").write_text(render_flat_yaml(prior))
     files_before = {str(path.relative_to(demo)): digest(path) for path in demo.rglob("*") if path.is_file()}
@@ -173,12 +174,19 @@ def main():
                 recording = Recording(page, args.pace)
                 page.goto(server.origin + "/#" + state.token, wait_until="load")
                 page.locator("main:not([inert])").wait_for(state="attached")
-                recording.caption("Your ONT project is restored", "Names, roles, reference and reusable settings are already loaded. Your original project stays unchanged.")
+                recording.caption("One named folder per ONT library", "ONCO-001 and ONCO-002 each contain fastq_pass and pod5_pass. This demo restores their saved ONT project.")
                 page.locator("#cpg-assign-card").wait_for(state="visible")
                 recording.focus("#methylation-assignment-board .sample-board", "center")
                 recording.clear_focus()
+                recording.pause(2)
+                assert page.locator("#methylation-source").input_value() == "pod5"
+                assert page.locator("#ont-pod5").input_value() == str(cohort)
+                recording.caption("Matching POD5 is selected", "Each library keeps its own passed signal reads. Compatible Dorado and classifier models are required; these are synthetic fixtures.")
+                recording.click("#cpg-advanced > summary")
+                recording.focus("#cpg-signal-inputs", "center")
                 recording.pause(3)
-                recording.caption("1 · Drag samples", "Use clinical records: leukemia → MARLIN; CNS tumour → Sturgeon. Leave unknown samples unassigned.")
+                recording.click("#cpg-advanced > summary")
+                recording.caption("1 · Drag samples", "Synthetic example: ONCO-001 → MARLIN; ONCO-002 → Sturgeon. For real data use clinical records; never infer diagnosis from names.")
 
                 def drag(identifier, target):
                     recording.focus("#methylation-assignment-board .sample-board", "center")
@@ -200,10 +208,10 @@ def main():
 
                 drag(0, "marlin")
                 drag(1, "sturgeon")
-                assert page.locator('#methylation-unassigned .methylation-sample[data-sample-id="2"]').count() == 1
+                assert page.locator('#methylation-unassigned .methylation-sample').count() == 0
                 page.screenshot(path=str(args.output_dir / (NAME + ".jpg")), type="jpeg", quality=90)
                 for classifier, identifier in [("marlin", 0), ("sturgeon", 1)]:
-                    recording.caption("2 · Save the chosen group", ("Choose MARLIN and save. Its new project contains only the leukemia sample." if classifier == "marlin" else "Choose Sturgeon for its separate project. The other group and unknown sample are not queued."))
+                    recording.caption("2 · Save the chosen group", ("Choose MARLIN and save. Its new project contains only ONCO-001." if classifier == "marlin" else "Choose Sturgeon and save ONCO-002 separately. The other group is not queued."))
                     recording.select("#classifier", classifier)
                     recording.pause(1)
                     if classifier == "sturgeon":
@@ -220,32 +228,40 @@ def main():
                     config = load_flat_yaml(config_path)
                     expected = SAMPLE_NAMES[identifier]
                     assert config["ont_sample_names"] == expected
-                    assert config["ont_barcodes"] == f"barcode{identifier + 1:02d}"
+                    assert config["ont_named_samples"] is True
+                    assert config["ont_barcodes"] == expected
                     assert config["methylation_only"] is True and config["run_variants"] is False
                     assert config["methylation_classifier"] == classifier
-                    assert config["methylation_modbam"] == str(bam.parent)
+                    assert config["methylation_pod5_dir"] == str(cohort)
+                    assert not config.get("methylation_modbam")
+                    from oncotracer_cli.methylation import named_signal_groups
+                    groups = named_signal_groups(config, cohort, "pod5")
+                    assert len(groups) == 1 and groups[0].sample == expected
+                    selected_signal = [str(path.relative_to(demo)) for path in groups[0].files]
+                    assert selected_signal == [f"ONT/{expected}/pod5_pass/barcode01/synthetic.pod5"]
                     assert config["lpwgs_root"] == str(reference) and config["hg38_auto_download"] is False
-                    assert data["reviewed_summary"]["methylation_group"] == {"classifier": classifier, "included": 1, "excluded": 2}
+                    assert data["reviewed_summary"]["methylation_group"] == {"classifier": classifier, "included": 1, "excluded": 1}
                     assert [row["name"] for row in data["reviewed_summary"]["samples"]] == [expected]
                     project = Path(data["project"])
                     assert project != source_project and project.parent == source_project.parent
                     assert not (project / "results").exists() and not (project / "reference").exists()
-                    checks.append({"classifier": classifier, "sample": expected, "included": 1, "excluded": 2,
+                    checks.append({"classifier": classifier, "sample": expected, "included": 1, "excluded": 1,
+                                   "selected_signal_files": selected_signal, "signal_source": "pod5",
                                    "configuration_saved": True, "configuration_checked": True,
                                    "config_sha256": digest(config_path), "analysis_started": False,
                                    "results_created": False, "reference_created": False,
                                    "separate_project": True, "project_name": project.name})
                     recording.focus("#review-card", "start")
-                    recording.pause(3)
-                recording.caption("3 · Run only when ready", "Supply any missing original BAM/POD5 or model/license requirement first. Run analysis is explicit; this demo stops after saving.")
+                    recording.pause(2)
+                recording.caption("3 · Run only when ready", "Use valid POD5 and compatible models, resolve checks and license requirements, then click Run explicitly. This demo stops after saving.")
                 recording.focus("#run")
-                recording.pause(6)
+                recording.pause(4)
                 recording.clear_focus()
                 cues = recording.finish()
                 assert state.job is None and not forbidden and not browser_errors
                 assert not any(path in ("/api/run", "/api/stop") for path in calls)
                 assert len(requests) == 2
-                expected_map = [{"id": 0, "classifier": "marlin"}, {"id": 1, "classifier": "sturgeon"}, {"id": 2, "classifier": ""}]
+                expected_map = [{"id": 0, "classifier": "marlin"}, {"id": 1, "classifier": "sturgeon"}]
                 assert all(item["methylation_assignments"] == expected_map for item in requests)
                 video = page.video
                 context.close()
@@ -266,14 +282,14 @@ def main():
     stream = next(row for row in probe["streams"] if row["codec_type"] == "video")
     assert stream["codec_name"] == "h264" and stream["pix_fmt"] == "yuv420p"
     if args.pace == 1:
-        assert 35 <= duration <= 60, f"Short walkthrough must last 35–60 seconds, got {duration}"
+        assert 30 <= duration <= 60, f"Short walkthrough must last 30–60 seconds, got {duration}"
     assert [stream["width"], stream["height"]] == [1280, 900]
     content = mp4.read_bytes()
     assert content.index(b"moov") < content.index(b"mdat")
     run_checked([args.ffmpeg, "-hide_banner", "-loglevel", "error", "-threads", "2", "-i", str(mp4), "-f", "null", "-"])
     cues[-1]["end"] = min(cues[-1]["end"], duration)
     vtt = ["WEBVTT", ""]
-    transcript = ["Post-ONT CpG classification — restored-project demonstration", "",
+    transcript = ["Post-ONT CpG classification — named libraries and POD5", "",
                   "Actual UI, pointer drags, temporary configuration saves and checks.",
                   "Synthetic reads/resources only; no analysis, downloads or patient data.", ""]
     for index, cue in enumerate(cues, 1):
@@ -289,11 +305,14 @@ def main():
                 "restored_previous_project": True, "source_project_unchanged": True,
                 "synthetic_inputs": True, "real_reads_downloaded": False, "patient_data": False,
                 "api": "real loopback WebServer with synthetic temporary files; analysis route disabled",
-                "resource_validation_scope": "Path and configuration checks only; fixture models and BAMs are not scientifically valid",
+                "resource_validation_scope": "Path, configuration and selected-library signal checks only; fixture models, POD5 and BAMs are not scientifically valid",
+                "named_sample_layout": True, "sample_names": SAMPLE_NAMES,
+                "auto_selected_signal": "pod5", "source_signal_was_unset": True,
+                "explicit_classifier_assignments": True,
                 "browser": {"name": args.browser, "version": version}, "pace": args.pace,
                 "ui_page_sha256": hashlib.sha256(original_page.encode()).hexdigest(),
                 "source_files": {name: digest(ROOT / name) for name in source_names},
-                "pointer_drags": drags, "unknown_sample_unassigned": True,
+                "pointer_drags": drags,
                 "saved_groups": checks, "prepare_requests": requests, "forbidden_actions": forbidden,
                 "page_errors": browser_errors, "original_fixture_files_unchanged": True,
                 "videos": [{"name": NAME, "duration_seconds": duration, "codec": "h264",

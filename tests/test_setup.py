@@ -124,6 +124,26 @@ class SetupTests(unittest.TestCase):
             self.assertFalse(worker.is_alive())
             self.assertEqual(errors, [])
 
+    def test_explicit_named_ont_headless_setup_and_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fastq = root / "ONT/ONCO-001/fastq_pass/barcode01/batch.fastq"
+            fastq.parent.mkdir(parents=True)
+            fastq.write_text("@read\nACGT\n+\nIIII\n")
+            project = root / "project"
+            code, output = self.cli("setup", "--non-interactive", "--mode", "ont",
+                "--project", str(project), "--reads-folder", str(root / "ONT"),
+                "--ont-named-samples", "--barcodes", "ONCO-001", "--threads", "2")
+            self.assertEqual(code, 0, output)
+            saved = load_flat_yaml(project / "config/run.yml")
+            self.assertTrue(saved["ont_named_samples"])
+            self.assertEqual(saved["ont_sample_names"], "ONCO-001")
+            code, output = self.cli("check", "--config", str(project / "config/run.yml"), "--json")
+            self.assertEqual(code, 0, output)
+            self.assertEqual(json.loads(output)["plan"]["samples"], ["ONCO-001"])
+            self.assertFalse((project / "results").exists())
+            self.assertFalse((project / "reference").exists())
+
     def test_single_illumina_library_with_spaces_hash_and_quotes_in_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)

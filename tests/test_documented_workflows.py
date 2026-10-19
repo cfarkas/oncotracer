@@ -468,7 +468,17 @@ class DocumentedWorkflowTests(unittest.TestCase):
 
         text = (ROOT / "docs/post_ont_cpg.md").read_text()
         commands = list(self.commands(text))
-        self.assertEqual(commands, [["oncotracer", "--interactive", "--cpg-from", "/path/to/ONT-project"]])
+        self.assertEqual(commands, [
+            ["oncotracer", "--interactive", "--backend", "conda", "--mode", "ont",
+             "--analysis", "methylation", "--input-folder", "/data/ONT"],
+            ["oncotracer", "--interactive", "--cpg-from", "/path/to/ONT-project"],
+        ])
+        fresh = parse_arguments(commands[0][1:])
+        self.assertEqual((fresh.command, fresh.mode, fresh.analysis, fresh.backend),
+                         ("setup", "ont", "methylation", "conda"))
+        self.assertEqual(str(fresh.input_folder), "/data/ONT")
+        self.assertTrue(fresh.interactive)
+        self.assertFalse(fresh.run)
         self.assertIn("https://github.com/cfarkas/oncotracer/tree/main", text)
         self.assertIn("installation_details.md#install-from-github", text)
         self.assertNotIn("releases/latest", text)
@@ -491,7 +501,7 @@ class DocumentedWorkflowTests(unittest.TestCase):
                 guards.enter_context(patch(target, side_effect=AssertionError(
                     "The restored-project guide must only restore, save, check and plan")))
             initial = parse_arguments([str(source) if value == "/path/to/ONT-project" else value
-                                       for value in commands[0][1:]])
+                                       for value in commands[1][1:]])
             self.assertEqual((initial.command, initial.cpg_from), ("setup", str(source)))
             self.assertTrue(initial.interactive)
             self.assertFalse(initial.run)
