@@ -118,6 +118,13 @@ def audit_intermediates(project):
     from .runtime import StageLedger
     project = Path(project).absolute()
     ledger = StageLedger(project / "results/.oncotracer-native/state.json")
+    reference_roots = ()
+    config_path = project / "config/run.yml"
+    config = load_flat_yaml(config_path) if config_path.is_file() else {}
+    reference = config.get("lpwgs_root")
+    if isinstance(reference, str) and Path(reference).expanduser().is_absolute():
+        from .reference_bundle import reference_paths
+        reference_roots = reference_paths(Path(reference).expanduser())
     rows = []
     for name, record in ledger.data["stages"].items():
         paths = []
@@ -131,7 +138,10 @@ def audit_intermediates(project):
             for current, prior in ledger.output_path_aliases:
                 value = _rebase(value, Path(prior), Path(current))
             path = Path(value)
-            if not path.is_absolute() or not path.is_relative_to(project / "results"):
+            roots = (project / "results",)
+            if name in {"reference-bwa", "reference-minimap2"}:
+                roots += reference_roots
+            if not path.is_absolute() or not any(path.is_relative_to(root) for root in roots):
                 valid = False
                 break
             paths.append(path)

@@ -122,11 +122,28 @@ class ResumeTests(unittest.TestCase):
         target = self.move()
         resume_project(target)
         (target / "results/changed.txt").write_text("changed after completion")
-        (target / "results/missing.txt").unlink()
+        (target / "results/missing.txt").rename(self.root / "missing-stage-output.txt")
         audit = audit_intermediates(target)
         self.assertEqual(audit["recorded_stages"], 3)
         self.assertEqual(audit["integrity_passed"], 1)
         self.assertEqual(audit["needs_recompute"], 2)
+
+    def test_audit_validates_configured_shared_reference_but_not_arbitrary_paths(self):
+        reference = self.root / "shared/reference"
+        product = reference / "references/samurai_hg38/bwa/genome.bwt"
+        product.parent.mkdir(parents=True)
+        product.write_text("synthetic reference index")
+        config = dict(self.config, lpwgs_root=str(reference))
+        (self.project / "config/run.yml").write_text(_render_config(config))
+        ledger = StageLedger(self.output / ".oncotracer-native/state.json")
+        ledger.complete("reference-bwa", "signature", [product])
+        unrelated = self.root / "unrelated.txt"
+        unrelated.write_text("not a reference or analysis output")
+        ledger.complete("unrelated", "signature", [unrelated])
+        audit = audit_intermediates(self.project)
+        self.assertEqual(audit["integrity_passed"], 1)
+        self.assertTrue(next(row for row in audit["stages"] if row["stage"] == "reference-bwa")["integrity_passed"])
+        self.assertEqual(audit["needs_recompute"], 1)
 
     def test_changed_input_invalidates_reuse(self):
         ledger = StageLedger(self.output / ".oncotracer-native/state.json")
@@ -183,7 +200,7 @@ class ResumeTests(unittest.TestCase):
             resume_project(copy)
 
     def test_unowned_results_are_rejected(self):
-        (self.output / OUTPUT_OWNER_RELATIVE).unlink()
+        (self.output / OUTPUT_OWNER_RELATIVE).rename(self.root / "removed-output-owner.json")
         with self.assertRaises(OncoTracerError):
             resume_project(self.project)
 
