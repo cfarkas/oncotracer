@@ -510,3 +510,5 @@ from .variant_resource_ui import add_resource_ui
 
 PAGE = PAGE.replace('<!-- VARIANT_FORM -->', variant_form())
 PAGE = add_resource_ui(PAGE, existing_bam=False)
+from .resume_ui import add_resume_ui
+PAGE = add_resume_ui(PAGE)

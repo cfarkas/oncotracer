@@ -22,6 +22,30 @@ OncoTracer can run an optional methylation branch for Oxford Nanopore Technologi
 
 This branch is research-only. A methylation class is not a diagnosis and must be reviewed with morphology, immunophenotyping, cytogenetics, validated molecular assays, and the assay-specific quality controls.
 
+## Sturgeon pretrained model setup
+
+In either ordinary methylation setup or the post-ONT CpG page, select **Sturgeon**.
+Read the linked [upstream license](https://github.com/UMCUGenetics/sturgeon/blob/main/LICENSE)
+and check the acknowledgement only if you accept the terms for your intended use.
+Click **Download / verify Sturgeon general model**. OncoTracer downloads the
+general CNS model directly from the upstream link and hg38 probes from the pinned
+Sturgeon interface revision. It fills in both paths; **Save/check** still validates
+all required tools and inputs before **Run** is enabled. The other classifier
+group is not started automatically.
+
+The model, probe table, license text, acknowledgement time and SHA-256 receipts
+are kept under `~/.local/share/oncotracer/models/sturgeon` (or `$XDG_DATA_HOME`).
+Later requests verify these files before reuse. An observed download hash records
+the received file; it is not a publisher-supplied signature. OncoTracer does not
+bundle or sublicense the Sturgeon model. The Sturgeon executable, Dorado and
+Modkit still need to be installed as described above.
+
+For terminal setup, use `--sturgeon-model general` with `--classifier sturgeon`.
+Interactive terminal setup asks for acknowledgement; unattended setup additionally
+requires `--accept-sturgeon-license`. Supplying an existing model ZIP and probe BED
+remains supported. A checkbox or flag is not a substitute for obtaining any
+permission required by the upstream terms.
+
 ## What the branch does
 
 ```text

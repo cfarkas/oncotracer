@@ -1084,9 +1084,27 @@ class StageLedger:
             self.data = {}
         self.data.setdefault("version", __version__)
         self.data.setdefault("stages", {})
+        self.path_aliases = ()
+        self.output_path_aliases = ()
+        project = path.absolute().parent.parent.parent
+        receipt = project / "config/resume.json"
+        if path.parent.name == ".oncotracer-native" and receipt.is_file():
+            record = json.loads(receipt.read_text())
+            if (record.get("schema") == "oncotracer-project-resume-v1"
+                    and record.get("project") == str(project)
+                    and Path(str(record.get("canonical_project", ""))).is_absolute()):
+                self.path_aliases = ((str(project), record["canonical_project"]),)
+                self.output_path_aliases = tuple((str(project), location) for location in
+                    record.get("project_locations", [record["canonical_project"]]))
+                from functools import partial
+                self.signature = partial(type(self).signature, aliases=self.path_aliases)
 
     @staticmethod
-    def signature(name: str, command: Sequence[str], inputs: Iterable[Path]) -> str:
+    def signature(name: str, command: Sequence[str], inputs: Iterable[Path], *, aliases=()) -> str:
+        def canonical(value):
+            for current, original in aliases:
+                value = original if value == current else value.replace(current + "/", original + "/")
+            return value
         records: list[dict[str, object]] = []
         for path in inputs:
             resolved = path.expanduser().resolve()
@@ -1094,17 +1112,17 @@ class StageLedger:
                 stat = resolved.stat()
                 records.append(
                     {
-                        "path": str(resolved),
+                        "path": canonical(str(resolved)),
                         "size": stat.st_size,
                         "mtime_ns": stat.st_mtime_ns,
                     }
                 )
             else:
-                records.append({"path": str(resolved), "missing": True})
+                records.append({"path": canonical(str(resolved)), "missing": True})
         payload = json.dumps(
             {
                 "name": name,
-                "command": list(command),
+                "command": [canonical(value) for value in command],
                 "inputs": records,
                 "version": __version__,
             },
@@ -1120,6 +1138,12 @@ class StageLedger:
         try:
             for path in outputs:
                 item = saved.get(str(path.resolve()))
+                if item is None:
+                    for current, original in self.output_path_aliases:
+                        canonical = str(path.resolve()).replace(current + "/", original + "/")
+                        item = saved.get(canonical)
+                        if item is not None:
+                            break
                 if not item or not path.is_file() or path.stat().st_size <= 0 or path.stat().st_size != item.get("size"):
                     return False
                 if item.get("mtime_ns") is not None and path.stat().st_mtime_ns != item["mtime_ns"]:

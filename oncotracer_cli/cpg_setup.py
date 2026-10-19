@@ -241,7 +241,7 @@ def prepare_cpg_setup(args):
     if missing_input:
         warnings.append("Choose the original modified-base BAMs (MM/ML calls) or POD5 files. A CNA alignment is not a substitute.")
     if any(missing_resources.values()):
-        warnings.append("Some optional classifier tools/models are missing. Supply their existing paths before Save/check; no models are downloaded.")
+        warnings.append("Some classifier resources are missing. Sturgeon offers a general-model download after license acknowledgement; other resources require existing paths before Save/check.")
     warnings.append("Inherited resource paths are not a scientific readiness result; Save/check validates the selected classifier configuration.")
     from .reference_bundle import reference_paths
     protected = [project, output, reference_paths(reference)[0],

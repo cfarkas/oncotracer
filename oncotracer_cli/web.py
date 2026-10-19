@@ -182,6 +182,8 @@ class WebState:
                   ("Other mounts", Path("/mnt"))]
         locations = [{"name": name, "path": str(path)} for name, path in places if path.is_dir()]
         return {"hardware": self.hardware, "defaults": defaults, "locations": locations,
+                "resume_project": defaults.get("project") if defaults.get("project") and
+                    (Path(defaults["project"]) / "config/run.yml").is_file() else None,
                 "cpg": copy.deepcopy(self.cpg_context.public(self.cpg_scan)) if self.cpg_context else None,
                 "suggested_project_name": self.suggested_project_name,
                 "suggested_threads": resource_report(hardware=self.hardware, path=self.start_dir)["suggested_threads"],
@@ -543,6 +545,48 @@ class WebState:
             return {key: value for key, value in prepared.items()
                     if key not in {"fingerprint", "discovered", "selected_sources", "input_snapshot", "project_created", "project_removable", "protected_paths", "project_identity"}}
 
+    def sturgeon_resources(self, data):
+        from .sturgeon_resources import prepare_sturgeon
+        return prepare_sturgeon(acknowledged=data.get("accept_sturgeon_license"))
+
+    def resume(self, data):
+        from .project_resume import resume_project, sample_snapshot
+        self.variant_installer.require_idle()
+        with self.lock:
+            if self.job and self.job["status"] in {"running", "stopping"}:
+                raise OncoTracerError("Stop the active analysis before loading another project.")
+            result = resume_project(_text(data, "project"))
+            project, config_path = Path(result["project"]), Path(result["config_path"])
+            config = load_flat_yaml(config_path)
+            snapshot, samples = sample_snapshot(config)
+            checked = subprocess.run(_launcher() + ["check", "--config", str(config_path), "--json"],
+                                     capture_output=True, text=True, timeout=120,
+                                     env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+            try:
+                report = json.loads(checked.stdout)
+            except ValueError:
+                report = {"errors": [checked.stderr.strip() or "Configuration check did not return a report."]}
+            report.setdefault("warnings", []).append("Saved sample assignments and settings retained. Run validates cached stages and recomputes missing or incompatible work.")
+            if result["moved"]:
+                report["warnings"].append("Moved project paths were updated; original configuration is in config/backups/.")
+            paths = [config_path, *(path for path in (project / "config/samplesheet.csv", project / "config/sample_metadata.csv") if path.exists())]
+            project_id = secrets.token_urlsafe(18)
+            analysis = "methylation" if config.get("methylation_only") else "both" if config.get("methylation") else "cna"
+            prepared = {**result, "id": project_id, "kind": "existing_project", "config": config_path.read_text(),
+                        "valid": checked.returncode == 0 and not report.get("errors"), "check": report,
+                        "fingerprint": _fingerprint(paths), "input_snapshot": snapshot,
+                        "project_created": False, "project_removable": False, "protected_paths": [],
+                        "project_identity": (project.stat().st_dev, project.stat().st_ino),
+                        "reviewed_summary": {"project_id": project_id, "project": str(project),
+                            "config_path": str(config_path), "samples": samples,
+                            "config": {"mode": config["mode"], "backend": result["backend"], "analysis": analysis,
+                                "threads": config.get("threads"), "caller": config.get("ont_caller", "qdnaseq"),
+                                "run_variants": config.get("run_variants", False),
+                                "methylation_classifier": config.get("methylation_classifier")}}}
+            self.projects[project_id] = prepared
+            return {key: value for key, value in prepared.items() if key not in
+                    {"fingerprint", "input_snapshot", "project_identity", "protected_paths"}}
+
     def variant_resources(self, data):
         return discover_variant_resources(data, roots=tools_roots(self.start_dir, data))
 
@@ -570,6 +614,11 @@ class WebState:
             if prepared.get('kind') == 'existing_bam_variants':
                 from .variant_web import assert_snapshot
                 assert_snapshot(prepared['input_snapshot'], prepared['input_digests'])
+            elif prepared.get('kind') == 'existing_project':
+                from .project_resume import sample_snapshot
+                current, _ = sample_snapshot(load_flat_yaml(Path(prepared['config_path'])))
+                if current != prepared['input_snapshot']:
+                    raise OncoTracerError("FASTQ inputs changed after resume review; load and check the project again.")
             else:
                 discovered = prepared["discovered"]
                 try:
@@ -959,6 +1008,8 @@ class WebHandler(BaseHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise OncoTracerError("Expected a JSON object.")
             methods = {"/api/pick-path": self.server.state.pick_path,
+                       "/api/resume": self.server.state.resume,
+                       "/api/sturgeon-resources": self.server.state.sturgeon_resources,
                        "/api/ont-inputs": self.server.state.ont_inputs, "/api/scan": self.server.state.scan, "/api/prepare": self.server.state.prepare,
                        '/api/variant-resources': self.server.state.variant_resources,
                        '/api/variant-install/plan': self.server.state.variant_installer.plan,

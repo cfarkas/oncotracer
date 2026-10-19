@@ -33,7 +33,23 @@ ACTIVE = [
 
 
 class NativeDocumentationTests(unittest.TestCase):
+    def before_resume_controls(self, relative, content):
+        compatibility = json.loads((ROOT / "docs/assets/tutorial/resume-sturgeon-compatibility.json").read_text())
+        self.assertEqual(compatibility["schema"], 1)
+        self.assertRegex(compatibility["base_commit"], r"^[0-9a-f]{40}$")
+        transition = compatibility["files"].get(relative)
+        if transition:
+            self.assertEqual(transition["current_sha256"], hashlib.sha256(content).hexdigest())
+            value = content.decode()
+            for change in reversed(transition["changes"]):
+                self.assertEqual(value[change["start"]:change["end"]], change["current"])
+                value = value[:change["start"]] + change["recorded"] + value[change["end"]:]
+            content = value.encode()
+            self.assertEqual(transition["recorded_sha256"], hashlib.sha256(content).hexdigest())
+        return content
+
     def captured_ont_source(self, relative: str, content: bytes) -> bytes:
+        content = self.before_resume_controls(relative, content)
         compatibility = json.loads(
             (ROOT / "docs/assets/tutorial/named-ont-layout-compatibility.json").read_text()
         )
@@ -202,6 +218,7 @@ class NativeDocumentationTests(unittest.TestCase):
 
     def test_quickstart_recordings_match_current_ui_and_linked_media(self) -> None:
         from oncotracer_cli.web_ui import PAGE
+        PAGE = self.before_resume_controls("rendered_page", PAGE.encode()).decode()
 
         assets = ROOT / "docs/assets/tutorial"
         record = json.loads((assets / "quick-start-recording.json").read_text(encoding="utf-8"))
@@ -274,7 +291,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("real loopback WebServer", record["api"])
         self.assertEqual(record["entrypoint"],
                          "oncotracer --interactive --cpg-from /path/to/ONT-project")
-        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(PAGE.encode()).hexdigest())
+        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(self.before_resume_controls("rendered_page", PAGE.encode())).hexdigest())
         self.assertTrue({"oncotracer_cli/web.py", "oncotracer_cli/web_ui.py",
                          "oncotracer_cli/setup.py", "oncotracer_cli/cpg_setup.py",
                          "scripts/record_post_ont_cpg_video.py"
@@ -286,7 +303,7 @@ class NativeDocumentationTests(unittest.TestCase):
         for relative, expected in record["source_files"].items():
             self.assertFalse(Path(relative).is_absolute())
             self.assertNotIn("..", Path(relative).parts)
-            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected, relative)
+            self.assertEqual(hashlib.sha256(self.before_resume_controls(relative, (ROOT / relative).read_bytes())).hexdigest(), expected, relative)
         self.assertEqual([(row["sample_id"], row["classifier"]) for row in record["pointer_drags"]],
                          [(0, "marlin"), (1, "sturgeon"), (2, "marlin"), (2, "")])
         self.assertTrue(all(row["pointer_events"] is True for row in record["pointer_drags"]))

@@ -1,0 +1,99 @@
+"""Optional Firefox check of resume and model controls using synthetic files only.
+
+Requires Playwright and its Firefox browser. No model download or analysis runs.
+"""
+import argparse
+import json
+from pathlib import Path
+import sys
+import threading
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests.test_web import WebTests
+from tests.test_sturgeon_resources import SturgeonResourcesTests
+from oncotracer_cli.web import WebServer
+from oncotracer_cli.output_safety import _create_owner, current_runtime_identity
+from oncotracer_cli.sturgeon_resources import prepare_sturgeon
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--firefox", required=True)
+    args = parser.parse_args()
+    args.output.mkdir(parents=True, exist_ok=True)
+    from playwright.sync_api import sync_playwright, expect
+    fixture, assets = WebTests(), SturgeonResourcesTests()
+    fixture.setUp()
+    assets.setUp()
+    server = None
+    try:
+        fixture.fastq("reads/case_R1.fastq.gz")
+        fixture.fastq("reads/case_R2.fastq.gz")
+        fixture.prepare()
+        old = fixture.root / "project"
+        (old / "results").mkdir()
+        _create_owner(old / "results", current_runtime_identity())
+        moved = fixture.root / "moved-project"
+        old.rename(moved)
+        server = WebServer(0, fixture.state)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        url = server.origin + "/#" + fixture.state.token
+        with patch("oncotracer_cli.sturgeon_resources.download", side_effect=assets.download), \
+             patch("oncotracer_cli.sturgeon_resources.prepare_sturgeon",
+                   side_effect=lambda **kw: prepare_sturgeon(cache=assets.cache, **kw)):
+            with sync_playwright() as playwright:
+                browser = playwright.firefox.launch(executable_path=args.firefox, headless=True)
+                page = browser.new_page(viewport={"width": 1300, "height": 1000})
+                errors = []
+                page.on("pageerror", lambda error: errors.append(str(error)))
+                page.goto(url)
+                page.wait_for_selector("main:not([inert])")
+                page.locator("#resume-project").fill(str(moved))
+                page.locator("#resume-project-button").click()
+                expect(page.locator("#check-badge")).to_have_text("Resume checked", timeout=30000)
+                assert page.locator("#review-card").is_visible()
+                assert page.locator("#run").is_enabled()
+                assert "case (cancer)" in page.locator("#check-messages").inner_text()
+                assert fixture.state.job is None
+                page.screenshot(path=str(args.output / "resume.png"), full_page=True)
+                page.goto(url)
+                page.wait_for_selector("main:not([inert])")
+                page.locator("#choose-ont").click()
+                page.locator("#variant-fresh").click()
+                page.locator("#input-folder").fill(str(fixture.root / "reads"))
+                # Show settings with synthetic discovered ONT reads through the actual scan route.
+                ont = fixture.fastq("ont/fastq_pass/barcode01/read.fastq.gz").parents[1]
+                page.locator("#input-folder").fill(str(ont))
+                page.locator("#scan").click()
+                page.wait_for_selector("#settings-card:not([hidden])")
+                page.locator("#analysis").select_option("methylation")
+                page.locator("#classifier").select_option("sturgeon")
+                page.locator("#prepare-sturgeon").click()
+                expect(page.locator("#error")).to_contain_text("acknowledge")
+                assert not assets.cache.exists()
+                page.locator("#license").check()
+                page.locator("#prepare-sturgeon").click()
+                expect(page.locator("#sturgeon-download-status")).to_contain_text("Model archive", timeout=30000)
+                assert page.locator("#sturgeon_model").input_value().endswith("general.zip")
+                assert page.locator("#sturgeon_probes").input_value().endswith("probes_hg38.bed")
+                assert fixture.state.job is None
+                assert not errors, errors
+                page.screenshot(path=str(args.output / "sturgeon.png"), full_page=True)
+                browser.close()
+        (args.output / "receipt.json").write_text(json.dumps({"passed": True,
+            "analysis_started": False, "real_models_downloaded": False,
+            "checks": ["moved project loaded through Firefox", "saved sample role retained",
+                       "Run waits for user", "unchecked license blocks download",
+                       "explicit synthetic acknowledgement prepares fixture model/probes"]}, indent=2))
+    finally:
+        if server:
+            server.shutdown()
+            server.server_close()
+        assets.doCleanups()
+        fixture.doCleanups()
+
+
+if __name__ == "__main__":
+    main()

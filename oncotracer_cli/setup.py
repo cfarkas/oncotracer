@@ -583,6 +583,8 @@ def _command_setup(args: argparse.Namespace) -> int:
                 raise OncoTracerError(f"project already configured: {existing}; resume with setup --project "
                                      f"{shlex.quote(str(existing.parents[1]))} --run, or edit its YAML")
             print(f"Using saved configuration: {existing}")
+            from .project_resume import resume_project
+            resume_project(args.project, backend=args.backend)
             return _run_setup(existing, args)
     if getattr(args, 'image', None) and args.backend != 'docker':
         raise OncoTracerError('--image in setup requires --backend docker')
@@ -831,6 +833,16 @@ def _command_setup(args: argparse.Namespace) -> int:
             if args.resources
             else {}
         )
+        if classifier == "sturgeon" and args.sturgeon_model == "general":
+            from .sturgeon_resources import LICENSE_URL, prepare_sturgeon
+            acknowledged = args.accept_sturgeon_license
+            if not acknowledged and interactive:
+                print("Sturgeon license: " + LICENSE_URL)
+                acknowledged = _ask(None, "Have you read and accepted the applicable Sturgeon terms?",
+                                    default="no", choices=("yes", "no"), interactive=True) == "yes"
+            resources.update(prepare_sturgeon(acknowledged=acknowledged))
+            args.sturgeon_model = resources["sturgeon_model"]
+            args.accept_sturgeon_license = acknowledged
         values.update(
             methylation=True,
             methylation_only=analysis == "methylation",
@@ -937,6 +949,12 @@ def _command_setup(args: argparse.Namespace) -> int:
                     "Sturgeon license acknowledgement is required; setup cannot grant the license"
                 )
             values["sturgeon_license_acknowledged"] = True
+            from .sturgeon_resources import LICENSE_URL
+            from .runtime import utc_now
+            values["sturgeon_license_url"] = LICENSE_URL
+            values["sturgeon_license_acknowledged_at"] = resources.get("sturgeon_license_acknowledged_at") or utc_now()
+            if resources.get("sturgeon_resource_receipt"):
+                values["sturgeon_resource_receipt"] = resources["sturgeon_resource_receipt"]
         # Validate all source files, tools and local hashes before writing the project.
         from .methylation import resolve_methylation_request
 

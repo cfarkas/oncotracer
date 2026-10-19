@@ -85,8 +85,14 @@ Only the chosen group is included; other samples are **not queued**.
 
 If a requirement is missing, the page shows what to supply once: original
 modified-base BAMs or POD5, installed classifier resources, and any required
-license confirmation. For Sturgeon, acknowledge the license only after you have
-obtained it and accepted its terms. Resolve missing items before running.
+license confirmation. For Sturgeon, read the linked license and explicitly
+acknowledge its terms, then choose **Download / verify Sturgeon general model**.
+This fills the pretrained model and hg38 probe paths after verification; your
+Sturgeon executable must also be installed. Resolve missing items before running.
+See [model acquisition and recorded acknowledgement](configuration/methylation_reference.md#sturgeon-pretrained-model-setup).
+
+The video demonstrates assignment and Save/check with fixtures. The model-download
+control described here is available in the current GitHub version.
 
 ## 3. Run when ready
 

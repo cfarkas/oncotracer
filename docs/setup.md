@@ -116,14 +116,14 @@ Open results from the browser, or read the run status:
 sed -n '1,100p' /absolute/path/to/my-study/results/06_workflow_summary/workflow_summary.txt
 ```
 
-To continue an interrupted project:
+To resume:
 
 ```bash
-oncotracer setup --project /absolute/path/to/my-study --run
+oncotracer --interactive --project /absolute/path/to/my-study
 ```
 
-OncoTracer reuses completed steps. See [output files](outputs.md) or
-[resume details](running.md).
+Choose **Load saved settings and check**, then **Run analysis**.
+See [moving and resuming projects](running.md#resume-behavior).
 
 ## Optional: reuse prepared genome indexes
 

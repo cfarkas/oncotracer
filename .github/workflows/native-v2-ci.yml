@@ -92,6 +92,8 @@ jobs:
             tests/test_beginner_runtime.py \
             tests/test_setup.py \
             tests/test_cpg_setup.py \
+            tests/test_project_resume.py \
+            tests/test_sturgeon_resources.py \
             tests/test_discovery.py \
             tests/test_sample_folder_lanes.py \
             tests/test_wizard.py \

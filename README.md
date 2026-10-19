@@ -54,6 +54,12 @@ From another directory, replace `main.nf` with its full path, such as `/absolute
 
 Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
 
+### Continue an existing analysis
+
+Use `oncotracer --interactive --project /path/to/existing-project`. Choose **Load saved settings and check**, then **Run analysis**. See [resume and relocation](docs/running.md#resume-behavior).
+
+[Sturgeon setup](docs/configuration/methylation_reference.md#sturgeon-pretrained-model-setup) offers the pretrained general model and hg38 probes after explicit license acknowledgement.
+
 ### ONT input layout
 
 With the [current GitHub source](docs/installation_details.md#install-from-github),
