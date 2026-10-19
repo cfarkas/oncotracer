@@ -78,7 +78,7 @@ class DockerVariantTests(unittest.TestCase):
         self.assertEqual(request.tool_prefix, Path('/host/environment/does-not-exist'))
         self.assertEqual(self.config_path.read_bytes(), original)
         self.assertFalse(self.outdir.exists())
-        with self.assertRaisesRegex(OncoTracerError, 'bin directory'):
+        with patch('oncotracer_cli.cli._load_install_config', return_value={}), self.assertRaisesRegex(OncoTracerError, 'bin directory'):
             resolve_variant_request(self.config, mode='illumina')
 
     def test_container_uses_image_prefixes_without_rewriting_host_config(self):

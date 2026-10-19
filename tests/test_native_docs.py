@@ -119,7 +119,11 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertEqual(set(compatibility["files"]), {
             "oncotracer_cli/cli.py", "docs/assets/setup-demo/mock-api.js",
         })
-        self.assertEqual(compatibility["current_image"], DEFAULT_IMAGE)
+        # This receipt describes the earlier image change in the reconstructed
+        # recording source. Later defaults are covered by the resume deltas.
+        recorded_cli = self.before_resume_controls("oncotracer_cli/cli.py", (ROOT / "oncotracer_cli/cli.py").read_bytes()).decode()
+        base_image = re.search(r'^DEFAULT_IMAGE = "([^"]+)"$', recorded_cli, re.M).group(1)
+        self.assertEqual(compatibility["current_image"], base_image)
         transition = compatibility["files"].get(relative)
         if transition:
             self.assertEqual(transition["recorded_sha256"], expected)

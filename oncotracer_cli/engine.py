@@ -3826,7 +3826,9 @@ def _run_native_impl(
     else:
         lpwgs_root = (execution_root / "project").resolve()
     if dry_run:
-        inspect_output_target(outdir, runtime_root_path=execution_root)
+        from .docker_runtime import host_preview_runtime_identity
+        inspect_output_target(outdir, runtime_root_path=execution_root,
+                              identity=host_preview_runtime_identity())
         _validate_native_dry_run(
             config,
             config_path,

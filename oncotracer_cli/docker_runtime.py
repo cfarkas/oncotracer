@@ -24,16 +24,24 @@ GLIMPSE_CACHES = ('variant_resource_dir', 'variant_pgs_cache', 'variant_ancestry
 
 
 _HOST_PREVIEW = ContextVar("oncotracer_docker_host_preview", default=False)
+_HOST_PREVIEW_IDENTITY = ContextVar("oncotracer_docker_preview_identity", default=None)
 
 
 @contextmanager
-def docker_host_preview():
+def docker_host_preview(*, runtime_identity=None):
     """Plan Docker inputs without resolving image executables on the host."""
     token = _HOST_PREVIEW.set(True)
+    identity_token = _HOST_PREVIEW_IDENTITY.set(runtime_identity)
     try:
         yield
     finally:
+        _HOST_PREVIEW_IDENTITY.reset(identity_token)
         _HOST_PREVIEW.reset(token)
+
+
+def host_preview_runtime_identity():
+    """Identity read from the selected image, used only for a host dry-run check."""
+    return _HOST_PREVIEW_IDENTITY.get() if _HOST_PREVIEW.get() else None
 
 
 def variants_enabled(config: Mapping[str, object]) -> bool:

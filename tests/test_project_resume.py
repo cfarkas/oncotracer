@@ -154,6 +154,29 @@ class ResumeTests(unittest.TestCase):
         ledger = StageLedger(target / "results/.oncotracer-native/state.json")
         self.assertNotEqual(signature, ledger.signature("test", ["test"], [self.fastq]))
 
+    def test_docker_check_validates_selected_image_identity_and_never_adopts_mismatch(self):
+        import contextlib
+        import io
+        from oncotracer_cli.cli import main
+        from oncotracer_cli.docker_runtime import host_preview_runtime_identity
+        identity = dict(self.identity, binary_sha256="a" * 64)
+        marker = self.output / OUTPUT_OWNER_RELATIVE
+        owner = json.loads(marker.read_text())
+        owner["runtime_identity"] = identity
+        marker.write_text(json.dumps(owner))
+        original_owner = marker.read_bytes()
+        config = dict(self.config, execution_backend="docker", docker_image="test:fixture")
+        (self.project / "config/run.yml").write_text(_render_config(config))
+        for actual, expected in ((identity, 0), (dict(identity, binary_sha256="b" * 64), 2)):
+            with self.subTest(matching_image=expected == 0):
+                output = io.StringIO()
+                with patch("oncotracer_cli.project_resume._runtime", return_value=actual), contextlib.redirect_stdout(output):
+                    code = main(["check", "--config", str(self.project / "config/run.yml"), "--json"])
+                self.assertEqual(code, expected, output.getvalue())
+                self.assertEqual(json.loads(output.getvalue())["valid"], expected == 0)
+                self.assertEqual(marker.read_bytes(), original_owner)
+                self.assertIsNone(host_preview_runtime_identity())
+
     def test_second_move_reuses_stages_completed_after_first_move(self):
         first = self.move()
         resume_project(first)

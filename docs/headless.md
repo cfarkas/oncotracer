@@ -100,11 +100,11 @@ oncotracer setup --non-interactive \
   --sample-name sampleA --status tumor \
   --fastq-1 /data/illumina/sampleA_R1.fastq.gz \
   --fastq-2 /data/illumina/sampleA_R2.fastq.gz \
-  --backend docker --image carlosfarkas/oncotracer:run-audit-20261018 \
+  --backend docker --image carlosfarkas/oncotracer:ont-ichorcna-20261019 \
   --threads 8
 oncotracer check --config /work/docker-study/config/run.yml
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:run-audit-20261018 \
+  --image carlosfarkas/oncotracer:ont-ichorcna-20261019 \
   --config /work/docker-study/config/run.yml
 ```
 

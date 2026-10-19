@@ -46,7 +46,7 @@
       ]
     },
     "oncotracer_cli/setup.py": {
-      "current_sha256": "79f7ae84ff62358c93b23f77baa35b8f1cba7d4d53869e9710e23560770825d9",
+      "current_sha256": "34ab250cbec53e8985e24ac337760594ebef7cdb60985e5eaa3e90e84da8e005",
       "recorded_sha256": "14e134a2ca17f92566eb693ce9d63b053b0a92e5c9118e9b76f47588f6a5f268",
       "changes": [
         {
@@ -86,14 +86,20 @@
           "recorded": ""
         },
         {
-          "start": 54389,
-          "end": 54737,
+          "start": 54100,
+          "end": 54463,
+          "current": "                from .output_safety import OUTPUT_OWNER_RELATIVE\n                from .project_resume import _runtime\n                owned_output = Path(str(config[\"outdir\"])) / OUTPUT_OWNER_RELATIVE\n                identity = _runtime(\"docker\", config) if owned_output.exists() else None\n                preview = docker_host_preview(runtime_identity=identity)\n",
+          "recorded": "                preview = docker_host_preview()\n"
+        },
+        {
+          "start": 54704,
+          "end": 55052,
           "current": "            from .project_resume import audit_intermediates, audit_summary, has_recorded_outputs\n            if path.name == \"run.yml\" and path.parent.name == \"config\" and has_recorded_outputs(path.parent.parent):\n                intermediates = audit_intermediates(path.parent.parent)\n                warnings.append(audit_summary(intermediates))\n",
           "recorded": ""
         },
         {
-          "start": 56245,
-          "end": 56292,
+          "start": 56560,
+          "end": 56607,
           "current": "        \"intermediate_outputs\": intermediates,\n",
           "recorded": ""
         }
@@ -196,37 +202,43 @@
       ]
     },
     "oncotracer_cli/cli.py": {
-      "current_sha256": "0377bd435988efb8d4f3a773f1259c64aa349040aef0da5a46a2d8c74ce7abf9",
+      "current_sha256": "2022b7890efc390cd9f696b615062d484ca7a1197cde3cc39d2e4096b489019d",
       "recorded_sha256": "46667faedb142a8d7851f1333a877178d264e11790e6433fb7411d781d17679c",
       "changes": [
         {
-          "start": 28478,
-          "end": 29076,
+          "start": 1590,
+          "end": 1654,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:ont-ichorcna-20261019\"\n",
+          "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:run-audit-20261018\"\n"
+        },
+        {
+          "start": 28481,
+          "end": 29079,
           "current": "    if not args.dry_run and getattr(args, \"command\", None) != \"internal-run\":\n        from .project_resume import has_recorded_outputs, resume_project, audit_intermediates, audit_summary\n        if config_path.name == \"run.yml\" and config_path.parent.name == \"config\" and has_recorded_outputs(config_path.parent.parent):\n            result = resume_project(config_path.parent.parent, backend=getattr(args, \"backend\", None), image=getattr(args, \"image\", None))\n            args.backend = result[\"backend\"]\n            print(audit_summary(audit_intermediates(config_path.parent.parent)), flush=True)\n",
           "recorded": ""
         },
         {
-          "start": 62492,
-          "end": 62702,
+          "start": 62495,
+          "end": 62705,
           "current": "    if getattr(args, \"runtime_identity\", False):\n        from .output_safety import current_runtime_identity\n        print(json.dumps(current_runtime_identity(runtime_root()), sort_keys=True))\n        return 0\n",
           "recorded": ""
         },
         {
-          "start": 69775,
-          "end": 69877,
+          "start": 69778,
+          "end": 69880,
           "current": "    provenance_format = provenance.add_mutually_exclusive_group()\n    provenance_format.add_argument(\n",
           "recorded": "    provenance.add_argument(\n"
         },
         {
-          "start": 69953,
-          "end": 70127,
+          "start": 69956,
+          "end": 70130,
           "current": "    )\n    provenance_format.add_argument(\n        \"--runtime-identity\", action=\"store_true\",\n        help=\"Emit the exact runtime identity used to validate existing outputs\"\n",
           "recorded": ""
         }
       ]
     },
     "docs/assets/setup-demo/mock-api.js": {
-      "current_sha256": "63d350f442d9bec801002216d0eed7bb0f17457f4743cfb9db9fa93f6b0ee79d",
+      "current_sha256": "57d98418c2f3e1014dcc23abdb87fdff0a77942fb5680bc970be980ee66bd6e8",
       "recorded_sha256": "48ea3705d5e29369e0af7ec24d60115ea90e2a6090473cfee3432a0205e9484a",
       "changes": [
         {
@@ -236,10 +248,10 @@
           "recorded": "    cfg.ont_caller=controls.length?'qdnaseq':payload.caller;\n"
         },
         {
-          "start": 16481,
-          "end": 16824,
-          "current": "    case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');\n    case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');\n",
-          "recorded": ""
+          "start": 15880,
+          "end": 16827,
+          "current": "    case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:ont-ichorcna-20261019'}};\n    case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');\n    case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');\n",
+          "recorded": "    case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:run-audit-20261018'}};\n"
         }
       ]
     },
@@ -270,6 +282,30 @@
           "end": 9359,
           "current": "            print(\"ONT normal/control labels are retained with either CNA method; every selected sample is analyzed independently.\")\n        choices = (\"ichorcna\", \"qdnaseq\")\n        caller = \"ichorcna\"\n",
           "recorded": "            print(\"ONT controls require the solid-biopsy QDNAseq workflow; every selected sample is analyzed independently.\")\n        choices = (\"qdnaseq\",) if controls else (\"ichorcna\", \"qdnaseq\")\n        caller = \"qdnaseq\" if controls else \"ichorcna\"\n"
+        }
+      ]
+    },
+    "docs/assets/setup-demo/controls.js": {
+      "current_sha256": "197562be260d54593c513bba787a370afd44bf5b2c9ebd841b2803b9841a22f5",
+      "recorded_sha256": "64de82caedfb51fb4fcb09eeba5cda5b0744ab574c716a4a37d68bfe9308bbd9",
+      "changes": [
+        {
+          "start": 1083,
+          "end": 1313,
+          "current": "  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:ont-ichorcna-20261019';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();\n",
+          "recorded": "  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:run-audit-20261018';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();\n"
+        }
+      ]
+    },
+    "oncotracer_cli/variant_install_help.py": {
+      "current_sha256": "2fc33cf5239a8dff6df62d82519dc1e97baf7259665c10124e7a56d692d27678",
+      "recorded_sha256": "bfc0fc1297e8301262cf442811f560f53b0116e0cc9d142791523da0e1aaeb34",
+      "changes": [
+        {
+          "start": 345,
+          "end": 401,
+          "current": "IMAGE = \"carlosfarkas/oncotracer:ont-ichorcna-20261019\"\n",
+          "recorded": "IMAGE = \"carlosfarkas/oncotracer:run-audit-20261018\"\n"
         }
       ]
     }
