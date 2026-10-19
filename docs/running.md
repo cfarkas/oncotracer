@@ -68,6 +68,14 @@ analysis**, choose its project folder, then **Load saved settings and check**.
 This retains the saved sample names, groups, backend, reference and analysis
 settings. Review them and click **Run analysis** to continue.
 
+If **Create a project** points to a folder that already contains recorded analysis
+outputs, **Save configuration and check** detects it and loads the saved analysis
+instead of overwriting its settings. The same protection applies to native setup.
+The review reports how many recorded stages pass file size, modification-time and
+recorded SHA-256 checks, and how many need recomputation. These checks are also
+available through `oncotracer check` after relocation. Run rechecks input and
+command signatures before reuse; unrecorded files do not count as completed work.
+
 You can prefill the same browser page with native Python or Nextflow:
 
 ```bash
@@ -97,6 +105,13 @@ moving an output collection into `Paper`, select
 
 OncoTracer backs up the previous configuration, updates paths inside the moved
 project, and records the relocation and runtime in `config/resume.json`.
+If an earlier setup accidentally overwrote the moved configuration, OncoTracer
+can recover the most recent backup whose original output path matches the owner
+record. The overwritten settings are backed up too; review the recovered settings.
+Without a matching saved configuration, it stops instead of claiming unrelated
+outputs. Native `oncotracer run --config PROJECT/config/run.yml` also prepares an
+owned moved project before execution. Dry runs remain read-only.
+
 External reads, references and models keep their original paths; if you also
 move those, update their paths explicitly before resuming. A copied project
 whose original still exists is rejected to avoid ambiguous ownership.

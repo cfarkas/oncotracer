@@ -87,6 +87,67 @@ def sample_snapshot(config):
     return snapshot, reviewed
 
 
+def has_recorded_outputs(project):
+    from .output_safety import OUTPUT_OWNER_RELATIVE
+    return (Path(project) / "results" / OUTPUT_OWNER_RELATIVE).exists()
+
+
+def _owned_configuration(project, config, owner):
+    """Recover a pre-move save only when its output path matches the owner."""
+    def matches(candidate):
+        value = str(candidate.get("outdir") or "")
+        path = Path(value)
+        return (path.is_absolute() and path.name == "results" and
+                hashlib.sha256(os.fsencode(value)).hexdigest() == owner["canonical_path_sha256"])
+    if matches(config):
+        return config, None
+    from .output_safety import _reject_symlink_components
+    for backup in sorted((project / "config/backups").glob("*/run.yml"), reverse=True):
+        _reject_symlink_components(backup)
+        try:
+            previous = load_flat_yaml(backup)
+        except (OSError, OncoTracerError, ValueError):
+            continue
+        if matches(previous):
+            return previous, backup
+    raise OncoTracerError("Output ownership does not match this configuration or its saved backups; nothing was changed. Select the complete original project, including config/backups.")
+
+
+def audit_intermediates(project):
+    """Read-only artifact checks; execution rechecks signatures before reuse."""
+    from .runtime import StageLedger
+    project = Path(project).absolute()
+    ledger = StageLedger(project / "results/.oncotracer-native/state.json")
+    rows = []
+    for name, record in ledger.data["stages"].items():
+        paths = []
+        items = record.get("outputs", []) if isinstance(record, dict) else []
+        valid = bool(items) and bool(record.get("signature")) if isinstance(record, dict) else False
+        for item in items:
+            if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+                valid = False
+                break
+            value = item["path"]
+            for current, prior in ledger.output_path_aliases:
+                value = _rebase(value, Path(prior), Path(current))
+            path = Path(value)
+            if not path.is_absolute() or not path.is_relative_to(project / "results"):
+                valid = False
+                break
+            paths.append(path)
+        valid = bool(valid and ledger.reusable(name, record["signature"], paths))
+        rows.append({"stage": name, "integrity_passed": valid, "outputs": len(items)})
+    passed = sum(row["integrity_passed"] for row in rows)
+    return {"recorded_stages": len(rows), "integrity_passed": passed,
+            "needs_recompute": len(rows) - passed, "stages": rows,
+            "scope": "File size, modification time and recorded SHA-256 hashes. Run rechecks input and command signatures; unrecorded work is not considered complete."}
+
+
+def audit_summary(audit):
+    return (f"Intermediate output checks: {audit['integrity_passed']}/{audit['recorded_stages']} recorded stages passed; "
+            f"{audit['needs_recompute']} need recomputation. Run rechecks inputs and settings before reuse.")
+
+
 def resume_project(value, *, backend=None, image=None):
     """Back up configuration, rebase owned paths, and authorize the selected runtime.
 
@@ -102,28 +163,14 @@ def resume_project(value, *, backend=None, image=None):
         stack.enter_context(configuration_lock(project / "config", exclusive=True, directory=True))
         stack.enter_context(configuration_lock(config_path, exclusive=True))
         config = load_flat_yaml(config_path)
-        backend = backend or str(config.get("execution_backend") or "conda")
-        if image:
-            if backend != "docker":
-                raise OncoTracerError("An image override requires the Docker backend")
-            config["docker_image"] = str(image)
-        old_output = Path(str(config.get("outdir") or ""))
-        if not old_output.is_absolute() or old_output.name != "results":
-            raise OncoTracerError("Resume requires a setup project with an absolute PROJECT/results output path.")
-        old = old_output.parent
         output = project / "results"
-        moved = old != project
-        if moved and old.exists():
-            raise OncoTracerError("The original project still exists. Move the entire project, or choose the original; copied projects are not silently adopted.")
         if output.is_symlink():
             raise OncoTracerError("Project results must not be a symlink")
         owner_path = output / OUTPUT_OWNER_RELATIVE
         owner = None
+        recovered = None
         if output.exists() and any(output.iterdir()):
             owner = _parse_owner(owner_path)
-            old_path_hash = hashlib.sha256(os.fsencode(str(old_output))).hexdigest()
-            if owner["canonical_path_sha256"] != old_path_hash:
-                raise OncoTracerError("Output ownership does not match the saved configuration; nothing was changed.")
             lock_path = output / OUTPUT_LOCK_RELATIVE
             descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
             stack.callback(os.close, descriptor)
@@ -134,8 +181,21 @@ def resume_project(value, *, backend=None, image=None):
                 fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError as error:
                 raise OncoTracerError("This project is still running. Stop its analysis before resuming or moving it.") from error
+            config, recovered = _owned_configuration(project, config, owner)
         elif output.exists() and not output.is_dir():
             raise OncoTracerError("Project results is not a directory")
+        backend = backend or str(config.get("execution_backend") or "conda")
+        if image:
+            if backend != "docker":
+                raise OncoTracerError("An image override requires the Docker backend")
+            config["docker_image"] = str(image)
+        old_output = Path(str(config.get("outdir") or ""))
+        if not old_output.is_absolute() or old_output.name != "results":
+            raise OncoTracerError("Resume requires a setup project with an absolute PROJECT/results output path.")
+        old = old_output.parent
+        moved = old != project
+        if moved and old.exists():
+            raise OncoTracerError("The original project still exists. Move the entire project, or choose the original; copied projects are not silently adopted.")
         identity = _runtime(backend, config) if owner else None
         if owner and str(owner["runtime_identity"].get("oncotracer_version", "")).split(".")[0] != str(identity.get("oncotracer_version", "")).split(".")[0]:
             raise OncoTracerError("Resume across different major versions requires an explicit data migration.")
@@ -144,6 +204,10 @@ def resume_project(value, *, backend=None, image=None):
         changes = {"run.yml": _render_config(updated)}
         for name in ("samplesheet.csv", "sample_metadata.csv"):
             file = project / "config" / name
+            if recovered and (recovered.parent / name).is_file():
+                file = recovered.parent / name
+                from .output_safety import _reject_symlink_components
+                _reject_symlink_components(file)
             if file.exists():
                 changes[name] = _rebase(file.read_text(), old, project) if moved else file.read_text()
         receipt_path = project / "config/resume.json"
@@ -162,7 +226,7 @@ def resume_project(value, *, backend=None, image=None):
                         rebased = _rebase(target, old, project)
                         if rebased != target:
                             links.append((path, target, rebased))
-        originals = {name: (project / "config" / name).read_bytes() for name in changes}
+        originals = {name: (project / "config" / name).read_bytes() if (project / "config" / name).exists() else None for name in changes}
         original_owner = owner_path.read_bytes() if owner else None
         original_receipt = receipt_path.read_bytes() if receipt_path.exists() else None
         replaced = []
@@ -179,6 +243,7 @@ def resume_project(value, *, backend=None, image=None):
                        "project_locations": list(dict.fromkeys([*previous.get("project_locations", []), str(old), str(project)])),
                        "config_sha256": sha256_file(config_path), "backend": backend,
                        "previous_owner": owner, "moved": moved,
+                       "recovered_configuration": str(recovered) if recovered else None,
                        "backup": str(backup) if backup else None,
                        "note": "Stage signatures and output integrity are checked at Run; missing or incompatible work is recomputed."}
             atomic_write_json(receipt_path, receipt)
@@ -186,7 +251,10 @@ def resume_project(value, *, backend=None, image=None):
                 atomic_write_json(owner_path, dict(owner, canonical_path_sha256=_canonical_path_sha256(output), runtime_identity=identity))
         except Exception:
             for name, content in originals.items():
-                (project / "config" / name).write_bytes(content)
+                if content is None:
+                    (project / "config" / name).unlink(missing_ok=True)
+                else:
+                    (project / "config" / name).write_bytes(content)
             if original_owner is not None:
                 owner_path.write_bytes(original_owner)
             if original_receipt is None:
@@ -198,4 +266,5 @@ def resume_project(value, *, backend=None, image=None):
                 path.symlink_to(target)
             raise
     return {"project": str(project), "config_path": str(config_path), "outdir": str(output),
-            "backend": backend, "moved": moved, "backup": receipt["backup"]}
+            "backend": backend, "moved": moved, "backup": receipt["backup"],
+            "recovered_configuration": receipt["recovered_configuration"]}

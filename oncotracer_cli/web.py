@@ -361,6 +361,12 @@ class WebState:
                         or prior.get("methylation_classifier") != methylation_group["classifier"]):
                     raise OncoTracerError("Choose a separate methylation project for this classifier group; keep the completed ONT project and other classifier projects unchanged.")
             backend = _choice(data, "backend", ("conda", "docker", "singularity", "poetry", "host"), "conda")
+            from .project_resume import has_recorded_outputs
+            if (project / "config/run.yml").is_file() and has_recorded_outputs(project):
+                # A typed Create destination may actually be a moved, used project.
+                # Resolve it before writing any settings or sample assignments.
+                return self.resume({"project": str(project), "backend": backend,
+                                    "image": data.get("docker_image")})
             threads = data.get("threads")
             maximum = self.system()["hardware"]["cpu_workers_available"]
             if type(threads) is not int or not 1 <= threads <= maximum:
@@ -556,8 +562,8 @@ class WebState:
             if self.job and self.job["status"] in {"running", "stopping"}:
                 raise OncoTracerError("Stop the active analysis before loading another project.")
             result = resume_project(_text(data, "project"),
-                                    backend=getattr(self.setup_args, "backend", None),
-                                    image=getattr(self.setup_args, "image", None))
+                                    backend=data.get("backend") or getattr(self.setup_args, "backend", None),
+                                    image=data.get("image") or getattr(self.setup_args, "image", None))
             project, config_path = Path(result["project"]), Path(result["config_path"])
             config = load_flat_yaml(config_path)
             snapshot, samples = sample_snapshot(config)
@@ -571,6 +577,8 @@ class WebState:
             report.setdefault("warnings", []).append("Saved sample assignments and settings retained. Run validates cached stages and recomputes missing or incompatible work.")
             if result["moved"]:
                 report["warnings"].append("Moved project paths were updated; original configuration is in config/backups/.")
+            if result["recovered_configuration"]:
+                report["warnings"].append("Recovered the saved analysis settings from the backup matching these outputs; the newer overwritten configuration is also backed up. Review the recovered settings below.")
             paths = [config_path, *(path for path in (project / "config/samplesheet.csv", project / "config/sample_metadata.csv") if path.exists())]
             project_id = secrets.token_urlsafe(18)
             analysis = "methylation" if config.get("methylation_only") else "both" if config.get("methylation") else "cna"

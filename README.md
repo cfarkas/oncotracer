@@ -12,7 +12,7 @@ Use Linux and Python 3.10–3.13. Install the application in your Python environ
 pip install oncotracer
 ```
 
-No Git checkout is required. Choose **one** backend for the analysis tools:
+No Git checkout is required. Choose **one** backend:
 
 ### Conda
 
@@ -62,7 +62,7 @@ Keep the terminal open and use its complete printed URL, including the session c
 
 ### Continue an existing analysis
 
-Use `oncotracer --interactive --project /path/to/existing-project`. Choose **Load saved settings and check**, then **Run analysis**. See [resume and relocation](docs/running.md#resume-behavior).
+Use `oncotracer --interactive --project /path/to/existing-project`. Load, check, then run. Save/check also detects existing results under **Create a project**, retaining saved settings. See [intermediate checks and relocation](docs/running.md#resume-behavior).
 
 [Sturgeon setup](docs/configuration/methylation_reference.md#sturgeon-pretrained-model-setup) offers the pretrained general model and hg38 probes after explicit license acknowledgement.
 

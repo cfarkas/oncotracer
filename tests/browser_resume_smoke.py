@@ -15,6 +15,7 @@ from tests.test_sturgeon_resources import SturgeonResourcesTests
 from oncotracer_cli.web import WebServer
 from oncotracer_cli.output_safety import _create_owner, current_runtime_identity
 from oncotracer_cli.sturgeon_resources import prepare_sturgeon
+from oncotracer_cli.runtime import StageLedger, load_flat_yaml
 
 
 def main():
@@ -35,6 +36,9 @@ def main():
         old = fixture.root / "project"
         (old / "results").mkdir()
         _create_owner(old / "results", current_runtime_identity())
+        product = old / "results/completed.txt"
+        product.write_text("synthetic completed output")
+        StageLedger(old / "results/.oncotracer-native/state.json").complete("completed", "fixture", [product])
         moved = fixture.root / "moved-project"
         old.rename(moved)
         server = WebServer(0, fixture.state)
@@ -58,6 +62,27 @@ def main():
                 assert "case (cancer)" in page.locator("#check-messages").inner_text()
                 assert fixture.state.job is None
                 page.screenshot(path=str(args.output / "resume.png"), full_page=True)
+                page.goto(url)
+                page.wait_for_selector("main:not([inert])")
+                moved_again = fixture.root / "moved-again"
+                moved.rename(moved_again)
+                page.locator("#choose-illumina").click()
+                page.locator("#variant-fresh").click()
+                page.locator("#input-folder").fill(str(fixture.root / "reads"))
+                page.locator("#scan").click()
+                page.wait_for_selector("#settings-card:not([hidden])")
+                page.locator(".sample .type-select").first.select_option("cancer")
+                page.locator("#project-mode").select_option("new")
+                page.locator("#project-parent").fill(str(fixture.root))
+                page.locator("#project-name").fill(moved_again.name)
+                page.locator("#threads").fill("3")
+                page.locator("#prepare").click()
+                expect(page.locator("#check-badge")).to_have_text("Configuration checked", timeout=30000)
+                expect(page.locator("#check-messages")).to_contain_text("1/1 recorded stages passed")
+                assert load_flat_yaml(moved_again / "config/run.yml")["threads"] == 2
+                assert page.locator("#run").is_enabled()
+                assert fixture.state.job is None
+                page.screenshot(path=str(args.output / "create-existing.png"), full_page=True)
                 page.goto(url)
                 page.wait_for_selector("main:not([inert])")
                 page.locator("#choose-ont").click()
@@ -85,7 +110,8 @@ def main():
         (args.output / "receipt.json").write_text(json.dumps({"passed": True,
             "analysis_started": False, "real_models_downloaded": False,
             "checks": ["moved project loaded through Firefox", "saved sample role retained",
-                       "Run waits for user", "unchecked license blocks download",
+                       "Run waits for user", "Create destination detects moved results and retains saved settings",
+                       "intermediate integrity summary displayed", "unchecked license blocks download",
                        "explicit synthetic acknowledgement prepares fixture model/probes"]}, indent=2))
     finally:
         if server:

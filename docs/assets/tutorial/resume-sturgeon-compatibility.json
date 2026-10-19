@@ -4,7 +4,7 @@
   "note": "Historical videos retain original receipts. New resume and model controls are documented and tested separately. Reverse deltas reconstruct recorded source exactly.",
   "files": {
     "oncotracer_cli/web.py": {
-      "current_sha256": "b1939ba0a29750dd6adadfd3ea9d023e975c2e0707137eca428fd12aa7547fe2",
+      "current_sha256": "1ccfa5c47cfc77a340fa2a6366d592a56e13dbdc60d307f3133e8d4d777c0bf7",
       "recorded_sha256": "462e51e919f5b5da66f9a898d8b261f6152522517b739bacaecfdbeec685170a",
       "changes": [
         {
@@ -14,45 +14,81 @@
           "recorded": ""
         },
         {
-          "start": 34490,
-          "end": 37884,
-          "current": "    def sturgeon_resources(self, data):\n        from .sturgeon_resources import prepare_sturgeon\n        return prepare_sturgeon(acknowledged=data.get(\"accept_sturgeon_license\"))\n\n    def resume(self, data):\n        from .project_resume import resume_project, sample_snapshot\n        self.variant_installer.require_idle()\n        with self.lock:\n            if self.job and self.job[\"status\"] in {\"running\", \"stopping\"}:\n                raise OncoTracerError(\"Stop the active analysis before loading another project.\")\n            result = resume_project(_text(data, \"project\"),\n                                    backend=getattr(self.setup_args, \"backend\", None),\n                                    image=getattr(self.setup_args, \"image\", None))\n            project, config_path = Path(result[\"project\"]), Path(result[\"config_path\"])\n            config = load_flat_yaml(config_path)\n            snapshot, samples = sample_snapshot(config)\n            checked = subprocess.run(_launcher() + [\"check\", \"--config\", str(config_path), \"--json\"],\n                                     capture_output=True, text=True, timeout=120,\n                                     env={**os.environ, \"PYTHONDONTWRITEBYTECODE\": \"1\"})\n            try:\n                report = json.loads(checked.stdout)\n            except ValueError:\n                report = {\"errors\": [checked.stderr.strip() or \"Configuration check did not return a report.\"]}\n            report.setdefault(\"warnings\", []).append(\"Saved sample assignments and settings retained. Run validates cached stages and recomputes missing or incompatible work.\")\n            if result[\"moved\"]:\n                report[\"warnings\"].append(\"Moved project paths were updated; original configuration is in config/backups/.\")\n            paths = [config_path, *(path for path in (project / \"config/samplesheet.csv\", project / \"config/sample_metadata.csv\") if path.exists())]\n            project_id = secrets.token_urlsafe(18)\n            analysis = \"methylation\" if config.get(\"methylation_only\") else \"both\" if config.get(\"methylation\") else \"cna\"\n            prepared = {**result, \"id\": project_id, \"kind\": \"existing_project\", \"config\": config_path.read_text(),\n                        \"valid\": checked.returncode == 0 and not report.get(\"errors\"), \"check\": report,\n                        \"fingerprint\": _fingerprint(paths), \"input_snapshot\": snapshot,\n                        \"project_created\": False, \"project_removable\": False, \"protected_paths\": [],\n                        \"project_identity\": (project.stat().st_dev, project.stat().st_ino),\n                        \"reviewed_summary\": {\"project_id\": project_id, \"project\": str(project),\n                            \"config_path\": str(config_path), \"samples\": samples,\n                            \"config\": {\"mode\": config[\"mode\"], \"backend\": result[\"backend\"], \"analysis\": analysis,\n                                \"threads\": config.get(\"threads\"), \"caller\": config.get(\"ont_caller\", \"qdnaseq\"),\n                                \"run_variants\": config.get(\"run_variants\", False),\n                                \"methylation_classifier\": config.get(\"methylation_classifier\")}}}\n            self.projects[project_id] = prepared\n            return {key: value for key, value in prepared.items() if key not in\n                    {\"fingerprint\", \"input_snapshot\", \"project_identity\", \"protected_paths\"}}\n\n",
+          "start": 21063,
+          "end": 21530,
+          "current": "            from .project_resume import has_recorded_outputs\n            if (project / \"config/run.yml\").is_file() and has_recorded_outputs(project):\n                # A typed Create destination may actually be a moved, used project.\n                # Resolve it before writing any settings or sample assignments.\n                return self.resume({\"project\": str(project), \"backend\": backend,\n                                    \"image\": data.get(\"docker_image\")})\n",
           "recorded": ""
         },
         {
-          "start": 39353,
-          "end": 39745,
+          "start": 34957,
+          "end": 38660,
+          "current": "    def sturgeon_resources(self, data):\n        from .sturgeon_resources import prepare_sturgeon\n        return prepare_sturgeon(acknowledged=data.get(\"accept_sturgeon_license\"))\n\n    def resume(self, data):\n        from .project_resume import resume_project, sample_snapshot\n        self.variant_installer.require_idle()\n        with self.lock:\n            if self.job and self.job[\"status\"] in {\"running\", \"stopping\"}:\n                raise OncoTracerError(\"Stop the active analysis before loading another project.\")\n            result = resume_project(_text(data, \"project\"),\n                                    backend=data.get(\"backend\") or getattr(self.setup_args, \"backend\", None),\n                                    image=data.get(\"image\") or getattr(self.setup_args, \"image\", None))\n            project, config_path = Path(result[\"project\"]), Path(result[\"config_path\"])\n            config = load_flat_yaml(config_path)\n            snapshot, samples = sample_snapshot(config)\n            checked = subprocess.run(_launcher() + [\"check\", \"--config\", str(config_path), \"--json\"],\n                                     capture_output=True, text=True, timeout=120,\n                                     env={**os.environ, \"PYTHONDONTWRITEBYTECODE\": \"1\"})\n            try:\n                report = json.loads(checked.stdout)\n            except ValueError:\n                report = {\"errors\": [checked.stderr.strip() or \"Configuration check did not return a report.\"]}\n            report.setdefault(\"warnings\", []).append(\"Saved sample assignments and settings retained. Run validates cached stages and recomputes missing or incompatible work.\")\n            if result[\"moved\"]:\n                report[\"warnings\"].append(\"Moved project paths were updated; original configuration is in config/backups/.\")\n            if result[\"recovered_configuration\"]:\n                report[\"warnings\"].append(\"Recovered the saved analysis settings from the backup matching these outputs; the newer overwritten configuration is also backed up. Review the recovered settings below.\")\n            paths = [config_path, *(path for path in (project / \"config/samplesheet.csv\", project / \"config/sample_metadata.csv\") if path.exists())]\n            project_id = secrets.token_urlsafe(18)\n            analysis = \"methylation\" if config.get(\"methylation_only\") else \"both\" if config.get(\"methylation\") else \"cna\"\n            prepared = {**result, \"id\": project_id, \"kind\": \"existing_project\", \"config\": config_path.read_text(),\n                        \"valid\": checked.returncode == 0 and not report.get(\"errors\"), \"check\": report,\n                        \"fingerprint\": _fingerprint(paths), \"input_snapshot\": snapshot,\n                        \"project_created\": False, \"project_removable\": False, \"protected_paths\": [],\n                        \"project_identity\": (project.stat().st_dev, project.stat().st_ino),\n                        \"reviewed_summary\": {\"project_id\": project_id, \"project\": str(project),\n                            \"config_path\": str(config_path), \"samples\": samples,\n                            \"config\": {\"mode\": config[\"mode\"], \"backend\": result[\"backend\"], \"analysis\": analysis,\n                                \"threads\": config.get(\"threads\"), \"caller\": config.get(\"ont_caller\", \"qdnaseq\"),\n                                \"run_variants\": config.get(\"run_variants\", False),\n                                \"methylation_classifier\": config.get(\"methylation_classifier\")}}}\n            self.projects[project_id] = prepared\n            return {key: value for key, value in prepared.items() if key not in\n                    {\"fingerprint\", \"input_snapshot\", \"project_identity\", \"protected_paths\"}}\n\n",
+          "recorded": ""
+        },
+        {
+          "start": 40129,
+          "end": 40521,
           "current": "            elif prepared.get('kind') == 'existing_project':\n                from .project_resume import sample_snapshot\n                current, _ = sample_snapshot(load_flat_yaml(Path(prepared['config_path'])))\n                if current != prepared['input_snapshot']:\n                    raise OncoTracerError(\"FASTQ inputs changed after resume review; load and check the project again.\")\n",
           "recorded": ""
         },
         {
-          "start": 60743,
-          "end": 60895,
+          "start": 61519,
+          "end": 61671,
           "current": "                       \"/api/resume\": self.server.state.resume,\n                       \"/api/sturgeon-resources\": self.server.state.sturgeon_resources,\n",
           "recorded": ""
         }
       ]
     },
     "oncotracer_cli/setup.py": {
-      "current_sha256": "74ec32409574b63a791f85b9f05094dbd67d81bfcbd755a0daa3a2b91baa9231",
+      "current_sha256": "79f7ae84ff62358c93b23f77baa35b8f1cba7d4d53869e9710e23560770825d9",
       "recorded_sha256": "14e134a2ca17f92566eb693ce9d63b053b0a92e5c9118e9b76f47588f6a5f268",
       "changes": [
         {
-          "start": 30623,
-          "end": 30777,
+          "start": 26682,
+          "end": 26945,
+          "current": "        from .project_resume import has_recorded_outputs\n        if has_recorded_outputs(project):\n            raise OncoTracerError(\"This project contains recorded analysis outputs. Load its saved settings to continue instead of overwriting its configuration.\")\n",
+          "recorded": ""
+        },
+        {
+          "start": 30886,
+          "end": 31040,
           "current": "            from .project_resume import resume_project\n            resume_project(args.project, backend=args.backend, image=getattr(args, \"image\", None))\n",
           "recorded": ""
         },
         {
-          "start": 41407,
-          "end": 42113,
+          "start": 31086,
+          "end": 31741,
+          "current": "    from .project_resume import has_recorded_outputs, resume_project\n    if args.project and has_recorded_outputs(Path(args.project).expanduser()):\n        result = resume_project(args.project, backend=explicit_backend, image=getattr(args, \"image\", None))\n        print(\"Existing analysis detected. Saved settings retained; checking intermediate outputs before continuation.\")\n        if result[\"recovered_configuration\"]:\n            print(\"Recovered settings from the backup matching the recorded output owner.\")\n        from .cli import build_parser\n        return command_check(build_parser().parse_args([\"check\", \"--config\", result[\"config_path\"]]))\n",
+          "recorded": ""
+        },
+        {
+          "start": 42325,
+          "end": 43031,
           "current": "        if classifier == \"sturgeon\" and args.sturgeon_model == \"general\":\n            from .sturgeon_resources import LICENSE_URL, prepare_sturgeon\n            acknowledged = args.accept_sturgeon_license\n            if not acknowledged and interactive:\n                print(\"Sturgeon license: \" + LICENSE_URL)\n                acknowledged = _ask(None, \"Have you read and accepted the applicable Sturgeon terms?\",\n                                    default=\"no\", choices=(\"yes\", \"no\"), interactive=True) == \"yes\"\n            resources.update(prepare_sturgeon(acknowledged=acknowledged))\n            args.sturgeon_model = resources[\"sturgeon_model\"]\n            args.accept_sturgeon_license = acknowledged\n",
           "recorded": ""
         },
         {
-          "start": 46474,
-          "end": 46900,
+          "start": 47392,
+          "end": 47818,
           "current": "            from .sturgeon_resources import LICENSE_URL\n            from .runtime import utc_now\n            values[\"sturgeon_license_url\"] = LICENSE_URL\n            values[\"sturgeon_license_acknowledged_at\"] = resources.get(\"sturgeon_license_acknowledged_at\") or utc_now()\n            if resources.get(\"sturgeon_resource_receipt\"):\n                values[\"sturgeon_resource_receipt\"] = resources[\"sturgeon_resource_receipt\"]\n",
+          "recorded": ""
+        },
+        {
+          "start": 50172,
+          "end": 50197,
+          "current": "    intermediates = None\n",
+          "recorded": ""
+        },
+        {
+          "start": 54389,
+          "end": 54737,
+          "current": "            from .project_resume import audit_intermediates, audit_summary, has_recorded_outputs\n            if path.name == \"run.yml\" and path.parent.name == \"config\" and has_recorded_outputs(path.parent.parent):\n                intermediates = audit_intermediates(path.parent.parent)\n                warnings.append(audit_summary(intermediates))\n",
+          "recorded": ""
+        },
+        {
+          "start": 56245,
+          "end": 56292,
+          "current": "        \"intermediate_outputs\": intermediates,\n",
           "recorded": ""
         }
       ]
@@ -130,24 +166,30 @@
       ]
     },
     "oncotracer_cli/cli.py": {
-      "current_sha256": "afac762f117e96857678a8aa27420050a94329efaa90e799d52c5e0149fbb323",
+      "current_sha256": "0377bd435988efb8d4f3a773f1259c64aa349040aef0da5a46a2d8c74ce7abf9",
       "recorded_sha256": "46667faedb142a8d7851f1333a877178d264e11790e6433fb7411d781d17679c",
       "changes": [
         {
-          "start": 61894,
-          "end": 62104,
+          "start": 28478,
+          "end": 29076,
+          "current": "    if not args.dry_run and getattr(args, \"command\", None) != \"internal-run\":\n        from .project_resume import has_recorded_outputs, resume_project, audit_intermediates, audit_summary\n        if config_path.name == \"run.yml\" and config_path.parent.name == \"config\" and has_recorded_outputs(config_path.parent.parent):\n            result = resume_project(config_path.parent.parent, backend=getattr(args, \"backend\", None), image=getattr(args, \"image\", None))\n            args.backend = result[\"backend\"]\n            print(audit_summary(audit_intermediates(config_path.parent.parent)), flush=True)\n",
+          "recorded": ""
+        },
+        {
+          "start": 62492,
+          "end": 62702,
           "current": "    if getattr(args, \"runtime_identity\", False):\n        from .output_safety import current_runtime_identity\n        print(json.dumps(current_runtime_identity(runtime_root()), sort_keys=True))\n        return 0\n",
           "recorded": ""
         },
         {
-          "start": 69177,
-          "end": 69279,
+          "start": 69775,
+          "end": 69877,
           "current": "    provenance_format = provenance.add_mutually_exclusive_group()\n    provenance_format.add_argument(\n",
           "recorded": "    provenance.add_argument(\n"
         },
         {
-          "start": 69355,
-          "end": 69529,
+          "start": 69953,
+          "end": 70127,
           "current": "    )\n    provenance_format.add_argument(\n        \"--runtime-identity\", action=\"store_true\",\n        help=\"Emit the exact runtime identity used to validate existing outputs\"\n",
           "recorded": ""
         }
@@ -161,6 +203,18 @@
           "start": 16495,
           "end": 16838,
           "current": "    case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');\n    case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');\n",
+          "recorded": ""
+        }
+      ]
+    },
+    "tests/test_web.py": {
+      "current_sha256": "3e5c876cbbe25d0354da3c119fd063559b0a9a2dac1ac091c17c3ca3f3c4d260",
+      "recorded_sha256": "aa3f8f846d1bc11dc0c92696f40d9235aee35e63cd6d9235a5dcf3a64716d566",
+      "changes": [
+        {
+          "start": 11967,
+          "end": 13443,
+          "current": "\n    def test_create_destination_detects_moved_intermediate_results_before_overwrite(self):\n        from oncotracer_cli.output_safety import _create_owner, current_runtime_identity\n        from oncotracer_cli.runtime import StageLedger\n        self.fastq(\"reads/library.fastq.gz\")\n        self.prepare()\n        old = self.root / \"project\"\n        output = old / \"results\"\n        output.mkdir()\n        _create_owner(output, current_runtime_identity())\n        product = output / \"completed.txt\"\n        product.write_text(\"completed stage\")\n        ledger = StageLedger(output / \".oncotracer-native/state.json\")\n        ledger.complete(\"completed\", \"signature\", [product])\n        moved = self.root / \"moved\"\n        old.rename(moved)\n        # Reproduce the screenshot: Create a project, typed existing destination,\n        # and changed form values must not overwrite the saved analysis.\n        result = self.prepare(project=str(moved), project_mode=\"new\", threads=3)\n        self.assertTrue(result[\"valid\"], result[\"check\"])\n        self.assertEqual(result[\"kind\"], \"existing_project\")\n        self.assertEqual(load_flat_yaml(moved / \"config/run.yml\")[\"threads\"], 2)\n        self.assertEqual(result[\"check\"][\"intermediate_outputs\"][\"integrity_passed\"], 1)\n        self.assertEqual((moved / \"results/completed.txt\").read_text(), \"completed stage\")\n        self.assertIsNone(self.state.job)\n        self.assertFalse(self.state.projects[result[\"id\"]][\"project_removable\"])\n",
           "recorded": ""
         }
       ]

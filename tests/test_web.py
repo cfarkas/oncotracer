@@ -210,6 +210,32 @@ class WebTests(unittest.TestCase):
         with self.assertRaisesRegex(OncoTracerError, "Saved configuration changed"):
             self.state.run({"project_id": first["id"]})
 
+    def test_create_destination_detects_moved_intermediate_results_before_overwrite(self):
+        from oncotracer_cli.output_safety import _create_owner, current_runtime_identity
+        from oncotracer_cli.runtime import StageLedger
+        self.fastq("reads/library.fastq.gz")
+        self.prepare()
+        old = self.root / "project"
+        output = old / "results"
+        output.mkdir()
+        _create_owner(output, current_runtime_identity())
+        product = output / "completed.txt"
+        product.write_text("completed stage")
+        ledger = StageLedger(output / ".oncotracer-native/state.json")
+        ledger.complete("completed", "signature", [product])
+        moved = self.root / "moved"
+        old.rename(moved)
+        # Reproduce the screenshot: Create a project, typed existing destination,
+        # and changed form values must not overwrite the saved analysis.
+        result = self.prepare(project=str(moved), project_mode="new", threads=3)
+        self.assertTrue(result["valid"], result["check"])
+        self.assertEqual(result["kind"], "existing_project")
+        self.assertEqual(load_flat_yaml(moved / "config/run.yml")["threads"], 2)
+        self.assertEqual(result["check"]["intermediate_outputs"]["integrity_passed"], 1)
+        self.assertEqual((moved / "results/completed.txt").read_text(), "completed stage")
+        self.assertIsNone(self.state.job)
+        self.assertFalse(self.state.projects[result["id"]]["project_removable"])
+
     def test_run_explicit_argv_idempotency_status_and_logs(self):
         self.fastq("reads/library.fastq.gz")
         prepared = self.prepare(project=str(self.root / "project with spaces ; $literal"))

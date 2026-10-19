@@ -727,6 +727,12 @@ def _prepare_configured_hg38(config_path: Path, args: argparse.Namespace) -> Non
 
 def execute_run(config_path: Path, args: argparse.Namespace) -> Path | None:
     config_path = require_file(config_path, "OncoTracer YAML config")
+    if not args.dry_run and getattr(args, "command", None) != "internal-run":
+        from .project_resume import has_recorded_outputs, resume_project, audit_intermediates, audit_summary
+        if config_path.name == "run.yml" and config_path.parent.name == "config" and has_recorded_outputs(config_path.parent.parent):
+            result = resume_project(config_path.parent.parent, backend=getattr(args, "backend", None), image=getattr(args, "image", None))
+            args.backend = result["backend"]
+            print(audit_summary(audit_intermediates(config_path.parent.parent)), flush=True)
     backend = _backend_from(args)
     if backend in {"singularity", "apptainer"}:
         requested = load_flat_yaml(config_path).get("run_variants", False)

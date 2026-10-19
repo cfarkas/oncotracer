@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from oncotracer_cli.output_safety import (_create_owner, current_runtime_identity,
     OUTPUT_LOCK_RELATIVE, OUTPUT_OWNER_RELATIVE, _canonical_path_sha256)
-from oncotracer_cli.project_resume import _runtime, resume_project, sample_snapshot
+from oncotracer_cli.project_resume import _runtime, resume_project, sample_snapshot, audit_intermediates
 from oncotracer_cli.runtime import OncoTracerError, StageLedger, load_flat_yaml
 from oncotracer_cli.setup import _render_config
 
@@ -68,6 +68,65 @@ class ResumeTests(unittest.TestCase):
         product.write_text("modified counts\n")
         self.assertFalse(ledger.reusable("count", resumed, [product]))
         self.assertEqual(sample_snapshot(config)[1][0]["name"], "case")
+
+    def test_overwritten_moved_config_recovers_matching_backup(self):
+        from oncotracer_cli.setup import _save_setup_files
+        target = self.move()
+        backup = target / "config/backups/20261019T000000Z-fixture"
+        shutil.copytree(target / "config", backup, ignore=shutil.ignore_patterns("backups"))
+        current = dict(self.config, outdir=str(target / "results"), threads=1,
+                       lpwgs_root=str(target / "reference"))
+        (target / "config/run.yml").write_text(_render_config(current))
+        result = resume_project(target)
+        saved = load_flat_yaml(target / "config/run.yml")
+        self.assertEqual(saved["threads"], 20)
+        self.assertEqual(saved["outdir"], str(target / "results"))
+        self.assertEqual(result["recovered_configuration"], str(backup / "run.yml"))
+        self.assertEqual(load_flat_yaml(Path(result["backup"]) / "run.yml")["threads"], 1)
+        with self.assertRaisesRegex(OncoTracerError, "recorded analysis outputs"):
+            _save_setup_files(target, {"run.yml": "threads: 2\n"})
+        self.assertEqual(load_flat_yaml(target / "config/run.yml"), saved)
+
+    def test_native_run_relocates_before_executing_pipeline(self):
+        from oncotracer_cli.cli import main
+        target = self.move()
+        def validate_before_execution(path, args):
+            saved = load_flat_yaml(path)
+            self.assertEqual(saved["outdir"], str(target / "results"))
+            self.assertEqual(args.backend, "host")
+            self.assertEqual(json.loads((target / "results" / OUTPUT_OWNER_RELATIVE).read_text())["canonical_path_sha256"], _canonical_path_sha256(target / "results"))
+            return target / "results"
+        with patch("oncotracer_cli.cli._preflight_host_runtime"), patch("oncotracer_cli.cli._prepare_configured_hg38"), patch("oncotracer_cli.cli._run_host", side_effect=validate_before_execution) as run, contextlib.redirect_stdout(io.StringIO()) as text:
+            self.assertEqual(main(["run", "--config", str(target / "config/run.yml"), "--backend", "host"]), 0)
+        run.assert_called_once()
+        self.assertIn("Intermediate output checks", text.getvalue())
+
+    def test_unrelated_backup_does_not_authorize_adoption(self):
+        target = self.move()
+        backup = target / "config/backups/fixture"
+        backup.mkdir(parents=True)
+        current = dict(self.config, outdir=str(target / "results"))
+        text = _render_config(current)
+        (target / "config/run.yml").write_text(text)
+        (backup / "run.yml").write_text(text)
+        with self.assertRaisesRegex(OncoTracerError, "saved backups"):
+            resume_project(target)
+        self.assertEqual((target / "config/run.yml").read_text(), text)
+
+    def test_audit_marks_missing_and_changed_outputs_for_recomputation(self):
+        ledger = StageLedger(self.output / ".oncotracer-native/state.json")
+        for name in ("valid", "changed", "missing"):
+            product = self.output / (name + ".txt")
+            product.write_text(name)
+            ledger.complete(name, ledger.signature(name, [name], [self.fastq]), [product])
+        target = self.move()
+        resume_project(target)
+        (target / "results/changed.txt").write_text("changed after completion")
+        (target / "results/missing.txt").unlink()
+        audit = audit_intermediates(target)
+        self.assertEqual(audit["recorded_stages"], 3)
+        self.assertEqual(audit["integrity_passed"], 1)
+        self.assertEqual(audit["needs_recompute"], 2)
 
     def test_changed_input_invalidates_reuse(self):
         ledger = StageLedger(self.output / ".oncotracer-native/state.json")

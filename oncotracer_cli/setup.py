@@ -511,6 +511,9 @@ def _save_setup_files(project: Path, files: dict[str, str]) -> Path | None:
         config_path = directory / "run.yml"
         if config_path.exists():
             locks.enter_context(configuration_lock(config_path, exclusive=True))
+        from .project_resume import has_recorded_outputs
+        if has_recorded_outputs(project):
+            raise OncoTracerError("This project contains recorded analysis outputs. Load its saved settings to continue instead of overwriting its configuration.")
         return _save_setup_files_locked(project, files)
 
 
@@ -586,6 +589,14 @@ def _command_setup(args: argparse.Namespace) -> int:
             from .project_resume import resume_project
             resume_project(args.project, backend=args.backend, image=getattr(args, "image", None))
             return _run_setup(existing, args)
+    from .project_resume import has_recorded_outputs, resume_project
+    if args.project and has_recorded_outputs(Path(args.project).expanduser()):
+        result = resume_project(args.project, backend=explicit_backend, image=getattr(args, "image", None))
+        print("Existing analysis detected. Saved settings retained; checking intermediate outputs before continuation.")
+        if result["recovered_configuration"]:
+            print("Recovered settings from the backup matching the recorded output owner.")
+        from .cli import build_parser
+        return command_check(build_parser().parse_args(["check", "--config", result["config_path"]]))
     if getattr(args, 'image', None) and args.backend != 'docker':
         raise OncoTracerError('--image in setup requires --backend docker')
     if args.threads is None:
@@ -1015,6 +1026,7 @@ def command_check(args: argparse.Namespace) -> int:
     warnings: list[str] = []
     plan = None
     variant_tools = None
+    intermediates = None
     config = {}
     path = Path(args.config).expanduser().resolve()
     try:
@@ -1103,6 +1115,10 @@ def command_check(args: argparse.Namespace) -> int:
                     path, dry_run=True, root=Path(args.root) if args.root else None
                 )
             plan = json.loads(output.getvalue())
+            from .project_resume import audit_intermediates, audit_summary, has_recorded_outputs
+            if path.name == "run.yml" and path.parent.name == "config" and has_recorded_outputs(path.parent.parent):
+                intermediates = audit_intermediates(path.parent.parent)
+                warnings.append(audit_summary(intermediates))
             if plan.get("variants") and getattr(args, "variant_tools", False):
                 if config.get("execution_backend") == "docker":
                     warnings.append("Variant tools in the selected Docker image will be checked when Run starts.")
@@ -1131,6 +1147,7 @@ def command_check(args: argparse.Namespace) -> int:
         "plan": plan,
         "resources": resources,
         "variant_tools": variant_tools,
+        "intermediate_outputs": intermediates,
     }
     if args.json:
         print(json.dumps(result, indent=2))
