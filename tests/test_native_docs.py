@@ -263,6 +263,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertEqual(record["schema"], 1)
         for key in ("passed", "synthetic_inputs", "named_sample_layout",
                     "source_signal_was_unset", "explicit_classifier_assignments",
+                    "unknown_sample_unassigned", "clinical_roles_unchanged",
                     "original_fixture_files_unchanged", "restored_previous_project",
                     "source_project_unchanged"):
             self.assertIs(record[key], True, key)
@@ -278,7 +279,8 @@ class NativeDocumentationTests(unittest.TestCase):
                          "oncotracer_cli/setup.py", "oncotracer_cli/cpg_setup.py",
                          "scripts/record_post_ont_cpg_video.py"
                          }.issubset(record["source_files"]))
-        self.assertEqual(record["sample_names"], ["ONCO-001", "ONCO-002"])
+        self.assertEqual(record["sample_names"], ["ONCO-001", "ONCO-002", "ONCO-003"])
+        self.assertEqual(record["unknown_sample"], "ONCO-003")
         self.assertEqual(record["auto_selected_signal"], "pod5")
         self.assertIn("not scientifically valid", record["resource_validation_scope"])
         for relative, expected in record["source_files"].items():
@@ -286,19 +288,20 @@ class NativeDocumentationTests(unittest.TestCase):
             self.assertNotIn("..", Path(relative).parts)
             self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected, relative)
         self.assertEqual([(row["sample_id"], row["classifier"]) for row in record["pointer_drags"]],
-                         [(0, "marlin"), (1, "sturgeon")])
+                         [(0, "marlin"), (1, "sturgeon"), (2, "marlin"), (2, "")])
         self.assertTrue(all(row["pointer_events"] is True for row in record["pointer_drags"]))
         self.assertEqual(len(record["saved_groups"]), 2)
         self.assertEqual(len(record["prepare_requests"]), 2)
         projects = set()
         assignments = [{"id": 0, "classifier": "marlin"},
-                       {"id": 1, "classifier": "sturgeon"}]
+                       {"id": 1, "classifier": "sturgeon"}, {"id": 2, "classifier": ""}]
         for group, request, classifier, sample in zip(
             record["saved_groups"], record["prepare_requests"],
             ("marlin", "sturgeon"), ("ONCO-001", "ONCO-002")
         ):
             self.assertEqual((group["classifier"], group["sample"], group["included"], group["excluded"]),
-                             (classifier, sample, 1, 1))
+                             (classifier, sample, 1, 2))
+            self.assertEqual(group["unknown_sample_excluded"], "ONCO-003")
             for key in ("configuration_saved", "configuration_checked"):
                 self.assertIs(group[key], True, key)
             for key in ("analysis_started", "results_created", "reference_created"):
@@ -315,7 +318,9 @@ class NativeDocumentationTests(unittest.TestCase):
             self.assertIs(request["variants"], False)
             self.assertEqual(request["methylation_assignments"], assignments)
             self.assertEqual([row["name"] for row in request["samples"]],
-                             ["ONCO-001", "ONCO-002"])
+                             ["ONCO-001", "ONCO-002", "ONCO-003"])
+            self.assertEqual([(row["type"], row["role"]) for row in request["samples"]],
+                             [("cancer", "tumor")] * 3)
             self.assertIs(group["separate_project"], True)
             projects.add(request["project"])
         self.assertEqual(len(projects), 2)

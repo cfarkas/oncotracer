@@ -4,7 +4,7 @@ Actual UI, pointer drags, temporary configuration saves and checks.
 Synthetic reads/resources only; no analysis, downloads or patient data.
 
 One named folder per ONT library
-ONCO-001 and ONCO-002 each contain fastq_pass and pod5_pass. This demo restores their saved ONT project.
+Each ONCO-style library has fastq_pass and pod5_pass. This demo restores three libraries from their saved ONT project.
 
 Matching POD5 is selected
 Each library keeps its own passed signal reads. Compatible Dorado and classifier models are required; these are synthetic fixtures.
@@ -12,11 +12,14 @@ Each library keeps its own passed signal reads. Compatible Dorado and classifier
 1 · Drag samples
 Synthetic example: ONCO-001 → MARLIN; ONCO-002 → Sturgeon. For real data use clinical records; never infer diagnosis from names.
 
+Unknown is separate from Cancer or Normal
+Cancer/Normal records the clinical role. These columns only choose a CpG classifier. Return unsuitable samples to Unknown / do not classify.
+
 2 · Save the chosen group
 Choose MARLIN and save. Its new project contains only ONCO-001.
 
 2 · Save the chosen group
-Choose Sturgeon and save ONCO-002 separately. The other group is not queued.
+Choose Sturgeon and save ONCO-002 separately. The other group and Unknown sample are excluded.
 
 Confirm your Sturgeon license
 Only acknowledge this after obtaining Sturgeon and accepting its terms. This demonstration uses synthetic resources.

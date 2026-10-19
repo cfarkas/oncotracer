@@ -64,14 +64,18 @@ Previously published releases and PyPI 2.1.0 do not include it.
 </section>
 
 Actual browser controls, synthetic named libraries and POD5 files. The video
-shows the saved-project reuse route, two pointer drags and separate checks.
+shows the saved-project reuse route, pointer drags including a return to Unknown,
+and separate checks.
 **No analysis or patient data.** Fixture models are not scientific models.
 
 ## 1. Drag samples
 
 Drag documented **leukemia** samples to **MARLIN**, or **CNS-tumour** samples to
 **Sturgeon**. Use the dropdown if preferred. Choose from clinical records, not a
-previous classifier prediction; leave unknown or unsuitable samples unassigned.
+previous classifier prediction. **Cancer/Normal** records the clinical role;
+**MARLIN/Sturgeon/Unknown** chooses a CpG classifier independently. Drag unknown
+or unsuitable samples to **Unknown / do not classify**. This excludes their CpG
+classification without changing their clinical role or labeling them normal.
 
 ## 2. Save and check
 

@@ -1,29 +1,33 @@
 WEBVTT
 
 1
-00:00:00.494 --> 00:00:03.469
-One named folder per ONT library: ONCO-001 and ONCO-002 each contain fastq_pass and pod5_pass. This demo restores their saved ONT project.
+00:00:00.565 --> 00:00:03.560
+One named folder per ONT library: Each ONCO-style library has fastq_pass and pod5_pass. This demo restores three libraries from their saved ONT project.
 
 2
-00:00:03.469 --> 00:00:11.234
+00:00:03.560 --> 00:00:11.326
 Matching POD5 is selected: Each library keeps its own passed signal reads. Compatible Dorado and classifier models are required; these are synthetic fixtures.
 
 3
-00:00:11.234 --> 00:00:19.231
+00:00:11.326 --> 00:00:19.206
 1 · Drag samples: Synthetic example: ONCO-001 → MARLIN; ONCO-002 → Sturgeon. For real data use clinical records; never infer diagnosis from names.
 
 4
-00:00:19.231 --> 00:00:27.666
-2 · Save the chosen group: Choose MARLIN and save. Its new project contains only ONCO-001.
+00:00:19.206 --> 00:00:27.151
+Unknown is separate from Cancer or Normal: Cancer/Normal records the clinical role. These columns only choose a CpG classifier. Return unsuitable samples to Unknown / do not classify.
 
 5
-00:00:27.666 --> 00:00:31.297
-2 · Save the chosen group: Choose Sturgeon and save ONCO-002 separately. The other group is not queued.
+00:00:27.151 --> 00:00:35.546
+2 · Save the chosen group: Choose MARLIN and save. Its new project contains only ONCO-001.
 
 6
-00:00:31.297 --> 00:00:39.951
-Confirm your Sturgeon license: Only acknowledge this after obtaining Sturgeon and accepting its terms. This demonstration uses synthetic resources.
+00:00:35.546 --> 00:00:39.172
+2 · Save the chosen group: Choose Sturgeon and save ONCO-002 separately. The other group and Unknown sample are excluded.
 
 7
-00:00:39.951 --> 00:00:44.857
+00:00:39.172 --> 00:00:47.847
+Confirm your Sturgeon license: Only acknowledge this after obtaining Sturgeon and accepting its terms. This demonstration uses synthetic resources.
+
+8
+00:00:47.847 --> 00:00:52.753
 3 · Run only when ready: Use valid POD5 and compatible models, resolve checks and license requirements, then click Run explicitly. This demo stops after saving.

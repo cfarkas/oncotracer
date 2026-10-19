@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT))
 from record_quickstart_videos import OVERLAY, Recording, run_checked, stamp
 
 NAME = "post-ont-cpg"
-SAMPLE_NAMES = ["ONCO-001", "ONCO-002"]
+SAMPLE_NAMES = ["ONCO-001", "ONCO-002", "ONCO-003"]
 
 
 def digest(path):
@@ -174,7 +174,7 @@ def main():
                 recording = Recording(page, args.pace)
                 page.goto(server.origin + "/#" + state.token, wait_until="load")
                 page.locator("main:not([inert])").wait_for(state="attached")
-                recording.caption("One named folder per ONT library", "ONCO-001 and ONCO-002 each contain fastq_pass and pod5_pass. This demo restores their saved ONT project.")
+                recording.caption("One named folder per ONT library", "Each ONCO-style library has fastq_pass and pod5_pass. This demo restores three libraries from their saved ONT project.")
                 page.locator("#cpg-assign-card").wait_for(state="visible")
                 recording.focus("#methylation-assignment-board .sample-board", "center")
                 recording.clear_focus()
@@ -208,10 +208,14 @@ def main():
 
                 drag(0, "marlin")
                 drag(1, "sturgeon")
-                assert page.locator('#methylation-unassigned .methylation-sample').count() == 0
+                recording.caption("Unknown is separate from Cancer or Normal", "Cancer/Normal records the clinical role. These columns only choose a CpG classifier. Return unsuitable samples to Unknown / do not classify.")
+                drag(2, "marlin")
+                drag(2, "")
+                assert page.locator('#methylation-unassigned .methylation-sample[data-sample-id="2"]').count() == 1
+                assert page.locator('#methylation-unassigned .methylation-classifier-select').input_value() == ""
                 page.screenshot(path=str(args.output_dir / (NAME + ".jpg")), type="jpeg", quality=90)
                 for classifier, identifier in [("marlin", 0), ("sturgeon", 1)]:
-                    recording.caption("2 · Save the chosen group", ("Choose MARLIN and save. Its new project contains only ONCO-001." if classifier == "marlin" else "Choose Sturgeon and save ONCO-002 separately. The other group is not queued."))
+                    recording.caption("2 · Save the chosen group", ("Choose MARLIN and save. Its new project contains only ONCO-001." if classifier == "marlin" else "Choose Sturgeon and save ONCO-002 separately. The other group and Unknown sample are excluded."))
                     recording.select("#classifier", classifier)
                     recording.pause(1)
                     if classifier == "sturgeon":
@@ -240,12 +244,13 @@ def main():
                     selected_signal = [str(path.relative_to(demo)) for path in groups[0].files]
                     assert selected_signal == [f"ONT/{expected}/pod5_pass/barcode01/synthetic.pod5"]
                     assert config["lpwgs_root"] == str(reference) and config["hg38_auto_download"] is False
-                    assert data["reviewed_summary"]["methylation_group"] == {"classifier": classifier, "included": 1, "excluded": 1}
+                    assert data["reviewed_summary"]["methylation_group"] == {"classifier": classifier, "included": 1, "excluded": 2}
                     assert [row["name"] for row in data["reviewed_summary"]["samples"]] == [expected]
                     project = Path(data["project"])
                     assert project != source_project and project.parent == source_project.parent
                     assert not (project / "results").exists() and not (project / "reference").exists()
-                    checks.append({"classifier": classifier, "sample": expected, "included": 1, "excluded": 1,
+                    checks.append({"classifier": classifier, "sample": expected, "included": 1, "excluded": 2,
+                                   "unknown_sample_excluded": "ONCO-003",
                                    "selected_signal_files": selected_signal, "signal_source": "pod5",
                                    "configuration_saved": True, "configuration_checked": True,
                                    "config_sha256": digest(config_path), "analysis_started": False,
@@ -261,8 +266,10 @@ def main():
                 assert state.job is None and not forbidden and not browser_errors
                 assert not any(path in ("/api/run", "/api/stop") for path in calls)
                 assert len(requests) == 2
-                expected_map = [{"id": 0, "classifier": "marlin"}, {"id": 1, "classifier": "sturgeon"}]
+                expected_map = [{"id": 0, "classifier": "marlin"}, {"id": 1, "classifier": "sturgeon"}, {"id": 2, "classifier": ""}]
                 assert all(item["methylation_assignments"] == expected_map for item in requests)
+                assert all([(row["name"], row["type"], row["role"]) for row in item["samples"]] ==
+                           [(name, "cancer", "tumor") for name in SAMPLE_NAMES] for item in requests)
                 video = page.video
                 context.close()
                 raw = Path(video.path())
@@ -308,7 +315,8 @@ def main():
                 "resource_validation_scope": "Path, configuration and selected-library signal checks only; fixture models, POD5 and BAMs are not scientifically valid",
                 "named_sample_layout": True, "sample_names": SAMPLE_NAMES,
                 "auto_selected_signal": "pod5", "source_signal_was_unset": True,
-                "explicit_classifier_assignments": True,
+                "explicit_classifier_assignments": True, "unknown_sample_unassigned": True,
+                "clinical_roles_unchanged": True, "unknown_sample": "ONCO-003",
                 "browser": {"name": args.browser, "version": version}, "pace": args.pace,
                 "ui_page_sha256": hashlib.sha256(original_page.encode()).hexdigest(),
                 "source_files": {name: digest(ROOT / name) for name in source_names},
