@@ -27,7 +27,7 @@ Installation prepares alignment, QDNAseq, ichorCNA, classifier/reporting, GISTIC
 Docker must be running and accessible to your user. Host Conda is unnecessary:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:ont-ichorcna-20261019
+oncotracer install --docker --image carlosfarkas/oncotracer:resume-ui-20261019
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```

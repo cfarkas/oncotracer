@@ -331,7 +331,7 @@ class WebTests(unittest.TestCase):
         script = r"""
 const assert=require('node:assert/strict');
 const nodes={};
-const $=id=>nodes[id]||(nodes[id]={hidden:false,disabled:false,textContent:'',children:[],parentElement:{hidden:false},replaceChildren(){this.children=[];},append(child){this.children.push(child);}});
+const $=id=>nodes[id]||(nodes[id]={hidden:false,disabled:false,textContent:'',children:[],parentElement:{hidden:false},listeners:{},addEventListener(type,callback){(this.listeners[type]||=[]).push(callback);},replaceChildren(){this.children=[];},append(child){this.children.push(child);}});
 const show=(id,yes)=>$(id).hidden=!yes;
 const node=(tag,text)=>({tag,textContent:text,children:[],append(child){this.children.push(child);}});
 const controls=[$('scan'),$('prepare'),$('run'),$('threads')];

@@ -34,7 +34,7 @@ Use the path printed by setup. The command above uses Conda. For Docker, use:
 
 ```bash
 oncotracer run --backend docker --config "$PWD/my-study/config/run.yml" \
-  --image carlosfarkas/oncotracer:ont-ichorcna-20261019
+  --image carlosfarkas/oncotracer:resume-ui-20261019
 ```
 
 ## Check progress and results
@@ -68,6 +68,13 @@ analysis**, choose its project folder, then **Load saved settings and check**.
 This retains the saved sample names, groups, backend, reference and analysis
 settings. Review them and click **Run analysis** to continue.
 
+Select the **output project**, such as `oncotracer_outputs/ONT_fresh`, rather than
+`raw_data/ONT`. For Docker, the resume card lets you correct the image tag before
+loading. **Use current image** selects the image recommended by your installed
+OncoTracer version. Clearing the image field uses the saved project's image,
+including when the terminal command supplied a different tag. An unavailable
+image stops validation without changing the saved project or starting analysis.
+
 If **Create a project** points to a folder that already contains recorded analysis
 outputs, **Save configuration and check** detects it and loads the saved analysis
 instead of overwriting its settings. The same protection applies to native setup.
@@ -75,6 +82,9 @@ The review reports how many recorded stages pass file size, modification-time an
 recorded SHA-256 checks, and how many need recomputation. These checks are also
 available through `oncotracer check` after relocation. Run rechecks input and
 command signatures before reuse; unrecorded files do not count as completed work.
+In particular, temporary BAM sort fragments left by Ctrl+C are incomplete. A BAM
+without its required index and matching completion record is recomputed by the
+current alignment stage; it is not accepted merely because the file exists.
 
 You can prefill the same browser page with native Python or Nextflow:
 

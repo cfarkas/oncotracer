@@ -18,7 +18,12 @@ def project_path(value):
     if path.name == "results" and (path.parent / "config/run.yml").is_file():
         path = path.parent
     if not (path / "config/run.yml").is_file():
-        raise OncoTracerError("Choose one complete OncoTracer project containing config/run.yml and results, not the parent of several projects.")
+        raise OncoTracerError(
+            f"{path} is not a saved OncoTracer project: config/run.yml is missing. "
+            "Choose the analysis output project containing config/run.yml and results "
+            "(for example oncotracer_outputs/ONT_fresh). Select raw reads under "
+            "Find your FASTQ folder when setting up a new analysis."
+        )
     from .output_safety import _reject_symlink_components
     _reject_symlink_components(path)
     return path
@@ -50,7 +55,15 @@ def _runtime(backend, config):
         except (OSError, subprocess.TimeoutExpired) as error:
             raise OncoTracerError(f"Cannot verify the selected Docker runtime before resuming: {error}") from error
         if result.returncode:
-            raise OncoTracerError("Cannot verify the selected Docker runtime before resuming. Select an image built from the current source: " + result.stderr[-1000:])
+            missing = any(term in result.stderr.lower() for term in
+                          ("manifest unknown", "manifest for", "no such image"))
+            reason = "was not found" if missing else "could not be verified"
+            raise OncoTracerError(
+                f"Docker image '{image}' {reason}. Check its tag and registry access. "
+                "In Continue an existing analysis, correct Docker image or choose "
+                f"Use current image ({DEFAULT_IMAGE}), then load saved settings again. "
+                "Your saved project and analysis outputs have not been changed."
+            )
         try:
             identity = json.loads(result.stdout)
         except ValueError as error:

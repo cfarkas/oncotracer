@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -127,6 +128,30 @@ class ResumeTests(unittest.TestCase):
         self.assertEqual(audit["recorded_stages"], 3)
         self.assertEqual(audit["integrity_passed"], 1)
         self.assertEqual(audit["needs_recompute"], 2)
+
+    def test_unrecorded_alignment_and_sort_fragments_are_not_complete(self):
+        ledger = StageLedger(self.output / ".oncotracer-native/state.json")
+        bam = self.output / "interrupted.bam"
+        index = self.output / "interrupted.bam.bai"
+        fragment = self.output / "interrupted.bam.tmp.0000.bam"
+        for path in (bam, index, fragment):
+            path.write_bytes(b"partial output must not imply successful completion")
+        self.assertFalse(ledger.reusable("illumina-align-interrupted", "signature", [bam, index]))
+        self.assertFalse(ledger.reusable("illumina-align-interrupted", "signature", [fragment]))
+        self.assertEqual(audit_intermediates(self.project)["integrity_passed"], 0)
+        ledger.complete("previous", "previous-signature", [bam, index])
+        index.unlink()
+        self.assertFalse(ledger.reusable("previous", "previous-signature", [bam, index]))
+
+    def test_reads_folder_is_rejected_before_docker_or_mutation(self):
+        reads = self.root / "raw_data/ONT"
+        reads.mkdir(parents=True)
+        with patch("oncotracer_cli.project_resume._runtime") as runtime:
+            with self.assertRaisesRegex(OncoTracerError, "analysis output project"):
+                resume_project(reads, backend="docker", image="oncotracer:missing")
+            runtime.assert_not_called()
+        self.assertFalse((reads / "config").exists())
+        self.assertFalse((reads / "results").exists())
 
     def test_audit_validates_configured_shared_reference_but_not_arbitrary_paths(self):
         reference = self.root / "shared/reference"
@@ -266,8 +291,59 @@ class ResumeTests(unittest.TestCase):
         with self.assertRaisesRegex(OncoTracerError, "FASTQ inputs changed"):
             state.run({"project_id": prepared["id"]})
 
+    def test_browser_can_correct_or_clear_launch_image_override(self):
+        from oncotracer_cli.web import WebState
+        config = dict(self.config, execution_backend="docker", docker_image="oncotracer:saved")
+        config_path = self.project / "config/run.yml"
+        for image, expected in (("oncotracer:corrected", "oncotracer:corrected"), ("", "oncotracer:saved")):
+            with self.subTest(image=image):
+                config_path.write_text(_render_config(config))
+                state = WebState(self.root, SimpleNamespace(backend="docker", image="oncotracer:typo"))
+                with patch("oncotracer_cli.project_resume._runtime", return_value=self.identity) as runtime, \
+                     patch("oncotracer_cli.web.subprocess.run", return_value=subprocess.CompletedProcess([], 0, '{"errors":[]}', '')):
+                    result = state.resume({"project": str(self.project), "backend": "docker", "image": image})
+                self.assertTrue(result["valid"])
+                self.assertEqual(runtime.call_args.args[1]["docker_image"], expected)
+                self.assertEqual(load_flat_yaml(config_path)["docker_image"], expected)
+                self.assertIsNone(state.job)
+
+    def test_browser_saved_backend_ignores_cleared_cli_overrides(self):
+        from oncotracer_cli.web import WebState
+        state = WebState(self.root, SimpleNamespace(backend="docker", image="oncotracer:typo"))
+        with patch("oncotracer_cli.project_resume._runtime", return_value=self.identity) as runtime, \
+             patch("oncotracer_cli.web.subprocess.run", return_value=subprocess.CompletedProcess([], 0, '{"errors":[]}', '')):
+            result = state.resume({"project": str(self.project), "backend": "", "image": ""})
+        self.assertEqual(runtime.call_args.args[0], "host")
+        self.assertEqual(result["backend"], "host")
+        self.assertIsNone(state.job)
+
+    def test_missing_image_does_not_modify_saved_project_or_outputs(self):
+        state = StageLedger(self.output / ".oncotracer-native/state.json")
+        product = self.output / "complete.txt"
+        product.write_text("complete")
+        state.complete("complete", "signature", [product])
+        paths = [self.project / "config/run.yml", self.output / OUTPUT_OWNER_RELATIVE, state.path, product]
+        before = {p: p.read_bytes() for p in paths}
+        with patch("oncotracer_cli.project_resume._runtime", side_effect=OncoTracerError("Docker image was not found")):
+            with self.assertRaisesRegex(OncoTracerError, "not found"):
+                resume_project(self.project, backend="docker", image="oncotracer:typo")
+        self.assertEqual(before, {p: p.read_bytes() for p in paths})
+        self.assertFalse((self.project / "config/resume.json").exists())
+
 
 class RuntimeIdentityTests(unittest.TestCase):
+    def test_missing_docker_tag_explains_browser_recovery_without_fallback(self):
+        from oncotracer_cli.cli import DEFAULT_IMAGE
+        failure = subprocess.CompletedProcess([], 125, "", "manifest for oncotracer:typo not found: manifest unknown")
+        with patch("oncotracer_cli.project_resume.subprocess.run", return_value=failure) as command:
+            with self.assertRaises(OncoTracerError) as caught:
+                _runtime("docker", {"docker_image": "oncotracer:typo"})
+        self.assertIn("oncotracer:typo", str(caught.exception))
+        self.assertIn("Use current image", str(caught.exception))
+        self.assertIn(DEFAULT_IMAGE, str(caught.exception))
+        self.assertNotIn("Run 'docker run --help'", str(caught.exception))
+        self.assertEqual(command.call_count, 1)
+
     def test_docker_queries_actual_launcher_not_unstamped_source(self):
         identity = current_runtime_identity()
         with patch("oncotracer_cli.project_resume.subprocess.run", return_value=subprocess.CompletedProcess([], 0, json.dumps(identity), "")) as command:

@@ -181,7 +181,9 @@ class WebState:
                   ("Starting folder", self.start_dir), ("Mounted drives", Path("/media")),
                   ("Other mounts", Path("/mnt"))]
         locations = [{"name": name, "path": str(path)} for name, path in places if path.is_dir()]
+        from .cli import DEFAULT_IMAGE
         return {"hardware": self.hardware, "defaults": defaults, "locations": locations,
+                "default_docker_image": DEFAULT_IMAGE,
                 "resume_project": defaults.get("project") if defaults.get("project") and
                     (Path(defaults["project"]) / "config/run.yml").is_file() else None,
                 "cpg": copy.deepcopy(self.cpg_context.public(self.cpg_scan)) if self.cpg_context else None,
@@ -560,9 +562,21 @@ class WebState:
         with self.lock:
             if self.job and self.job["status"] in {"running", "stopping"}:
                 raise OncoTracerError("Stop the active analysis before loading another project.")
-            result = resume_project(_text(data, "project"),
-                                    backend=data.get("backend") or getattr(self.setup_args, "backend", None),
-                                    image=data.get("image") or getattr(self.setup_args, "image", None))
+            # An explicit blank means use the saved selection, not a launch-time
+            # override that the user has just cleared in the browser.
+            def selection(key):
+                value = data[key] if key in data else getattr(self.setup_args, key, None)
+                if value is None:
+                    return None
+                if not isinstance(value, str) or "\x00" in value:
+                    raise OncoTracerError(f"Invalid resume {key}.")
+                return value.strip() or None
+            backend, image = selection("backend"), selection("image")
+            if backend and backend not in {"conda", "docker", "host", "poetry"}:
+                raise OncoTracerError("Choose a supported backend for continuing this project.")
+            if backend and backend != "docker":
+                image = None
+            result = resume_project(_text(data, "project"), backend=backend, image=image)
             project, config_path = Path(result["project"]), Path(result["config_path"])
             config = load_flat_yaml(config_path)
             snapshot, samples = sample_snapshot(config)

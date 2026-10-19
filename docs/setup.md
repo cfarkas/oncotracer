@@ -122,8 +122,8 @@ To resume:
 oncotracer --interactive --project /absolute/path/to/my-study
 ```
 
-Choose **Load saved settings and check**, then **Run analysis**.
-See [moving and resuming projects](running.md#resume-behavior).
+Select the output project and **Load saved settings and check**.
+See [Docker recovery and resuming](running.md#resume-behavior).
 
 ## Optional: reuse prepared genome indexes
 
