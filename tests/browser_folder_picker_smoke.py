@@ -97,6 +97,7 @@ def main():
                     page.unroute('**/api/system')
                     expect(page.locator('main')).to_have_attribute('aria-busy', 'false')
                     # Real server: Browse goes directly to the native picker API.
+                    page.locator('#choose-new-analysis').click()
                     page.locator('#choose-illumina').click()
                     page.locator('#variant-fresh').click()
                     for folder in (empty, documents):

@@ -2,14 +2,28 @@
 
 
 def add_resume_ui(page):
+    choice = '''<section class="card" id="analysis-choice" aria-label="Choose how to start"><div class="grid">
+<button class="platform" id="choose-new-analysis" aria-pressed="false"><strong>1. New analysis</strong><span>Select reads, assign samples and choose analysis settings.</span></button>
+<button class="platform" id="choose-existing-analysis" aria-pressed="false"><strong>2. Continue an existing analysis</strong><span>Load a saved project and reuse verified completed work.</span></button>
+</div></section>'''
+    page = page.replace('<main inert', '<main id="analysis-root" data-analysis-entry="choose" inert')
+    page = page.replace('</style></head>', '''
+main:not([data-analysis-entry="new"]) #platform-card,
+main:not([data-analysis-entry="new"]) #specimen-card,
+main:not([data-analysis-entry="new"]) #input-card,
+main:not([data-analysis-entry="new"]) #samples-card,
+main:not([data-analysis-entry="new"]) #settings-card,
+main:not([data-analysis-entry="new"]) #existing-bam-link,
+main:not([data-analysis-entry="resume"]) #resume-card{display:none!important}
+</style></head>''')
     card = '''<section class="card" id="resume-card"><h2>Continue an existing analysis</h2>
-<p>Choose your saved analysis output project containing <code>config/run.yml</code> and <code>results</code>, including after moving it. The FASTQ folder belongs in new-analysis setup below. Stop the project's current run first.</p>
+<p>Choose your saved analysis output project containing <code>config/run.yml</code> and <code>results</code>, including after moving it. Stop the project's current run first.</p>
 <label for="resume-project">Existing project folder</label><div class="row"><input id="resume-project" placeholder="/path/to/oncotracer_outputs/ONT_fresh"><button data-browse="resume-project">Browse</button></div>
 <div class="grid" style="margin-top:18px"><div><label for="resume-backend">Analysis tools</label><select id="resume-backend"><option value="">Use saved project backend</option value="conda">Conda</option><option value="docker">Docker</option></select></div>
 <div id="resume-image-field"><label for="resume-image">Docker image (optional)</label><div class="row"><input id="resume-image"><button id="resume-current-image" type="button">Use current image</button></div><p class="hint">Leave blank to use the saved project's image. Correct an unavailable tag here before loading.</p></div></div>
 <div class="actions"><button id="resume-project-button">Load saved settings and check</button></div><p id="resume-note" class="hint">Saved samples and analysis settings are retained. Analysis starts only after review and Run. Compatible completed stages are checked before reuse.</p></section>'''
     page = page.replace('<div id="error" role="alert" class="error" hidden></div>',
-                        '<div id="error" role="alert" class="error" hidden></div>' + card)
+                        '<div id="error" role="alert" class="error" hidden></div>' + choice + card)
     page = page.replace('Use existing project · overwrite settings', 'Continue existing project · retain settings')
     page = page.replace('Save to a new or existing project. Saving replaces its configuration and sample assignments, with previous settings kept in config/backups/.',
                         'A new project saves the settings above. An existing project loads its saved samples and settings for review and resume.')
@@ -25,6 +39,27 @@ def add_resume_ui(page):
     page = page.replace("$('prepare').onclick=()=>busy($('prepare'),async()=>{if(!scan)",
                         "$('prepare').onclick=()=>busy($('prepare'),async()=>{if($('project-mode').value==='existing')return loadResume(projectDestination(),{backend:$('backend').value,image:$('backend').value==='docker'?$('docker_image').value.trim():''});if(!scan)")
     script = r'''
+let analysisEntry='choose',entryDefaults={};
+function setAnalysisEntry(kind){
+  analysisEntry=kind;$('analysis-root').dataset.analysisEntry=kind;
+  $('choose-new-analysis').setAttribute('aria-pressed',String(kind==='new'));
+  $('choose-existing-analysis').setAttribute('aria-pressed',String(kind==='resume'));
+  show('analysis-choice',kind!=='active'&&kind!=='cpg');
+}
+async function chooseAnalysisEntry(kind){
+  if(operationBusy)return;
+  if(activeJob&&['running','stopping'].includes(activeJob.status))throw Error('Stop the active analysis before changing workflows.');
+  invalidate();show('error',false);$('run').disabled=true;
+  show('reviewed-run',false);$('config-preview').parentElement.hidden=false;
+  setAnalysisEntry(kind);
+  if(kind==='new'){
+    show('platform-card',true);
+    show('workflow',Boolean(mode&&variantSpecimen));
+    if(!scan)await restoreRunOrDiscover(entryDefaults);
+  }else show('workflow',false);
+}
+$('choose-new-analysis').onclick=()=>chooseAnalysisEntry('new').catch(failure);
+$('choose-existing-analysis').onclick=()=>chooseAnalysisEntry('resume').catch(failure);
 function resumeSettingsChanged(){
   invalidate();show('error',false);$('run').disabled=true;
   $('resume-note').textContent='Load saved settings and check again before Run.';
@@ -71,6 +106,11 @@ $('prepare-sturgeon').onclick=()=>busy($('prepare-sturgeon'),async()=>{
 });
 '''
     page = page.replace("(async()=>{try{if(!token)", script + "\n(async()=>{try{if(!token)")
+    page = page.replace('const defaults=system.defaults||{};', 'const defaults=system.defaults||{};entryDefaults=defaults;')
+    page = page.replace('if(defaults.mode&&variantSpecimen){', "if(analysisEntry==='new'&&defaults.mode&&variantSpecimen){")
+    page = page.replace('function showReviewedRun(job){', "function showReviewedRun(job){\n  setAnalysisEntry('active');")
+    page = page.replace('function initializeCpgContinuation(value){', "function initializeCpgContinuation(value){\n  setAnalysisEntry('cpg');")
+    page = page.replace('function returnToSetup(){', "function returnToSetup(){\n  setAnalysisEntry(cpgContinuation?'cpg':'new');")
     page = page.replace("if(system.cpg)initializeCpgContinuation(system.cpg);",
                         "$('resume-image').dataset.current=system.default_docker_image||'';$('resume-image').placeholder=system.default_docker_image||'';if(['conda','docker'].includes(defaults.backend))$('resume-backend').value=defaults.backend;if(defaults.image)$('resume-image').value=defaults.image;show('resume-image-field',$('resume-backend').value!=='conda');if(system.resume_project){$('resume-project').value=system.resume_project;$('resume-note').textContent='Existing project detected. Load its saved settings above to continue.';}if(system.cpg)initializeCpgContinuation(system.cpg);")
     return page

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Record silent QuickStart walkthroughs of the real UI using a synthetic API.
 
-Requires Playwright + Chromium, ffmpeg and ffprobe. All browser profiles and raw
+Requires Playwright, a browser, ffmpeg and ffprobe. All browser profiles and raw
 recordings stay in --work-dir. No local setup server, reads, tools, downloads or
 analysis are used; /api/run is forbidden. Default outputs are docs media only.
 """
@@ -39,6 +39,9 @@ html{scroll-padding-top:70px;scroll-padding-bottom:140px}body{padding-top:44px;p
 
 
 def fixture(kind):
+    if kind == "resume":
+        return {"mode": "ont", "project": "/demo/oncotracer_outputs/ONT_fresh",
+                "folder": "/demo/ONT", "records": []}
     if kind == "hcc":
         folder = "/demo/oncotracer-quickstart2/input"
         names = ["HCC1143_DMSO", "HCC1143_BEZ235", "HCC1143_TRAMETINIB"]
@@ -114,6 +117,16 @@ demoApi=function(path,payload){
   system.start_dir='/demo';system.suggested_threads=8;
   system.defaults={mode:recordingFixture.mode,input_folder:recordingFixture.folder,project:recordingFixture.project,backend:'conda',reference:'download',analysis:'cna',variants:false};
   return system;
+ }
+ if(name==='/api/resume'&&recordingFixture.mode==='ont'&&recordingFixture.records.length===0){
+  if(payload.project!==recordingFixture.project)throw Error('Select the synthetic output project shown in this walkthrough.');
+  demoState.prepared={id:'synthetic-resume',project:payload.project,
+   config_path:payload.project+'/config/run.yml',outdir:payload.project+'/results',
+   backend:'conda',valid:true,
+   config:'mode: ont\nexecution_backend: conda\nont_caller: ichorcna\nont_binsize_kb: 500\nthreads: 4\n',
+   check:{errors:[],warnings:['DEMO: 2 recorded stages verified; 1 incomplete stage needs recomputation. Real projects check completion records and outputs before reuse.']},
+   reviewed_summary:{samples:[{name:'ONCO-001',sample_type:'cancer'},{name:'CTRL-001',sample_type:'normal'}]}};
+  return demoState.prepared;
  }
  if(name==='/api/scan'){
   if(payload.mode!==recordingFixture.mode||payload.folder!==recordingFixture.folder)throw Error('The walkthrough only contains its named synthetic inventory.');
@@ -231,15 +244,47 @@ class Recording:
             "illumina": "QuickStart 1 · Illumina",
             "ont": "QuickStart 1 · Oxford Nanopore",
             "hcc": "QuickStart 2 · HCC1143 cohort",
+            "resume": "Continue an existing analysis",
         }[kind]
         self.caption(
             title,
-            "Open browser setup after downloading and verifying the reads. This recording uses synthetic file listings and checks.",
+            "Run oncotracer --interactive --backend conda. Choose New analysis or Continue an existing analysis. This is a synthetic demo.",
         )
         scene_start = self.cues[-1]["start"]
         self.pause(5)
         if poster:
             self.page.screenshot(path=str(poster), type="jpeg", quality=90)
+        assert self.page.locator('#resume-card').is_hidden()
+        assert self.page.locator('#platform-card').is_hidden()
+        if kind == "resume":
+            self.caption(title + " · open the saved project",
+                         "Stop the project's current run. Choose Continue an existing analysis, then select its output project containing config/run.yml and results.")
+            self.click('#choose-existing-analysis')
+            assert self.page.locator('#platform-card').is_hidden()
+            self.fill('#resume-project', fixture(kind)['project'])
+            self.pause(3)
+            self.caption(title + " · validate completed work",
+                         "Load saved settings and check. Saved samples and settings stay together. Incomplete alignments are not accepted as completed work.")
+            self.click('#resume-project-button')
+            self.page.wait_for_selector('#review-card:not([hidden])')
+            self.focus('#review-card', 'start')
+            assert self.page.locator('#run').is_enabled()
+            self.pause(5)
+            self.caption(title + " · resume when ready",
+                         "Review the checks, then choose Run analysis to continue. This recording stops here; its checks are simulated and no analysis runs.")
+            self.focus('#run')
+            self.pause(5)
+            state = self.page.evaluate('({requests:demoState.requests,valid:demoState.prepared.valid,config:demoState.prepared.config})')
+            assert '/api/run' not in state['requests'] and not self.errors
+            self.states.append({'scene': kind, **state})
+            self.clear_focus()
+            self.scene_windows.append({'scene': kind, 'start': scene_start, 'end': time.monotonic() - self.started})
+            self.page.unroute('**/*')
+            return
+        self.caption(title + " · new analysis",
+                     "Choose New analysis to open sample setup. Continue an existing analysis is for a saved output project.")
+        self.click('#choose-new-analysis')
+        assert self.page.locator('#resume-card').is_hidden()
         self.caption(
             title + " · preservation",
             "Choose preservation from specimen records. Fresh is selected only as demonstration metadata here.",
@@ -575,6 +620,7 @@ def main():
     parser.add_argument("--output-dir", type=Path, default=MEDIA)
     parser.add_argument("--playwright-path", type=Path)
     parser.add_argument("--browser-path", type=Path)
+    parser.add_argument("--browser", choices=("firefox", "chromium"), default="firefox")
     parser.add_argument(
         "--playwright-browsers",
         type=Path,
@@ -652,6 +698,8 @@ def main():
         "mock_api_sha256": hashlib.sha256(
             (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes()
         ).hexdigest(),
+        "source_files": {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+                         for name in ('scripts/record_quickstart_videos.py', 'oncotracer_cli/resume_ui.py')},
         "pace": args.pace,
         "videos": [],
     }
@@ -661,11 +709,13 @@ def main():
         launch = {"headless": True, "env": isolated_env}
         if args.browser_path:
             launch["executable_path"] = str(args.browser_path)
-        browser = p.chromium.launch(**launch)
+        browser = getattr(p, args.browser).launch(**launch)
+        manifest['browser'] = {'name': args.browser, 'version': browser.version}
         try:
             for name, scenes in [
                 ("quick-start-illumina-ont", ["illumina", "ont"]),
                 ("quick-start-hcc1143", ["hcc"]),
+                ("continue-analysis", ["resume"]),
             ]:
                 raw = args.work_dir / name
                 raw.mkdir()
@@ -703,6 +753,8 @@ def main():
                         "-an",
                         "-c:v",
                         "libx264",
+                        "-threads",
+                        "4",
                         "-preset",
                         "medium",
                         "-crf",

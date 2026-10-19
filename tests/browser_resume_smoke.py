@@ -54,6 +54,7 @@ def main():
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 page.goto(url)
                 page.wait_for_selector("main:not([inert])")
+                page.locator("#choose-existing-analysis").click()
                 page.locator("#resume-project").fill(str(moved))
                 page.locator("#resume-project-button").click()
                 expect(page.locator("#check-badge")).to_have_text("Resume checked", timeout=30000)
@@ -66,6 +67,7 @@ def main():
                 page.wait_for_selector("main:not([inert])")
                 moved_again = fixture.root / "moved-again"
                 moved.rename(moved_again)
+                page.locator("#choose-new-analysis").click()
                 page.locator("#choose-illumina").click()
                 page.locator("#variant-fresh").click()
                 page.locator("#input-folder").fill(str(fixture.root / "reads"))
@@ -85,6 +87,7 @@ def main():
                 page.screenshot(path=str(args.output / "create-existing.png"), full_page=True)
                 page.goto(url)
                 page.wait_for_selector("main:not([inert])")
+                page.locator("#choose-new-analysis").click()
                 page.locator("#choose-ont").click()
                 page.locator("#variant-fresh").click()
                 page.locator("#input-folder").fill(str(fixture.root / "reads"))

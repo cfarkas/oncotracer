@@ -74,6 +74,8 @@ print('Fixture installation complete', flush=True)
         def wd(method, path, data=None): return http(method, session+path, data).get('value')
         def js(script, *values): return wd('POST','/execute/sync',{'script':script,'args':list(values)})
         def click(selector):
+            if selector in ('#choose-ont', '#choose-illumina') and js("return document.querySelector('#analysis-root')?.dataset.analysisEntry==='choose'"):
+                click('#choose-new-analysis')
             js("const e=document.querySelector(arguments[0]);for(let p=e?.parentElement;p;p=p.parentElement)if(p.tagName==='DETAILS')p.open=true;e.scrollIntoView({block:'center'});",selector)
             element=wd('POST','/element',{'using':'css selector','value':selector})
             wd('POST','/element/'+element['element-6066-11e4-a52e-4f735466cecf']+'/click',{})

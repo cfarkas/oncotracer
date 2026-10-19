@@ -8,7 +8,7 @@ After [installation](installation.md), open a new project:
 oncotracer --interactive --backend conda --project "$PWD/my-study"
 ```
 
-Choose your files and settings. Click **Save configuration and check**, review
+Choose **1. New analysis**, then your files and settings. Click **Save configuration and check**, review
 any messages, then **Run analysis**. Keep the terminal open to keep the server
 available. [Try the demo](browser_demo.md) or follow the [setup guide](setup.md).
 
@@ -34,7 +34,7 @@ Use the path printed by setup. The command above uses Conda. For Docker, use:
 
 ```bash
 oncotracer run --backend docker --config "$PWD/my-study/config/run.yml" \
-  --image carlosfarkas/oncotracer:resume-ui-20261019
+  --image carlosfarkas/oncotracer:analysis-choice-20261019
 ```
 
 ## Check progress and results
@@ -63,10 +63,28 @@ analysis. Use its **Stop analysis** control before closing setup when you want i
 
 ## Resume behavior
 
-Stop the current analysis first. In the browser, use **Continue an existing
-analysis**, choose its project folder, then **Load saved settings and check**.
+The opening screen has two choices: **New analysis** opens sample setup;
+**Continue an existing analysis** opens the saved-project form. Only the selected
+workflow is shown. Stop the current analysis before continuing its project, then
+choose its folder and **Load saved settings and check**.
 This retains the saved sample names, groups, backend, reference and analysis
 settings. Review them and click **Run analysis** to continue.
+
+<div class="quickstart-videos">
+<section class="quickstart-video-card" aria-label="Continue an existing analysis video">
+<h3>Continue a saved project</h3>
+<div class="quickstart-player">
+<video controls preload="metadata" playsinline poster="../assets/tutorial/continue-analysis.jpg" aria-label="Select an existing output project and check saved work">
+<source src="../assets/tutorial/continue-analysis.mp4" type="video/mp4">
+<track src="../assets/tutorial/continue-analysis.vtt" kind="captions" srclang="en" label="English">
+</video>
+<button hidden type="button" class="quickstart-play" aria-label="Play continuation video"><span aria-hidden="true">▶</span> Play video</button>
+</div>
+<p><a href="../assets/tutorial/continue-analysis.txt">Transcript</a> · <a href="../assets/tutorial/continue-analysis.mp4">Download video</a></p>
+</section>
+</div>
+
+The video uses synthetic samples and simulated checks. It stops before running analysis.
 
 Select the **output project**, such as `oncotracer_outputs/ONT_fresh`, rather than
 `raw_data/ONT`. For Docker, the resume card lets you correct the image tag before

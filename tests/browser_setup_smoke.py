@@ -126,6 +126,8 @@ else:
         def element(selector):
             return wd("POST", "/element", {"using": "css selector", "value": selector})
         def click(selector):
+            if selector in ('#choose-ont', '#choose-illumina') and js("return document.querySelector('#analysis-root')?.dataset.analysisEntry==='choose'"):
+                click('#choose-new-analysis')
             identity = element(selector)["element-6066-11e4-a52e-4f735466cecf"]
             wd("POST", "/element/" + identity + "/click", {})
         def fill(selector, value):
@@ -175,6 +177,8 @@ else:
                 return list(csv.DictReader(handle))
         wd("POST", "/window/rect", {"width": 1400, "height": 1100})
         wd("POST", "/url", {"url": url})
+        wait(lambda: js("return !document.querySelector('main').inert"), 'opening choices')
+        click('#choose-new-analysis')
         sample_count(2)
         assert js("return document.querySelector('#threads').value") == "3"
         assert js("return document.querySelector('#binsize').value") == "100"

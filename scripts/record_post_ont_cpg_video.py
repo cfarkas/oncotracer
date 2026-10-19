@@ -176,6 +176,8 @@ def main():
                 page.locator("main:not([inert])").wait_for(state="attached")
                 recording.caption("One named folder per ONT library", "Each ONCO-style library has fastq_pass and pod5_pass. This demo restores three libraries from their saved ONT project.")
                 page.locator("#cpg-assign-card").wait_for(state="visible")
+                assert page.locator("#analysis-choice").is_hidden()
+                assert page.locator("#resume-card").is_hidden()
                 recording.focus("#methylation-assignment-board .sample-board", "center")
                 recording.clear_focus()
                 recording.pause(2)
@@ -305,7 +307,7 @@ def main():
     (args.output_dir / (NAME + ".vtt")).write_text("\n".join(vtt).rstrip() + "\n")
     (args.output_dir / (NAME + ".txt")).write_text("\n".join(transcript).rstrip() + "\n")
     source_names = ["oncotracer_cli/web.py", "oncotracer_cli/web_ui.py", "oncotracer_cli/setup.py", "oncotracer_cli/cpg_setup.py",
-                    "scripts/record_post_ont_cpg_video.py", "scripts/record_quickstart_videos.py",
+                    "oncotracer_cli/resume_ui.py", "scripts/record_post_ont_cpg_video.py", "scripts/record_quickstart_videos.py",
                     "tests/test_native_methylation.py", "tests/test_web.py"]
     manifest = {"schema": 1, "passed": True, "analysis_started": False,
                 "entrypoint": "oncotracer --interactive --cpg-from /path/to/ONT-project",

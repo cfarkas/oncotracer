@@ -222,59 +222,33 @@ class NativeDocumentationTests(unittest.TestCase):
 
     def test_quickstart_recordings_match_current_ui_and_linked_media(self) -> None:
         from oncotracer_cli.web_ui import PAGE
-        PAGE = self.before_resume_controls("rendered_page", PAGE.encode()).decode()
-
         assets = ROOT / "docs/assets/tutorial"
         record = json.loads((assets / "quick-start-recording.json").read_text(encoding="utf-8"))
         self.assertIs(record["passed"], True)
         self.assertIs(record["analysis_started"], False)
         self.assertIs(record["real_reads_downloaded"], False)
-        active_job_review = json.loads(
-            (assets / "active-job-ui-compatibility.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(active_job_review["schema"], 1)
-        self.assertEqual(active_job_review["current_page_sha256"],
-                         hashlib.sha256(PAGE.encode("utf-8")).hexdigest())
-        self.assertTrue(active_job_review["replacements"])
-        recorded_page = PAGE
-        for replacement in active_job_review["replacements"]:
-            self.assertNotEqual(replacement["recorded"], replacement["current"])
-            self.assertTrue(replacement["current"])
-            self.assertEqual(recorded_page.count(replacement["current"]), 1)
-            recorded_page = recorded_page.replace(
-                replacement["current"], replacement["recorded"], 1
-            )
-        self.assertEqual(active_job_review["recorded_page_sha256"],
-                         hashlib.sha256(recorded_page.encode("utf-8")).hexdigest())
-        compatibility = record.get("ui_compatibility")
-        if compatibility:
-            import html
-            from oncotracer_cli.variant_model_assets import CLAIR3_PROFILES
-            self.assertEqual(compatibility["reviewed_ui_page_sha256"],
-                             hashlib.sha256(recorded_page.encode("utf-8")).hexdigest())
-            profiles = compatibility["added_unrecorded_clair3_profiles"]
-            self.assertTrue(profiles)
-            self.assertEqual(len(profiles), len(set(profiles)))
-            for profile in profiles:
-                option = ('<option value="' + html.escape(profile, quote=True) + '">' +
-                          html.escape(CLAIR3_PROFILES[profile]["label"]) + '</option>')
-                self.assertEqual(recorded_page.count(option), 1)
-                recorded_page = recorded_page.replace(option, "")
-        self.assertEqual(record["ui_page_sha256"],
-                         hashlib.sha256(recorded_page.encode("utf-8")).hexdigest())
-        self.assert_recorded_source_matches(
-            "docs/assets/setup-demo/mock-api.js", record["mock_api_sha256"]
-        )
+        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(PAGE.encode()).hexdigest())
+        self.assertEqual(record["mock_api_sha256"], hashlib.sha256(
+            (ROOT / "docs/assets/setup-demo/mock-api.js").read_bytes()).hexdigest())
+        for relative, expected in record["source_files"].items():
+            self.assertEqual(expected, hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), relative)
         pages = {"quick-start-illumina-ont": None,
                  "quick-start-illumina": "docs/quick_start.md",
                  "quick-start-ont": "docs/quick_start.md",
-                 "quick-start-hcc1143": "docs/public_cohort.md"}
+                 "quick-start-hcc1143": "docs/public_cohort.md",
+                 "continue-analysis": "docs/running.md"}
         self.assertEqual({video["name"] for video in record["videos"]}, set(pages))
         self.assertEqual(len(record["videos"]), len(pages))
         for video in record["videos"]:
             with self.subTest(video=video["name"]):
                 self.assert_recording_media(video, pages[video["name"]])
                 self.assertNotIn("/api/run", json.dumps(video.get("scenes", [])))
+                self.assertIn("Continue an existing analysis", json.dumps(video["cues"]))
+                if video["name"] == "continue-analysis":
+                    self.assertIn("/api/resume", json.dumps(video["scenes"]))
+                    self.assertIn("Incomplete alignments", json.dumps(video["cues"]))
+                else:
+                    self.assertIn("Choose New analysis", json.dumps(video["cues"]))
 
     def test_post_ont_cpg_recording_keeps_explicit_groups_and_stops_after_save(self) -> None:
         from oncotracer_cli.web_ui import PAGE
@@ -295,7 +269,7 @@ class NativeDocumentationTests(unittest.TestCase):
         self.assertIn("real loopback WebServer", record["api"])
         self.assertEqual(record["entrypoint"],
                          "oncotracer --interactive --cpg-from /path/to/ONT-project")
-        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(self.before_resume_controls("rendered_page", PAGE.encode())).hexdigest())
+        self.assertEqual(record["ui_page_sha256"], hashlib.sha256(PAGE.encode()).hexdigest())
         self.assertTrue({"oncotracer_cli/web.py", "oncotracer_cli/web_ui.py",
                          "oncotracer_cli/setup.py", "oncotracer_cli/cpg_setup.py",
                          "scripts/record_post_ont_cpg_video.py"
@@ -307,7 +281,7 @@ class NativeDocumentationTests(unittest.TestCase):
         for relative, expected in record["source_files"].items():
             self.assertFalse(Path(relative).is_absolute())
             self.assertNotIn("..", Path(relative).parts)
-            self.assertEqual(hashlib.sha256(self.before_resume_controls(relative, (ROOT / relative).read_bytes())).hexdigest(), expected, relative)
+            self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected, relative)
         self.assertEqual([(row["sample_id"], row["classifier"]) for row in record["pointer_drags"]],
                          [(0, "marlin"), (1, "sturgeon"), (2, "marlin"), (2, "")])
         self.assertTrue(all(row["pointer_events"] is True for row in record["pointer_drags"]))

@@ -60,6 +60,8 @@ nextflow run main.nf --interactive --backend conda
 ```
 
 Use the full path to `main.nf` from another directory. For Docker, use `--backend docker`.
+Choose **1. New analysis** for setup, or **2. Continue an existing analysis**
+for saved work ([video](running.md#resume-behavior)).
 **Run analysis** starts the work. These videos use synthetic inventories and checks.
 
 <div class="quickstart-videos">

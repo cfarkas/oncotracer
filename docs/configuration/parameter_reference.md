@@ -28,7 +28,7 @@ Choose one command below. Conda/Poetry install the core CNA tools and verified s
 
 ```bash
 oncotracer install --conda
-oncotracer install --docker --image carlosfarkas/oncotracer:resume-ui-20261019
+oncotracer install --docker --image carlosfarkas/oncotracer:analysis-choice-20261019
 oncotracer install --singularity
 ./oncotracer install --poetry
 ```

@@ -54,6 +54,16 @@ def main():
             page.on('pageerror', lambda error: errors.append(str(error)))
             page.goto(server.origin + '/#' + fixture.state.token)
             page.wait_for_selector('main:not([inert])')
+            expect(page.locator('#platform-card')).to_be_hidden()
+            expect(page.locator('#resume-card')).to_be_hidden()
+            expect(page.locator('#workflow')).to_be_hidden()
+            page.screenshot(path=str(args.output / 'analysis-choice.png'), full_page=True)
+            page.locator('#choose-new-analysis').click()
+            expect(page.locator('#platform-card')).to_be_visible()
+            expect(page.locator('#resume-card')).to_be_hidden()
+            page.locator('#choose-existing-analysis').click()
+            expect(page.locator('#platform-card')).to_be_hidden()
+            expect(page.locator('#resume-card')).to_be_visible()
             expect(page.locator('#resume-image')).to_have_value('oncotracer:typo')
             with patch('oncotracer_cli.project_resume._runtime', side_effect=runtime), \
                  patch('oncotracer_cli.web.subprocess.run', return_value=subprocess.CompletedProcess([], 0, '{"errors":[]}', '')):
@@ -82,11 +92,17 @@ def main():
                 expect(page.locator('#check-badge')).to_have_text('Resume checked')
                 assert selected[-1] == ('docker', DEFAULT_IMAGE)
                 assert fixture.state.job is None
+                page.locator('#choose-new-analysis').click()
+                expect(page.locator('#review-card')).to_be_hidden()
+                expect(page.locator('#run')).to_be_disabled()
+                expect(page.locator('#resume-card')).to_be_hidden()
+                assert fixture.state.job is None
                 assert not errors, errors
             browser.close()
         receipt = {'passed': True, 'raw_folder_rejected_before_docker': True,
                    'bad_tag_corrected_in_browser': True, 'cleared_override_uses_saved_image': True,
                    'edits_invalidate_previous_review': True, 'analysis_started': False}
+        receipt['initial_choice_and_exclusive_workflows'] = True
         (args.output / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
         print(json.dumps(receipt))
     finally:

@@ -61,7 +61,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:resume-ui-20261019"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:analysis-choice-20261019"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 

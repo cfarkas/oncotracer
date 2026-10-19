@@ -37,7 +37,9 @@ nextflow run main.nf --interactive --backend conda
 ```
 
 Use the full path to `main.nf` from another directory. For Docker, use `--backend docker`.
-Choose inputs and settings in the browser; **Run analysis** starts the work.
+Choose **1. New analysis**, then your inputs and settings; **Run analysis** starts the work.
+To reuse a saved project, choose **2. Continue an existing analysis** and follow
+the [continuation video](running.md#resume-behavior).
 The videos show synthetic inventories and checks, without starting analysis.
 
 <div class="quickstart-videos">

@@ -331,7 +331,7 @@ class WebTests(unittest.TestCase):
         script = r"""
 const assert=require('node:assert/strict');
 const nodes={};
-const $=id=>nodes[id]||(nodes[id]={hidden:false,disabled:false,textContent:'',children:[],parentElement:{hidden:false},listeners:{},addEventListener(type,callback){(this.listeners[type]||=[]).push(callback);},replaceChildren(){this.children=[];},append(child){this.children.push(child);}});
+const $=id=>nodes[id]||(nodes[id]={hidden:false,disabled:false,textContent:'',children:[],dataset:{},setAttribute(name,value){this[name]=value;},parentElement:{hidden:false},listeners:{},addEventListener(type,callback){(this.listeners[type]||=[]).push(callback);},replaceChildren(){this.children=[];},append(child){this.children.push(child);}});
 const show=(id,yes)=>$(id).hidden=!yes;
 const node=(tag,text)=>({tag,textContent:text,children:[],append(child){this.children.push(child);}});
 const controls=[$('scan'),$('prepare'),$('run'),$('threads')];
@@ -374,7 +374,9 @@ const api=async endpoint=>{requests.push(endpoint);if(requestError)throw request
   // A failed status lookup must not fall through to a fresh, misleading scan.
   requestError=Error('offline');await restoreRunOrDiscover(defaults);
   assert.equal(scans,0);assert.deepEqual(errors,['offline']);
-  requestError=null;reply={status:'idle'};await restoreRunOrDiscover(defaults);
+  requestError=null;reply={status:'idle'};setAnalysisEntry('choose');await restoreRunOrDiscover(defaults);
+  assert.equal(scans,0);
+  setAnalysisEntry('new');await restoreRunOrDiscover(defaults);
   assert.equal(scans,1);
   cpgContinuation={source_project:'/original'};await restoreRunOrDiscover(defaults);
   assert.equal(scans,1);assert.equal($('cpg-assign-card').hidden,false);assert.equal($('cpg-check-card').hidden,false);
