@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/cfarkas/oncotracer)](https://github.com/cfarkas/oncotracer/releases) [![Documentation](https://img.shields.io/badge/docs-read%20the%20guide-blue)](https://cfarkas.github.io/oncotracer/) [![Tests](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml/badge.svg)](https://github.com/cfarkas/oncotracer/actions/workflows/native-v2-ci.yml)
 
-Analyze Illumina and Oxford Nanopore (ONT) reads for DNA copy-number changes and small variants. Set up samples in your browser, run the analysis, and review tables, plots and reports. ONT methylation supports MARLIN leukemia and Sturgeon CNS-tumor research classifiers. For research use.
+Analyze Illumina and Oxford Nanopore (ONT) reads for copy-number changes and small variants. Configure samples in your browser and review results. ONT methylation supports MARLIN leukemia and Sturgeon CNS-tumor classifiers. For research use.
 
 ## Quick start
 
@@ -29,12 +29,14 @@ oncotracer --interactive --backend conda
 With Docker running and accessible:
 
 ```bash
-oncotracer install --docker --image carlosfarkas/oncotracer:multisample-20261020-r2
+oncotracer install --docker --image carlosfarkas/oncotracer:sample-jobs-20261021
 oncotracer doctor --backend docker
 oncotracer --interactive --backend docker
 ```
 
 The Docker image is saved for later commands. See [installation](docs/installation.md) for Python environments, requirements and other options. FFPE/ONT callers, model resources and ANNOVAR have [additional setup requirements](docs/variants.md); use Conda for ONT methylation.
+
+Before setup, `oncotracer --detect-resources` (also `--detect_resources`) suggests [sample jobs × cores per sample](docs/MULTISAMPLE_QUICKSTART.md) from this machine's CPU/RAM; choose the combination in new setup or **Review and run** for continuation.
 
 ### Open interactive setup with Nextflow
 
@@ -54,8 +56,6 @@ Use the full path to `main.nf` from another directory, or `--backend docker` for
 
 Keep the terminal open and use its complete printed URL, including the session code after `#`. Open another terminal for another project; each session chooses an available port. Use distinct project/output folders and share the server’s CPU and memory between runs.
 
-Choose CPU/RAM budgets and concurrent sample counts before Run. [Resource selection and verified reuse](https://cfarkas.github.io/oncotracer/MULTISAMPLE_QUICKSTART/).
-
 ## Interactive demo
 
 [![OncoTracer browser setup: assign samples, choose settings, review and run. Click to explore the interactive demo.](docs/assets/setup-demo-preview.png)](https://cfarkas.github.io/oncotracer/assets/setup-demo/index.html)
@@ -64,7 +64,7 @@ Choose CPU/RAM budgets and concurrent sample counts before Run. [Resource select
 
 ### Continue an existing analysis
 
-Use `oncotracer --interactive --project /path/to/existing-project`. Load saved settings, choose the CPU/RAM budget and concurrent sample count, then **Apply resources and check** before Run. See [intermediate checks and relocation](docs/running.md#resume-behavior).
+Use `oncotracer --interactive --project /path/to/existing-project`. Load saved settings, then choose parallel sample jobs in **Review and run**. **Run analysis** applies and checks your selection. See [intermediate checks and relocation](docs/running.md#resume-behavior).
 
 [Sturgeon setup](docs/configuration/methylation_reference.md#sturgeon-pretrained-model-setup) offers the pretrained general model and hg38 probes after explicit license acknowledgement.
 
@@ -122,7 +122,7 @@ oncotracer uninstall --conda --yes --purge
 **Docker image:** remove the selected image/tag:
 
 ```bash
-docker image rm carlosfarkas/oncotracer:multisample-20261020-r2
+docker image rm carlosfarkas/oncotracer:sample-jobs-20261021
 ```
 
 This Docker command removes only the image/tag. It does not remove the pip application, an extra global launcher, saved settings, projects or results. Shared image layers may remain.

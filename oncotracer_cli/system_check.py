@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .runtime import load_flat_yaml, require_file
+from .runtime import OncoTracerError, load_flat_yaml, require_file
 
 GIB = 1024**3
 
@@ -411,7 +411,21 @@ def print_resource_report(report: dict) -> None:
         print(f"  Disk: {row['path']} — {amount}")
     for warning in report["warnings"]:
         print(f"  Note: {warning}")
-    print(f"Suggested starting setting: threads: {report['suggested_threads']}")
+    if 'sample_job_plans' in report:
+        print("Parallel sample jobs × cores per sample (CPU threads):")
+        for plan in report['sample_job_plans']:
+            print("  " + plan['stage'] + ":")
+            if plan.get('error'):
+                print("    " + plan['error'])
+            for choice in plan['suggestions']:
+                preferred = " [suggested]" if choice['parallel_samples'] == plan['recommended']['parallel_samples'] else ""
+                jobs = 'sample job' if choice['parallel_samples'] == 1 else 'sample jobs'
+                print(f"    {choice['parallel_samples']} {jobs} × {choice['threads_per_sample']} cores each; "
+                      f"{choice['memory_gb_per_sample']:.1f} GiB RAM each{preferred}")
+        print("Choose a combination in browser setup. Actual concurrency is capped by sample count and checked again at Run. "
+              "20% of available RAM is reserved; separate analyses share this machine.")
+    else:
+        print(f"Suggested starting setting: threads: {report['suggested_threads']}")
     print(report["limits"])
 
 
@@ -426,12 +440,17 @@ def command_system(args: argparse.Namespace) -> int:
     report = resource_report(
         config, path=Path(args.path), hardware=inspect_hardware(include_gpus=True)
     )
+    from .sample_resources import planning_suggestions
+    if (args.threads is not None and args.threads < 1) or (args.samples is not None and args.samples < 1):
+        raise OncoTracerError('Use positive --threads and --samples values for resource planning')
+    report['sample_job_plans'] = planning_suggestions(config, hardware=report['hardware'],
+        threads=args.threads, memory=args.memory, sample_count=args.samples)
     if args.json:
         print(json.dumps(report, indent=2))
     else:
         print_resource_report(report)
         print(
-            "Next: oncotracer check --config /path/to/run.yml; oncotracer doctor --backend conda"
+            "Next: oncotracer --interactive --backend conda (or --backend docker). No analysis has started."
         )
     return 0
 
@@ -454,4 +473,7 @@ def add_system_command(subparsers) -> None:
         action="store_true",
         help="machine-readable hardware and capability report",
     )
+    parser.add_argument('--threads', type=int, help='total CPU thread budget to divide among sample jobs (default: detected capacity or config)')
+    parser.add_argument('--samples', type=int, help='optional cohort size to cap concurrent sample jobs')
+    parser.add_argument('--memory', help='total RAM budget for all sample jobs, e.g. 160GB (default: auto)')
     parser.set_defaults(func=command_system)

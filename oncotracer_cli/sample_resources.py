@@ -113,7 +113,34 @@ def offers(config, sample_count, *, threads=None, memory=None, hardware=None):
                        minimum_gb=minimum, hardware=hardware) for n in range(1, maximum + 1)]
     return {'hardware': hardware, 'recommended': recommended, 'choices': choices,
             'memory': memory, 'threads': recommended['total_threads'],
+            'selected_parallel_samples': config.get('parallel_samples', config.get('variant_parallel_samples', 'auto')),
             'note': 'These are planning budgets. Resources are checked again at Run; available RAM can reduce concurrency. Existing valid outputs are checked before reuse.'}
+
+
+def planning_suggestions(config, *, hardware, threads=None, memory=None, sample_count=None):
+    """Suggest sample jobs × cores/job; never start work or alter configuration."""
+    cpu = hardware['cpu_workers_available']
+    threads = threads if threads is not None else config.get('threads', cpu)
+    count = sample_count if sample_count is not None else cpu
+    stages = [("Selected analysis", config)] if config.get('mode') else [
+        ("Alignment / ONT", {'mode': 'ont'}),
+        ("Illumina with variant calling (Fresh or FFPE)", {'mode': 'illumina', 'run_variants': True}),
+    ]
+    result = []
+    for name, settings in stages:
+        try:
+            choices = offers(settings, count, threads=threads, memory=memory or config.get('analysis_memory', 'auto'), hardware=hardware)
+            # A short list of useful alternatives rather than every possible job count.
+            maximum = len(choices['choices'])
+            suggested = {1, choices['recommended']['parallel_samples']}
+            suggested.update(min(maximum, max(1, choices['threads'] // cores)) for cores in (4, 8, 10, 16))
+            result.append({'stage': name, 'sample_count': sample_count,
+                           'recommended': choices['recommended'],
+                           'suggestions': [choice for choice in choices['choices'] if choice['parallel_samples'] in suggested],
+                           'note': choices['note']})
+        except OncoTracerError as error:
+            result.append({'stage': name, 'error': str(error), 'suggestions': []})
+    return result
 
 
 def selected_config(config, sample_count, selection):

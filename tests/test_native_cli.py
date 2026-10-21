@@ -70,7 +70,7 @@ class NativeCliTests(unittest.TestCase):
     def test_docker_install_default_still_pulls(self) -> None:
         from oncotracer_cli import cli
         for flags, image in [
-            ([], "carlosfarkas/oncotracer:multisample-20261020-r2"),
+            ([], "carlosfarkas/oncotracer:sample-jobs-20261021"),
             (["--image", "registry/image:tag"], "registry/image:tag"),
         ]:
             with self.subTest(image=image):

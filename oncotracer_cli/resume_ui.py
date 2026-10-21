@@ -78,6 +78,13 @@ async function loadResume(project,options=null){
   if(!project.trim())throw Error('Choose the project folder containing config/run.yml and results.');
   options=options||{backend:$('resume-backend').value,image:$('resume-backend').value==='conda'?'':$('resume-image').value.trim()};
   prepared=await api('/api/resume',{project,...options});
+  showResumedProject();
+}
+function showResumedProject(){
+  setAnalysisEntry('resume');
+  $('resume-project').value=prepared.project;
+  $('resume-backend').value=prepared.backend;
+  $('resume-image').value=prepared.docker_image||'';
   $('config-preview').textContent=prepared.config;
   $('saved-path').textContent='Saved project: '+prepared.project;
   $('check-badge').textContent=prepared.valid?'Resume checked':'Needs attention';
@@ -106,6 +113,7 @@ $('prepare-sturgeon').onclick=()=>busy($('prepare-sturgeon'),async()=>{
 });
 '''
     page = page.replace("(async()=>{try{if(!token)", script + "\n(async()=>{try{if(!token)")
+    page = page.replace("prepared=await api('/api/prepare',data);", "prepared=await api('/api/prepare',data);if(prepared.kind==='existing_project'){showResumedProject();return;}", 1)
     page = page.replace('const defaults=system.defaults||{};', 'const defaults=system.defaults||{};entryDefaults=defaults;')
     page = page.replace('if(defaults.mode&&variantSpecimen){', "if(analysisEntry==='new'&&defaults.mode&&variantSpecimen){")
     page = page.replace('function showReviewedRun(job){', "function showReviewedRun(job){\n  setAnalysisEntry('active');")

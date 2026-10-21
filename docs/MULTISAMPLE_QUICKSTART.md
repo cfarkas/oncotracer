@@ -5,6 +5,32 @@ for **Illumina and ONT alignment**, **ONT variant calling**, and complete
 **Illumina/FFPE variant analysis with GLIMPSE2**. Illumina variants retain their
 Nextflow workflows; native stages use cancellable sample workers.
 
+## Detect sample-job combinations first
+
+```bash
+oncotracer --detect-resources
+# Equivalent spelling:
+oncotracer --detect_resources
+```
+
+This read-only command suggests **parallel sample jobs × cores per sample** using
+available CPUs and RAM. For example, a machine with 40 available CPU threads and
+enough RAM can offer **5 sample jobs × 8 cores each** or **4 sample jobs × 10 cores each**.
+These are choices of simultaneous samples, not a count of “parallel cores”.
+Cores here mean CPU threads available to OncoTracer. No analysis starts and no
+configuration is changed. Requires the current GitHub installation; PyPI 2.1.0
+predates these aliases.
+
+To plan within a shared-server budget or limit to your cohort size:
+
+```bash
+oncotracer --detect-resources --threads 40 --memory 160GB --samples 10
+```
+
+Use `--json` for machine-readable results, or `--config /path/to/project/config/run.yml`
+to plan for saved settings. The browser shows the same allocation rules and lets
+you choose; the command does not select or launch a combination for you.
+
 ## Choose resources in the browser
 
 ```bash
@@ -22,12 +48,14 @@ For Docker, use `--backend docker` with the current installed image.
 1. Choose **New analysis** or **Continue an existing analysis**.
 2. For a new project, discover and assign samples. For continuation, choose the
    **output project** containing `config/run.yml` and `results`, then **Load saved settings and check**.
-3. In **Choose how many samples run together**, inspect the detected CPUs and RAM.
+3. In **Choose parallel sample jobs**, inspect the sample-job combinations.
+   For continuation these controls appear inside **Review and run**, beside Run.
    Set a **total** CPU budget and a RAM budget (`auto` or, for example, `64GB`).
-4. Select a suggested concurrent sample count. Each option shows the CPU and RAM
-   available to each sample. **Detect available resources** refreshes the choices.
-5. For continuation, choose **Apply resources and check**. Review the checks, then
-   choose **Run analysis**. Loading or applying settings does not start analysis.
+4. Select the number of parallel samples. Each option shows **sample jobs × cores each**,
+   plus RAM per sample. **Detect sample-job options** refreshes the choices.
+5. Choose **Run analysis**. For continuation, Run applies and checks your resource choices
+   before starting. **Apply resources and check** is an optional preview; it does not
+   launch analysis. Loading a project also does not start analysis.
 
 For example, 20 CPU threads, 64GB and two concurrent samples give each active
 sample 10 CPU threads and 32GB. The mapper and sorter share their sample's CPU
@@ -186,7 +214,8 @@ Run from the checkout using a Python environment with the test dependencies inst
 | Contract checked | Exact test |
 |---|---|
 | Native sample overlap, bounded budgets, incomplete alignment rejection and checkpoint reuse | `tests.test_sample_parallelism` |
-| Browser resource choices save correctly without launching and retain sample assignments on Continue | `tests.test_sample_resource_web` |
+| Browser API resource choices preserve sample assignments | `tests.test_sample_resource_web` |
+| Firefox: new setup, both paths into continuation, editable jobs, invalid RAM recovery and Run dispatch | `tests.test_sample_resource_browser` |
 | Local Nextflow still routes `--interactive` to the visual setup and propagates child failures | `tests.test_nextflow_gateway.NextflowGatewayTests.test_real_nextflow_visual_routing_and_failed_analysis_propagation` |
 | Concurrency flags reach visual setup, variants and full-run commands | `tests.test_nextflow_gateway.NextflowGatewayTests.test_parallel_sample_override_reaches_visual_variants_and_full_cli` |
 | Every Illumina sample retains the complete set of enabled modules | `tests.test_glimpse_pipeline.GlimpsePipelineTests.test_sample_parameters_enable_every_module_and_keep_paths` |

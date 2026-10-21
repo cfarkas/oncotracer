@@ -120,9 +120,9 @@ demoApi=function(path,payload){
  }
  if(name==='/api/resume'&&recordingFixture.mode==='ont'&&recordingFixture.records.length===0){
   if(payload.project!==recordingFixture.project)throw Error('Select the synthetic output project shown in this walkthrough.');
-  demoState.prepared={id:'synthetic-resume',project:payload.project,
+  demoState.prepared={id:'synthetic-resume',kind:'existing_project',project:payload.project,
    config_path:payload.project+'/config/run.yml',outdir:payload.project+'/results',
-   backend:'conda',valid:true,resources_confirmed:Boolean(payload.resources),resource_choices:demoResourceOptions({threads:8}),
+   backend:'conda',valid:true,resources_confirmed:Boolean(payload.resources),resource_choices:{...demoResourceOptions({threads:8}),selected_parallel_samples:payload.resources?.parallel_samples??1},
    config:'mode: ont\nexecution_backend: conda\nont_caller: ichorcna\nont_binsize_kb: 500\nthreads: 4\n',
    check:{errors:[],warnings:['DEMO: 2 recorded stages verified; 1 incomplete stage needs recomputation. Real projects check completion records and outputs before reuse.']},
    reviewed_summary:{samples:[{name:'ONCO-001',sample_type:'cancer'},{name:'CTRL-001',sample_type:'normal'}]}};
@@ -268,9 +268,9 @@ class Recording:
             self.click('#resume-project-button')
             self.page.wait_for_selector('#review-card:not([hidden])')
             self.focus('#review-card', 'start')
-            assert self.page.locator('#run').is_disabled()
+            assert self.page.locator('#run').is_enabled()
             self.caption(title + " · choose concurrent samples",
-                         "Review the detected CPU and RAM budget. Choose how many samples run together, then Apply resources and check. Completed work is still verified before reuse.")
+                         "In Review and run, choose parallel sample jobs × cores per sample. Run applies and checks the choice; Apply resources and check previews it without starting. Completed work is verified before reuse.")
             self.page.locator('#resume-parallel').select_option('2')
             self.focus('#resume-resources', 'start')
             self.pause(4)

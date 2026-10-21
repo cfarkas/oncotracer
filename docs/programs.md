@@ -102,8 +102,8 @@ For the dated variant image, inspect the selected toolchain explicitly:
 
 ```bash
 oncotracer doctor --backend docker \
-  --image carlosfarkas/oncotracer:multisample-20261020-r2
-docker run --rm carlosfarkas/oncotracer:multisample-20261020-r2 provenance --json
+  --image carlosfarkas/oncotracer:sample-jobs-20261021
+docker run --rm carlosfarkas/oncotracer:sample-jobs-20261021 provenance --json
 ```
 
 `doctor` covers the core CNA programs. Selected variant callers and resources

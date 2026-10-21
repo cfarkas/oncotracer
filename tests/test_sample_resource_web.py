@@ -1,4 +1,4 @@
-"""Real browser configuration and continuation preserve resource selections."""
+"""Browser API configuration and continuation preserve resource selections."""
 import contextlib
 import io
 from pathlib import Path

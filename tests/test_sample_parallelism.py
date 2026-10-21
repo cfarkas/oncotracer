@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from oncotracer_cli import engine, variants
 from oncotracer_cli.runtime import OncoTracerError, StageLedger
-from oncotracer_cli.sample_resources import allocate, offers, selected_config
+from oncotracer_cli.sample_resources import allocate, offers, selected_config, planning_suggestions
 
 HARDWARE = {'cpu_workers_available': 32, 'ram_available_bytes': 256 * 1024**3}
 
@@ -37,6 +37,25 @@ class SampleResourcesTests(unittest.TestCase):
         for x in choices['choices']:
             self.assertLessEqual(x['allocated_threads'], 16)
             self.assertGreaterEqual(x['memory_gb_per_sample'], 32)
+
+    def test_job_suggestions_adapt_to_machine_memory_and_cohort(self):
+        for cpus, ram, samples in ((12, 96, None), (48, 80, 20), (4, 48, 2), (128, 1024, 3)):
+            hardware = {'cpu_workers_available': cpus, 'ram_available_bytes': ram * 1024**3}
+            plans = planning_suggestions({}, hardware=hardware, sample_count=samples)
+            for plan in plans:
+                self.assertTrue(plan['suggestions'])
+                for choice in plan['suggestions']:
+                    self.assertLessEqual(choice['allocated_threads'], cpus)
+                    self.assertLessEqual(choice['allocated_memory_gb'], .8 * ram)
+                    self.assertLessEqual(choice['parallel_samples'], samples or cpus)
+                    self.assertGreaterEqual(choice['memory_gb_per_sample'], choice['minimum_memory_gb_per_sample'])
+            if cpus == 48:
+                # RAM, not the many CPU threads, limits complete Illumina variants.
+                self.assertLessEqual(max(c['parallel_samples'] for c in plans[1]['suggestions']), 2)
+        plans = planning_suggestions({}, hardware={'cpu_workers_available': 16, 'ram_available_bytes': 24 * 1024**3})
+        self.assertTrue(plans[0]['suggestions'])
+        self.assertEqual(plans[1]['suggestions'], [])
+        self.assertIn('at least 32', plans[1]['error'])
 
     def test_resource_selection_cannot_change_scientific_settings(self):
         with patch('oncotracer_cli.sample_resources.inspect_hardware', return_value=HARDWARE):

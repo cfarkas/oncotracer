@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:multisample-20261020-r2"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:sample-jobs-20261021"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -1682,6 +1682,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="open browser setup; accepts setup options and starts no analysis")
     parser.add_argument("--ffpe", action="store_true",
                         help="with --interactive, preselect Illumina FFPE variants and FFPErase")
+    parser.add_argument("--detect-resources", "--detect_resources", action="store_true",
+                        help="show parallel sample jobs × cores per sample suggestions; starts no analysis")
     parser.add_argument(
         "--version", action="version", version=f"OncoTracer {__version__}"
     )
@@ -1836,6 +1838,12 @@ def parse_arguments(values: Sequence[str], parser: argparse.ArgumentParser | Non
     parser = parser or build_parser()
     values = list(values)
     top_level = bool(values) and values[0].startswith("-")
+    detection = {"--detect-resources", "--detect_resources"}
+    if top_level and detection.intersection(values):
+        if "--interactive" in values or "--ffpe" in values:
+            raise OncoTracerError("Resource detection is read-only; run --detect-resources separately before --interactive")
+        values = ["system", *(value for value in values if value not in detection)]
+        top_level = False
     interactive = top_level and "--interactive" in values
     ffpe = top_level and "--ffpe" in values
     if ffpe and not interactive:

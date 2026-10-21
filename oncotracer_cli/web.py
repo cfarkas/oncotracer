@@ -612,6 +612,7 @@ class WebState:
             project_id = secrets.token_urlsafe(18)
             analysis = "methylation" if config.get("methylation_only") else "both" if config.get("methylation") else "cna"
             prepared = {**result, "id": project_id, "kind": "existing_project", "config": config_path.read_text(),
+                        "docker_image": config.get("docker_image", ""),
                         "resource_choices": resource_choices, "resources_confirmed": data.get('resources') is not None,
                         "valid": checked.returncode == 0 and not report.get("errors"), "check": report,
                         "fingerprint": _fingerprint(paths), "input_snapshot": snapshot,

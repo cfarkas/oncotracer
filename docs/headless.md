@@ -3,6 +3,19 @@
 OncoTracer can configure and run entirely in a terminal. On a server without a
 desktop, you can also connect your laptop browser through SSH.
 
+## Check parallel sample-job options
+
+```bash
+oncotracer --detect-resources
+# Equivalent: oncotracer --detect_resources
+oncotracer --interactive --backend conda
+```
+
+The first command only reports hardware and suggests **parallel samples × cores per
+sample**, such as 5 jobs × 8 cores or 4 jobs × 10 cores when CPU and RAM allow.
+Choose the combination in setup. Both spellings require the current GitHub source.
+See [sample-job planning and shared-server budgets](MULTISAMPLE_QUICKSTART.md).
+
 ## Choose your setup route
 
 | Route | Command | What happens |
@@ -100,11 +113,11 @@ oncotracer setup --non-interactive \
   --sample-name sampleA --status tumor \
   --fastq-1 /data/illumina/sampleA_R1.fastq.gz \
   --fastq-2 /data/illumina/sampleA_R2.fastq.gz \
-  --backend docker --image carlosfarkas/oncotracer:multisample-20261020-r2 \
+  --backend docker --image carlosfarkas/oncotracer:sample-jobs-20261021 \
   --threads 8
 oncotracer check --config /work/docker-study/config/run.yml
 oncotracer run --backend docker \
-  --image carlosfarkas/oncotracer:multisample-20261020-r2 \
+  --image carlosfarkas/oncotracer:sample-jobs-20261021 \
   --config /work/docker-study/config/run.yml
 ```
 

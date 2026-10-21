@@ -28,6 +28,36 @@ class SystemCheckTests(unittest.TestCase):
             "ram_total_bytes": ram * GIB,
         }
 
+    def test_public_detection_aliases_offer_jobs_times_cores_without_writes(self):
+        hardware = self.hardware(256)
+        hardware['cpu_workers_available'] = 40
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / 'must-not-be-created'
+            for alias in ('--detect-resources', '--detect_resources'):
+                output = io.StringIO()
+                with self.subTest(alias=alias), contextlib.redirect_stdout(output), \
+                     patch('oncotracer_cli.system_check.inspect_hardware', return_value=hardware):
+                    self.assertEqual(main([alias, '--path', str(target), '--json']), 0)
+                report = json.loads(output.getvalue())
+                for plan in report['sample_job_plans']:
+                    pairs = {(a['parallel_samples'], a['threads_per_sample']) for a in plan['suggestions']}
+                    self.assertTrue({(5, 8), (4, 10)} <= pairs)
+                self.assertFalse(target.exists())
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), patch('oncotracer_cli.system_check.inspect_hardware', return_value=hardware):
+                self.assertEqual(main(['--detect-resources', '--samples', '3', '--threads', '20']), 0)
+            self.assertIn('2 sample jobs × 10 cores each', output.getvalue())
+            self.assertNotIn('5 sample jobs', output.getvalue())
+
+    def test_detection_cannot_start_setup_or_analysis(self):
+        from oncotracer_cli.cli import parse_arguments
+        from oncotracer_cli.runtime import OncoTracerError
+        for alias in ('--detect-resources', '--detect_resources'):
+            with self.assertRaisesRegex(OncoTracerError, 'read-only'):
+                parse_arguments([alias, '--interactive'])
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                parse_arguments([alias, '--run'])
+
     def test_small_machine_gets_specific_limits_not_blanket_failure(self):
         report = resource_report(
             {"mode": "illumina", "threads": 8}, hardware=self.hardware()

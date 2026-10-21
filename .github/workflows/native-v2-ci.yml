@@ -140,6 +140,11 @@ jobs:
             tests/test_pypi_publish.py \
             tests/test_python_distribution.py
           python3 -m unittest discover -s tests -p 'test_glimpse*.py'
+      - name: Test resource choices and Run dispatch in Firefox
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps firefox
+          python3 -m unittest -v tests.test_sample_resource_browser
       - name: Run shell and standalone documentation regression tests
         run: |
           set -Eeuo pipefail
