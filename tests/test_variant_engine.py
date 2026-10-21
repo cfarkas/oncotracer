@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 from oncotracer_cli import engine, variants  # noqa: E402
 from oncotracer_cli.runtime import OncoTracerError, OncoTracerPartialFailure  # noqa: E402
 from tests.test_output_safety import make_illumina_config, make_runtime_root  # noqa: E402
+from tests.resource_fixture import ResourceFixtureCase  # noqa: E402
 
 
 def variant_config(base: Path, output: Path) -> Path:
@@ -26,7 +27,7 @@ def variant_config(base: Path, output: Path) -> Path:
     return config
 
 
-class VariantEngineTests(unittest.TestCase):
+class VariantEngineTests(ResourceFixtureCase):
     def test_variant_cancellation_stops_before_copy_number_analysis(self):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)

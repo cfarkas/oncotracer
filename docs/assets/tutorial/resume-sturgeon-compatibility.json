@@ -346,7 +346,7 @@
       ]
     },
     "oncotracer_cli/cli.py": {
-      "current_sha256": "3afa649ec2133026b99f72d0f9e5acb6132161215c25cb1797b557e909ae8415",
+      "current_sha256": "19d95bd44a29373a263566bac19cf45cb22e4ac9efcee95f491afdde38bbb122",
       "recorded_sha256": "46667faedb142a8d7851f1333a877178d264e11790e6433fb7411d781d17679c",
       "changes": [
         {
@@ -357,43 +357,43 @@
         },
         {
           "start": 1655,
-          "end": 1718,
-          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:multisample-20261020\"\n",
+          "end": 1721,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:multisample-20261020-r2\"\n",
           "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:run-audit-20261018\"\n"
         },
         {
-          "start": 28545,
-          "end": 29143,
+          "start": 28548,
+          "end": 29146,
           "current": "    if not args.dry_run and getattr(args, \"command\", None) != \"internal-run\":\n        from .project_resume import has_recorded_outputs, resume_project, audit_intermediates, audit_summary\n        if config_path.name == \"run.yml\" and config_path.parent.name == \"config\" and has_recorded_outputs(config_path.parent.parent):\n            result = resume_project(config_path.parent.parent, backend=getattr(args, \"backend\", None), image=getattr(args, \"image\", None))\n            args.backend = result[\"backend\"]\n            print(audit_summary(audit_intermediates(config_path.parent.parent)), flush=True)\n",
           "recorded": ""
         },
         {
-          "start": 31795,
-          "end": 31857,
+          "start": 31798,
+          "end": 31860,
           "current": "    if parallel is not None:\n        parallel_value(parallel)\n",
           "recorded": "    if parallel is not None and (type(parallel) is not int or parallel < 1):\n        raise OncoTracerError(\"parallel_samples must be a positive integer\")\n"
         },
         {
-          "start": 62467,
-          "end": 62677,
+          "start": 62470,
+          "end": 62680,
           "current": "    if getattr(args, \"runtime_identity\", False):\n        from .output_safety import current_runtime_identity\n        print(json.dumps(current_runtime_identity(runtime_root()), sort_keys=True))\n        return 0\n",
           "recorded": ""
         },
         {
-          "start": 63578,
-          "end": 63745,
+          "start": 63581,
+          "end": 63748,
           "current": "    parser.add_argument(\"--parallel-samples\", type=parallel_argument, help=\"maximum concurrent samples: auto or a positive integer; total CPU/RAM budgets are shared\")\n",
           "recorded": "    parser.add_argument(\"--parallel-samples\", type=int, help=\"maximum concurrent Illumina sample workflows (default: config, otherwise 1)\")\n"
         },
         {
-          "start": 69777,
-          "end": 69879,
+          "start": 69780,
+          "end": 69882,
           "current": "    provenance_format = provenance.add_mutually_exclusive_group()\n    provenance_format.add_argument(\n",
           "recorded": "    provenance.add_argument(\n"
         },
         {
-          "start": 69955,
-          "end": 70129,
+          "start": 69958,
+          "end": 70132,
           "current": "    )\n    provenance_format.add_argument(\n        \"--runtime-identity\", action=\"store_true\",\n        help=\"Emit the exact runtime identity used to validate existing outputs\"\n",
           "recorded": ""
         }
@@ -484,13 +484,13 @@
       ]
     },
     "oncotracer_cli/variant_install_help.py": {
-      "current_sha256": "70bf1feab8eb647de182f7cf7e7323b8a56a45ff2dcba9ba2a0921b95bb5fd8d",
+      "current_sha256": "2ad41950920e80238a717cfd45f8f1869452680f57a10464dc2f0d710d37889a",
       "recorded_sha256": "bfc0fc1297e8301262cf442811f560f53b0116e0cc9d142791523da0e1aaeb34",
       "changes": [
         {
           "start": 345,
-          "end": 400,
-          "current": "IMAGE = \"carlosfarkas/oncotracer:multisample-20261020\"\n",
+          "end": 403,
+          "current": "IMAGE = \"carlosfarkas/oncotracer:multisample-20261020-r2\"\n",
           "recorded": "IMAGE = \"carlosfarkas/oncotracer:run-audit-20261018\"\n"
         }
       ]

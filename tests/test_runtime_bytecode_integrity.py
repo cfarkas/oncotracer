@@ -24,7 +24,9 @@ class RegeneratedBytecodeIntegrityTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix="oncotracer-bytecode-")
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.package = self.root / f"lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages/example"
+        package = self.root / f"lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages/example"
+        # Bind dynamic interpreter paths to this fixture's owned temporary tree.
+        self.package = self.root / package.relative_to(self.root)
         self.package.mkdir(parents=True)
         self.source = self.package / "__config__.py"
         # Executing the package is forbidden; compiling it is harmless.
@@ -33,11 +35,13 @@ class RegeneratedBytecodeIntegrityTests(unittest.TestCase):
         binary.parent.mkdir()
         binary.write_bytes(b"sealed interpreter placeholder\n")
         binary.chmod(0o755)
-        self.cache = Path(py_compile.compile(str(self.source), dfile="/build/__config__.py"))
+        cache = Path(py_compile.compile(str(self.source), dfile="/build/__config__.py"))
+        self.cache = self.root / cache.relative_to(self.root)
         self.seal_fixture()
 
     def seal_fixture(self):
-        (self.root / safety.CHILD_INVENTORY).unlink(missing_ok=True)
+        inventory = self.root / safety.CHILD_INVENTORY
+        (self.root / inventory.relative_to(self.root)).unlink(missing_ok=True)
         self.marker = {"inventory_sha256": safety._write_child_inventory(self.root)}
         self.seal = (self.root / safety.CHILD_INVENTORY).read_bytes()
 
@@ -84,7 +88,8 @@ class RegeneratedBytecodeIntegrityTests(unittest.TestCase):
         self.cache.unlink()
         for optimization in (1, 2):
             with self.subTest(optimization=optimization):
-                cache = Path(py_compile.compile(str(self.source), dfile="/build/config.py", optimize=optimization))
+                compiled = Path(py_compile.compile(str(self.source), dfile="/build/config.py", optimize=optimization))
+                cache = self.root / compiled.relative_to(self.root)
                 self.seal_fixture()
                 py_compile.compile(str(self.source), optimize=optimization)
                 self.verify()
