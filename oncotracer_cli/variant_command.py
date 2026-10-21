@@ -251,6 +251,9 @@ def _command_variants(args) -> int:
                    "variant_failed_samples": status.get("failed_samples", []),
                    "completed_samples": status.get("completed_samples", []), "failed_samples": status.get("failed_samples", []),
                    "variant_bam_manifest": str(manifest), "variant_reference": str(reference)}
+        summary["input_samples"] = list(bams)
+        summary["requested_branches"] = ["variants"]
+        summary["variants_sample_statuses"] = {row["sample"]: row["status"] for row in status.get("samples", [])}
         if status.get("error"):
             summary["variant_error"] = status["error"]
         atomic_write_workflow_summary(outdir / "06_workflow_summary", summary)
@@ -258,6 +261,8 @@ def _command_variants(args) -> int:
         from .results import write_results_index
         write_results_index(outdir)
         lease.validate()
+    from .completion import summarize_completion, completion_lines
+    print("\n".join(completion_lines(summarize_completion(summary))), flush=True)
     if status['overall_status'] == 'partial_failure':
         print(f"PARTIAL FAILURE: {_partial_failure_cause(status)}\nCompleted outputs are preserved: {outdir}\nResults: {outdir / 'index.html'}")
         return 2

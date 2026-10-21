@@ -22,6 +22,37 @@ the remaining sections preserve QC, exports and troubleshooting files.
 The dashboard explicitly marks stage 05 as disabled when interpretation was not
 requested. To add it later, see [reports for a completed run](llm_reports.md#add-reports-to-a-completed-run).
 
+## Completed and incomplete samples
+
+The terminal, browser, results dashboard and final report show the same counts
+at the end of a finalized run. For example:
+
+```text
+Samples: completed 6/8; incomplete 2/8.
+CNA: completed 8/8; incomplete 0/8.
+Small variants: completed 6/8; incomplete 2/8.
+S7: Small variants (partial_failure)
+S8: Small variants (not_started)
+```
+
+A sample is complete only when **every requested analysis** finishes. An aligned
+BAM alone does not make the sample complete. Incomplete includes failed,
+interrupted, pending and unavailable assessments, including missing CpG calls or
+classifier probes. Explicitly inapplicable work is counted separately. If all
+samples finish but a cohort output fails, that remaining cohort work is still
+listed and the run retains its failure status.
+
+The saved `workflow_summary.json`, `native_run_manifest.json` and
+`final_report.json` include a `completion` object with counts, sample names and
+remaining branches. The existing `completed_samples` field still describes CNA;
+use `completion` for the whole analysis.
+
+An early stop can happen before counts are finalized. The browser then says
+counts are unavailable for that attempt; it never presents an older run's totals
+as current. Continue the project to validate retained stages and finish the
+remaining work. Changing the parallel sample allocation does not mark work as
+complete or bypass those checks.
+
 ## Which result is authoritative?
 
 | Stage | Main question | Status |

@@ -34,7 +34,7 @@ Use the path printed by setup. The command above uses Conda. For Docker, use:
 
 ```bash
 oncotracer run --backend docker --config "$PWD/my-study/config/run.yml" \
-  --image carlosfarkas/oncotracer:sample-jobs-20261021
+  --image carlosfarkas/oncotracer:completion-counts-20261021
 ```
 
 ## Check progress and results

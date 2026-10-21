@@ -61,7 +61,8 @@ function renderJobStatus(job){
   $('job-status').textContent=labels[job.status]||'Variant analysis failed';
   $('job-badge').textContent=active?job.status:partial?'Completed results retained':job.status==='complete'?'Complete':'Exit '+(job.exit_code??'—');
   $('job-note').textContent=partial?'Some required assessments could not be completed. Completed results are retained. Open the results to review the available outputs and unfinished assessments.':job.status==='failed'?'The analysis could not finish. Review the raw execution log for error details.':'';
-  show('job-note',partial||job.status==='failed');
+  if(!active&&job.status!=='removed'&&job.progress?.note)$('job-note').textContent+=' '+job.progress.note;
+  show('job-note',Boolean($('job-note').textContent.trim()));
   const state=String(job.project_id)+':'+job.status;
   if($('log-details').dataset.jobState!==state){$('log-details').open=!partial;$('log-details').dataset.jobState=state;}
 }

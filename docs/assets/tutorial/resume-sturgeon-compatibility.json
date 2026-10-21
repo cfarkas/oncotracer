@@ -4,7 +4,7 @@
   "note": "Historical videos retain original receipts. Resume, model controls and ONT caller selection with controls are tested separately. Reverse deltas reconstruct recorded source exactly.",
   "files": {
     "oncotracer_cli/web.py": {
-      "current_sha256": "715d250f506bc4acc6a9e408c81a1b8527ce1923938ee69be392fdd041e01cfc",
+      "current_sha256": "75fb8885691aab10a4a950dab599aad7566d579ff1d6ff3aabb065c96cc555fb",
       "recorded_sha256": "462e51e919f5b5da66f9a898d8b261f6152522517b739bacaecfdbeec685170a",
       "changes": [
         {
@@ -62,8 +62,14 @@
           "recorded": ""
         },
         {
-          "start": 64294,
-          "end": 64530,
+          "start": 48794,
+          "end": 49053,
+          "current": "            from .run_completion import published_completion\n            job[\"completion\"] = published_completion(\n                outdir, prepared.get('fingerprint', {}).get(prepared.get('config_path'), ''),\n                job.get('_prior_manifest_mtime'))\n",
+          "recorded": ""
+        },
+        {
+          "start": 64553,
+          "end": 64789,
           "current": "                       \"/api/resource-options\": self.server.state.resource_options,\n                       \"/api/resume\": self.server.state.resume,\n                       \"/api/sturgeon-resources\": self.server.state.sturgeon_resources,\n",
           "recorded": ""
         }
@@ -196,7 +202,7 @@
       ]
     },
     "oncotracer_cli/web_ui.py": {
-      "current_sha256": "bdcf1760e3414c20156cd8b27c4e0011b895100644711c2d4ba12f1f4eae8509",
+      "current_sha256": "f2ccabd0a787aef1107f61010917591a54945fd2d7f7458d9a838caa50cc5e12",
       "recorded_sha256": "7dd8921203d5b1c69505e0ed86899ba562c7a4aa6c54be9307397a6503444150",
       "changes": [
         {
@@ -212,15 +218,21 @@
           "recorded": "function settings(){methylationSettings();variantSettings();if(!scan)return;const controls=selectedRows().some(row=>row.querySelector('.type-select').value==='normal'||(row.querySelector('.type-select').value==='custom'&&row.querySelector('.role').value==='normal'));const ont=mode==='ont',cna=$('analysis').value!=='methylation';$('caller').options[0].disabled=controls;if(controls)$('caller').value='qdnaseq';const ichor=ont&&$('caller').value==='ichorcna';show('controls-note',ont&&controls);show('caller-field',ont&&cna);show('binsize-field',cna);show('reports-field',cna);show('report-context-field',cna&&$('reports').checked);show('methylation-fields',$('analysis').value!=='cna');const old=$('binsize').value,caller=ichor?'ichorcna':'qdnaseq',callerChanged=binsizeCaller!==caller;binsizeCaller=caller;$('binsize').replaceChildren();for(const size of ichor?[500]:binsizes){const option=node('option',String(size));option.value=size;$('binsize').append(option);}$('binsize').value=ichor?'500':(!callerChanged&&binsizes.map(String).includes(old)?old:'100');$('binsize-default').textContent=ichor?'ichorCNA uses 500 kb bins.':'Default: 100 kb for QDNAseq.';const count=selectedRows().length;$('sample-count').textContent=count+' / '+scan.samples.length+' assigned';$('gistic').disabled=count<2;if(count<2)$('gistic').checked=false;$('gistic-note').textContent=count<2?'GISTIC needs at least two assigned samples. CNA and interpretation reports are available for a single sample.':'GISTIC is available for this cohort; leave it off unless recurrence analysis is needed.';invalidate();}\n"
         },
         {
-          "start": 88156,
-          "end": 88311,
+          "start": 79689,
+          "end": 80087,
+          "current": "    $('job-status').textContent=job.status==='running'?'Analysis running\u2026':job.status==='stopping'?(job.stop_error||'Stopping analysis\u2026'):job.status==='stopped'?'Analysis stopped':job.status==='removed'?'Project folder removed':job.status==='complete'?'Analysis completed \u00b7 exit 0':job.status==='partial_failure'?'Analysis incomplete \u00b7 exit '+job.exit_code:'Analysis failed \u00b7 exit '+job.exit_code;\n",
+          "recorded": "    $('job-status').textContent=job.status==='running'?'Analysis running\u2026':job.status==='stopping'?(job.stop_error||'Stopping analysis\u2026'):job.status==='stopped'?'Analysis stopped':job.status==='removed'?'Project folder removed':job.status==='complete'?'Analysis completed \u00b7 exit 0':'Analysis failed \u00b7 exit '+job.exit_code;\n"
+        },
+        {
+          "start": 88231,
+          "end": 88386,
           "current": "from .resume_ui import add_resume_ui\nPAGE = add_resume_ui(PAGE)\nfrom .sample_resource_ui import add_sample_resource_ui\nPAGE = add_sample_resource_ui(PAGE)\n",
           "recorded": ""
         }
       ]
     },
     "rendered_page": {
-      "current_sha256": "13d9b0448c87d171c85c5933ed82724df0c39b381f12a814246ad08a267d9754",
+      "current_sha256": "a681e36dc807bd0c96361bc6c4b92e0d33814497879e5dcd64806efc266e1273",
       "recorded_sha256": "cd9bf48e493a5ffdb70357d1625fb56310d1258fb03604d4c8a2e4e10104c8df",
       "changes": [
         {
@@ -308,63 +320,69 @@
           "recorded": "function showReviewedRun(job){\n"
         },
         {
-          "start": 121741,
-          "end": 121790,
+          "start": 120374,
+          "end": 120772,
+          "current": "    $('job-status').textContent=job.status==='running'?'Analysis running\u2026':job.status==='stopping'?(job.stop_error||'Stopping analysis\u2026'):job.status==='stopped'?'Analysis stopped':job.status==='removed'?'Project folder removed':job.status==='complete'?'Analysis completed \u00b7 exit 0':job.status==='partial_failure'?'Analysis incomplete \u00b7 exit '+job.exit_code:'Analysis failed \u00b7 exit '+job.exit_code;\n",
+          "recorded": "    $('job-status').textContent=job.status==='running'?'Analysis running\u2026':job.status==='stopping'?(job.stop_error||'Stopping analysis\u2026'):job.status==='stopped'?'Analysis stopped':job.status==='removed'?'Project folder removed':job.status==='complete'?'Analysis completed \u00b7 exit 0':'Analysis failed \u00b7 exit '+job.exit_code;\n"
+        },
+        {
+          "start": 121816,
+          "end": 121865,
           "current": "  setAnalysisEntry(cpgContinuation?'cpg':'new');\n",
           "recorded": ""
         },
         {
-          "start": 124055,
-          "end": 124548,
+          "start": 124130,
+          "end": 124623,
           "current": "$('run').onclick=()=>busy($('run'),async()=>{if(!prepared)throw Error('Save and review a configuration first.');if(prepared.kind==='existing_project'&&prepared.resource_choices){\n    if(!resumeResourcesReady)throw Error('Correct the sample-job settings before Run.');\n    await applyResumeResources();\n    if(!prepared?.valid||!resumeResourcesReady)throw Error('Resolve the checks below before Run.');\n  }\n  await api('/api/run',{project_id:prepared.id});await poll();$('run').hidden=true;});\n",
           "recorded": "$('run').onclick=()=>busy($('run'),async()=>{if(!prepared)throw Error('Save and review a configuration first.');await api('/api/run',{project_id:prepared.id});await poll();$('run').hidden=true;});\n"
         },
         {
-          "start": 124731,
-          "end": 124980,
+          "start": 124806,
+          "end": 125055,
           "current": "  if(analysisEntry==='new'&&defaults.mode&&variantSpecimen){show('workflow',true);if(defaults.input_folder)await $('scan').onclick();if(defaults.variant_matched_normals){variantPairDefaults={...defaults.variant_matched_normals};variantSettings();}}\n",
           "recorded": "  if(defaults.mode&&variantSpecimen){show('workflow',true);if(defaults.input_folder)await $('scan').onclick();if(defaults.variant_matched_normals){variantPairDefaults={...defaults.variant_matched_normals};variantSettings();}}\n"
         },
         {
-          "start": 124982,
-          "end": 134906,
+          "start": 125057,
+          "end": 134981,
           "current": "\nlet analysisEntry='choose',entryDefaults={};\nfunction setAnalysisEntry(kind){\n  analysisEntry=kind;$('analysis-root').dataset.analysisEntry=kind;\n  $('choose-new-analysis').setAttribute('aria-pressed',String(kind==='new'));\n  $('choose-existing-analysis').setAttribute('aria-pressed',String(kind==='resume'));\n  show('analysis-choice',kind!=='active'&&kind!=='cpg');\n}\nasync function chooseAnalysisEntry(kind){\n  if(operationBusy)return;\n  if(activeJob&&['running','stopping'].includes(activeJob.status))throw Error('Stop the active analysis before changing workflows.');\n  invalidate();show('error',false);$('run').disabled=true;\n  show('reviewed-run',false);$('config-preview').parentElement.hidden=false;\n  setAnalysisEntry(kind);\n  if(kind==='new'){\n    show('platform-card',true);\n    show('workflow',Boolean(mode&&variantSpecimen));\n    if(!scan)await restoreRunOrDiscover(entryDefaults);\n  }else show('workflow',false);\n}\n$('choose-new-analysis').onclick=()=>chooseAnalysisEntry('new').catch(failure);\n$('choose-existing-analysis').onclick=()=>chooseAnalysisEntry('resume').catch(failure);\nfunction resumeSettingsChanged(){\n  invalidate();show('error',false);$('run').disabled=true;\n  $('resume-note').textContent='Load saved settings and check again before Run.';\n  show('resume-image-field',$('resume-backend').value!=='conda');\n}\nfor(const id of ['resume-project','resume-backend','resume-image']){\n  $(id).addEventListener('input',resumeSettingsChanged);\n  $(id).addEventListener('change',resumeSettingsChanged);\n}\n$('resume-current-image').onclick=()=>{\n  $('resume-backend').value='docker';$('resume-image').value=$('resume-image').dataset.current;\n  resumeSettingsChanged();\n};\nasync function loadResume(project,options=null){\n  invalidate();$('run').disabled=true;\n  if(!project.trim())throw Error('Choose the project folder containing config/run.yml and results.');\n  options=options||{backend:$('resume-backend').value,image:$('resume-backend').value==='conda'?'':$('resume-image').value.trim()};\n  prepared=await api('/api/resume',{project,...options});\n  showResumedProject();\n}\nfunction showResumedProject(){\n  setAnalysisEntry('resume');\n  $('resume-project').value=prepared.project;\n  $('resume-backend').value=prepared.backend;\n  $('resume-image').value=prepared.docker_image||'';\n  $('config-preview').textContent=prepared.config;\n  $('saved-path').textContent='Saved project: '+prepared.project;\n  $('check-badge').textContent=prepared.valid?'Resume checked':'Needs attention';\n  $('check-messages').replaceChildren();\n  for(const message of prepared.check.errors||[])$('check-messages').append(node('p',message,'error'));\n  for(const message of prepared.check.warnings||[])$('check-messages').append(node('p',message,'notice'));\n  const samples=prepared.reviewed_summary.samples;\n  $('check-messages').append(node('p','Retained '+samples.length+' samples: '+samples.map(s=>s.name+' ('+s.sample_type+')').join(', ')));\n  $('resume-note').textContent='Loaded '+prepared.project+'. Review saved settings below, then Run to continue.';\n  const choices=prepared.resource_choices;\n  $('resume-threads').value=choices?.threads||prepared.reviewed_summary.config.threads||1;\n  $('resume-memory').value=choices?.memory||'auto';\n  showResourceChoices('resume',choices,true);\n  $('run').disabled=!prepared.valid||Boolean(choices&&!resumeResourcesReady);$('run').hidden=false;\n  show('workflow',true);show('review-card',true);$('review-card').scrollIntoView({behavior:'smooth'});\n}\n$('resume-project-button').onclick=()=>busy($('resume-project-button'),()=>loadResume($('resume-project').value));\n$('prepare-sturgeon').onclick=()=>busy($('prepare-sturgeon'),async()=>{\n  if(!$('license').checked)throw Error('Read the linked Sturgeon license and explicitly acknowledge it before downloading.');\n  $('sturgeon-download-status').textContent='Downloading or verifying the pretrained general model and hg38 probes. Keep this page open\u2026';\n  try{\n    const resources=await api('/api/sturgeon-resources',{accept_sturgeon_license:true});\n    for(const key of ['sturgeon_model','sturgeon_probes','sturgeon_executable'])if(resources[key])$(key).value=resources[key];\n    if(cpgContinuation)for(const key of ['sturgeon_model','sturgeon_probes','sturgeon_executable'])if(resources[key]){\n      cpgContinuation.missing_resources.sturgeon=(cpgContinuation.missing_resources.sturgeon||[]).filter(item=>item!==key);\n    }\n    $('sturgeon-download-status').textContent='Model archive and hg38 probes verified. Paths are filled in; Save/check validates the complete analysis before Run.';\n    updateCpgRequirements();invalidate();\n  }catch(error){$('sturgeon-download-status').textContent='Preparation failed; no analysis started. '+error.message;throw error;}\n});\n\n\nconst resourceRequestVersion={sample:0,resume:0};\nlet resumeResourcesReady=false;\nfunction resourceSelection(prefix){\n  const raw=$(prefix+'-parallel').value;\n  return {threads:Number($(prefix==='sample'?'threads':'resume-threads').value),parallel_samples:raw==='auto'?'auto':Number(raw),memory:$(prefix+'-memory').value.trim()||'auto'};\n}\nfunction showResourceChoices(prefix,result,initial=false){\n  if(!result){show(prefix+'-resources',false);return;}\n  show(prefix+'-resources',true);\n  if(prefix==='resume')resumeResourcesReady=!result.error;\n  if(result.error){$(prefix+'-resource-note').textContent=result.error;return;}\n  const select=$(prefix+'-parallel'),prior=initial?String(result.selected_parallel_samples??'auto'):select.value;\n  select.replaceChildren();\n  const label=a=>a.parallel_samples+' sample job'+(a.parallel_samples===1?'':'s')+' \u00d7 '+a.threads_per_sample+' cores each \u00b7 '+a.memory_gb_per_sample.toFixed(1)+' GiB RAM each';\n  const recommended=node('option','Automatic \u00b7 suggested now: '+label(result.recommended));recommended.value='auto';select.append(recommended);\n  for(const choice of result.choices){const option=node('option',label(choice));option.value=String(choice.parallel_samples);select.append(option);}\n  select.value=[...select.options].some(o=>o.value===prior)?prior:'auto';\n  if(prefix==='resume')$('resume-threads').value=result.threads;\n  $(prefix+'-resource-note').textContent='Total task budget: '+result.threads+' CPU threads / '+result.recommended.total_memory_gb.toFixed(1)+' GiB. '+result.note;\n}\nasync function refreshResourceChoices(prefix){\n  const version=++resourceRequestVersion[prefix];\n  const selection=resourceSelection(prefix);\n  const context=prefix==='resume'?{project:$('resume-project').value}:{scan_id:scan?.scan_id,variants:$('variants').checked};\n  if(prefix==='resume'){resumeResourcesReady=false;$('run').disabled=true;}\n  $(prefix+'-resource-note').textContent='Checking sample-job options\u2026';\n  try{\n    const result=await api('/api/resource-options',{...context,threads:selection.threads||undefined,memory:selection.memory});\n    if(version!==resourceRequestVersion[prefix])return;\n    showResourceChoices(prefix,result);\n    if(prefix==='resume'){show('error',false);$('run').disabled=!prepared?.valid||!resumeResourcesReady;}\n  }catch(error){\n    if(version!==resourceRequestVersion[prefix])return;\n    $(prefix+'-resource-note').textContent=error.message;\n    throw error;\n  }\n}\nfor(const prefix of ['sample','resume']){\n  $(prefix+'-detect-resources').onclick=()=>busy($(prefix+'-detect-resources'),()=>refreshResourceChoices(prefix));\n  for(const id of [prefix+'-memory',prefix+'-parallel',prefix==='sample'?'threads':'resume-threads']){\n    $(id).addEventListener('change',()=>{\n      if(prefix==='sample'){invalidate();$('run').disabled=true;}\n      else $('check-badge').textContent='Resources changed \u00b7 checked again at Run';\n      if(id!==prefix+'-parallel'&&(prefix==='resume'||scan))refreshResourceChoices(prefix).catch(failure);\n    });\n  }\n}\n$('variants').addEventListener('change',()=>{if(scan)refreshResourceChoices('sample').catch(failure);});\nasync function applyResumeResources(){\n  const project=$('resume-project').value;\n  const resources=resourceSelection('resume');\n  await loadResume(project,{backend:$('resume-backend').value,\n    image:$('resume-backend').value==='conda'?'':$('resume-image').value.trim(),resources});\n}\n$('resume-apply-resources').onclick=()=>busy($('resume-apply-resources'),applyResumeResources);\n\n(async()=>{try{if(!token)throw Error('Open the complete URL printed by oncotracer web, including the session code after #.');const system=await api('/api/system');hardware=system.hardware;binsizes=system.qdnaseq_binsizes;for(const place of system.locations||[]){const button=node('button',place.name);button.title=place.path;button.onclick=()=>browse(place.path);$('browser-shortcuts').append(button);}$('input-folder').value=system.start_dir;$('project-parent').value=system.start_dir;$('project-name').value=system.suggested_project_name||'oncotracer-analysis';$('threads').value=system.suggested_threads;$('threads').max=hardware.cpu_workers_available;const ram=bytes=>bytes===null||bytes===undefined?'Unknown':(bytes/1073741824).toFixed(1)+' GiB';for(const [value,label]of[[hardware.cpu_workers_available,'CPU workers available'],[ram(hardware.ram_available_bytes),'RAM available'],[ram(hardware.ram_total_bytes),'RAM total'],[String((hardware.gpus||[]).length),'GPUs detected']]){const item=node('div');item.append(node('strong',String(value)),node('span',label));$('hardware').append(item);}$('gpu-note').textContent=(hardware.gpus||[]).map(gpu=>gpu.name+(gpu.memory_total_bytes?' \u00b7 '+ram(gpu.memory_total_bytes)+' VRAM':'')).join('; ')+' '+(hardware.gpu_note||'CNA analysis uses CPU.');const defaults=system.defaults||{};entryDefaults=defaults;for(const key of ['variant_parallel_samples','variant_memory','variant_patients','variant_confidence_gwas','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])if(defaults[key])$(key).value=defaults[key];\n",
           "recorded": "(async()=>{try{if(!token)throw Error('Open the complete URL printed by oncotracer web, including the session code after #.');const system=await api('/api/system');hardware=system.hardware;binsizes=system.qdnaseq_binsizes;for(const place of system.locations||[]){const button=node('button',place.name);button.title=place.path;button.onclick=()=>browse(place.path);$('browser-shortcuts').append(button);}$('input-folder').value=system.start_dir;$('project-parent').value=system.start_dir;$('project-name').value=system.suggested_project_name||'oncotracer-analysis';$('threads').value=system.suggested_threads;$('threads').max=hardware.cpu_workers_available;const ram=bytes=>bytes===null||bytes===undefined?'Unknown':(bytes/1073741824).toFixed(1)+' GiB';for(const [value,label]of[[hardware.cpu_workers_available,'CPU workers available'],[ram(hardware.ram_available_bytes),'RAM available'],[ram(hardware.ram_total_bytes),'RAM total'],[String((hardware.gpus||[]).length),'GPUs detected']]){const item=node('div');item.append(node('strong',String(value)),node('span',label));$('hardware').append(item);}$('gpu-note').textContent=(hardware.gpus||[]).map(gpu=>gpu.name+(gpu.memory_total_bytes?' \u00b7 '+ram(gpu.memory_total_bytes)+' VRAM':'')).join('; ')+' '+(hardware.gpu_note||'CNA analysis uses CPU.');const defaults=system.defaults||{};for(const key of ['variant_parallel_samples','variant_memory','variant_patients','variant_confidence_gwas','variant_glimpse_reference_dir','variant_glimpse_bin','variant_resource_dir','variant_reuse_from','variant_nextflow','variant_workflow_source'])if(defaults[key])$(key).value=defaults[key];\n"
         },
         {
-          "start": 137008,
-          "end": 137577,
+          "start": 137083,
+          "end": 137652,
           "current": "$('resume-image').dataset.current=system.default_docker_image||'';$('resume-image').placeholder=system.default_docker_image||'';if(['conda','docker'].includes(defaults.backend))$('resume-backend').value=defaults.backend;if(defaults.image)$('resume-image').value=defaults.image;show('resume-image-field',$('resume-backend').value!=='conda');if(system.resume_project){$('resume-project').value=system.resume_project;$('resume-note').textContent='Existing project detected. Load its saved settings above to continue.';}if(system.cpg)initializeCpgContinuation(system.cpg);\n",
           "recorded": "if(system.cpg)initializeCpgContinuation(system.cpg);\n"
         },
         {
-          "start": 144262,
-          "end": 144450,
+          "start": 144337,
+          "end": 144525,
           "current": "  show('variant-caller-settings',ready&&!glimpse);show('variant-glimpse-settings',ready&&glimpse);show('variant-glimpse-resources',ready&&glimpse);show('variant-parallel-controls',ready);\n",
           "recorded": "  show('variant-caller-settings',ready&&!glimpse);show('variant-glimpse-settings',ready&&glimpse);show('variant-glimpse-resources',ready&&glimpse);\n"
         },
         {
-          "start": 148036,
-          "end": 148036,
+          "start": 148111,
+          "end": 148111,
           "current": "",
           "recorded": "    const parallel=Number(get('variant_parallel_samples').value);\n    if(!Number.isInteger(parallel)||parallel<1)throw Error('Samples running at once must be a positive integer.');\n    data.variant_parallel_samples=parallel;data.variant_memory=get('variant_memory').value.trim()||'32GB';\n"
         },
         {
-          "start": 148292,
-          "end": 148639,
+          "start": 148367,
+          "end": 148714,
           "current": "  const parallel=get('variant_parallel_samples').value.trim();\n  if(parallel!=='auto'&&(!/^\\d+$/.test(parallel)||Number(parallel)<1))throw Error('Samples running at once must be auto or a positive integer.');\n  data.variant_parallel_samples=parallel==='auto'?'auto':Number(parallel);data.variant_memory=get('variant_memory').value.trim()||'auto';\n",
           "recorded": ""
         },
         {
-          "start": 169722,
-          "end": 169855,
+          "start": 169797,
+          "end": 169930,
           "current": "  else {$('prepare').disabled=false;$('run').disabled=!prepared?.valid||Boolean(prepared?.resource_choices&&!resumeResourcesReady);}\n",
           "recorded": "  else {$('prepare').disabled=false;$('run').disabled=!prepared?.valid;}\n"
         }
       ]
     },
     "oncotracer_cli/cli.py": {
-      "current_sha256": "e24627d027d813008097bfbd22e12634756124afc743a8b9364d33025cff33ce",
+      "current_sha256": "7546993274cb14a0a0ea5d88d57e06e2890251187ac17e9d3a49805ae4235acd",
       "recorded_sha256": "46667faedb142a8d7851f1333a877178d264e11790e6433fb7411d781d17679c",
       "changes": [
         {
@@ -375,62 +393,68 @@
         },
         {
           "start": 1655,
-          "end": 1718,
-          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:sample-jobs-20261021\"\n",
+          "end": 1724,
+          "current": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:completion-counts-20261021\"\n",
           "recorded": "DEFAULT_IMAGE = \"carlosfarkas/oncotracer:run-audit-20261018\"\n"
         },
         {
-          "start": 28545,
-          "end": 29143,
+          "start": 28551,
+          "end": 29149,
           "current": "    if not args.dry_run and getattr(args, \"command\", None) != \"internal-run\":\n        from .project_resume import has_recorded_outputs, resume_project, audit_intermediates, audit_summary\n        if config_path.name == \"run.yml\" and config_path.parent.name == \"config\" and has_recorded_outputs(config_path.parent.parent):\n            result = resume_project(config_path.parent.parent, backend=getattr(args, \"backend\", None), image=getattr(args, \"image\", None))\n            args.backend = result[\"backend\"]\n            print(audit_summary(audit_intermediates(config_path.parent.parent)), flush=True)\n",
           "recorded": ""
         },
         {
-          "start": 31795,
-          "end": 31857,
+          "start": 31801,
+          "end": 31863,
           "current": "    if parallel is not None:\n        parallel_value(parallel)\n",
           "recorded": "    if parallel is not None and (type(parallel) is not int or parallel < 1):\n        raise OncoTracerError(\"parallel_samples must be a positive integer\")\n"
         },
         {
-          "start": 62467,
-          "end": 62677,
+          "start": 62473,
+          "end": 62683,
           "current": "    if getattr(args, \"runtime_identity\", False):\n        from .output_safety import current_runtime_identity\n        print(json.dumps(current_runtime_identity(runtime_root()), sort_keys=True))\n        return 0\n",
           "recorded": ""
         },
         {
-          "start": 63578,
-          "end": 63745,
+          "start": 63584,
+          "end": 63751,
           "current": "    parser.add_argument(\"--parallel-samples\", type=parallel_argument, help=\"maximum concurrent samples: auto or a positive integer; total CPU/RAM budgets are shared\")\n",
           "recorded": "    parser.add_argument(\"--parallel-samples\", type=int, help=\"maximum concurrent Illumina sample workflows (default: config, otherwise 1)\")\n"
         },
         {
-          "start": 66406,
-          "end": 66604,
+          "start": 66412,
+          "end": 66610,
           "current": "    parser.add_argument(\"--detect-resources\", \"--detect_resources\", action=\"store_true\",\n                        help=\"show parallel sample jobs \u00d7 cores per sample suggestions; starts no analysis\")\n",
           "recorded": ""
         },
         {
-          "start": 69975,
-          "end": 70077,
+          "start": 69981,
+          "end": 70083,
           "current": "    provenance_format = provenance.add_mutually_exclusive_group()\n    provenance_format.add_argument(\n",
           "recorded": "    provenance.add_argument(\n"
         },
         {
-          "start": 70153,
-          "end": 70327,
+          "start": 70159,
+          "end": 70333,
           "current": "    )\n    provenance_format.add_argument(\n        \"--runtime-identity\", action=\"store_true\",\n        help=\"Emit the exact runtime identity used to validate existing outputs\"\n",
           "recorded": ""
         },
         {
-          "start": 72901,
-          "end": 73310,
+          "start": 72907,
+          "end": 73316,
           "current": "    detection = {\"--detect-resources\", \"--detect_resources\"}\n    if top_level and detection.intersection(values):\n        if \"--interactive\" in values or \"--ffpe\" in values:\n            raise OncoTracerError(\"Resource detection is read-only; run --detect-resources separately before --interactive\")\n        values = [\"system\", *(value for value in values if value not in detection)]\n        top_level = False\n",
+          "recorded": ""
+        },
+        {
+          "start": 76643,
+          "end": 76867,
+          "current": "        if getattr(locals().get(\"args\"), \"command\", None) in {\"run\", \"internal-run\", \"variants\"}:\n            print(\"Sample completion counts were not finalized. Retained stages will be checked on resume.\", file=sys.stderr)\n",
           "recorded": ""
         }
       ]
     },
     "docs/assets/setup-demo/mock-api.js": {
-      "current_sha256": "17a864bfb5b90c688b2be163d21380455f5a1d1d54673243323592e028bf68fd",
+      "current_sha256": "e26dd453edc5760643959091e874dfee7c94251c5b2c0863e5ac48e0b0479a62",
       "recorded_sha256": "48ea3705d5e29369e0af7ec24d60115ea90e2a6090473cfee3432a0205e9484a",
       "changes": [
         {
@@ -447,8 +471,8 @@
         },
         {
           "start": 16885,
-          "end": 17969,
-          "current": "    case '/api/system':return {default_docker_image:'carlosfarkas/oncotracer:sample-jobs-20261021',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:sample-jobs-20261021'}};\n    case '/api/resource-options':return demoResourceOptions(payload);\n    case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');\n    case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');\n",
+          "end": 17981,
+          "current": "    case '/api/system':return {default_docker_image:'carlosfarkas/oncotracer:completion-counts-20261021',hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:completion-counts-20261021'}};\n    case '/api/resource-options':return demoResourceOptions(payload);\n    case '/api/resume':throw Error('Continuing a saved project is available in the installed OncoTracer app. This demo cannot read your saved analysis.');\n    case '/api/sturgeon-resources':throw Error('Model downloads and license acknowledgement are available in the installed OncoTracer app. This synthetic demo does not download models.');\n",
           "recorded": "    case '/api/system':return {hardware:{cpu_workers_available:16,ram_available_bytes:48*demoGiB,ram_total_bytes:64*demoGiB,gpus:[],gpu_note:'Fictional demo hardware; your computer has not been inspected.'},suggested_threads:8,start_dir:'/demo',qdnaseq_binsizes:[1,5,10,15,30,50,100,500,1000],locations:[{name:'Synthetic files',path:'/demo'},{name:'Illumina',path:demoPaths.illumina},{name:'Nanopore',path:demoPaths.ont},{name:'Resources',path:'/demo/resources'}],defaults:{reference:'reuse',reference_path:'/demo/resources/hg38',backend:'docker',image:'carlosfarkas/oncotracer:run-audit-20261018'}};\n"
         }
       ]
@@ -496,7 +520,7 @@
       ]
     },
     "docs/assets/setup-demo/controls.js": {
-      "current_sha256": "fccdda28cc0329ce0a4e8cf0f0f4fe9b9e1b1b89eb6265a19d12f06fd5867e47",
+      "current_sha256": "7daa9605d37dc90f210b4b550b42c22816d57fad1306db130d00d4170d5cd77f",
       "recorded_sha256": "64de82caedfb51fb4fcb09eeba5cda5b0744ab574c716a4a37d68bfe9308bbd9",
       "changes": [
         {
@@ -507,20 +531,20 @@
         },
         {
           "start": 1107,
-          "end": 1336,
-          "current": "  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:sample-jobs-20261021';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();\n",
+          "end": 1342,
+          "current": "  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:completion-counts-20261021';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();\n",
           "recorded": "  $('threads').value='8';$('backend').value='docker';$('docker_image').value='carlosfarkas/oncotracer:run-audit-20261018';$('reference').value='reuse';$('reference-path').value='/demo/resources/hg38';$('reference').onchange();\n"
         }
       ]
     },
     "oncotracer_cli/variant_install_help.py": {
-      "current_sha256": "90a83a4dedf5f836ae8dc7d40ad97fafa1d3f8f1112f3e04c3fc0ffc666f158f",
+      "current_sha256": "0e70c999779dae7b48ae8a99f4388dcab3e45c3342f0986b4b0287bc473cc6a6",
       "recorded_sha256": "bfc0fc1297e8301262cf442811f560f53b0116e0cc9d142791523da0e1aaeb34",
       "changes": [
         {
           "start": 345,
-          "end": 400,
-          "current": "IMAGE = \"carlosfarkas/oncotracer:sample-jobs-20261021\"\n",
+          "end": 406,
+          "current": "IMAGE = \"carlosfarkas/oncotracer:completion-counts-20261021\"\n",
           "recorded": "IMAGE = \"carlosfarkas/oncotracer:run-audit-20261018\"\n"
         }
       ]

@@ -447,7 +447,7 @@ async function poll(){
     const job=await api('/api/status');if(job.project_id===dismissedJobId)return false;activeJob=job;if(job.status==='idle')return false;showProgress(job);showReviewedRun(job);
     show('workflow',true);show('review-card',true);$('run').hidden=true;
     const active=['running','stopping'].includes(job.status);
-    $('job-status').textContent=job.status==='running'?'Analysis running…':job.status==='stopping'?(job.stop_error||'Stopping analysis…'):job.status==='stopped'?'Analysis stopped':job.status==='removed'?'Project folder removed':job.status==='complete'?'Analysis completed · exit 0':'Analysis failed · exit '+job.exit_code;
+    $('job-status').textContent=job.status==='running'?'Analysis running…':job.status==='stopping'?(job.stop_error||'Stopping analysis…'):job.status==='stopped'?'Analysis stopped':job.status==='removed'?'Project folder removed':job.status==='complete'?'Analysis completed · exit 0':job.status==='partial_failure'?'Analysis incomplete · exit '+job.exit_code:'Analysis failed · exit '+job.exit_code;
     if(job.results_url){$('open-results').href=job.results_url;show('open-results',true);}
     $('logs').textContent=(job.log_truncated?'[Showing the latest log output; full log saved below.]\n':'')+job.log;
     $('log-path').textContent=job.status==='removed'?'':'Full log: '+job.log_path;show('logs',true);

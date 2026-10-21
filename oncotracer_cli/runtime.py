@@ -707,6 +707,14 @@ def atomic_write_workflow_summary(
     summary_dir: Path, values: Mapping[str, object]
 ) -> None:
     """Atomically write the typed JSON and stable text summary pair."""
+    from .completion import summarize_completion, completion_lines
+    values = dict(values)
+    values.pop("completion", None)
+    values.pop("sample_completion", None)
+    completion = summarize_completion(values)
+    if completion is not None:
+        values["completion"] = completion
+        values["sample_completion"] = completion_lines(completion, details=False)[0]
     summary_dir.mkdir(parents=True, exist_ok=True)
     atomic_write_json(summary_dir / "workflow_summary.json", values)
     atomic_write_text(

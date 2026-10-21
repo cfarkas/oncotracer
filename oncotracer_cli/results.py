@@ -377,6 +377,8 @@ def write_results_index(outdir: Path) -> Path:
                         "diagnostic_file_count": len(diagnostics)})
         if stage == "08_variants":
             catalog[-1]["status"] = str(variant_data.get("overall_status", "unavailable"))
+    from .completion import summarize_completion, completion_html
+    completion = summarize_completion(summary)
     completed = summary.get("completed_samples", [])
     failed = summary.get("failed_samples", [])
     status = str(summary.get("workflow_status") or "unknown")
@@ -403,7 +405,7 @@ def write_results_index(outdir: Path) -> Path:
         entry_page = outdir / ("08_variants/index.html" if has_variant_index else "06_workflow_summary/index.html")
         entry_label = "Open small-variant results" if has_variant_index else "Open workflow status"
     status_class = "status partial" if status == "partial_failure" else "status"
-    body = f'<div class="intro"><span class="badge">OncoTracer results</span><h1>Your analysis results</h1><p class="{status_class}">Status: {html.escape(_status_label(status))}</p><p>{html.escape(intro_description)}</p><p>{_link(root_page, entry_page, entry_label)}</p><p class="muted">{html.escape(counts)} Check the workflow and per-sample status files before interpreting results.</p></div><div class="grid">' + "".join(cards) + '</div><p class="muted">This dashboard is a presentation of the saved files. Refreshing it does not rerun analysis or alter scientific outputs.</p>'
+    body = f'<div class="intro"><span class="badge">OncoTracer results</span><h1>Your analysis results</h1><p class="{status_class}">Status: {html.escape(_status_label(status))}</p><p>{html.escape(intro_description)}</p><p>{_link(root_page, entry_page, entry_label)}</p><p class="muted">{html.escape(counts)} Check the workflow and per-sample status files before interpreting results.</p></div>' + completion_html(completion) + '<div class="grid">' + "".join(cards) + '</div><p class="muted">This dashboard is a presentation of the saved files. Refreshing it does not rerun analysis or alter scientific outputs.</p>'
     planned.append((root_page, _page("Analysis results", body)))
     # Fail before changing any page if a user-created index occupies a target.
     for path, _content in planned:
@@ -414,7 +416,7 @@ def write_results_index(outdir: Path) -> Path:
         _write_page(outdir, path, content)
     atomic_write_json(report_json, report_data)
     atomic_write_json(catalog_path, {"schema": "oncotracer-results-catalog-v1", "workflow_status": status,
-                                     "index": "index.html", "stages": catalog})
+                                     "index": "index.html", "completion": completion, "stages": catalog})
     return root_page
 
 

@@ -69,6 +69,8 @@ class NativeEngineTests(unittest.TestCase):
             self.assertEqual(summary["workflow_status"], "partial_failure")
             self.assertEqual(summary["cna_status"], "complete")
             self.assertFalse(summary["cna_classifier_completed"])
+            self.assertEqual(summary["completion"]["incomplete_samples"], ["S1"])
+            self.assertEqual(summary["completion"]["branches"]["cna"]["completed_count"], 1)
             self.assertIn("GISTIC2", summary["cna_classifier_error"])
             self.assertTrue((output / "index.html").is_file())
             manifest = json.loads((output / "06_workflow_summary/native_run_manifest.json").read_text())

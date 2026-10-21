@@ -3454,6 +3454,7 @@ def write_run_manifest(outdir: Path, config_path: Path, trace_path: Path) -> Non
         "workflow_status": summary.get("workflow_status", "complete"),
         "completed_samples": summary.get("completed_samples", []),
         "failed_samples": summary.get("failed_samples", []),
+        "completion": summary.get("completion"),
         "cna_status": summary.get("cna_status"),
         "variant_status": summary.get("variant_status"),
         "methylation_status": summary.get("methylation_status"),
@@ -3518,6 +3519,8 @@ def _merge_methylation_summary(
             "workflow_status": workflow_status,
             "cna_status": cna_status,
             "methylation_status": methylation_status,
+            "methylation_sample_statuses": {row["sample"]: row["status"]
+                                           for row in status.get("samples", [])},
             "methylation_classifier": status.get("classifier"),
             "methylation_status_file": str(
                 outdir / "07_methylation" / "methylation_status.json"
@@ -4115,6 +4118,7 @@ def _run_native_impl(
             summary.update(
                 workflow_status="partial_failure",
                 cna_classifier_completed=False,
+                cna_reports_completed=False,
                 cna_classifier_status="failed",
                 cna_classifier_error=_sanitize_sample_error(error),
             )
@@ -4142,6 +4146,8 @@ def _run_native_impl(
             summary["cna_status"] = "failed"
             summary["cna_error"] = _sanitize_sample_error(cna_error)
         summary["variant_status"] = variant_status["overall_status"]
+        summary["variants_sample_statuses"] = {row["sample"]: row["status"]
+                                              for row in variant_status.get("samples", [])}
         summary["variant_status_file"] = variant_status.get("status_file", str(outdir / "08_variants/variant_status.json"))
         summary["variant_completed_samples"] = variant_status.get("completed_samples", [])
         summary["variant_failed_samples"] = variant_status.get("failed_samples", [])
@@ -4149,6 +4155,16 @@ def _run_native_impl(
             any_success = summary.get("cna_status") in {"complete", "partial_failure"} or bool(summary.get("methylation_completed_samples")) or bool(variant_status.get("completed_samples")) or variant_status["overall_status"] == "partial_failure"
             summary["workflow_status"] = "partial_failure" if any_success else "failed"
         atomic_write_workflow_summary(summary_path.parent, summary)
+
+    summary_path = outdir / "06_workflow_summary/workflow_summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["input_samples"] = [sample.sample for sample in samples]
+    summary["requested_branches"] = (["cna"] if not only_methylation else [])
+    summary["requested_branches"] += (["variants"] if variant_request else [])
+    summary["requested_branches"] += (["methylation"] if methylation_request else [])
+    summary["requested_branches"] += (["reports"] if not only_methylation and _as_bool(config.get("run_cna_classifier"), False) else [])
+    summary.setdefault("cna_status", "not_requested" if only_methylation else summary["workflow_status"])
+    atomic_write_workflow_summary(summary_path.parent, summary)
 
     trace_text = trace.read_text(encoding="utf-8", errors="replace")
     if "nextflow" in trace_text.lower():
@@ -4162,6 +4178,8 @@ def _run_native_impl(
     _output_lease.validate()
     summary_path = outdir / "06_workflow_summary" / "workflow_summary.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    from .completion import completion_lines
+    print("\n".join(completion_lines(summary.get("completion"))), flush=True)
     if summary.get("workflow_status") != "complete":
         failed = ", ".join(str(sample) for sample in summary.get("failed_samples", []))
         message = (

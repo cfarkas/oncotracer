@@ -42,10 +42,14 @@ def progress_for_job(job, log, *, now=None):
     elapsed = max(0, int(end - job.get("_started_at", end)))
     status = job["status"]
     if status not in {"running", "stopping"}:
+        from .completion import completion_lines
+        note = " ".join(completion_lines(job.get("completion"), details=False)) if status != "removed" else ""
+        if status in {"partial_failure", "stopped", "failed"}:
+            note += " Completed results are retained; some assessments remain incomplete."
         return {"elapsed_seconds": elapsed, "stage": {"complete": "Completed", "partial_failure": "Partial failure", "stopped": "Stopped", "removed": "Project removed"}.get(status, "Failed"),
                 "eta_seconds": 0 if status == "complete" else None,
                 "overall_eta_seconds": 0 if status == "complete" else None,
-                "eta_scope": "analysis", "note": "Completed results are retained; some assessments remain incomplete." if status == "partial_failure" else ""}
+                "eta_scope": "analysis", "note": note}
     stage, eta, marker, percent = "Preparing analysis", None, None, None
     for line in log.splitlines():
         match = _DOWNLOAD.match(line)

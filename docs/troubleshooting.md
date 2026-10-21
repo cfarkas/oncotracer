@@ -178,8 +178,8 @@ or digest. A bare `install --docker` selects the older default CNA image.
 
 ```bash
 docker info
-oncotracer install --docker --image carlosfarkas/oncotracer:sample-jobs-20261021
-oncotracer doctor --backend docker --image carlosfarkas/oncotracer:sample-jobs-20261021
+oncotracer install --docker --image carlosfarkas/oncotracer:completion-counts-20261021
+oncotracer doctor --backend docker --image carlosfarkas/oncotracer:completion-counts-20261021
 ```
 
 Common causes:

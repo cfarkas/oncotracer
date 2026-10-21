@@ -268,3 +268,7 @@ This creates tiny synthetic Illumina and ONT reads, validates BAMs and sample
 identities, and verifies reuse after changing CPU allocations. It requires at
 least 20 GiB of available RAM for the production scheduler's two-slot minimum.
 It does not replace whole-genome QuickStart parity or validate biological accuracy.
+
+At the end, [sample completion counts](outputs.md#completed-and-incomplete-samples)
+show completed/total and incomplete/total for the whole analysis and each
+requested branch. Queued or interrupted samples remain in the total.

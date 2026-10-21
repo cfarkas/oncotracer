@@ -191,6 +191,7 @@ class VariantCommandTests(unittest.TestCase):
             code, output = self.cli()
         self.assertEqual(code, 2, output)
         self.assertIn('PARTIAL FAILURE: FFPERASE not assessed:', output)
+        self.assertIn('Samples: completed 0/1; incomplete 1/1.', output)
         self.assertIn('Coverage is insufficient for the log-depth feature.', output)
         self.assertNotIn('ERROR:', output)
         self.assertTrue((self.outdir / 'index.html').is_file())

@@ -84,6 +84,7 @@ jobs:
             tests/test_strelka2.py \
             tests/test_web_progress.py \
             tests/test_run_completion.py \
+            tests/test_completion_counts.py \
             tests/test_paper_report_command.py \
             tests/test_paper_report_rendering.py \
             tests/test_boundary_refinement_gaps.py \
@@ -546,7 +547,7 @@ jobs:
           docker run --rm --network none --workdir /opt/oncotracer \
             --env XDG_CONFIG_HOME=/tmp/oncotracer-test-config \
             --entrypoint /opt/conda/bin/python oncotracer:v2-ci -B -m unittest \
-            tests.test_sample_parallelism tests.test_glimpse_parallel
+            tests.test_sample_parallelism tests.test_glimpse_parallel tests.test_completion_counts
           docker run --rm --network none --user 1000:1000 --workdir /tmp --env HOME=/tmp \
             --entrypoint /usr/local/bin/nextflow oncotracer:v2-ci \
             run /opt/oncotracer/oncotracer_cli/lpwgs/main.nf --help -ansi-log false

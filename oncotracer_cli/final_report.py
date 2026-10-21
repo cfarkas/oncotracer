@@ -83,6 +83,9 @@ def final_report(root: Path, summary: dict) -> tuple[str, dict]:
     status_class = 'status partial' if data['workflow_status'] == 'partial_failure' else 'status'
     status_label = 'Partial failure' if data['workflow_status'] == 'partial_failure' else data['workflow_status']
     body += '<p class="'+status_class+'">Workflow: '+_e(status_label)+'</p><p>Saved CNA findings, literature evidence and available methylation results. Each analysis retains its own status; missing or failed predictions are not normal results.</p>'
+    from .completion import summarize_completion, completion_html
+    data["completion"] = summarize_completion(summary)
+    body += completion_html(data["completion"])
     events = [] if data['cna_status'] == 'not_requested' else _rows(root, '03_cna_codification/cna_events.tsv', limit=None)
     for row in events:
         counts = data['cna_events'].setdefault(row.get('sample', 'unknown'), {})

@@ -63,7 +63,7 @@ from .runtime import (
     utc_now,
 )
 
-DEFAULT_IMAGE = "carlosfarkas/oncotracer:sample-jobs-20261021"
+DEFAULT_IMAGE = "carlosfarkas/oncotracer:completion-counts-20261021"
 CONFIG_SCHEMA = "oncotracer-install-config-v1"
 
 
@@ -1909,6 +1909,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     except KeyboardInterrupt:
         print("ERROR: interrupted", file=sys.stderr)
+        if getattr(locals().get("args"), "command", None) in {"run", "internal-run", "variants"}:
+            print("Sample completion counts were not finalized. Retained stages will be checked on resume.", file=sys.stderr)
         return 130
 
 

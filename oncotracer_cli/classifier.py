@@ -460,6 +460,8 @@ def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_re
     json_path = require_file(summary_dir / "workflow_summary.json", "workflow summary JSON")
     value = json.loads(json_path.read_text(encoding="utf-8"))
     value["cna_classifier"] = str(classifier_out)
+    if value.get("requested_branches") and "reports" not in value["requested_branches"]:
+        value["requested_branches"].append("reports")
     status_file = classifier_out / "diagnostics/gistic/gistic2_status.tsv"
     if not status_file.exists():
         status_file = classifier_out / "04_gistic2/gistic2_status.tsv"
@@ -468,6 +470,7 @@ def _update_summary(analysis_outdir: Path, classifier_out: Path, *, knowledge_re
     value["gistic_requested"] = gistic_requested
     value["gistic_status"] = gistic_status
     value["gistic_reason"] = gistic_reason
+    value["cna_reports_completed"] = reports_completed
     value["cna_classifier_completed"] = not incomplete
     value["cna_classifier_status"] = "partial_failure" if incomplete else "complete"
     if incomplete:

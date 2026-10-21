@@ -292,7 +292,9 @@ def command_reports(args) -> int:
             summary_path = outdir / "06_workflow_summary/workflow_summary.json"
             summary = _json(summary_path)
             summary.setdefault("cna_status", "complete")
-            summary.update(cna_classifier_status="partial_failure", cna_classifier_completed=False,
+            if summary.get("requested_branches") and "reports" not in summary["requested_branches"]:
+                summary["requested_branches"].append("reports")
+            summary.update(cna_classifier_status="partial_failure", cna_classifier_completed=False, cna_reports_completed=False,
                            reports_status="failed", workflow_status="partial_failure", report_error=str(error))
             atomic_write_workflow_summary(summary_path.parent, summary)
             try:

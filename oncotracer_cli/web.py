@@ -763,6 +763,10 @@ class WebState:
                 if published_native_partial(outdir, prepared['fingerprint'][prepared['config_path']],
                                             job.get('_prior_manifest_mtime')):
                     job['status'] = 'partial_failure'
+            from .run_completion import published_completion
+            job["completion"] = published_completion(
+                outdir, prepared.get('fingerprint', {}).get(prepared.get('config_path'), ''),
+                job.get('_prior_manifest_mtime'))
             if (outdir / "index.html").is_file():
                 key = secrets.token_urlsafe(32)
                 self.result_roots[key] = outdir

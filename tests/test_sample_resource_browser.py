@@ -96,6 +96,26 @@ class SampleJobBrowserTests(unittest.TestCase):
         expect(self.page.locator('#review-card #resume-resources')).to_be_visible()
         expect(self.page.locator('#run')).to_be_enabled()
 
+    def test_partial_completion_is_visible_at_the_end(self):
+        from oncotracer_cli.completion import summarize_completion
+        from oncotracer_cli.web_progress import progress_for_job
+        from tests.test_completion_counts import partial_summary
+        job = {'status': 'partial_failure', 'project_id': 'synthetic-partial',
+               'project_path': str(self.root/'project'), 'log_path': '/synthetic/run.log',
+               'log': 'Retained completed work', 'exit_code': 2,
+               'completion': summarize_completion(partial_summary())}
+        job['progress'] = progress_for_job(job, job['log'])
+        self.page.route('**/api/status', lambda route: route.fulfill(json=job))
+        self.page.reload()
+        expect(self.page.locator('#job-status')).to_have_text('Analysis incomplete · exit 2')
+        expect(self.page.locator('#run-eta-note')).to_contain_text('Samples: completed 6/8; incomplete 2/8.')
+        expect(self.page.locator('#run-eta-note')).to_contain_text('Small variants: completed 6/8; incomplete 2/8.')
+        expect(self.page.locator('#run')).to_be_hidden()
+        self.page.goto(self.server.origin + '/variants/#' + self.state.token)
+        expect(self.page.locator('#job-note')).to_contain_text('Samples: completed 6/8; incomplete 2/8.')
+        expect(self.page.locator('#job-note')).to_contain_text('Small variants: completed 6/8; incomplete 2/8.')
+        self.assertFalse(self.errors, self.errors)
+
     def test_new_analysis_saves_sample_job_selection_and_reaches_run(self):
         self.new_form()
         self.page.locator('#prepare').click()
