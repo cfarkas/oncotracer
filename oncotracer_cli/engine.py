@@ -4181,14 +4181,14 @@ def _run_native_impl(
     from .completion import completion_lines
     print("\n".join(completion_lines(summary.get("completion"))), flush=True)
     if summary.get("workflow_status") != "complete":
-        failed = ", ".join(str(sample) for sample in summary.get("failed_samples", []))
+        incomplete = ", ".join(summary.get("completion", {}).get("incomplete_samples", []))
         message = (
             "One or more requested branches are incomplete "
             f"(CNA={summary.get('cna_status', summary.get('workflow_status'))}, "
             f"methylation={summary.get('methylation_status', 'not_requested')}, "
             f"classifier={summary.get('cna_classifier_status', 'not_requested')}, "
             f"variants={summary.get('variant_status', 'not_requested')}, "
-            f"failed_samples={failed or 'none'})."
+            f"incomplete_samples={incomplete or 'none'})."
         )
         # Only the finalized, lease-validated partial outcome gets this status.
         # Exceptions during calling or publication keep their original failure.

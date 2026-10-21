@@ -62,7 +62,7 @@ class NativeEngineTests(unittest.TestCase):
                 patch.object(engine, "run_qdnaseq", return_value=(base / "qdna", base / "bams")),
                 patch.object(engine, "run_refinement_and_outputs", side_effect=publish),
                 patch.object(engine, "run_native_classifier", side_effect=OncoTracerError("GISTIC2 did not complete: missing result")),
-                self.assertRaisesRegex(OncoTracerError, "classifier=failed"),
+                self.assertRaisesRegex(OncoTracerError, "classifier=failed.*incomplete_samples=S1"),
             ):
                 engine.run_native(config, root=runtime)
             summary = json.loads((output / "06_workflow_summary/workflow_summary.json").read_text())
